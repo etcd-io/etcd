@@ -1,5 +1,5 @@
-hash: f12c87d509e99534547e948533b8e8a88043c2261c0be08f155a26cd920b5fd4
-updated: 2017-09-11T14:52:48.727295105-07:00
+hash: 49950d40cee960e66f818746fca6ccaa849c62851d81d0960f6089c3677eec65
+updated: 2017-09-19T14:50:30.702073385+02:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -102,7 +102,7 @@ imports:
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/ugorji/go
-  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
+  version: 54210f4e076c57f351166f0ed60e67d3fca57a36
   subpackages:
   - codec
 - name: github.com/urfave/cli

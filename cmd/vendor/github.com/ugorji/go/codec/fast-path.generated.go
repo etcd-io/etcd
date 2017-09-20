@@ -86,7 +86,7 @@ func init() {
 	i := 0
 	fn := func(v interface{}, fe func(*encFnInfo, reflect.Value), fd func(*decFnInfo, reflect.Value)) (f fastpathE) {
 		xrt := reflect.TypeOf(v)
-		xptr := reflect.ValueOf(xrt).Pointer()
+		xptr := rt2id(xrt)
 		fastpathAV[i] = fastpathE{xptr, xrt, fe, fd}
 		i++
 		return
@@ -3115,9 +3115,9 @@ func fastpathEncodeTypeSwitchMap(iv interface{}, e *Encoder) bool {
 
 func (f *encFnInfo) fastpathEncSliceIntfR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceIntfV(rv.Interface().([]interface{}), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceIntfV(rv2i(rv).([]interface{}), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceIntfV(rv.Interface().([]interface{}), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceIntfV(rv2i(rv).([]interface{}), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceIntfV(v []interface{}, checkNil bool, e *Encoder) {
@@ -3168,9 +3168,9 @@ func (_ fastpathT) EncAsMapSliceIntfV(v []interface{}, checkNil bool, e *Encoder
 
 func (f *encFnInfo) fastpathEncSliceStringR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceStringV(rv.Interface().([]string), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceStringV(rv2i(rv).([]string), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceStringV(rv.Interface().([]string), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceStringV(rv2i(rv).([]string), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceStringV(v []string, checkNil bool, e *Encoder) {
@@ -3221,9 +3221,9 @@ func (_ fastpathT) EncAsMapSliceStringV(v []string, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceFloat32R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceFloat32V(rv.Interface().([]float32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceFloat32V(rv2i(rv).([]float32), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceFloat32V(rv.Interface().([]float32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceFloat32V(rv2i(rv).([]float32), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceFloat32V(v []float32, checkNil bool, e *Encoder) {
@@ -3274,9 +3274,9 @@ func (_ fastpathT) EncAsMapSliceFloat32V(v []float32, checkNil bool, e *Encoder)
 
 func (f *encFnInfo) fastpathEncSliceFloat64R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceFloat64V(rv.Interface().([]float64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceFloat64V(rv2i(rv).([]float64), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceFloat64V(rv.Interface().([]float64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceFloat64V(rv2i(rv).([]float64), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceFloat64V(v []float64, checkNil bool, e *Encoder) {
@@ -3327,9 +3327,9 @@ func (_ fastpathT) EncAsMapSliceFloat64V(v []float64, checkNil bool, e *Encoder)
 
 func (f *encFnInfo) fastpathEncSliceUintR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceUintV(rv.Interface().([]uint), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceUintV(rv2i(rv).([]uint), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceUintV(rv.Interface().([]uint), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceUintV(rv2i(rv).([]uint), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceUintV(v []uint, checkNil bool, e *Encoder) {
@@ -3380,9 +3380,9 @@ func (_ fastpathT) EncAsMapSliceUintV(v []uint, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceUint16R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceUint16V(rv.Interface().([]uint16), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceUint16V(rv2i(rv).([]uint16), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceUint16V(rv.Interface().([]uint16), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceUint16V(rv2i(rv).([]uint16), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceUint16V(v []uint16, checkNil bool, e *Encoder) {
@@ -3433,9 +3433,9 @@ func (_ fastpathT) EncAsMapSliceUint16V(v []uint16, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceUint32R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceUint32V(rv.Interface().([]uint32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceUint32V(rv2i(rv).([]uint32), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceUint32V(rv.Interface().([]uint32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceUint32V(rv2i(rv).([]uint32), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceUint32V(v []uint32, checkNil bool, e *Encoder) {
@@ -3486,9 +3486,9 @@ func (_ fastpathT) EncAsMapSliceUint32V(v []uint32, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceUint64R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceUint64V(rv.Interface().([]uint64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceUint64V(rv2i(rv).([]uint64), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceUint64V(rv.Interface().([]uint64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceUint64V(rv2i(rv).([]uint64), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceUint64V(v []uint64, checkNil bool, e *Encoder) {
@@ -3539,9 +3539,9 @@ func (_ fastpathT) EncAsMapSliceUint64V(v []uint64, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceUintptrR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceUintptrV(rv.Interface().([]uintptr), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceUintptrV(rv2i(rv).([]uintptr), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceUintptrV(rv.Interface().([]uintptr), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceUintptrV(rv2i(rv).([]uintptr), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceUintptrV(v []uintptr, checkNil bool, e *Encoder) {
@@ -3592,9 +3592,9 @@ func (_ fastpathT) EncAsMapSliceUintptrV(v []uintptr, checkNil bool, e *Encoder)
 
 func (f *encFnInfo) fastpathEncSliceIntR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceIntV(rv.Interface().([]int), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceIntV(rv2i(rv).([]int), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceIntV(rv.Interface().([]int), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceIntV(rv2i(rv).([]int), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceIntV(v []int, checkNil bool, e *Encoder) {
@@ -3645,9 +3645,9 @@ func (_ fastpathT) EncAsMapSliceIntV(v []int, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceInt8R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceInt8V(rv.Interface().([]int8), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceInt8V(rv2i(rv).([]int8), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceInt8V(rv.Interface().([]int8), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceInt8V(rv2i(rv).([]int8), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceInt8V(v []int8, checkNil bool, e *Encoder) {
@@ -3698,9 +3698,9 @@ func (_ fastpathT) EncAsMapSliceInt8V(v []int8, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceInt16R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceInt16V(rv.Interface().([]int16), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceInt16V(rv2i(rv).([]int16), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceInt16V(rv.Interface().([]int16), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceInt16V(rv2i(rv).([]int16), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceInt16V(v []int16, checkNil bool, e *Encoder) {
@@ -3751,9 +3751,9 @@ func (_ fastpathT) EncAsMapSliceInt16V(v []int16, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceInt32R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceInt32V(rv.Interface().([]int32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceInt32V(rv2i(rv).([]int32), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceInt32V(rv.Interface().([]int32), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceInt32V(rv2i(rv).([]int32), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceInt32V(v []int32, checkNil bool, e *Encoder) {
@@ -3804,9 +3804,9 @@ func (_ fastpathT) EncAsMapSliceInt32V(v []int32, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceInt64R(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceInt64V(rv.Interface().([]int64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceInt64V(rv2i(rv).([]int64), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceInt64V(rv.Interface().([]int64), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceInt64V(rv2i(rv).([]int64), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceInt64V(v []int64, checkNil bool, e *Encoder) {
@@ -3857,9 +3857,9 @@ func (_ fastpathT) EncAsMapSliceInt64V(v []int64, checkNil bool, e *Encoder) {
 
 func (f *encFnInfo) fastpathEncSliceBoolR(rv reflect.Value) {
 	if f.ti.mbs {
-		fastpathTV.EncAsMapSliceBoolV(rv.Interface().([]bool), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncAsMapSliceBoolV(rv2i(rv).([]bool), fastpathCheckNilFalse, f.e)
 	} else {
-		fastpathTV.EncSliceBoolV(rv.Interface().([]bool), fastpathCheckNilFalse, f.e)
+		fastpathTV.EncSliceBoolV(rv2i(rv).([]bool), fastpathCheckNilFalse, f.e)
 	}
 }
 func (_ fastpathT) EncSliceBoolV(v []bool, checkNil bool, e *Encoder) {
@@ -3909,7 +3909,7 @@ func (_ fastpathT) EncAsMapSliceBoolV(v []bool, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntfIntfR(rv reflect.Value) {
-	fastpathTV.EncMapIntfIntfV(rv.Interface().(map[interface{}]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfIntfV(rv2i(rv).(map[interface{}]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfIntfV(v map[interface{}]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -3962,7 +3962,7 @@ func (_ fastpathT) EncMapIntfIntfV(v map[interface{}]interface{}, checkNil bool,
 }
 
 func (f *encFnInfo) fastpathEncMapIntfStringR(rv reflect.Value) {
-	fastpathTV.EncMapIntfStringV(rv.Interface().(map[interface{}]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfStringV(rv2i(rv).(map[interface{}]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfStringV(v map[interface{}]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4015,7 +4015,7 @@ func (_ fastpathT) EncMapIntfStringV(v map[interface{}]string, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUintR(rv reflect.Value) {
-	fastpathTV.EncMapIntfUintV(rv.Interface().(map[interface{}]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUintV(rv2i(rv).(map[interface{}]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUintV(v map[interface{}]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4068,7 +4068,7 @@ func (_ fastpathT) EncMapIntfUintV(v map[interface{}]uint, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUint8R(rv reflect.Value) {
-	fastpathTV.EncMapIntfUint8V(rv.Interface().(map[interface{}]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUint8V(rv2i(rv).(map[interface{}]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUint8V(v map[interface{}]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4121,7 +4121,7 @@ func (_ fastpathT) EncMapIntfUint8V(v map[interface{}]uint8, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUint16R(rv reflect.Value) {
-	fastpathTV.EncMapIntfUint16V(rv.Interface().(map[interface{}]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUint16V(rv2i(rv).(map[interface{}]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUint16V(v map[interface{}]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4174,7 +4174,7 @@ func (_ fastpathT) EncMapIntfUint16V(v map[interface{}]uint16, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUint32R(rv reflect.Value) {
-	fastpathTV.EncMapIntfUint32V(rv.Interface().(map[interface{}]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUint32V(rv2i(rv).(map[interface{}]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUint32V(v map[interface{}]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4227,7 +4227,7 @@ func (_ fastpathT) EncMapIntfUint32V(v map[interface{}]uint32, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUint64R(rv reflect.Value) {
-	fastpathTV.EncMapIntfUint64V(rv.Interface().(map[interface{}]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUint64V(rv2i(rv).(map[interface{}]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUint64V(v map[interface{}]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4280,7 +4280,7 @@ func (_ fastpathT) EncMapIntfUint64V(v map[interface{}]uint64, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapIntfUintptrV(rv.Interface().(map[interface{}]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfUintptrV(rv2i(rv).(map[interface{}]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfUintptrV(v map[interface{}]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4333,7 +4333,7 @@ func (_ fastpathT) EncMapIntfUintptrV(v map[interface{}]uintptr, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfIntR(rv reflect.Value) {
-	fastpathTV.EncMapIntfIntV(rv.Interface().(map[interface{}]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfIntV(rv2i(rv).(map[interface{}]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfIntV(v map[interface{}]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4386,7 +4386,7 @@ func (_ fastpathT) EncMapIntfIntV(v map[interface{}]int, checkNil bool, e *Encod
 }
 
 func (f *encFnInfo) fastpathEncMapIntfInt8R(rv reflect.Value) {
-	fastpathTV.EncMapIntfInt8V(rv.Interface().(map[interface{}]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfInt8V(rv2i(rv).(map[interface{}]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfInt8V(v map[interface{}]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4439,7 +4439,7 @@ func (_ fastpathT) EncMapIntfInt8V(v map[interface{}]int8, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapIntfInt16R(rv reflect.Value) {
-	fastpathTV.EncMapIntfInt16V(rv.Interface().(map[interface{}]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfInt16V(rv2i(rv).(map[interface{}]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfInt16V(v map[interface{}]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4492,7 +4492,7 @@ func (_ fastpathT) EncMapIntfInt16V(v map[interface{}]int16, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapIntfInt32R(rv reflect.Value) {
-	fastpathTV.EncMapIntfInt32V(rv.Interface().(map[interface{}]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfInt32V(rv2i(rv).(map[interface{}]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfInt32V(v map[interface{}]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4545,7 +4545,7 @@ func (_ fastpathT) EncMapIntfInt32V(v map[interface{}]int32, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapIntfInt64R(rv reflect.Value) {
-	fastpathTV.EncMapIntfInt64V(rv.Interface().(map[interface{}]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfInt64V(rv2i(rv).(map[interface{}]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfInt64V(v map[interface{}]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4598,7 +4598,7 @@ func (_ fastpathT) EncMapIntfInt64V(v map[interface{}]int64, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapIntfFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapIntfFloat32V(rv.Interface().(map[interface{}]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfFloat32V(rv2i(rv).(map[interface{}]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfFloat32V(v map[interface{}]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4651,7 +4651,7 @@ func (_ fastpathT) EncMapIntfFloat32V(v map[interface{}]float32, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapIntfFloat64V(rv.Interface().(map[interface{}]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfFloat64V(rv2i(rv).(map[interface{}]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfFloat64V(v map[interface{}]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4704,7 +4704,7 @@ func (_ fastpathT) EncMapIntfFloat64V(v map[interface{}]float64, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapIntfBoolR(rv reflect.Value) {
-	fastpathTV.EncMapIntfBoolV(rv.Interface().(map[interface{}]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntfBoolV(rv2i(rv).(map[interface{}]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntfBoolV(v map[interface{}]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4757,7 +4757,7 @@ func (_ fastpathT) EncMapIntfBoolV(v map[interface{}]bool, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapStringIntfR(rv reflect.Value) {
-	fastpathTV.EncMapStringIntfV(rv.Interface().(map[string]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringIntfV(rv2i(rv).(map[string]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringIntfV(v map[string]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4812,7 +4812,7 @@ func (_ fastpathT) EncMapStringIntfV(v map[string]interface{}, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapStringStringR(rv reflect.Value) {
-	fastpathTV.EncMapStringStringV(rv.Interface().(map[string]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringStringV(rv2i(rv).(map[string]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringStringV(v map[string]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4867,7 +4867,7 @@ func (_ fastpathT) EncMapStringStringV(v map[string]string, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapStringUintR(rv reflect.Value) {
-	fastpathTV.EncMapStringUintV(rv.Interface().(map[string]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUintV(rv2i(rv).(map[string]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUintV(v map[string]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4922,7 +4922,7 @@ func (_ fastpathT) EncMapStringUintV(v map[string]uint, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapStringUint8R(rv reflect.Value) {
-	fastpathTV.EncMapStringUint8V(rv.Interface().(map[string]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUint8V(rv2i(rv).(map[string]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUint8V(v map[string]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -4977,7 +4977,7 @@ func (_ fastpathT) EncMapStringUint8V(v map[string]uint8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapStringUint16R(rv reflect.Value) {
-	fastpathTV.EncMapStringUint16V(rv.Interface().(map[string]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUint16V(rv2i(rv).(map[string]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUint16V(v map[string]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5032,7 +5032,7 @@ func (_ fastpathT) EncMapStringUint16V(v map[string]uint16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapStringUint32R(rv reflect.Value) {
-	fastpathTV.EncMapStringUint32V(rv.Interface().(map[string]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUint32V(rv2i(rv).(map[string]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUint32V(v map[string]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5087,7 +5087,7 @@ func (_ fastpathT) EncMapStringUint32V(v map[string]uint32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapStringUint64R(rv reflect.Value) {
-	fastpathTV.EncMapStringUint64V(rv.Interface().(map[string]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUint64V(rv2i(rv).(map[string]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUint64V(v map[string]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5142,7 +5142,7 @@ func (_ fastpathT) EncMapStringUint64V(v map[string]uint64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapStringUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapStringUintptrV(rv.Interface().(map[string]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringUintptrV(rv2i(rv).(map[string]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringUintptrV(v map[string]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5197,7 +5197,7 @@ func (_ fastpathT) EncMapStringUintptrV(v map[string]uintptr, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapStringIntR(rv reflect.Value) {
-	fastpathTV.EncMapStringIntV(rv.Interface().(map[string]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringIntV(rv2i(rv).(map[string]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringIntV(v map[string]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5252,7 +5252,7 @@ func (_ fastpathT) EncMapStringIntV(v map[string]int, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapStringInt8R(rv reflect.Value) {
-	fastpathTV.EncMapStringInt8V(rv.Interface().(map[string]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringInt8V(rv2i(rv).(map[string]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringInt8V(v map[string]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5307,7 +5307,7 @@ func (_ fastpathT) EncMapStringInt8V(v map[string]int8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapStringInt16R(rv reflect.Value) {
-	fastpathTV.EncMapStringInt16V(rv.Interface().(map[string]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringInt16V(rv2i(rv).(map[string]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringInt16V(v map[string]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5362,7 +5362,7 @@ func (_ fastpathT) EncMapStringInt16V(v map[string]int16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapStringInt32R(rv reflect.Value) {
-	fastpathTV.EncMapStringInt32V(rv.Interface().(map[string]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringInt32V(rv2i(rv).(map[string]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringInt32V(v map[string]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5417,7 +5417,7 @@ func (_ fastpathT) EncMapStringInt32V(v map[string]int32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapStringInt64R(rv reflect.Value) {
-	fastpathTV.EncMapStringInt64V(rv.Interface().(map[string]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringInt64V(rv2i(rv).(map[string]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringInt64V(v map[string]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5472,7 +5472,7 @@ func (_ fastpathT) EncMapStringInt64V(v map[string]int64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapStringFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapStringFloat32V(rv.Interface().(map[string]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringFloat32V(rv2i(rv).(map[string]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringFloat32V(v map[string]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5527,7 +5527,7 @@ func (_ fastpathT) EncMapStringFloat32V(v map[string]float32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapStringFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapStringFloat64V(rv.Interface().(map[string]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringFloat64V(rv2i(rv).(map[string]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringFloat64V(v map[string]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5582,7 +5582,7 @@ func (_ fastpathT) EncMapStringFloat64V(v map[string]float64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapStringBoolR(rv reflect.Value) {
-	fastpathTV.EncMapStringBoolV(rv.Interface().(map[string]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapStringBoolV(rv2i(rv).(map[string]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapStringBoolV(v map[string]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5637,7 +5637,7 @@ func (_ fastpathT) EncMapStringBoolV(v map[string]bool, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32IntfR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32IntfV(rv.Interface().(map[float32]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32IntfV(rv2i(rv).(map[float32]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32IntfV(v map[float32]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5683,7 +5683,7 @@ func (_ fastpathT) EncMapFloat32IntfV(v map[float32]interface{}, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32StringR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32StringV(rv.Interface().(map[float32]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32StringV(rv2i(rv).(map[float32]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32StringV(v map[float32]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5729,7 +5729,7 @@ func (_ fastpathT) EncMapFloat32StringV(v map[float32]string, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32UintR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32UintV(rv.Interface().(map[float32]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32UintV(rv2i(rv).(map[float32]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32UintV(v map[float32]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5775,7 +5775,7 @@ func (_ fastpathT) EncMapFloat32UintV(v map[float32]uint, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Uint8V(rv.Interface().(map[float32]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Uint8V(rv2i(rv).(map[float32]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Uint8V(v map[float32]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5821,7 +5821,7 @@ func (_ fastpathT) EncMapFloat32Uint8V(v map[float32]uint8, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Uint16V(rv.Interface().(map[float32]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Uint16V(rv2i(rv).(map[float32]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Uint16V(v map[float32]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5867,7 +5867,7 @@ func (_ fastpathT) EncMapFloat32Uint16V(v map[float32]uint16, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Uint32V(rv.Interface().(map[float32]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Uint32V(rv2i(rv).(map[float32]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Uint32V(v map[float32]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5913,7 +5913,7 @@ func (_ fastpathT) EncMapFloat32Uint32V(v map[float32]uint32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Uint64V(rv.Interface().(map[float32]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Uint64V(rv2i(rv).(map[float32]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Uint64V(v map[float32]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -5959,7 +5959,7 @@ func (_ fastpathT) EncMapFloat32Uint64V(v map[float32]uint64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32UintptrV(rv.Interface().(map[float32]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32UintptrV(rv2i(rv).(map[float32]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32UintptrV(v map[float32]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6005,7 +6005,7 @@ func (_ fastpathT) EncMapFloat32UintptrV(v map[float32]uintptr, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32IntR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32IntV(rv.Interface().(map[float32]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32IntV(rv2i(rv).(map[float32]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32IntV(v map[float32]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6051,7 +6051,7 @@ func (_ fastpathT) EncMapFloat32IntV(v map[float32]int, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Int8R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Int8V(rv.Interface().(map[float32]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Int8V(rv2i(rv).(map[float32]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Int8V(v map[float32]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6097,7 +6097,7 @@ func (_ fastpathT) EncMapFloat32Int8V(v map[float32]int8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Int16R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Int16V(rv.Interface().(map[float32]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Int16V(rv2i(rv).(map[float32]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Int16V(v map[float32]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6143,7 +6143,7 @@ func (_ fastpathT) EncMapFloat32Int16V(v map[float32]int16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Int32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Int32V(rv.Interface().(map[float32]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Int32V(rv2i(rv).(map[float32]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Int32V(v map[float32]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6189,7 +6189,7 @@ func (_ fastpathT) EncMapFloat32Int32V(v map[float32]int32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Int64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Int64V(rv.Interface().(map[float32]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Int64V(rv2i(rv).(map[float32]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Int64V(v map[float32]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6235,7 +6235,7 @@ func (_ fastpathT) EncMapFloat32Int64V(v map[float32]int64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Float32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Float32V(rv.Interface().(map[float32]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Float32V(rv2i(rv).(map[float32]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Float32V(v map[float32]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6281,7 +6281,7 @@ func (_ fastpathT) EncMapFloat32Float32V(v map[float32]float32, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32Float64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat32Float64V(rv.Interface().(map[float32]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32Float64V(rv2i(rv).(map[float32]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32Float64V(v map[float32]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6327,7 +6327,7 @@ func (_ fastpathT) EncMapFloat32Float64V(v map[float32]float64, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat32BoolR(rv reflect.Value) {
-	fastpathTV.EncMapFloat32BoolV(rv.Interface().(map[float32]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat32BoolV(rv2i(rv).(map[float32]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat32BoolV(v map[float32]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6373,7 +6373,7 @@ func (_ fastpathT) EncMapFloat32BoolV(v map[float32]bool, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64IntfR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64IntfV(rv.Interface().(map[float64]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64IntfV(rv2i(rv).(map[float64]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64IntfV(v map[float64]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6419,7 +6419,7 @@ func (_ fastpathT) EncMapFloat64IntfV(v map[float64]interface{}, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64StringR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64StringV(rv.Interface().(map[float64]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64StringV(rv2i(rv).(map[float64]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64StringV(v map[float64]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6465,7 +6465,7 @@ func (_ fastpathT) EncMapFloat64StringV(v map[float64]string, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64UintR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64UintV(rv.Interface().(map[float64]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64UintV(rv2i(rv).(map[float64]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64UintV(v map[float64]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6511,7 +6511,7 @@ func (_ fastpathT) EncMapFloat64UintV(v map[float64]uint, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Uint8V(rv.Interface().(map[float64]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Uint8V(rv2i(rv).(map[float64]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Uint8V(v map[float64]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6557,7 +6557,7 @@ func (_ fastpathT) EncMapFloat64Uint8V(v map[float64]uint8, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Uint16V(rv.Interface().(map[float64]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Uint16V(rv2i(rv).(map[float64]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Uint16V(v map[float64]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6603,7 +6603,7 @@ func (_ fastpathT) EncMapFloat64Uint16V(v map[float64]uint16, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Uint32V(rv.Interface().(map[float64]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Uint32V(rv2i(rv).(map[float64]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Uint32V(v map[float64]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6649,7 +6649,7 @@ func (_ fastpathT) EncMapFloat64Uint32V(v map[float64]uint32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Uint64V(rv.Interface().(map[float64]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Uint64V(rv2i(rv).(map[float64]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Uint64V(v map[float64]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6695,7 +6695,7 @@ func (_ fastpathT) EncMapFloat64Uint64V(v map[float64]uint64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64UintptrV(rv.Interface().(map[float64]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64UintptrV(rv2i(rv).(map[float64]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64UintptrV(v map[float64]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6741,7 +6741,7 @@ func (_ fastpathT) EncMapFloat64UintptrV(v map[float64]uintptr, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64IntR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64IntV(rv.Interface().(map[float64]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64IntV(rv2i(rv).(map[float64]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64IntV(v map[float64]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6787,7 +6787,7 @@ func (_ fastpathT) EncMapFloat64IntV(v map[float64]int, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Int8R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Int8V(rv.Interface().(map[float64]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Int8V(rv2i(rv).(map[float64]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Int8V(v map[float64]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6833,7 +6833,7 @@ func (_ fastpathT) EncMapFloat64Int8V(v map[float64]int8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Int16R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Int16V(rv.Interface().(map[float64]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Int16V(rv2i(rv).(map[float64]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Int16V(v map[float64]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6879,7 +6879,7 @@ func (_ fastpathT) EncMapFloat64Int16V(v map[float64]int16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Int32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Int32V(rv.Interface().(map[float64]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Int32V(rv2i(rv).(map[float64]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Int32V(v map[float64]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6925,7 +6925,7 @@ func (_ fastpathT) EncMapFloat64Int32V(v map[float64]int32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Int64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Int64V(rv.Interface().(map[float64]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Int64V(rv2i(rv).(map[float64]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Int64V(v map[float64]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -6971,7 +6971,7 @@ func (_ fastpathT) EncMapFloat64Int64V(v map[float64]int64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Float32R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Float32V(rv.Interface().(map[float64]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Float32V(rv2i(rv).(map[float64]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Float32V(v map[float64]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7017,7 +7017,7 @@ func (_ fastpathT) EncMapFloat64Float32V(v map[float64]float32, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64Float64R(rv reflect.Value) {
-	fastpathTV.EncMapFloat64Float64V(rv.Interface().(map[float64]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64Float64V(rv2i(rv).(map[float64]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64Float64V(v map[float64]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7063,7 +7063,7 @@ func (_ fastpathT) EncMapFloat64Float64V(v map[float64]float64, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapFloat64BoolR(rv reflect.Value) {
-	fastpathTV.EncMapFloat64BoolV(rv.Interface().(map[float64]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapFloat64BoolV(rv2i(rv).(map[float64]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapFloat64BoolV(v map[float64]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7109,7 +7109,7 @@ func (_ fastpathT) EncMapFloat64BoolV(v map[float64]bool, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintIntfR(rv reflect.Value) {
-	fastpathTV.EncMapUintIntfV(rv.Interface().(map[uint]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintIntfV(rv2i(rv).(map[uint]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintIntfV(v map[uint]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7155,7 +7155,7 @@ func (_ fastpathT) EncMapUintIntfV(v map[uint]interface{}, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapUintStringR(rv reflect.Value) {
-	fastpathTV.EncMapUintStringV(rv.Interface().(map[uint]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintStringV(rv2i(rv).(map[uint]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintStringV(v map[uint]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7201,7 +7201,7 @@ func (_ fastpathT) EncMapUintStringV(v map[uint]string, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintUintR(rv reflect.Value) {
-	fastpathTV.EncMapUintUintV(rv.Interface().(map[uint]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUintV(rv2i(rv).(map[uint]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUintV(v map[uint]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7247,7 +7247,7 @@ func (_ fastpathT) EncMapUintUintV(v map[uint]uint, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapUintUint8R(rv reflect.Value) {
-	fastpathTV.EncMapUintUint8V(rv.Interface().(map[uint]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUint8V(rv2i(rv).(map[uint]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUint8V(v map[uint]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7293,7 +7293,7 @@ func (_ fastpathT) EncMapUintUint8V(v map[uint]uint8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUintUint16R(rv reflect.Value) {
-	fastpathTV.EncMapUintUint16V(rv.Interface().(map[uint]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUint16V(rv2i(rv).(map[uint]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUint16V(v map[uint]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7339,7 +7339,7 @@ func (_ fastpathT) EncMapUintUint16V(v map[uint]uint16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintUint32R(rv reflect.Value) {
-	fastpathTV.EncMapUintUint32V(rv.Interface().(map[uint]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUint32V(rv2i(rv).(map[uint]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUint32V(v map[uint]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7385,7 +7385,7 @@ func (_ fastpathT) EncMapUintUint32V(v map[uint]uint32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintUint64R(rv reflect.Value) {
-	fastpathTV.EncMapUintUint64V(rv.Interface().(map[uint]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUint64V(rv2i(rv).(map[uint]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUint64V(v map[uint]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7431,7 +7431,7 @@ func (_ fastpathT) EncMapUintUint64V(v map[uint]uint64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUintUintptrV(rv.Interface().(map[uint]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintUintptrV(rv2i(rv).(map[uint]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintUintptrV(v map[uint]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7477,7 +7477,7 @@ func (_ fastpathT) EncMapUintUintptrV(v map[uint]uintptr, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintIntR(rv reflect.Value) {
-	fastpathTV.EncMapUintIntV(rv.Interface().(map[uint]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintIntV(rv2i(rv).(map[uint]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintIntV(v map[uint]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7523,7 +7523,7 @@ func (_ fastpathT) EncMapUintIntV(v map[uint]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapUintInt8R(rv reflect.Value) {
-	fastpathTV.EncMapUintInt8V(rv.Interface().(map[uint]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintInt8V(rv2i(rv).(map[uint]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintInt8V(v map[uint]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7569,7 +7569,7 @@ func (_ fastpathT) EncMapUintInt8V(v map[uint]int8, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapUintInt16R(rv reflect.Value) {
-	fastpathTV.EncMapUintInt16V(rv.Interface().(map[uint]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintInt16V(rv2i(rv).(map[uint]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintInt16V(v map[uint]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7615,7 +7615,7 @@ func (_ fastpathT) EncMapUintInt16V(v map[uint]int16, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUintInt32R(rv reflect.Value) {
-	fastpathTV.EncMapUintInt32V(rv.Interface().(map[uint]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintInt32V(rv2i(rv).(map[uint]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintInt32V(v map[uint]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7661,7 +7661,7 @@ func (_ fastpathT) EncMapUintInt32V(v map[uint]int32, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUintInt64R(rv reflect.Value) {
-	fastpathTV.EncMapUintInt64V(rv.Interface().(map[uint]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintInt64V(rv2i(rv).(map[uint]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintInt64V(v map[uint]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7707,7 +7707,7 @@ func (_ fastpathT) EncMapUintInt64V(v map[uint]int64, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUintFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapUintFloat32V(rv.Interface().(map[uint]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintFloat32V(rv2i(rv).(map[uint]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintFloat32V(v map[uint]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7753,7 +7753,7 @@ func (_ fastpathT) EncMapUintFloat32V(v map[uint]float32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapUintFloat64V(rv.Interface().(map[uint]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintFloat64V(rv2i(rv).(map[uint]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintFloat64V(v map[uint]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7799,7 +7799,7 @@ func (_ fastpathT) EncMapUintFloat64V(v map[uint]float64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintBoolR(rv reflect.Value) {
-	fastpathTV.EncMapUintBoolV(rv.Interface().(map[uint]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintBoolV(rv2i(rv).(map[uint]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintBoolV(v map[uint]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7845,7 +7845,7 @@ func (_ fastpathT) EncMapUintBoolV(v map[uint]bool, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapUint8IntfR(rv reflect.Value) {
-	fastpathTV.EncMapUint8IntfV(rv.Interface().(map[uint8]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8IntfV(rv2i(rv).(map[uint8]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8IntfV(v map[uint8]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7891,7 +7891,7 @@ func (_ fastpathT) EncMapUint8IntfV(v map[uint8]interface{}, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapUint8StringR(rv reflect.Value) {
-	fastpathTV.EncMapUint8StringV(rv.Interface().(map[uint8]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8StringV(rv2i(rv).(map[uint8]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8StringV(v map[uint8]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7937,7 +7937,7 @@ func (_ fastpathT) EncMapUint8StringV(v map[uint8]string, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint8UintR(rv reflect.Value) {
-	fastpathTV.EncMapUint8UintV(rv.Interface().(map[uint8]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8UintV(rv2i(rv).(map[uint8]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8UintV(v map[uint8]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -7983,7 +7983,7 @@ func (_ fastpathT) EncMapUint8UintV(v map[uint8]uint, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Uint8V(rv.Interface().(map[uint8]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Uint8V(rv2i(rv).(map[uint8]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Uint8V(v map[uint8]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8029,7 +8029,7 @@ func (_ fastpathT) EncMapUint8Uint8V(v map[uint8]uint8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Uint16V(rv.Interface().(map[uint8]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Uint16V(rv2i(rv).(map[uint8]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Uint16V(v map[uint8]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8075,7 +8075,7 @@ func (_ fastpathT) EncMapUint8Uint16V(v map[uint8]uint16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Uint32V(rv.Interface().(map[uint8]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Uint32V(rv2i(rv).(map[uint8]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Uint32V(v map[uint8]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8121,7 +8121,7 @@ func (_ fastpathT) EncMapUint8Uint32V(v map[uint8]uint32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Uint64V(rv.Interface().(map[uint8]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Uint64V(rv2i(rv).(map[uint8]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Uint64V(v map[uint8]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8167,7 +8167,7 @@ func (_ fastpathT) EncMapUint8Uint64V(v map[uint8]uint64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint8UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUint8UintptrV(rv.Interface().(map[uint8]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8UintptrV(rv2i(rv).(map[uint8]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8UintptrV(v map[uint8]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8213,7 +8213,7 @@ func (_ fastpathT) EncMapUint8UintptrV(v map[uint8]uintptr, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint8IntR(rv reflect.Value) {
-	fastpathTV.EncMapUint8IntV(rv.Interface().(map[uint8]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8IntV(rv2i(rv).(map[uint8]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8IntV(v map[uint8]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8259,7 +8259,7 @@ func (_ fastpathT) EncMapUint8IntV(v map[uint8]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Int8R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Int8V(rv.Interface().(map[uint8]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Int8V(rv2i(rv).(map[uint8]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Int8V(v map[uint8]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8305,7 +8305,7 @@ func (_ fastpathT) EncMapUint8Int8V(v map[uint8]int8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Int16R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Int16V(rv.Interface().(map[uint8]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Int16V(rv2i(rv).(map[uint8]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Int16V(v map[uint8]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8351,7 +8351,7 @@ func (_ fastpathT) EncMapUint8Int16V(v map[uint8]int16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Int32R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Int32V(rv.Interface().(map[uint8]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Int32V(rv2i(rv).(map[uint8]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Int32V(v map[uint8]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8397,7 +8397,7 @@ func (_ fastpathT) EncMapUint8Int32V(v map[uint8]int32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Int64R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Int64V(rv.Interface().(map[uint8]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Int64V(rv2i(rv).(map[uint8]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Int64V(v map[uint8]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8443,7 +8443,7 @@ func (_ fastpathT) EncMapUint8Int64V(v map[uint8]int64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Float32R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Float32V(rv.Interface().(map[uint8]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Float32V(rv2i(rv).(map[uint8]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Float32V(v map[uint8]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8489,7 +8489,7 @@ func (_ fastpathT) EncMapUint8Float32V(v map[uint8]float32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint8Float64R(rv reflect.Value) {
-	fastpathTV.EncMapUint8Float64V(rv.Interface().(map[uint8]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8Float64V(rv2i(rv).(map[uint8]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8Float64V(v map[uint8]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8535,7 +8535,7 @@ func (_ fastpathT) EncMapUint8Float64V(v map[uint8]float64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint8BoolR(rv reflect.Value) {
-	fastpathTV.EncMapUint8BoolV(rv.Interface().(map[uint8]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint8BoolV(rv2i(rv).(map[uint8]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint8BoolV(v map[uint8]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8581,7 +8581,7 @@ func (_ fastpathT) EncMapUint8BoolV(v map[uint8]bool, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint16IntfR(rv reflect.Value) {
-	fastpathTV.EncMapUint16IntfV(rv.Interface().(map[uint16]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16IntfV(rv2i(rv).(map[uint16]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16IntfV(v map[uint16]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8627,7 +8627,7 @@ func (_ fastpathT) EncMapUint16IntfV(v map[uint16]interface{}, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapUint16StringR(rv reflect.Value) {
-	fastpathTV.EncMapUint16StringV(rv.Interface().(map[uint16]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16StringV(rv2i(rv).(map[uint16]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16StringV(v map[uint16]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8673,7 +8673,7 @@ func (_ fastpathT) EncMapUint16StringV(v map[uint16]string, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint16UintR(rv reflect.Value) {
-	fastpathTV.EncMapUint16UintV(rv.Interface().(map[uint16]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16UintV(rv2i(rv).(map[uint16]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16UintV(v map[uint16]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8719,7 +8719,7 @@ func (_ fastpathT) EncMapUint16UintV(v map[uint16]uint, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Uint8V(rv.Interface().(map[uint16]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Uint8V(rv2i(rv).(map[uint16]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Uint8V(v map[uint16]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8765,7 +8765,7 @@ func (_ fastpathT) EncMapUint16Uint8V(v map[uint16]uint8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Uint16V(rv.Interface().(map[uint16]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Uint16V(rv2i(rv).(map[uint16]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Uint16V(v map[uint16]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8811,7 +8811,7 @@ func (_ fastpathT) EncMapUint16Uint16V(v map[uint16]uint16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Uint32V(rv.Interface().(map[uint16]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Uint32V(rv2i(rv).(map[uint16]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Uint32V(v map[uint16]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8857,7 +8857,7 @@ func (_ fastpathT) EncMapUint16Uint32V(v map[uint16]uint32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Uint64V(rv.Interface().(map[uint16]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Uint64V(rv2i(rv).(map[uint16]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Uint64V(v map[uint16]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8903,7 +8903,7 @@ func (_ fastpathT) EncMapUint16Uint64V(v map[uint16]uint64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint16UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUint16UintptrV(rv.Interface().(map[uint16]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16UintptrV(rv2i(rv).(map[uint16]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16UintptrV(v map[uint16]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8949,7 +8949,7 @@ func (_ fastpathT) EncMapUint16UintptrV(v map[uint16]uintptr, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint16IntR(rv reflect.Value) {
-	fastpathTV.EncMapUint16IntV(rv.Interface().(map[uint16]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16IntV(rv2i(rv).(map[uint16]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16IntV(v map[uint16]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -8995,7 +8995,7 @@ func (_ fastpathT) EncMapUint16IntV(v map[uint16]int, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Int8R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Int8V(rv.Interface().(map[uint16]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Int8V(rv2i(rv).(map[uint16]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Int8V(v map[uint16]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9041,7 +9041,7 @@ func (_ fastpathT) EncMapUint16Int8V(v map[uint16]int8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Int16R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Int16V(rv.Interface().(map[uint16]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Int16V(rv2i(rv).(map[uint16]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Int16V(v map[uint16]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9087,7 +9087,7 @@ func (_ fastpathT) EncMapUint16Int16V(v map[uint16]int16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Int32R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Int32V(rv.Interface().(map[uint16]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Int32V(rv2i(rv).(map[uint16]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Int32V(v map[uint16]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9133,7 +9133,7 @@ func (_ fastpathT) EncMapUint16Int32V(v map[uint16]int32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Int64R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Int64V(rv.Interface().(map[uint16]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Int64V(rv2i(rv).(map[uint16]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Int64V(v map[uint16]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9179,7 +9179,7 @@ func (_ fastpathT) EncMapUint16Int64V(v map[uint16]int64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Float32R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Float32V(rv.Interface().(map[uint16]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Float32V(rv2i(rv).(map[uint16]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Float32V(v map[uint16]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9225,7 +9225,7 @@ func (_ fastpathT) EncMapUint16Float32V(v map[uint16]float32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint16Float64R(rv reflect.Value) {
-	fastpathTV.EncMapUint16Float64V(rv.Interface().(map[uint16]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16Float64V(rv2i(rv).(map[uint16]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16Float64V(v map[uint16]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9271,7 +9271,7 @@ func (_ fastpathT) EncMapUint16Float64V(v map[uint16]float64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint16BoolR(rv reflect.Value) {
-	fastpathTV.EncMapUint16BoolV(rv.Interface().(map[uint16]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint16BoolV(rv2i(rv).(map[uint16]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint16BoolV(v map[uint16]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9317,7 +9317,7 @@ func (_ fastpathT) EncMapUint16BoolV(v map[uint16]bool, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint32IntfR(rv reflect.Value) {
-	fastpathTV.EncMapUint32IntfV(rv.Interface().(map[uint32]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32IntfV(rv2i(rv).(map[uint32]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32IntfV(v map[uint32]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9363,7 +9363,7 @@ func (_ fastpathT) EncMapUint32IntfV(v map[uint32]interface{}, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapUint32StringR(rv reflect.Value) {
-	fastpathTV.EncMapUint32StringV(rv.Interface().(map[uint32]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32StringV(rv2i(rv).(map[uint32]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32StringV(v map[uint32]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9409,7 +9409,7 @@ func (_ fastpathT) EncMapUint32StringV(v map[uint32]string, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint32UintR(rv reflect.Value) {
-	fastpathTV.EncMapUint32UintV(rv.Interface().(map[uint32]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32UintV(rv2i(rv).(map[uint32]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32UintV(v map[uint32]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9455,7 +9455,7 @@ func (_ fastpathT) EncMapUint32UintV(v map[uint32]uint, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Uint8V(rv.Interface().(map[uint32]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Uint8V(rv2i(rv).(map[uint32]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Uint8V(v map[uint32]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9501,7 +9501,7 @@ func (_ fastpathT) EncMapUint32Uint8V(v map[uint32]uint8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Uint16V(rv.Interface().(map[uint32]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Uint16V(rv2i(rv).(map[uint32]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Uint16V(v map[uint32]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9547,7 +9547,7 @@ func (_ fastpathT) EncMapUint32Uint16V(v map[uint32]uint16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Uint32V(rv.Interface().(map[uint32]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Uint32V(rv2i(rv).(map[uint32]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Uint32V(v map[uint32]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9593,7 +9593,7 @@ func (_ fastpathT) EncMapUint32Uint32V(v map[uint32]uint32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Uint64V(rv.Interface().(map[uint32]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Uint64V(rv2i(rv).(map[uint32]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Uint64V(v map[uint32]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9639,7 +9639,7 @@ func (_ fastpathT) EncMapUint32Uint64V(v map[uint32]uint64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint32UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUint32UintptrV(rv.Interface().(map[uint32]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32UintptrV(rv2i(rv).(map[uint32]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32UintptrV(v map[uint32]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9685,7 +9685,7 @@ func (_ fastpathT) EncMapUint32UintptrV(v map[uint32]uintptr, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint32IntR(rv reflect.Value) {
-	fastpathTV.EncMapUint32IntV(rv.Interface().(map[uint32]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32IntV(rv2i(rv).(map[uint32]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32IntV(v map[uint32]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9731,7 +9731,7 @@ func (_ fastpathT) EncMapUint32IntV(v map[uint32]int, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Int8R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Int8V(rv.Interface().(map[uint32]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Int8V(rv2i(rv).(map[uint32]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Int8V(v map[uint32]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9777,7 +9777,7 @@ func (_ fastpathT) EncMapUint32Int8V(v map[uint32]int8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Int16R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Int16V(rv.Interface().(map[uint32]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Int16V(rv2i(rv).(map[uint32]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Int16V(v map[uint32]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9823,7 +9823,7 @@ func (_ fastpathT) EncMapUint32Int16V(v map[uint32]int16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Int32R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Int32V(rv.Interface().(map[uint32]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Int32V(rv2i(rv).(map[uint32]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Int32V(v map[uint32]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9869,7 +9869,7 @@ func (_ fastpathT) EncMapUint32Int32V(v map[uint32]int32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Int64R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Int64V(rv.Interface().(map[uint32]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Int64V(rv2i(rv).(map[uint32]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Int64V(v map[uint32]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9915,7 +9915,7 @@ func (_ fastpathT) EncMapUint32Int64V(v map[uint32]int64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Float32R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Float32V(rv.Interface().(map[uint32]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Float32V(rv2i(rv).(map[uint32]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Float32V(v map[uint32]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -9961,7 +9961,7 @@ func (_ fastpathT) EncMapUint32Float32V(v map[uint32]float32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint32Float64R(rv reflect.Value) {
-	fastpathTV.EncMapUint32Float64V(rv.Interface().(map[uint32]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32Float64V(rv2i(rv).(map[uint32]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32Float64V(v map[uint32]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10007,7 +10007,7 @@ func (_ fastpathT) EncMapUint32Float64V(v map[uint32]float64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint32BoolR(rv reflect.Value) {
-	fastpathTV.EncMapUint32BoolV(rv.Interface().(map[uint32]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint32BoolV(rv2i(rv).(map[uint32]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint32BoolV(v map[uint32]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10053,7 +10053,7 @@ func (_ fastpathT) EncMapUint32BoolV(v map[uint32]bool, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint64IntfR(rv reflect.Value) {
-	fastpathTV.EncMapUint64IntfV(rv.Interface().(map[uint64]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64IntfV(rv2i(rv).(map[uint64]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64IntfV(v map[uint64]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10099,7 +10099,7 @@ func (_ fastpathT) EncMapUint64IntfV(v map[uint64]interface{}, checkNil bool, e 
 }
 
 func (f *encFnInfo) fastpathEncMapUint64StringR(rv reflect.Value) {
-	fastpathTV.EncMapUint64StringV(rv.Interface().(map[uint64]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64StringV(rv2i(rv).(map[uint64]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64StringV(v map[uint64]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10145,7 +10145,7 @@ func (_ fastpathT) EncMapUint64StringV(v map[uint64]string, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint64UintR(rv reflect.Value) {
-	fastpathTV.EncMapUint64UintV(rv.Interface().(map[uint64]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64UintV(rv2i(rv).(map[uint64]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64UintV(v map[uint64]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10191,7 +10191,7 @@ func (_ fastpathT) EncMapUint64UintV(v map[uint64]uint, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Uint8V(rv.Interface().(map[uint64]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Uint8V(rv2i(rv).(map[uint64]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Uint8V(v map[uint64]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10237,7 +10237,7 @@ func (_ fastpathT) EncMapUint64Uint8V(v map[uint64]uint8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Uint16V(rv.Interface().(map[uint64]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Uint16V(rv2i(rv).(map[uint64]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Uint16V(v map[uint64]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10283,7 +10283,7 @@ func (_ fastpathT) EncMapUint64Uint16V(v map[uint64]uint16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Uint32V(rv.Interface().(map[uint64]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Uint32V(rv2i(rv).(map[uint64]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Uint32V(v map[uint64]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10329,7 +10329,7 @@ func (_ fastpathT) EncMapUint64Uint32V(v map[uint64]uint32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Uint64V(rv.Interface().(map[uint64]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Uint64V(rv2i(rv).(map[uint64]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Uint64V(v map[uint64]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10375,7 +10375,7 @@ func (_ fastpathT) EncMapUint64Uint64V(v map[uint64]uint64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUint64UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUint64UintptrV(rv.Interface().(map[uint64]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64UintptrV(rv2i(rv).(map[uint64]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64UintptrV(v map[uint64]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10421,7 +10421,7 @@ func (_ fastpathT) EncMapUint64UintptrV(v map[uint64]uintptr, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint64IntR(rv reflect.Value) {
-	fastpathTV.EncMapUint64IntV(rv.Interface().(map[uint64]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64IntV(rv2i(rv).(map[uint64]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64IntV(v map[uint64]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10467,7 +10467,7 @@ func (_ fastpathT) EncMapUint64IntV(v map[uint64]int, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Int8R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Int8V(rv.Interface().(map[uint64]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Int8V(rv2i(rv).(map[uint64]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Int8V(v map[uint64]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10513,7 +10513,7 @@ func (_ fastpathT) EncMapUint64Int8V(v map[uint64]int8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Int16R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Int16V(rv.Interface().(map[uint64]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Int16V(rv2i(rv).(map[uint64]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Int16V(v map[uint64]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10559,7 +10559,7 @@ func (_ fastpathT) EncMapUint64Int16V(v map[uint64]int16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Int32R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Int32V(rv.Interface().(map[uint64]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Int32V(rv2i(rv).(map[uint64]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Int32V(v map[uint64]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10605,7 +10605,7 @@ func (_ fastpathT) EncMapUint64Int32V(v map[uint64]int32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Int64R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Int64V(rv.Interface().(map[uint64]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Int64V(rv2i(rv).(map[uint64]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Int64V(v map[uint64]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10651,7 +10651,7 @@ func (_ fastpathT) EncMapUint64Int64V(v map[uint64]int64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Float32R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Float32V(rv.Interface().(map[uint64]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Float32V(rv2i(rv).(map[uint64]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Float32V(v map[uint64]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10697,7 +10697,7 @@ func (_ fastpathT) EncMapUint64Float32V(v map[uint64]float32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint64Float64R(rv reflect.Value) {
-	fastpathTV.EncMapUint64Float64V(rv.Interface().(map[uint64]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64Float64V(rv2i(rv).(map[uint64]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64Float64V(v map[uint64]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10743,7 +10743,7 @@ func (_ fastpathT) EncMapUint64Float64V(v map[uint64]float64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUint64BoolR(rv reflect.Value) {
-	fastpathTV.EncMapUint64BoolV(rv.Interface().(map[uint64]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUint64BoolV(rv2i(rv).(map[uint64]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUint64BoolV(v map[uint64]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10789,7 +10789,7 @@ func (_ fastpathT) EncMapUint64BoolV(v map[uint64]bool, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrIntfR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrIntfV(rv.Interface().(map[uintptr]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrIntfV(rv2i(rv).(map[uintptr]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrIntfV(v map[uintptr]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10835,7 +10835,7 @@ func (_ fastpathT) EncMapUintptrIntfV(v map[uintptr]interface{}, checkNil bool, 
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrStringR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrStringV(rv.Interface().(map[uintptr]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrStringV(rv2i(rv).(map[uintptr]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrStringV(v map[uintptr]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10881,7 +10881,7 @@ func (_ fastpathT) EncMapUintptrStringV(v map[uintptr]string, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUintR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUintV(rv.Interface().(map[uintptr]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUintV(rv2i(rv).(map[uintptr]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUintV(v map[uintptr]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10927,7 +10927,7 @@ func (_ fastpathT) EncMapUintptrUintV(v map[uintptr]uint, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUint8R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUint8V(rv.Interface().(map[uintptr]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUint8V(rv2i(rv).(map[uintptr]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUint8V(v map[uintptr]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -10973,7 +10973,7 @@ func (_ fastpathT) EncMapUintptrUint8V(v map[uintptr]uint8, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUint16R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUint16V(rv.Interface().(map[uintptr]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUint16V(rv2i(rv).(map[uintptr]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUint16V(v map[uintptr]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11019,7 +11019,7 @@ func (_ fastpathT) EncMapUintptrUint16V(v map[uintptr]uint16, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUint32R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUint32V(rv.Interface().(map[uintptr]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUint32V(rv2i(rv).(map[uintptr]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUint32V(v map[uintptr]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11065,7 +11065,7 @@ func (_ fastpathT) EncMapUintptrUint32V(v map[uintptr]uint32, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUint64R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUint64V(rv.Interface().(map[uintptr]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUint64V(rv2i(rv).(map[uintptr]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUint64V(v map[uintptr]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11111,7 +11111,7 @@ func (_ fastpathT) EncMapUintptrUint64V(v map[uintptr]uint64, checkNil bool, e *
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrUintptrV(rv.Interface().(map[uintptr]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrUintptrV(rv2i(rv).(map[uintptr]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrUintptrV(v map[uintptr]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11157,7 +11157,7 @@ func (_ fastpathT) EncMapUintptrUintptrV(v map[uintptr]uintptr, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrIntR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrIntV(rv.Interface().(map[uintptr]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrIntV(rv2i(rv).(map[uintptr]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrIntV(v map[uintptr]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11203,7 +11203,7 @@ func (_ fastpathT) EncMapUintptrIntV(v map[uintptr]int, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrInt8R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrInt8V(rv.Interface().(map[uintptr]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrInt8V(rv2i(rv).(map[uintptr]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrInt8V(v map[uintptr]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11249,7 +11249,7 @@ func (_ fastpathT) EncMapUintptrInt8V(v map[uintptr]int8, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrInt16R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrInt16V(rv.Interface().(map[uintptr]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrInt16V(rv2i(rv).(map[uintptr]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrInt16V(v map[uintptr]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11295,7 +11295,7 @@ func (_ fastpathT) EncMapUintptrInt16V(v map[uintptr]int16, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrInt32R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrInt32V(rv.Interface().(map[uintptr]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrInt32V(rv2i(rv).(map[uintptr]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrInt32V(v map[uintptr]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11341,7 +11341,7 @@ func (_ fastpathT) EncMapUintptrInt32V(v map[uintptr]int32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrInt64R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrInt64V(rv.Interface().(map[uintptr]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrInt64V(rv2i(rv).(map[uintptr]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrInt64V(v map[uintptr]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11387,7 +11387,7 @@ func (_ fastpathT) EncMapUintptrInt64V(v map[uintptr]int64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrFloat32V(rv.Interface().(map[uintptr]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrFloat32V(rv2i(rv).(map[uintptr]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrFloat32V(v map[uintptr]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11433,7 +11433,7 @@ func (_ fastpathT) EncMapUintptrFloat32V(v map[uintptr]float32, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapUintptrFloat64V(rv.Interface().(map[uintptr]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrFloat64V(rv2i(rv).(map[uintptr]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrFloat64V(v map[uintptr]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11479,7 +11479,7 @@ func (_ fastpathT) EncMapUintptrFloat64V(v map[uintptr]float64, checkNil bool, e
 }
 
 func (f *encFnInfo) fastpathEncMapUintptrBoolR(rv reflect.Value) {
-	fastpathTV.EncMapUintptrBoolV(rv.Interface().(map[uintptr]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapUintptrBoolV(rv2i(rv).(map[uintptr]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapUintptrBoolV(v map[uintptr]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11525,7 +11525,7 @@ func (_ fastpathT) EncMapUintptrBoolV(v map[uintptr]bool, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapIntIntfR(rv reflect.Value) {
-	fastpathTV.EncMapIntIntfV(rv.Interface().(map[int]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntIntfV(rv2i(rv).(map[int]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntIntfV(v map[int]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11571,7 +11571,7 @@ func (_ fastpathT) EncMapIntIntfV(v map[int]interface{}, checkNil bool, e *Encod
 }
 
 func (f *encFnInfo) fastpathEncMapIntStringR(rv reflect.Value) {
-	fastpathTV.EncMapIntStringV(rv.Interface().(map[int]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntStringV(rv2i(rv).(map[int]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntStringV(v map[int]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11617,7 +11617,7 @@ func (_ fastpathT) EncMapIntStringV(v map[int]string, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapIntUintR(rv reflect.Value) {
-	fastpathTV.EncMapIntUintV(rv.Interface().(map[int]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUintV(rv2i(rv).(map[int]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUintV(v map[int]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11663,7 +11663,7 @@ func (_ fastpathT) EncMapIntUintV(v map[int]uint, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntUint8R(rv reflect.Value) {
-	fastpathTV.EncMapIntUint8V(rv.Interface().(map[int]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUint8V(rv2i(rv).(map[int]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUint8V(v map[int]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11709,7 +11709,7 @@ func (_ fastpathT) EncMapIntUint8V(v map[int]uint8, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntUint16R(rv reflect.Value) {
-	fastpathTV.EncMapIntUint16V(rv.Interface().(map[int]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUint16V(rv2i(rv).(map[int]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUint16V(v map[int]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11755,7 +11755,7 @@ func (_ fastpathT) EncMapIntUint16V(v map[int]uint16, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapIntUint32R(rv reflect.Value) {
-	fastpathTV.EncMapIntUint32V(rv.Interface().(map[int]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUint32V(rv2i(rv).(map[int]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUint32V(v map[int]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11801,7 +11801,7 @@ func (_ fastpathT) EncMapIntUint32V(v map[int]uint32, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapIntUint64R(rv reflect.Value) {
-	fastpathTV.EncMapIntUint64V(rv.Interface().(map[int]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUint64V(rv2i(rv).(map[int]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUint64V(v map[int]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11847,7 +11847,7 @@ func (_ fastpathT) EncMapIntUint64V(v map[int]uint64, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapIntUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapIntUintptrV(rv.Interface().(map[int]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntUintptrV(rv2i(rv).(map[int]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntUintptrV(v map[int]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11893,7 +11893,7 @@ func (_ fastpathT) EncMapIntUintptrV(v map[int]uintptr, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapIntIntR(rv reflect.Value) {
-	fastpathTV.EncMapIntIntV(rv.Interface().(map[int]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntIntV(rv2i(rv).(map[int]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntIntV(v map[int]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11939,7 +11939,7 @@ func (_ fastpathT) EncMapIntIntV(v map[int]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntInt8R(rv reflect.Value) {
-	fastpathTV.EncMapIntInt8V(rv.Interface().(map[int]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntInt8V(rv2i(rv).(map[int]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntInt8V(v map[int]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -11985,7 +11985,7 @@ func (_ fastpathT) EncMapIntInt8V(v map[int]int8, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntInt16R(rv reflect.Value) {
-	fastpathTV.EncMapIntInt16V(rv.Interface().(map[int]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntInt16V(rv2i(rv).(map[int]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntInt16V(v map[int]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12031,7 +12031,7 @@ func (_ fastpathT) EncMapIntInt16V(v map[int]int16, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntInt32R(rv reflect.Value) {
-	fastpathTV.EncMapIntInt32V(rv.Interface().(map[int]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntInt32V(rv2i(rv).(map[int]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntInt32V(v map[int]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12077,7 +12077,7 @@ func (_ fastpathT) EncMapIntInt32V(v map[int]int32, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntInt64R(rv reflect.Value) {
-	fastpathTV.EncMapIntInt64V(rv.Interface().(map[int]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntInt64V(rv2i(rv).(map[int]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntInt64V(v map[int]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12123,7 +12123,7 @@ func (_ fastpathT) EncMapIntInt64V(v map[int]int64, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapIntFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapIntFloat32V(rv.Interface().(map[int]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntFloat32V(rv2i(rv).(map[int]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntFloat32V(v map[int]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12169,7 +12169,7 @@ func (_ fastpathT) EncMapIntFloat32V(v map[int]float32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapIntFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapIntFloat64V(rv.Interface().(map[int]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntFloat64V(rv2i(rv).(map[int]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntFloat64V(v map[int]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12215,7 +12215,7 @@ func (_ fastpathT) EncMapIntFloat64V(v map[int]float64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapIntBoolR(rv reflect.Value) {
-	fastpathTV.EncMapIntBoolV(rv.Interface().(map[int]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapIntBoolV(rv2i(rv).(map[int]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapIntBoolV(v map[int]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12261,7 +12261,7 @@ func (_ fastpathT) EncMapIntBoolV(v map[int]bool, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt8IntfR(rv reflect.Value) {
-	fastpathTV.EncMapInt8IntfV(rv.Interface().(map[int8]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8IntfV(rv2i(rv).(map[int8]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8IntfV(v map[int8]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12307,7 +12307,7 @@ func (_ fastpathT) EncMapInt8IntfV(v map[int8]interface{}, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapInt8StringR(rv reflect.Value) {
-	fastpathTV.EncMapInt8StringV(rv.Interface().(map[int8]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8StringV(rv2i(rv).(map[int8]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8StringV(v map[int8]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12353,7 +12353,7 @@ func (_ fastpathT) EncMapInt8StringV(v map[int8]string, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt8UintR(rv reflect.Value) {
-	fastpathTV.EncMapInt8UintV(rv.Interface().(map[int8]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8UintV(rv2i(rv).(map[int8]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8UintV(v map[int8]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12399,7 +12399,7 @@ func (_ fastpathT) EncMapInt8UintV(v map[int8]uint, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Uint8V(rv.Interface().(map[int8]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Uint8V(rv2i(rv).(map[int8]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Uint8V(v map[int8]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12445,7 +12445,7 @@ func (_ fastpathT) EncMapInt8Uint8V(v map[int8]uint8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Uint16V(rv.Interface().(map[int8]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Uint16V(rv2i(rv).(map[int8]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Uint16V(v map[int8]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12491,7 +12491,7 @@ func (_ fastpathT) EncMapInt8Uint16V(v map[int8]uint16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Uint32V(rv.Interface().(map[int8]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Uint32V(rv2i(rv).(map[int8]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Uint32V(v map[int8]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12537,7 +12537,7 @@ func (_ fastpathT) EncMapInt8Uint32V(v map[int8]uint32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Uint64V(rv.Interface().(map[int8]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Uint64V(rv2i(rv).(map[int8]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Uint64V(v map[int8]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12583,7 +12583,7 @@ func (_ fastpathT) EncMapInt8Uint64V(v map[int8]uint64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt8UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapInt8UintptrV(rv.Interface().(map[int8]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8UintptrV(rv2i(rv).(map[int8]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8UintptrV(v map[int8]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12629,7 +12629,7 @@ func (_ fastpathT) EncMapInt8UintptrV(v map[int8]uintptr, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt8IntR(rv reflect.Value) {
-	fastpathTV.EncMapInt8IntV(rv.Interface().(map[int8]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8IntV(rv2i(rv).(map[int8]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8IntV(v map[int8]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12675,7 +12675,7 @@ func (_ fastpathT) EncMapInt8IntV(v map[int8]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Int8R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Int8V(rv.Interface().(map[int8]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Int8V(rv2i(rv).(map[int8]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Int8V(v map[int8]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12721,7 +12721,7 @@ func (_ fastpathT) EncMapInt8Int8V(v map[int8]int8, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Int16R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Int16V(rv.Interface().(map[int8]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Int16V(rv2i(rv).(map[int8]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Int16V(v map[int8]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12767,7 +12767,7 @@ func (_ fastpathT) EncMapInt8Int16V(v map[int8]int16, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Int32R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Int32V(rv.Interface().(map[int8]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Int32V(rv2i(rv).(map[int8]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Int32V(v map[int8]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12813,7 +12813,7 @@ func (_ fastpathT) EncMapInt8Int32V(v map[int8]int32, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Int64R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Int64V(rv.Interface().(map[int8]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Int64V(rv2i(rv).(map[int8]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Int64V(v map[int8]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12859,7 +12859,7 @@ func (_ fastpathT) EncMapInt8Int64V(v map[int8]int64, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Float32R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Float32V(rv.Interface().(map[int8]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Float32V(rv2i(rv).(map[int8]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Float32V(v map[int8]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12905,7 +12905,7 @@ func (_ fastpathT) EncMapInt8Float32V(v map[int8]float32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt8Float64R(rv reflect.Value) {
-	fastpathTV.EncMapInt8Float64V(rv.Interface().(map[int8]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8Float64V(rv2i(rv).(map[int8]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8Float64V(v map[int8]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12951,7 +12951,7 @@ func (_ fastpathT) EncMapInt8Float64V(v map[int8]float64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt8BoolR(rv reflect.Value) {
-	fastpathTV.EncMapInt8BoolV(rv.Interface().(map[int8]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt8BoolV(rv2i(rv).(map[int8]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt8BoolV(v map[int8]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -12997,7 +12997,7 @@ func (_ fastpathT) EncMapInt8BoolV(v map[int8]bool, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt16IntfR(rv reflect.Value) {
-	fastpathTV.EncMapInt16IntfV(rv.Interface().(map[int16]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16IntfV(rv2i(rv).(map[int16]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16IntfV(v map[int16]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13043,7 +13043,7 @@ func (_ fastpathT) EncMapInt16IntfV(v map[int16]interface{}, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapInt16StringR(rv reflect.Value) {
-	fastpathTV.EncMapInt16StringV(rv.Interface().(map[int16]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16StringV(rv2i(rv).(map[int16]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16StringV(v map[int16]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13089,7 +13089,7 @@ func (_ fastpathT) EncMapInt16StringV(v map[int16]string, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt16UintR(rv reflect.Value) {
-	fastpathTV.EncMapInt16UintV(rv.Interface().(map[int16]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16UintV(rv2i(rv).(map[int16]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16UintV(v map[int16]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13135,7 +13135,7 @@ func (_ fastpathT) EncMapInt16UintV(v map[int16]uint, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Uint8V(rv.Interface().(map[int16]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Uint8V(rv2i(rv).(map[int16]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Uint8V(v map[int16]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13181,7 +13181,7 @@ func (_ fastpathT) EncMapInt16Uint8V(v map[int16]uint8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Uint16V(rv.Interface().(map[int16]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Uint16V(rv2i(rv).(map[int16]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Uint16V(v map[int16]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13227,7 +13227,7 @@ func (_ fastpathT) EncMapInt16Uint16V(v map[int16]uint16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Uint32V(rv.Interface().(map[int16]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Uint32V(rv2i(rv).(map[int16]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Uint32V(v map[int16]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13273,7 +13273,7 @@ func (_ fastpathT) EncMapInt16Uint32V(v map[int16]uint32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Uint64V(rv.Interface().(map[int16]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Uint64V(rv2i(rv).(map[int16]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Uint64V(v map[int16]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13319,7 +13319,7 @@ func (_ fastpathT) EncMapInt16Uint64V(v map[int16]uint64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt16UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapInt16UintptrV(rv.Interface().(map[int16]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16UintptrV(rv2i(rv).(map[int16]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16UintptrV(v map[int16]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13365,7 +13365,7 @@ func (_ fastpathT) EncMapInt16UintptrV(v map[int16]uintptr, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt16IntR(rv reflect.Value) {
-	fastpathTV.EncMapInt16IntV(rv.Interface().(map[int16]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16IntV(rv2i(rv).(map[int16]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16IntV(v map[int16]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13411,7 +13411,7 @@ func (_ fastpathT) EncMapInt16IntV(v map[int16]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Int8R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Int8V(rv.Interface().(map[int16]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Int8V(rv2i(rv).(map[int16]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Int8V(v map[int16]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13457,7 +13457,7 @@ func (_ fastpathT) EncMapInt16Int8V(v map[int16]int8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Int16R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Int16V(rv.Interface().(map[int16]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Int16V(rv2i(rv).(map[int16]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Int16V(v map[int16]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13503,7 +13503,7 @@ func (_ fastpathT) EncMapInt16Int16V(v map[int16]int16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Int32R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Int32V(rv.Interface().(map[int16]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Int32V(rv2i(rv).(map[int16]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Int32V(v map[int16]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13549,7 +13549,7 @@ func (_ fastpathT) EncMapInt16Int32V(v map[int16]int32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Int64R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Int64V(rv.Interface().(map[int16]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Int64V(rv2i(rv).(map[int16]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Int64V(v map[int16]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13595,7 +13595,7 @@ func (_ fastpathT) EncMapInt16Int64V(v map[int16]int64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Float32R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Float32V(rv.Interface().(map[int16]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Float32V(rv2i(rv).(map[int16]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Float32V(v map[int16]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13641,7 +13641,7 @@ func (_ fastpathT) EncMapInt16Float32V(v map[int16]float32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt16Float64R(rv reflect.Value) {
-	fastpathTV.EncMapInt16Float64V(rv.Interface().(map[int16]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16Float64V(rv2i(rv).(map[int16]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16Float64V(v map[int16]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13687,7 +13687,7 @@ func (_ fastpathT) EncMapInt16Float64V(v map[int16]float64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt16BoolR(rv reflect.Value) {
-	fastpathTV.EncMapInt16BoolV(rv.Interface().(map[int16]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt16BoolV(rv2i(rv).(map[int16]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt16BoolV(v map[int16]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13733,7 +13733,7 @@ func (_ fastpathT) EncMapInt16BoolV(v map[int16]bool, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt32IntfR(rv reflect.Value) {
-	fastpathTV.EncMapInt32IntfV(rv.Interface().(map[int32]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32IntfV(rv2i(rv).(map[int32]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32IntfV(v map[int32]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13779,7 +13779,7 @@ func (_ fastpathT) EncMapInt32IntfV(v map[int32]interface{}, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapInt32StringR(rv reflect.Value) {
-	fastpathTV.EncMapInt32StringV(rv.Interface().(map[int32]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32StringV(rv2i(rv).(map[int32]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32StringV(v map[int32]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13825,7 +13825,7 @@ func (_ fastpathT) EncMapInt32StringV(v map[int32]string, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt32UintR(rv reflect.Value) {
-	fastpathTV.EncMapInt32UintV(rv.Interface().(map[int32]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32UintV(rv2i(rv).(map[int32]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32UintV(v map[int32]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13871,7 +13871,7 @@ func (_ fastpathT) EncMapInt32UintV(v map[int32]uint, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Uint8V(rv.Interface().(map[int32]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Uint8V(rv2i(rv).(map[int32]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Uint8V(v map[int32]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13917,7 +13917,7 @@ func (_ fastpathT) EncMapInt32Uint8V(v map[int32]uint8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Uint16V(rv.Interface().(map[int32]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Uint16V(rv2i(rv).(map[int32]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Uint16V(v map[int32]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -13963,7 +13963,7 @@ func (_ fastpathT) EncMapInt32Uint16V(v map[int32]uint16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Uint32V(rv.Interface().(map[int32]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Uint32V(rv2i(rv).(map[int32]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Uint32V(v map[int32]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14009,7 +14009,7 @@ func (_ fastpathT) EncMapInt32Uint32V(v map[int32]uint32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Uint64V(rv.Interface().(map[int32]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Uint64V(rv2i(rv).(map[int32]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Uint64V(v map[int32]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14055,7 +14055,7 @@ func (_ fastpathT) EncMapInt32Uint64V(v map[int32]uint64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt32UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapInt32UintptrV(rv.Interface().(map[int32]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32UintptrV(rv2i(rv).(map[int32]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32UintptrV(v map[int32]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14101,7 +14101,7 @@ func (_ fastpathT) EncMapInt32UintptrV(v map[int32]uintptr, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt32IntR(rv reflect.Value) {
-	fastpathTV.EncMapInt32IntV(rv.Interface().(map[int32]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32IntV(rv2i(rv).(map[int32]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32IntV(v map[int32]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14147,7 +14147,7 @@ func (_ fastpathT) EncMapInt32IntV(v map[int32]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Int8R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Int8V(rv.Interface().(map[int32]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Int8V(rv2i(rv).(map[int32]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Int8V(v map[int32]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14193,7 +14193,7 @@ func (_ fastpathT) EncMapInt32Int8V(v map[int32]int8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Int16R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Int16V(rv.Interface().(map[int32]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Int16V(rv2i(rv).(map[int32]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Int16V(v map[int32]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14239,7 +14239,7 @@ func (_ fastpathT) EncMapInt32Int16V(v map[int32]int16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Int32R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Int32V(rv.Interface().(map[int32]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Int32V(rv2i(rv).(map[int32]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Int32V(v map[int32]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14285,7 +14285,7 @@ func (_ fastpathT) EncMapInt32Int32V(v map[int32]int32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Int64R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Int64V(rv.Interface().(map[int32]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Int64V(rv2i(rv).(map[int32]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Int64V(v map[int32]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14331,7 +14331,7 @@ func (_ fastpathT) EncMapInt32Int64V(v map[int32]int64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Float32R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Float32V(rv.Interface().(map[int32]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Float32V(rv2i(rv).(map[int32]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Float32V(v map[int32]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14377,7 +14377,7 @@ func (_ fastpathT) EncMapInt32Float32V(v map[int32]float32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt32Float64R(rv reflect.Value) {
-	fastpathTV.EncMapInt32Float64V(rv.Interface().(map[int32]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32Float64V(rv2i(rv).(map[int32]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32Float64V(v map[int32]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14423,7 +14423,7 @@ func (_ fastpathT) EncMapInt32Float64V(v map[int32]float64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt32BoolR(rv reflect.Value) {
-	fastpathTV.EncMapInt32BoolV(rv.Interface().(map[int32]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt32BoolV(rv2i(rv).(map[int32]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt32BoolV(v map[int32]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14469,7 +14469,7 @@ func (_ fastpathT) EncMapInt32BoolV(v map[int32]bool, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt64IntfR(rv reflect.Value) {
-	fastpathTV.EncMapInt64IntfV(rv.Interface().(map[int64]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64IntfV(rv2i(rv).(map[int64]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64IntfV(v map[int64]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14515,7 +14515,7 @@ func (_ fastpathT) EncMapInt64IntfV(v map[int64]interface{}, checkNil bool, e *E
 }
 
 func (f *encFnInfo) fastpathEncMapInt64StringR(rv reflect.Value) {
-	fastpathTV.EncMapInt64StringV(rv.Interface().(map[int64]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64StringV(rv2i(rv).(map[int64]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64StringV(v map[int64]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14561,7 +14561,7 @@ func (_ fastpathT) EncMapInt64StringV(v map[int64]string, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt64UintR(rv reflect.Value) {
-	fastpathTV.EncMapInt64UintV(rv.Interface().(map[int64]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64UintV(rv2i(rv).(map[int64]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64UintV(v map[int64]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14607,7 +14607,7 @@ func (_ fastpathT) EncMapInt64UintV(v map[int64]uint, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Uint8R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Uint8V(rv.Interface().(map[int64]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Uint8V(rv2i(rv).(map[int64]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Uint8V(v map[int64]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14653,7 +14653,7 @@ func (_ fastpathT) EncMapInt64Uint8V(v map[int64]uint8, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Uint16R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Uint16V(rv.Interface().(map[int64]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Uint16V(rv2i(rv).(map[int64]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Uint16V(v map[int64]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14699,7 +14699,7 @@ func (_ fastpathT) EncMapInt64Uint16V(v map[int64]uint16, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Uint32R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Uint32V(rv.Interface().(map[int64]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Uint32V(rv2i(rv).(map[int64]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Uint32V(v map[int64]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14745,7 +14745,7 @@ func (_ fastpathT) EncMapInt64Uint32V(v map[int64]uint32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Uint64R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Uint64V(rv.Interface().(map[int64]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Uint64V(rv2i(rv).(map[int64]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Uint64V(v map[int64]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14791,7 +14791,7 @@ func (_ fastpathT) EncMapInt64Uint64V(v map[int64]uint64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapInt64UintptrR(rv reflect.Value) {
-	fastpathTV.EncMapInt64UintptrV(rv.Interface().(map[int64]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64UintptrV(rv2i(rv).(map[int64]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64UintptrV(v map[int64]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14837,7 +14837,7 @@ func (_ fastpathT) EncMapInt64UintptrV(v map[int64]uintptr, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt64IntR(rv reflect.Value) {
-	fastpathTV.EncMapInt64IntV(rv.Interface().(map[int64]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64IntV(rv2i(rv).(map[int64]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64IntV(v map[int64]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14883,7 +14883,7 @@ func (_ fastpathT) EncMapInt64IntV(v map[int64]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Int8R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Int8V(rv.Interface().(map[int64]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Int8V(rv2i(rv).(map[int64]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Int8V(v map[int64]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14929,7 +14929,7 @@ func (_ fastpathT) EncMapInt64Int8V(v map[int64]int8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Int16R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Int16V(rv.Interface().(map[int64]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Int16V(rv2i(rv).(map[int64]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Int16V(v map[int64]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -14975,7 +14975,7 @@ func (_ fastpathT) EncMapInt64Int16V(v map[int64]int16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Int32R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Int32V(rv.Interface().(map[int64]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Int32V(rv2i(rv).(map[int64]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Int32V(v map[int64]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15021,7 +15021,7 @@ func (_ fastpathT) EncMapInt64Int32V(v map[int64]int32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Int64R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Int64V(rv.Interface().(map[int64]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Int64V(rv2i(rv).(map[int64]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Int64V(v map[int64]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15067,7 +15067,7 @@ func (_ fastpathT) EncMapInt64Int64V(v map[int64]int64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Float32R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Float32V(rv.Interface().(map[int64]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Float32V(rv2i(rv).(map[int64]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Float32V(v map[int64]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15113,7 +15113,7 @@ func (_ fastpathT) EncMapInt64Float32V(v map[int64]float32, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt64Float64R(rv reflect.Value) {
-	fastpathTV.EncMapInt64Float64V(rv.Interface().(map[int64]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64Float64V(rv2i(rv).(map[int64]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64Float64V(v map[int64]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15159,7 +15159,7 @@ func (_ fastpathT) EncMapInt64Float64V(v map[int64]float64, checkNil bool, e *En
 }
 
 func (f *encFnInfo) fastpathEncMapInt64BoolR(rv reflect.Value) {
-	fastpathTV.EncMapInt64BoolV(rv.Interface().(map[int64]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapInt64BoolV(rv2i(rv).(map[int64]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapInt64BoolV(v map[int64]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15205,7 +15205,7 @@ func (_ fastpathT) EncMapInt64BoolV(v map[int64]bool, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapBoolIntfR(rv reflect.Value) {
-	fastpathTV.EncMapBoolIntfV(rv.Interface().(map[bool]interface{}), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolIntfV(rv2i(rv).(map[bool]interface{}), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolIntfV(v map[bool]interface{}, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15251,7 +15251,7 @@ func (_ fastpathT) EncMapBoolIntfV(v map[bool]interface{}, checkNil bool, e *Enc
 }
 
 func (f *encFnInfo) fastpathEncMapBoolStringR(rv reflect.Value) {
-	fastpathTV.EncMapBoolStringV(rv.Interface().(map[bool]string), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolStringV(rv2i(rv).(map[bool]string), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolStringV(v map[bool]string, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15297,7 +15297,7 @@ func (_ fastpathT) EncMapBoolStringV(v map[bool]string, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUintR(rv reflect.Value) {
-	fastpathTV.EncMapBoolUintV(rv.Interface().(map[bool]uint), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUintV(rv2i(rv).(map[bool]uint), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUintV(v map[bool]uint, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15343,7 +15343,7 @@ func (_ fastpathT) EncMapBoolUintV(v map[bool]uint, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUint8R(rv reflect.Value) {
-	fastpathTV.EncMapBoolUint8V(rv.Interface().(map[bool]uint8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUint8V(rv2i(rv).(map[bool]uint8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUint8V(v map[bool]uint8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15389,7 +15389,7 @@ func (_ fastpathT) EncMapBoolUint8V(v map[bool]uint8, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUint16R(rv reflect.Value) {
-	fastpathTV.EncMapBoolUint16V(rv.Interface().(map[bool]uint16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUint16V(rv2i(rv).(map[bool]uint16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUint16V(v map[bool]uint16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15435,7 +15435,7 @@ func (_ fastpathT) EncMapBoolUint16V(v map[bool]uint16, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUint32R(rv reflect.Value) {
-	fastpathTV.EncMapBoolUint32V(rv.Interface().(map[bool]uint32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUint32V(rv2i(rv).(map[bool]uint32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUint32V(v map[bool]uint32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15481,7 +15481,7 @@ func (_ fastpathT) EncMapBoolUint32V(v map[bool]uint32, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUint64R(rv reflect.Value) {
-	fastpathTV.EncMapBoolUint64V(rv.Interface().(map[bool]uint64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUint64V(rv2i(rv).(map[bool]uint64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUint64V(v map[bool]uint64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15527,7 +15527,7 @@ func (_ fastpathT) EncMapBoolUint64V(v map[bool]uint64, checkNil bool, e *Encode
 }
 
 func (f *encFnInfo) fastpathEncMapBoolUintptrR(rv reflect.Value) {
-	fastpathTV.EncMapBoolUintptrV(rv.Interface().(map[bool]uintptr), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolUintptrV(rv2i(rv).(map[bool]uintptr), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolUintptrV(v map[bool]uintptr, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15573,7 +15573,7 @@ func (_ fastpathT) EncMapBoolUintptrV(v map[bool]uintptr, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapBoolIntR(rv reflect.Value) {
-	fastpathTV.EncMapBoolIntV(rv.Interface().(map[bool]int), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolIntV(rv2i(rv).(map[bool]int), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolIntV(v map[bool]int, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15619,7 +15619,7 @@ func (_ fastpathT) EncMapBoolIntV(v map[bool]int, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapBoolInt8R(rv reflect.Value) {
-	fastpathTV.EncMapBoolInt8V(rv.Interface().(map[bool]int8), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolInt8V(rv2i(rv).(map[bool]int8), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolInt8V(v map[bool]int8, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15665,7 +15665,7 @@ func (_ fastpathT) EncMapBoolInt8V(v map[bool]int8, checkNil bool, e *Encoder) {
 }
 
 func (f *encFnInfo) fastpathEncMapBoolInt16R(rv reflect.Value) {
-	fastpathTV.EncMapBoolInt16V(rv.Interface().(map[bool]int16), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolInt16V(rv2i(rv).(map[bool]int16), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolInt16V(v map[bool]int16, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15711,7 +15711,7 @@ func (_ fastpathT) EncMapBoolInt16V(v map[bool]int16, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapBoolInt32R(rv reflect.Value) {
-	fastpathTV.EncMapBoolInt32V(rv.Interface().(map[bool]int32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolInt32V(rv2i(rv).(map[bool]int32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolInt32V(v map[bool]int32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15757,7 +15757,7 @@ func (_ fastpathT) EncMapBoolInt32V(v map[bool]int32, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapBoolInt64R(rv reflect.Value) {
-	fastpathTV.EncMapBoolInt64V(rv.Interface().(map[bool]int64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolInt64V(rv2i(rv).(map[bool]int64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolInt64V(v map[bool]int64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15803,7 +15803,7 @@ func (_ fastpathT) EncMapBoolInt64V(v map[bool]int64, checkNil bool, e *Encoder)
 }
 
 func (f *encFnInfo) fastpathEncMapBoolFloat32R(rv reflect.Value) {
-	fastpathTV.EncMapBoolFloat32V(rv.Interface().(map[bool]float32), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolFloat32V(rv2i(rv).(map[bool]float32), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolFloat32V(v map[bool]float32, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15849,7 +15849,7 @@ func (_ fastpathT) EncMapBoolFloat32V(v map[bool]float32, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapBoolFloat64R(rv reflect.Value) {
-	fastpathTV.EncMapBoolFloat64V(rv.Interface().(map[bool]float64), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolFloat64V(rv2i(rv).(map[bool]float64), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolFloat64V(v map[bool]float64, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -15895,7 +15895,7 @@ func (_ fastpathT) EncMapBoolFloat64V(v map[bool]float64, checkNil bool, e *Enco
 }
 
 func (f *encFnInfo) fastpathEncMapBoolBoolR(rv reflect.Value) {
-	fastpathTV.EncMapBoolBoolV(rv.Interface().(map[bool]bool), fastpathCheckNilFalse, f.e)
+	fastpathTV.EncMapBoolBoolV(rv2i(rv).(map[bool]bool), fastpathCheckNilFalse, f.e)
 }
 func (_ fastpathT) EncMapBoolBoolV(v map[bool]bool, checkNil bool, e *Encoder) {
 	ee := e.e
@@ -18126,13 +18126,13 @@ func fastpathDecodeTypeSwitch(iv interface{}, d *Decoder) bool {
 func (f *decFnInfo) fastpathDecSliceIntfR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]interface{})
+		vp := rv2i(rv.Addr()).(*[]interface{})
 		v, changed := fastpathTV.DecSliceIntfV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]interface{})
+		v := rv2i(rv).([]interface{})
 		fastpathTV.DecSliceIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18152,7 +18152,6 @@ func (_ fastpathT) DecSliceIntfV(v []interface{}, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18167,89 +18166,57 @@ func (_ fastpathT) DecSliceIntfV(v []interface{}, checkNil bool, canChange bool,
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 16)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]interface{}, xlen)
-					}
-				} else {
-					v = make([]interface{}, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 16)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]interface{}, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			d.decode(&v[j])
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, nil)
-				slh.ElemContainerState(j)
-				d.decode(&v[j])
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []interface{}{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]interface{}, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, nil)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				d.decode(&v[j])
-
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 16)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]interface{}, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, nil)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			d.decode(&v[j])
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]interface{}, 0)
 			changed = true
 		}
 	}
@@ -18260,13 +18227,13 @@ func (_ fastpathT) DecSliceIntfV(v []interface{}, checkNil bool, canChange bool,
 func (f *decFnInfo) fastpathDecSliceStringR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]string)
+		vp := rv2i(rv.Addr()).(*[]string)
 		v, changed := fastpathTV.DecSliceStringV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]string)
+		v := rv2i(rv).([]string)
 		fastpathTV.DecSliceStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18286,7 +18253,6 @@ func (_ fastpathT) DecSliceStringV(v []string, checkNil bool, canChange bool, d 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18301,88 +18267,57 @@ func (_ fastpathT) DecSliceStringV(v []string, checkNil bool, canChange bool, d 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 16)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]string, xlen)
-					}
-				} else {
-					v = make([]string, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 16)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]string, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = dd.DecodeString()
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, "")
-				slh.ElemContainerState(j)
-				v[j] = dd.DecodeString()
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []string{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]string, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, "")
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = dd.DecodeString()
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 16)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]string, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, "")
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = dd.DecodeString()
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]string, 0)
 			changed = true
 		}
 	}
@@ -18393,13 +18328,13 @@ func (_ fastpathT) DecSliceStringV(v []string, checkNil bool, canChange bool, d 
 func (f *decFnInfo) fastpathDecSliceFloat32R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]float32)
+		vp := rv2i(rv.Addr()).(*[]float32)
 		v, changed := fastpathTV.DecSliceFloat32V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]float32)
+		v := rv2i(rv).([]float32)
 		fastpathTV.DecSliceFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18419,7 +18354,6 @@ func (_ fastpathT) DecSliceFloat32V(v []float32, checkNil bool, canChange bool, 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18434,88 +18368,57 @@ func (_ fastpathT) DecSliceFloat32V(v []float32, checkNil bool, canChange bool, 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 4)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]float32, xlen)
-					}
-				} else {
-					v = make([]float32, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]float32, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = float32(dd.DecodeFloat(true))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = float32(dd.DecodeFloat(true))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []float32{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]float32, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = float32(dd.DecodeFloat(true))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]float32, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = float32(dd.DecodeFloat(true))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]float32, 0)
 			changed = true
 		}
 	}
@@ -18526,13 +18429,13 @@ func (_ fastpathT) DecSliceFloat32V(v []float32, checkNil bool, canChange bool, 
 func (f *decFnInfo) fastpathDecSliceFloat64R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]float64)
+		vp := rv2i(rv.Addr()).(*[]float64)
 		v, changed := fastpathTV.DecSliceFloat64V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]float64)
+		v := rv2i(rv).([]float64)
 		fastpathTV.DecSliceFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18552,7 +18455,6 @@ func (_ fastpathT) DecSliceFloat64V(v []float64, checkNil bool, canChange bool, 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18567,88 +18469,57 @@ func (_ fastpathT) DecSliceFloat64V(v []float64, checkNil bool, canChange bool, 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]float64, xlen)
-					}
-				} else {
-					v = make([]float64, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]float64, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = dd.DecodeFloat(false)
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = dd.DecodeFloat(false)
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []float64{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]float64, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = dd.DecodeFloat(false)
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]float64, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = dd.DecodeFloat(false)
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]float64, 0)
 			changed = true
 		}
 	}
@@ -18659,13 +18530,13 @@ func (_ fastpathT) DecSliceFloat64V(v []float64, checkNil bool, canChange bool, 
 func (f *decFnInfo) fastpathDecSliceUintR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]uint)
+		vp := rv2i(rv.Addr()).(*[]uint)
 		v, changed := fastpathTV.DecSliceUintV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]uint)
+		v := rv2i(rv).([]uint)
 		fastpathTV.DecSliceUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18685,7 +18556,6 @@ func (_ fastpathT) DecSliceUintV(v []uint, checkNil bool, canChange bool, d *Dec
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18700,88 +18570,57 @@ func (_ fastpathT) DecSliceUintV(v []uint, checkNil bool, canChange bool, d *Dec
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]uint, xlen)
-					}
-				} else {
-					v = make([]uint, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]uint, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = uint(dd.DecodeUint(uintBitsize))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = uint(dd.DecodeUint(uintBitsize))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []uint{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]uint, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = uint(dd.DecodeUint(uintBitsize))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]uint, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = uint(dd.DecodeUint(uintBitsize))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]uint, 0)
 			changed = true
 		}
 	}
@@ -18792,13 +18631,13 @@ func (_ fastpathT) DecSliceUintV(v []uint, checkNil bool, canChange bool, d *Dec
 func (f *decFnInfo) fastpathDecSliceUint16R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]uint16)
+		vp := rv2i(rv.Addr()).(*[]uint16)
 		v, changed := fastpathTV.DecSliceUint16V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]uint16)
+		v := rv2i(rv).([]uint16)
 		fastpathTV.DecSliceUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18818,7 +18657,6 @@ func (_ fastpathT) DecSliceUint16V(v []uint16, checkNil bool, canChange bool, d 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18833,88 +18671,57 @@ func (_ fastpathT) DecSliceUint16V(v []uint16, checkNil bool, canChange bool, d 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 2)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]uint16, xlen)
-					}
-				} else {
-					v = make([]uint16, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 2)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]uint16, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = uint16(dd.DecodeUint(16))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = uint16(dd.DecodeUint(16))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []uint16{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]uint16, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = uint16(dd.DecodeUint(16))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 2)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]uint16, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = uint16(dd.DecodeUint(16))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]uint16, 0)
 			changed = true
 		}
 	}
@@ -18925,13 +18732,13 @@ func (_ fastpathT) DecSliceUint16V(v []uint16, checkNil bool, canChange bool, d 
 func (f *decFnInfo) fastpathDecSliceUint32R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]uint32)
+		vp := rv2i(rv.Addr()).(*[]uint32)
 		v, changed := fastpathTV.DecSliceUint32V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]uint32)
+		v := rv2i(rv).([]uint32)
 		fastpathTV.DecSliceUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -18951,7 +18758,6 @@ func (_ fastpathT) DecSliceUint32V(v []uint32, checkNil bool, canChange bool, d 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -18966,88 +18772,57 @@ func (_ fastpathT) DecSliceUint32V(v []uint32, checkNil bool, canChange bool, d 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 4)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]uint32, xlen)
-					}
-				} else {
-					v = make([]uint32, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]uint32, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = uint32(dd.DecodeUint(32))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = uint32(dd.DecodeUint(32))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []uint32{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]uint32, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = uint32(dd.DecodeUint(32))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]uint32, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = uint32(dd.DecodeUint(32))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]uint32, 0)
 			changed = true
 		}
 	}
@@ -19058,13 +18833,13 @@ func (_ fastpathT) DecSliceUint32V(v []uint32, checkNil bool, canChange bool, d 
 func (f *decFnInfo) fastpathDecSliceUint64R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]uint64)
+		vp := rv2i(rv.Addr()).(*[]uint64)
 		v, changed := fastpathTV.DecSliceUint64V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]uint64)
+		v := rv2i(rv).([]uint64)
 		fastpathTV.DecSliceUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19084,7 +18859,6 @@ func (_ fastpathT) DecSliceUint64V(v []uint64, checkNil bool, canChange bool, d 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19099,88 +18873,57 @@ func (_ fastpathT) DecSliceUint64V(v []uint64, checkNil bool, canChange bool, d 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]uint64, xlen)
-					}
-				} else {
-					v = make([]uint64, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]uint64, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = dd.DecodeUint(64)
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = dd.DecodeUint(64)
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []uint64{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]uint64, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = dd.DecodeUint(64)
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]uint64, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = dd.DecodeUint(64)
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]uint64, 0)
 			changed = true
 		}
 	}
@@ -19191,13 +18934,13 @@ func (_ fastpathT) DecSliceUint64V(v []uint64, checkNil bool, canChange bool, d 
 func (f *decFnInfo) fastpathDecSliceUintptrR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]uintptr)
+		vp := rv2i(rv.Addr()).(*[]uintptr)
 		v, changed := fastpathTV.DecSliceUintptrV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]uintptr)
+		v := rv2i(rv).([]uintptr)
 		fastpathTV.DecSliceUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19217,7 +18960,6 @@ func (_ fastpathT) DecSliceUintptrV(v []uintptr, checkNil bool, canChange bool, 
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19232,88 +18974,57 @@ func (_ fastpathT) DecSliceUintptrV(v []uintptr, checkNil bool, canChange bool, 
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]uintptr, xlen)
-					}
-				} else {
-					v = make([]uintptr, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]uintptr, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = uintptr(dd.DecodeUint(uintBitsize))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = uintptr(dd.DecodeUint(uintBitsize))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []uintptr{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]uintptr, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = uintptr(dd.DecodeUint(uintBitsize))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]uintptr, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = uintptr(dd.DecodeUint(uintBitsize))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]uintptr, 0)
 			changed = true
 		}
 	}
@@ -19324,13 +19035,13 @@ func (_ fastpathT) DecSliceUintptrV(v []uintptr, checkNil bool, canChange bool, 
 func (f *decFnInfo) fastpathDecSliceIntR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]int)
+		vp := rv2i(rv.Addr()).(*[]int)
 		v, changed := fastpathTV.DecSliceIntV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]int)
+		v := rv2i(rv).([]int)
 		fastpathTV.DecSliceIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19350,7 +19061,6 @@ func (_ fastpathT) DecSliceIntV(v []int, checkNil bool, canChange bool, d *Decod
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19365,88 +19075,57 @@ func (_ fastpathT) DecSliceIntV(v []int, checkNil bool, canChange bool, d *Decod
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]int, xlen)
-					}
-				} else {
-					v = make([]int, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]int, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = int(dd.DecodeInt(intBitsize))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = int(dd.DecodeInt(intBitsize))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []int{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]int, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = int(dd.DecodeInt(intBitsize))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]int, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = int(dd.DecodeInt(intBitsize))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]int, 0)
 			changed = true
 		}
 	}
@@ -19457,13 +19136,13 @@ func (_ fastpathT) DecSliceIntV(v []int, checkNil bool, canChange bool, d *Decod
 func (f *decFnInfo) fastpathDecSliceInt8R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]int8)
+		vp := rv2i(rv.Addr()).(*[]int8)
 		v, changed := fastpathTV.DecSliceInt8V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]int8)
+		v := rv2i(rv).([]int8)
 		fastpathTV.DecSliceInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19483,7 +19162,6 @@ func (_ fastpathT) DecSliceInt8V(v []int8, checkNil bool, canChange bool, d *Dec
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19498,88 +19176,57 @@ func (_ fastpathT) DecSliceInt8V(v []int8, checkNil bool, canChange bool, d *Dec
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 1)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]int8, xlen)
-					}
-				} else {
-					v = make([]int8, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 1)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]int8, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = int8(dd.DecodeInt(8))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = int8(dd.DecodeInt(8))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []int8{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]int8, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = int8(dd.DecodeInt(8))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 1)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]int8, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = int8(dd.DecodeInt(8))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]int8, 0)
 			changed = true
 		}
 	}
@@ -19590,13 +19237,13 @@ func (_ fastpathT) DecSliceInt8V(v []int8, checkNil bool, canChange bool, d *Dec
 func (f *decFnInfo) fastpathDecSliceInt16R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]int16)
+		vp := rv2i(rv.Addr()).(*[]int16)
 		v, changed := fastpathTV.DecSliceInt16V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]int16)
+		v := rv2i(rv).([]int16)
 		fastpathTV.DecSliceInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19616,7 +19263,6 @@ func (_ fastpathT) DecSliceInt16V(v []int16, checkNil bool, canChange bool, d *D
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19631,88 +19277,57 @@ func (_ fastpathT) DecSliceInt16V(v []int16, checkNil bool, canChange bool, d *D
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 2)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]int16, xlen)
-					}
-				} else {
-					v = make([]int16, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 2)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]int16, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = int16(dd.DecodeInt(16))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = int16(dd.DecodeInt(16))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []int16{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]int16, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = int16(dd.DecodeInt(16))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 2)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]int16, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = int16(dd.DecodeInt(16))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]int16, 0)
 			changed = true
 		}
 	}
@@ -19723,13 +19338,13 @@ func (_ fastpathT) DecSliceInt16V(v []int16, checkNil bool, canChange bool, d *D
 func (f *decFnInfo) fastpathDecSliceInt32R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]int32)
+		vp := rv2i(rv.Addr()).(*[]int32)
 		v, changed := fastpathTV.DecSliceInt32V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]int32)
+		v := rv2i(rv).([]int32)
 		fastpathTV.DecSliceInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19749,7 +19364,6 @@ func (_ fastpathT) DecSliceInt32V(v []int32, checkNil bool, canChange bool, d *D
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19764,88 +19378,57 @@ func (_ fastpathT) DecSliceInt32V(v []int32, checkNil bool, canChange bool, d *D
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 4)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]int32, xlen)
-					}
-				} else {
-					v = make([]int32, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]int32, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = int32(dd.DecodeInt(32))
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = int32(dd.DecodeInt(32))
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []int32{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]int32, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = int32(dd.DecodeInt(32))
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 4)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]int32, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = int32(dd.DecodeInt(32))
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]int32, 0)
 			changed = true
 		}
 	}
@@ -19856,13 +19439,13 @@ func (_ fastpathT) DecSliceInt32V(v []int32, checkNil bool, canChange bool, d *D
 func (f *decFnInfo) fastpathDecSliceInt64R(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]int64)
+		vp := rv2i(rv.Addr()).(*[]int64)
 		v, changed := fastpathTV.DecSliceInt64V(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]int64)
+		v := rv2i(rv).([]int64)
 		fastpathTV.DecSliceInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -19882,7 +19465,6 @@ func (_ fastpathT) DecSliceInt64V(v []int64, checkNil bool, canChange bool, d *D
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -19897,88 +19479,57 @@ func (_ fastpathT) DecSliceInt64V(v []int64, checkNil bool, canChange bool, d *D
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 8)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]int64, xlen)
-					}
-				} else {
-					v = make([]int64, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]int64, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = dd.DecodeInt(64)
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, 0)
-				slh.ElemContainerState(j)
-				v[j] = dd.DecodeInt(64)
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []int64{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]int64, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, 0)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = dd.DecodeInt(64)
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 8)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]int64, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, 0)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = dd.DecodeInt(64)
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]int64, 0)
 			changed = true
 		}
 	}
@@ -19989,13 +19540,13 @@ func (_ fastpathT) DecSliceInt64V(v []int64, checkNil bool, canChange bool, d *D
 func (f *decFnInfo) fastpathDecSliceBoolR(rv reflect.Value) {
 	array := f.seq == seqTypeArray
 	if !array && rv.CanAddr() {
-		vp := rv.Addr().Interface().(*[]bool)
+		vp := rv2i(rv.Addr()).(*[]bool)
 		v, changed := fastpathTV.DecSliceBoolV(*vp, fastpathCheckNilFalse, !array, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().([]bool)
+		v := rv2i(rv).([]bool)
 		fastpathTV.DecSliceBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20015,7 +19566,6 @@ func (_ fastpathT) DecSliceBoolV(v []bool, checkNil bool, canChange bool, d *Dec
 		}
 		return nil, changed
 	}
-
 	slh, containerLenS := d.decSliceHelperStart()
 	if containerLenS == 0 {
 		if canChange {
@@ -20030,88 +19580,57 @@ func (_ fastpathT) DecSliceBoolV(v []bool, checkNil bool, canChange bool, d *Dec
 		return v, changed
 	}
 
-	if containerLenS > 0 {
-		x2read := containerLenS
-		var xtrunc bool
+	hasLen := containerLenS > 0
+	var xlen int
+	if hasLen && canChange {
 		if containerLenS > cap(v) {
-			if canChange {
-				var xlen int
-				xlen, xtrunc = decInferLen(containerLenS, d.h.MaxInitLen, 1)
-				if xtrunc {
-					if xlen <= cap(v) {
-						v = v[:xlen]
-					} else {
-						v = make([]bool, xlen)
-					}
-				} else {
-					v = make([]bool, xlen)
-				}
-				changed = true
+			xlen = decInferLen(containerLenS, d.h.MaxInitLen, 1)
+			if xlen <= cap(v) {
+				v = v[:xlen]
 			} else {
-				d.arrayCannotExpand(len(v), containerLenS)
+				v = make([]bool, xlen)
 			}
-			x2read = len(v)
+			changed = true
 		} else if containerLenS != len(v) {
-			if canChange {
-				v = v[:containerLenS]
-				changed = true
-			}
-		}
-		j := 0
-		for ; j < x2read; j++ {
-			slh.ElemContainerState(j)
-			v[j] = dd.DecodeBool()
-		}
-		if xtrunc {
-			for ; j < containerLenS; j++ {
-				v = append(v, false)
-				slh.ElemContainerState(j)
-				v[j] = dd.DecodeBool()
-			}
-		} else if !canChange {
-			for ; j < containerLenS; j++ {
-				slh.ElemContainerState(j)
-				d.swallow()
-			}
-		}
-	} else {
-		breakFound := dd.CheckBreak()
-		if breakFound {
-			if canChange {
-				if v == nil {
-					v = []bool{}
-				} else if len(v) != 0 {
-					v = v[:0]
-				}
-				changed = true
-			}
-			slh.End()
-			return v, changed
-		}
-		if cap(v) == 0 {
-			v = make([]bool, 1, 4)
+			v = v[:containerLenS]
 			changed = true
 		}
-		j := 0
-		for ; !breakFound; j++ {
-			if j >= len(v) {
-				if canChange {
-					v = append(v, false)
-					changed = true
-				} else {
-					d.arrayCannotExpand(len(v), j+1)
-				}
-			}
-			slh.ElemContainerState(j)
-			if j < len(v) {
-				v[j] = dd.DecodeBool()
+	}
+	j := 0
+	for ; (hasLen && j < containerLenS) || !(hasLen || dd.CheckBreak()); j++ {
+		if j == 0 && len(v) == 0 {
+			if hasLen {
+				xlen = decInferLen(containerLenS, d.h.MaxInitLen, 1)
 			} else {
-				d.swallow()
+				xlen = 8
 			}
-			breakFound = dd.CheckBreak()
+			v = make([]bool, xlen)
+			changed = true
 		}
-		if canChange && j < len(v) {
+		// if indefinite, etc, then expand the slice if necessary
+		var decodeIntoBlank bool
+		if j >= len(v) {
+			if canChange {
+				v = append(v, false)
+				changed = true
+			} else {
+				d.arrayCannotExpand(len(v), j+1)
+				decodeIntoBlank = true
+			}
+		}
+		slh.ElemContainerState(j)
+		if decodeIntoBlank {
+			d.swallow()
+		} else {
+			v[j] = dd.DecodeBool()
+		}
+	}
+	if canChange {
+		if j < len(v) {
 			v = v[:j]
+			changed = true
+		} else if j == 0 && v == nil {
+			v = make([]bool, 0)
 			changed = true
 		}
 	}
@@ -20121,13 +19640,13 @@ func (_ fastpathT) DecSliceBoolV(v []bool, checkNil bool, canChange bool, d *Dec
 
 func (f *decFnInfo) fastpathDecMapIntfIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]interface{})
+		vp := rv2i(rv.Addr()).(*map[interface{}]interface{})
 		v, changed := fastpathTV.DecMapIntfIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]interface{})
+		v := rv2i(rv).(map[interface{}]interface{})
 		fastpathTV.DecMapIntfIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20148,61 +19667,42 @@ func (_ fastpathT) DecMapIntfIntfV(v map[interface{}]interface{}, checkNil bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 32)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 32)
 		v = make(map[interface{}]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk interface{}
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20213,13 +19713,13 @@ func (_ fastpathT) DecMapIntfIntfV(v map[interface{}]interface{}, checkNil bool,
 
 func (f *decFnInfo) fastpathDecMapIntfStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]string)
+		vp := rv2i(rv.Addr()).(*map[interface{}]string)
 		v, changed := fastpathTV.DecMapIntfStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]string)
+		v := rv2i(rv).(map[interface{}]string)
 		fastpathTV.DecMapIntfStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20240,51 +19740,37 @@ func (_ fastpathT) DecMapIntfStringV(v map[interface{}]string, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 32)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 32)
 		v = make(map[interface{}]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20295,13 +19781,13 @@ func (_ fastpathT) DecMapIntfStringV(v map[interface{}]string, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapIntfUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uint)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uint)
 		v, changed := fastpathTV.DecMapIntfUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uint)
+		v := rv2i(rv).(map[interface{}]uint)
 		fastpathTV.DecMapIntfUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20322,51 +19808,37 @@ func (_ fastpathT) DecMapIntfUintV(v map[interface{}]uint, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20377,13 +19849,13 @@ func (_ fastpathT) DecMapIntfUintV(v map[interface{}]uint, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapIntfUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uint8)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uint8)
 		v, changed := fastpathTV.DecMapIntfUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uint8)
+		v := rv2i(rv).(map[interface{}]uint8)
 		fastpathTV.DecMapIntfUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20404,51 +19876,37 @@ func (_ fastpathT) DecMapIntfUint8V(v map[interface{}]uint8, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[interface{}]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20459,13 +19917,13 @@ func (_ fastpathT) DecMapIntfUint8V(v map[interface{}]uint8, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapIntfUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uint16)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uint16)
 		v, changed := fastpathTV.DecMapIntfUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uint16)
+		v := rv2i(rv).(map[interface{}]uint16)
 		fastpathTV.DecMapIntfUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20486,51 +19944,37 @@ func (_ fastpathT) DecMapIntfUint16V(v map[interface{}]uint16, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[interface{}]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20541,13 +19985,13 @@ func (_ fastpathT) DecMapIntfUint16V(v map[interface{}]uint16, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapIntfUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uint32)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uint32)
 		v, changed := fastpathTV.DecMapIntfUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uint32)
+		v := rv2i(rv).(map[interface{}]uint32)
 		fastpathTV.DecMapIntfUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20568,51 +20012,37 @@ func (_ fastpathT) DecMapIntfUint32V(v map[interface{}]uint32, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[interface{}]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20623,13 +20053,13 @@ func (_ fastpathT) DecMapIntfUint32V(v map[interface{}]uint32, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapIntfUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uint64)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uint64)
 		v, changed := fastpathTV.DecMapIntfUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uint64)
+		v := rv2i(rv).(map[interface{}]uint64)
 		fastpathTV.DecMapIntfUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20650,51 +20080,37 @@ func (_ fastpathT) DecMapIntfUint64V(v map[interface{}]uint64, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20705,13 +20121,13 @@ func (_ fastpathT) DecMapIntfUint64V(v map[interface{}]uint64, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapIntfUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]uintptr)
+		vp := rv2i(rv.Addr()).(*map[interface{}]uintptr)
 		v, changed := fastpathTV.DecMapIntfUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]uintptr)
+		v := rv2i(rv).(map[interface{}]uintptr)
 		fastpathTV.DecMapIntfUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20732,51 +20148,37 @@ func (_ fastpathT) DecMapIntfUintptrV(v map[interface{}]uintptr, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20787,13 +20189,13 @@ func (_ fastpathT) DecMapIntfUintptrV(v map[interface{}]uintptr, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapIntfIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]int)
+		vp := rv2i(rv.Addr()).(*map[interface{}]int)
 		v, changed := fastpathTV.DecMapIntfIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]int)
+		v := rv2i(rv).(map[interface{}]int)
 		fastpathTV.DecMapIntfIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20814,51 +20216,37 @@ func (_ fastpathT) DecMapIntfIntV(v map[interface{}]int, checkNil bool, canChang
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20869,13 +20257,13 @@ func (_ fastpathT) DecMapIntfIntV(v map[interface{}]int, checkNil bool, canChang
 
 func (f *decFnInfo) fastpathDecMapIntfInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]int8)
+		vp := rv2i(rv.Addr()).(*map[interface{}]int8)
 		v, changed := fastpathTV.DecMapIntfInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]int8)
+		v := rv2i(rv).(map[interface{}]int8)
 		fastpathTV.DecMapIntfInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20896,51 +20284,37 @@ func (_ fastpathT) DecMapIntfInt8V(v map[interface{}]int8, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[interface{}]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -20951,13 +20325,13 @@ func (_ fastpathT) DecMapIntfInt8V(v map[interface{}]int8, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapIntfInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]int16)
+		vp := rv2i(rv.Addr()).(*map[interface{}]int16)
 		v, changed := fastpathTV.DecMapIntfInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]int16)
+		v := rv2i(rv).(map[interface{}]int16)
 		fastpathTV.DecMapIntfInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -20978,51 +20352,37 @@ func (_ fastpathT) DecMapIntfInt16V(v map[interface{}]int16, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[interface{}]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21033,13 +20393,13 @@ func (_ fastpathT) DecMapIntfInt16V(v map[interface{}]int16, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapIntfInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]int32)
+		vp := rv2i(rv.Addr()).(*map[interface{}]int32)
 		v, changed := fastpathTV.DecMapIntfInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]int32)
+		v := rv2i(rv).(map[interface{}]int32)
 		fastpathTV.DecMapIntfInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21060,51 +20420,37 @@ func (_ fastpathT) DecMapIntfInt32V(v map[interface{}]int32, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[interface{}]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21115,13 +20461,13 @@ func (_ fastpathT) DecMapIntfInt32V(v map[interface{}]int32, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapIntfInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]int64)
+		vp := rv2i(rv.Addr()).(*map[interface{}]int64)
 		v, changed := fastpathTV.DecMapIntfInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]int64)
+		v := rv2i(rv).(map[interface{}]int64)
 		fastpathTV.DecMapIntfInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21142,51 +20488,37 @@ func (_ fastpathT) DecMapIntfInt64V(v map[interface{}]int64, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21197,13 +20529,13 @@ func (_ fastpathT) DecMapIntfInt64V(v map[interface{}]int64, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapIntfFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]float32)
+		vp := rv2i(rv.Addr()).(*map[interface{}]float32)
 		v, changed := fastpathTV.DecMapIntfFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]float32)
+		v := rv2i(rv).(map[interface{}]float32)
 		fastpathTV.DecMapIntfFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21224,51 +20556,37 @@ func (_ fastpathT) DecMapIntfFloat32V(v map[interface{}]float32, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[interface{}]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21279,13 +20597,13 @@ func (_ fastpathT) DecMapIntfFloat32V(v map[interface{}]float32, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapIntfFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]float64)
+		vp := rv2i(rv.Addr()).(*map[interface{}]float64)
 		v, changed := fastpathTV.DecMapIntfFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]float64)
+		v := rv2i(rv).(map[interface{}]float64)
 		fastpathTV.DecMapIntfFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21306,51 +20624,37 @@ func (_ fastpathT) DecMapIntfFloat64V(v map[interface{}]float64, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[interface{}]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21361,13 +20665,13 @@ func (_ fastpathT) DecMapIntfFloat64V(v map[interface{}]float64, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapIntfBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[interface{}]bool)
+		vp := rv2i(rv.Addr()).(*map[interface{}]bool)
 		v, changed := fastpathTV.DecMapIntfBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[interface{}]bool)
+		v := rv2i(rv).(map[interface{}]bool)
 		fastpathTV.DecMapIntfBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21388,51 +20692,37 @@ func (_ fastpathT) DecMapIntfBoolV(v map[interface{}]bool, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[interface{}]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk interface{}
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = nil
-			d.decode(&mk)
-			if bv, bok := mk.([]byte); bok {
-				mk = d.string(bv)
-			}
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = nil
+		d.decode(&mk)
+		if bv, bok := mk.([]byte); bok {
+			mk = d.string(bv)
+		}
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21443,13 +20733,13 @@ func (_ fastpathT) DecMapIntfBoolV(v map[interface{}]bool, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapStringIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]interface{})
+		vp := rv2i(rv.Addr()).(*map[string]interface{})
 		v, changed := fastpathTV.DecMapStringIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]interface{})
+		v := rv2i(rv).(map[string]interface{})
 		fastpathTV.DecMapStringIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21470,53 +20760,38 @@ func (_ fastpathT) DecMapStringIntfV(v map[string]interface{}, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 32)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 32)
 		v = make(map[string]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk string
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21527,13 +20802,13 @@ func (_ fastpathT) DecMapStringIntfV(v map[string]interface{}, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapStringStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]string)
+		vp := rv2i(rv.Addr()).(*map[string]string)
 		v, changed := fastpathTV.DecMapStringStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]string)
+		v := rv2i(rv).(map[string]string)
 		fastpathTV.DecMapStringStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21554,43 +20829,33 @@ func (_ fastpathT) DecMapStringStringV(v map[string]string, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 32)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 32)
 		v = make(map[string]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21601,13 +20866,13 @@ func (_ fastpathT) DecMapStringStringV(v map[string]string, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapStringUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uint)
+		vp := rv2i(rv.Addr()).(*map[string]uint)
 		v, changed := fastpathTV.DecMapStringUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uint)
+		v := rv2i(rv).(map[string]uint)
 		fastpathTV.DecMapStringUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21628,43 +20893,33 @@ func (_ fastpathT) DecMapStringUintV(v map[string]uint, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21675,13 +20930,13 @@ func (_ fastpathT) DecMapStringUintV(v map[string]uint, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapStringUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uint8)
+		vp := rv2i(rv.Addr()).(*map[string]uint8)
 		v, changed := fastpathTV.DecMapStringUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uint8)
+		v := rv2i(rv).(map[string]uint8)
 		fastpathTV.DecMapStringUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21702,43 +20957,33 @@ func (_ fastpathT) DecMapStringUint8V(v map[string]uint8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[string]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21749,13 +20994,13 @@ func (_ fastpathT) DecMapStringUint8V(v map[string]uint8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapStringUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uint16)
+		vp := rv2i(rv.Addr()).(*map[string]uint16)
 		v, changed := fastpathTV.DecMapStringUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uint16)
+		v := rv2i(rv).(map[string]uint16)
 		fastpathTV.DecMapStringUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21776,43 +21021,33 @@ func (_ fastpathT) DecMapStringUint16V(v map[string]uint16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[string]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21823,13 +21058,13 @@ func (_ fastpathT) DecMapStringUint16V(v map[string]uint16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapStringUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uint32)
+		vp := rv2i(rv.Addr()).(*map[string]uint32)
 		v, changed := fastpathTV.DecMapStringUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uint32)
+		v := rv2i(rv).(map[string]uint32)
 		fastpathTV.DecMapStringUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21850,43 +21085,33 @@ func (_ fastpathT) DecMapStringUint32V(v map[string]uint32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[string]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21897,13 +21122,13 @@ func (_ fastpathT) DecMapStringUint32V(v map[string]uint32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapStringUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uint64)
+		vp := rv2i(rv.Addr()).(*map[string]uint64)
 		v, changed := fastpathTV.DecMapStringUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uint64)
+		v := rv2i(rv).(map[string]uint64)
 		fastpathTV.DecMapStringUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21924,43 +21149,33 @@ func (_ fastpathT) DecMapStringUint64V(v map[string]uint64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -21971,13 +21186,13 @@ func (_ fastpathT) DecMapStringUint64V(v map[string]uint64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapStringUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]uintptr)
+		vp := rv2i(rv.Addr()).(*map[string]uintptr)
 		v, changed := fastpathTV.DecMapStringUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]uintptr)
+		v := rv2i(rv).(map[string]uintptr)
 		fastpathTV.DecMapStringUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -21998,43 +21213,33 @@ func (_ fastpathT) DecMapStringUintptrV(v map[string]uintptr, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22045,13 +21250,13 @@ func (_ fastpathT) DecMapStringUintptrV(v map[string]uintptr, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapStringIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]int)
+		vp := rv2i(rv.Addr()).(*map[string]int)
 		v, changed := fastpathTV.DecMapStringIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]int)
+		v := rv2i(rv).(map[string]int)
 		fastpathTV.DecMapStringIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22072,43 +21277,33 @@ func (_ fastpathT) DecMapStringIntV(v map[string]int, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22119,13 +21314,13 @@ func (_ fastpathT) DecMapStringIntV(v map[string]int, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapStringInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]int8)
+		vp := rv2i(rv.Addr()).(*map[string]int8)
 		v, changed := fastpathTV.DecMapStringInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]int8)
+		v := rv2i(rv).(map[string]int8)
 		fastpathTV.DecMapStringInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22146,43 +21341,33 @@ func (_ fastpathT) DecMapStringInt8V(v map[string]int8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[string]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22193,13 +21378,13 @@ func (_ fastpathT) DecMapStringInt8V(v map[string]int8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapStringInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]int16)
+		vp := rv2i(rv.Addr()).(*map[string]int16)
 		v, changed := fastpathTV.DecMapStringInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]int16)
+		v := rv2i(rv).(map[string]int16)
 		fastpathTV.DecMapStringInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22220,43 +21405,33 @@ func (_ fastpathT) DecMapStringInt16V(v map[string]int16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[string]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22267,13 +21442,13 @@ func (_ fastpathT) DecMapStringInt16V(v map[string]int16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapStringInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]int32)
+		vp := rv2i(rv.Addr()).(*map[string]int32)
 		v, changed := fastpathTV.DecMapStringInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]int32)
+		v := rv2i(rv).(map[string]int32)
 		fastpathTV.DecMapStringInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22294,43 +21469,33 @@ func (_ fastpathT) DecMapStringInt32V(v map[string]int32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[string]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22341,13 +21506,13 @@ func (_ fastpathT) DecMapStringInt32V(v map[string]int32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapStringInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]int64)
+		vp := rv2i(rv.Addr()).(*map[string]int64)
 		v, changed := fastpathTV.DecMapStringInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]int64)
+		v := rv2i(rv).(map[string]int64)
 		fastpathTV.DecMapStringInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22368,43 +21533,33 @@ func (_ fastpathT) DecMapStringInt64V(v map[string]int64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22415,13 +21570,13 @@ func (_ fastpathT) DecMapStringInt64V(v map[string]int64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapStringFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]float32)
+		vp := rv2i(rv.Addr()).(*map[string]float32)
 		v, changed := fastpathTV.DecMapStringFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]float32)
+		v := rv2i(rv).(map[string]float32)
 		fastpathTV.DecMapStringFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22442,43 +21597,33 @@ func (_ fastpathT) DecMapStringFloat32V(v map[string]float32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[string]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22489,13 +21634,13 @@ func (_ fastpathT) DecMapStringFloat32V(v map[string]float32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapStringFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]float64)
+		vp := rv2i(rv.Addr()).(*map[string]float64)
 		v, changed := fastpathTV.DecMapStringFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]float64)
+		v := rv2i(rv).(map[string]float64)
 		fastpathTV.DecMapStringFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22516,43 +21661,33 @@ func (_ fastpathT) DecMapStringFloat64V(v map[string]float64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[string]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22563,13 +21698,13 @@ func (_ fastpathT) DecMapStringFloat64V(v map[string]float64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapStringBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[string]bool)
+		vp := rv2i(rv.Addr()).(*map[string]bool)
 		v, changed := fastpathTV.DecMapStringBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[string]bool)
+		v := rv2i(rv).(map[string]bool)
 		fastpathTV.DecMapStringBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22590,43 +21725,33 @@ func (_ fastpathT) DecMapStringBoolV(v map[string]bool, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[string]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk string
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeString()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeString()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22637,13 +21762,13 @@ func (_ fastpathT) DecMapStringBoolV(v map[string]bool, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapFloat32IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]interface{})
+		vp := rv2i(rv.Addr()).(*map[float32]interface{})
 		v, changed := fastpathTV.DecMapFloat32IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]interface{})
+		v := rv2i(rv).(map[float32]interface{})
 		fastpathTV.DecMapFloat32IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22664,53 +21789,38 @@ func (_ fastpathT) DecMapFloat32IntfV(v map[float32]interface{}, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[float32]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk float32
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22721,13 +21831,13 @@ func (_ fastpathT) DecMapFloat32IntfV(v map[float32]interface{}, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapFloat32StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]string)
+		vp := rv2i(rv.Addr()).(*map[float32]string)
 		v, changed := fastpathTV.DecMapFloat32StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]string)
+		v := rv2i(rv).(map[float32]string)
 		fastpathTV.DecMapFloat32StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22748,43 +21858,33 @@ func (_ fastpathT) DecMapFloat32StringV(v map[float32]string, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[float32]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22795,13 +21895,13 @@ func (_ fastpathT) DecMapFloat32StringV(v map[float32]string, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat32UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uint)
+		vp := rv2i(rv.Addr()).(*map[float32]uint)
 		v, changed := fastpathTV.DecMapFloat32UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uint)
+		v := rv2i(rv).(map[float32]uint)
 		fastpathTV.DecMapFloat32UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22822,43 +21922,33 @@ func (_ fastpathT) DecMapFloat32UintV(v map[float32]uint, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22869,13 +21959,13 @@ func (_ fastpathT) DecMapFloat32UintV(v map[float32]uint, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapFloat32Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uint8)
+		vp := rv2i(rv.Addr()).(*map[float32]uint8)
 		v, changed := fastpathTV.DecMapFloat32Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uint8)
+		v := rv2i(rv).(map[float32]uint8)
 		fastpathTV.DecMapFloat32Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22896,43 +21986,33 @@ func (_ fastpathT) DecMapFloat32Uint8V(v map[float32]uint8, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[float32]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -22943,13 +22023,13 @@ func (_ fastpathT) DecMapFloat32Uint8V(v map[float32]uint8, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat32Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uint16)
+		vp := rv2i(rv.Addr()).(*map[float32]uint16)
 		v, changed := fastpathTV.DecMapFloat32Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uint16)
+		v := rv2i(rv).(map[float32]uint16)
 		fastpathTV.DecMapFloat32Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -22970,43 +22050,33 @@ func (_ fastpathT) DecMapFloat32Uint16V(v map[float32]uint16, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[float32]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23017,13 +22087,13 @@ func (_ fastpathT) DecMapFloat32Uint16V(v map[float32]uint16, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat32Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uint32)
+		vp := rv2i(rv.Addr()).(*map[float32]uint32)
 		v, changed := fastpathTV.DecMapFloat32Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uint32)
+		v := rv2i(rv).(map[float32]uint32)
 		fastpathTV.DecMapFloat32Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23044,43 +22114,33 @@ func (_ fastpathT) DecMapFloat32Uint32V(v map[float32]uint32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[float32]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23091,13 +22151,13 @@ func (_ fastpathT) DecMapFloat32Uint32V(v map[float32]uint32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat32Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uint64)
+		vp := rv2i(rv.Addr()).(*map[float32]uint64)
 		v, changed := fastpathTV.DecMapFloat32Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uint64)
+		v := rv2i(rv).(map[float32]uint64)
 		fastpathTV.DecMapFloat32Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23118,43 +22178,33 @@ func (_ fastpathT) DecMapFloat32Uint64V(v map[float32]uint64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23165,13 +22215,13 @@ func (_ fastpathT) DecMapFloat32Uint64V(v map[float32]uint64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat32UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]uintptr)
+		vp := rv2i(rv.Addr()).(*map[float32]uintptr)
 		v, changed := fastpathTV.DecMapFloat32UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]uintptr)
+		v := rv2i(rv).(map[float32]uintptr)
 		fastpathTV.DecMapFloat32UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23192,43 +22242,33 @@ func (_ fastpathT) DecMapFloat32UintptrV(v map[float32]uintptr, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23239,13 +22279,13 @@ func (_ fastpathT) DecMapFloat32UintptrV(v map[float32]uintptr, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat32IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]int)
+		vp := rv2i(rv.Addr()).(*map[float32]int)
 		v, changed := fastpathTV.DecMapFloat32IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]int)
+		v := rv2i(rv).(map[float32]int)
 		fastpathTV.DecMapFloat32IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23266,43 +22306,33 @@ func (_ fastpathT) DecMapFloat32IntV(v map[float32]int, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23313,13 +22343,13 @@ func (_ fastpathT) DecMapFloat32IntV(v map[float32]int, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapFloat32Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]int8)
+		vp := rv2i(rv.Addr()).(*map[float32]int8)
 		v, changed := fastpathTV.DecMapFloat32Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]int8)
+		v := rv2i(rv).(map[float32]int8)
 		fastpathTV.DecMapFloat32Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23340,43 +22370,33 @@ func (_ fastpathT) DecMapFloat32Int8V(v map[float32]int8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[float32]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23387,13 +22407,13 @@ func (_ fastpathT) DecMapFloat32Int8V(v map[float32]int8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapFloat32Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]int16)
+		vp := rv2i(rv.Addr()).(*map[float32]int16)
 		v, changed := fastpathTV.DecMapFloat32Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]int16)
+		v := rv2i(rv).(map[float32]int16)
 		fastpathTV.DecMapFloat32Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23414,43 +22434,33 @@ func (_ fastpathT) DecMapFloat32Int16V(v map[float32]int16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[float32]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23461,13 +22471,13 @@ func (_ fastpathT) DecMapFloat32Int16V(v map[float32]int16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat32Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]int32)
+		vp := rv2i(rv.Addr()).(*map[float32]int32)
 		v, changed := fastpathTV.DecMapFloat32Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]int32)
+		v := rv2i(rv).(map[float32]int32)
 		fastpathTV.DecMapFloat32Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23488,43 +22498,33 @@ func (_ fastpathT) DecMapFloat32Int32V(v map[float32]int32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[float32]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23535,13 +22535,13 @@ func (_ fastpathT) DecMapFloat32Int32V(v map[float32]int32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat32Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]int64)
+		vp := rv2i(rv.Addr()).(*map[float32]int64)
 		v, changed := fastpathTV.DecMapFloat32Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]int64)
+		v := rv2i(rv).(map[float32]int64)
 		fastpathTV.DecMapFloat32Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23562,43 +22562,33 @@ func (_ fastpathT) DecMapFloat32Int64V(v map[float32]int64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23609,13 +22599,13 @@ func (_ fastpathT) DecMapFloat32Int64V(v map[float32]int64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat32Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]float32)
+		vp := rv2i(rv.Addr()).(*map[float32]float32)
 		v, changed := fastpathTV.DecMapFloat32Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]float32)
+		v := rv2i(rv).(map[float32]float32)
 		fastpathTV.DecMapFloat32Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23636,43 +22626,33 @@ func (_ fastpathT) DecMapFloat32Float32V(v map[float32]float32, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[float32]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23683,13 +22663,13 @@ func (_ fastpathT) DecMapFloat32Float32V(v map[float32]float32, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat32Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]float64)
+		vp := rv2i(rv.Addr()).(*map[float32]float64)
 		v, changed := fastpathTV.DecMapFloat32Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]float64)
+		v := rv2i(rv).(map[float32]float64)
 		fastpathTV.DecMapFloat32Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23710,43 +22690,33 @@ func (_ fastpathT) DecMapFloat32Float64V(v map[float32]float64, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float32]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23757,13 +22727,13 @@ func (_ fastpathT) DecMapFloat32Float64V(v map[float32]float64, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat32BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float32]bool)
+		vp := rv2i(rv.Addr()).(*map[float32]bool)
 		v, changed := fastpathTV.DecMapFloat32BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float32]bool)
+		v := rv2i(rv).(map[float32]bool)
 		fastpathTV.DecMapFloat32BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23784,43 +22754,33 @@ func (_ fastpathT) DecMapFloat32BoolV(v map[float32]bool, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[float32]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float32
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = float32(dd.DecodeFloat(true))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = float32(dd.DecodeFloat(true))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23831,13 +22791,13 @@ func (_ fastpathT) DecMapFloat32BoolV(v map[float32]bool, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapFloat64IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]interface{})
+		vp := rv2i(rv.Addr()).(*map[float64]interface{})
 		v, changed := fastpathTV.DecMapFloat64IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]interface{})
+		v := rv2i(rv).(map[float64]interface{})
 		fastpathTV.DecMapFloat64IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23858,53 +22818,38 @@ func (_ fastpathT) DecMapFloat64IntfV(v map[float64]interface{}, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[float64]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk float64
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23915,13 +22860,13 @@ func (_ fastpathT) DecMapFloat64IntfV(v map[float64]interface{}, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapFloat64StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]string)
+		vp := rv2i(rv.Addr()).(*map[float64]string)
 		v, changed := fastpathTV.DecMapFloat64StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]string)
+		v := rv2i(rv).(map[float64]string)
 		fastpathTV.DecMapFloat64StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -23942,43 +22887,33 @@ func (_ fastpathT) DecMapFloat64StringV(v map[float64]string, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[float64]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -23989,13 +22924,13 @@ func (_ fastpathT) DecMapFloat64StringV(v map[float64]string, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat64UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uint)
+		vp := rv2i(rv.Addr()).(*map[float64]uint)
 		v, changed := fastpathTV.DecMapFloat64UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uint)
+		v := rv2i(rv).(map[float64]uint)
 		fastpathTV.DecMapFloat64UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24016,43 +22951,33 @@ func (_ fastpathT) DecMapFloat64UintV(v map[float64]uint, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24063,13 +22988,13 @@ func (_ fastpathT) DecMapFloat64UintV(v map[float64]uint, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapFloat64Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uint8)
+		vp := rv2i(rv.Addr()).(*map[float64]uint8)
 		v, changed := fastpathTV.DecMapFloat64Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uint8)
+		v := rv2i(rv).(map[float64]uint8)
 		fastpathTV.DecMapFloat64Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24090,43 +23015,33 @@ func (_ fastpathT) DecMapFloat64Uint8V(v map[float64]uint8, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[float64]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24137,13 +23052,13 @@ func (_ fastpathT) DecMapFloat64Uint8V(v map[float64]uint8, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat64Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uint16)
+		vp := rv2i(rv.Addr()).(*map[float64]uint16)
 		v, changed := fastpathTV.DecMapFloat64Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uint16)
+		v := rv2i(rv).(map[float64]uint16)
 		fastpathTV.DecMapFloat64Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24164,43 +23079,33 @@ func (_ fastpathT) DecMapFloat64Uint16V(v map[float64]uint16, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[float64]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24211,13 +23116,13 @@ func (_ fastpathT) DecMapFloat64Uint16V(v map[float64]uint16, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat64Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uint32)
+		vp := rv2i(rv.Addr()).(*map[float64]uint32)
 		v, changed := fastpathTV.DecMapFloat64Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uint32)
+		v := rv2i(rv).(map[float64]uint32)
 		fastpathTV.DecMapFloat64Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24238,43 +23143,33 @@ func (_ fastpathT) DecMapFloat64Uint32V(v map[float64]uint32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float64]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24285,13 +23180,13 @@ func (_ fastpathT) DecMapFloat64Uint32V(v map[float64]uint32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat64Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uint64)
+		vp := rv2i(rv.Addr()).(*map[float64]uint64)
 		v, changed := fastpathTV.DecMapFloat64Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uint64)
+		v := rv2i(rv).(map[float64]uint64)
 		fastpathTV.DecMapFloat64Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24312,43 +23207,33 @@ func (_ fastpathT) DecMapFloat64Uint64V(v map[float64]uint64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24359,13 +23244,13 @@ func (_ fastpathT) DecMapFloat64Uint64V(v map[float64]uint64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapFloat64UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]uintptr)
+		vp := rv2i(rv.Addr()).(*map[float64]uintptr)
 		v, changed := fastpathTV.DecMapFloat64UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]uintptr)
+		v := rv2i(rv).(map[float64]uintptr)
 		fastpathTV.DecMapFloat64UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24386,43 +23271,33 @@ func (_ fastpathT) DecMapFloat64UintptrV(v map[float64]uintptr, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24433,13 +23308,13 @@ func (_ fastpathT) DecMapFloat64UintptrV(v map[float64]uintptr, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat64IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]int)
+		vp := rv2i(rv.Addr()).(*map[float64]int)
 		v, changed := fastpathTV.DecMapFloat64IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]int)
+		v := rv2i(rv).(map[float64]int)
 		fastpathTV.DecMapFloat64IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24460,43 +23335,33 @@ func (_ fastpathT) DecMapFloat64IntV(v map[float64]int, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24507,13 +23372,13 @@ func (_ fastpathT) DecMapFloat64IntV(v map[float64]int, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapFloat64Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]int8)
+		vp := rv2i(rv.Addr()).(*map[float64]int8)
 		v, changed := fastpathTV.DecMapFloat64Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]int8)
+		v := rv2i(rv).(map[float64]int8)
 		fastpathTV.DecMapFloat64Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24534,43 +23399,33 @@ func (_ fastpathT) DecMapFloat64Int8V(v map[float64]int8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[float64]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24581,13 +23436,13 @@ func (_ fastpathT) DecMapFloat64Int8V(v map[float64]int8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapFloat64Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]int16)
+		vp := rv2i(rv.Addr()).(*map[float64]int16)
 		v, changed := fastpathTV.DecMapFloat64Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]int16)
+		v := rv2i(rv).(map[float64]int16)
 		fastpathTV.DecMapFloat64Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24608,43 +23463,33 @@ func (_ fastpathT) DecMapFloat64Int16V(v map[float64]int16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[float64]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24655,13 +23500,13 @@ func (_ fastpathT) DecMapFloat64Int16V(v map[float64]int16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat64Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]int32)
+		vp := rv2i(rv.Addr()).(*map[float64]int32)
 		v, changed := fastpathTV.DecMapFloat64Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]int32)
+		v := rv2i(rv).(map[float64]int32)
 		fastpathTV.DecMapFloat64Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24682,43 +23527,33 @@ func (_ fastpathT) DecMapFloat64Int32V(v map[float64]int32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float64]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24729,13 +23564,13 @@ func (_ fastpathT) DecMapFloat64Int32V(v map[float64]int32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat64Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]int64)
+		vp := rv2i(rv.Addr()).(*map[float64]int64)
 		v, changed := fastpathTV.DecMapFloat64Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]int64)
+		v := rv2i(rv).(map[float64]int64)
 		fastpathTV.DecMapFloat64Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24756,43 +23591,33 @@ func (_ fastpathT) DecMapFloat64Int64V(v map[float64]int64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24803,13 +23628,13 @@ func (_ fastpathT) DecMapFloat64Int64V(v map[float64]int64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapFloat64Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]float32)
+		vp := rv2i(rv.Addr()).(*map[float64]float32)
 		v, changed := fastpathTV.DecMapFloat64Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]float32)
+		v := rv2i(rv).(map[float64]float32)
 		fastpathTV.DecMapFloat64Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24830,43 +23655,33 @@ func (_ fastpathT) DecMapFloat64Float32V(v map[float64]float32, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[float64]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24877,13 +23692,13 @@ func (_ fastpathT) DecMapFloat64Float32V(v map[float64]float32, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat64Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]float64)
+		vp := rv2i(rv.Addr()).(*map[float64]float64)
 		v, changed := fastpathTV.DecMapFloat64Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]float64)
+		v := rv2i(rv).(map[float64]float64)
 		fastpathTV.DecMapFloat64Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24904,43 +23719,33 @@ func (_ fastpathT) DecMapFloat64Float64V(v map[float64]float64, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[float64]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -24951,13 +23756,13 @@ func (_ fastpathT) DecMapFloat64Float64V(v map[float64]float64, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapFloat64BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[float64]bool)
+		vp := rv2i(rv.Addr()).(*map[float64]bool)
 		v, changed := fastpathTV.DecMapFloat64BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[float64]bool)
+		v := rv2i(rv).(map[float64]bool)
 		fastpathTV.DecMapFloat64BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -24978,43 +23783,33 @@ func (_ fastpathT) DecMapFloat64BoolV(v map[float64]bool, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[float64]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk float64
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeFloat(false)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeFloat(false)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25025,13 +23820,13 @@ func (_ fastpathT) DecMapFloat64BoolV(v map[float64]bool, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]interface{})
+		vp := rv2i(rv.Addr()).(*map[uint]interface{})
 		v, changed := fastpathTV.DecMapUintIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]interface{})
+		v := rv2i(rv).(map[uint]interface{})
 		fastpathTV.DecMapUintIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25052,53 +23847,38 @@ func (_ fastpathT) DecMapUintIntfV(v map[uint]interface{}, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uint]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uint
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25109,13 +23889,13 @@ func (_ fastpathT) DecMapUintIntfV(v map[uint]interface{}, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapUintStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]string)
+		vp := rv2i(rv.Addr()).(*map[uint]string)
 		v, changed := fastpathTV.DecMapUintStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]string)
+		v := rv2i(rv).(map[uint]string)
 		fastpathTV.DecMapUintStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25136,43 +23916,33 @@ func (_ fastpathT) DecMapUintStringV(v map[uint]string, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uint]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25183,13 +23953,13 @@ func (_ fastpathT) DecMapUintStringV(v map[uint]string, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uint)
+		vp := rv2i(rv.Addr()).(*map[uint]uint)
 		v, changed := fastpathTV.DecMapUintUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uint)
+		v := rv2i(rv).(map[uint]uint)
 		fastpathTV.DecMapUintUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25210,43 +23980,33 @@ func (_ fastpathT) DecMapUintUintV(v map[uint]uint, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25257,13 +24017,13 @@ func (_ fastpathT) DecMapUintUintV(v map[uint]uint, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapUintUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uint8)
+		vp := rv2i(rv.Addr()).(*map[uint]uint8)
 		v, changed := fastpathTV.DecMapUintUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uint8)
+		v := rv2i(rv).(map[uint]uint8)
 		fastpathTV.DecMapUintUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25284,43 +24044,33 @@ func (_ fastpathT) DecMapUintUint8V(v map[uint]uint8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25331,13 +24081,13 @@ func (_ fastpathT) DecMapUintUint8V(v map[uint]uint8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUintUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uint16)
+		vp := rv2i(rv.Addr()).(*map[uint]uint16)
 		v, changed := fastpathTV.DecMapUintUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uint16)
+		v := rv2i(rv).(map[uint]uint16)
 		fastpathTV.DecMapUintUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25358,43 +24108,33 @@ func (_ fastpathT) DecMapUintUint16V(v map[uint]uint16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25405,13 +24145,13 @@ func (_ fastpathT) DecMapUintUint16V(v map[uint]uint16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uint32)
+		vp := rv2i(rv.Addr()).(*map[uint]uint32)
 		v, changed := fastpathTV.DecMapUintUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uint32)
+		v := rv2i(rv).(map[uint]uint32)
 		fastpathTV.DecMapUintUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25432,43 +24172,33 @@ func (_ fastpathT) DecMapUintUint32V(v map[uint]uint32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25479,13 +24209,13 @@ func (_ fastpathT) DecMapUintUint32V(v map[uint]uint32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uint64)
+		vp := rv2i(rv.Addr()).(*map[uint]uint64)
 		v, changed := fastpathTV.DecMapUintUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uint64)
+		v := rv2i(rv).(map[uint]uint64)
 		fastpathTV.DecMapUintUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25506,43 +24236,33 @@ func (_ fastpathT) DecMapUintUint64V(v map[uint]uint64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25553,13 +24273,13 @@ func (_ fastpathT) DecMapUintUint64V(v map[uint]uint64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uint]uintptr)
 		v, changed := fastpathTV.DecMapUintUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]uintptr)
+		v := rv2i(rv).(map[uint]uintptr)
 		fastpathTV.DecMapUintUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25580,43 +24300,33 @@ func (_ fastpathT) DecMapUintUintptrV(v map[uint]uintptr, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25627,13 +24337,13 @@ func (_ fastpathT) DecMapUintUintptrV(v map[uint]uintptr, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]int)
+		vp := rv2i(rv.Addr()).(*map[uint]int)
 		v, changed := fastpathTV.DecMapUintIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]int)
+		v := rv2i(rv).(map[uint]int)
 		fastpathTV.DecMapUintIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25654,43 +24364,33 @@ func (_ fastpathT) DecMapUintIntV(v map[uint]int, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25701,13 +24401,13 @@ func (_ fastpathT) DecMapUintIntV(v map[uint]int, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapUintInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]int8)
+		vp := rv2i(rv.Addr()).(*map[uint]int8)
 		v, changed := fastpathTV.DecMapUintInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]int8)
+		v := rv2i(rv).(map[uint]int8)
 		fastpathTV.DecMapUintInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25728,43 +24428,33 @@ func (_ fastpathT) DecMapUintInt8V(v map[uint]int8, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25775,13 +24465,13 @@ func (_ fastpathT) DecMapUintInt8V(v map[uint]int8, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapUintInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]int16)
+		vp := rv2i(rv.Addr()).(*map[uint]int16)
 		v, changed := fastpathTV.DecMapUintInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]int16)
+		v := rv2i(rv).(map[uint]int16)
 		fastpathTV.DecMapUintInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25802,43 +24492,33 @@ func (_ fastpathT) DecMapUintInt16V(v map[uint]int16, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25849,13 +24529,13 @@ func (_ fastpathT) DecMapUintInt16V(v map[uint]int16, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUintInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]int32)
+		vp := rv2i(rv.Addr()).(*map[uint]int32)
 		v, changed := fastpathTV.DecMapUintInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]int32)
+		v := rv2i(rv).(map[uint]int32)
 		fastpathTV.DecMapUintInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25876,43 +24556,33 @@ func (_ fastpathT) DecMapUintInt32V(v map[uint]int32, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25923,13 +24593,13 @@ func (_ fastpathT) DecMapUintInt32V(v map[uint]int32, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUintInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]int64)
+		vp := rv2i(rv.Addr()).(*map[uint]int64)
 		v, changed := fastpathTV.DecMapUintInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]int64)
+		v := rv2i(rv).(map[uint]int64)
 		fastpathTV.DecMapUintInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -25950,43 +24620,33 @@ func (_ fastpathT) DecMapUintInt64V(v map[uint]int64, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -25997,13 +24657,13 @@ func (_ fastpathT) DecMapUintInt64V(v map[uint]int64, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUintFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]float32)
+		vp := rv2i(rv.Addr()).(*map[uint]float32)
 		v, changed := fastpathTV.DecMapUintFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]float32)
+		v := rv2i(rv).(map[uint]float32)
 		fastpathTV.DecMapUintFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26024,43 +24684,33 @@ func (_ fastpathT) DecMapUintFloat32V(v map[uint]float32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26071,13 +24721,13 @@ func (_ fastpathT) DecMapUintFloat32V(v map[uint]float32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]float64)
+		vp := rv2i(rv.Addr()).(*map[uint]float64)
 		v, changed := fastpathTV.DecMapUintFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]float64)
+		v := rv2i(rv).(map[uint]float64)
 		fastpathTV.DecMapUintFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26098,43 +24748,33 @@ func (_ fastpathT) DecMapUintFloat64V(v map[uint]float64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26145,13 +24785,13 @@ func (_ fastpathT) DecMapUintFloat64V(v map[uint]float64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint]bool)
+		vp := rv2i(rv.Addr()).(*map[uint]bool)
 		v, changed := fastpathTV.DecMapUintBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint]bool)
+		v := rv2i(rv).(map[uint]bool)
 		fastpathTV.DecMapUintBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26172,43 +24812,33 @@ func (_ fastpathT) DecMapUintBoolV(v map[uint]bool, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26219,13 +24849,13 @@ func (_ fastpathT) DecMapUintBoolV(v map[uint]bool, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapUint8IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]interface{})
+		vp := rv2i(rv.Addr()).(*map[uint8]interface{})
 		v, changed := fastpathTV.DecMapUint8IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]interface{})
+		v := rv2i(rv).(map[uint8]interface{})
 		fastpathTV.DecMapUint8IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26246,53 +24876,38 @@ func (_ fastpathT) DecMapUint8IntfV(v map[uint8]interface{}, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[uint8]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uint8
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26303,13 +24918,13 @@ func (_ fastpathT) DecMapUint8IntfV(v map[uint8]interface{}, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapUint8StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]string)
+		vp := rv2i(rv.Addr()).(*map[uint8]string)
 		v, changed := fastpathTV.DecMapUint8StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]string)
+		v := rv2i(rv).(map[uint8]string)
 		fastpathTV.DecMapUint8StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26330,43 +24945,33 @@ func (_ fastpathT) DecMapUint8StringV(v map[uint8]string, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[uint8]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26377,13 +24982,13 @@ func (_ fastpathT) DecMapUint8StringV(v map[uint8]string, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint8UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uint)
+		vp := rv2i(rv.Addr()).(*map[uint8]uint)
 		v, changed := fastpathTV.DecMapUint8UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uint)
+		v := rv2i(rv).(map[uint8]uint)
 		fastpathTV.DecMapUint8UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26404,43 +25009,33 @@ func (_ fastpathT) DecMapUint8UintV(v map[uint8]uint, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26451,13 +25046,13 @@ func (_ fastpathT) DecMapUint8UintV(v map[uint8]uint, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint8Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uint8)
+		vp := rv2i(rv.Addr()).(*map[uint8]uint8)
 		v, changed := fastpathTV.DecMapUint8Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uint8)
+		v := rv2i(rv).(map[uint8]uint8)
 		fastpathTV.DecMapUint8Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26478,43 +25073,33 @@ func (_ fastpathT) DecMapUint8Uint8V(v map[uint8]uint8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[uint8]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26525,13 +25110,13 @@ func (_ fastpathT) DecMapUint8Uint8V(v map[uint8]uint8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint8Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uint16)
+		vp := rv2i(rv.Addr()).(*map[uint8]uint16)
 		v, changed := fastpathTV.DecMapUint8Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uint16)
+		v := rv2i(rv).(map[uint8]uint16)
 		fastpathTV.DecMapUint8Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26552,43 +25137,33 @@ func (_ fastpathT) DecMapUint8Uint16V(v map[uint8]uint16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[uint8]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26599,13 +25174,13 @@ func (_ fastpathT) DecMapUint8Uint16V(v map[uint8]uint16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint8Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uint32)
+		vp := rv2i(rv.Addr()).(*map[uint8]uint32)
 		v, changed := fastpathTV.DecMapUint8Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uint32)
+		v := rv2i(rv).(map[uint8]uint32)
 		fastpathTV.DecMapUint8Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26626,43 +25201,33 @@ func (_ fastpathT) DecMapUint8Uint32V(v map[uint8]uint32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint8]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26673,13 +25238,13 @@ func (_ fastpathT) DecMapUint8Uint32V(v map[uint8]uint32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint8Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uint64)
+		vp := rv2i(rv.Addr()).(*map[uint8]uint64)
 		v, changed := fastpathTV.DecMapUint8Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uint64)
+		v := rv2i(rv).(map[uint8]uint64)
 		fastpathTV.DecMapUint8Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26700,43 +25265,33 @@ func (_ fastpathT) DecMapUint8Uint64V(v map[uint8]uint64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26747,13 +25302,13 @@ func (_ fastpathT) DecMapUint8Uint64V(v map[uint8]uint64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint8UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uint8]uintptr)
 		v, changed := fastpathTV.DecMapUint8UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]uintptr)
+		v := rv2i(rv).(map[uint8]uintptr)
 		fastpathTV.DecMapUint8UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26774,43 +25329,33 @@ func (_ fastpathT) DecMapUint8UintptrV(v map[uint8]uintptr, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26821,13 +25366,13 @@ func (_ fastpathT) DecMapUint8UintptrV(v map[uint8]uintptr, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint8IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]int)
+		vp := rv2i(rv.Addr()).(*map[uint8]int)
 		v, changed := fastpathTV.DecMapUint8IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]int)
+		v := rv2i(rv).(map[uint8]int)
 		fastpathTV.DecMapUint8IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26848,43 +25393,33 @@ func (_ fastpathT) DecMapUint8IntV(v map[uint8]int, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26895,13 +25430,13 @@ func (_ fastpathT) DecMapUint8IntV(v map[uint8]int, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapUint8Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]int8)
+		vp := rv2i(rv.Addr()).(*map[uint8]int8)
 		v, changed := fastpathTV.DecMapUint8Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]int8)
+		v := rv2i(rv).(map[uint8]int8)
 		fastpathTV.DecMapUint8Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26922,43 +25457,33 @@ func (_ fastpathT) DecMapUint8Int8V(v map[uint8]int8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[uint8]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -26969,13 +25494,13 @@ func (_ fastpathT) DecMapUint8Int8V(v map[uint8]int8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint8Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]int16)
+		vp := rv2i(rv.Addr()).(*map[uint8]int16)
 		v, changed := fastpathTV.DecMapUint8Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]int16)
+		v := rv2i(rv).(map[uint8]int16)
 		fastpathTV.DecMapUint8Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -26996,43 +25521,33 @@ func (_ fastpathT) DecMapUint8Int16V(v map[uint8]int16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[uint8]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27043,13 +25558,13 @@ func (_ fastpathT) DecMapUint8Int16V(v map[uint8]int16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint8Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]int32)
+		vp := rv2i(rv.Addr()).(*map[uint8]int32)
 		v, changed := fastpathTV.DecMapUint8Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]int32)
+		v := rv2i(rv).(map[uint8]int32)
 		fastpathTV.DecMapUint8Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27070,43 +25585,33 @@ func (_ fastpathT) DecMapUint8Int32V(v map[uint8]int32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint8]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27117,13 +25622,13 @@ func (_ fastpathT) DecMapUint8Int32V(v map[uint8]int32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint8Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]int64)
+		vp := rv2i(rv.Addr()).(*map[uint8]int64)
 		v, changed := fastpathTV.DecMapUint8Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]int64)
+		v := rv2i(rv).(map[uint8]int64)
 		fastpathTV.DecMapUint8Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27144,43 +25649,33 @@ func (_ fastpathT) DecMapUint8Int64V(v map[uint8]int64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27191,13 +25686,13 @@ func (_ fastpathT) DecMapUint8Int64V(v map[uint8]int64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint8Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]float32)
+		vp := rv2i(rv.Addr()).(*map[uint8]float32)
 		v, changed := fastpathTV.DecMapUint8Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]float32)
+		v := rv2i(rv).(map[uint8]float32)
 		fastpathTV.DecMapUint8Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27218,43 +25713,33 @@ func (_ fastpathT) DecMapUint8Float32V(v map[uint8]float32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint8]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27265,13 +25750,13 @@ func (_ fastpathT) DecMapUint8Float32V(v map[uint8]float32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint8Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]float64)
+		vp := rv2i(rv.Addr()).(*map[uint8]float64)
 		v, changed := fastpathTV.DecMapUint8Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]float64)
+		v := rv2i(rv).(map[uint8]float64)
 		fastpathTV.DecMapUint8Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27292,43 +25777,33 @@ func (_ fastpathT) DecMapUint8Float64V(v map[uint8]float64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint8]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27339,13 +25814,13 @@ func (_ fastpathT) DecMapUint8Float64V(v map[uint8]float64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint8BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint8]bool)
+		vp := rv2i(rv.Addr()).(*map[uint8]bool)
 		v, changed := fastpathTV.DecMapUint8BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint8]bool)
+		v := rv2i(rv).(map[uint8]bool)
 		fastpathTV.DecMapUint8BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27366,43 +25841,33 @@ func (_ fastpathT) DecMapUint8BoolV(v map[uint8]bool, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[uint8]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint8
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint8(dd.DecodeUint(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint8(dd.DecodeUint(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27413,13 +25878,13 @@ func (_ fastpathT) DecMapUint8BoolV(v map[uint8]bool, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint16IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]interface{})
+		vp := rv2i(rv.Addr()).(*map[uint16]interface{})
 		v, changed := fastpathTV.DecMapUint16IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]interface{})
+		v := rv2i(rv).(map[uint16]interface{})
 		fastpathTV.DecMapUint16IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27440,53 +25905,38 @@ func (_ fastpathT) DecMapUint16IntfV(v map[uint16]interface{}, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[uint16]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uint16
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27497,13 +25947,13 @@ func (_ fastpathT) DecMapUint16IntfV(v map[uint16]interface{}, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapUint16StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]string)
+		vp := rv2i(rv.Addr()).(*map[uint16]string)
 		v, changed := fastpathTV.DecMapUint16StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]string)
+		v := rv2i(rv).(map[uint16]string)
 		fastpathTV.DecMapUint16StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27524,43 +25974,33 @@ func (_ fastpathT) DecMapUint16StringV(v map[uint16]string, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[uint16]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27571,13 +26011,13 @@ func (_ fastpathT) DecMapUint16StringV(v map[uint16]string, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint16UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uint)
+		vp := rv2i(rv.Addr()).(*map[uint16]uint)
 		v, changed := fastpathTV.DecMapUint16UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uint)
+		v := rv2i(rv).(map[uint16]uint)
 		fastpathTV.DecMapUint16UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27598,43 +26038,33 @@ func (_ fastpathT) DecMapUint16UintV(v map[uint16]uint, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27645,13 +26075,13 @@ func (_ fastpathT) DecMapUint16UintV(v map[uint16]uint, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint16Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uint8)
+		vp := rv2i(rv.Addr()).(*map[uint16]uint8)
 		v, changed := fastpathTV.DecMapUint16Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uint8)
+		v := rv2i(rv).(map[uint16]uint8)
 		fastpathTV.DecMapUint16Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27672,43 +26102,33 @@ func (_ fastpathT) DecMapUint16Uint8V(v map[uint16]uint8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[uint16]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27719,13 +26139,13 @@ func (_ fastpathT) DecMapUint16Uint8V(v map[uint16]uint8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint16Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uint16)
+		vp := rv2i(rv.Addr()).(*map[uint16]uint16)
 		v, changed := fastpathTV.DecMapUint16Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uint16)
+		v := rv2i(rv).(map[uint16]uint16)
 		fastpathTV.DecMapUint16Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27746,43 +26166,33 @@ func (_ fastpathT) DecMapUint16Uint16V(v map[uint16]uint16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 4)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 4)
 		v = make(map[uint16]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27793,13 +26203,13 @@ func (_ fastpathT) DecMapUint16Uint16V(v map[uint16]uint16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint16Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uint32)
+		vp := rv2i(rv.Addr()).(*map[uint16]uint32)
 		v, changed := fastpathTV.DecMapUint16Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uint32)
+		v := rv2i(rv).(map[uint16]uint32)
 		fastpathTV.DecMapUint16Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27820,43 +26230,33 @@ func (_ fastpathT) DecMapUint16Uint32V(v map[uint16]uint32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[uint16]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27867,13 +26267,13 @@ func (_ fastpathT) DecMapUint16Uint32V(v map[uint16]uint32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint16Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uint64)
+		vp := rv2i(rv.Addr()).(*map[uint16]uint64)
 		v, changed := fastpathTV.DecMapUint16Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uint64)
+		v := rv2i(rv).(map[uint16]uint64)
 		fastpathTV.DecMapUint16Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27894,43 +26294,33 @@ func (_ fastpathT) DecMapUint16Uint64V(v map[uint16]uint64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -27941,13 +26331,13 @@ func (_ fastpathT) DecMapUint16Uint64V(v map[uint16]uint64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint16UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uint16]uintptr)
 		v, changed := fastpathTV.DecMapUint16UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]uintptr)
+		v := rv2i(rv).(map[uint16]uintptr)
 		fastpathTV.DecMapUint16UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -27968,43 +26358,33 @@ func (_ fastpathT) DecMapUint16UintptrV(v map[uint16]uintptr, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28015,13 +26395,13 @@ func (_ fastpathT) DecMapUint16UintptrV(v map[uint16]uintptr, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint16IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]int)
+		vp := rv2i(rv.Addr()).(*map[uint16]int)
 		v, changed := fastpathTV.DecMapUint16IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]int)
+		v := rv2i(rv).(map[uint16]int)
 		fastpathTV.DecMapUint16IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28042,43 +26422,33 @@ func (_ fastpathT) DecMapUint16IntV(v map[uint16]int, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28089,13 +26459,13 @@ func (_ fastpathT) DecMapUint16IntV(v map[uint16]int, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint16Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]int8)
+		vp := rv2i(rv.Addr()).(*map[uint16]int8)
 		v, changed := fastpathTV.DecMapUint16Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]int8)
+		v := rv2i(rv).(map[uint16]int8)
 		fastpathTV.DecMapUint16Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28116,43 +26486,33 @@ func (_ fastpathT) DecMapUint16Int8V(v map[uint16]int8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[uint16]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28163,13 +26523,13 @@ func (_ fastpathT) DecMapUint16Int8V(v map[uint16]int8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint16Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]int16)
+		vp := rv2i(rv.Addr()).(*map[uint16]int16)
 		v, changed := fastpathTV.DecMapUint16Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]int16)
+		v := rv2i(rv).(map[uint16]int16)
 		fastpathTV.DecMapUint16Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28190,43 +26550,33 @@ func (_ fastpathT) DecMapUint16Int16V(v map[uint16]int16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 4)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 4)
 		v = make(map[uint16]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28237,13 +26587,13 @@ func (_ fastpathT) DecMapUint16Int16V(v map[uint16]int16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint16Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]int32)
+		vp := rv2i(rv.Addr()).(*map[uint16]int32)
 		v, changed := fastpathTV.DecMapUint16Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]int32)
+		v := rv2i(rv).(map[uint16]int32)
 		fastpathTV.DecMapUint16Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28264,43 +26614,33 @@ func (_ fastpathT) DecMapUint16Int32V(v map[uint16]int32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[uint16]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28311,13 +26651,13 @@ func (_ fastpathT) DecMapUint16Int32V(v map[uint16]int32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint16Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]int64)
+		vp := rv2i(rv.Addr()).(*map[uint16]int64)
 		v, changed := fastpathTV.DecMapUint16Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]int64)
+		v := rv2i(rv).(map[uint16]int64)
 		fastpathTV.DecMapUint16Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28338,43 +26678,33 @@ func (_ fastpathT) DecMapUint16Int64V(v map[uint16]int64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28385,13 +26715,13 @@ func (_ fastpathT) DecMapUint16Int64V(v map[uint16]int64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint16Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]float32)
+		vp := rv2i(rv.Addr()).(*map[uint16]float32)
 		v, changed := fastpathTV.DecMapUint16Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]float32)
+		v := rv2i(rv).(map[uint16]float32)
 		fastpathTV.DecMapUint16Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28412,43 +26742,33 @@ func (_ fastpathT) DecMapUint16Float32V(v map[uint16]float32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[uint16]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28459,13 +26779,13 @@ func (_ fastpathT) DecMapUint16Float32V(v map[uint16]float32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint16Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]float64)
+		vp := rv2i(rv.Addr()).(*map[uint16]float64)
 		v, changed := fastpathTV.DecMapUint16Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]float64)
+		v := rv2i(rv).(map[uint16]float64)
 		fastpathTV.DecMapUint16Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28486,43 +26806,33 @@ func (_ fastpathT) DecMapUint16Float64V(v map[uint16]float64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint16]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28533,13 +26843,13 @@ func (_ fastpathT) DecMapUint16Float64V(v map[uint16]float64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint16BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint16]bool)
+		vp := rv2i(rv.Addr()).(*map[uint16]bool)
 		v, changed := fastpathTV.DecMapUint16BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint16]bool)
+		v := rv2i(rv).(map[uint16]bool)
 		fastpathTV.DecMapUint16BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28560,43 +26870,33 @@ func (_ fastpathT) DecMapUint16BoolV(v map[uint16]bool, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[uint16]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint16
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint16(dd.DecodeUint(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint16(dd.DecodeUint(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28607,13 +26907,13 @@ func (_ fastpathT) DecMapUint16BoolV(v map[uint16]bool, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint32IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]interface{})
+		vp := rv2i(rv.Addr()).(*map[uint32]interface{})
 		v, changed := fastpathTV.DecMapUint32IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]interface{})
+		v := rv2i(rv).(map[uint32]interface{})
 		fastpathTV.DecMapUint32IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28634,53 +26934,38 @@ func (_ fastpathT) DecMapUint32IntfV(v map[uint32]interface{}, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[uint32]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uint32
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28691,13 +26976,13 @@ func (_ fastpathT) DecMapUint32IntfV(v map[uint32]interface{}, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapUint32StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]string)
+		vp := rv2i(rv.Addr()).(*map[uint32]string)
 		v, changed := fastpathTV.DecMapUint32StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]string)
+		v := rv2i(rv).(map[uint32]string)
 		fastpathTV.DecMapUint32StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28718,43 +27003,33 @@ func (_ fastpathT) DecMapUint32StringV(v map[uint32]string, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[uint32]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28765,13 +27040,13 @@ func (_ fastpathT) DecMapUint32StringV(v map[uint32]string, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint32UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uint)
+		vp := rv2i(rv.Addr()).(*map[uint32]uint)
 		v, changed := fastpathTV.DecMapUint32UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uint)
+		v := rv2i(rv).(map[uint32]uint)
 		fastpathTV.DecMapUint32UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28792,43 +27067,33 @@ func (_ fastpathT) DecMapUint32UintV(v map[uint32]uint, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28839,13 +27104,13 @@ func (_ fastpathT) DecMapUint32UintV(v map[uint32]uint, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint32Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uint8)
+		vp := rv2i(rv.Addr()).(*map[uint32]uint8)
 		v, changed := fastpathTV.DecMapUint32Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uint8)
+		v := rv2i(rv).(map[uint32]uint8)
 		fastpathTV.DecMapUint32Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28866,43 +27131,33 @@ func (_ fastpathT) DecMapUint32Uint8V(v map[uint32]uint8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint32]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28913,13 +27168,13 @@ func (_ fastpathT) DecMapUint32Uint8V(v map[uint32]uint8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint32Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uint16)
+		vp := rv2i(rv.Addr()).(*map[uint32]uint16)
 		v, changed := fastpathTV.DecMapUint32Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uint16)
+		v := rv2i(rv).(map[uint32]uint16)
 		fastpathTV.DecMapUint32Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -28940,43 +27195,33 @@ func (_ fastpathT) DecMapUint32Uint16V(v map[uint32]uint16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[uint32]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -28987,13 +27232,13 @@ func (_ fastpathT) DecMapUint32Uint16V(v map[uint32]uint16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint32Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uint32)
+		vp := rv2i(rv.Addr()).(*map[uint32]uint32)
 		v, changed := fastpathTV.DecMapUint32Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uint32)
+		v := rv2i(rv).(map[uint32]uint32)
 		fastpathTV.DecMapUint32Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29014,43 +27259,33 @@ func (_ fastpathT) DecMapUint32Uint32V(v map[uint32]uint32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[uint32]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29061,13 +27296,13 @@ func (_ fastpathT) DecMapUint32Uint32V(v map[uint32]uint32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint32Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uint64)
+		vp := rv2i(rv.Addr()).(*map[uint32]uint64)
 		v, changed := fastpathTV.DecMapUint32Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uint64)
+		v := rv2i(rv).(map[uint32]uint64)
 		fastpathTV.DecMapUint32Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29088,43 +27323,33 @@ func (_ fastpathT) DecMapUint32Uint64V(v map[uint32]uint64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29135,13 +27360,13 @@ func (_ fastpathT) DecMapUint32Uint64V(v map[uint32]uint64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint32UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uint32]uintptr)
 		v, changed := fastpathTV.DecMapUint32UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]uintptr)
+		v := rv2i(rv).(map[uint32]uintptr)
 		fastpathTV.DecMapUint32UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29162,43 +27387,33 @@ func (_ fastpathT) DecMapUint32UintptrV(v map[uint32]uintptr, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29209,13 +27424,13 @@ func (_ fastpathT) DecMapUint32UintptrV(v map[uint32]uintptr, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint32IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]int)
+		vp := rv2i(rv.Addr()).(*map[uint32]int)
 		v, changed := fastpathTV.DecMapUint32IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]int)
+		v := rv2i(rv).(map[uint32]int)
 		fastpathTV.DecMapUint32IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29236,43 +27451,33 @@ func (_ fastpathT) DecMapUint32IntV(v map[uint32]int, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29283,13 +27488,13 @@ func (_ fastpathT) DecMapUint32IntV(v map[uint32]int, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint32Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]int8)
+		vp := rv2i(rv.Addr()).(*map[uint32]int8)
 		v, changed := fastpathTV.DecMapUint32Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]int8)
+		v := rv2i(rv).(map[uint32]int8)
 		fastpathTV.DecMapUint32Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29310,43 +27515,33 @@ func (_ fastpathT) DecMapUint32Int8V(v map[uint32]int8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint32]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29357,13 +27552,13 @@ func (_ fastpathT) DecMapUint32Int8V(v map[uint32]int8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint32Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]int16)
+		vp := rv2i(rv.Addr()).(*map[uint32]int16)
 		v, changed := fastpathTV.DecMapUint32Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]int16)
+		v := rv2i(rv).(map[uint32]int16)
 		fastpathTV.DecMapUint32Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29384,43 +27579,33 @@ func (_ fastpathT) DecMapUint32Int16V(v map[uint32]int16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[uint32]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29431,13 +27616,13 @@ func (_ fastpathT) DecMapUint32Int16V(v map[uint32]int16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint32Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]int32)
+		vp := rv2i(rv.Addr()).(*map[uint32]int32)
 		v, changed := fastpathTV.DecMapUint32Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]int32)
+		v := rv2i(rv).(map[uint32]int32)
 		fastpathTV.DecMapUint32Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29458,43 +27643,33 @@ func (_ fastpathT) DecMapUint32Int32V(v map[uint32]int32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[uint32]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29505,13 +27680,13 @@ func (_ fastpathT) DecMapUint32Int32V(v map[uint32]int32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint32Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]int64)
+		vp := rv2i(rv.Addr()).(*map[uint32]int64)
 		v, changed := fastpathTV.DecMapUint32Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]int64)
+		v := rv2i(rv).(map[uint32]int64)
 		fastpathTV.DecMapUint32Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29532,43 +27707,33 @@ func (_ fastpathT) DecMapUint32Int64V(v map[uint32]int64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29579,13 +27744,13 @@ func (_ fastpathT) DecMapUint32Int64V(v map[uint32]int64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint32Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]float32)
+		vp := rv2i(rv.Addr()).(*map[uint32]float32)
 		v, changed := fastpathTV.DecMapUint32Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]float32)
+		v := rv2i(rv).(map[uint32]float32)
 		fastpathTV.DecMapUint32Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29606,43 +27771,33 @@ func (_ fastpathT) DecMapUint32Float32V(v map[uint32]float32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[uint32]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29653,13 +27808,13 @@ func (_ fastpathT) DecMapUint32Float32V(v map[uint32]float32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint32Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]float64)
+		vp := rv2i(rv.Addr()).(*map[uint32]float64)
 		v, changed := fastpathTV.DecMapUint32Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]float64)
+		v := rv2i(rv).(map[uint32]float64)
 		fastpathTV.DecMapUint32Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29680,43 +27835,33 @@ func (_ fastpathT) DecMapUint32Float64V(v map[uint32]float64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint32]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29727,13 +27872,13 @@ func (_ fastpathT) DecMapUint32Float64V(v map[uint32]float64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint32BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint32]bool)
+		vp := rv2i(rv.Addr()).(*map[uint32]bool)
 		v, changed := fastpathTV.DecMapUint32BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint32]bool)
+		v := rv2i(rv).(map[uint32]bool)
 		fastpathTV.DecMapUint32BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29754,43 +27899,33 @@ func (_ fastpathT) DecMapUint32BoolV(v map[uint32]bool, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[uint32]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint32
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uint32(dd.DecodeUint(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uint32(dd.DecodeUint(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29801,13 +27936,13 @@ func (_ fastpathT) DecMapUint32BoolV(v map[uint32]bool, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint64IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]interface{})
+		vp := rv2i(rv.Addr()).(*map[uint64]interface{})
 		v, changed := fastpathTV.DecMapUint64IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]interface{})
+		v := rv2i(rv).(map[uint64]interface{})
 		fastpathTV.DecMapUint64IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29828,53 +27963,38 @@ func (_ fastpathT) DecMapUint64IntfV(v map[uint64]interface{}, checkNil bool, ca
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uint64]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uint64
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29885,13 +28005,13 @@ func (_ fastpathT) DecMapUint64IntfV(v map[uint64]interface{}, checkNil bool, ca
 
 func (f *decFnInfo) fastpathDecMapUint64StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]string)
+		vp := rv2i(rv.Addr()).(*map[uint64]string)
 		v, changed := fastpathTV.DecMapUint64StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]string)
+		v := rv2i(rv).(map[uint64]string)
 		fastpathTV.DecMapUint64StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29912,43 +28032,33 @@ func (_ fastpathT) DecMapUint64StringV(v map[uint64]string, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uint64]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -29959,13 +28069,13 @@ func (_ fastpathT) DecMapUint64StringV(v map[uint64]string, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint64UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uint)
+		vp := rv2i(rv.Addr()).(*map[uint64]uint)
 		v, changed := fastpathTV.DecMapUint64UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uint)
+		v := rv2i(rv).(map[uint64]uint)
 		fastpathTV.DecMapUint64UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -29986,43 +28096,33 @@ func (_ fastpathT) DecMapUint64UintV(v map[uint64]uint, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30033,13 +28133,13 @@ func (_ fastpathT) DecMapUint64UintV(v map[uint64]uint, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint64Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uint8)
+		vp := rv2i(rv.Addr()).(*map[uint64]uint8)
 		v, changed := fastpathTV.DecMapUint64Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uint8)
+		v := rv2i(rv).(map[uint64]uint8)
 		fastpathTV.DecMapUint64Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30060,43 +28160,33 @@ func (_ fastpathT) DecMapUint64Uint8V(v map[uint64]uint8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint64]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30107,13 +28197,13 @@ func (_ fastpathT) DecMapUint64Uint8V(v map[uint64]uint8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint64Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uint16)
+		vp := rv2i(rv.Addr()).(*map[uint64]uint16)
 		v, changed := fastpathTV.DecMapUint64Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uint16)
+		v := rv2i(rv).(map[uint64]uint16)
 		fastpathTV.DecMapUint64Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30134,43 +28224,33 @@ func (_ fastpathT) DecMapUint64Uint16V(v map[uint64]uint16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint64]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30181,13 +28261,13 @@ func (_ fastpathT) DecMapUint64Uint16V(v map[uint64]uint16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint64Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uint32)
+		vp := rv2i(rv.Addr()).(*map[uint64]uint32)
 		v, changed := fastpathTV.DecMapUint64Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uint32)
+		v := rv2i(rv).(map[uint64]uint32)
 		fastpathTV.DecMapUint64Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30208,43 +28288,33 @@ func (_ fastpathT) DecMapUint64Uint32V(v map[uint64]uint32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint64]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30255,13 +28325,13 @@ func (_ fastpathT) DecMapUint64Uint32V(v map[uint64]uint32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint64Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uint64)
+		vp := rv2i(rv.Addr()).(*map[uint64]uint64)
 		v, changed := fastpathTV.DecMapUint64Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uint64)
+		v := rv2i(rv).(map[uint64]uint64)
 		fastpathTV.DecMapUint64Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30282,43 +28352,33 @@ func (_ fastpathT) DecMapUint64Uint64V(v map[uint64]uint64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30329,13 +28389,13 @@ func (_ fastpathT) DecMapUint64Uint64V(v map[uint64]uint64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUint64UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uint64]uintptr)
 		v, changed := fastpathTV.DecMapUint64UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]uintptr)
+		v := rv2i(rv).(map[uint64]uintptr)
 		fastpathTV.DecMapUint64UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30356,43 +28416,33 @@ func (_ fastpathT) DecMapUint64UintptrV(v map[uint64]uintptr, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30403,13 +28453,13 @@ func (_ fastpathT) DecMapUint64UintptrV(v map[uint64]uintptr, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint64IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]int)
+		vp := rv2i(rv.Addr()).(*map[uint64]int)
 		v, changed := fastpathTV.DecMapUint64IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]int)
+		v := rv2i(rv).(map[uint64]int)
 		fastpathTV.DecMapUint64IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30430,43 +28480,33 @@ func (_ fastpathT) DecMapUint64IntV(v map[uint64]int, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30477,13 +28517,13 @@ func (_ fastpathT) DecMapUint64IntV(v map[uint64]int, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapUint64Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]int8)
+		vp := rv2i(rv.Addr()).(*map[uint64]int8)
 		v, changed := fastpathTV.DecMapUint64Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]int8)
+		v := rv2i(rv).(map[uint64]int8)
 		fastpathTV.DecMapUint64Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30504,43 +28544,33 @@ func (_ fastpathT) DecMapUint64Int8V(v map[uint64]int8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint64]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30551,13 +28581,13 @@ func (_ fastpathT) DecMapUint64Int8V(v map[uint64]int8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUint64Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]int16)
+		vp := rv2i(rv.Addr()).(*map[uint64]int16)
 		v, changed := fastpathTV.DecMapUint64Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]int16)
+		v := rv2i(rv).(map[uint64]int16)
 		fastpathTV.DecMapUint64Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30578,43 +28608,33 @@ func (_ fastpathT) DecMapUint64Int16V(v map[uint64]int16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uint64]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30625,13 +28645,13 @@ func (_ fastpathT) DecMapUint64Int16V(v map[uint64]int16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint64Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]int32)
+		vp := rv2i(rv.Addr()).(*map[uint64]int32)
 		v, changed := fastpathTV.DecMapUint64Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]int32)
+		v := rv2i(rv).(map[uint64]int32)
 		fastpathTV.DecMapUint64Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30652,43 +28672,33 @@ func (_ fastpathT) DecMapUint64Int32V(v map[uint64]int32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint64]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30699,13 +28709,13 @@ func (_ fastpathT) DecMapUint64Int32V(v map[uint64]int32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint64Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]int64)
+		vp := rv2i(rv.Addr()).(*map[uint64]int64)
 		v, changed := fastpathTV.DecMapUint64Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]int64)
+		v := rv2i(rv).(map[uint64]int64)
 		fastpathTV.DecMapUint64Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30726,43 +28736,33 @@ func (_ fastpathT) DecMapUint64Int64V(v map[uint64]int64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30773,13 +28773,13 @@ func (_ fastpathT) DecMapUint64Int64V(v map[uint64]int64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUint64Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]float32)
+		vp := rv2i(rv.Addr()).(*map[uint64]float32)
 		v, changed := fastpathTV.DecMapUint64Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]float32)
+		v := rv2i(rv).(map[uint64]float32)
 		fastpathTV.DecMapUint64Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30800,43 +28800,33 @@ func (_ fastpathT) DecMapUint64Float32V(v map[uint64]float32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uint64]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30847,13 +28837,13 @@ func (_ fastpathT) DecMapUint64Float32V(v map[uint64]float32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint64Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]float64)
+		vp := rv2i(rv.Addr()).(*map[uint64]float64)
 		v, changed := fastpathTV.DecMapUint64Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]float64)
+		v := rv2i(rv).(map[uint64]float64)
 		fastpathTV.DecMapUint64Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30874,43 +28864,33 @@ func (_ fastpathT) DecMapUint64Float64V(v map[uint64]float64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uint64]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30921,13 +28901,13 @@ func (_ fastpathT) DecMapUint64Float64V(v map[uint64]float64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUint64BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uint64]bool)
+		vp := rv2i(rv.Addr()).(*map[uint64]bool)
 		v, changed := fastpathTV.DecMapUint64BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uint64]bool)
+		v := rv2i(rv).(map[uint64]bool)
 		fastpathTV.DecMapUint64BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -30948,43 +28928,33 @@ func (_ fastpathT) DecMapUint64BoolV(v map[uint64]bool, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uint64]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uint64
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeUint(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeUint(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -30995,13 +28965,13 @@ func (_ fastpathT) DecMapUint64BoolV(v map[uint64]bool, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintptrIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]interface{})
+		vp := rv2i(rv.Addr()).(*map[uintptr]interface{})
 		v, changed := fastpathTV.DecMapUintptrIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]interface{})
+		v := rv2i(rv).(map[uintptr]interface{})
 		fastpathTV.DecMapUintptrIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31022,53 +28992,38 @@ func (_ fastpathT) DecMapUintptrIntfV(v map[uintptr]interface{}, checkNil bool, 
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uintptr]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk uintptr
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31079,13 +29034,13 @@ func (_ fastpathT) DecMapUintptrIntfV(v map[uintptr]interface{}, checkNil bool, 
 
 func (f *decFnInfo) fastpathDecMapUintptrStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]string)
+		vp := rv2i(rv.Addr()).(*map[uintptr]string)
 		v, changed := fastpathTV.DecMapUintptrStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]string)
+		v := rv2i(rv).(map[uintptr]string)
 		fastpathTV.DecMapUintptrStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31106,43 +29061,33 @@ func (_ fastpathT) DecMapUintptrStringV(v map[uintptr]string, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[uintptr]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31153,13 +29098,13 @@ func (_ fastpathT) DecMapUintptrStringV(v map[uintptr]string, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUintptrUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uint)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uint)
 		v, changed := fastpathTV.DecMapUintptrUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uint)
+		v := rv2i(rv).(map[uintptr]uint)
 		fastpathTV.DecMapUintptrUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31180,43 +29125,33 @@ func (_ fastpathT) DecMapUintptrUintV(v map[uintptr]uint, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31227,13 +29162,13 @@ func (_ fastpathT) DecMapUintptrUintV(v map[uintptr]uint, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintptrUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uint8)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uint8)
 		v, changed := fastpathTV.DecMapUintptrUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uint8)
+		v := rv2i(rv).(map[uintptr]uint8)
 		fastpathTV.DecMapUintptrUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31254,43 +29189,33 @@ func (_ fastpathT) DecMapUintptrUint8V(v map[uintptr]uint8, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uintptr]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31301,13 +29226,13 @@ func (_ fastpathT) DecMapUintptrUint8V(v map[uintptr]uint8, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUintptrUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uint16)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uint16)
 		v, changed := fastpathTV.DecMapUintptrUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uint16)
+		v := rv2i(rv).(map[uintptr]uint16)
 		fastpathTV.DecMapUintptrUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31328,43 +29253,33 @@ func (_ fastpathT) DecMapUintptrUint16V(v map[uintptr]uint16, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uintptr]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31375,13 +29290,13 @@ func (_ fastpathT) DecMapUintptrUint16V(v map[uintptr]uint16, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUintptrUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uint32)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uint32)
 		v, changed := fastpathTV.DecMapUintptrUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uint32)
+		v := rv2i(rv).(map[uintptr]uint32)
 		fastpathTV.DecMapUintptrUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31402,43 +29317,33 @@ func (_ fastpathT) DecMapUintptrUint32V(v map[uintptr]uint32, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uintptr]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31449,13 +29354,13 @@ func (_ fastpathT) DecMapUintptrUint32V(v map[uintptr]uint32, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUintptrUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uint64)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uint64)
 		v, changed := fastpathTV.DecMapUintptrUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uint64)
+		v := rv2i(rv).(map[uintptr]uint64)
 		fastpathTV.DecMapUintptrUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31476,43 +29381,33 @@ func (_ fastpathT) DecMapUintptrUint64V(v map[uintptr]uint64, checkNil bool, can
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31523,13 +29418,13 @@ func (_ fastpathT) DecMapUintptrUint64V(v map[uintptr]uint64, checkNil bool, can
 
 func (f *decFnInfo) fastpathDecMapUintptrUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]uintptr)
+		vp := rv2i(rv.Addr()).(*map[uintptr]uintptr)
 		v, changed := fastpathTV.DecMapUintptrUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]uintptr)
+		v := rv2i(rv).(map[uintptr]uintptr)
 		fastpathTV.DecMapUintptrUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31550,43 +29445,33 @@ func (_ fastpathT) DecMapUintptrUintptrV(v map[uintptr]uintptr, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31597,13 +29482,13 @@ func (_ fastpathT) DecMapUintptrUintptrV(v map[uintptr]uintptr, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapUintptrIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]int)
+		vp := rv2i(rv.Addr()).(*map[uintptr]int)
 		v, changed := fastpathTV.DecMapUintptrIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]int)
+		v := rv2i(rv).(map[uintptr]int)
 		fastpathTV.DecMapUintptrIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31624,43 +29509,33 @@ func (_ fastpathT) DecMapUintptrIntV(v map[uintptr]int, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31671,13 +29546,13 @@ func (_ fastpathT) DecMapUintptrIntV(v map[uintptr]int, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapUintptrInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]int8)
+		vp := rv2i(rv.Addr()).(*map[uintptr]int8)
 		v, changed := fastpathTV.DecMapUintptrInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]int8)
+		v := rv2i(rv).(map[uintptr]int8)
 		fastpathTV.DecMapUintptrInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31698,43 +29573,33 @@ func (_ fastpathT) DecMapUintptrInt8V(v map[uintptr]int8, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uintptr]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31745,13 +29610,13 @@ func (_ fastpathT) DecMapUintptrInt8V(v map[uintptr]int8, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapUintptrInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]int16)
+		vp := rv2i(rv.Addr()).(*map[uintptr]int16)
 		v, changed := fastpathTV.DecMapUintptrInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]int16)
+		v := rv2i(rv).(map[uintptr]int16)
 		fastpathTV.DecMapUintptrInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31772,43 +29637,33 @@ func (_ fastpathT) DecMapUintptrInt16V(v map[uintptr]int16, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[uintptr]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31819,13 +29674,13 @@ func (_ fastpathT) DecMapUintptrInt16V(v map[uintptr]int16, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUintptrInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]int32)
+		vp := rv2i(rv.Addr()).(*map[uintptr]int32)
 		v, changed := fastpathTV.DecMapUintptrInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]int32)
+		v := rv2i(rv).(map[uintptr]int32)
 		fastpathTV.DecMapUintptrInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31846,43 +29701,33 @@ func (_ fastpathT) DecMapUintptrInt32V(v map[uintptr]int32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uintptr]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31893,13 +29738,13 @@ func (_ fastpathT) DecMapUintptrInt32V(v map[uintptr]int32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUintptrInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]int64)
+		vp := rv2i(rv.Addr()).(*map[uintptr]int64)
 		v, changed := fastpathTV.DecMapUintptrInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]int64)
+		v := rv2i(rv).(map[uintptr]int64)
 		fastpathTV.DecMapUintptrInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31920,43 +29765,33 @@ func (_ fastpathT) DecMapUintptrInt64V(v map[uintptr]int64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -31967,13 +29802,13 @@ func (_ fastpathT) DecMapUintptrInt64V(v map[uintptr]int64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapUintptrFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]float32)
+		vp := rv2i(rv.Addr()).(*map[uintptr]float32)
 		v, changed := fastpathTV.DecMapUintptrFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]float32)
+		v := rv2i(rv).(map[uintptr]float32)
 		fastpathTV.DecMapUintptrFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -31994,43 +29829,33 @@ func (_ fastpathT) DecMapUintptrFloat32V(v map[uintptr]float32, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[uintptr]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32041,13 +29866,13 @@ func (_ fastpathT) DecMapUintptrFloat32V(v map[uintptr]float32, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapUintptrFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]float64)
+		vp := rv2i(rv.Addr()).(*map[uintptr]float64)
 		v, changed := fastpathTV.DecMapUintptrFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]float64)
+		v := rv2i(rv).(map[uintptr]float64)
 		fastpathTV.DecMapUintptrFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32068,43 +29893,33 @@ func (_ fastpathT) DecMapUintptrFloat64V(v map[uintptr]float64, checkNil bool, c
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[uintptr]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32115,13 +29930,13 @@ func (_ fastpathT) DecMapUintptrFloat64V(v map[uintptr]float64, checkNil bool, c
 
 func (f *decFnInfo) fastpathDecMapUintptrBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[uintptr]bool)
+		vp := rv2i(rv.Addr()).(*map[uintptr]bool)
 		v, changed := fastpathTV.DecMapUintptrBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[uintptr]bool)
+		v := rv2i(rv).(map[uintptr]bool)
 		fastpathTV.DecMapUintptrBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32142,43 +29957,33 @@ func (_ fastpathT) DecMapUintptrBoolV(v map[uintptr]bool, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[uintptr]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk uintptr
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = uintptr(dd.DecodeUint(uintBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = uintptr(dd.DecodeUint(uintBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32189,13 +29994,13 @@ func (_ fastpathT) DecMapUintptrBoolV(v map[uintptr]bool, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapIntIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]interface{})
+		vp := rv2i(rv.Addr()).(*map[int]interface{})
 		v, changed := fastpathTV.DecMapIntIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]interface{})
+		v := rv2i(rv).(map[int]interface{})
 		fastpathTV.DecMapIntIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32216,53 +30021,38 @@ func (_ fastpathT) DecMapIntIntfV(v map[int]interface{}, checkNil bool, canChang
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[int]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk int
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32273,13 +30063,13 @@ func (_ fastpathT) DecMapIntIntfV(v map[int]interface{}, checkNil bool, canChang
 
 func (f *decFnInfo) fastpathDecMapIntStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]string)
+		vp := rv2i(rv.Addr()).(*map[int]string)
 		v, changed := fastpathTV.DecMapIntStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]string)
+		v := rv2i(rv).(map[int]string)
 		fastpathTV.DecMapIntStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32300,43 +30090,33 @@ func (_ fastpathT) DecMapIntStringV(v map[int]string, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[int]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32347,13 +30127,13 @@ func (_ fastpathT) DecMapIntStringV(v map[int]string, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapIntUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uint)
+		vp := rv2i(rv.Addr()).(*map[int]uint)
 		v, changed := fastpathTV.DecMapIntUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uint)
+		v := rv2i(rv).(map[int]uint)
 		fastpathTV.DecMapIntUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32374,43 +30154,33 @@ func (_ fastpathT) DecMapIntUintV(v map[int]uint, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32421,13 +30191,13 @@ func (_ fastpathT) DecMapIntUintV(v map[int]uint, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapIntUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uint8)
+		vp := rv2i(rv.Addr()).(*map[int]uint8)
 		v, changed := fastpathTV.DecMapIntUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uint8)
+		v := rv2i(rv).(map[int]uint8)
 		fastpathTV.DecMapIntUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32448,43 +30218,33 @@ func (_ fastpathT) DecMapIntUint8V(v map[int]uint8, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32495,13 +30255,13 @@ func (_ fastpathT) DecMapIntUint8V(v map[int]uint8, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapIntUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uint16)
+		vp := rv2i(rv.Addr()).(*map[int]uint16)
 		v, changed := fastpathTV.DecMapIntUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uint16)
+		v := rv2i(rv).(map[int]uint16)
 		fastpathTV.DecMapIntUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32522,43 +30282,33 @@ func (_ fastpathT) DecMapIntUint16V(v map[int]uint16, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32569,13 +30319,13 @@ func (_ fastpathT) DecMapIntUint16V(v map[int]uint16, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapIntUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uint32)
+		vp := rv2i(rv.Addr()).(*map[int]uint32)
 		v, changed := fastpathTV.DecMapIntUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uint32)
+		v := rv2i(rv).(map[int]uint32)
 		fastpathTV.DecMapIntUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32596,43 +30346,33 @@ func (_ fastpathT) DecMapIntUint32V(v map[int]uint32, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32643,13 +30383,13 @@ func (_ fastpathT) DecMapIntUint32V(v map[int]uint32, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapIntUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uint64)
+		vp := rv2i(rv.Addr()).(*map[int]uint64)
 		v, changed := fastpathTV.DecMapIntUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uint64)
+		v := rv2i(rv).(map[int]uint64)
 		fastpathTV.DecMapIntUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32670,43 +30410,33 @@ func (_ fastpathT) DecMapIntUint64V(v map[int]uint64, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32717,13 +30447,13 @@ func (_ fastpathT) DecMapIntUint64V(v map[int]uint64, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapIntUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]uintptr)
+		vp := rv2i(rv.Addr()).(*map[int]uintptr)
 		v, changed := fastpathTV.DecMapIntUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]uintptr)
+		v := rv2i(rv).(map[int]uintptr)
 		fastpathTV.DecMapIntUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32744,43 +30474,33 @@ func (_ fastpathT) DecMapIntUintptrV(v map[int]uintptr, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32791,13 +30511,13 @@ func (_ fastpathT) DecMapIntUintptrV(v map[int]uintptr, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapIntIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]int)
+		vp := rv2i(rv.Addr()).(*map[int]int)
 		v, changed := fastpathTV.DecMapIntIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]int)
+		v := rv2i(rv).(map[int]int)
 		fastpathTV.DecMapIntIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32818,43 +30538,33 @@ func (_ fastpathT) DecMapIntIntV(v map[int]int, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32865,13 +30575,13 @@ func (_ fastpathT) DecMapIntIntV(v map[int]int, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapIntInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]int8)
+		vp := rv2i(rv.Addr()).(*map[int]int8)
 		v, changed := fastpathTV.DecMapIntInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]int8)
+		v := rv2i(rv).(map[int]int8)
 		fastpathTV.DecMapIntInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32892,43 +30602,33 @@ func (_ fastpathT) DecMapIntInt8V(v map[int]int8, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -32939,13 +30639,13 @@ func (_ fastpathT) DecMapIntInt8V(v map[int]int8, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapIntInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]int16)
+		vp := rv2i(rv.Addr()).(*map[int]int16)
 		v, changed := fastpathTV.DecMapIntInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]int16)
+		v := rv2i(rv).(map[int]int16)
 		fastpathTV.DecMapIntInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -32966,43 +30666,33 @@ func (_ fastpathT) DecMapIntInt16V(v map[int]int16, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33013,13 +30703,13 @@ func (_ fastpathT) DecMapIntInt16V(v map[int]int16, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapIntInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]int32)
+		vp := rv2i(rv.Addr()).(*map[int]int32)
 		v, changed := fastpathTV.DecMapIntInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]int32)
+		v := rv2i(rv).(map[int]int32)
 		fastpathTV.DecMapIntInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33040,43 +30730,33 @@ func (_ fastpathT) DecMapIntInt32V(v map[int]int32, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33087,13 +30767,13 @@ func (_ fastpathT) DecMapIntInt32V(v map[int]int32, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapIntInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]int64)
+		vp := rv2i(rv.Addr()).(*map[int]int64)
 		v, changed := fastpathTV.DecMapIntInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]int64)
+		v := rv2i(rv).(map[int]int64)
 		fastpathTV.DecMapIntInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33114,43 +30794,33 @@ func (_ fastpathT) DecMapIntInt64V(v map[int]int64, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33161,13 +30831,13 @@ func (_ fastpathT) DecMapIntInt64V(v map[int]int64, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapIntFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]float32)
+		vp := rv2i(rv.Addr()).(*map[int]float32)
 		v, changed := fastpathTV.DecMapIntFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]float32)
+		v := rv2i(rv).(map[int]float32)
 		fastpathTV.DecMapIntFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33188,43 +30858,33 @@ func (_ fastpathT) DecMapIntFloat32V(v map[int]float32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33235,13 +30895,13 @@ func (_ fastpathT) DecMapIntFloat32V(v map[int]float32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapIntFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]float64)
+		vp := rv2i(rv.Addr()).(*map[int]float64)
 		v, changed := fastpathTV.DecMapIntFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]float64)
+		v := rv2i(rv).(map[int]float64)
 		fastpathTV.DecMapIntFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33262,43 +30922,33 @@ func (_ fastpathT) DecMapIntFloat64V(v map[int]float64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33309,13 +30959,13 @@ func (_ fastpathT) DecMapIntFloat64V(v map[int]float64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapIntBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int]bool)
+		vp := rv2i(rv.Addr()).(*map[int]bool)
 		v, changed := fastpathTV.DecMapIntBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int]bool)
+		v := rv2i(rv).(map[int]bool)
 		fastpathTV.DecMapIntBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33336,43 +30986,33 @@ func (_ fastpathT) DecMapIntBoolV(v map[int]bool, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int(dd.DecodeInt(intBitsize))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int(dd.DecodeInt(intBitsize))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33383,13 +31023,13 @@ func (_ fastpathT) DecMapIntBoolV(v map[int]bool, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapInt8IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]interface{})
+		vp := rv2i(rv.Addr()).(*map[int8]interface{})
 		v, changed := fastpathTV.DecMapInt8IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]interface{})
+		v := rv2i(rv).(map[int8]interface{})
 		fastpathTV.DecMapInt8IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33410,53 +31050,38 @@ func (_ fastpathT) DecMapInt8IntfV(v map[int8]interface{}, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[int8]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk int8
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33467,13 +31092,13 @@ func (_ fastpathT) DecMapInt8IntfV(v map[int8]interface{}, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapInt8StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]string)
+		vp := rv2i(rv.Addr()).(*map[int8]string)
 		v, changed := fastpathTV.DecMapInt8StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]string)
+		v := rv2i(rv).(map[int8]string)
 		fastpathTV.DecMapInt8StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33494,43 +31119,33 @@ func (_ fastpathT) DecMapInt8StringV(v map[int8]string, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[int8]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33541,13 +31156,13 @@ func (_ fastpathT) DecMapInt8StringV(v map[int8]string, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt8UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uint)
+		vp := rv2i(rv.Addr()).(*map[int8]uint)
 		v, changed := fastpathTV.DecMapInt8UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uint)
+		v := rv2i(rv).(map[int8]uint)
 		fastpathTV.DecMapInt8UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33568,43 +31183,33 @@ func (_ fastpathT) DecMapInt8UintV(v map[int8]uint, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33615,13 +31220,13 @@ func (_ fastpathT) DecMapInt8UintV(v map[int8]uint, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt8Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uint8)
+		vp := rv2i(rv.Addr()).(*map[int8]uint8)
 		v, changed := fastpathTV.DecMapInt8Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uint8)
+		v := rv2i(rv).(map[int8]uint8)
 		fastpathTV.DecMapInt8Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33642,43 +31247,33 @@ func (_ fastpathT) DecMapInt8Uint8V(v map[int8]uint8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[int8]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33689,13 +31284,13 @@ func (_ fastpathT) DecMapInt8Uint8V(v map[int8]uint8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt8Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uint16)
+		vp := rv2i(rv.Addr()).(*map[int8]uint16)
 		v, changed := fastpathTV.DecMapInt8Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uint16)
+		v := rv2i(rv).(map[int8]uint16)
 		fastpathTV.DecMapInt8Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33716,43 +31311,33 @@ func (_ fastpathT) DecMapInt8Uint16V(v map[int8]uint16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[int8]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33763,13 +31348,13 @@ func (_ fastpathT) DecMapInt8Uint16V(v map[int8]uint16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt8Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uint32)
+		vp := rv2i(rv.Addr()).(*map[int8]uint32)
 		v, changed := fastpathTV.DecMapInt8Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uint32)
+		v := rv2i(rv).(map[int8]uint32)
 		fastpathTV.DecMapInt8Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33790,43 +31375,33 @@ func (_ fastpathT) DecMapInt8Uint32V(v map[int8]uint32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int8]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33837,13 +31412,13 @@ func (_ fastpathT) DecMapInt8Uint32V(v map[int8]uint32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt8Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uint64)
+		vp := rv2i(rv.Addr()).(*map[int8]uint64)
 		v, changed := fastpathTV.DecMapInt8Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uint64)
+		v := rv2i(rv).(map[int8]uint64)
 		fastpathTV.DecMapInt8Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33864,43 +31439,33 @@ func (_ fastpathT) DecMapInt8Uint64V(v map[int8]uint64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33911,13 +31476,13 @@ func (_ fastpathT) DecMapInt8Uint64V(v map[int8]uint64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt8UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]uintptr)
+		vp := rv2i(rv.Addr()).(*map[int8]uintptr)
 		v, changed := fastpathTV.DecMapInt8UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]uintptr)
+		v := rv2i(rv).(map[int8]uintptr)
 		fastpathTV.DecMapInt8UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -33938,43 +31503,33 @@ func (_ fastpathT) DecMapInt8UintptrV(v map[int8]uintptr, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -33985,13 +31540,13 @@ func (_ fastpathT) DecMapInt8UintptrV(v map[int8]uintptr, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt8IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]int)
+		vp := rv2i(rv.Addr()).(*map[int8]int)
 		v, changed := fastpathTV.DecMapInt8IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]int)
+		v := rv2i(rv).(map[int8]int)
 		fastpathTV.DecMapInt8IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34012,43 +31567,33 @@ func (_ fastpathT) DecMapInt8IntV(v map[int8]int, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34059,13 +31604,13 @@ func (_ fastpathT) DecMapInt8IntV(v map[int8]int, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapInt8Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]int8)
+		vp := rv2i(rv.Addr()).(*map[int8]int8)
 		v, changed := fastpathTV.DecMapInt8Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]int8)
+		v := rv2i(rv).(map[int8]int8)
 		fastpathTV.DecMapInt8Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34086,43 +31631,33 @@ func (_ fastpathT) DecMapInt8Int8V(v map[int8]int8, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[int8]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34133,13 +31668,13 @@ func (_ fastpathT) DecMapInt8Int8V(v map[int8]int8, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt8Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]int16)
+		vp := rv2i(rv.Addr()).(*map[int8]int16)
 		v, changed := fastpathTV.DecMapInt8Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]int16)
+		v := rv2i(rv).(map[int8]int16)
 		fastpathTV.DecMapInt8Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34160,43 +31695,33 @@ func (_ fastpathT) DecMapInt8Int16V(v map[int8]int16, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[int8]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34207,13 +31732,13 @@ func (_ fastpathT) DecMapInt8Int16V(v map[int8]int16, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt8Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]int32)
+		vp := rv2i(rv.Addr()).(*map[int8]int32)
 		v, changed := fastpathTV.DecMapInt8Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]int32)
+		v := rv2i(rv).(map[int8]int32)
 		fastpathTV.DecMapInt8Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34234,43 +31759,33 @@ func (_ fastpathT) DecMapInt8Int32V(v map[int8]int32, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int8]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34281,13 +31796,13 @@ func (_ fastpathT) DecMapInt8Int32V(v map[int8]int32, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt8Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]int64)
+		vp := rv2i(rv.Addr()).(*map[int8]int64)
 		v, changed := fastpathTV.DecMapInt8Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]int64)
+		v := rv2i(rv).(map[int8]int64)
 		fastpathTV.DecMapInt8Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34308,43 +31823,33 @@ func (_ fastpathT) DecMapInt8Int64V(v map[int8]int64, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34355,13 +31860,13 @@ func (_ fastpathT) DecMapInt8Int64V(v map[int8]int64, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt8Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]float32)
+		vp := rv2i(rv.Addr()).(*map[int8]float32)
 		v, changed := fastpathTV.DecMapInt8Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]float32)
+		v := rv2i(rv).(map[int8]float32)
 		fastpathTV.DecMapInt8Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34382,43 +31887,33 @@ func (_ fastpathT) DecMapInt8Float32V(v map[int8]float32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int8]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34429,13 +31924,13 @@ func (_ fastpathT) DecMapInt8Float32V(v map[int8]float32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt8Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]float64)
+		vp := rv2i(rv.Addr()).(*map[int8]float64)
 		v, changed := fastpathTV.DecMapInt8Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]float64)
+		v := rv2i(rv).(map[int8]float64)
 		fastpathTV.DecMapInt8Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34456,43 +31951,33 @@ func (_ fastpathT) DecMapInt8Float64V(v map[int8]float64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int8]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34503,13 +31988,13 @@ func (_ fastpathT) DecMapInt8Float64V(v map[int8]float64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt8BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int8]bool)
+		vp := rv2i(rv.Addr()).(*map[int8]bool)
 		v, changed := fastpathTV.DecMapInt8BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int8]bool)
+		v := rv2i(rv).(map[int8]bool)
 		fastpathTV.DecMapInt8BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34530,43 +32015,33 @@ func (_ fastpathT) DecMapInt8BoolV(v map[int8]bool, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[int8]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int8
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int8(dd.DecodeInt(8))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int8(dd.DecodeInt(8))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34577,13 +32052,13 @@ func (_ fastpathT) DecMapInt8BoolV(v map[int8]bool, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt16IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]interface{})
+		vp := rv2i(rv.Addr()).(*map[int16]interface{})
 		v, changed := fastpathTV.DecMapInt16IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]interface{})
+		v := rv2i(rv).(map[int16]interface{})
 		fastpathTV.DecMapInt16IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34604,53 +32079,38 @@ func (_ fastpathT) DecMapInt16IntfV(v map[int16]interface{}, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[int16]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk int16
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34661,13 +32121,13 @@ func (_ fastpathT) DecMapInt16IntfV(v map[int16]interface{}, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapInt16StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]string)
+		vp := rv2i(rv.Addr()).(*map[int16]string)
 		v, changed := fastpathTV.DecMapInt16StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]string)
+		v := rv2i(rv).(map[int16]string)
 		fastpathTV.DecMapInt16StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34688,43 +32148,33 @@ func (_ fastpathT) DecMapInt16StringV(v map[int16]string, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 18)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 18)
 		v = make(map[int16]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34735,13 +32185,13 @@ func (_ fastpathT) DecMapInt16StringV(v map[int16]string, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt16UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uint)
+		vp := rv2i(rv.Addr()).(*map[int16]uint)
 		v, changed := fastpathTV.DecMapInt16UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uint)
+		v := rv2i(rv).(map[int16]uint)
 		fastpathTV.DecMapInt16UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34762,43 +32212,33 @@ func (_ fastpathT) DecMapInt16UintV(v map[int16]uint, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34809,13 +32249,13 @@ func (_ fastpathT) DecMapInt16UintV(v map[int16]uint, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt16Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uint8)
+		vp := rv2i(rv.Addr()).(*map[int16]uint8)
 		v, changed := fastpathTV.DecMapInt16Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uint8)
+		v := rv2i(rv).(map[int16]uint8)
 		fastpathTV.DecMapInt16Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34836,43 +32276,33 @@ func (_ fastpathT) DecMapInt16Uint8V(v map[int16]uint8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[int16]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34883,13 +32313,13 @@ func (_ fastpathT) DecMapInt16Uint8V(v map[int16]uint8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt16Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uint16)
+		vp := rv2i(rv.Addr()).(*map[int16]uint16)
 		v, changed := fastpathTV.DecMapInt16Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uint16)
+		v := rv2i(rv).(map[int16]uint16)
 		fastpathTV.DecMapInt16Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34910,43 +32340,33 @@ func (_ fastpathT) DecMapInt16Uint16V(v map[int16]uint16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 4)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 4)
 		v = make(map[int16]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -34957,13 +32377,13 @@ func (_ fastpathT) DecMapInt16Uint16V(v map[int16]uint16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt16Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uint32)
+		vp := rv2i(rv.Addr()).(*map[int16]uint32)
 		v, changed := fastpathTV.DecMapInt16Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uint32)
+		v := rv2i(rv).(map[int16]uint32)
 		fastpathTV.DecMapInt16Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -34984,43 +32404,33 @@ func (_ fastpathT) DecMapInt16Uint32V(v map[int16]uint32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[int16]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35031,13 +32441,13 @@ func (_ fastpathT) DecMapInt16Uint32V(v map[int16]uint32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt16Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uint64)
+		vp := rv2i(rv.Addr()).(*map[int16]uint64)
 		v, changed := fastpathTV.DecMapInt16Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uint64)
+		v := rv2i(rv).(map[int16]uint64)
 		fastpathTV.DecMapInt16Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35058,43 +32468,33 @@ func (_ fastpathT) DecMapInt16Uint64V(v map[int16]uint64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35105,13 +32505,13 @@ func (_ fastpathT) DecMapInt16Uint64V(v map[int16]uint64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt16UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]uintptr)
+		vp := rv2i(rv.Addr()).(*map[int16]uintptr)
 		v, changed := fastpathTV.DecMapInt16UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]uintptr)
+		v := rv2i(rv).(map[int16]uintptr)
 		fastpathTV.DecMapInt16UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35132,43 +32532,33 @@ func (_ fastpathT) DecMapInt16UintptrV(v map[int16]uintptr, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35179,13 +32569,13 @@ func (_ fastpathT) DecMapInt16UintptrV(v map[int16]uintptr, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt16IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]int)
+		vp := rv2i(rv.Addr()).(*map[int16]int)
 		v, changed := fastpathTV.DecMapInt16IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]int)
+		v := rv2i(rv).(map[int16]int)
 		fastpathTV.DecMapInt16IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35206,43 +32596,33 @@ func (_ fastpathT) DecMapInt16IntV(v map[int16]int, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35253,13 +32633,13 @@ func (_ fastpathT) DecMapInt16IntV(v map[int16]int, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt16Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]int8)
+		vp := rv2i(rv.Addr()).(*map[int16]int8)
 		v, changed := fastpathTV.DecMapInt16Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]int8)
+		v := rv2i(rv).(map[int16]int8)
 		fastpathTV.DecMapInt16Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35280,43 +32660,33 @@ func (_ fastpathT) DecMapInt16Int8V(v map[int16]int8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[int16]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35327,13 +32697,13 @@ func (_ fastpathT) DecMapInt16Int8V(v map[int16]int8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt16Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]int16)
+		vp := rv2i(rv.Addr()).(*map[int16]int16)
 		v, changed := fastpathTV.DecMapInt16Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]int16)
+		v := rv2i(rv).(map[int16]int16)
 		fastpathTV.DecMapInt16Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35354,43 +32724,33 @@ func (_ fastpathT) DecMapInt16Int16V(v map[int16]int16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 4)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 4)
 		v = make(map[int16]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35401,13 +32761,13 @@ func (_ fastpathT) DecMapInt16Int16V(v map[int16]int16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt16Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]int32)
+		vp := rv2i(rv.Addr()).(*map[int16]int32)
 		v, changed := fastpathTV.DecMapInt16Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]int32)
+		v := rv2i(rv).(map[int16]int32)
 		fastpathTV.DecMapInt16Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35428,43 +32788,33 @@ func (_ fastpathT) DecMapInt16Int32V(v map[int16]int32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[int16]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35475,13 +32825,13 @@ func (_ fastpathT) DecMapInt16Int32V(v map[int16]int32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt16Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]int64)
+		vp := rv2i(rv.Addr()).(*map[int16]int64)
 		v, changed := fastpathTV.DecMapInt16Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]int64)
+		v := rv2i(rv).(map[int16]int64)
 		fastpathTV.DecMapInt16Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35502,43 +32852,33 @@ func (_ fastpathT) DecMapInt16Int64V(v map[int16]int64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35549,13 +32889,13 @@ func (_ fastpathT) DecMapInt16Int64V(v map[int16]int64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt16Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]float32)
+		vp := rv2i(rv.Addr()).(*map[int16]float32)
 		v, changed := fastpathTV.DecMapInt16Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]float32)
+		v := rv2i(rv).(map[int16]float32)
 		fastpathTV.DecMapInt16Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35576,43 +32916,33 @@ func (_ fastpathT) DecMapInt16Float32V(v map[int16]float32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[int16]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35623,13 +32953,13 @@ func (_ fastpathT) DecMapInt16Float32V(v map[int16]float32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt16Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]float64)
+		vp := rv2i(rv.Addr()).(*map[int16]float64)
 		v, changed := fastpathTV.DecMapInt16Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]float64)
+		v := rv2i(rv).(map[int16]float64)
 		fastpathTV.DecMapInt16Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35650,43 +32980,33 @@ func (_ fastpathT) DecMapInt16Float64V(v map[int16]float64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int16]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35697,13 +33017,13 @@ func (_ fastpathT) DecMapInt16Float64V(v map[int16]float64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt16BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int16]bool)
+		vp := rv2i(rv.Addr()).(*map[int16]bool)
 		v, changed := fastpathTV.DecMapInt16BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int16]bool)
+		v := rv2i(rv).(map[int16]bool)
 		fastpathTV.DecMapInt16BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35724,43 +33044,33 @@ func (_ fastpathT) DecMapInt16BoolV(v map[int16]bool, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[int16]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int16
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int16(dd.DecodeInt(16))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int16(dd.DecodeInt(16))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35771,13 +33081,13 @@ func (_ fastpathT) DecMapInt16BoolV(v map[int16]bool, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt32IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]interface{})
+		vp := rv2i(rv.Addr()).(*map[int32]interface{})
 		v, changed := fastpathTV.DecMapInt32IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]interface{})
+		v := rv2i(rv).(map[int32]interface{})
 		fastpathTV.DecMapInt32IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35798,53 +33108,38 @@ func (_ fastpathT) DecMapInt32IntfV(v map[int32]interface{}, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[int32]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk int32
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35855,13 +33150,13 @@ func (_ fastpathT) DecMapInt32IntfV(v map[int32]interface{}, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapInt32StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]string)
+		vp := rv2i(rv.Addr()).(*map[int32]string)
 		v, changed := fastpathTV.DecMapInt32StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]string)
+		v := rv2i(rv).(map[int32]string)
 		fastpathTV.DecMapInt32StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35882,43 +33177,33 @@ func (_ fastpathT) DecMapInt32StringV(v map[int32]string, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 20)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 20)
 		v = make(map[int32]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -35929,13 +33214,13 @@ func (_ fastpathT) DecMapInt32StringV(v map[int32]string, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt32UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uint)
+		vp := rv2i(rv.Addr()).(*map[int32]uint)
 		v, changed := fastpathTV.DecMapInt32UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uint)
+		v := rv2i(rv).(map[int32]uint)
 		fastpathTV.DecMapInt32UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -35956,43 +33241,33 @@ func (_ fastpathT) DecMapInt32UintV(v map[int32]uint, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36003,13 +33278,13 @@ func (_ fastpathT) DecMapInt32UintV(v map[int32]uint, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt32Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uint8)
+		vp := rv2i(rv.Addr()).(*map[int32]uint8)
 		v, changed := fastpathTV.DecMapInt32Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uint8)
+		v := rv2i(rv).(map[int32]uint8)
 		fastpathTV.DecMapInt32Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36030,43 +33305,33 @@ func (_ fastpathT) DecMapInt32Uint8V(v map[int32]uint8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int32]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36077,13 +33342,13 @@ func (_ fastpathT) DecMapInt32Uint8V(v map[int32]uint8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt32Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uint16)
+		vp := rv2i(rv.Addr()).(*map[int32]uint16)
 		v, changed := fastpathTV.DecMapInt32Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uint16)
+		v := rv2i(rv).(map[int32]uint16)
 		fastpathTV.DecMapInt32Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36104,43 +33369,33 @@ func (_ fastpathT) DecMapInt32Uint16V(v map[int32]uint16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[int32]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36151,13 +33406,13 @@ func (_ fastpathT) DecMapInt32Uint16V(v map[int32]uint16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt32Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uint32)
+		vp := rv2i(rv.Addr()).(*map[int32]uint32)
 		v, changed := fastpathTV.DecMapInt32Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uint32)
+		v := rv2i(rv).(map[int32]uint32)
 		fastpathTV.DecMapInt32Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36178,43 +33433,33 @@ func (_ fastpathT) DecMapInt32Uint32V(v map[int32]uint32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[int32]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36225,13 +33470,13 @@ func (_ fastpathT) DecMapInt32Uint32V(v map[int32]uint32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt32Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uint64)
+		vp := rv2i(rv.Addr()).(*map[int32]uint64)
 		v, changed := fastpathTV.DecMapInt32Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uint64)
+		v := rv2i(rv).(map[int32]uint64)
 		fastpathTV.DecMapInt32Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36252,43 +33497,33 @@ func (_ fastpathT) DecMapInt32Uint64V(v map[int32]uint64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36299,13 +33534,13 @@ func (_ fastpathT) DecMapInt32Uint64V(v map[int32]uint64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt32UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]uintptr)
+		vp := rv2i(rv.Addr()).(*map[int32]uintptr)
 		v, changed := fastpathTV.DecMapInt32UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]uintptr)
+		v := rv2i(rv).(map[int32]uintptr)
 		fastpathTV.DecMapInt32UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36326,43 +33561,33 @@ func (_ fastpathT) DecMapInt32UintptrV(v map[int32]uintptr, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36373,13 +33598,13 @@ func (_ fastpathT) DecMapInt32UintptrV(v map[int32]uintptr, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt32IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]int)
+		vp := rv2i(rv.Addr()).(*map[int32]int)
 		v, changed := fastpathTV.DecMapInt32IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]int)
+		v := rv2i(rv).(map[int32]int)
 		fastpathTV.DecMapInt32IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36400,43 +33625,33 @@ func (_ fastpathT) DecMapInt32IntV(v map[int32]int, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36447,13 +33662,13 @@ func (_ fastpathT) DecMapInt32IntV(v map[int32]int, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt32Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]int8)
+		vp := rv2i(rv.Addr()).(*map[int32]int8)
 		v, changed := fastpathTV.DecMapInt32Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]int8)
+		v := rv2i(rv).(map[int32]int8)
 		fastpathTV.DecMapInt32Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36474,43 +33689,33 @@ func (_ fastpathT) DecMapInt32Int8V(v map[int32]int8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int32]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36521,13 +33726,13 @@ func (_ fastpathT) DecMapInt32Int8V(v map[int32]int8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt32Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]int16)
+		vp := rv2i(rv.Addr()).(*map[int32]int16)
 		v, changed := fastpathTV.DecMapInt32Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]int16)
+		v := rv2i(rv).(map[int32]int16)
 		fastpathTV.DecMapInt32Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36548,43 +33753,33 @@ func (_ fastpathT) DecMapInt32Int16V(v map[int32]int16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 6)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 6)
 		v = make(map[int32]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36595,13 +33790,13 @@ func (_ fastpathT) DecMapInt32Int16V(v map[int32]int16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt32Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]int32)
+		vp := rv2i(rv.Addr()).(*map[int32]int32)
 		v, changed := fastpathTV.DecMapInt32Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]int32)
+		v := rv2i(rv).(map[int32]int32)
 		fastpathTV.DecMapInt32Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36622,43 +33817,33 @@ func (_ fastpathT) DecMapInt32Int32V(v map[int32]int32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[int32]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36669,13 +33854,13 @@ func (_ fastpathT) DecMapInt32Int32V(v map[int32]int32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt32Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]int64)
+		vp := rv2i(rv.Addr()).(*map[int32]int64)
 		v, changed := fastpathTV.DecMapInt32Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]int64)
+		v := rv2i(rv).(map[int32]int64)
 		fastpathTV.DecMapInt32Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36696,43 +33881,33 @@ func (_ fastpathT) DecMapInt32Int64V(v map[int32]int64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36743,13 +33918,13 @@ func (_ fastpathT) DecMapInt32Int64V(v map[int32]int64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt32Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]float32)
+		vp := rv2i(rv.Addr()).(*map[int32]float32)
 		v, changed := fastpathTV.DecMapInt32Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]float32)
+		v := rv2i(rv).(map[int32]float32)
 		fastpathTV.DecMapInt32Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36770,43 +33945,33 @@ func (_ fastpathT) DecMapInt32Float32V(v map[int32]float32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 8)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 8)
 		v = make(map[int32]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36817,13 +33982,13 @@ func (_ fastpathT) DecMapInt32Float32V(v map[int32]float32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt32Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]float64)
+		vp := rv2i(rv.Addr()).(*map[int32]float64)
 		v, changed := fastpathTV.DecMapInt32Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]float64)
+		v := rv2i(rv).(map[int32]float64)
 		fastpathTV.DecMapInt32Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36844,43 +34009,33 @@ func (_ fastpathT) DecMapInt32Float64V(v map[int32]float64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int32]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36891,13 +34046,13 @@ func (_ fastpathT) DecMapInt32Float64V(v map[int32]float64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt32BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int32]bool)
+		vp := rv2i(rv.Addr()).(*map[int32]bool)
 		v, changed := fastpathTV.DecMapInt32BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int32]bool)
+		v := rv2i(rv).(map[int32]bool)
 		fastpathTV.DecMapInt32BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36918,43 +34073,33 @@ func (_ fastpathT) DecMapInt32BoolV(v map[int32]bool, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[int32]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int32
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = int32(dd.DecodeInt(32))
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = int32(dd.DecodeInt(32))
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -36965,13 +34110,13 @@ func (_ fastpathT) DecMapInt32BoolV(v map[int32]bool, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt64IntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]interface{})
+		vp := rv2i(rv.Addr()).(*map[int64]interface{})
 		v, changed := fastpathTV.DecMapInt64IntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]interface{})
+		v := rv2i(rv).(map[int64]interface{})
 		fastpathTV.DecMapInt64IntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -36992,53 +34137,38 @@ func (_ fastpathT) DecMapInt64IntfV(v map[int64]interface{}, checkNil bool, canC
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[int64]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk int64
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37049,13 +34179,13 @@ func (_ fastpathT) DecMapInt64IntfV(v map[int64]interface{}, checkNil bool, canC
 
 func (f *decFnInfo) fastpathDecMapInt64StringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]string)
+		vp := rv2i(rv.Addr()).(*map[int64]string)
 		v, changed := fastpathTV.DecMapInt64StringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]string)
+		v := rv2i(rv).(map[int64]string)
 		fastpathTV.DecMapInt64StringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37076,43 +34206,33 @@ func (_ fastpathT) DecMapInt64StringV(v map[int64]string, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 24)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 24)
 		v = make(map[int64]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37123,13 +34243,13 @@ func (_ fastpathT) DecMapInt64StringV(v map[int64]string, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt64UintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uint)
+		vp := rv2i(rv.Addr()).(*map[int64]uint)
 		v, changed := fastpathTV.DecMapInt64UintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uint)
+		v := rv2i(rv).(map[int64]uint)
 		fastpathTV.DecMapInt64UintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37150,43 +34270,33 @@ func (_ fastpathT) DecMapInt64UintV(v map[int64]uint, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37197,13 +34307,13 @@ func (_ fastpathT) DecMapInt64UintV(v map[int64]uint, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt64Uint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uint8)
+		vp := rv2i(rv.Addr()).(*map[int64]uint8)
 		v, changed := fastpathTV.DecMapInt64Uint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uint8)
+		v := rv2i(rv).(map[int64]uint8)
 		fastpathTV.DecMapInt64Uint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37224,43 +34334,33 @@ func (_ fastpathT) DecMapInt64Uint8V(v map[int64]uint8, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int64]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37271,13 +34371,13 @@ func (_ fastpathT) DecMapInt64Uint8V(v map[int64]uint8, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt64Uint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uint16)
+		vp := rv2i(rv.Addr()).(*map[int64]uint16)
 		v, changed := fastpathTV.DecMapInt64Uint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uint16)
+		v := rv2i(rv).(map[int64]uint16)
 		fastpathTV.DecMapInt64Uint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37298,43 +34398,33 @@ func (_ fastpathT) DecMapInt64Uint16V(v map[int64]uint16, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int64]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37345,13 +34435,13 @@ func (_ fastpathT) DecMapInt64Uint16V(v map[int64]uint16, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt64Uint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uint32)
+		vp := rv2i(rv.Addr()).(*map[int64]uint32)
 		v, changed := fastpathTV.DecMapInt64Uint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uint32)
+		v := rv2i(rv).(map[int64]uint32)
 		fastpathTV.DecMapInt64Uint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37372,43 +34462,33 @@ func (_ fastpathT) DecMapInt64Uint32V(v map[int64]uint32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int64]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37419,13 +34499,13 @@ func (_ fastpathT) DecMapInt64Uint32V(v map[int64]uint32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt64Uint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uint64)
+		vp := rv2i(rv.Addr()).(*map[int64]uint64)
 		v, changed := fastpathTV.DecMapInt64Uint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uint64)
+		v := rv2i(rv).(map[int64]uint64)
 		fastpathTV.DecMapInt64Uint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37446,43 +34526,33 @@ func (_ fastpathT) DecMapInt64Uint64V(v map[int64]uint64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37493,13 +34563,13 @@ func (_ fastpathT) DecMapInt64Uint64V(v map[int64]uint64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapInt64UintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]uintptr)
+		vp := rv2i(rv.Addr()).(*map[int64]uintptr)
 		v, changed := fastpathTV.DecMapInt64UintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]uintptr)
+		v := rv2i(rv).(map[int64]uintptr)
 		fastpathTV.DecMapInt64UintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37520,43 +34590,33 @@ func (_ fastpathT) DecMapInt64UintptrV(v map[int64]uintptr, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37567,13 +34627,13 @@ func (_ fastpathT) DecMapInt64UintptrV(v map[int64]uintptr, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt64IntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]int)
+		vp := rv2i(rv.Addr()).(*map[int64]int)
 		v, changed := fastpathTV.DecMapInt64IntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]int)
+		v := rv2i(rv).(map[int64]int)
 		fastpathTV.DecMapInt64IntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37594,43 +34654,33 @@ func (_ fastpathT) DecMapInt64IntV(v map[int64]int, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37641,13 +34691,13 @@ func (_ fastpathT) DecMapInt64IntV(v map[int64]int, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapInt64Int8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]int8)
+		vp := rv2i(rv.Addr()).(*map[int64]int8)
 		v, changed := fastpathTV.DecMapInt64Int8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]int8)
+		v := rv2i(rv).(map[int64]int8)
 		fastpathTV.DecMapInt64Int8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37668,43 +34718,33 @@ func (_ fastpathT) DecMapInt64Int8V(v map[int64]int8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int64]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37715,13 +34755,13 @@ func (_ fastpathT) DecMapInt64Int8V(v map[int64]int8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapInt64Int16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]int16)
+		vp := rv2i(rv.Addr()).(*map[int64]int16)
 		v, changed := fastpathTV.DecMapInt64Int16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]int16)
+		v := rv2i(rv).(map[int64]int16)
 		fastpathTV.DecMapInt64Int16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37742,43 +34782,33 @@ func (_ fastpathT) DecMapInt64Int16V(v map[int64]int16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 10)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 10)
 		v = make(map[int64]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37789,13 +34819,13 @@ func (_ fastpathT) DecMapInt64Int16V(v map[int64]int16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt64Int32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]int32)
+		vp := rv2i(rv.Addr()).(*map[int64]int32)
 		v, changed := fastpathTV.DecMapInt64Int32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]int32)
+		v := rv2i(rv).(map[int64]int32)
 		fastpathTV.DecMapInt64Int32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37816,43 +34846,33 @@ func (_ fastpathT) DecMapInt64Int32V(v map[int64]int32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int64]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37863,13 +34883,13 @@ func (_ fastpathT) DecMapInt64Int32V(v map[int64]int32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt64Int64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]int64)
+		vp := rv2i(rv.Addr()).(*map[int64]int64)
 		v, changed := fastpathTV.DecMapInt64Int64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]int64)
+		v := rv2i(rv).(map[int64]int64)
 		fastpathTV.DecMapInt64Int64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37890,43 +34910,33 @@ func (_ fastpathT) DecMapInt64Int64V(v map[int64]int64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -37937,13 +34947,13 @@ func (_ fastpathT) DecMapInt64Int64V(v map[int64]int64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapInt64Float32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]float32)
+		vp := rv2i(rv.Addr()).(*map[int64]float32)
 		v, changed := fastpathTV.DecMapInt64Float32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]float32)
+		v := rv2i(rv).(map[int64]float32)
 		fastpathTV.DecMapInt64Float32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -37964,43 +34974,33 @@ func (_ fastpathT) DecMapInt64Float32V(v map[int64]float32, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 12)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 12)
 		v = make(map[int64]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38011,13 +35011,13 @@ func (_ fastpathT) DecMapInt64Float32V(v map[int64]float32, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt64Float64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]float64)
+		vp := rv2i(rv.Addr()).(*map[int64]float64)
 		v, changed := fastpathTV.DecMapInt64Float64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]float64)
+		v := rv2i(rv).(map[int64]float64)
 		fastpathTV.DecMapInt64Float64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38038,43 +35038,33 @@ func (_ fastpathT) DecMapInt64Float64V(v map[int64]float64, checkNil bool, canCh
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 16)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 16)
 		v = make(map[int64]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38085,13 +35075,13 @@ func (_ fastpathT) DecMapInt64Float64V(v map[int64]float64, checkNil bool, canCh
 
 func (f *decFnInfo) fastpathDecMapInt64BoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[int64]bool)
+		vp := rv2i(rv.Addr()).(*map[int64]bool)
 		v, changed := fastpathTV.DecMapInt64BoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[int64]bool)
+		v := rv2i(rv).(map[int64]bool)
 		fastpathTV.DecMapInt64BoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38112,43 +35102,33 @@ func (_ fastpathT) DecMapInt64BoolV(v map[int64]bool, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[int64]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk int64
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeInt(64)
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeInt(64)
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38159,13 +35139,13 @@ func (_ fastpathT) DecMapInt64BoolV(v map[int64]bool, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapBoolIntfR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]interface{})
+		vp := rv2i(rv.Addr()).(*map[bool]interface{})
 		v, changed := fastpathTV.DecMapBoolIntfV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]interface{})
+		v := rv2i(rv).(map[bool]interface{})
 		fastpathTV.DecMapBoolIntfV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38186,53 +35166,38 @@ func (_ fastpathT) DecMapBoolIntfV(v map[bool]interface{}, checkNil bool, canCha
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[bool]interface{}, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 	mapGet := !d.h.MapValueReset && !d.h.InterfaceReset
 	var mk bool
 	var mv interface{}
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			if mapGet {
-				mv = v[mk]
-			} else {
-				mv = nil
-			}
-			d.decode(&mv)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		if mapGet {
+			mv = v[mk]
+		} else {
+			mv = nil
+		}
+		d.decode(&mv)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38243,13 +35208,13 @@ func (_ fastpathT) DecMapBoolIntfV(v map[bool]interface{}, checkNil bool, canCha
 
 func (f *decFnInfo) fastpathDecMapBoolStringR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]string)
+		vp := rv2i(rv.Addr()).(*map[bool]string)
 		v, changed := fastpathTV.DecMapBoolStringV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]string)
+		v := rv2i(rv).(map[bool]string)
 		fastpathTV.DecMapBoolStringV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38270,43 +35235,33 @@ func (_ fastpathT) DecMapBoolStringV(v map[bool]string, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 17)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 17)
 		v = make(map[bool]string, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv string
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeString()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeString()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38317,13 +35272,13 @@ func (_ fastpathT) DecMapBoolStringV(v map[bool]string, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapBoolUintR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uint)
+		vp := rv2i(rv.Addr()).(*map[bool]uint)
 		v, changed := fastpathTV.DecMapBoolUintV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uint)
+		v := rv2i(rv).(map[bool]uint)
 		fastpathTV.DecMapBoolUintV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38344,43 +35299,33 @@ func (_ fastpathT) DecMapBoolUintV(v map[bool]uint, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]uint, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uint
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38391,13 +35336,13 @@ func (_ fastpathT) DecMapBoolUintV(v map[bool]uint, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapBoolUint8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uint8)
+		vp := rv2i(rv.Addr()).(*map[bool]uint8)
 		v, changed := fastpathTV.DecMapBoolUint8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uint8)
+		v := rv2i(rv).(map[bool]uint8)
 		fastpathTV.DecMapBoolUint8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38418,43 +35363,33 @@ func (_ fastpathT) DecMapBoolUint8V(v map[bool]uint8, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[bool]uint8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uint8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint8(dd.DecodeUint(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint8(dd.DecodeUint(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38465,13 +35400,13 @@ func (_ fastpathT) DecMapBoolUint8V(v map[bool]uint8, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapBoolUint16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uint16)
+		vp := rv2i(rv.Addr()).(*map[bool]uint16)
 		v, changed := fastpathTV.DecMapBoolUint16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uint16)
+		v := rv2i(rv).(map[bool]uint16)
 		fastpathTV.DecMapBoolUint16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38492,43 +35427,33 @@ func (_ fastpathT) DecMapBoolUint16V(v map[bool]uint16, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[bool]uint16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uint16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint16(dd.DecodeUint(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint16(dd.DecodeUint(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38539,13 +35464,13 @@ func (_ fastpathT) DecMapBoolUint16V(v map[bool]uint16, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapBoolUint32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uint32)
+		vp := rv2i(rv.Addr()).(*map[bool]uint32)
 		v, changed := fastpathTV.DecMapBoolUint32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uint32)
+		v := rv2i(rv).(map[bool]uint32)
 		fastpathTV.DecMapBoolUint32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38566,43 +35491,33 @@ func (_ fastpathT) DecMapBoolUint32V(v map[bool]uint32, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[bool]uint32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uint32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uint32(dd.DecodeUint(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uint32(dd.DecodeUint(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38613,13 +35528,13 @@ func (_ fastpathT) DecMapBoolUint32V(v map[bool]uint32, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapBoolUint64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uint64)
+		vp := rv2i(rv.Addr()).(*map[bool]uint64)
 		v, changed := fastpathTV.DecMapBoolUint64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uint64)
+		v := rv2i(rv).(map[bool]uint64)
 		fastpathTV.DecMapBoolUint64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38640,43 +35555,33 @@ func (_ fastpathT) DecMapBoolUint64V(v map[bool]uint64, checkNil bool, canChange
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]uint64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uint64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeUint(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeUint(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38687,13 +35592,13 @@ func (_ fastpathT) DecMapBoolUint64V(v map[bool]uint64, checkNil bool, canChange
 
 func (f *decFnInfo) fastpathDecMapBoolUintptrR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]uintptr)
+		vp := rv2i(rv.Addr()).(*map[bool]uintptr)
 		v, changed := fastpathTV.DecMapBoolUintptrV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]uintptr)
+		v := rv2i(rv).(map[bool]uintptr)
 		fastpathTV.DecMapBoolUintptrV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38714,43 +35619,33 @@ func (_ fastpathT) DecMapBoolUintptrV(v map[bool]uintptr, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]uintptr, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv uintptr
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = uintptr(dd.DecodeUint(uintBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = uintptr(dd.DecodeUint(uintBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38761,13 +35656,13 @@ func (_ fastpathT) DecMapBoolUintptrV(v map[bool]uintptr, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapBoolIntR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]int)
+		vp := rv2i(rv.Addr()).(*map[bool]int)
 		v, changed := fastpathTV.DecMapBoolIntV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]int)
+		v := rv2i(rv).(map[bool]int)
 		fastpathTV.DecMapBoolIntV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38788,43 +35683,33 @@ func (_ fastpathT) DecMapBoolIntV(v map[bool]int, checkNil bool, canChange bool,
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]int, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv int
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int(dd.DecodeInt(intBitsize))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int(dd.DecodeInt(intBitsize))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38835,13 +35720,13 @@ func (_ fastpathT) DecMapBoolIntV(v map[bool]int, checkNil bool, canChange bool,
 
 func (f *decFnInfo) fastpathDecMapBoolInt8R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]int8)
+		vp := rv2i(rv.Addr()).(*map[bool]int8)
 		v, changed := fastpathTV.DecMapBoolInt8V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]int8)
+		v := rv2i(rv).(map[bool]int8)
 		fastpathTV.DecMapBoolInt8V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38862,43 +35747,33 @@ func (_ fastpathT) DecMapBoolInt8V(v map[bool]int8, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[bool]int8, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv int8
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int8(dd.DecodeInt(8))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int8(dd.DecodeInt(8))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38909,13 +35784,13 @@ func (_ fastpathT) DecMapBoolInt8V(v map[bool]int8, checkNil bool, canChange boo
 
 func (f *decFnInfo) fastpathDecMapBoolInt16R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]int16)
+		vp := rv2i(rv.Addr()).(*map[bool]int16)
 		v, changed := fastpathTV.DecMapBoolInt16V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]int16)
+		v := rv2i(rv).(map[bool]int16)
 		fastpathTV.DecMapBoolInt16V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -38936,43 +35811,33 @@ func (_ fastpathT) DecMapBoolInt16V(v map[bool]int16, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 3)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 3)
 		v = make(map[bool]int16, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv int16
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int16(dd.DecodeInt(16))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int16(dd.DecodeInt(16))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -38983,13 +35848,13 @@ func (_ fastpathT) DecMapBoolInt16V(v map[bool]int16, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapBoolInt32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]int32)
+		vp := rv2i(rv.Addr()).(*map[bool]int32)
 		v, changed := fastpathTV.DecMapBoolInt32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]int32)
+		v := rv2i(rv).(map[bool]int32)
 		fastpathTV.DecMapBoolInt32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -39010,43 +35875,33 @@ func (_ fastpathT) DecMapBoolInt32V(v map[bool]int32, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[bool]int32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv int32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = int32(dd.DecodeInt(32))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = int32(dd.DecodeInt(32))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -39057,13 +35912,13 @@ func (_ fastpathT) DecMapBoolInt32V(v map[bool]int32, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapBoolInt64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]int64)
+		vp := rv2i(rv.Addr()).(*map[bool]int64)
 		v, changed := fastpathTV.DecMapBoolInt64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]int64)
+		v := rv2i(rv).(map[bool]int64)
 		fastpathTV.DecMapBoolInt64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -39084,43 +35939,33 @@ func (_ fastpathT) DecMapBoolInt64V(v map[bool]int64, checkNil bool, canChange b
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]int64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv int64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeInt(64)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeInt(64)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -39131,13 +35976,13 @@ func (_ fastpathT) DecMapBoolInt64V(v map[bool]int64, checkNil bool, canChange b
 
 func (f *decFnInfo) fastpathDecMapBoolFloat32R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]float32)
+		vp := rv2i(rv.Addr()).(*map[bool]float32)
 		v, changed := fastpathTV.DecMapBoolFloat32V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]float32)
+		v := rv2i(rv).(map[bool]float32)
 		fastpathTV.DecMapBoolFloat32V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -39158,43 +36003,33 @@ func (_ fastpathT) DecMapBoolFloat32V(v map[bool]float32, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 5)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 5)
 		v = make(map[bool]float32, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv float32
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = float32(dd.DecodeFloat(true))
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = float32(dd.DecodeFloat(true))
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -39205,13 +36040,13 @@ func (_ fastpathT) DecMapBoolFloat32V(v map[bool]float32, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapBoolFloat64R(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]float64)
+		vp := rv2i(rv.Addr()).(*map[bool]float64)
 		v, changed := fastpathTV.DecMapBoolFloat64V(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]float64)
+		v := rv2i(rv).(map[bool]float64)
 		fastpathTV.DecMapBoolFloat64V(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -39232,43 +36067,33 @@ func (_ fastpathT) DecMapBoolFloat64V(v map[bool]float64, checkNil bool, canChan
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 9)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 9)
 		v = make(map[bool]float64, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv float64
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeFloat(false)
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeFloat(false)
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {
@@ -39279,13 +36104,13 @@ func (_ fastpathT) DecMapBoolFloat64V(v map[bool]float64, checkNil bool, canChan
 
 func (f *decFnInfo) fastpathDecMapBoolBoolR(rv reflect.Value) {
 	if rv.CanAddr() {
-		vp := rv.Addr().Interface().(*map[bool]bool)
+		vp := rv2i(rv.Addr()).(*map[bool]bool)
 		v, changed := fastpathTV.DecMapBoolBoolV(*vp, fastpathCheckNilFalse, true, f.d)
 		if changed {
 			*vp = v
 		}
 	} else {
-		v := rv.Interface().(map[bool]bool)
+		v := rv2i(rv).(map[bool]bool)
 		fastpathTV.DecMapBoolBoolV(v, fastpathCheckNilFalse, false, f.d)
 	}
 }
@@ -39306,43 +36131,33 @@ func (_ fastpathT) DecMapBoolBoolV(v map[bool]bool, checkNil bool, canChange boo
 		}
 		return nil, changed
 	}
-
 	containerLen := dd.ReadMapStart()
 	if canChange && v == nil {
-		xlen, _ := decInferLen(containerLen, d.h.MaxInitLen, 2)
+		xlen := decInferLen(containerLen, d.h.MaxInitLen, 2)
 		v = make(map[bool]bool, xlen)
 		changed = true
+	}
+	if containerLen == 0 {
+		if cr != nil {
+			cr.sendContainerState(containerMapEnd)
+		}
+		return v, changed
 	}
 
 	var mk bool
 	var mv bool
-	if containerLen > 0 {
-		for j := 0; j < containerLen; j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+	hasLen := containerLen > 0
+	for j := 0; (hasLen && j < containerLen) || !(hasLen || dd.CheckBreak()); j++ {
+		if cr != nil {
+			cr.sendContainerState(containerMapKey)
 		}
-	} else if containerLen < 0 {
-		for j := 0; !dd.CheckBreak(); j++ {
-			if cr != nil {
-				cr.sendContainerState(containerMapKey)
-			}
-			mk = dd.DecodeBool()
-			if cr != nil {
-				cr.sendContainerState(containerMapValue)
-			}
-			mv = dd.DecodeBool()
-			if v != nil {
-				v[mk] = mv
-			}
+		mk = dd.DecodeBool()
+		if cr != nil {
+			cr.sendContainerState(containerMapValue)
+		}
+		mv = dd.DecodeBool()
+		if v != nil {
+			v[mk] = mv
 		}
 	}
 	if cr != nil {

@@ -15,6 +15,9 @@ import (
 	"reflect"
 )
 
+// GenVersion is the current version of codecgen.
+const GenVersion = 6
+
 // This file is used to generate helper code for codecgen.
 // The values here i.e. genHelper(En|De)coder are not to be used directly by
 // library users. They WILL change continuously and without notice.
@@ -26,12 +29,14 @@ import (
 // to perform encoding or decoding of primitives or known slice or map types.
 
 // GenHelperEncoder is exported so that it can be used externally by codecgen.
+//
 // Library users: DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.
 func GenHelperEncoder(e *Encoder) (genHelperEncoder, encDriver) {
 	return genHelperEncoder{e: e}, e.e
 }
 
 // GenHelperDecoder is exported so that it can be used externally by codecgen.
+//
 // Library users: DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.
 func GenHelperDecoder(d *Decoder) (genHelperDecoder, decDriver) {
 	return genHelperDecoder{d: d}, d.d
@@ -112,7 +117,7 @@ func (f genHelperEncoder) EncExt(v interface{}) (r bool) {
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 	}
-	rtid := reflect.ValueOf(rt).Pointer()
+	rtid := rt2id(rt)
 	if xfFn := f.e.h.getExt(rtid); xfFn != nil {
 		f.e.e.EncodeExt(v, xfFn.tag, xfFn.ext, f.e)
 		return true
@@ -172,7 +177,7 @@ func (f genHelperDecoder) DecArrayCannotExpand(sliceLen, streamLen int) {
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) DecTextUnmarshal(tm encoding.TextUnmarshaler) {
-	fnerr := tm.UnmarshalText(f.d.d.DecodeBytes(f.d.b[:], true, true))
+	fnerr := tm.UnmarshalText(f.d.d.DecodeStringAsBytes())
 	if fnerr != nil {
 		panic(fnerr)
 	}
@@ -180,7 +185,7 @@ func (f genHelperDecoder) DecTextUnmarshal(tm encoding.TextUnmarshaler) {
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) DecJSONUnmarshal(tm jsonUnmarshaler) {
-	// bs := f.dd.DecodeBytes(f.d.b[:], true, true)
+	// bs := f.dd.DecodeStringAsBytes()
 	// grab the bytes to be read, as UnmarshalJSON needs the full JSON so as to unmarshal it itself.
 	fnerr := tm.UnmarshalJSON(f.d.nextValueBytes())
 	if fnerr != nil {
@@ -190,7 +195,7 @@ func (f genHelperDecoder) DecJSONUnmarshal(tm jsonUnmarshaler) {
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) DecBinaryUnmarshal(bm encoding.BinaryUnmarshaler) {
-	fnerr := bm.UnmarshalBinary(f.d.d.DecodeBytes(nil, false, true))
+	fnerr := bm.UnmarshalBinary(f.d.d.DecodeBytes(nil, true))
 	if fnerr != nil {
 		panic(fnerr)
 	}
@@ -222,7 +227,7 @@ func (f genHelperDecoder) HasExtensions() bool {
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) DecExt(v interface{}) (r bool) {
 	rt := reflect.TypeOf(v).Elem()
-	rtid := reflect.ValueOf(rt).Pointer()
+	rtid := rt2id(rt)
 	if xfFn := f.d.h.getExt(rtid); xfFn != nil {
 		f.d.d.DecodeExt(v, xfFn.tag, xfFn.ext)
 		return true
@@ -231,8 +236,13 @@ func (f genHelperDecoder) DecExt(v interface{}) (r bool) {
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperDecoder) DecInferLen(clen, maxlen, unit int) (rvlen int, truncated bool) {
+func (f genHelperDecoder) DecInferLen(clen, maxlen, unit int) (rvlen int) {
 	return decInferLen(clen, maxlen, unit)
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperDecoder) StringView(v []byte) string {
+	return stringView(v)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*

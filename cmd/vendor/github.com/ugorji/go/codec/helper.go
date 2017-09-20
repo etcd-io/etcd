@@ -133,11 +133,11 @@ const (
 	// Note that this will always cause rpc tests to fail, since they need io.EOF sent via panic.
 	recoverPanicToErr = true
 
-	// if resetSliceElemToZeroValue, then on decoding a slice, reset the element to a zero value first.
-	// Only concern is that, if the slice already contained some garbage, we will decode into that garbage.
+	// resetSliceElemToZeroValue: on decoding a slice, reset the element to a zero value first.
+	// concern: if the slice already contained some garbage, we will decode into that garbage.
 	// The chances of this are slim, so leave this "optimization".
 	// TODO: should this be true, to ensure that we always decode into a "zero" "empty" value?
-	resetSliceElemToZeroValue bool = false
+	resetSliceElemToZeroValue = false
 )
 
 var (
@@ -250,6 +250,8 @@ type jsonUnmarshaler interface {
 	UnmarshalJSON([]byte) error
 }
 
+// type byteAccepter func(byte) bool
+
 var (
 	bigen               = binary.BigEndian
 	structInfoFieldName = "_struct"
@@ -278,17 +280,17 @@ var (
 
 	selferTyp = reflect.TypeOf((*Selfer)(nil)).Elem()
 
-	uint8SliceTypId = reflect.ValueOf(uint8SliceTyp).Pointer()
-	rawExtTypId     = reflect.ValueOf(rawExtTyp).Pointer()
-	rawTypId        = reflect.ValueOf(rawTyp).Pointer()
-	intfTypId       = reflect.ValueOf(intfTyp).Pointer()
-	timeTypId       = reflect.ValueOf(timeTyp).Pointer()
-	stringTypId     = reflect.ValueOf(stringTyp).Pointer()
+	uint8SliceTypId = rt2id(uint8SliceTyp)
+	rawExtTypId     = rt2id(rawExtTyp)
+	rawTypId        = rt2id(rawTyp)
+	intfTypId       = rt2id(intfTyp)
+	timeTypId       = rt2id(timeTyp)
+	stringTypId     = rt2id(stringTyp)
 
-	mapStrIntfTypId  = reflect.ValueOf(mapStrIntfTyp).Pointer()
-	mapIntfIntfTypId = reflect.ValueOf(mapIntfIntfTyp).Pointer()
-	intfSliceTypId   = reflect.ValueOf(intfSliceTyp).Pointer()
-	// mapBySliceTypId  = reflect.ValueOf(mapBySliceTyp).Pointer()
+	mapStrIntfTypId  = rt2id(mapStrIntfTyp)
+	mapIntfIntfTypId = rt2id(mapIntfIntfTyp)
+	intfSliceTypId   = rt2id(intfSliceTyp)
+	// mapBySliceTypId  = rt2id(mapBySliceTyp)
 
 	intBitsize  uint8 = uint8(reflect.TypeOf(int(0)).Bits())
 	uintBitsize uint8 = uint8(reflect.TypeOf(uint(0)).Bits())
@@ -302,6 +304,24 @@ var (
 )
 
 var defTypeInfos = NewTypeInfos([]string{"codec", "json"})
+
+var immutableKindsSet = [32]bool{
+	reflect.Int:     true,
+	reflect.Int8:    true,
+	reflect.Int16:   true,
+	reflect.Int32:   true,
+	reflect.Int64:   true,
+	reflect.Uint:    true,
+	reflect.Uint8:   true,
+	reflect.Uint16:  true,
+	reflect.Uint32:  true,
+	reflect.Uint64:  true,
+	reflect.Uintptr: true,
+	reflect.Float32: true,
+	reflect.Float64: true,
+	reflect.Bool:    true,
+	reflect.String:  true,
+}
 
 // Selfer defines methods by which a value can encode or decode itself.
 //
@@ -343,10 +363,10 @@ func (x *BasicHandle) getBasicHandle() *BasicHandle {
 }
 
 func (x *BasicHandle) getTypeInfo(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
-	if x.TypeInfos != nil {
-		return x.TypeInfos.get(rtid, rt)
+	if x.TypeInfos == nil {
+		return defTypeInfos.get(rtid, rt)
 	}
-	return defTypeInfos.get(rtid, rt)
+	return x.TypeInfos.get(rtid, rt)
 }
 
 // Handle is the interface for a specific encoding format.
@@ -476,9 +496,6 @@ func (x *setExtWrapper) UpdateExt(dest interface{}, v interface{}) {
 	x.i.UpdateExt(dest, v)
 }
 
-// type errorString string
-// func (x errorString) Error() string { return string(x) }
-
 type binaryEncodingType struct{}
 
 func (_ binaryEncodingType) isBinary() bool { return true }
@@ -559,7 +576,7 @@ func (o *extHandle) SetExt(rt reflect.Type, tag uint64, ext Ext) (err error) {
 		return
 	}
 
-	rtid := reflect.ValueOf(rt).Pointer()
+	rtid := rt2id(rt)
 	for _, v := range *o {
 		if v.rtid == rtid {
 			v.tag, v.ext = tag, ext
@@ -711,6 +728,7 @@ type typeInfo struct {
 
 	rt   reflect.Type
 	rtid uintptr
+	// rv0  reflect.Value // saved zero value, used if immutableKind
 
 	numMeth uint16 // number of methods
 
@@ -743,33 +761,40 @@ type typeInfo struct {
 	toArray bool // whether this (struct) type should be encoded as an array
 }
 
+// linear search. faster than binary search in my testing up to 16-field structs.
+const binarySearchThreshold = 8 // similar to what python does for hashtables
+
 func (ti *typeInfo) indexForEncName(name string) int {
 	// NOTE: name may be a stringView, so don't pass it to another function.
 	//tisfi := ti.sfi
-	const binarySearchThreshold = 16
-	if sfilen := len(ti.sfi); sfilen < binarySearchThreshold {
-		// linear search. faster than binary search in my testing up to 16-field structs.
+	sfilen := len(ti.sfi)
+	if sfilen < binarySearchThreshold {
 		for i, si := range ti.sfi {
 			if si.encName == name {
 				return i
 			}
 		}
-	} else {
-		// binary search. adapted from sort/search.go.
-		h, i, j := 0, 0, sfilen
-		for i < j {
-			h = i + (j-i)/2
-			if ti.sfi[h].encName < name {
-				i = h + 1
-			} else {
-				j = h
-			}
-		}
-		if i < sfilen && ti.sfi[i].encName == name {
-			return i
+		return -1
+	}
+	// binary search. adapted from sort/search.go.
+	h, i, j := 0, 0, sfilen
+	for i < j {
+		h = i + (j-i)/2
+		if ti.sfi[h].encName < name {
+			i = h + 1
+		} else {
+			j = h
 		}
 	}
+	if i < sfilen && ti.sfi[i].encName == name {
+		return i
+	}
 	return -1
+}
+
+type rtid2ti struct {
+	rtid uintptr
+	ti   *typeInfo
 }
 
 // TypeInfos caches typeInfo for each type on first inspection.
@@ -777,8 +802,8 @@ func (ti *typeInfo) indexForEncName(name string) int {
 // It is configured with a set of tag keys, which are used to get
 // configuration for the type.
 type TypeInfos struct {
-	infos map[uintptr]*typeInfo
-	mu    sync.RWMutex
+	infos atomicTypeInfoSlice // formerly map[uintptr]*typeInfo, now *[]rtid2ti
+	mu    sync.Mutex
 	tags  []string
 }
 
@@ -787,7 +812,7 @@ type TypeInfos struct {
 // This allows users customize the struct tag keys which contain configuration
 // of their types.
 func NewTypeInfos(tags []string) *TypeInfos {
-	return &TypeInfos{tags: tags, infos: make(map[uintptr]*typeInfo, 64)}
+	return &TypeInfos{tags: tags}
 }
 
 func (x *TypeInfos) structTag(t reflect.StructTag) (s string) {
@@ -802,20 +827,46 @@ func (x *TypeInfos) structTag(t reflect.StructTag) (s string) {
 	return
 }
 
+func (x *TypeInfos) find(sp *[]rtid2ti, rtid uintptr) (idx int, ti *typeInfo) {
+	// binary search. adapted from sort/search.go.
+	// fmt.Printf(">>>> calling typeinfos.find ... \n")
+	// if sp == nil {
+	// 	return -1, nil
+	// }
+	s := *sp
+	h, i, j := 0, 0, len(s)
+	for i < j {
+		h = i + (j-i)/2
+		if s[h].rtid < rtid {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+	if i < len(s) && s[i].rtid == rtid {
+		return i, s[i].ti
+	}
+	return i, nil
+}
+
 func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
-	var ok bool
-	x.mu.RLock()
-	pti, ok = x.infos[rtid]
-	x.mu.RUnlock()
-	if ok {
-		return
+	// fmt.Printf(">>>> calling typeinfos.get ... \n")
+	sp := x.infos.load()
+	var idx int
+	if sp != nil {
+		idx, pti = x.find(sp, rtid)
+		if pti != nil {
+			return
+		}
 	}
 
 	// do not hold lock while computing this.
 	// it may lead to duplication, but that's ok.
 	ti := typeInfo{rt: rt, rtid: rtid}
-	ti.numMeth = uint16(rt.NumMethod())
+	// ti.rv0 = reflect.Zero(rt)
 
+	ti.numMeth = uint16(rt.NumMethod())
+	var ok bool
 	var indir int8
 	if ok, indir = implementsIntf(rt, binaryMarshalerTyp); ok {
 		ti.bm, ti.bmIndir = true, indir
@@ -854,7 +905,7 @@ func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 		ti.baseId = rtid
 	} else {
 		ti.base = pt
-		ti.baseId = reflect.ValueOf(pt).Pointer()
+		ti.baseId = rt2id(pt)
 		ti.baseIndir = ptIndir
 	}
 
@@ -875,12 +926,28 @@ func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 	}
 	// sfi = sfip
 
+	var vs []rtid2ti
 	x.mu.Lock()
-	if pti, ok = x.infos[rtid]; !ok {
+	sp = x.infos.load()
+	if sp == nil {
+		// fmt.Printf(">>>> in typeinfos.get: sp == nil\n")
 		pti = &ti
-		x.infos[rtid] = pti
+		vs = []rtid2ti{{rtid, pti}}
+		x.infos.store(&vs)
+	} else {
+		idx, pti = x.find(sp, rtid)
+		if pti == nil {
+			s := *sp
+			pti = &ti
+			vs = make([]rtid2ti, len(s)+1)
+			copy(vs, s[:idx])
+			vs[idx] = rtid2ti{rtid, pti}
+			copy(vs[idx+1:], s[idx:])
+			x.infos.store(&vs)
+		}
 	}
 	x.mu.Unlock()
+	// fmt.Printf(">>>>>>> TypeInfos: Num Elements: %v\n", len(*(x.infos.load())))
 	return
 }
 
@@ -932,7 +999,7 @@ LOOP:
 				}
 				if ft.Kind() == reflect.Struct {
 					// if etypes contains this, don't call rget again (as fields are already seen here)
-					ftid := reflect.ValueOf(ft).Pointer()
+					ftid := rt2id(ft)
 					// We cannot recurse forever, but we need to track other field depths.
 					// So - we break if we see a type twice (not the first time).
 					// This should be sufficient to handle an embedded type that refers to its
@@ -1065,22 +1132,23 @@ func panicToErr(err *error) {
 // }
 
 func isImmutableKind(k reflect.Kind) (v bool) {
-	return false ||
-		k == reflect.Int ||
-		k == reflect.Int8 ||
-		k == reflect.Int16 ||
-		k == reflect.Int32 ||
-		k == reflect.Int64 ||
-		k == reflect.Uint ||
-		k == reflect.Uint8 ||
-		k == reflect.Uint16 ||
-		k == reflect.Uint32 ||
-		k == reflect.Uint64 ||
-		k == reflect.Uintptr ||
-		k == reflect.Float32 ||
-		k == reflect.Float64 ||
-		k == reflect.Bool ||
-		k == reflect.String
+	return immutableKindsSet[k]
+	// return false ||
+	// 	k == reflect.Int ||
+	// 	k == reflect.Int8 ||
+	// 	k == reflect.Int16 ||
+	// 	k == reflect.Int32 ||
+	// 	k == reflect.Int64 ||
+	// 	k == reflect.Uint ||
+	// 	k == reflect.Uint8 ||
+	// 	k == reflect.Uint16 ||
+	// 	k == reflect.Uint32 ||
+	// 	k == reflect.Uint64 ||
+	// 	k == reflect.Uintptr ||
+	// 	k == reflect.Float32 ||
+	// 	k == reflect.Float64 ||
+	// 	k == reflect.Bool ||
+	// 	k == reflect.String
 }
 
 // these functions must be inlinable, and not call anybody
