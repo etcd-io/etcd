@@ -197,7 +197,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			var derr error
 			dataDirPath, derr = ioutil.TempDir("", name+".etcd")
 			if derr != nil {
-				panic("could not get tempdir for datadir")
+				panic(fmt.Sprintf("could not get tempdir for datadir: %s", derr))
 			}
 		}
 		initialCluster[i] = fmt.Sprintf("%s=%s", name, purl.String())
