@@ -55,8 +55,7 @@ type Client struct {
 
 	cfg      Config
 	creds    *credentials.TransportCredentials
-	balancer balancer
-	mu       sync.Mutex
+	balancer *simpleBalancer
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -117,10 +116,8 @@ func (c *Client) Endpoints() (eps []string) {
 
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
-	c.mu.Lock()
 	c.cfg.Endpoints = eps
-	c.mu.Unlock()
-	c.balancer.updateAddrs(eps...)
+	c.balancer.updateAddrs(eps)
 }
 
 // Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
@@ -230,7 +227,7 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	opts = append(opts, dopts...)
 
 	f := func(host string, t time.Duration) (net.Conn, error) {
-		proto, host, _ := parseEndpoint(c.balancer.endpoint(host))
+		proto, host, _ := parseEndpoint(c.balancer.getEndpoint(host))
 		if host == "" && endpoint != "" {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial
@@ -378,10 +375,7 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	sb := newSimpleBalancer(cfg.Endpoints)
-	hc := func(ep string) (bool, error) { return grpcHealthCheck(client, ep) }
-	client.balancer = newHealthBalancer(sb, cfg.DialTimeout, hc)
-
+	client.balancer = newSimpleBalancer(cfg.Endpoints)
 	// use Endpoints[0] so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(client.balancer))
@@ -397,7 +391,7 @@ func newClient(cfg *Config) (*Client, error) {
 		hasConn := false
 		waitc := time.After(cfg.DialTimeout)
 		select {
-		case <-client.balancer.ready():
+		case <-client.balancer.readyc:
 			hasConn = true
 		case <-ctx.Done():
 		case <-waitc:
