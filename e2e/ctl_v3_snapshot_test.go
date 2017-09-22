@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
+// func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
 
 func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)

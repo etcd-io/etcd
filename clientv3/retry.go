@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -55,18 +56,24 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 			if err == nil {
 				return nil
 			}
+			fmt.Printf("newRetryWrapper %+v\n", err)
 			notify := c.balancer.ConnectNotify()
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+				fmt.Printf("\nnewRetryWrapper c.balancer.next() 1\n")
 				c.balancer.next()
+				fmt.Printf("\nnewRetryWrapper c.balancer.next() 2\n")
 			}
 			if isStop(err) {
 				return err
 			}
 			select {
 			case <-notify:
+				fmt.Printf("newRetryWrapper <-notify\n")
 			case <-rpcCtx.Done():
+				fmt.Printf("newRetryWrapper <-rpcCtx.Done()\n")
 				return rpcCtx.Err()
 			case <-c.ctx.Done():
+				fmt.Printf("newRetryWrapper <-c.ctx.Done()\n")
 				return c.ctx.Err()
 			}
 		}

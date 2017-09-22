@@ -17,19 +17,18 @@ package e2e
 import (
 	"os"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/coreos/etcd/pkg/expect"
 )
 
-func TestCtlV3Lock(t *testing.T) {
-	oldenv := os.Getenv("EXPECT_DEBUG")
-	defer os.Setenv("EXPECT_DEBUG", oldenv)
-	os.Setenv("EXPECT_DEBUG", "1")
+// func TestCtlV3Lock(t *testing.T) {
+// 	oldenv := os.Getenv("EXPECT_DEBUG")
+// 	defer os.Setenv("EXPECT_DEBUG", oldenv)
+// 	os.Setenv("EXPECT_DEBUG", "1")
 
-	testCtl(t, testLock)
-}
+// 	testCtl(t, testLock)
+// }
 
 func testLock(cx ctlCtx) {
 	name := "a"

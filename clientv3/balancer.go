@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -115,6 +116,7 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 		updateAddrsC: make(chan notifyMsg),
 		host2ep:      getHost2ep(eps),
 	}
+	fmt.Println("newSimpleBalancer close(sb.downc)")
 	close(sb.downc)
 	go sb.updateNotifyLoop()
 	return sb
@@ -190,14 +192,19 @@ func (b *simpleBalancer) next() {
 	b.mu.RLock()
 	downc := b.downc
 	b.mu.RUnlock()
+	fmt.Printf("---------- next b.updateAddrsC <-notifyNext 1\n")
 	select {
 	case b.updateAddrsC <- notifyNext:
+		fmt.Printf("---------- next b.updateAddrsC <-notifyNext 2\n")
 	case <-b.stopc:
+		fmt.Printf("---------- next <-b.stopc a\n")
 	}
 	// wait until disconnect so new RPCs are not issued on old connection
 	select {
 	case <-downc:
+		fmt.Printf("---------- next <-downc\n")
 	case <-b.stopc:
+		fmt.Printf("---------- next <-b.stopc b\n")
 	}
 }
 
@@ -230,6 +237,7 @@ func (b *simpleBalancer) updateNotifyLoop() {
 		}
 		switch {
 		case downc == nil && upc == nil:
+			fmt.Printf("################ updateNotifyLoop downc == nil && upc == nil (%v)\n", addr)
 			// stale
 			select {
 			case <-b.stopc:
@@ -237,26 +245,34 @@ func (b *simpleBalancer) updateNotifyLoop() {
 			default:
 			}
 		case downc == nil:
+			fmt.Printf("################ updateNotifyLoop downc == nil (%v)\n", addr)
 			b.notifyAddrs(notifyReset)
 			select {
 			case <-upc:
+				fmt.Printf("################ updateNotifyLoop downc == nil <-upc (%v)\n", addr)
 			case msg := <-b.updateAddrsC:
+				fmt.Printf("################ updateNotifyLoop downc == nil <-b.updateAddrsC (%v) (msg %v)\n", addr, msg)
 				b.notifyAddrs(msg)
 			case <-b.stopc:
 				return
 			}
 		case upc == nil:
+			fmt.Printf("################ updateNotifyLoop upc == nil (%v)\n", addr)
 			select {
 			// close connections that are not the pinned address
 			case b.notifyCh <- []grpc.Address{{Addr: addr}}:
+				fmt.Printf("################ updateNotifyLoop upc == nil b.notifyCh <- %v\n", addr)
 			case <-downc:
+				fmt.Printf("################ updateNotifyLoop upc == nil b.notifyCh <- %v <-downc\n", addr)
 			case <-b.stopc:
 				return
 			}
 			select {
 			case <-downc:
+				fmt.Printf("################ updateNotifyLoop upc == nil b.notifyCh <- %v <-downc <-downc\n", addr)
 				b.notifyAddrs(notifyReset)
 			case msg := <-b.updateAddrsC:
+				fmt.Printf("################ updateNotifyLoop upc == nil b.notifyCh <- %v <-downc <-b.updateAddrsC %v\n", addr, msg)
 				b.notifyAddrs(msg)
 			case <-b.stopc:
 				return
@@ -269,7 +285,9 @@ func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 	if msg == notifyNext {
 		select {
 		case b.notifyCh <- []grpc.Address{}:
+			fmt.Printf("=======notifyAddrs notifyNext []grpc.Address{}\n")
 		case <-b.stopc:
+			fmt.Printf("=======notifyAddrs notifyNext <-b.stopc\n")
 			return
 		}
 	}
@@ -278,7 +296,9 @@ func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 	b.mu.RUnlock()
 	select {
 	case b.notifyCh <- addrs:
+		fmt.Printf("=======notifyAddrs b.notifyCh <- %v\n", addrs)
 	case <-b.stopc:
+		fmt.Printf("=======notifyAddrs <-b.stopc\n")
 	}
 }
 
@@ -290,6 +310,8 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	fmt.Printf("up %v\n", addr)
 
 	// gRPC might call Up after it called Close. We add this check
 	// to "fix" it up at application layer. Otherwise, will panic
@@ -306,16 +328,21 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 		return func(err error) {}, false
 	}
 	// notify waiting Get()s and pin first connected address
+	fmt.Println("up close(b.upc)")
 	close(b.upc)
 	b.downc = make(chan struct{})
 	b.pinAddr = addr.Addr
+	fmt.Printf("up pinAddr %v\n", addr)
+
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
 	return func(err error) {
 		b.mu.Lock()
 		b.upc = make(chan struct{})
+		fmt.Println("up close(b.downc)")
 		close(b.downc)
 		b.pinAddr = ""
+		fmt.Printf("up error %v (%v)\n", addr, err)
 		b.mu.Unlock()
 	}, true
 }
@@ -393,6 +420,7 @@ func (b *simpleBalancer) Close() error {
 	case <-b.upc:
 	default:
 		// terminate all waiting Get()s
+		fmt.Println("Close close(b.upc)")
 		close(b.upc)
 	}
 

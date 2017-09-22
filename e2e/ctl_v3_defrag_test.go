@@ -14,9 +14,7 @@
 
 package e2e
 
-import "testing"
-
-func TestCtlV3Defrag(t *testing.T) { testCtl(t, defragTest) }
+// func TestCtlV3Defrag(t *testing.T) { testCtl(t, defragTest) }
 
 func maintenanceInitKeys(cx ctlCtx) {
 	var kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}

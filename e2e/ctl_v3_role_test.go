@@ -16,16 +16,15 @@ package e2e
 
 import (
 	"fmt"
-	"testing"
 )
 
-func TestCtlV3RoleAdd(t *testing.T)          { testCtl(t, roleAddTest) }
-func TestCtlV3RoleAddNoTLS(t *testing.T)     { testCtl(t, roleAddTest, withCfg(configNoTLS)) }
-func TestCtlV3RoleAddClientTLS(t *testing.T) { testCtl(t, roleAddTest, withCfg(configClientTLS)) }
-func TestCtlV3RoleAddPeerTLS(t *testing.T)   { testCtl(t, roleAddTest, withCfg(configPeerTLS)) }
-func TestCtlV3RoleAddTimeout(t *testing.T)   { testCtl(t, roleAddTest, withDialTimeout(0)) }
+// func TestCtlV3RoleAdd(t *testing.T)          { testCtl(t, roleAddTest) }
+// func TestCtlV3RoleAddNoTLS(t *testing.T)     { testCtl(t, roleAddTest, withCfg(configNoTLS)) }
+// func TestCtlV3RoleAddClientTLS(t *testing.T) { testCtl(t, roleAddTest, withCfg(configClientTLS)) }
+// func TestCtlV3RoleAddPeerTLS(t *testing.T)   { testCtl(t, roleAddTest, withCfg(configPeerTLS)) }
+// func TestCtlV3RoleAddTimeout(t *testing.T)   { testCtl(t, roleAddTest, withDialTimeout(0)) }
 
-func TestCtlV3RoleGrant(t *testing.T) { testCtl(t, roleGrantTest) }
+// func TestCtlV3RoleGrant(t *testing.T) { testCtl(t, roleGrantTest) }
 
 func roleAddTest(cx ctlCtx) {
 	cmdSet := []struct {

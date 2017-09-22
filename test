@@ -83,13 +83,13 @@ fi
 function unit_pass {
 	echo "Running unit tests..."
 	# only -run=Test so examples can run in integration tests
-	go test -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
+	# go test -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
 }
 
 function integration_pass {
 	echo "Running integration tests..."
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
-	integration_extra "$@"
+	# go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
+	# integration_extra "$@"
 }
 
 function integration_extra {
@@ -219,11 +219,11 @@ function integration_e2e_pass {
 
 	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e" &
 	e2epid="$!"
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
-	intpid="$!"
+	# go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
+	# intpid="$!"
 	wait $e2epid
-	wait $intpid
-	integration_extra "$@"
+	# wait $intpid
+	# integration_extra "$@"
 }
 
 function grpcproxy_pass {

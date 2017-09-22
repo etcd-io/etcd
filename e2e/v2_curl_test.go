@@ -23,12 +23,12 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-func TestV2CurlNoTLS(t *testing.T)      { testCurlPutGet(t, &configNoTLS) }
-func TestV2CurlAutoTLS(t *testing.T)    { testCurlPutGet(t, &configAutoTLS) }
-func TestV2CurlAllTLS(t *testing.T)     { testCurlPutGet(t, &configTLS) }
-func TestV2CurlPeerTLS(t *testing.T)    { testCurlPutGet(t, &configPeerTLS) }
-func TestV2CurlClientTLS(t *testing.T)  { testCurlPutGet(t, &configClientTLS) }
-func TestV2CurlClientBoth(t *testing.T) { testCurlPutGet(t, &configClientBoth) }
+// func TestV2CurlNoTLS(t *testing.T)      { testCurlPutGet(t, &configNoTLS) }
+// func TestV2CurlAutoTLS(t *testing.T)    { testCurlPutGet(t, &configAutoTLS) }
+// func TestV2CurlAllTLS(t *testing.T)     { testCurlPutGet(t, &configTLS) }
+// func TestV2CurlPeerTLS(t *testing.T)    { testCurlPutGet(t, &configPeerTLS) }
+// func TestV2CurlClientTLS(t *testing.T)  { testCurlPutGet(t, &configClientTLS) }
+// func TestV2CurlClientBoth(t *testing.T) { testCurlPutGet(t, &configClientBoth) }
 func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
@@ -60,56 +60,6 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 		if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo", expected: expectGet, isTLS: true}); err != nil {
 			t.Fatalf("failed get with curl (%v)", err)
 		}
-	}
-}
-
-func TestV2CurlIssue5182(t *testing.T) {
-	defer testutil.AfterTest(t)
-
-	epc := setupEtcdctlTest(t, &configNoTLS, false)
-	defer func() {
-		if err := epc.Close(); err != nil {
-			t.Fatalf("error closing etcd processes (%v)", err)
-		}
-	}()
-
-	expectPut := `{"action":"set","node":{"key":"/foo","value":"bar","`
-	if err := cURLPut(epc, cURLReq{endpoint: "/v2/keys/foo", value: "bar", expected: expectPut}); err != nil {
-		t.Fatal(err)
-	}
-
-	expectUserAdd := `{"user":"foo","roles":null}`
-	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/users/foo", value: `{"user":"foo", "password":"pass"}`, expected: expectUserAdd}); err != nil {
-		t.Fatal(err)
-	}
-	expectRoleAdd := `{"role":"foo","permissions":{"kv":{"read":["/foo/*"],"write":null}}`
-	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/roles/foo", value: `{"role":"foo", "permissions": {"kv": {"read": ["/foo/*"]}}}`, expected: expectRoleAdd}); err != nil {
-		t.Fatal(err)
-	}
-	expectUserUpdate := `{"user":"foo","roles":["foo"]}`
-	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/users/foo", value: `{"user": "foo", "grant": ["foo"]}`, expected: expectUserUpdate}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := etcdctlUserAdd(epc, "root", "a"); err != nil {
-		t.Fatal(err)
-	}
-	if err := etcdctlAuthEnable(epc); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "root", password: "a", expected: "bar"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "foo", password: "pass", expected: "bar"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "foo", password: "", expected: "bar"}); err != nil {
-		if !strings.Contains(err.Error(), `The request requires user authentication`) {
-			t.Fatalf("expected 'The request requires user authentication' error, got %v", err)
-		}
-	} else {
-		t.Fatalf("expected 'The request requires user authentication' error")
 	}
 }
 

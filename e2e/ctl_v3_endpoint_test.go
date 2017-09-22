@@ -18,15 +18,14 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 )
 
-func TestCtlV3EndpointHealth(t *testing.T) { testCtl(t, endpointHealthTest, withQuorum()) }
-func TestCtlV3EndpointStatus(t *testing.T) { testCtl(t, endpointStatusTest, withQuorum()) }
-func TestCtlV3EndpointHashKV(t *testing.T) { testCtl(t, endpointHashKVTest, withQuorum()) }
+// func TestCtlV3EndpointHealth(t *testing.T) { testCtl(t, endpointHealthTest, withQuorum()) }
+// func TestCtlV3EndpointStatus(t *testing.T) { testCtl(t, endpointStatusTest, withQuorum()) }
+// func TestCtlV3EndpointHashKV(t *testing.T) { testCtl(t, endpointHashKVTest, withQuorum()) }
 
 func endpointHealthTest(cx ctlCtx) {
 	if err := ctlV3EndpointHealth(cx); err != nil {

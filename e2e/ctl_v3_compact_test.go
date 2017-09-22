@@ -17,11 +17,10 @@ package e2e
 import (
 	"strconv"
 	"strings"
-	"testing"
 )
 
-func TestCtlV3Compact(t *testing.T)         { testCtl(t, compactTest) }
-func TestCtlV3CompactPhysical(t *testing.T) { testCtl(t, compactTest, withCompactPhysical()) }
+// func TestCtlV3Compact(t *testing.T)         { testCtl(t, compactTest) }
+// func TestCtlV3CompactPhysical(t *testing.T) { testCtl(t, compactTest, withCompactPhysical()) }
 
 func compactTest(cx ctlCtx) {
 	compactPhysical := cx.compactPhysical

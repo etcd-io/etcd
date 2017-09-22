@@ -17,19 +17,18 @@ package e2e
 import (
 	"os"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/coreos/etcd/pkg/expect"
 )
 
-func TestCtlV3Elect(t *testing.T) {
-	oldenv := os.Getenv("EXPECT_DEBUG")
-	defer os.Setenv("EXPECT_DEBUG", oldenv)
-	os.Setenv("EXPECT_DEBUG", "1")
+// func TestCtlV3Elect(t *testing.T) {
+// 	oldenv := os.Getenv("EXPECT_DEBUG")
+// 	defer os.Setenv("EXPECT_DEBUG", oldenv)
+// 	os.Setenv("EXPECT_DEBUG", "1")
 
-	testCtl(t, testElect)
-}
+// 	testCtl(t, testElect)
+// }
 
 func testElect(cx ctlCtx) {
 	name := "a"
