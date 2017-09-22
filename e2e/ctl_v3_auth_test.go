@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Skip proxy tests for now since auth is broken on grpcproxy.
-// +build !cluster_proxy
-
 package e2e
 
 import (

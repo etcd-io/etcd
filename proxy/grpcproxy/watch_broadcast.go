@@ -58,6 +58,8 @@ func newWatchBroadcast(wp *watchProxy, w *watcher, update func(*watchBroadcast))
 			clientv3.WithCreatedNotify(),
 		}
 
+		cctx = withClientAuthToken(cctx, w.wps.stream.Context())
+
 		wch := wp.cw.Watch(cctx, w.wr.key, opts...)
 
 		for wr := range wch {

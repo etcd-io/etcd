@@ -42,6 +42,8 @@ func (mp *maintenanceProxy) Snapshot(sr *pb.SnapshotRequest, stream pb.Maintenan
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 
+	ctx = withClientAuthToken(ctx, stream.Context())
+
 	sc, err := pb.NewMaintenanceClient(conn).Snapshot(ctx, sr)
 	if err != nil {
 		return err
