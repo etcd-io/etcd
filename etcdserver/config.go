@@ -181,9 +181,8 @@ func (c *ServerConfig) electionTimeout() time.Duration {
 }
 
 func (c *ServerConfig) peerDialTimeout() time.Duration {
-	// 1s for queue wait and system delay
-	// + one RTT, which is smaller than 1/5 election timeout
-	return time.Second + time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond/5
+	// 1s for queue wait and election timeout
+	return time.Second + time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
 }
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
