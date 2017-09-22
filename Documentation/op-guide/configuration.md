@@ -251,6 +251,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_PEER_AUTO_TLS
 
+### --peer-cert-allowed-cn
++ Allowed CommonName for inter peer authentication.
++ default: none
++ env variable: ETCD_PEER_CERT_ALLOWED_CN
+
 ## Logging flags
 
 ### --debug
