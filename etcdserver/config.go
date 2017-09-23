@@ -173,17 +173,16 @@ func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 func (c *ServerConfig) ReqTimeout() time.Duration {
 	// 5s for queue waiting, computation and disk IO delay
 	// + 2 * election timeout for possible leader election
-	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
+	return 5*time.Second + 2*time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
 func (c *ServerConfig) electionTimeout() time.Duration {
-	return time.Duration(c.ElectionTicks) * time.Duration(c.TickMs) * time.Millisecond
+	return time.Duration(c.ElectionTicks*int(c.TickMs)) * time.Millisecond
 }
 
 func (c *ServerConfig) peerDialTimeout() time.Duration {
-	// 1s for queue wait and system delay
-	// + one RTT, which is smaller than 1/5 election timeout
-	return time.Second + time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond/5
+	// 1s for queue wait and election timeout
+	return time.Second + time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
