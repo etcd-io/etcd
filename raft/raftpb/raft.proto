@@ -75,14 +75,26 @@ message HardState {
 	optional uint64 commit = 3 [(gogoproto.nullable) = false];
 }
 
+enum SuffrageState {
+	Nonvoter = 0;
+	Voter    = 1;
+}
+
+message Server {
+	optional uint64        node     = 1 [(gogoproto.nullable) = false];
+	optional SuffrageState suffrage = 2 [(gogoproto.nullable) = false];
+}
+
 message ConfState {
-	repeated uint64 nodes = 1;
+	repeated uint64 nodes   = 1;
+	repeated Server servers = 2;
 }
 
 enum ConfChangeType {
-	ConfChangeAddNode    = 0;
-	ConfChangeRemoveNode = 1;
-	ConfChangeUpdateNode = 2;
+	ConfChangeAddNode     = 0;
+	ConfChangeRemoveNode  = 1;
+	ConfChangeUpdateNode  = 2;
+	ConfChangeAddNonvoter = 3;
 }
 
 message ConfChange {

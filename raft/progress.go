@@ -14,7 +14,11 @@
 
 package raft
 
-import "fmt"
+import (
+	"fmt"
+
+	pb "github.com/coreos/etcd/raft/raftpb"
+)
 
 const (
 	ProgressStateProbe ProgressStateType = iota
@@ -48,6 +52,8 @@ type Progress struct {
 	// When in ProgressStateSnapshot, leader should have sent out snapshot
 	// before and stops sending any replication message.
 	State ProgressStateType
+
+	Suffrage pb.SuffrageState
 	// Paused is used in ProgressStateProbe.
 	// When Paused is true, raft should pause sending replication message to this peer.
 	Paused bool

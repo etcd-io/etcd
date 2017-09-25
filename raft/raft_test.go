@@ -348,6 +348,54 @@ func testLeaderElection(t *testing.T, preVote bool) {
 	}
 }
 
+func TestNonvoterElectionTimeout(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n1.prs[3].Suffrage = pb.Nonvoter
+
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2.prs[3].Suffrage = pb.Nonvoter
+
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3.suffrage = pb.Nonvoter
+	n3.prs[3].Suffrage = pb.Nonvoter
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	nt := newNetwork(n1, n2, n3)
+
+	// Nonvoter can't start election
+	setRandomizedElectionTimeout(n3, n3.electionTimeout)
+	for i := 0; i < n3.electionTimeout; i++ {
+		n3.tick()
+	}
+	if n1.state != StateFollower {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateFollower {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StateFollower {
+		t.Errorf("peer 3 state: %s, want %s", n3.state, StateFollower)
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if n1.state != StateLeader {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateLeader)
+	}
+
+	// node 3 become Voter
+	n1.addNode(3)
+	n2.addNode(3)
+	n3.addNode(3)
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	if n3.state != StateLeader {
+		t.Errorf("peer 3 state: %s, want %s", n3.state, StateLeader)
+	}
+}
+
 func TestLeaderCycle(t *testing.T) {
 	testLeaderCycle(t, false)
 }
@@ -1058,7 +1106,7 @@ func TestCommit(t *testing.T) {
 
 		sm := newTestRaft(1, []uint64{1}, 5, 1, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1)
+			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, pb.Voter)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -2326,6 +2374,42 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func TestRestoreWithNonvoter(t *testing.T) {
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index: 11, // magic number
+			Term:  11, // magic number
+			ConfState: pb.ConfState{Servers: []*pb.Server{
+				{Node: 1, Suffrage: pb.Voter},
+				{Node: 2, Suffrage: pb.Voter},
+				{Node: 3, Suffrage: pb.Nonvoter},
+			}},
+		},
+	}
+
+	storage := NewMemoryStorage()
+	sm := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, storage)
+	if ok := sm.restore(s); !ok {
+		t.Fatal("restore fail, want succeed")
+	}
+
+	if sm.raftLog.lastIndex() != s.Metadata.Index {
+		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Metadata.Index)
+	}
+	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
+		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
+	}
+	for _, server := range s.Metadata.ConfState.Servers {
+		if sm.prs[server.Node].Suffrage != server.Suffrage {
+			t.Errorf("sm.Node %x suffrage = %s, want %s", server.Node, sm.prs[server.Node], server.Suffrage)
+		}
+	}
+
+	if ok := sm.restore(s); ok {
+		t.Fatal("restore succeed, want fail")
+	}
+}
+
 func TestRestoreIgnoreSnapshot(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
 	commit := uint64(1)
@@ -2566,6 +2650,23 @@ func TestAddNode(t *testing.T) {
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
+	}
+}
+
+func TestAddNonvoter(t *testing.T) {
+	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	r.pendingConf = true
+	r.addNonvoter(2)
+	if r.pendingConf {
+		t.Errorf("pendingConf = %v, want false", r.pendingConf)
+	}
+	nodes := r.nodes()
+	wnodes := []uint64{1, 2}
+	if !reflect.DeepEqual(nodes, wnodes) {
+		t.Errorf("nodes = %v, want %v", nodes, wnodes)
+	}
+	if r.prs[2].Suffrage != pb.Nonvoter {
+		t.Fatalf("node 2 has suffrage %s, want %s", r.prs[2].Suffrage, pb.Nonvoter)
 	}
 }
 
@@ -3278,7 +3379,7 @@ func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	for i, term := range terms {
 		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
-	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
+	cfg := newTestConfig(1, []uint64{1, 2, 3, 4, 5}, 5, 1, storage)
 	if configFunc != nil {
 		configFunc(cfg)
 	}
@@ -3293,7 +3394,7 @@ func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 func votedWithConfig(configFunc func(*Config), vote, term uint64) *raft {
 	storage := NewMemoryStorage()
 	storage.SetHardState(pb.HardState{Vote: vote, Term: term})
-	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
+	cfg := newTestConfig(1, []uint64{1, 2, 3, 4, 5}, 5, 1, storage)
 	if configFunc != nil {
 		configFunc(cfg)
 	}
@@ -3338,10 +3439,14 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
+			suffrages := make(map[uint64]pb.SuffrageState, size)
+			for i, pr := range p.(*raft).prs {
+				suffrages[i] = pr.Suffrage
+			}
 			v.id = id
 			v.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
-				v.prs[peerAddrs[i]] = &Progress{}
+				v.prs[peerAddrs[i]] = &Progress{Suffrage: suffrages[peerAddrs[i]]}
 			}
 			v.reset(v.Term)
 			npeers[id] = v
@@ -3448,9 +3553,13 @@ func setRandomizedElectionTimeout(r *raft, v int) {
 }
 
 func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage Storage) *Config {
+	new_peers := make([]pb.Server, 0)
+	for _, p := range peers {
+		new_peers = append(new_peers, pb.Server{Node: p, Suffrage: pb.Voter})
+	}
 	return &Config{
 		ID:              id,
-		peers:           peers,
+		peers:           new_peers,
 		ElectionTick:    election,
 		HeartbeatTick:   heartbeat,
 		Storage:         storage,
