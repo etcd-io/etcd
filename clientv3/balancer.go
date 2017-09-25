@@ -309,6 +309,9 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	close(b.upc)
 	b.downc = make(chan struct{})
 	b.pinAddr = addr.Addr
+	if logger.V(4) {
+		logger.Infof("clientv3: balancer pins endpoint to %s", addr.Addr)
+	}
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
 	return func(err error) {
@@ -317,6 +320,9 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 		close(b.downc)
 		b.pinAddr = ""
 		b.mu.Unlock()
+		if logger.V(4) {
+			logger.Infof("clientv3: unpin %s (%v)", addr.Addr, err)
+		}
 	}, true
 }
 
