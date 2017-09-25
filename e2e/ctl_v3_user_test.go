@@ -14,16 +14,14 @@
 
 package e2e
 
-import "testing"
+// func TestCtlV3UserAdd(t *testing.T)          { testCtl(t, userAddTest) }
+// func TestCtlV3UserAddNoTLS(t *testing.T)     { testCtl(t, userAddTest, withCfg(configNoTLS)) }
+// func TestCtlV3UserAddClientTLS(t *testing.T) { testCtl(t, userAddTest, withCfg(configClientTLS)) }
+// func TestCtlV3UserAddPeerTLS(t *testing.T)   { testCtl(t, userAddTest, withCfg(configPeerTLS)) }
+// func TestCtlV3UserAddTimeout(t *testing.T)   { testCtl(t, userAddTest, withDialTimeout(0)) }
 
-func TestCtlV3UserAdd(t *testing.T)          { testCtl(t, userAddTest) }
-func TestCtlV3UserAddNoTLS(t *testing.T)     { testCtl(t, userAddTest, withCfg(configNoTLS)) }
-func TestCtlV3UserAddClientTLS(t *testing.T) { testCtl(t, userAddTest, withCfg(configClientTLS)) }
-func TestCtlV3UserAddPeerTLS(t *testing.T)   { testCtl(t, userAddTest, withCfg(configPeerTLS)) }
-func TestCtlV3UserAddTimeout(t *testing.T)   { testCtl(t, userAddTest, withDialTimeout(0)) }
-
-func TestCtlV3UserDelete(t *testing.T) { testCtl(t, userDelTest) }
-func TestCtlV3UserPasswd(t *testing.T) { testCtl(t, userPasswdTest) }
+// func TestCtlV3UserDelete(t *testing.T) { testCtl(t, userDelTest) }
+// func TestCtlV3UserPasswd(t *testing.T) { testCtl(t, userPasswdTest) }
 
 type userCmdDesc struct {
 	args        []string

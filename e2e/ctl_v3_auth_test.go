@@ -17,39 +17,38 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"testing"
 
 	"github.com/coreos/etcd/clientv3"
 )
 
-func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
-func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
-func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
-func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
-func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
-func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
-func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
-func TestCtlV3AuthPrefixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
-func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
-func TestCtlV3AuthMemberRemove(t *testing.T) {
-	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
-}
-func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
-func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
-func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
-func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
-func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
-func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
+// func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
+// func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
+// func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
+// func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
+// func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
+// func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
+// func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
+// func TestCtlV3AuthPrefixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
+// func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
+// func TestCtlV3AuthMemberRemove(t *testing.T) {
+// 	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
+// }
+// func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
+// func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
+// func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
+// func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
+// func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
+// func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
-func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
-func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
-func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
+// func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
+// func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
+// func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
 
-func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
-func TestCtlV3AuthEndpointHealth(t *testing.T) {
-	testCtl(t, authTestEndpointHealth, withQuorum())
-}
-func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
+// func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
+// func TestCtlV3AuthEndpointHealth(t *testing.T) {
+// 	testCtl(t, authTestEndpointHealth, withQuorum())
+// }
+// func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {

@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -48,7 +49,12 @@ func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
 func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(configClientTLS)) }
 func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(configPeerTLS)) }
-func TestCtlV3DelTimeout(t *testing.T)   { testCtl(t, delTest, withDialTimeout(0)) }
+func TestCtlV3DelTimeout(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+	testCtl(t, delTest, withDialTimeout(0))
+}
 
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := etcdProcessClusterConfig{
@@ -308,6 +314,7 @@ func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
 	if len(flags) != 0 {
 		cmdArgs = append(cmdArgs, flags...)
 	}
+	fmt.Println("PUT:", cmdArgs, flags)
 	return spawnWithExpect(cmdArgs, "OK")
 }
 
@@ -325,11 +332,17 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	for _, elem := range kvs {
 		lines = append(lines, elem.key, elem.val)
 	}
-	return spawnWithExpects(cmdArgs, lines...)
+	fmt.Println("GET:", cmdArgs, lines)
+	err := spawnWithExpects(cmdArgs, lines...)
+	if err != nil {
+		fmt.Println("ctlV3Get error:", err)
+	}
+	return nil
 }
 
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
+	fmt.Println("DEL:", cmdArgs, num)
 	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
 }

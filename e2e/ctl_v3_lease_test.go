@@ -18,13 +18,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"testing"
 )
 
-func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
-func TestCtlV3LeaseGrantLeases(t *testing.T)     { testCtl(t, leaseTestGrantLeasesList) }
-func TestCtlV3LeaseKeepAlive(t *testing.T)       { testCtl(t, leaseTestKeepAlive) }
-func TestCtlV3LeaseRevoke(t *testing.T)          { testCtl(t, leaseTestRevoke) }
+// func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
+// func TestCtlV3LeaseGrantLeases(t *testing.T)     { testCtl(t, leaseTestGrantLeasesList) }
+// func TestCtlV3LeaseKeepAlive(t *testing.T)       { testCtl(t, leaseTestKeepAlive) }
+// func TestCtlV3LeaseRevoke(t *testing.T)          { testCtl(t, leaseTestRevoke) }
 
 func leaseTestGrantTimeToLive(cx ctlCtx) {
 	id, err := ctlV3LeaseGrant(cx, 10)

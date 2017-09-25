@@ -14,23 +14,21 @@
 
 package e2e
 
-import "testing"
-
-func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive())
-}
-func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configNoTLS))
-}
-func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configClientTLS))
-}
-func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configPeerTLS))
-}
-func TestCtlV3TxnInteractiveFail(t *testing.T) {
-	testCtl(t, txnTestFail, withInteractive())
-}
+// func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
+// 	testCtl(t, txnTestSuccess, withInteractive())
+// }
+// func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
+// 	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configNoTLS))
+// }
+// func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
+// 	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configClientTLS))
+// }
+// func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
+// 	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configPeerTLS))
+// }
+// func TestCtlV3TxnInteractiveFail(t *testing.T) {
+// 	testCtl(t, txnTestFail, withInteractive())
+// }
 
 func txnTestSuccess(cx ctlCtx) {
 	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {

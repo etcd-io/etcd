@@ -19,17 +19,16 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"testing"
 
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func TestCtlV3MemberList(t *testing.T) { testCtl(t, memberListTest) }
-func TestCtlV3MemberRemove(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
-}
-func TestCtlV3MemberAdd(t *testing.T)    { testCtl(t, memberAddTest) }
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
+// func TestCtlV3MemberList(t *testing.T) { testCtl(t, memberListTest) }
+// func TestCtlV3MemberRemove(t *testing.T) {
+// 	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
+// }
+// func TestCtlV3MemberAdd(t *testing.T)    { testCtl(t, memberAddTest) }
+// func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
 
 func memberListTest(cx ctlCtx) {
 	if err := ctlV3MemberList(cx); err != nil {

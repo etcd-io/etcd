@@ -174,10 +174,13 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	skip := len(hb.addrs) == 1 || len(hb.unhealthy) == 0
 	_, bad := hb.unhealthy[addr.Addr]
 	hb.mu.RUnlock()
+	logger.Infof("healthBalancer mayPin %v (skip %v, bad %d)", addr, skip, bad)
 	if skip || !bad {
 		return true
 	}
-	if ok, _ := hb.healthCheck(addr.Addr); ok {
+	ok, err := hb.healthCheck(addr.Addr)
+	if ok {
+		logger.Infof("healthBalancer mayPin healthCheck %v (%v)", addr, err)
 		hb.mu.Lock()
 		delete(hb.unhealthy, addr.Addr)
 		hb.mu.Unlock()
@@ -185,6 +188,7 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	}
 	hb.mu.Lock()
 	hb.unhealthy[addr.Addr] = time.Now()
+	logger.Infof("healthBalancer mayPin unhealthy %v (%v)", addr, err)
 	hb.mu.Unlock()
 	return false
 }
