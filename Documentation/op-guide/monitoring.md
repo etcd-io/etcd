@@ -38,7 +38,7 @@ When	Elapsed (s)
 17:34:51.999382 	 .    65 	... RPC: from 127.0.0.1:47204 deadline:4.999377747s
 17:34:51.999395 	 .    13 	... recv: key:"abc"
 17:34:51.999499 	 .   104 	... OK
-17:34:51.999535 	 .    36 	... sent: header:<cluster_id:14841639068965178418 member_id:10276657743932975437 revision:15 raft_term:17 > kvs:<key:"abc" create_revision:6 mod_revision:14 version:9 value:"asda" > count:1 
+17:34:51.999535 	 .    36 	... sent: header:<cluster_id:14841639068965178418 member_id:10276657743932975437 revision:15 raft_term:17 > kvs:<key:"abc" create_revision:6 mod_revision:14 version:9 value:"asda" > count:1
 ```
 
 ## Metrics endpoint
@@ -117,8 +117,6 @@ Access: proxy
 
 Then import the default [etcd dashboard template][template] and customize. For instance, if Prometheus data source name is `my-etcd`, the `datasource` field values in JSON also need to be `my-etcd`.
 
-See the [demo][demo].
-
 Sample dashboard:
 
 ![](./etcd-sample-grafana.png)
@@ -127,4 +125,3 @@ Sample dashboard:
 [prometheus]: https://prometheus.io/
 [grafana]: http://grafana.org/
 [template]: ./grafana.json
-[demo]: http://dash.etcd.io/dashboard/db/test-etcd
