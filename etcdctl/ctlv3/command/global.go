@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -90,14 +91,18 @@ func initDisplayFromCmd(cmd *cobra.Command) {
 }
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
-	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+	fs := cmd.InheritedFlags()
+	flags.SetPflagsFromEnv("ETCDCTL", fs)
 
 	debug, derr := cmd.Flags().GetBool("debug")
 	if derr != nil {
 		ExitWithError(ExitError, derr)
 	}
 	if debug {
-		clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		fs.VisitAll(func(f *pflag.Flag) {
+			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
+		})
 	}
 
 	endpoints, err := endpointsFromCmd(cmd)

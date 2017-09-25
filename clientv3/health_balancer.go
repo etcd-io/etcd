@@ -186,6 +186,9 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	hb.mu.Lock()
 	hb.unhealthy[addr.Addr] = time.Now()
 	hb.mu.Unlock()
+	if logger.V(4) {
+		logger.Infof("clientv3: %s becomes unhealthy", addr.Addr)
+	}
 	return false
 }
 
