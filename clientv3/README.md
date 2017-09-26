@@ -10,6 +10,8 @@
 go get github.com/coreos/etcd/clientv3
 ```
 
+> **Requires Go v1.9+**
+
 ## Get started
 
 Create client using `clientv3.New`:
