@@ -99,7 +99,7 @@ clustering flags:
 	--auto-compaction-retention '0'
 		auto compaction retention length. 0 means disable auto compaction.
 	--auto-compaction-mode 'periodic'
-		'periodic' means hours, 'revision' means revision numbers to retain by auto compaction
+		interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
 	--enable-v2
 		Accept etcd V2 client requests.
 

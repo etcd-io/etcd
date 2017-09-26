@@ -81,7 +81,7 @@ type Config struct {
 	MaxWalFiles             uint   `json:"max-wals"`
 	Name                    string `json:"name"`
 	SnapCount               uint64 `json:"snapshot-count"`
-	AutoCompactionRetention int    `json:"auto-compaction-retention"`
+	AutoCompactionRetention string `json:"auto-compaction-retention"`
 	AutoCompactionMode      string `json:"auto-compaction-mode"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
