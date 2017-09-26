@@ -29,8 +29,7 @@ var (
 )
 
 const (
-	checkCompactionInterval   = 5 * time.Minute
-	executeCompactionInterval = time.Hour
+	checkCompactionInterval = 5 * time.Minute
 
 	ModePeriodic = "periodic"
 	ModeRevision = "revision"
@@ -57,7 +56,7 @@ type RevGetter interface {
 	Rev() int64
 }
 
-func New(mode string, retention int, rg RevGetter, c Compactable) (Compactor, error) {
+func New(mode string, retention time.Duration, rg RevGetter, c Compactable) (Compactor, error) {
 	switch mode {
 	case ModePeriodic:
 		return NewPeriodic(retention, rg, c), nil

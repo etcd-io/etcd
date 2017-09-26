@@ -26,10 +26,10 @@ import (
 )
 
 // Periodic compacts the log by purging revisions older than
-// the configured retention time. Compaction happens hourly.
+// the configured retention time.
 type Periodic struct {
-	clock        clockwork.Clock
-	periodInHour int
+	clock  clockwork.Clock
+	period time.Duration
 
 	rg RevGetter
 	c  Compactable
@@ -38,26 +38,30 @@ type Periodic struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mu     sync.Mutex
+	// mu protects paused
+	mu     sync.RWMutex
 	paused bool
 }
 
 // NewPeriodic creates a new instance of Periodic compactor that purges
-// the log older than h hours.
-func NewPeriodic(h int, rg RevGetter, c Compactable) *Periodic {
+// the log older than h Duration.
+func NewPeriodic(h time.Duration, rg RevGetter, c Compactable) *Periodic {
 	return &Periodic{
-		clock:        clockwork.NewRealClock(),
-		periodInHour: h,
-		rg:           rg,
-		c:            c,
+		clock:  clockwork.NewRealClock(),
+		period: h,
+		rg:     rg,
+		c:      c,
 	}
 }
+
+// periodDivisor divides Periodic.period in into checkCompactInterval duration
+const periodDivisor = 10
 
 func (t *Periodic) Run() {
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 	t.revs = make([]int64, 0)
 	clock := t.clock
-
+	checkCompactInterval := t.period / time.Duration(periodDivisor)
 	go func() {
 		last := clock.Now()
 		for {
@@ -65,7 +69,7 @@ func (t *Periodic) Run() {
 			select {
 			case <-t.ctx.Done():
 				return
-			case <-clock.After(checkCompactionInterval):
+			case <-clock.After(checkCompactInterval):
 				t.mu.Lock()
 				p := t.paused
 				t.mu.Unlock()
@@ -73,25 +77,21 @@ func (t *Periodic) Run() {
 					continue
 				}
 			}
-
-			if clock.Now().Sub(last) < executeCompactionInterval {
+			if clock.Now().Sub(last) < t.period {
 				continue
 			}
-
-			rev, remaining := t.getRev(t.periodInHour)
+			rev, remaining := t.getRev()
 			if rev < 0 {
 				continue
 			}
-
-			plog.Noticef("Starting auto-compaction at revision %d (retention: %d hours)", rev, t.periodInHour)
+			plog.Noticef("Starting auto-compaction at revision %d (retention: %v)", rev, t.period)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
 				t.revs = remaining
-				last = clock.Now()
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
-				plog.Noticef("Failed auto-compaction at revision %d (%v)", err, rev)
-				plog.Noticef("Retry after %v", checkCompactionInterval)
+				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
+				plog.Noticef("Retry after %v", checkCompactInterval)
 			}
 		}
 	}()
@@ -113,8 +113,8 @@ func (t *Periodic) Resume() {
 	t.paused = false
 }
 
-func (t *Periodic) getRev(h int) (int64, []int64) {
-	i := len(t.revs) - int(time.Duration(h)*time.Hour/checkCompactionInterval)
+func (t *Periodic) getRev() (int64, []int64) {
+	i := len(t.revs) - periodDivisor
 	if i < 0 {
 		return -1, t.revs
 	}
