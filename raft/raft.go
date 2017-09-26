@@ -587,9 +587,7 @@ func (r *raft) tickElection() {
 
 	if r.promotable() && r.pastElectionTimeout() {
 		r.electionElapsed = 0
-		if r.suffrage == pb.Voter {
-			r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
-		}
+		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
 	}
 }
 
@@ -1237,10 +1235,10 @@ func (r *raft) restore(s pb.Snapshot) bool {
 }
 
 // promotable indicates whether state machine can be promoted to leader,
-// which is true when its own id is in progress list.
+// which is true when its own id is in progress list and suffrage is Voter
 func (r *raft) promotable() bool {
 	_, ok := r.prs[r.id]
-	return ok
+	return ok && r.suffrage == pb.Voter
 }
 
 func (r *raft) addNode(id uint64) {
