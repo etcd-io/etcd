@@ -33,6 +33,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc/codes"
@@ -121,6 +122,11 @@ type serverHandlerTransport struct {
 	// ServeHTTP (HandleStreams) goroutine. The channel is closed
 	// when WriteStatus is called.
 	writes chan func()
+
+	mu sync.Mutex
+	// streamDone indicates whether WriteStatus has been called and writes channel
+	// has been closed.
+	streamDone bool
 }
 
 func (ht *serverHandlerTransport) Close() error {
@@ -172,6 +178,12 @@ func (ht *serverHandlerTransport) do(fn func()) error {
 }
 
 func (ht *serverHandlerTransport) WriteStatus(s *Stream, st *status.Status) error {
+	ht.mu.Lock()
+	if ht.streamDone {
+		ht.mu.Unlock()
+		return nil
+	}
+	ht.mu.Unlock()
 	err := ht.do(func() {
 		ht.writeCommonHeaders(s)
 
@@ -186,7 +198,15 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, st *status.Status) erro
 			h.Set("Grpc-Message", encodeGrpcMessage(m))
 		}
 
-		// TODO: Support Grpc-Status-Details-Bin
+		if p := st.Proto(); p != nil && len(p.Details) > 0 {
+			stBytes, err := proto.Marshal(p)
+			if err != nil {
+				// TODO: return error instead, when callers are able to handle it.
+				panic(err)
+			}
+
+			h.Set("Grpc-Status-Details-Bin", encodeBinHeader(stBytes))
+		}
 
 		if md := s.Trailer(); len(md) > 0 {
 			for k, vv := range md {
@@ -203,6 +223,9 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, st *status.Status) erro
 		}
 	})
 	close(ht.writes)
+	ht.mu.Lock()
+	ht.streamDone = true
+	ht.mu.Unlock()
 	return err
 }
 
@@ -225,16 +248,17 @@ func (ht *serverHandlerTransport) writeCommonHeaders(s *Stream) {
 	// and https://golang.org/pkg/net/http/#example_ResponseWriter_trailers
 	h.Add("Trailer", "Grpc-Status")
 	h.Add("Trailer", "Grpc-Message")
-	// TODO: Support Grpc-Status-Details-Bin
+	h.Add("Trailer", "Grpc-Status-Details-Bin")
 
 	if s.sendCompress != "" {
 		h.Set("Grpc-Encoding", s.sendCompress)
 	}
 }
 
-func (ht *serverHandlerTransport) Write(s *Stream, data []byte, opts *Options) error {
+func (ht *serverHandlerTransport) Write(s *Stream, hdr []byte, data []byte, opts *Options) error {
 	return ht.do(func() {
 		ht.writeCommonHeaders(s)
+		ht.rw.Write(hdr)
 		ht.rw.Write(data)
 		if !opts.Delay {
 			ht.rw.(http.Flusher).Flush()

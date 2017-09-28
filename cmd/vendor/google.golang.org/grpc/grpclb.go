@@ -28,7 +28,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
-	lbpb "google.golang.org/grpc/grpclb/grpc_lb_v1"
+	lbmpb "google.golang.org/grpc/grpclb/grpc_lb_v1/messages"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/naming"
@@ -59,36 +59,16 @@ type balanceLoadClientStream struct {
 	ClientStream
 }
 
-func (x *balanceLoadClientStream) Send(m *lbpb.LoadBalanceRequest) error {
+func (x *balanceLoadClientStream) Send(m *lbmpb.LoadBalanceRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *balanceLoadClientStream) Recv() (*lbpb.LoadBalanceResponse, error) {
-	m := new(lbpb.LoadBalanceResponse)
+func (x *balanceLoadClientStream) Recv() (*lbmpb.LoadBalanceResponse, error) {
+	m := new(lbmpb.LoadBalanceResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
-}
-
-// AddressType indicates the address type returned by name resolution.
-type AddressType uint8
-
-const (
-	// Backend indicates the server is a backend server.
-	Backend AddressType = iota
-	// GRPCLB indicates the server is a grpclb load balancer.
-	GRPCLB
-)
-
-// AddrMetadataGRPCLB contains the information the name resolver for grpclb should provide. The
-// name resolver used by the grpclb balancer is required to provide this type of metadata in
-// its address updates.
-type AddrMetadataGRPCLB struct {
-	// AddrType is the type of server (grpc load balancer or backend).
-	AddrType AddressType
-	// ServerName is the name of the grpc load balancer. Used for authentication.
-	ServerName string
 }
 
 // NewGRPCLBBalancer creates a grpclb load balancer.
@@ -117,21 +97,20 @@ type grpclbAddrInfo struct {
 }
 
 type balancer struct {
-	r        naming.Resolver
-	target   string
-	mu       sync.Mutex
-	seq      int // a sequence number to make sure addrCh does not get stale addresses.
-	w        naming.Watcher
-	addrCh   chan []Address
-	rbs      []remoteBalancerInfo
-	addrs    []*grpclbAddrInfo
-	next     int
-	waitCh   chan struct{}
-	done     bool
-	expTimer *time.Timer
-	rand     *rand.Rand
+	r      naming.Resolver
+	target string
+	mu     sync.Mutex
+	seq    int // a sequence number to make sure addrCh does not get stale addresses.
+	w      naming.Watcher
+	addrCh chan []Address
+	rbs    []remoteBalancerInfo
+	addrs  []*grpclbAddrInfo
+	next   int
+	waitCh chan struct{}
+	done   bool
+	rand   *rand.Rand
 
-	clientStats lbpb.ClientStats
+	clientStats lbmpb.ClientStats
 }
 
 func (b *balancer) watchAddrUpdates(w naming.Watcher, ch chan []remoteBalancerInfo) error {
@@ -159,18 +138,18 @@ func (b *balancer) watchAddrUpdates(w naming.Watcher, ch chan []remoteBalancerIn
 			if exist {
 				continue
 			}
-			md, ok := update.Metadata.(*AddrMetadataGRPCLB)
+			md, ok := update.Metadata.(*naming.AddrMetadataGRPCLB)
 			if !ok {
 				// TODO: Revisit the handling here and may introduce some fallback mechanism.
 				grpclog.Errorf("The name resolution contains unexpected metadata %v", update.Metadata)
 				continue
 			}
 			switch md.AddrType {
-			case Backend:
+			case naming.Backend:
 				// TODO: Revisit the handling here and may introduce some fallback mechanism.
 				grpclog.Errorf("The name resolution does not give grpclb addresses")
 				continue
-			case GRPCLB:
+			case naming.GRPCLB:
 				b.rbs = append(b.rbs, remoteBalancerInfo{
 					addr: update.Addr,
 					name: md.ServerName,
@@ -201,34 +180,18 @@ func (b *balancer) watchAddrUpdates(w naming.Watcher, ch chan []remoteBalancerIn
 	return nil
 }
 
-func (b *balancer) serverListExpire(seq int) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	// TODO: gRPC interanls do not clear the connections when the server list is stale.
-	// This means RPCs will keep using the existing server list until b receives new
-	// server list even though the list is expired. Revisit this behavior later.
-	if b.done || seq < b.seq {
-		return
-	}
-	b.next = 0
-	b.addrs = nil
-	// Ask grpc internals to close all the corresponding connections.
-	b.addrCh <- nil
-}
-
-func convertDuration(d *lbpb.Duration) time.Duration {
+func convertDuration(d *lbmpb.Duration) time.Duration {
 	if d == nil {
 		return 0
 	}
 	return time.Duration(d.Seconds)*time.Second + time.Duration(d.Nanos)*time.Nanosecond
 }
 
-func (b *balancer) processServerList(l *lbpb.ServerList, seq int) {
+func (b *balancer) processServerList(l *lbmpb.ServerList, seq int) {
 	if l == nil {
 		return
 	}
 	servers := l.GetServers()
-	expiration := convertDuration(l.GetExpirationInterval())
 	var (
 		sl    []*grpclbAddrInfo
 		addrs []Address
@@ -263,15 +226,6 @@ func (b *balancer) processServerList(l *lbpb.ServerList, seq int) {
 		b.next = 0
 		b.addrs = sl
 		b.addrCh <- addrs
-		if b.expTimer != nil {
-			b.expTimer.Stop()
-			b.expTimer = nil
-		}
-		if expiration > 0 {
-			b.expTimer = time.AfterFunc(expiration, func() {
-				b.serverListExpire(seq)
-			})
-		}
 	}
 	return
 }
@@ -287,15 +241,15 @@ func (b *balancer) sendLoadReport(s *balanceLoadClientStream, interval time.Dura
 		}
 		b.mu.Lock()
 		stats := b.clientStats
-		b.clientStats = lbpb.ClientStats{} // Clear the stats.
+		b.clientStats = lbmpb.ClientStats{} // Clear the stats.
 		b.mu.Unlock()
 		t := time.Now()
-		stats.Timestamp = &lbpb.Timestamp{
+		stats.Timestamp = &lbmpb.Timestamp{
 			Seconds: t.Unix(),
 			Nanos:   int32(t.Nanosecond()),
 		}
-		if err := s.Send(&lbpb.LoadBalanceRequest{
-			LoadBalanceRequestType: &lbpb.LoadBalanceRequest_ClientStats{
+		if err := s.Send(&lbmpb.LoadBalanceRequest{
+			LoadBalanceRequestType: &lbmpb.LoadBalanceRequest_ClientStats{
 				ClientStats: &stats,
 			},
 		}); err != nil {
@@ -319,9 +273,9 @@ func (b *balancer) callRemoteBalancer(lbc *loadBalancerClient, seq int) (retry b
 		return
 	}
 	b.mu.Unlock()
-	initReq := &lbpb.LoadBalanceRequest{
-		LoadBalanceRequestType: &lbpb.LoadBalanceRequest_InitialRequest{
-			InitialRequest: &lbpb.InitialLoadBalanceRequest{
+	initReq := &lbmpb.LoadBalanceRequest{
+		LoadBalanceRequestType: &lbmpb.LoadBalanceRequest_InitialRequest{
+			InitialRequest: &lbmpb.InitialLoadBalanceRequest{
 				Name: b.target,
 			},
 		},
@@ -351,7 +305,7 @@ func (b *balancer) callRemoteBalancer(lbc *loadBalancerClient, seq int) (retry b
 	streamDone := make(chan struct{})
 	defer close(streamDone)
 	b.mu.Lock()
-	b.clientStats = lbpb.ClientStats{} // Clear client stats.
+	b.clientStats = lbmpb.ClientStats{} // Clear client stats.
 	b.mu.Unlock()
 	if d := convertDuration(initResp.ClientStatsReportInterval); d > 0 {
 		go b.sendLoadReport(stream, d, streamDone)
@@ -741,9 +695,6 @@ func (b *balancer) Close() error {
 		return errBalancerClosed
 	}
 	b.done = true
-	if b.expTimer != nil {
-		b.expTimer.Stop()
-	}
 	if b.waitCh != nil {
 		close(b.waitCh)
 	}
