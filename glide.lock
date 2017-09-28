@@ -1,5 +1,5 @@
-hash: 2741432e90b78701658bb5aea14c6a43d1e57d6f2f111e16398f8ce5af500e54
-updated: 2017-09-27T15:28:21.693058-07:00
+hash: c9112594e510eb16840a825117ac0945777d4ac56ce4dcde5fa76cd7a1c130d5
+updated: 2017-09-28T13:34:20.16956-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -47,8 +47,11 @@ imports:
   subpackages:
   - jsonpb
   - proto
+  - ptypes
   - ptypes/any
+  - ptypes/duration
   - ptypes/struct
+  - ptypes/timestamp
 - name: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
@@ -144,11 +147,12 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: b8669c35455183da6d5c474ea6e72fbf55183274
+  version: f92cdcd7dcdc69e81b2d7b338479a19a8723cfa3
   subpackages:
   - codes
+  - connectivity
   - credentials
-  - grpclb/grpc_lb_v1
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - health
   - health/grpc_health_v1

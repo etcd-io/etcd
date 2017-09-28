@@ -16,6 +16,8 @@
  *
  */
 
+//go:generate protoc --go_out=plugins=grpc:. grpc_health_v1/health.proto
+
 // Package health provides some utility functions to health-check a server. The implementation
 // is based on protobuf. Users need to write their own implementations if other IDLs are used.
 package health
