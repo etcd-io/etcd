@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -128,6 +129,24 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 	}
 
+	var (
+		autoCompactionRetention time.Duration
+		h                       int
+	)
+	// AutoCompactionRetention defaults to "0" if not set.
+	if len(cfg.AutoCompactionRetention) == 0 {
+		cfg.AutoCompactionRetention = "0"
+	}
+	h, err = strconv.Atoi(cfg.AutoCompactionRetention)
+	if err == nil {
+		autoCompactionRetention = time.Duration(int64(h)) * time.Hour
+	} else {
+		autoCompactionRetention, err = time.ParseDuration(cfg.AutoCompactionRetention)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing AutoCompactionRetention: %v", err)
+		}
+	}
+
 	srvcfg := etcdserver.ServerConfig{
 		Name:                    cfg.Name,
 		ClientURLs:              cfg.ACUrls,
@@ -146,7 +165,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PeerTLSInfo:             cfg.PeerTLSInfo,
 		TickMs:                  cfg.TickMs,
 		ElectionTicks:           cfg.ElectionTicks(),
-		AutoCompactionRetention: cfg.AutoCompactionRetention,
+		AutoCompactionRetention: autoCompactionRetention,
 		AutoCompactionMode:      cfg.AutoCompactionMode,
 		QuotaBackendBytes:       cfg.QuotaBackendBytes,
 		MaxTxnOps:               cfg.MaxTxnOps,

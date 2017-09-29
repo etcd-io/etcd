@@ -51,7 +51,7 @@ type ServerConfig struct {
 	ElectionTicks    int
 	BootstrapTimeout time.Duration
 
-	AutoCompactionRetention int
+	AutoCompactionRetention time.Duration
 	AutoCompactionMode      string
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
