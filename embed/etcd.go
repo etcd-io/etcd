@@ -132,6 +132,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		autoCompactionRetention time.Duration
 		h                       int
 	)
+	// AutoCompactionRetention defaults to "0" if not set.
+	if len(cfg.AutoCompactionRetention) == 0 {
+		cfg.AutoCompactionRetention = "0"
+	}
 	h, err = strconv.Atoi(cfg.AutoCompactionRetention)
 	if err == nil {
 		autoCompactionRetention = time.Duration(int64(h)) * time.Hour
