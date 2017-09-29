@@ -53,6 +53,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -978,6 +979,9 @@ type ClusterV3 struct {
 // for each cluster member.
 func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 	cfg.UseGRPC = true
+	if os.Getenv("CLIENT_DEBUG") != "" {
+		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+	}
 	clus := &ClusterV3{
 		cluster: NewClusterByConfig(t, cfg),
 	}
