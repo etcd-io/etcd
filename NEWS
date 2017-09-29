@@ -1,3 +1,7 @@
+etcd v3.2.8 (2017-09-29)
+- fix v2 client failover to next endpoint on mutable operation
+- fix grpcproxy to respect 'KeysOnly' flag
+
 etcd v3.2.7 (2017-09-01)
 - fix server-side auth so concurrent auth operations do not return old revision error
 - fix concurrency/stm Put with serializable snapshot
