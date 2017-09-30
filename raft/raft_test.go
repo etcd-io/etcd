@@ -350,14 +350,14 @@ func testLeaderElection(t *testing.T, preVote bool) {
 
 func TestNonvoterElectionTimeout(t *testing.T) {
 	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n1.prs[3].Suffrage = pb.Nonvoter
+	n1.prs[3].isLearner = true
 
 	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n2.prs[3].Suffrage = pb.Nonvoter
+	n2.prs[3].isLearner = true
 
 	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n3.suffrage = pb.Nonvoter
-	n3.prs[3].Suffrage = pb.Nonvoter
+	n3.isLearner = true
+	n3.prs[3].isLearner = true
 
 	n1.becomeFollower(1, None)
 	n2.becomeFollower(1, None)
@@ -1106,7 +1106,7 @@ func TestCommit(t *testing.T) {
 
 		sm := newTestRaft(1, []uint64{1}, 5, 1, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, pb.Voter)
+			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -2377,13 +2377,9 @@ func TestRestore(t *testing.T) {
 func TestRestoreWithNonvoter(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
-			Index: 11, // magic number
-			Term:  11, // magic number
-			ConfState: pb.ConfState{Servers: []*pb.Server{
-				{Node: 1, Suffrage: pb.Voter},
-				{Node: 2, Suffrage: pb.Voter},
-				{Node: 3, Suffrage: pb.Nonvoter},
-			}},
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
 		},
 	}
 
@@ -2399,9 +2395,18 @@ func TestRestoreWithNonvoter(t *testing.T) {
 	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
-	for _, server := range s.Metadata.ConfState.Servers {
-		if sm.prs[server.Node].Suffrage != server.Suffrage {
-			t.Errorf("sm.Node %x suffrage = %s, want %s", server.Node, sm.prs[server.Node], server.Suffrage)
+	sg := sm.nodes()
+	if len(sg) != len(s.Metadata.ConfState.Nodes)+len(s.Metadata.ConfState.Learners) {
+		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState)
+	}
+	for _, n := range s.Metadata.ConfState.Nodes {
+		if sm.prs[n].isLearner {
+			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs[n], true)
+		}
+	}
+	for _, n := range s.Metadata.ConfState.Learners {
+		if !sm.prs[n].isLearner {
+			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs[n], false)
 		}
 	}
 
@@ -2656,7 +2661,7 @@ func TestAddNode(t *testing.T) {
 func TestAddNonvoter(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.pendingConf = true
-	r.addNonvoter(2)
+	r.addLearner(2)
 	if r.pendingConf {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
@@ -2665,8 +2670,8 @@ func TestAddNonvoter(t *testing.T) {
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
 	}
-	if r.prs[2].Suffrage != pb.Nonvoter {
-		t.Fatalf("node 2 has suffrage %s, want %s", r.prs[2].Suffrage, pb.Nonvoter)
+	if !r.prs[2].isLearner {
+		t.Fatalf("node 2 has suffrage %t, want %t", r.prs[2].isLearner, true)
 	}
 }
 
@@ -3439,14 +3444,17 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
-			suffrages := make(map[uint64]pb.SuffrageState, size)
+			learners := make(map[uint64]bool, 0)
 			for i, pr := range p.(*raft).prs {
-				suffrages[i] = pr.Suffrage
+				if pr.isLearner {
+					learners[i] = true
+				}
 			}
 			v.id = id
 			v.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
-				v.prs[peerAddrs[i]] = &Progress{Suffrage: suffrages[peerAddrs[i]]}
+				_, isLearner := learners[peerAddrs[i]]
+				v.prs[peerAddrs[i]] = &Progress{isLearner: isLearner}
 			}
 			v.reset(v.Term)
 			npeers[id] = v
@@ -3553,13 +3561,9 @@ func setRandomizedElectionTimeout(r *raft, v int) {
 }
 
 func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage Storage) *Config {
-	new_peers := make([]pb.Server, 0)
-	for _, p := range peers {
-		new_peers = append(new_peers, pb.Server{Node: p, Suffrage: pb.Voter})
-	}
 	return &Config{
 		ID:              id,
-		peers:           new_peers,
+		peers:           peers,
 		ElectionTick:    election,
 		HeartbeatTick:   heartbeat,
 		Storage:         storage,

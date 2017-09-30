@@ -14,11 +14,7 @@
 
 package raft
 
-import (
-	"fmt"
-
-	pb "github.com/coreos/etcd/raft/raftpb"
-)
+import "fmt"
 
 const (
 	ProgressStateProbe ProgressStateType = iota
@@ -53,7 +49,6 @@ type Progress struct {
 	// before and stops sending any replication message.
 	State ProgressStateType
 
-	Suffrage pb.SuffrageState
 	// Paused is used in ProgressStateProbe.
 	// When Paused is true, raft should pause sending replication message to this peer.
 	Paused bool
@@ -82,6 +77,8 @@ type Progress struct {
 	// be freed by calling inflights.freeTo with the index of the last
 	// received entry.
 	ins *inflights
+
+	isLearner bool
 }
 
 func (pr *Progress) resetState(state ProgressStateType) {
