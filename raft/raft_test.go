@@ -348,27 +348,21 @@ func testLeaderElection(t *testing.T, preVote bool) {
 	}
 }
 
-func TestNonvoterElectionTimeout(t *testing.T) {
-	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n1.prs[3].isLearner = true
-
-	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n2.prs[3].isLearner = true
-
-	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	n3.isLearner = true
-	n3.prs[3].isLearner = true
+func TestLearnerElectionTimeout(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	n2.isLearner = true
+	n2.prs[2].isLearner = true
 
 	n1.becomeFollower(1, None)
 	n2.becomeFollower(1, None)
-	n3.becomeFollower(1, None)
 
-	nt := newNetwork(n1, n2, n3)
+	nt := newNetwork(n1, n2)
 
-	// Nonvoter can't start election
-	setRandomizedElectionTimeout(n3, n3.electionTimeout)
-	for i := 0; i < n3.electionTimeout; i++ {
-		n3.tick()
+	// Learner can't start election
+	setRandomizedElectionTimeout(n2, n2.electionTimeout)
+	for i := 0; i < n2.electionTimeout; i++ {
+		n2.tick()
 	}
 	if n1.state != StateFollower {
 		t.Errorf("peer 1 state: %s, want %s", n1.state, StateFollower)
@@ -376,23 +370,28 @@ func TestNonvoterElectionTimeout(t *testing.T) {
 	if n2.state != StateFollower {
 		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
 	}
-	if n3.state != StateFollower {
-		t.Errorf("peer 3 state: %s, want %s", n3.state, StateFollower)
-	}
 
+	// n1 should become leader
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	if n1.state != StateLeader {
 		t.Errorf("peer 1 state: %s, want %s", n1.state, StateLeader)
 	}
+	if n2.state != StateFollower {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
+	}
 
-	// node 3 become Voter
-	n1.addNode(3)
-	n2.addNode(3)
-	n3.addNode(3)
+	n2.addNode(2)
+	if n2.isLearner {
+		t.Errorf("peer 2 isLearner: %t, want %t", n2.isLearner, false)
+	}
 
-	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
-	if n3.state != StateLeader {
-		t.Errorf("peer 3 state: %s, want %s", n3.state, StateLeader)
+	// n2 start election, should become leader
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+	if n1.state != StateFollower {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateLeader {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateLeader)
 	}
 }
 
@@ -2374,7 +2373,7 @@ func TestRestore(t *testing.T) {
 	}
 }
 
-func TestRestoreWithNonvoter(t *testing.T) {
+func TestRestoreWithLearner(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
@@ -2658,7 +2657,7 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
-func TestAddNonvoter(t *testing.T) {
+func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.pendingConf = true
 	r.addLearner(2)
