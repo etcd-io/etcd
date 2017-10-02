@@ -139,6 +139,9 @@ func (hb *healthBalancer) updateUnhealthy(timeout time.Duration) {
 			for k, v := range hb.unhealthy {
 				if time.Since(v) > timeout {
 					delete(hb.unhealthy, k)
+					if logger.V(4) {
+						logger.Infof("clientv3/balancer: removes %s from unhealthy after %v", k, timeout)
+					}
 				}
 			}
 			hb.mu.Unlock()
@@ -181,13 +184,16 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 		hb.mu.Lock()
 		delete(hb.unhealthy, addr.Addr)
 		hb.mu.Unlock()
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %s is healthy", addr.Addr)
+		}
 		return true
 	}
 	hb.mu.Lock()
 	hb.unhealthy[addr.Addr] = time.Now()
 	hb.mu.Unlock()
 	if logger.V(4) {
-		logger.Infof("clientv3: %s becomes unhealthy", addr.Addr)
+		logger.Infof("clientv3/balancer: %s becomes unhealthy", addr.Addr)
 	}
 	return false
 }
