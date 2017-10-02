@@ -69,8 +69,38 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
-+ default: none
++ default: ""
 + env variable: ETCD_CORS
+
+### --quota-backend-bytes
++ Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
++ default: 0
++ env variable: ETCD_QUOTA_BACKEND_BYTES
+
+### --max-txn-ops
++ Maximum number of operations permitted in a transaction.
++ default: 128
++ env variable: ETCD_MAX_TXN_OPS
+
+### --max-request-bytes
++ Maximum client request size in bytes the server will accept.
++ default: 1572864
++ env variable: ETCD_MAX_REQUEST_BYTES
+
+### --grpc-keepalive-min-time
++ Minimum duration interval that a client should wait before pinging server.
++ default: 5s
++ env variable: ETCD_GRPC_KEEPALIVE_MIN_TIME
+
+### --grpc-keepalive-interval
++ Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).
++ default: 2h
++ env variable: ETCD_GRPC_KEEPALIVE_INTERVAL
+
+### --grpc-keepalive-timeout
++ Additional duration of wait before closing a non-responsive connection (0 to disable).
++ default: 20s
++ env variable: ETCD_GRPC_KEEPALIVE_TIMEOUT
 
 ## Clustering flags
 
@@ -112,12 +142,12 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --discovery
 + Discovery URL used to bootstrap the cluster.
-+ default: none
++ default: ""
 + env variable: ETCD_DISCOVERY
 
 ### --discovery-srv
 + DNS srv domain used to bootstrap the cluster.
-+ default: none
++ default: ""
 + env variable: ETCD_DISCOVERY_SRV
 
 ### --discovery-fallback
@@ -127,7 +157,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --discovery-proxy
 + HTTP proxy to use for traffic to discovery service.
-+ default: none
++ default: ""
 + env variable: ETCD_DISCOVERY_PROXY
 
 ### --strict-reconfig-check
@@ -140,6 +170,10 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_AUTO_COMPACTION_RETENTION
 
+### --auto-compaction-mode
++ Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
++ default: periodic
++ env variable: ETCD_AUTO_COMPACTION_MODE
 
 ### --enable-v2
 + Accept etcd V2 client requests
@@ -185,22 +219,22 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 The security flags help to [build a secure etcd cluster][security].
 
-### --ca-file 
+### --ca-file
 
 **DEPRECATED**
 
 + Path to the client server TLS CA file. `--ca-file ca.crt` could be replaced by `--trusted-ca-file ca.crt --client-cert-auth` and etcd will perform the same.
-+ default: none
++ default: ""
 + env variable: ETCD_CA_FILE
 
 ### --cert-file
 + Path to the client server TLS cert file.
-+ default: none
++ default: ""
 + env variable: ETCD_CERT_FILE
 
 ### --key-file
 + Path to the client server TLS key file.
-+ default: none
++ default: ""
 + env variable: ETCD_KEY_FILE
 
 ### --client-cert-auth
@@ -208,9 +242,14 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_CLIENT_CERT_AUTH
 
+### --client-crl-file
++ Path to the client certificate revocation list file.
++ default: ""
++ env variable: ETCD_CLIENT_CRL_FILE
+
 ### --trusted-ca-file
 + Path to the client server TLS trusted CA key file.
-+ default: none
++ default: ""
 + env variable: ETCD_TRUSTED_CA_FILE
 
 ### --auto-tls
@@ -218,22 +257,22 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_AUTO_TLS
 
-### --peer-ca-file 
+### --peer-ca-file
 
 **DEPRECATED**
 
 + Path to the peer server TLS CA file. `--peer-ca-file ca.crt` could be replaced by `--peer-trusted-ca-file ca.crt --peer-client-cert-auth` and etcd will perform the same.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_CA_FILE
 
 ### --peer-cert-file
 + Path to the peer server TLS cert file.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_CERT_FILE
 
 ### --peer-key-file
 + Path to the peer server TLS key file.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_KEY_FILE
 
 ### --peer-client-cert-auth
@@ -241,9 +280,14 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_PEER_CLIENT_CERT_AUTH
 
+### --peer-crl-file
++ Path to the peer certificate revocation list file.
++ default: ""
++ env variable: ETCD_PEER_CRL_FILE
+
 ### --peer-trusted-ca-file
 + Path to the peer server TLS trusted CA file.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_TRUSTED_CA_FILE
 
 ### --peer-auto-tls
@@ -260,9 +304,8 @@ The security flags help to [build a secure etcd cluster][security].
 
 ### --log-package-levels
 + Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
-+ default: none (INFO for all packages)
++ default: "" (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
-
 
 ## Unsafe flags
 
@@ -283,7 +326,7 @@ Follow the instructions when using these flags.
 
 ### --config-file
 + Load server configuration from a file.
-+ default: none
++ default: ""
 
 ## Profiling flags
 
@@ -295,12 +338,22 @@ Follow the instructions when using these flags.
 + Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
 + default: basic
 
+### --listen-metrics-urls
++ List of URLs to listen on for metrics.
++ default: ""
+
 ## Auth flags
 
 ### --auth-token
 + Specify a token type and token specific options, especially for JWT. Its format is "type,var1=val1,var2=val2,...". Possible type is 'simple' or 'jwt'. Possible variables are 'sign-method' for specifying a sign method of jwt (its possible values are 'ES256', 'ES384', 'ES512', 'HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512', 'PS256', 'PS384', or 'PS512'), 'pub-key' for specifying a path to a public key for verifying jwt, and 'priv-key' for specifying a path to a private key for signing jwt.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512'
 + default: "simple"
+
+##Eexperimental flags
+
+### --experimental-corrupt-check-time
++ Duration of time between cluster corruption check passes
++ default: 0s
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
