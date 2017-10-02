@@ -349,7 +349,7 @@ Follow the instructions when using these flags.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512'
 + default: "simple"
 
-##Eexperimental flags
+## Experimental flags
 
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
