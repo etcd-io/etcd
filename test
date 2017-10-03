@@ -384,6 +384,17 @@ function fmt_pass {
 		echo "Skipping staticcheck..."
 	fi
 
+	if which ineffassign >/dev/null; then
+		echo "Checking ineffassign..."
+		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${ineffassignResult}" ]; then
+			echo -e "ineffassign checking failed:\n${ineffassignResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping ineffassign..."
+	fi
+
 	echo "Checking for license header..."
 	licRes=""
 	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
