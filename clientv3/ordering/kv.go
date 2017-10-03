@@ -43,10 +43,10 @@ func (kv *kvOrdering) getPrevRev() int64 {
 
 func (kv *kvOrdering) setPrevRev(currRev int64) {
 	prevRev := kv.getPrevRev()
-	kv.revMu.Lock()
-	defer kv.revMu.Unlock()
 	if currRev > prevRev {
+		kv.revMu.Lock()
 		kv.prevRev = currRev
+		kv.revMu.Unlock()
 	}
 }
 
