@@ -66,10 +66,13 @@ func TestGRPCResolver(t *testing.T) {
 
 	delOp := naming.Update{Op: naming.Delete, Addr: "127.0.0.1"}
 	err = r.Update(context.TODO(), "foo", delOp)
+	if err != nil {
+		t.Fatalf("failed to udpate %v", err)
+	}
 
 	us, err = w.Next()
 	if err != nil {
-		t.Fatal("failed to get udpate", err)
+		t.Fatalf("failed to get udpate %v", err)
 	}
 
 	wu = &naming.Update{

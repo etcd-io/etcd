@@ -382,7 +382,6 @@ func (s *v2v3Store) Delete(nodePath string, dir, recursive bool) (*store.Event, 
 	if !dir && !recursive {
 		return s.deleteNode(nodePath)
 	}
-	dir = true
 	if !recursive {
 		return s.deleteEmptyDir(nodePath)
 	}
@@ -516,7 +515,7 @@ func compareFail(nodePath, prevValue string, prevIndex uint64, resp *clientv3.Tx
 	kv := kvs[0]
 	indexMatch := (prevIndex == 0 || kv.ModRevision == int64(prevIndex))
 	valueMatch := (prevValue == "" || string(kv.Value) == prevValue)
-	cause := ""
+	var cause string
 	switch {
 	case indexMatch && !valueMatch:
 		cause = fmt.Sprintf("[%v != %v]", prevValue, string(kv.Value))

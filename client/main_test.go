@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 		os.Args = append(os.Args, "-test.run=Test")
 	}
 
-	v := 0
+	var v int
 	if useCluster {
 		tr, trerr := transport.NewTransport(transport.TLSInfo{}, time.Second)
 		if trerr != nil {

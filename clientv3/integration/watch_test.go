@@ -311,7 +311,7 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 	select {
 	case <-time.After(time.Second):
 		t.Fatalf("took too long to cancel")
-	case v, ok := <-wctx.ch:
+	case _, ok := <-wctx.ch:
 		if !ok {
 			// closed before getting put; OK
 			break
@@ -320,8 +320,8 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 		select {
 		case <-time.After(time.Second):
 			t.Fatalf("took too long to close")
-		case v, ok = <-wctx.ch:
-			if ok {
+		case v, ok2 := <-wctx.ch:
+			if ok2 {
 				t.Fatalf("expected watcher channel to close, got %v", v)
 			}
 		}

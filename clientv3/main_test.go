@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 		os.Args = append(os.Args, "-test.run=Test")
 	}
 
-	v := 0
+	var v int
 	if useCluster {
 		cfg := integration.ClusterConfig{Size: 3}
 		clus := integration.NewClusterV3(nil, &cfg)

@@ -56,7 +56,6 @@ func TestRevision(t *testing.T) {
 
 	// skip the same revision
 	rg.SetRev(99) // will be 100
-	expectedRevision = int64(90)
 	rg.Wait(1)
 	// nothing happens
 
