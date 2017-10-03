@@ -216,7 +216,7 @@ func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
 	fc := newFakeClock()
 	s.clock = fc
 
-	var eidx uint64 = 1
+	var eidx uint64
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
 	// Should be no-op
 	fc.Advance(200 * time.Millisecond)
@@ -241,7 +241,7 @@ func TestStoreWatchNoRefresh(t *testing.T) {
 	fc := newFakeClock()
 	s.clock = fc
 
-	var eidx uint64 = 1
+	var eidx uint64
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
 	// Should be no-op
 	fc.Advance(200 * time.Millisecond)

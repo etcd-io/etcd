@@ -110,7 +110,7 @@ func etcdFlagUsages(flagSet *pflag.FlagSet) string {
 		if len(flag.Deprecated) > 0 {
 			return
 		}
-		format := ""
+		var format string
 		if len(flag.Shorthand) > 0 {
 			format = "  -%s, --%s"
 		} else {

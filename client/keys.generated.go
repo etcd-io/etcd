@@ -8,10 +8,11 @@ package client
 import (
 	"errors"
 	"fmt"
-	codec1978 "github.com/ugorji/go/codec"
 	"reflect"
 	"runtime"
 	time "time"
+
+	codec1978 "github.com/ugorji/go/codec"
 )
 
 const (
@@ -77,7 +78,6 @@ func (x *Response) CodecEncodeSelf(e *codec1978.Encoder) {
 					}
 				}
 				r.EncodeMapStart(yynn2)
-				yynn2 = 0
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1819)
@@ -352,7 +352,6 @@ func (x *Node) CodecEncodeSelf(e *codec1978.Encoder) {
 					}
 				}
 				r.EncodeMapStart(yynn2)
-				yynn2 = 0
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1819)

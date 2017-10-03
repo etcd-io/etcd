@@ -317,7 +317,7 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 // a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
 func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, bool, error) {
-	noValueOnSuccess := false
+	var noValueOnSuccess bool
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()

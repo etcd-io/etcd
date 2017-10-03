@@ -69,7 +69,7 @@ func spawnEtcd(args []string) (*expect.ExpectProcess, error) {
 		return nil, err
 	}
 
-	env := []string{}
+	var env []string
 	if args[1] == "grpc-proxy" {
 		// avoid test flag conflicts in coverage enabled etcd by putting flags in ETCDCOV_ARGS
 		env = append(os.Environ(), "ETCDCOV_ARGS="+strings.Join(args, "\xe7\xcd"))

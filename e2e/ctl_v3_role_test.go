@@ -124,7 +124,7 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string,
 	cmdArgs := append(cx.PrefixArgs(), "role", "revoke-permission")
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, key)
-	expStr := ""
+	var expStr string
 	if len(rangeEnd) != 0 {
 		cmdArgs = append(cmdArgs, rangeEnd)
 		expStr = fmt.Sprintf("Permission of range [%s, %s) is revoked from role %s", key, rangeEnd, rolename)

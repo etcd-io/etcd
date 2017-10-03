@@ -35,6 +35,9 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	}
 	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCAddr()}}
 	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx := context.TODO()
 
@@ -91,6 +94,9 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 		},
 	}
 	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	eps := cli.Endpoints()
 	ctx := context.TODO()
 

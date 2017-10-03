@@ -43,6 +43,9 @@ func TestDetectKvOrderViolation(t *testing.T) {
 		},
 	}
 	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.TODO()
 
 	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
@@ -101,6 +104,9 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 		},
 	}
 	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.TODO()
 
 	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
@@ -143,6 +149,9 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	if err != nil {
+		t.Fatal(err)
+	}
 	orderingTxn = orderingKv.Txn(ctx)
 	_, err = orderingTxn.If(
 		clientv3.Compare(clientv3.Value("b"), ">", "a"),

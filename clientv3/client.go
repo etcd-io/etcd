@@ -453,7 +453,7 @@ func (c *Client) checkVersion() (err error) {
 			vs := strings.Split(resp.Version, ".")
 			maj, min := 0, 0
 			if len(vs) >= 2 {
-				maj, rerr = strconv.Atoi(vs[0])
+				maj, _ = strconv.Atoi(vs[0])
 				min, rerr = strconv.Atoi(vs[1])
 			}
 			if maj < 3 || (maj == 3 && min < 2) {
