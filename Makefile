@@ -14,13 +14,15 @@ test-all:
 clean:
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
+	rm -rf ./bin/*.etcd
 	rm -rf ./gopath
 	rm -rf ./release
 	rm -f ./integration/127.0.0.1:* ./integration/localhost:*
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
 
-# keep in-sync with 'Dockerfile-test', 'e2e/docker-dns/Dockerfile'
+# keep in-sync with 'Dockerfile-test', 'e2e/docker-dns/Dockerfile',
+# 'e2e/docker-dns-srv/Dockerfile'
 _GO_VERSION = go1.9.1
 ifdef GO_VERSION
 	_GO_VERSION = $(GO_VERSION)
@@ -112,5 +114,34 @@ docker-dns-test-run:
 	  gcr.io/etcd-development/etcd-dns-test:$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
 
-# TODO: add DNS SRV tests
+# build base container image for DNS/SRV testing
+docker-dns-srv-test-build:
+	docker build \
+	  --tag gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION) \
+	  --file ./e2e/docker-dns-srv/Dockerfile \
+	  ./e2e/docker-dns-srv
+
+	docker run \
+	  --rm \
+	  --dns 127.0.0.1 \
+	  gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION) \
+	  /bin/bash -c "/etc/init.d/bind9 start && cat /dev/null >/etc/hosts && dig +noall +answer SRV _etcd-client._tcp.etcd-srv.local && dig +noall +answer SRV _etcd-client-ssl._tcp.etcd-srv.local && dig +noall +answer SRV _etcd-server._tcp.etcd-srv.local && dig +noall +answer SRV _etcd-server-ssl._tcp.etcd-srv.local && dig +noall +answer m1.etcd-srv.local m2.etcd-srv.local m3.etcd-srv.local"
+
+docker-dns-srv-test-push:
+	gcloud docker -- push gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION)
+
+docker-dns-srv-test-pull:
+	docker pull gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION)
+
+# run DNS/SRV tests inside container
+docker-dns-srv-test-run:
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
+
+# TODO: run DNS/SRV with TLS
 # TODO: add DNS integration tests
