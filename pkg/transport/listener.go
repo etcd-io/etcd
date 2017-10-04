@@ -59,7 +59,7 @@ func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listene
 type TLSInfo struct {
 	CertFile           string
 	KeyFile            string
-	CAFile             string
+	CAFile             string // TODO: deprecate this in v4
 	TrustedCAFile      string
 	ClientCertAuth     bool
 	CRLFile            string
