@@ -149,8 +149,8 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if err != nil {
-		t.Fatal(err)
+	if err != errOrderViolation {
+		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 	orderingTxn = orderingKv.Txn(ctx)
 	_, err = orderingTxn.If(
