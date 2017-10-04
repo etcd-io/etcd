@@ -1,3 +1,14 @@
+## [v3.2.9](https://github.com/coreos/etcd/releases/tag/v3.2.9) (2017-10-06)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9).
+
+### Fixed(Security)
+
+- Compile with [Go 1.8.4](https://groups.google.com/d/msg/golang-nuts/sHfMg4gZNps/a-HDgDDDAAAJ)
+- Update `golang.org/x/crypto/bcrypt` (See [golang/crypto@6c586e1](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117) for more)
+- Fix HTTPS + DNS SRV discovery with subdomain
+
+
 ## [v3.2.8](https://github.com/coreos/etcd/releases/tag/v3.2.8) (2017-09-29)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8).
@@ -71,7 +82,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3).
 ### Added
 
 - Tag docker images with minor versions
-  e.g. `docker pull quay.io/coreos/etcd:v3.2` to fetch latest v3.2 versions
+  - e.g. `docker pull quay.io/coreos/etcd:v3.2` to fetch latest v3.2 versions
 
 
 ## [v3.1.10](https://github.com/coreos/etcd/releases/tag/v3.1.10) (2017-07-14)
@@ -85,7 +96,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.9...v3.1.10).
 ### Added
 
 - Tag docker images with minor versions
-  e.g. `docker pull quay.io/coreos/etcd:v3.1` to fetch latest v3.1 versions
+  - e.g. `docker pull quay.io/coreos/etcd:v3.1` to fetch latest v3.1 versions
 
 
 ## [v3.2.2](https://github.com/coreos/etcd/releases/tag/v3.2.2) (2017-07-07)
@@ -94,8 +105,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2).
 
 ### Improved
 
-- rate-limit lease revoke on expiration
-- extend leases on promote to avoid queueing effect on lease expiration
+- Rate-limit lease revoke on expiration
+- Extend leases on promote to avoid queueing effect on lease expiration
 
 ### Fixed
 
@@ -223,7 +234,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.4...v3.1.5).
 
 ### Added
 
-- Add '/etc/nsswitch.conf' file to alpine-based Docker image
+- Add `/etc/nsswitch.conf` file to alpine-based Docker image
 
 ### Fixed
 
@@ -246,7 +257,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.2...v3.1.3).
 
 ### Fixed
 
-- Fix 'etcd gateway' schema handling in DNS discovery
+- Fix `etcd gateway` schema handling in DNS discovery
 - Fix sd_notify behaviors in gateway, grpc-proxy
 
 
@@ -260,7 +271,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.1...v3.1.2).
 
 ### Fixed
 
-- Fix 'etcd gateway' with multiple endpoints
+- Fix `etcd gateway` with multiple endpoints
 
 
 ## [v3.1.1](https://github.com/coreos/etcd/releases/tag/v3.1.1) (2017-02-17)
@@ -434,7 +445,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.2...v3.0.3).
 
 ### Changed
 
-- Revert Dockerfile to use CMD, instead of ENTRYPOINT, to support etcdctl run
+- Revert Dockerfile to use `CMD`, instead of `ENTRYPOINT`, to support etcdctl run
   - Docker commands for v3.0.2 won't work without specifying executable binary paths
 - v3 etcdctl default endpoints are now 127.0.0.1:2379
 
@@ -445,7 +456,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.1...v3.0.2).
 
 ### Changed
 
-- Dockerfile uses ENTRYPOINT, instead of CMD, to run etcd without binary path specified
+- Dockerfile uses `ENTRYPOINT`, instead of `CMD`, to run etcd without binary path specified
 
 
 ## [v3.0.1](https://github.com/coreos/etcd/releases/tag/v3.0.1) (2016-07-01)
