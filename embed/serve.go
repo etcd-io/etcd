@@ -37,6 +37,7 @@ import (
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
+	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -214,7 +215,19 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 		httpmux.Handle(path, h)
 	}
 
-	httpmux.Handle("/v3alpha/", gwmux)
+	httpmux.Handle(
+		"/v3alpha/",
+		wsproxy.WebsocketProxy(
+			gwmux,
+			wsproxy.WithRequestMutator(
+				// Default to the POST method for streams
+				func(incoming *http.Request, outgoing *http.Request) *http.Request {
+					outgoing.Method = "POST"
+					return outgoing
+				},
+			),
+		),
+	)
 	if handler != nil {
 		httpmux.Handle("/", handler)
 	}
