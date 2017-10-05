@@ -78,7 +78,7 @@ import:
 - package: github.com/grpc-ecosystem/go-grpc-prometheus
   version: v1.1
 - package: golang.org/x/crypto
-  version: 1351f936d976c60a0a48d728281922cf63eafb8d
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
   - bcrypt
   - blowfish

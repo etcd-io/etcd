@@ -1,5 +1,5 @@
-hash: cee1f2629857e9c2384ad89ff6014db09498c9af53771e5144ad3a4b510ff00e
-updated: 2017-05-30T10:29:08.22609283-07:00
+hash: e18fa8fb6e4dc1d7eb3cd538c90b0927f26e1ab0b04cbdd209d2d5c3233b7c5b
+updated: 2017-10-05T07:34:38.051011-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -108,7 +108,7 @@ imports:
 - name: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - name: golang.org/x/crypto
-  version: 1351f936d976c60a0a48d728281922cf63eafb8d
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
   - bcrypt
   - blowfish
