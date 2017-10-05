@@ -151,10 +151,11 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 // at or after the given rev. The returned slice is sorted in the order
 // of revision.
 func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
+	keyi := &keyIndex{key: key}
+
 	ti.RLock()
 	defer ti.RUnlock()
 
-	keyi := &keyIndex{key: key}
 	if end == nil {
 		item := ti.tree.Get(keyi)
 		if item == nil {
