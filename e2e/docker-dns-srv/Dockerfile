@@ -11,7 +11,7 @@ RUN chown bind /var/bind
 ADD Procfile /Procfile
 ADD run.sh /run.sh
 
-ADD etcd.zone named.conf /etc/bind/
+ADD named.conf etcd.zone rdns.zone /etc/bind/
 ADD resolv.conf /etc/resolv.conf
 
 RUN go get github.com/mattn/goreman

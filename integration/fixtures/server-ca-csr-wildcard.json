@@ -14,6 +14,9 @@
   ],
   "CN": "example.com",
   "hosts": [
-    "*.etcd.local"
+    "*.etcd.local",
+    "etcd.local",
+    "127.0.0.1",
+    "localhost"
   ]
 }
