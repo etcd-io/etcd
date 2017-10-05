@@ -143,7 +143,7 @@ docker-dns-srv-test-build:
 	  --rm \
 	  --dns 127.0.0.1 \
 	  gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION) \
-	  /bin/bash -c "/etc/init.d/bind9 start && cat /dev/null >/etc/hosts && dig +noall +answer SRV _etcd-client._tcp.etcd.local && dig +noall +answer SRV _etcd-server._tcp.etcd.local && dig +noall +answer m1.etcd.local m2.etcd.local m3.etcd.local"
+	  /bin/bash -c "/etc/init.d/bind9 start && cat /dev/null >/etc/hosts && dig +noall +answer SRV _etcd-client-ssl._tcp.etcd.local && dig +noall +answer SRV _etcd-server-ssl._tcp.etcd.local && dig +noall +answer m1.etcd.local m2.etcd.local m3.etcd.local"
 
 docker-dns-srv-test-push:
 	gcloud docker -- push gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION)
@@ -162,5 +162,4 @@ docker-dns-srv-test-run:
 	  gcr.io/etcd-development/etcd-dns-srv-test:$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
 
-# TODO: run DNS/SRV with TLS
 # TODO: add DNS integration tests
