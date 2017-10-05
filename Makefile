@@ -10,8 +10,19 @@ build:
 test-all:
 	RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee test.log
 
+test-proxy:
+	PASSES='build grpcproxy' ./test 2>&1 | tee test-proxy.log
+
+test-coverage:
+	COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee test-coverage.log
+	$(shell curl -s https://codecov.io/bash >codecov)
+	chmod 700 ./codecov
+	./codecov -h
+	./codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1
+
 # clean up failed tests, logs, dependencies
 clean:
+	rm -f ./codecov
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/*.etcd
@@ -62,6 +73,13 @@ docker-test-386:
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
 	  /bin/bash -c "GOARCH=386 PASSES='build unit integration_e2e' ./test 2>&1 | tee docker-test.log"
+
+docker-test-proxy:
+	docker run \
+	  --rm \
+	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
+	  /bin/bash -c "PASSES='build grpcproxy' ./test ./test 2>&1 | tee docker-test.log"
 
 # build release container image with Linux
 _ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")

@@ -1,4 +1,4 @@
-FROM golang:1.9-stretch
+FROM golang:1.9.1-stretch
 LABEL Description="Image for etcd DNS SRV testing"
 
 RUN apt update -y \
