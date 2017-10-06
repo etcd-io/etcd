@@ -1,4 +1,6 @@
-# run makefile from repo root
+# run from repository root
+
+TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
 
 .PHONY: build
 build:
@@ -6,15 +8,24 @@ build:
 	./bin/etcd --version
 	ETCDCTL_API=3 ./bin/etcdctl version
 
-# run all tests
+test:
+	$(info log-file: test-$(TEST_SUFFIX).log)
+	PASSES='fmt bom dep compile build unit' ./test 2>&1 | tee test-$(TEST_SUFFIX).log
+	! grep FAIL -A10 -B50 test-$(TEST_SUFFIX).log
+
 test-all:
-	RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee test.log
+	$(info log-file: test-all-$(TEST_SUFFIX).log)
+	RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee test-all-$(TEST_SUFFIX).log
+	! grep FAIL -A10 -B50 test-all-$(TEST_SUFFIX).log
 
 test-proxy:
-	PASSES='build grpcproxy' ./test 2>&1 | tee test-proxy.log
+	$(info log-file: test-proxy-$(TEST_SUFFIX).log)
+	PASSES='build grpcproxy' ./test 2>&1 | tee test-proxy-$(TEST_SUFFIX).log
+	! grep FAIL -A10 -B50 test-proxy-$(TEST_SUFFIX).log
 
 test-coverage:
-	COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee test-coverage.log
+	$(info log-file: test-coverage-$(TEST_SUFFIX).log)
+	COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee test-coverage-$(TEST_SUFFIX).log
 	$(shell curl -s https://codecov.io/bash >codecov)
 	chmod 700 ./codecov
 	./codecov -h
@@ -32,8 +43,7 @@ clean:
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
 
-# keep in-sync with 'Dockerfile-test', 'e2e/docker-dns/Dockerfile',
-# 'e2e/docker-dns-srv/Dockerfile'
+# sync with Dockerfile-test, e2e/docker-dns/Dockerfile, e2e/docker-dns-srv/Dockerfile
 _GO_VERSION = go1.9.1
 ifdef GO_VERSION
 	_GO_VERSION = $(GO_VERSION)
@@ -61,31 +71,38 @@ docker-test-compile:
 
 # run tests inside container
 docker-test:
+	$(info log-file: docker-test-$(TEST_SUFFIX).log)
 	docker run \
 	  --rm \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
-	  /bin/bash -c "RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee docker-test.log"
+	  /bin/bash -c "RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee docker-test-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-$(TEST_SUFFIX).log
 
 docker-test-386:
+	$(info log-file: docker-test-386-$(TEST_SUFFIX).log)
 	docker run \
 	  --rm \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
-	  /bin/bash -c "GOARCH=386 PASSES='build unit integration_e2e' ./test 2>&1 | tee docker-test.log"
+	  /bin/bash -c "GOARCH=386 PASSES='build unit integration_e2e' ./test 2>&1 | tee docker-test-386-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-386-$(TEST_SUFFIX).log
 
 docker-test-proxy:
+	$(info log-file: docker-test-proxy-$(TEST_SUFFIX).log)
 	docker run \
 	  --rm \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
-	  /bin/bash -c "PASSES='build grpcproxy' ./test ./test 2>&1 | tee docker-test.log"
+	  /bin/bash -c "PASSES='build grpcproxy' ./test ./test 2>&1 | tee docker-test-proxy-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-proxy-$(TEST_SUFFIX).log
 
 # build release container image with Linux
 _ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 ifdef ETCD_VERSION
 	_ETCD_VERSION = $(ETCD_VERSION)
 endif
+
 docker-release-master-build: docker-test-compile
 	cp ./Dockerfile-release ./bin/Dockerfile-release
 	docker build \
