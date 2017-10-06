@@ -44,7 +44,6 @@ When	Elapsed (s)
 ## Metrics endpoint
 
 Each etcd server exports metrics under the `/metrics` path on its client port and optionally on interfaces given by `--listen-metrics-urls`.
->>>>>>> 607d0762e... Documentation/op-guide: remove grafana demo link
 
 The metrics can be fetched with `curl`:
 
