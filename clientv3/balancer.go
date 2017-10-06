@@ -303,6 +303,9 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 		return func(err error) {}, false
 	}
 	if b.pinAddr != "" {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %s is up but not pinned (already pinned %s)", addr.Addr, b.pinAddr)
+		}
 		return func(err error) {}, false
 	}
 	// notify waiting Get()s and pin first connected address

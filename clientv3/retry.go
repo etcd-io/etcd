@@ -62,6 +62,9 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 			if err == nil {
 				return nil
 			}
+			if logger.V(4) {
+				logger.Infof("clientv3/retry: retry for error %v", err)
+			}
 			notify := c.balancer.ConnectNotify()
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				c.balancer.next()
@@ -87,7 +90,9 @@ func (c *Client) newAuthRetryWrapper() retryRpcFunc {
 			if err == nil {
 				return nil
 			}
-
+			if logger.V(4) {
+				logger.Infof("clientv3/auth-retry: retry for error %v", err)
+			}
 			// always stop retry on etcd errors other than invalid auth token
 			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(rpcCtx)
@@ -96,7 +101,6 @@ func (c *Client) newAuthRetryWrapper() retryRpcFunc {
 				}
 				continue
 			}
-
 			return err
 		}
 	}
