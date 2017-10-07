@@ -2283,6 +2283,11 @@
           "description": "start_revision is an optional revision to watch from (inclusive). No start_revision is \"now\".",
           "type": "string",
           "format": "int64"
+        },
+        "watch_id": {
+          "description": "If watch_id is provided, it will be used to assign to this watcher. Since\ncreating a watcher in etcd is not a synchronous operation, this can be\nused ensure that ordering is correct when creating multiple watchers on\nthe same stream. Creating a watcher with an ID already in use on the\nstream will cause an error to be returned.",
+          "type": "string",
+          "format": "int64"
         }
       }
     },

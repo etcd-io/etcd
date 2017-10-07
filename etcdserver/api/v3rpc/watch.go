@@ -170,6 +170,60 @@ func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) bool 
 	return sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd) == nil
 }
 
+func (sws *serverWatchStream) recvWatchRequest(creq *pb.WatchCreateRequest) (wr *pb.WatchResponse, id mvcc.WatchID, err error) {
+	if len(creq.Key) == 0 {
+		// \x00 is the smallest key
+		creq.Key = []byte{0}
+	}
+	if len(creq.RangeEnd) == 0 {
+		// force nil since watchstream.Watch distinguishes
+		// between nil and []byte{} for single key / >=
+		creq.RangeEnd = nil
+	}
+	if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
+		// support  >= key queries
+		creq.RangeEnd = []byte{}
+	}
+
+	if !sws.isWatchPermitted(creq) {
+		return nil, mvcc.WatchID(creq.WatchId), rpctypes.ErrGRPCPermissionDenied
+	}
+
+	filters := FiltersFromRequest(creq)
+
+	wsrev := sws.watchStream.Rev()
+	rev := creq.StartRevision
+	if rev == 0 {
+		rev = wsrev + 1
+	}
+
+	id, err = sws.watchStream.Watch(mvcc.WatchID(creq.WatchId), creq.Key, creq.RangeEnd, rev, filters...)
+	wr = &pb.WatchResponse{
+		Header:   sws.newResponseHeader(wsrev),
+		WatchId:  int64(id),
+		Created:  true,
+		Canceled: false,
+	}
+
+	switch {
+	case err == mvcc.ErrEmptyWatcherRange:
+		wr.Canceled = true
+	case err != nil:
+		return nil, id, err
+	default:
+		sws.mu.Lock()
+		if creq.ProgressNotify {
+			sws.progress[id] = true
+		}
+		if creq.PrevKv {
+			sws.prevKV[id] = true
+		}
+		sws.mu.Unlock()
+	}
+
+	return wr, id, nil
+}
+
 func (sws *serverWatchStream) recvLoop() error {
 	for {
 		req, err := sws.gRPCStream.Recv()
@@ -185,66 +239,20 @@ func (sws *serverWatchStream) recvLoop() error {
 			if uv.CreateRequest == nil {
 				break
 			}
-
-			creq := uv.CreateRequest
-			if len(creq.Key) == 0 {
-				// \x00 is the smallest key
-				creq.Key = []byte{0}
-			}
-			if len(creq.RangeEnd) == 0 {
-				// force nil since watchstream.Watch distinguishes
-				// between nil and []byte{} for single key / >=
-				creq.RangeEnd = nil
-			}
-			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
-				// support  >= key queries
-				creq.RangeEnd = []byte{}
-			}
-
-			if !sws.isWatchPermitted(creq) {
-				wr := &pb.WatchResponse{
+			wr, id, err := sws.recvWatchRequest(uv.CreateRequest)
+			if err != nil {
+				wr = &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
-					WatchId:      -1,
+					WatchId:      int64(id),
 					Canceled:     true,
 					Created:      true,
-					CancelReason: rpctypes.ErrGRPCPermissionDenied.Error(),
+					CancelReason: err.Error(),
 				}
-
-				select {
-				case sws.ctrlStream <- wr:
-				case <-sws.closec:
-				}
-				return nil
 			}
 
-			filters := FiltersFromRequest(creq)
-
-			wsrev := sws.watchStream.Rev()
-			rev := creq.StartRevision
-			if rev == 0 {
-				rev = wsrev + 1
-			}
-			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev, filters...)
-			if id != -1 {
-				sws.mu.Lock()
-				if creq.ProgressNotify {
-					sws.progress[id] = true
-				}
-				if creq.PrevKv {
-					sws.prevKV[id] = true
-				}
-				sws.mu.Unlock()
-			}
-			wr := &pb.WatchResponse{
-				Header:   sws.newResponseHeader(wsrev),
-				WatchId:  int64(id),
-				Created:  true,
-				Canceled: id == -1,
-			}
 			select {
 			case sws.ctrlStream <- wr:
 			case <-sws.closec:
-				return nil
 			}
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {
