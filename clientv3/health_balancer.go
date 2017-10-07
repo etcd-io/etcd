@@ -177,6 +177,15 @@ func (hb *healthBalancer) liveAddrs() []grpc.Address {
 	return addrs
 }
 
+func (hb *healthBalancer) endpointError(addr string, err error) {
+	hb.mu.Lock()
+	hb.unhealthy[addr] = time.Now()
+	hb.mu.Unlock()
+	if logger.V(4) {
+		logger.Infof("clientv3/health-balancer: marking %s as unhealthy (%v)", addr, err)
+	}
+}
+
 func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	hb.mu.RLock()
 	skip := len(hb.addrs) == 1 || len(hb.unhealthy) == 0

@@ -66,6 +66,8 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 			if logger.V(4) {
 				logger.Infof("clientv3/retry: error %v on pinned endpoint %s", err, pinned)
 			}
+			// mark this before endpoint switch is triggered
+			c.balancer.endpointError(pinned, err)
 			notify := c.balancer.ConnectNotify()
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				c.balancer.next()
