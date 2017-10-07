@@ -1540,6 +1540,13 @@ const (
 	SO_TIMESTAMPING                  = 0x23
 	SO_TIMESTAMPNS                   = 0x21
 	SO_TYPE                          = 0x1008
+	SO_VM_SOCKETS_BUFFER_MAX_SIZE    = 0x2
+	SO_VM_SOCKETS_BUFFER_MIN_SIZE    = 0x1
+	SO_VM_SOCKETS_BUFFER_SIZE        = 0x0
+	SO_VM_SOCKETS_CONNECT_TIMEOUT    = 0x6
+	SO_VM_SOCKETS_NONBLOCK_TXRX      = 0x7
+	SO_VM_SOCKETS_PEER_HOST_VM_ID    = 0x3
+	SO_VM_SOCKETS_TRUSTED            = 0x5
 	SO_WIFI_STATUS                   = 0x25
 	SPLICE_F_GIFT                    = 0x8
 	SPLICE_F_MORE                    = 0x4
@@ -1749,6 +1756,11 @@ const (
 	VINTR                            = 0x0
 	VKILL                            = 0x3
 	VLNEXT                           = 0xf
+	VMADDR_CID_ANY                   = 0xffffffff
+	VMADDR_CID_HOST                  = 0x2
+	VMADDR_CID_HYPERVISOR            = 0x0
+	VMADDR_CID_RESERVED              = 0x1
+	VMADDR_PORT_ANY                  = 0xffffffff
 	VMIN                             = 0x4
 	VQUIT                            = 0x1
 	VREPRINT                         = 0xc

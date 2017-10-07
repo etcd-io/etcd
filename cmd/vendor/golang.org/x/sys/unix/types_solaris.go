@@ -5,7 +5,7 @@
 // +build ignore
 
 /*
-Input to cgo -godefs.  See also mkerrors.sh and mkall.sh
+Input to cgo -godefs.  See README.md
 */
 
 // +godefs map struct_in_addr [4]byte /* in_addr */
@@ -37,6 +37,7 @@ package unix
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/times.h>
 #include <sys/types.h>
@@ -138,6 +139,12 @@ type Stat_t C.struct_stat
 type Flock_t C.struct_flock
 
 type Dirent C.struct_dirent
+
+// Filesystems
+
+type _Fsblkcnt_t C.fsblkcnt_t
+
+type Statvfs_t C.struct_statvfs
 
 // Sockets
 
@@ -248,10 +255,6 @@ type BpfInsn C.struct_bpf_insn
 type BpfTimeval C.struct_bpf_timeval
 
 type BpfHdr C.struct_bpf_hdr
-
-// sysconf information
-
-const _SC_PAGESIZE = C._SC_PAGESIZE
 
 // Terminal handling
 

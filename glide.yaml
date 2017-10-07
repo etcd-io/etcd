@@ -91,7 +91,7 @@ import:
   - internal/timeseries
   - trace
 - package: golang.org/x/sys
-  version: e48874b42435b4347fc52bdee0424a52abc974d7
+  version: ebfc5b4631820b793c9010c87fd8fef0f39eb082
 - package: golang.org/x/time
   version: c06e80d9300e4443158a03817b8a8cb37d230320
   subpackages:
@@ -130,3 +130,7 @@ import:
   version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
 - package: github.com/soheilhy/cmux
   version: v0.1.3
+- package: github.com/tmc/grpc-websocket-proxy
+  version: 89b8d40f7ca833297db804fcb3be53a76d01c238
+  subpackages:
+  - wsproxy
