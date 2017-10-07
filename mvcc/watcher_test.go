@@ -40,7 +40,7 @@ func TestWatcherWatchID(t *testing.T) {
 	idm := make(map[WatchID]struct{})
 
 	for i := 0; i < 10; i++ {
-		id := w.Watch([]byte("foo"), nil, 0)
+		id, _ := w.Watch(0, []byte("foo"), nil, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -62,7 +62,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
-		id := w.Watch([]byte("foo2"), nil, 1)
+		id, _ := w.Watch(0, []byte("foo2"), nil, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -75,6 +75,41 @@ func TestWatcherWatchID(t *testing.T) {
 
 		if err := w.Cancel(id); err != nil {
 			t.Error(err)
+		}
+	}
+}
+
+func TestWatcherRequestsCustomID(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	defer cleanup(s, b, tmpPath)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	// - Request specifically ID #1
+	// - Try to duplicate it, get an error
+	// - Make sure the auto-assignment skips over things we manually assigned
+
+	tt := []struct {
+		GivenID     WatchID
+		ExpectedID  WatchID
+		ExpectedErr error
+	}{
+		{1, 1, nil},
+		{1, 0, ErrWatcherDuplicateID},
+		{0, 0, nil},
+		{0, 2, nil},
+	}
+
+	for i, tcase := range tt {
+		id, err := w.Watch(tcase.GivenID, []byte("foo"), nil, 0)
+		if tcase.ExpectedErr != nil || err != nil {
+			if err != tcase.ExpectedErr {
+				t.Errorf("expected get error %q in test case %q, got %q", tcase.ExpectedErr, i, err)
+			}
+		} else if tcase.ExpectedID != id {
+			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.ExpectedID, id, i)
 		}
 	}
 }
@@ -95,7 +130,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	keyWatch, keyEnd, keyPut := []byte("foo"), []byte("fop"), []byte("foobar")
 
 	for i := 0; i < 10; i++ {
-		id := w.Watch(keyWatch, keyEnd, 0)
+		id, _ := w.Watch(0, keyWatch, keyEnd, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: unexpected duplicated id %x", i, id)
 		}
@@ -127,7 +162,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 
 	// unsynced watchers
 	for i := 10; i < 15; i++ {
-		id := w.Watch(keyWatch1, keyEnd1, 1)
+		id, _ := w.Watch(0, keyWatch1, keyEnd1, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -163,14 +198,14 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	if id := w.Watch([]byte("foa"), []byte("foa"), 1); id != -1 {
-		t.Fatalf("key == end range given; id expected -1, got %d", id)
+	if _, err := w.Watch(0, []byte("foa"), []byte("foa"), 1); err != ErrEmptyWatcherRange {
+		t.Fatalf("key == end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
-	if id := w.Watch([]byte("fob"), []byte("foa"), 1); id != -1 {
-		t.Fatalf("key > end range given; id expected -1, got %d", id)
+	if _, err := w.Watch(0, []byte("fob"), []byte("foa"), 1); err != ErrEmptyWatcherRange {
+		t.Fatalf("key > end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
 	// watch request with 'WithFromKey' has empty-byte range end
-	if id := w.Watch([]byte("foo"), []byte{}, 1); id != 0 {
+	if id, _ := w.Watch(0, []byte("foo"), []byte{}, 1); id != 0 {
 		t.Fatalf("\x00 is range given; id expected 0, got %d", id)
 	}
 }
@@ -192,7 +227,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	w := s.NewWatchStream()
 	from, to := []byte(testKeyPrefix), []byte(fmt.Sprintf("%s_%d", testKeyPrefix, 99))
-	w.Watch(from, to, 0)
+	w.Watch(0, from, to, 0)
 
 	s.DeleteRange(from, to)
 
@@ -222,7 +257,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	id := w.Watch([]byte("foo"), nil, 0)
+	id, _ := w.Watch(0, []byte("foo"), nil, 0)
 
 	tests := []struct {
 		cancelID WatchID
@@ -284,7 +319,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	default:
 	}
 
-	id := w.Watch(notTestKey, nil, 1)
+	id, _ := w.Watch(0, notTestKey, nil, 1)
 	w.RequestProgress(id)
 	select {
 	case resp := <-w.Chan():
@@ -295,7 +330,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	s.syncWatchers()
 
 	w.RequestProgress(id)
-	wrs := WatchResponse{WatchID: 0, Revision: 2}
+	wrs := WatchResponse{WatchID: id, Revision: 2}
 	select {
 	case resp := <-w.Chan():
 		if !reflect.DeepEqual(resp, wrs) {
@@ -318,7 +353,7 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 		return e.Type == mvccpb.PUT
 	}
 
-	w.Watch([]byte("foo"), nil, 0, filterPut)
+	w.Watch(0, []byte("foo"), nil, 0, filterPut)
 	done := make(chan struct{})
 
 	go func() {
