@@ -42,7 +42,7 @@ func TestWatch(t *testing.T) {
 	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
-	w.Watch(testKey, nil, 0)
+	w.Watch(0, testKey, nil, 0)
 
 	if !s.synced.contains(string(testKey)) {
 		// the key must have had an entry in synced
@@ -63,7 +63,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
-	wt := w.Watch(testKey, nil, 0)
+	wt, _ := w.Watch(0, testKey, nil, 0)
 
 	if err := w.Cancel(wt); err != nil {
 		t.Error(err)
@@ -114,7 +114,7 @@ func TestCancelUnsynced(t *testing.T) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// use 1 to keep watchers in unsynced
-		watchIDs[i] = w.Watch(testKey, nil, 1)
+		watchIDs[i], _ = w.Watch(0, testKey, nil, 1)
 	}
 
 	for _, idx := range watchIDs {
@@ -160,7 +160,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	for i := 0; i < watcherN; i++ {
 		// specify rev as 1 to keep watchers in unsynced
-		w.Watch(testKey, nil, 1)
+		w.Watch(0, testKey, nil, 1)
 	}
 
 	// Before running s.syncWatchers() synced should be empty because we manually
@@ -242,7 +242,7 @@ func TestWatchCompacted(t *testing.T) {
 	}
 
 	w := s.NewWatchStream()
-	wt := w.Watch(testKey, nil, compactRev-1)
+	wt, _ := w.Watch(0, testKey, nil, compactRev-1)
 
 	select {
 	case resp := <-w.Chan():
@@ -271,7 +271,7 @@ func TestWatchFutureRev(t *testing.T) {
 
 	w := s.NewWatchStream()
 	wrev := int64(10)
-	w.Watch(testKey, nil, wrev)
+	w.Watch(0, testKey, nil, wrev)
 
 	for i := 0; i < 10; i++ {
 		rev := s.Put(testKey, testValue, lease.NoLease)
@@ -310,7 +310,7 @@ func TestWatchRestore(t *testing.T) {
 	defer cleanup(newStore, newBackend, newPath)
 
 	w := newStore.NewWatchStream()
-	w.Watch(testKey, nil, rev-1)
+	w.Watch(0, testKey, nil, rev-1)
 
 	newStore.Restore(b)
 	select {
@@ -349,7 +349,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 	}
 
 	w := s.NewWatchStream()
-	w.Watch(v, nil, 1)
+	w.Watch(0, v, nil, 1)
 	for i := 0; i < batches; i++ {
 		if resp := <-w.Chan(); len(resp.Events) != watchBatchMaxRevs {
 			t.Fatalf("len(events) = %d, want %d", len(resp.Events), watchBatchMaxRevs)
@@ -485,7 +485,7 @@ func TestWatchVictims(t *testing.T) {
 	for i := 0; i < numWatches; i++ {
 		go func() {
 			w := s.NewWatchStream()
-			w.Watch(testKey, nil, 1)
+			w.Watch(0, testKey, nil, 1)
 			defer func() {
 				w.Close()
 				wg.Done()
@@ -561,7 +561,7 @@ func TestStressWatchCancelClose(t *testing.T) {
 			w := s.NewWatchStream()
 			ids := make([]WatchID, 10)
 			for i := range ids {
-				ids[i] = w.Watch(testKey, nil, 0)
+				ids[i], _ = w.Watch(0, testKey, nil, 0)
 			}
 			<-readyc
 			wg.Add(1 + len(ids)/2)
