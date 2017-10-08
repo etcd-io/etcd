@@ -26,8 +26,10 @@ const (
 	cliName        = "etcdctl"
 	cliDescription = "A simple command line client for etcd3."
 
-	defaultDialTimeout    = 2 * time.Second
-	defaultCommandTimeOut = 5 * time.Second
+	defaultDialTimeout      = 2 * time.Second
+	defaultCommandTimeOut   = 5 * time.Second
+	defaultKeepAliveTime    = 2 * time.Second
+	defaultKeepAliveTimeOut = 6 * time.Second
 )
 
 var (
@@ -51,6 +53,8 @@ func init() {
 
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.CommandTimeOut, "command-timeout", defaultCommandTimeOut, "timeout for short running command (excluding dial timeout)")
+	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTime, "keepalive-time", defaultKeepAliveTime, "keepalive time for client connections")
+	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTimeout, "keepalive-timeout", defaultKeepAliveTimeOut, "keepalive timeout for client connections")
 
 	// TODO: secure by default when etcd enables secure gRPC by default.
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.Insecure, "insecure-transport", true, "disable transport security for client connections")

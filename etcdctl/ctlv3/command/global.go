@@ -43,6 +43,8 @@ type GlobalFlags struct {
 	Endpoints          []string
 	DialTimeout        time.Duration
 	CommandTimeOut     time.Duration
+	KeepAliveTime      time.Duration
+	KeepAliveTimeout   time.Duration
 
 	TLS transport.TLSInfo
 
@@ -109,17 +111,21 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+
 	dialTimeout := dialTimeoutFromCmd(cmd)
+	keepAliveTime := keepAliveTimeFromCmd(cmd)
+	keepAliveTimeout := keepAliveTimeoutFromCmd(cmd)
+
 	sec := secureCfgFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
 
 	initDisplayFromCmd(cmd)
 
-	return mustClient(endpoints, dialTimeout, sec, auth)
+	return mustClient(endpoints, dialTimeout, keepAliveTime, keepAliveTimeout, sec, auth)
 }
 
-func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg, acfg *authCfg) *clientv3.Client {
-	cfg, err := newClientCfg(endpoints, dialTimeout, scfg, acfg)
+func mustClient(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *secureCfg, acfg *authCfg) *clientv3.Client {
+	cfg, err := newClientCfg(endpoints, dialTimeout, keepAliveTime, keepAliveTimeout, scfg, acfg)
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -132,7 +138,7 @@ func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg, 
 	return client
 }
 
-func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg, acfg *authCfg) (*clientv3.Config, error) {
+func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *secureCfg, acfg *authCfg) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tlsinfo := transport.TLSInfo{}
@@ -157,9 +163,12 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg
 	}
 
 	cfg := &clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
+		Endpoints:            endpoints,
+		DialTimeout:          dialTimeout,
+		DialKeepAliveTime:    keepAliveTime,
+		DialKeepAliveTimeout: keepAliveTimeout,
 	}
+
 	if cfgtls != nil {
 		clientTLS, err := cfgtls.ClientConfig()
 		if err != nil {
@@ -167,6 +176,7 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg
 		}
 		cfg.TLS = clientTLS
 	}
+
 	// if key/cert is not given but user wants secure connection, we
 	// should still setup an empty tls configuration for gRPC to setup
 	// secure connection.
@@ -205,6 +215,22 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 		ExitWithError(ExitError, err)
 	}
 	return dialTimeout
+}
+
+func keepAliveTimeFromCmd(cmd *cobra.Command) time.Duration {
+	keepAliveTime, err := cmd.Flags().GetDuration("keepalive-time")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return keepAliveTime
+}
+
+func keepAliveTimeoutFromCmd(cmd *cobra.Command) time.Duration {
+	keepAliveTimeout, err := cmd.Flags().GetDuration("keepalive-timeout")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return keepAliveTimeout
 }
 
 func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
