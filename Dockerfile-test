@@ -20,6 +20,7 @@ RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
   && go get -v -u github.com/wadey/gocovmerge \
+  && go get -v -u github.com/gordonklaus/ineffassign \
   && ./scripts/install-marker.sh amd64
 
 # e.g.
