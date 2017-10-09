@@ -44,6 +44,8 @@ type balancer interface {
 	endpoints() []string
 	// pinned returns the current pinned endpoint.
 	pinned() string
+	// endpointError handles error from server-side.
+	endpointError(addr string, err error)
 
 	// up is Up but includes whether the balancer will use the connection.
 	up(addr grpc.Address) (func(error), bool)
@@ -149,6 +151,8 @@ func (b *simpleBalancer) pinned() string {
 	defer b.mu.RUnlock()
 	return b.pinAddr
 }
+
+func (b *simpleBalancer) endpointError(addr string, err error) { return }
 
 func getHost2ep(eps []string) map[string]string {
 	hm := make(map[string]string, len(eps))
