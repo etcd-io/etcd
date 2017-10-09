@@ -1,5 +1,8 @@
+ErrCodeEnhanceYourCalm
+GoAway
 RPC
 RPCs
+backoff
 blackholed
 cancelable
 cancelation
@@ -10,6 +13,7 @@ etcd
 gRPC
 goroutine
 goroutines
+healthcheck
 iff
 inflight
 keepalive
