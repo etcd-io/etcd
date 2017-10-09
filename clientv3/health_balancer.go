@@ -188,7 +188,7 @@ func (hb *healthBalancer) endpointError(addr string, err error) {
 
 func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	hb.mu.RLock()
-	skip := len(hb.addrs) == 1 || len(hb.unhealthy) == 0
+	skip := len(hb.addrs) == 1 || len(hb.unhealthy) == 0 || len(hb.addrs) == len(hb.unhealthy)
 	failedTime, bad := hb.unhealthy[addr.Addr]
 	dur := hb.healthCheckTimeout
 	hb.mu.RUnlock()
