@@ -42,11 +42,10 @@ func (kv *kvOrdering) getPrevRev() int64 {
 }
 
 func (kv *kvOrdering) setPrevRev(currRev int64) {
-	prevRev := kv.getPrevRev()
-	if currRev > prevRev {
-		kv.revMu.Lock()
+	kv.revMu.Lock()
+	defer kv.revMu.Unlock()
+	if currRev > kv.prevRev {
 		kv.prevRev = currRev
-		kv.revMu.Unlock()
 	}
 }
 
@@ -63,7 +62,9 @@ func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOp
 			return nil, err
 		}
 		resp := r.Get()
-		if resp.Header.Revision >= prevRev {
+		if resp.Header.Revision == prevRev {
+			return resp, nil
+		} else if resp.Header.Revision > prevRev {
 			kv.setPrevRev(resp.Header.Revision)
 			return resp, nil
 		}
