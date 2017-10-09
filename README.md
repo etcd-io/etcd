@@ -88,7 +88,7 @@ Our [Procfile script](./Procfile) will set up a local example cluster. Start it 
 goreman start
 ```
 
-This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and etcd proxy `proxy`, which runs locally and composes a cluster.
+This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and etcd `grpc-proxy`, which runs locally and composes a cluster.
 
 Every cluster member and proxy accepts key value reads and key value writes.
 
