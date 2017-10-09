@@ -125,7 +125,7 @@ func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error)
 	if watchPrevKey {
 		opts = append(opts, clientv3.WithPrevKV())
 	}
-	return c.Watch(context.TODO(), key, opts...), nil
+	return c.Watch(clientv3.WithRequireLeader(context.Background()), key, opts...), nil
 }
 
 func printWatchCh(ch clientv3.WatchChan) {
