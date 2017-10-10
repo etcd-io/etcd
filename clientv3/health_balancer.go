@@ -120,6 +120,7 @@ func (hb *healthBalancer) updateAddrs(eps ...string) {
 	addrs, host2ep := eps2addrs(eps), getHost2ep(eps)
 	hb.mu.Lock()
 	hb.addrs, hb.eps, hb.host2ep = addrs, eps, host2ep
+	hb.unhealthy = make(map[string]time.Time)
 	hb.mu.Unlock()
 	hb.balancer.updateAddrs(eps...)
 }
