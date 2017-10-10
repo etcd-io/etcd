@@ -69,7 +69,7 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 	defer cli.Close()
 
 	// add other endpoints for later endpoint switch
-	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[1].GRPCAddr())
+	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr())
 
 	time.Sleep(3 * time.Second)
 	clus.Members[0].InjectPartition(t, clus.Members[1:])
