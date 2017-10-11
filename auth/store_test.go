@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -652,5 +653,51 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 		wg.Wait()
+	}
+}
+
+// TestRolesOrder tests authpb.User.Roles is sorted
+func TestRolesOrder(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(b, tp)
+	err = enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	username := "user"
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{username, "pass"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	roles := []string{"role1", "role2", "abc", "xyz", "role3"}
+	for _, role := range roles {
+		_, err = as.RoleAdd(&pb.AuthRoleAddRequest{role})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{username, role})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	user, err := as.UserGet(&pb.AuthUserGetRequest{username})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 1; i < len(user.Roles); i++ {
+		if strings.Compare(user.Roles[i-1], user.Roles[i]) != -1 {
+			t.Errorf("User.Roles isn't sorted (%s vs %s)", user.Roles[i-1], user.Roles[i])
+		}
 	}
 }

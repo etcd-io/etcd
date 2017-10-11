@@ -943,12 +943,9 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 }
 
 func hasRootRole(u *authpb.User) bool {
-	for _, r := range u.Roles {
-		if r == rootRole {
-			return true
-		}
-	}
-	return false
+	// u.Roles is sorted in UserGrantRole(), so we can use binary search.
+	idx := sort.SearchStrings(u.Roles, rootRole)
+	return idx != len(u.Roles) && u.Roles[idx] == rootRole
 }
 
 func (as *authStore) commitRevision(tx backend.BatchTx) {
