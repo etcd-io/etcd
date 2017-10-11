@@ -185,7 +185,7 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	cred.tokenMu.RLock()
 	defer cred.tokenMu.RUnlock()
 	return map[string]string{
-		"token": cred.token,
+		rpctypes.TokenFieldNameGRPC: cred.token,
 	}, nil
 }
 
