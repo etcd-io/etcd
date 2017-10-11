@@ -57,7 +57,7 @@ The primary object in raft is a Node. Either start a Node from scratch using raf
 
 To start a three-node cluster
 ```go
-  storage := raft.NewMemoryStorage()
+  storage := raft.NewStorage()
   c := &Config{
     ID:              0x01,
     ElectionTick:    10,
@@ -87,7 +87,7 @@ To allow a new node to join this cluster, do not pass in any peers. First, add t
 
 To restart a node from previous state:
 ```go
-  storage := raft.NewMemoryStorage()
+  storage := raft.NewStorage()
 
   // Recover the in-memory storage from persistent snapshot, state and entries.
   storage.ApplySnapshot(snapshot)

@@ -156,7 +156,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	})
 	srv := &EtcdServer{r: *r}
@@ -183,7 +183,7 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	})
 	srv := &EtcdServer{r: *r}

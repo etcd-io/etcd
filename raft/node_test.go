@@ -115,7 +115,7 @@ func TestNodePropose(t *testing.T) {
 	}
 
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())
@@ -155,7 +155,7 @@ func TestNodeReadIndex(t *testing.T) {
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	r.readStates = wrs
 
@@ -195,9 +195,9 @@ func TestNodeReadIndex(t *testing.T) {
 // TestDisableProposalForwarding ensures that proposals are not forwarded to
 // the leader when DisableProposalForwarding is true.
 func TestDisableProposalForwarding(t *testing.T) {
-	r1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	r2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	cfg3 := newTestConfig(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	r1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
+	r2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
+	cfg3 := newTestConfig(3, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
 	cfg3.DisableProposalForwarding = true
 	r3 := newRaft(cfg3)
 	nt := newNetwork(r1, r2, r3)
@@ -227,9 +227,9 @@ func TestDisableProposalForwarding(t *testing.T) {
 // TestNodeReadIndexToOldLeader ensures that raftpb.MsgReadIndex to old leader
 // gets forwarded to the new leader and 'send' method does not attach its term.
 func TestNodeReadIndexToOldLeader(t *testing.T) {
-	r1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	r2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	r3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	r1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
+	r2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
+	r3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, newMemoryStorage())
 
 	nt := newNetwork(r1, r2, r3)
 
@@ -292,7 +292,7 @@ func TestNodeProposeConfig(t *testing.T) {
 	}
 
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())
@@ -330,7 +330,7 @@ func TestNodeProposeConfig(t *testing.T) {
 // not affect the later propose to add new node.
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())
@@ -406,7 +406,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	r := newTestRaft(1, []uint64{1}, 10, 1, newMemoryStorage())
 	go n.run(r)
 	defer n.Stop()
 
@@ -437,7 +437,7 @@ func TestBlockProposal(t *testing.T) {
 // elapsed of the underlying raft state machine.
 func TestNodeTick(t *testing.T) {
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	elapsed := r.electionElapsed
@@ -457,7 +457,7 @@ func TestNodeTick(t *testing.T) {
 // processing, and that it is idempotent
 func TestNodeStop(t *testing.T) {
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	donec := make(chan struct{})
 
@@ -540,7 +540,7 @@ func TestNodeStart(t *testing.T) {
 			MustSync:         true,
 		},
 	}
-	storage := NewMemoryStorage()
+	storage := newMemoryStorage()
 	c := &Config{
 		ID:              1,
 		ElectionTick:    10,
@@ -593,7 +593,7 @@ func TestNodeRestart(t *testing.T) {
 		MustSync:         true,
 	}
 
-	storage := NewMemoryStorage()
+	storage := newMemoryStorage()
 	storage.SetHardState(st)
 	storage.Append(entries)
 	c := &Config{
@@ -638,7 +638,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 		MustSync:         true,
 	}
 
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	s.SetHardState(st)
 	s.ApplySnapshot(snap)
 	s.Append(entries)
@@ -669,7 +669,7 @@ func TestNodeAdvance(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	storage := NewMemoryStorage()
+	storage := newMemoryStorage()
 	c := &Config{
 		ID:              1,
 		ElectionTick:    10,
@@ -740,7 +740,7 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())

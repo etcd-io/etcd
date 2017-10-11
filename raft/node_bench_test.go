@@ -25,7 +25,7 @@ func BenchmarkOneNode(b *testing.B) {
 	defer cancel()
 
 	n := newNode()
-	s := NewMemoryStorage()
+	s := newMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 

@@ -32,7 +32,7 @@ using raft.StartNode or start a Node from some initial state using raft.RestartN
 
 To start a node from scratch:
 
-  storage := raft.NewMemoryStorage()
+  storage := raft.NewStorage()
   c := &Config{
     ID:              0x01,
     ElectionTick:    10,
@@ -45,7 +45,7 @@ To start a node from scratch:
 
 To restart a node from previous state:
 
-  storage := raft.NewMemoryStorage()
+  storage := raft.NewStorage()
 
   // recover the in-memory storage from persistent
   // snapshot, state and entries.

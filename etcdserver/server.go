@@ -261,7 +261,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	var (
 		w  *wal.WAL
 		n  raft.Node
-		s  *raft.MemoryStorage
+		s  raft.Storage
 		id types.ID
 		cl *membership.RaftCluster
 	)

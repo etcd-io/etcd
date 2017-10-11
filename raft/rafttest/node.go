@@ -32,14 +32,14 @@ type node struct {
 	pausec chan bool
 
 	// stable
-	storage *raft.MemoryStorage
+	storage raft.Storage
 
 	mu    sync.Mutex // guards state
 	state raftpb.HardState
 }
 
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
-	st := raft.NewMemoryStorage()
+	st := raft.NewStorage()
 	c := &raft.Config{
 		ID:              id,
 		ElectionTick:    10,
