@@ -185,6 +185,7 @@ func (hb *healthBalancer) endpointError(addr string, err error) {
 	if logger.V(4) {
 		logger.Infof("clientv3/health-balancer: marking %s as unhealthy (%v)", addr, err)
 	}
+	hb.balancer.endpointError(addr, err)
 }
 
 func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
