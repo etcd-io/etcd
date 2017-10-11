@@ -92,13 +92,22 @@ func initDisplayFromCmd(cmd *cobra.Command) {
 	}
 }
 
-func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
+type clientConfig struct {
+	endpoints        []string
+	dialTimeout      time.Duration
+	keepAliveTime    time.Duration
+	keepAliveTimeout time.Duration
+	scfg             *secureCfg
+	acfg             *authCfg
+}
+
+func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 	fs := cmd.InheritedFlags()
 	flags.SetPflagsFromEnv("ETCDCTL", fs)
 
-	debug, derr := cmd.Flags().GetBool("debug")
-	if derr != nil {
-		ExitWithError(ExitError, derr)
+	debug, err := cmd.Flags().GetBool("debug")
+	if err != nil {
+		ExitWithError(ExitError, err)
 	}
 	if debug {
 		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
@@ -107,25 +116,30 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		})
 	}
 
-	endpoints, err := endpointsFromCmd(cmd)
+	cfg := &clientConfig{}
+	cfg.endpoints, err = endpointsFromCmd(cmd)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	dialTimeout := dialTimeoutFromCmd(cmd)
-	keepAliveTime := keepAliveTimeFromCmd(cmd)
-	keepAliveTimeout := keepAliveTimeoutFromCmd(cmd)
+	cfg.dialTimeout = dialTimeoutFromCmd(cmd)
+	cfg.keepAliveTime = keepAliveTimeFromCmd(cmd)
+	cfg.keepAliveTimeout = keepAliveTimeoutFromCmd(cmd)
 
-	sec := secureCfgFromCmd(cmd)
-	auth := authCfgFromCmd(cmd)
+	cfg.scfg = secureCfgFromCmd(cmd)
+	cfg.acfg = authCfgFromCmd(cmd)
 
 	initDisplayFromCmd(cmd)
-
-	return mustClient(endpoints, dialTimeout, keepAliveTime, keepAliveTimeout, sec, auth)
+	return cfg
 }
 
-func mustClient(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *secureCfg, acfg *authCfg) *clientv3.Client {
-	cfg, err := newClientCfg(endpoints, dialTimeout, keepAliveTime, keepAliveTimeout, scfg, acfg)
+func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
+	cfg := clientConfigFromCmd(cmd)
+	return cfg.mustClient()
+}
+
+func (cc *clientConfig) mustClient() *clientv3.Client {
+	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
