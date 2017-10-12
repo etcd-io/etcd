@@ -350,6 +350,8 @@ func testLeaderElection(t *testing.T, preVote bool) {
 
 func TestLearnerElectionTimeout(t *testing.T) {
 	n1 := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	n1.prs[2].isLearner = true
+
 	n2 := newTestRaft(2, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	n2.isLearner = true
 	n2.prs[2].isLearner = true
@@ -380,6 +382,9 @@ func TestLearnerElectionTimeout(t *testing.T) {
 		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
 	}
 
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
+
+	n1.addNode(2)
 	n2.addNode(2)
 	if n2.isLearner {
 		t.Errorf("peer 2 isLearner: %t, want %t", n2.isLearner, false)
