@@ -245,6 +245,7 @@ type raft struct {
 	maxMsgSize  uint64
 	prs         map[uint64]*Progress
 	learnerPrs  map[uint64]*Progress
+	matchBuf    uint64Slice
 
 	state StateType
 
@@ -563,13 +564,19 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 // the commit index changed (in which case the caller should call
 // r.bcastAppend).
 func (r *raft) maybeCommit() bool {
-	// TODO(bmizerany): optimize.. Currently naive
-	mis := make(uint64Slice, 0, len(r.prs))
-	for _, p := range r.prs {
-		mis = append(mis, p.Match)
+	// Preserving matchBuf across calls is an optimization
+	// used to avoid allocating a new slice on each call.
+	if cap(r.matchBuf) < len(r.prs) {
+		r.matchBuf = make(uint64Slice, len(r.prs))
 	}
-	sort.Sort(sort.Reverse(mis))
-	mci := mis[r.quorum()-1]
+	mis := r.matchBuf[:len(r.prs)]
+	idx := 0
+	for _, p := range r.prs {
+		mis[idx] = p.Match
+		idx++
+	}
+	sort.Sort(mis)
+	mci := mis[len(mis)-r.quorum()]
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
