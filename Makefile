@@ -8,10 +8,16 @@ build:
 	./bin/etcd --version
 	ETCDCTL_API=3 ./bin/etcdctl version
 
+.PHONY: test
 test:
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	PASSES='fmt bom dep compile build unit' ./test 2>&1 | tee test-$(TEST_SUFFIX).log
 	! grep FAIL -A10 -B50 test-$(TEST_SUFFIX).log
+
+test-fmt:
+	$(info log-file: test-fmt-$(TEST_SUFFIX).log)
+	PASSES='fmt' ./test 2>&1 | tee test-fmt-$(TEST_SUFFIX).log
+	! grep FAIL -A10 -B50 test-fmt-$(TEST_SUFFIX).log
 
 test-all:
 	$(info log-file: test-all-$(TEST_SUFFIX).log)
@@ -76,7 +82,7 @@ docker-test:
 	  --rm \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
-	  /bin/bash -c "RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee docker-test-$(TEST_SUFFIX).log"
+	  /bin/bash -c "PASSES='fmt bom dep compile build unit' ./test 2>&1 | tee docker-test-$(TEST_SUFFIX).log"
 	! grep FAIL -A10 -B50 docker-test-$(TEST_SUFFIX).log
 
 docker-test-386:
@@ -87,6 +93,33 @@ docker-test-386:
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
 	  /bin/bash -c "GOARCH=386 PASSES='build unit integration_e2e' ./test 2>&1 | tee docker-test-386-$(TEST_SUFFIX).log"
 	! grep FAIL -A10 -B50 docker-test-386-$(TEST_SUFFIX).log
+
+docker-test-fmt:
+	$(info log-file: docker-test-fmt-$(TEST_SUFFIX).log)
+	docker run \
+	  --rm \
+	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
+	  /bin/bash -c "PASSES='fmt' ./test 2>&1 | tee docker-test-fmt-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-fmt-$(TEST_SUFFIX).log
+
+docker-test-all:
+	$(info log-file: docker-test-all-$(TEST_SUFFIX).log)
+	docker run \
+	  --rm \
+	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
+	  /bin/bash -c "RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee docker-test-all-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-all-$(TEST_SUFFIX).log
+
+docker-test-all-386:
+	$(info log-file: docker-test-all-386-$(TEST_SUFFIX).log)
+	docker run \
+	  --rm \
+	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
+	  /bin/bash -c "GOARCH=386 PASSES='build unit release integration_e2e functional' ./test 2>&1 | tee docker-test-all-386-$(TEST_SUFFIX).log"
+	! grep FAIL -A10 -B50 docker-test-all-386-$(TEST_SUFFIX).log
 
 docker-test-proxy:
 	$(info log-file: docker-test-proxy-$(TEST_SUFFIX).log)
