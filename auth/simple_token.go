@@ -118,6 +118,9 @@ func (t *tokenSimple) genTokenPrefix() (string, error) {
 func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 	t.simpleTokensMu.Lock()
 	defer t.simpleTokensMu.Unlock()
+	if t.simpleTokenKeeper == nil {
+		return
+	}
 
 	_, ok := t.simpleTokens[token]
 	if ok {
