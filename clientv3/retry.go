@@ -261,6 +261,24 @@ func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberList
 	return resp, err
 }
 
+type retryMaintenanceClient struct {
+	pb.MaintenanceClient
+	retryf retryRpcFunc
+}
+
+// RetryMaintenanceClient implements a Maintenance that uses the client's FailFast retry policy.
+func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClient {
+	return &retryMaintenanceClient{pb.NewMaintenanceClient(conn), c.newRetryWrapper(isReadStopError)}
+}
+
+func (rcc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmRequest, opts ...grpc.CallOption) (resp *pb.AlarmResponse, err error) {
+	err = rcc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rcc.MaintenanceClient.Alarm(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 type retryAuthClient struct {
 	pb.AuthClient
 	retryf retryRpcFunc

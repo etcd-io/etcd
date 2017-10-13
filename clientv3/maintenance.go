@@ -77,9 +77,9 @@ func NewMaintenance(c *Client) Maintenance {
 				return nil, nil, err
 			}
 			cancel := func() { conn.Close() }
-			return pb.NewMaintenanceClient(conn), cancel, nil
+			return RetryMaintenanceClient(c, conn), cancel, nil
 		},
-		remote: pb.NewMaintenanceClient(c.conn),
+		remote: RetryMaintenanceClient(c, c.conn),
 	}
 }
 
@@ -98,15 +98,11 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 		MemberID: 0,                 // all
 		Alarm:    pb.AlarmType_NONE, // all
 	}
-	for {
-		resp, err := m.remote.Alarm(ctx, req, grpc.FailFast(false))
-		if err == nil {
-			return (*AlarmResponse)(resp), nil
-		}
-		if isHaltErr(ctx, err) {
-			return nil, toErr(ctx, err)
-		}
+	resp, err := m.remote.Alarm(ctx, req, grpc.FailFast(false))
+	if err == nil {
+		return (*AlarmResponse)(resp), nil
 	}
+	return nil, toErr(ctx, err)
 }
 
 func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmResponse, error) {
