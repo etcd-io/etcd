@@ -23,32 +23,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 type rpcFunc func(ctx context.Context) error
 type retryRpcFunc func(context.Context, rpcFunc) error
-type retryStopErrFunc func(error) bool
 
-func isReadStopError(err error) bool {
-	eErr := rpctypes.Error(err)
-	// always stop retry on etcd errors
-	if _, ok := eErr.(rpctypes.EtcdError); ok {
-		return true
-	}
-	// only retry if unavailable
-	ev, _ := status.FromError(err)
-	return ev.Code() != codes.Unavailable
-}
-
-func isWriteStopError(err error) bool {
-	ev, _ := status.FromError(err)
-	if ev.Code() != codes.Unavailable {
-		return true
-	}
-	return rpctypes.ErrorDesc(err) != "there is no address available"
-}
-
-func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
+func (c *Client) newRetryWrapper(isWrite bool) retryRpcFunc {
 	return func(rpcCtx context.Context, f rpcFunc) error {
 		for {
 			select {
@@ -63,25 +44,61 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 			if err == nil {
 				return nil
 			}
+
 			if logger.V(4) {
-				logger.Infof("clientv3/retry: error %v on pinned endpoint %s", err, pinned)
+				logger.Infof("clientv3/retry: error %v on pinned endpoint %s (write %v)", err, pinned, isWrite)
 			}
-			// mark this before endpoint switch is triggered
-			c.balancer.endpointError(pinned, err)
-			notify := c.balancer.ConnectNotify()
-			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+
+			// error from etcd server with codes.Unavailable, then endpoint switch and retry
+			// e.g. rpctypes.ErrTimeout
+			// error from etcd server with non codes.Unavailable, then no endpoint switch and no retry
+			// e.g. rpctypes.ErrEmptyKey, rpctypes.ErrNoSpace
+			rerr := rpctypes.Error(err)
+			if ev, ok := rerr.(rpctypes.EtcdError); ok {
+				if ev.Code() != codes.Unavailable {
+					return err
+				}
+				c.balancer.endpointError(pinned, err)
 				c.balancer.next()
-			}
-			if isStop(err) {
+				if !isWrite { // only retry immutable RPCs ("put at most once semantics")
+					continue
+				}
 				return err
 			}
-			select {
-			case <-notify:
-			case <-rpcCtx.Done():
-				return rpcCtx.Err()
-			case <-c.ctx.Done():
-				return c.ctx.Err()
+
+			// if temporary gRPC connection error, then endpoint switch but no retry
+			// e.g. transport.ErrConnClosing when server closed transport, failing node
+			if tv, ok := err.(transport.ConnectionError); ok && tv.Temporary() {
+				// mark as unhealthy and wait for another endpoint to come up
+				c.balancer.endpointError(pinned, err)
+				c.balancer.next()
+				return err
 			}
+
+			// TODO: handle transport.StreamError?
+
+			// if unknown status error from gRPC, then endpoint switch but no retry
+			s, ok := status.FromError(err)
+			if !ok {
+				c.balancer.endpointError(pinned, err)
+				c.balancer.next()
+				return err
+			}
+
+			// if known status error from gRPC with following codes,
+			// then endpoint switch and retry
+			if s.Code() == codes.Unavailable ||
+				s.Code() == codes.Internal ||
+				s.Code() == codes.DeadlineExceeded {
+				c.balancer.endpointError(pinned, err)
+				c.balancer.next()
+				if !isWrite { // only retry immutable RPCs ("put at most once semantics")
+					continue
+				}
+			}
+
+			// TODO: remove duplicate error handling inside toErr
+			return toErr(rpcCtx, err)
 		}
 	}
 }
@@ -112,8 +129,8 @@ func (c *Client) newAuthRetryWrapper() retryRpcFunc {
 
 // RetryKVClient implements a KVClient that uses the client's FailFast retry policy.
 func RetryKVClient(c *Client) pb.KVClient {
-	readRetry := c.newRetryWrapper(isReadStopError)
-	writeRetry := c.newRetryWrapper(isWriteStopError)
+	readRetry := c.newRetryWrapper(false)
+	writeRetry := c.newRetryWrapper(true)
 	conn := pb.NewKVClient(c.conn)
 	retryBasic := &retryKVClient{&retryWriteKVClient{conn, writeRetry}, readRetry}
 	retryAuthWrapper := c.newAuthRetryWrapper()
@@ -181,7 +198,7 @@ type retryLeaseClient struct {
 func RetryLeaseClient(c *Client) pb.LeaseClient {
 	retry := &retryLeaseClient{
 		pb.NewLeaseClient(c.conn),
-		c.newRetryWrapper(isReadStopError),
+		c.newRetryWrapper(false),
 	}
 	return &retryLeaseClient{retry, c.newAuthRetryWrapper()}
 }
@@ -226,7 +243,7 @@ type retryClusterClient struct {
 
 // RetryClusterClient implements a ClusterClient that uses the client's FailFast retry policy.
 func RetryClusterClient(c *Client) pb.ClusterClient {
-	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(true)}
 }
 
 func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
@@ -268,7 +285,7 @@ type retryMaintenanceClient struct {
 
 // RetryMaintenanceClient implements a Maintenance that uses the client's FailFast retry policy.
 func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClient {
-	return &retryMaintenanceClient{pb.NewMaintenanceClient(conn), c.newRetryWrapper(isReadStopError)}
+	return &retryMaintenanceClient{pb.NewMaintenanceClient(conn), c.newRetryWrapper(false)}
 }
 
 func (rcc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmRequest, opts ...grpc.CallOption) (resp *pb.AlarmResponse, err error) {
@@ -286,7 +303,7 @@ type retryAuthClient struct {
 
 // RetryAuthClient implements a AuthClient that uses the client's FailFast retry policy.
 func RetryAuthClient(c *Client) pb.AuthClient {
-	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(true)}
 }
 
 func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {
