@@ -361,6 +361,22 @@ func (rac *retryAuthClient) RoleDelete(ctx context.Context, in *pb.AuthRoleDelet
 	return resp, err
 }
 
+func (rac *retryAuthClient) RoleGet(ctx context.Context, in *pb.AuthRoleGetRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGetResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.RoleGet(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rac *retryAuthClient) RoleList(ctx context.Context, in *pb.AuthRoleListRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleListResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.RoleList(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 func (rac *retryAuthClient) RoleGrantPermission(ctx context.Context, in *pb.AuthRoleGrantPermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGrantPermissionResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleGrantPermission(rctx, in, opts...)
@@ -372,6 +388,14 @@ func (rac *retryAuthClient) RoleGrantPermission(ctx context.Context, in *pb.Auth
 func (rac *retryAuthClient) RoleRevokePermission(ctx context.Context, in *pb.AuthRoleRevokePermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleRevokePermissionResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleRevokePermission(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rac *retryAuthClient) Authenticate(ctx context.Context, in *pb.AuthenticateRequest, opts ...grpc.CallOption) (resp *pb.AuthenticateResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.Authenticate(rctx, in, opts...)
 		return err
 	})
 	return resp, err
