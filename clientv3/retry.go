@@ -203,6 +203,22 @@ func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevoke
 	return resp, err
 }
 
+func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (resp *pb.LeaseTimeToLiveResponse, err error) {
+	err = rlc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rlc.LeaseClient.LeaseTimeToLive(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (resp *pb.LeaseLeasesResponse, err error) {
+	err = rlc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rlc.LeaseClient.LeaseLeases(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 type retryClusterClient struct {
 	pb.ClusterClient
 	retryf retryRpcFunc
