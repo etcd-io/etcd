@@ -1,7 +1,12 @@
 ErrCodeEnhanceYourCalm
+ErrConnClosing
+ErrEmptyKey
+ErrNoSpace
+ErrTimeout
 GoAway
 RPC
 RPCs
+StreamError
 backoff
 blackholed
 cancelable
