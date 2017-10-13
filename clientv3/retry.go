@@ -253,6 +253,14 @@ func (rcc *retryClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUp
 	return resp, err
 }
 
+func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
+	err = rcc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rcc.ClusterClient.MemberList(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 type retryAuthClient struct {
 	pb.AuthClient
 	retryf retryRpcFunc
