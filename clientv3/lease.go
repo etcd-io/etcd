@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -208,7 +207,7 @@ func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, 
 
 func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption) (*LeaseTimeToLiveResponse, error) {
 	r := toLeaseTimeToLiveRequest(id, opts...)
-	resp, err := l.remote.LeaseTimeToLive(ctx, r, grpc.FailFast(false))
+	resp, err := l.remote.LeaseTimeToLive(ctx, r)
 	if err == nil {
 		gresp := &LeaseTimeToLiveResponse{
 			ResponseHeader: resp.GetHeader(),
@@ -223,7 +222,7 @@ func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption
 }
 
 func (l *lessor) Leases(ctx context.Context) (*LeaseLeasesResponse, error) {
-	resp, err := l.remote.LeaseLeases(ctx, &pb.LeaseLeasesRequest{}, grpc.FailFast(false))
+	resp, err := l.remote.LeaseLeases(ctx, &pb.LeaseLeasesRequest{})
 	if err == nil {
 		leases := make([]LeaseStatus, len(resp.Leases))
 		for i := range resp.Leases {
@@ -373,7 +372,7 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	stream, err := l.remote.LeaseKeepAlive(cctx, grpc.FailFast(false))
+	stream, err := l.remote.LeaseKeepAlive(cctx)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -445,7 +444,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 // resetRecv opens a new lease stream and starts sending keep alive requests.
 func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
 	sctx, cancel := context.WithCancel(l.stopCtx)
-	stream, err := l.remote.LeaseKeepAlive(sctx, grpc.FailFast(false))
+	stream, err := l.remote.LeaseKeepAlive(sctx)
 	if err != nil {
 		cancel()
 		return nil, err

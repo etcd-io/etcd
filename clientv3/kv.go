@@ -18,8 +18,6 @@ import (
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
-	"google.golang.org/grpc"
 )
 
 type (
@@ -136,7 +134,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 	switch op.t {
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), grpc.FailFast(false))
+		resp, err = kv.remote.Range(ctx, op.toRangeRequest())
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
