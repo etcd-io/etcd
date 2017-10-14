@@ -189,39 +189,25 @@ func (rkv *retryWriteKVClient) Compact(ctx context.Context, in *pb.CompactionReq
 	return resp, err
 }
 
-type retryLeaseClient struct {
-	pb.LeaseClient
-	retryf retryRpcFunc
-}
-
-// RetryLeaseClient implements a LeaseClient that uses the client's FailFast retry policy.
+// RetryLeaseClient implements a LeaseClient.
 func RetryLeaseClient(c *Client) pb.LeaseClient {
-	retry := &retryLeaseClient{
-		pb.NewLeaseClient(c.conn),
-		c.newRetryWrapper(false),
-	}
-	return &retryLeaseClient{retry, c.newAuthRetryWrapper()}
+	readRetry := c.newRetryWrapper(false)
+	writeRetry := c.newRetryWrapper(true)
+	conn := pb.NewLeaseClient(c.conn)
+	retryBasic := &retryLeaseClient{&retryWriteLeaseClient{conn, writeRetry}, readRetry}
+	retryAuthWrapper := c.newAuthRetryWrapper()
+	return &retryLeaseClient{
+		&retryWriteLeaseClient{retryBasic, retryAuthWrapper},
+		retryAuthWrapper}
 }
 
-func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
-	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.LeaseClient.LeaseGrant(rctx, in, opts...)
-		return err
-	})
-	return resp, err
-
-}
-
-func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts ...grpc.CallOption) (resp *pb.LeaseRevokeResponse, err error) {
-	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.LeaseClient.LeaseRevoke(rctx, in, opts...)
-		return err
-	})
-	return resp, err
+type retryLeaseClient struct {
+	*retryWriteLeaseClient
+	readRetry retryRpcFunc
 }
 
 func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (resp *pb.LeaseTimeToLiveResponse, err error) {
-	err = rlc.retryf(ctx, func(rctx context.Context) error {
+	err = rlc.readRetry(ctx, func(rctx context.Context) error {
 		resp, err = rlc.LeaseClient.LeaseTimeToLive(rctx, in, opts...)
 		return err
 	})
@@ -229,8 +215,29 @@ func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTi
 }
 
 func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (resp *pb.LeaseLeasesResponse, err error) {
-	err = rlc.retryf(ctx, func(rctx context.Context) error {
+	err = rlc.readRetry(ctx, func(rctx context.Context) error {
 		resp, err = rlc.LeaseClient.LeaseLeases(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type retryWriteLeaseClient struct {
+	pb.LeaseClient
+	retryf retryRpcFunc
+}
+
+func (rlc *retryWriteLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
+	err = rlc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rlc.LeaseClient.LeaseGrant(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rlc *retryWriteLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts ...grpc.CallOption) (resp *pb.LeaseRevokeResponse, err error) {
+	err = rlc.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rlc.LeaseClient.LeaseRevoke(rctx, in, opts...)
 		return err
 	})
 	return resp, err
