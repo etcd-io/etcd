@@ -105,7 +105,7 @@ type auth struct {
 }
 
 func NewAuth(c *Client) Auth {
-	return &auth{remote: pb.NewAuthClient(c.ActiveConnection())}
+	return &auth{remote: RetryAuthClient(c)}
 }
 
 func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
