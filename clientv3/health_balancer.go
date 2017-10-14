@@ -98,7 +98,7 @@ func (hb *healthBalancer) Up(addr grpc.Address) func(error) {
 		hb.mu.Unlock()
 		f(err)
 		if logger.V(4) {
-			logger.Infof("clientv3/health-balancer: %q becomes unhealthy (%v)", addr.Addr, err)
+			logger.Infof("clientv3/health-balancer: %q becomes unhealthy (%q)", addr.Addr, err.Error())
 		}
 	}
 }
@@ -190,7 +190,7 @@ func (hb *healthBalancer) endpointError(host string, err error) {
 	hb.unhealthyHosts[host] = time.Now()
 	hb.mu.Unlock()
 	if logger.V(4) {
-		logger.Infof("clientv3/health-balancer: marking %q as unhealthy (%v)", host, err)
+		logger.Infof("clientv3/health-balancer: marking %q as unhealthy (%q)", host, err.Error())
 	}
 }
 

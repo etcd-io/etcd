@@ -45,7 +45,7 @@ type balancer interface {
 	// pinned returns the current pinned endpoint.
 	pinned() string
 	// endpointError handles error from server-side.
-	endpointError(addr string, err error)
+	endpointError(host string, err error)
 
 	// up is Up but includes whether the balancer will use the connection.
 	up(addr grpc.Address) (func(error), bool)
@@ -152,7 +152,9 @@ func (b *simpleBalancer) pinned() string {
 	return b.pinAddr
 }
 
-func (b *simpleBalancer) endpointError(addr string, err error) { return }
+func (b *simpleBalancer) endpointError(host string, err error) {
+	panic("'endpointError' not implemented")
+}
 
 func getHost2ep(eps []string) map[string]string {
 	hm := make(map[string]string, len(eps))
@@ -316,7 +318,7 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	}
 	if b.pinAddr != "" {
 		if logger.V(4) {
-			logger.Infof("clientv3/balancer: %s is up but not pinned (already pinned %s)", addr.Addr, b.pinAddr)
+			logger.Infof("clientv3/balancer: %q is up but not pinned (already pinned %q)", addr.Addr, b.pinAddr)
 		}
 		return func(err error) {}, false
 	}
@@ -325,7 +327,7 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	b.downc = make(chan struct{})
 	b.pinAddr = addr.Addr
 	if logger.V(4) {
-		logger.Infof("clientv3/balancer: pin %s", addr.Addr)
+		logger.Infof("clientv3/balancer: pin %q", addr.Addr)
 	}
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
@@ -336,7 +338,7 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 		b.pinAddr = ""
 		b.mu.Unlock()
 		if logger.V(4) {
-			logger.Infof("clientv3/balancer: unpin %s (%v)", addr.Addr, err)
+			logger.Infof("clientv3/balancer: unpin %q (%q)", addr.Addr, err.Error())
 		}
 	}, true
 }
