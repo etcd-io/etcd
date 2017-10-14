@@ -142,7 +142,18 @@ func (hb *healthBalancer) updateUnhealthy(timeout time.Duration) {
 		select {
 		case <-time.After(timeout):
 			hb.mu.Lock()
+			all := make(map[string]struct{}, len(hb.addrs))
+			for _, v := range hb.addrs {
+				all[v.Addr] = struct{}{}
+			}
 			for k, v := range hb.unhealthy {
+				if _, ok := all[k]; !ok {
+					delete(hb.unhealthy, k)
+					if logger.V(4) {
+						logger.Infof("clientv3/health-balancer: removes stale endpoint %s from unhealthy", k)
+					}
+					continue
+				}
 				if time.Since(v) > timeout {
 					delete(hb.unhealthy, k)
 					if logger.V(4) {
