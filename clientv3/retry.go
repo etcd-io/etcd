@@ -110,14 +110,17 @@ func (c *Client) newAuthRetryWrapper() retryRpcFunc {
 			if err == nil {
 				return nil
 			}
-			if logger.V(4) {
-				logger.Infof("clientv3/auth-retry: error %v on pinned endpoint %s", err, pinned)
-			}
 			// always stop retry on etcd errors other than invalid auth token
 			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(rpcCtx)
 				if gterr != nil {
+					if logger.V(4) {
+						logger.Infof("clientv3/auth-retry: error %v(%v) on pinned endpoint %s (returning)", err, gterr, pinned)
+					}
 					return err // return the original error for simplicity
+				}
+				if logger.V(4) {
+					logger.Infof("clientv3/auth-retry: error %v on pinned endpoint %s (retrying)", err, pinned)
 				}
 				continue
 			}
