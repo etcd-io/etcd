@@ -97,7 +97,7 @@ import:
   subpackages:
   - rate
 - package: google.golang.org/grpc
-  version: v1.6.0
+  version: v1.6.0 with 22c3f92f5faea8db492fb0f5ae4daf0d2752b19e (temporary)
   subpackages:
   - codes
   - credentials
