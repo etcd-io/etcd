@@ -217,7 +217,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 		for j := 0; j < 100; j++ {
 			go func() {
 				defer wg.Done()
-				kvc.Range(cctx, &pb.RangeRequest{}, grpc.FailFast(false))
+				kvc.Range(cctx, &pb.RangeRequest{})
 			}()
 		}
 		// balancer.Close() might block

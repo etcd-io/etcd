@@ -136,18 +136,11 @@ func (txn *txn) Else(ops ...Op) Txn {
 func (txn *txn) Commit() (*TxnResponse, error) {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
-	for {
-		resp, err := txn.commit()
-		if err == nil {
-			return resp, err
-		}
-		if isHaltErr(txn.ctx, err) {
-			return nil, toErr(txn.ctx, err)
-		}
-		if txn.isWrite {
-			return nil, toErr(txn.ctx, err)
-		}
+	resp, err := txn.commit()
+	if err == nil {
+		return resp, err
 	}
+	return nil, toErr(txn.ctx, err)
 }
 
 func (txn *txn) commit() (*TxnResponse, error) {
