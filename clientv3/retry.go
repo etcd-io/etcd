@@ -416,17 +416,49 @@ func (rmc *retryWriteMaintenanceClient) MoveLeader(ctx context.Context, in *pb.M
 	return resp, err
 }
 
+// RetryAuthClient implements a AuthClient.
+func RetryAuthClient(c *Client) pb.AuthClient {
+	readRetry := c.newRetryWrapper(false)
+	writeRetry := c.newRetryWrapper(true)
+	conn := pb.NewAuthClient(c.conn)
+	return &retryAuthClient{&retryWriteAuthClient{conn, writeRetry}, readRetry}
+}
+
 type retryAuthClient struct {
+	*retryWriteAuthClient
+	readRetry retryRPCFunc
+}
+
+func (rac *retryAuthClient) UserList(ctx context.Context, in *pb.AuthUserListRequest, opts ...grpc.CallOption) (resp *pb.AuthUserListResponse, err error) {
+	err = rac.readRetry(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.UserList(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rac *retryAuthClient) RoleGet(ctx context.Context, in *pb.AuthRoleGetRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGetResponse, err error) {
+	err = rac.readRetry(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.RoleGet(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rac *retryAuthClient) RoleList(ctx context.Context, in *pb.AuthRoleListRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleListResponse, err error) {
+	err = rac.readRetry(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.RoleList(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type retryWriteAuthClient struct {
 	pb.AuthClient
 	retryf retryRPCFunc
 }
 
-// RetryAuthClient implements a AuthClient that uses the client's FailFast retry policy.
-func RetryAuthClient(c *Client) pb.AuthClient {
-	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(true)}
-}
-
-func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {
+func (rac *retryWriteAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.AuthEnable(rctx, in, opts...)
 		return err
@@ -434,7 +466,7 @@ func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableReq
 	return resp, err
 }
 
-func (rac *retryAuthClient) AuthDisable(ctx context.Context, in *pb.AuthDisableRequest, opts ...grpc.CallOption) (resp *pb.AuthDisableResponse, err error) {
+func (rac *retryWriteAuthClient) AuthDisable(ctx context.Context, in *pb.AuthDisableRequest, opts ...grpc.CallOption) (resp *pb.AuthDisableResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.AuthDisable(rctx, in, opts...)
 		return err
@@ -442,7 +474,7 @@ func (rac *retryAuthClient) AuthDisable(ctx context.Context, in *pb.AuthDisableR
 	return resp, err
 }
 
-func (rac *retryAuthClient) UserAdd(ctx context.Context, in *pb.AuthUserAddRequest, opts ...grpc.CallOption) (resp *pb.AuthUserAddResponse, err error) {
+func (rac *retryWriteAuthClient) UserAdd(ctx context.Context, in *pb.AuthUserAddRequest, opts ...grpc.CallOption) (resp *pb.AuthUserAddResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.UserAdd(rctx, in, opts...)
 		return err
@@ -450,7 +482,7 @@ func (rac *retryAuthClient) UserAdd(ctx context.Context, in *pb.AuthUserAddReque
 	return resp, err
 }
 
-func (rac *retryAuthClient) UserDelete(ctx context.Context, in *pb.AuthUserDeleteRequest, opts ...grpc.CallOption) (resp *pb.AuthUserDeleteResponse, err error) {
+func (rac *retryWriteAuthClient) UserDelete(ctx context.Context, in *pb.AuthUserDeleteRequest, opts ...grpc.CallOption) (resp *pb.AuthUserDeleteResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.UserDelete(rctx, in, opts...)
 		return err
@@ -458,7 +490,7 @@ func (rac *retryAuthClient) UserDelete(ctx context.Context, in *pb.AuthUserDelet
 	return resp, err
 }
 
-func (rac *retryAuthClient) UserChangePassword(ctx context.Context, in *pb.AuthUserChangePasswordRequest, opts ...grpc.CallOption) (resp *pb.AuthUserChangePasswordResponse, err error) {
+func (rac *retryWriteAuthClient) UserChangePassword(ctx context.Context, in *pb.AuthUserChangePasswordRequest, opts ...grpc.CallOption) (resp *pb.AuthUserChangePasswordResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.UserChangePassword(rctx, in, opts...)
 		return err
@@ -466,7 +498,7 @@ func (rac *retryAuthClient) UserChangePassword(ctx context.Context, in *pb.AuthU
 	return resp, err
 }
 
-func (rac *retryAuthClient) UserGrantRole(ctx context.Context, in *pb.AuthUserGrantRoleRequest, opts ...grpc.CallOption) (resp *pb.AuthUserGrantRoleResponse, err error) {
+func (rac *retryWriteAuthClient) UserGrantRole(ctx context.Context, in *pb.AuthUserGrantRoleRequest, opts ...grpc.CallOption) (resp *pb.AuthUserGrantRoleResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.UserGrantRole(rctx, in, opts...)
 		return err
@@ -474,7 +506,7 @@ func (rac *retryAuthClient) UserGrantRole(ctx context.Context, in *pb.AuthUserGr
 	return resp, err
 }
 
-func (rac *retryAuthClient) UserRevokeRole(ctx context.Context, in *pb.AuthUserRevokeRoleRequest, opts ...grpc.CallOption) (resp *pb.AuthUserRevokeRoleResponse, err error) {
+func (rac *retryWriteAuthClient) UserRevokeRole(ctx context.Context, in *pb.AuthUserRevokeRoleRequest, opts ...grpc.CallOption) (resp *pb.AuthUserRevokeRoleResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.UserRevokeRole(rctx, in, opts...)
 		return err
@@ -482,7 +514,7 @@ func (rac *retryAuthClient) UserRevokeRole(ctx context.Context, in *pb.AuthUserR
 	return resp, err
 }
 
-func (rac *retryAuthClient) RoleAdd(ctx context.Context, in *pb.AuthRoleAddRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleAddResponse, err error) {
+func (rac *retryWriteAuthClient) RoleAdd(ctx context.Context, in *pb.AuthRoleAddRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleAddResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleAdd(rctx, in, opts...)
 		return err
@@ -490,7 +522,7 @@ func (rac *retryAuthClient) RoleAdd(ctx context.Context, in *pb.AuthRoleAddReque
 	return resp, err
 }
 
-func (rac *retryAuthClient) RoleDelete(ctx context.Context, in *pb.AuthRoleDeleteRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleDeleteResponse, err error) {
+func (rac *retryWriteAuthClient) RoleDelete(ctx context.Context, in *pb.AuthRoleDeleteRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleDeleteResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleDelete(rctx, in, opts...)
 		return err
@@ -498,7 +530,7 @@ func (rac *retryAuthClient) RoleDelete(ctx context.Context, in *pb.AuthRoleDelet
 	return resp, err
 }
 
-func (rac *retryAuthClient) RoleGrantPermission(ctx context.Context, in *pb.AuthRoleGrantPermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGrantPermissionResponse, err error) {
+func (rac *retryWriteAuthClient) RoleGrantPermission(ctx context.Context, in *pb.AuthRoleGrantPermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGrantPermissionResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleGrantPermission(rctx, in, opts...)
 		return err
@@ -506,9 +538,17 @@ func (rac *retryAuthClient) RoleGrantPermission(ctx context.Context, in *pb.Auth
 	return resp, err
 }
 
-func (rac *retryAuthClient) RoleRevokePermission(ctx context.Context, in *pb.AuthRoleRevokePermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleRevokePermissionResponse, err error) {
+func (rac *retryWriteAuthClient) RoleRevokePermission(ctx context.Context, in *pb.AuthRoleRevokePermissionRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleRevokePermissionResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rac.AuthClient.RoleRevokePermission(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rac *retryWriteAuthClient) Authenticate(ctx context.Context, in *pb.AuthenticateRequest, opts ...grpc.CallOption) (resp *pb.AuthenticateResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.AuthClient.Authenticate(rctx, in, opts...)
 		return err
 	})
 	return resp, err
