@@ -188,7 +188,7 @@ type watcherStream struct {
 }
 
 func NewWatcher(c *Client) Watcher {
-	return NewWatchFromWatchClient(pb.NewWatchClient(c.conn))
+	return NewWatchFromWatchClient(RetryWatchClient(c))
 }
 
 func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
@@ -763,23 +763,8 @@ func (w *watchGrpcStream) joinSubstreams() {
 
 // openWatchClient retries opening a watch client until success or halt.
 func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error) {
-	for {
-		select {
-		case <-w.ctx.Done():
-			if err == nil {
-				return nil, w.ctx.Err()
-			}
-			return nil, err
-		default:
-		}
-		if ws, err = w.remote.Watch(w.ctx, grpc.FailFast(false)); ws != nil && err == nil {
-			break
-		}
-		if isHaltErr(w.ctx, err) {
-			return nil, v3rpc.Error(err)
-		}
-	}
-	return ws, nil
+	ws, err = w.remote.Watch(w.ctx)
+	return ws, toErr(w.ctx, err)
 }
 
 // toPB converts an internal watch request structure to its protobuf WatchRequest structure.
