@@ -293,17 +293,33 @@ func (rlc *retryWriteLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...gr
 	return stream, err
 }
 
+// RetryClusterClient implements a ClusterClient.
+func RetryClusterClient(c *Client) pb.ClusterClient {
+	readRetry := c.newRetryWrapper(false)
+	writeRetry := c.newRetryWrapper(true)
+	conn := pb.NewClusterClient(c.conn)
+	return &retryClusterClient{&retryWriteClusterClient{conn, writeRetry}, readRetry}
+}
+
 type retryClusterClient struct {
+	*retryWriteClusterClient
+	readRetry retryRPCFunc
+}
+
+func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
+	err = rcc.readRetry(ctx, func(rctx context.Context) error {
+		resp, err = rcc.ClusterClient.MemberList(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type retryWriteClusterClient struct {
 	pb.ClusterClient
 	retryf retryRPCFunc
 }
 
-// RetryClusterClient implements a ClusterClient that uses the client's FailFast retry policy.
-func RetryClusterClient(c *Client) pb.ClusterClient {
-	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(true)}
-}
-
-func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
+func (rcc *retryWriteClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
 	err = rcc.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rcc.ClusterClient.MemberAdd(rctx, in, opts...)
 		return err
@@ -311,7 +327,7 @@ func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRe
 	return resp, err
 }
 
-func (rcc *retryClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRemoveRequest, opts ...grpc.CallOption) (resp *pb.MemberRemoveResponse, err error) {
+func (rcc *retryWriteClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRemoveRequest, opts ...grpc.CallOption) (resp *pb.MemberRemoveResponse, err error) {
 	err = rcc.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rcc.ClusterClient.MemberRemove(rctx, in, opts...)
 		return err
@@ -319,7 +335,7 @@ func (rcc *retryClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRe
 	return resp, err
 }
 
-func (rcc *retryClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUpdateRequest, opts ...grpc.CallOption) (resp *pb.MemberUpdateResponse, err error) {
+func (rcc *retryWriteClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUpdateRequest, opts ...grpc.CallOption) (resp *pb.MemberUpdateResponse, err error) {
 	err = rcc.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rcc.ClusterClient.MemberUpdate(rctx, in, opts...)
 		return err
