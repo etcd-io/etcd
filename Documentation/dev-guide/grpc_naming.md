@@ -19,7 +19,7 @@ import (
 cli, cerr := clientv3.NewFromURL("http://localhost:2379")
 r := &etcdnaming.GRPCResolver{Client: cli}
 b := grpc.RoundRobin(r)
-conn, gerr := grpc.Dial("my-service", grpc.WithBalancer(b))
+conn, gerr := grpc.Dial("my-service", grpc.WithBalancer(b), grpc.WithBlock(), ...)
 ```
 
 ## Managing service endpoints
