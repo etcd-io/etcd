@@ -127,7 +127,7 @@ docker-test-proxy:
 	  --rm \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:$(_GO_VERSION) \
-	  /bin/bash -c "PASSES='build grpcproxy' ./test ./test 2>&1 | tee docker-test-proxy-$(TEST_SUFFIX).log"
+	  /bin/bash -c "PASSES='build grpcproxy' ./test 2>&1 | tee docker-test-proxy-$(TEST_SUFFIX).log"
 	! grep FAIL -A10 -B50 docker-test-proxy-$(TEST_SUFFIX).log
 
 # build release container image with Linux
