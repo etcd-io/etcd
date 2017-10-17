@@ -152,7 +152,23 @@ func (b *simpleBalancer) pinned() string {
 	return b.pinAddr
 }
 
-func (b *simpleBalancer) endpointError(addr string, err error) { return }
+func (b *simpleBalancer) endpointError(addr string, err error) {
+	if addr == "" {
+		return
+	}
+	b.mu.Lock()
+	if b.pinAddr == "" || b.pinAddr != addr {
+		b.mu.Unlock()
+		return
+	}
+	b.upc = make(chan struct{})
+	close(b.downc)
+	b.pinAddr = ""
+	b.mu.Unlock()
+	if logger.V(4) {
+		logger.Infof("clientv3/balancer: unpin %s (%v)", addr, err)
+	}
+}
 
 func getHost2ep(eps []string) map[string]string {
 	hm := make(map[string]string, len(eps))
@@ -329,16 +345,7 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	}
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
-	return func(err error) {
-		b.mu.Lock()
-		b.upc = make(chan struct{})
-		close(b.downc)
-		b.pinAddr = ""
-		b.mu.Unlock()
-		if logger.V(4) {
-			logger.Infof("clientv3/balancer: unpin %s (%v)", addr.Addr, err)
-		}
-	}, true
+	return func(err error) { b.endpointError(addr.Addr, err) }, true
 }
 
 func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) (grpc.Address, func(), error) {
