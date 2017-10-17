@@ -1,7 +1,13 @@
+ConnectionError
 ErrCodeEnhanceYourCalm
+ErrConnClosing
+ErrEmptyKey
+ErrNoSpace
+ErrTimeout
 GoAway
 RPC
 RPCs
+StreamError
 backoff
 blackholed
 cancelable
@@ -25,9 +31,10 @@ mutex
 prefetching
 protobuf
 serializable
+statusError
 teardown
+toRPCErr
 too_many_pings
 uncontended
 unprefixed
 unlisting
-
