@@ -220,34 +220,50 @@ func (rlc *retryLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.Ca
 }
 
 type retryClusterClient struct {
-	pb.ClusterClient
-	writeRetry retryRPCFunc
+	*nonRepeatableClusterClient
+	repeatableRetry retryRPCFunc
 }
 
-// RetryClusterClient implements a ClusterClient that uses the client's FailFast retry policy.
+// RetryClusterClient implements a ClusterClient.
 func RetryClusterClient(c *Client) pb.ClusterClient {
-	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(isNonRepeatableStopError)}
+	repeatableRetry := c.newRetryWrapper(isRepeatableStopError)
+	nonRepeatableRetry := c.newRetryWrapper(isNonRepeatableStopError)
+	cc := pb.NewClusterClient(c.conn)
+	return &retryClusterClient{&nonRepeatableClusterClient{cc, nonRepeatableRetry}, repeatableRetry}
 }
 
-func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
-	err = rcc.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rcc.ClusterClient.MemberAdd(rctx, in, opts...)
+func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
+	err = rcc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rcc.cc.MemberList(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-func (rcc *retryClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRemoveRequest, opts ...grpc.CallOption) (resp *pb.MemberRemoveResponse, err error) {
-	err = rcc.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rcc.ClusterClient.MemberRemove(rctx, in, opts...)
+type nonRepeatableClusterClient struct {
+	cc                 pb.ClusterClient
+	nonRepeatableRetry retryRPCFunc
+}
+
+func (rcc *nonRepeatableClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
+	err = rcc.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rcc.cc.MemberAdd(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-func (rcc *retryClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUpdateRequest, opts ...grpc.CallOption) (resp *pb.MemberUpdateResponse, err error) {
-	err = rcc.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rcc.ClusterClient.MemberUpdate(rctx, in, opts...)
+func (rcc *nonRepeatableClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRemoveRequest, opts ...grpc.CallOption) (resp *pb.MemberRemoveResponse, err error) {
+	err = rcc.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rcc.cc.MemberRemove(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rcc *nonRepeatableClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUpdateRequest, opts ...grpc.CallOption) (resp *pb.MemberUpdateResponse, err error) {
+	err = rcc.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rcc.cc.MemberUpdate(rctx, in, opts...)
 		return err
 	})
 	return resp, err
