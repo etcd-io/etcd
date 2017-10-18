@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -28,6 +29,8 @@ import (
 	"github.com/coreos/etcd/clientv3/leasing"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc/transport"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -1083,8 +1086,8 @@ func TestLeasingOwnerPutError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Put(ctx, "k", "v"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
+	if resp, err := lkv.Put(ctx, "k", "v"); err != context.DeadlineExceeded && !strings.Contains(err.Error(), "transport is closing") {
+		t.Fatalf("expected %v or %v, got %v, response %+v", context.DeadlineExceeded, transport.ErrConnClosing, err, resp)
 	}
 }
 
@@ -1104,8 +1107,8 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Delete(ctx, "k"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
+	if resp, err := lkv.Delete(ctx, "k"); err != context.DeadlineExceeded && !strings.Contains(err.Error(), "transport is closing") {
+		t.Fatalf("expected %v or %v, got %v, response %+v", context.DeadlineExceeded, transport.ErrConnClosing, err, resp)
 	}
 }
 
@@ -1121,8 +1124,8 @@ func TestLeasingNonOwnerPutError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Put(ctx, "k", "v"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
+	if resp, err := lkv.Put(ctx, "k", "v"); err != context.DeadlineExceeded && !strings.Contains(err.Error(), "transport is closing") {
+		t.Fatalf("expected %v or %v, got %v, response %+v", context.DeadlineExceeded, transport.ErrConnClosing, err, resp)
 	}
 }
 
