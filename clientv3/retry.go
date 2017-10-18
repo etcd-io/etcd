@@ -269,6 +269,80 @@ func (rcc *nonRepeatableClusterClient) MemberUpdate(ctx context.Context, in *pb.
 	return resp, err
 }
 
+// RetryMaintenanceClient implements a Maintenance.
+func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClient {
+	repeatableRetry := c.newRetryWrapper(isRepeatableStopError)
+	nonRepeatableRetry := c.newRetryWrapper(isNonRepeatableStopError)
+	mc := pb.NewMaintenanceClient(conn)
+	return &retryMaintenanceClient{&nonRepeatableMaintenanceClient{mc, nonRepeatableRetry}, repeatableRetry}
+}
+
+type retryMaintenanceClient struct {
+	*nonRepeatableMaintenanceClient
+	repeatableRetry retryRPCFunc
+}
+
+func (rmc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmRequest, opts ...grpc.CallOption) (resp *pb.AlarmResponse, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.Alarm(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rmc *retryMaintenanceClient) Status(ctx context.Context, in *pb.StatusRequest, opts ...grpc.CallOption) (resp *pb.StatusResponse, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.Status(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rmc *retryMaintenanceClient) Hash(ctx context.Context, in *pb.HashRequest, opts ...grpc.CallOption) (resp *pb.HashResponse, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.Hash(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rmc *retryMaintenanceClient) HashKV(ctx context.Context, in *pb.HashKVRequest, opts ...grpc.CallOption) (resp *pb.HashKVResponse, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.HashKV(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rmc *retryMaintenanceClient) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (stream pb.Maintenance_SnapshotClient, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		stream, err = rmc.mc.Snapshot(rctx, in, opts...)
+		return err
+	})
+	return stream, err
+}
+
+func (rmc *retryMaintenanceClient) MoveLeader(ctx context.Context, in *pb.MoveLeaderRequest, opts ...grpc.CallOption) (resp *pb.MoveLeaderResponse, err error) {
+	err = rmc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.MoveLeader(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type nonRepeatableMaintenanceClient struct {
+	mc                 pb.MaintenanceClient
+	nonRepeatableRetry retryRPCFunc
+}
+
+func (rmc *nonRepeatableMaintenanceClient) Defragment(ctx context.Context, in *pb.DefragmentRequest, opts ...grpc.CallOption) (resp *pb.DefragmentResponse, err error) {
+	err = rmc.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rmc.mc.Defragment(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 type retryAuthClient struct {
 	pb.AuthClient
 	writeRetry retryRPCFunc
