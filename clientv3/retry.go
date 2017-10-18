@@ -379,6 +379,26 @@ func (rkv *retryWriteKVClient) Compact(ctx context.Context, in *pb.CompactionReq
 	return resp, err
 }
 
+// RetryWatchClient implements a WatchClient.
+func RetryWatchClient(c *Client) pb.WatchClient {
+	readRetry := c.newRetryWrapper(false)
+	wc := pb.NewWatchClient(c.conn)
+	return &retryWatchClient{wc, readRetry}
+}
+
+type retryWatchClient struct {
+	pb.WatchClient
+	readRetry retryRPCFunc
+}
+
+func (rwc *retryWatchClient) Watch(ctx context.Context, opts ...grpc.CallOption) (stream pb.Watch_WatchClient, err error) {
+	err = rwc.readRetry(ctx, func(rctx context.Context) error {
+		stream, err = rwc.WatchClient.Watch(rctx, opts...)
+		return err
+	})
+	return stream, err
+}
+
 type retryLeaseClient struct {
 	pb.LeaseClient
 	readRetry retryRPCFunc

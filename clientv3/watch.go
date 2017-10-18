@@ -188,7 +188,7 @@ type watcherStream struct {
 }
 
 func NewWatcher(c *Client) Watcher {
-	return NewWatchFromWatchClient(pb.NewWatchClient(c.conn))
+	return NewWatchFromWatchClient(RetryWatchClient(c))
 }
 
 func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
@@ -761,8 +761,9 @@ func (w *watchGrpcStream) joinSubstreams() {
 	}
 }
 
-// openWatchClient retries opening a watch client until success or halt.
+// openWatchClient opens a watch client.
 func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error) {
+	// manually retry in case "ws==nil && err==nil"
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -772,7 +773,7 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 			return nil, err
 		default:
 		}
-		if ws, err = w.remote.Watch(w.ctx, grpc.FailFast(false)); ws != nil && err == nil {
+		if ws, err = w.remote.Watch(w.ctx); ws != nil && err == nil {
 			break
 		}
 		if isHaltErr(w.ctx, err) {
