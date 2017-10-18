@@ -101,63 +101,64 @@ func (c *Client) newAuthRetryWrapper() retryRPCFunc {
 	}
 }
 
-// RetryKVClient implements a KVClient that uses the client's FailFast retry policy.
+// RetryKVClient implements a KVClient.
 func RetryKVClient(c *Client) pb.KVClient {
-	readRetry := c.newRetryWrapper(isReadStopError)
-	writeRetry := c.newRetryWrapper(isWriteStopError)
+	repeatableRetry := c.newRetryWrapper(isReadStopError)
+	nonRepeatableRetry := c.newRetryWrapper(isWriteStopError)
 	conn := pb.NewKVClient(c.conn)
-	retryBasic := &retryKVClient{&retryWriteKVClient{conn, writeRetry}, readRetry}
+	retryBasic := &retryKVClient{&nonRepeatableKVClient{conn, nonRepeatableRetry}, repeatableRetry}
 	retryAuthWrapper := c.newAuthRetryWrapper()
 	return &retryKVClient{
-		&retryWriteKVClient{retryBasic, retryAuthWrapper},
+		&nonRepeatableKVClient{retryBasic, retryAuthWrapper},
 		retryAuthWrapper}
 }
 
 type retryKVClient struct {
-	*retryWriteKVClient
-	readRetry retryRPCFunc
+	*nonRepeatableKVClient
+	repeatableRetry retryRPCFunc
 }
 
 func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (resp *pb.RangeResponse, err error) {
-	err = rkv.readRetry(ctx, func(rctx context.Context) error {
-		resp, err = rkv.KVClient.Range(rctx, in, opts...)
+	err = rkv.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.kc.Range(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-type retryWriteKVClient struct {
-	pb.KVClient
-	writeRetry retryRPCFunc
+type nonRepeatableKVClient struct {
+	kc                 pb.KVClient
+	nonRepeatableRetry retryRPCFunc
 }
 
-func (rkv *retryWriteKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
-	err = rkv.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rkv.KVClient.Put(rctx, in, opts...)
+func (rkv *nonRepeatableKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
+	err = rkv.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.kc.Put(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-func (rkv *retryWriteKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *pb.DeleteRangeResponse, err error) {
-	err = rkv.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rkv.KVClient.DeleteRange(rctx, in, opts...)
+func (rkv *nonRepeatableKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *pb.DeleteRangeResponse, err error) {
+	err = rkv.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.kc.DeleteRange(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-func (rkv *retryWriteKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
-	err = rkv.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rkv.KVClient.Txn(rctx, in, opts...)
+func (rkv *nonRepeatableKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
+	// TODO: repeatableRetry if read-only txn
+	err = rkv.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.kc.Txn(rctx, in, opts...)
 		return err
 	})
 	return resp, err
 }
 
-func (rkv *retryWriteKVClient) Compact(ctx context.Context, in *pb.CompactionRequest, opts ...grpc.CallOption) (resp *pb.CompactionResponse, err error) {
-	err = rkv.writeRetry(ctx, func(rctx context.Context) error {
-		resp, err = rkv.KVClient.Compact(rctx, in, opts...)
+func (rkv *nonRepeatableKVClient) Compact(ctx context.Context, in *pb.CompactionRequest, opts ...grpc.CallOption) (resp *pb.CompactionResponse, err error) {
+	err = rkv.nonRepeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.kc.Compact(rctx, in, opts...)
 		return err
 	})
 	return resp, err

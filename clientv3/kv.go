@@ -18,8 +18,6 @@ import (
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
-	"google.golang.org/grpc"
 )
 
 type (
@@ -132,28 +130,11 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 }
 
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
-	for {
-		resp, err := kv.do(ctx, op)
-		if err == nil {
-			return resp, nil
-		}
-
-		if isHaltErr(ctx, err) {
-			return resp, toErr(ctx, err)
-		}
-		// do not retry on modifications
-		if op.isWrite() {
-			return resp, toErr(ctx, err)
-		}
-	}
-}
-
-func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), grpc.FailFast(false))
+		resp, err = kv.remote.Range(ctx, op.toRangeRequest())
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
@@ -180,5 +161,5 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	default:
 		panic("Unknown op")
 	}
-	return OpResponse{}, err
+	return OpResponse{}, toErr(ctx, err)
 }
