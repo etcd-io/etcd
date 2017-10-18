@@ -297,14 +297,23 @@ func (c *Client) newAuthRetryWrapper() retryRPCFunc {
 	}
 }
 
-// RetryKVClient implements a KVClient that uses the client's FailFast retry policy.
-func RetryKVClient(c *Client) pb.KVClient {
+// RetryKVClient implements a KVClient.
+func RetryKVClient(c *Client) (readWrite, readOnly pb.KVClient) {
 	readRetry := c.newRetryWrapper(false)
 	writeRetry := c.newRetryWrapper(true)
-	conn := pb.NewKVClient(c.conn)
-	retryBasic := &retryKVClient{&retryWriteKVClient{conn, writeRetry}, readRetry}
 	retryAuthWrapper := c.newAuthRetryWrapper()
-	return &retryKVClient{&retryWriteKVClient{retryBasic, retryAuthWrapper}, retryAuthWrapper}
+	kvc := pb.NewKVClient(c.conn)
+
+	retryBasic := &retryKVClient{&retryWriteKVClient{kvc, writeRetry}, readRetry}
+	readWrite = &retryKVClient{
+		&retryWriteKVClient{retryBasic, retryAuthWrapper},
+		retryAuthWrapper,
+	}
+
+	retryRead := &retryReadKVClient{kvc, readRetry}
+	readOnly = &retryReadKVClient{retryRead, retryAuthWrapper}
+
+	return readWrite, readOnly
 }
 
 type retryKVClient struct {
@@ -343,6 +352,19 @@ func (rkv *retryWriteKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRan
 
 func (rkv *retryWriteKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
 	err = rkv.writeRetry(ctx, func(rctx context.Context) error {
+		resp, err = rkv.KVClient.Txn(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type retryReadKVClient struct {
+	pb.KVClient
+	readRetry retryRPCFunc
+}
+
+func (rkv *retryReadKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
+	err = rkv.readRetry(ctx, func(rctx context.Context) error {
 		resp, err = rkv.KVClient.Txn(rctx, in, opts...)
 		return err
 	})
