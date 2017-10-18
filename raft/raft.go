@@ -116,6 +116,7 @@ type Config struct {
 	// used for testing right now.
 	peers []uint64
 
+	// learners can not promote or vote.
 	learners []uint64
 
 	// ElectionTick is the number of Node.Tick invocations that must pass between
@@ -292,16 +293,16 @@ func newRaft(c *Config) *raft {
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	voters := c.peers
+	peers := c.peers
 	learners := c.learners
 	if len(cs.Nodes) > 0 || len(cs.Learners) > 0 {
-		if len(voters) > 0 || len(learners) > 0 {
+		if len(peers) > 0 || len(learners) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
 			// tests; the argument should be removed and these tests should be
 			// updated to specify their nodes through a snapshot.
 			panic("cannot specify both newRaft(peers, learners) and ConfState.(Nodes, Learners)")
 		}
-		voters = cs.Nodes
+		peers = cs.Nodes
 		learners = cs.Learners
 	}
 	r := &raft{
@@ -320,15 +321,15 @@ func newRaft(c *Config) *raft {
 		readOnly:                  newReadOnly(c.ReadOnlyOption),
 		disableProposalForwarding: c.DisableProposalForwarding,
 	}
-	for _, n := range voters {
-		r.prs[n] = &Progress{Next: 1, ins: newInflights(r.maxInflight), isLearner: false}
+	for _, p := range peers {
+		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
 	}
-	for _, n := range learners {
-		if _, has := r.prs[n]; has {
-			panic(fmt.Sprintf("cannot specify both Voter and Learner for node: %x", n))
+	for _, p := range learners {
+		if _, has := r.prs[p]; has {
+			panic(fmt.Sprintf("cannot specify both Voter and Learner for node: %x", p))
 		}
-		r.prs[n] = &Progress{Next: 1, ins: newInflights(r.maxInflight), isLearner: true}
-		if r.id == n {
+		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight), isLearner: true}
+		if r.id == p {
 			r.isLearner = true
 		}
 	}
@@ -1231,21 +1232,24 @@ func (r *raft) restoreNode(nodes []uint64, isLearner bool) {
 }
 
 // promotable indicates whether state machine can be promoted to leader,
-// which is true when its own id is in progress list and its not learner.
+// which is true when its own id is in progress list and it is not a learner.
 func (r *raft) promotable() bool {
+	if r.isLearner {
+		return false
+	}
 	_, ok := r.prs[r.id]
-	return ok && !r.isLearner
+	return ok
 }
 
 func (r *raft) addNode(id uint64) {
-	r.addLearnerNode(id, false)
+	r.addNodeOrLearnerNode(id, false)
 }
 
 func (r *raft) addLearner(id uint64) {
-	r.addLearnerNode(id, true)
+	r.addNodeOrLearnerNode(id, true)
 }
 
-func (r *raft) addLearnerNode(id uint64, isLearner bool) {
+func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 	r.pendingConf = false
 	if _, ok := r.prs[id]; ok {
 		if r.prs[id].isLearner == isLearner {
@@ -1255,6 +1259,7 @@ func (r *raft) addLearnerNode(id uint64, isLearner bool) {
 		}
 		if isLearner {
 			// can only change Learner to Voter
+			r.logger.Infof("%x ignore addLearner for %x [%s]", r.id, id, r.prs[id])
 			return
 		}
 		r.prs[id].isLearner = isLearner

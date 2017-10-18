@@ -81,10 +81,10 @@ message ConfState {
 }
 
 enum ConfChangeType {
-	ConfChangeAddNode    = 0;
-	ConfChangeRemoveNode = 1;
-	ConfChangeUpdateNode = 2;
-	ConfChangeAddLearner = 3;
+	ConfChangeAddNode        = 0;
+	ConfChangeRemoveNode     = 1;
+	ConfChangeUpdateNode     = 2;
+	ConfChangeAddLearnerNode = 3;
 }
 
 message ConfChange {
