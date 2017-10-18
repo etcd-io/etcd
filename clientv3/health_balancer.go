@@ -30,6 +30,11 @@ const unknownService = "unknown service grpc.health.v1.Health"
 
 type healthCheckFunc func(ep string) (bool, error)
 
+type errorInfo struct {
+	failed time.Time
+	err    error
+}
+
 // healthBalancer wraps a balancer so that it uses health checking
 // to choose its endpoints.
 type healthBalancer struct {
@@ -49,7 +54,7 @@ type healthBalancer struct {
 	eps []string
 
 	// unhealthyHosts tracks the last unhealthy time of endpoints.
-	unhealthyHosts map[string]time.Time
+	unhealthyHosts map[string]errorInfo
 
 	stopc    chan struct{}
 	stopOnce sync.Once
@@ -66,7 +71,7 @@ func newHealthBalancer(b balancer, timeout time.Duration, hc healthCheckFunc) *h
 		eps:            b.endpoints(),
 		addrs:          eps2addrs(b.endpoints()),
 		host2ep:        getHost2ep(b.endpoints()),
-		unhealthyHosts: make(map[string]time.Time),
+		unhealthyHosts: make(map[string]errorInfo),
 		stopc:          make(chan struct{}),
 	}
 	if timeout < minHealthRetryDuration {
@@ -94,7 +99,7 @@ func (hb *healthBalancer) Up(addr grpc.Address) func(error) {
 		// finding healthy endpoint on retry could take several timeouts and redials.
 		// To avoid wasting retries, gray-list unhealthy endpoints.
 		hb.mu.Lock()
-		hb.unhealthyHosts[addr.Addr] = time.Now()
+		hb.unhealthyHosts[addr.Addr] = errorInfo{failed: time.Now(), err: err}
 		hb.mu.Unlock()
 		f(err)
 		if logger.V(4) {
@@ -120,7 +125,7 @@ func (hb *healthBalancer) updateAddrs(eps ...string) {
 	addrs, host2ep := eps2addrs(eps), getHost2ep(eps)
 	hb.mu.Lock()
 	hb.addrs, hb.eps, hb.host2ep = addrs, eps, host2ep
-	hb.unhealthyHosts = make(map[string]time.Time)
+	hb.unhealthyHosts = make(map[string]errorInfo)
 	hb.mu.Unlock()
 	hb.balancer.updateAddrs(eps...)
 }
@@ -150,7 +155,7 @@ func (hb *healthBalancer) updateUnhealthy(timeout time.Duration) {
 					}
 					continue
 				}
-				if time.Since(v) > timeout {
+				if time.Since(v.failed) > timeout {
 					delete(hb.unhealthyHosts, k)
 					if logger.V(4) {
 						logger.Infof("clientv3/health-balancer: removes %q from unhealthy after %v", k, timeout)
@@ -187,11 +192,18 @@ func (hb *healthBalancer) liveAddrs() []grpc.Address {
 
 func (hb *healthBalancer) endpointError(host string, err error) {
 	hb.mu.Lock()
-	hb.unhealthyHosts[host] = time.Now()
+	hb.unhealthyHosts[host] = errorInfo{failed: time.Now(), err: err}
 	hb.mu.Unlock()
 	if logger.V(4) {
 		logger.Infof("clientv3/health-balancer: marking %q as unhealthy (%q)", host, err.Error())
 	}
+}
+
+func (hb *healthBalancer) isFailed(host string) (ev errorInfo, ok bool) {
+	hb.mu.RLock()
+	ev, ok = hb.unhealthyHosts[host]
+	hb.mu.RUnlock()
+	return ev, ok
 }
 
 func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
@@ -201,7 +213,7 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 		return false
 	}
 	skip := len(hb.addrs) == 1 || len(hb.unhealthyHosts) == 0 || len(hb.addrs) == len(hb.unhealthyHosts)
-	failedTime, bad := hb.unhealthyHosts[addr.Addr]
+	ef, bad := hb.unhealthyHosts[addr.Addr]
 	dur := hb.healthCheckTimeout
 	hb.mu.RUnlock()
 	if skip || !bad {
@@ -212,13 +224,14 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	//   2. balancer 'Up' unpins with grpc: failed with network I/O error
 	//   3. grpc-healthcheck still SERVING, thus retry to pin
 	// instead, return before grpc-healthcheck if failed within healthcheck timeout
-	if elapsed := time.Since(failedTime); elapsed < dur {
+	if elapsed := time.Since(ef.failed); elapsed < dur {
 		if logger.V(4) {
 			logger.Infof("clientv3/health-balancer: %q is up but not pinned (failed %v ago, require minimum %v after failure)", addr.Addr, elapsed, dur)
 		}
 		return false
 	}
-	if ok, _ := hb.healthCheck(addr.Addr); ok {
+	ok, err := hb.healthCheck(addr.Addr)
+	if ok {
 		hb.mu.Lock()
 		delete(hb.unhealthyHosts, addr.Addr)
 		hb.mu.Unlock()
@@ -228,7 +241,7 @@ func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 		return true
 	}
 	hb.mu.Lock()
-	hb.unhealthyHosts[addr.Addr] = time.Now()
+	hb.unhealthyHosts[addr.Addr] = errorInfo{failed: time.Now(), err: err}
 	hb.mu.Unlock()
 	if logger.V(4) {
 		logger.Infof("clientv3/health-balancer: %q becomes unhealthy (health check failed)", addr.Addr)

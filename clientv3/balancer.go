@@ -46,6 +46,9 @@ type balancer interface {
 	pinned() string
 	// endpointError handles error from server-side.
 	endpointError(host string, err error)
+	// returns errorInfo of host, if any.
+	// ok is false, if host is healthy.
+	isFailed(host string) (ev errorInfo, ok bool)
 
 	// up is Up but includes whether the balancer will use the connection.
 	up(addr grpc.Address) (func(error), bool)
@@ -154,6 +157,10 @@ func (b *simpleBalancer) pinned() string {
 
 func (b *simpleBalancer) endpointError(host string, err error) {
 	panic("'endpointError' not implemented")
+}
+
+func (b *simpleBalancer) isFailed(host string) (errorInfo, bool) {
+	panic("'error' not implemented")
 }
 
 func getHost2ep(eps []string) map[string]string {

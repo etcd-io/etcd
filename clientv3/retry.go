@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -23,65 +24,248 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
-type rpcFunc func(ctx context.Context) error
+type rpcFunc func(context.Context) error
+
+// TODO: clean up gRPC error handling when "FailFast=false" is fixed.
+// See https://github.com/grpc/grpc-go/issues/1532.
+func (c *Client) do(
+	rpcCtx context.Context,
+	pinned string,
+	write bool,
+	f rpcFunc) (unhealthy, connectWait, switchEp, retryEp bool, err error) {
+	err = f(rpcCtx)
+	if err == nil {
+		unhealthy, connectWait, switchEp, retryEp = false, false, false, false
+		return unhealthy, connectWait, switchEp, retryEp, nil
+	}
+
+	if logger.V(4) {
+		logger.Infof("clientv3/do: error %q on pinned endpoint %q (write %v)", err.Error(), pinned, write)
+	}
+
+	rerr := rpctypes.Error(err)
+	if ev, ok := rerr.(rpctypes.EtcdError); ok {
+		if ev.Code() != codes.Unavailable {
+			// error from etcd server with non codes.Unavailable
+			// then no endpoint switch and no retry
+			// e.g. rpctypes.ErrEmptyKey, rpctypes.ErrNoSpace
+			unhealthy, connectWait, switchEp, retryEp = false, false, false, false
+			return unhealthy, connectWait, switchEp, retryEp, err
+		}
+		// error from etcd server with codes.Unavailable
+		// then endpoint switch and retry
+		// e.g. rpctypes.ErrTimeout
+		unhealthy, connectWait, switchEp, retryEp = true, false, true, true
+		if write { // only retry immutable RPCs ("put at-most-once semantics")
+			retryEp = false
+		}
+		return unhealthy, connectWait, switchEp, retryEp, err
+	}
+
+	// if failed to establish new stream or server is not reachable,
+	// then endpoint switch and retry
+	// e.g. transport.ErrConnClosing
+	if tv, ok := err.(transport.ConnectionError); ok && tv.Temporary() {
+		unhealthy, connectWait, switchEp, retryEp = true, false, true, true
+		return unhealthy, connectWait, switchEp, retryEp, err
+	}
+
+	// if unknown status error from gRPC, then endpoint switch and no retry
+	s, ok := status.FromError(err)
+	if !ok {
+		unhealthy, connectWait, switchEp, retryEp = true, false, true, false
+		return unhealthy, connectWait, switchEp, retryEp, err
+	}
+
+	// assume transport.ConnectionError, transport.StreamError, or others from gRPC
+	// converts to grpc/status.(*statusError) by grpc/toRPCErr
+	// (e.g. transport.ErrConnClosing when server closed transport, failing node)
+	// if known status error from gRPC with following codes,
+	// then endpoint switch and retry
+	if s.Code() == codes.Unavailable ||
+		s.Code() == codes.Internal ||
+		s.Code() == codes.DeadlineExceeded {
+		unhealthy, connectWait, switchEp, retryEp = true, false, true, true
+		switch s.Message() {
+		case "there is no address available":
+			// pinned == "" or endpoint unpinned right before/during RPC send
+			// no need to mark empty endpoint
+			unhealthy = false
+
+			// RPC was sent with empty pinned address:
+			//   1. initial connection has not been established (never pinned)
+			//   2. an endpoint has just been unpinned from an error
+			// Both cases expect to pin a new endpoint when Up is called.
+			// Thus, should be retried.
+			retryEp = true
+			if logger.V(4) {
+				logger.Infof("clientv3/do: there was no pinned endpoint (will be retried)")
+			}
+
+			// case A.
+			// gRPC is being too slow to start transport (e.g. errors, backoff),
+			// then endpoint switch. Otherwise, it can block forever to connect wait.
+			// This case is safe to reset/drain all current connections.
+			switchEp = true
+
+			// case B.
+			// gRPC is just about to establish transport within a moment,
+			// where endpoint switch would enforce connection drain on the healthy
+			// endpoint, which otherwise could be pinned and connected.
+			// The healthy endpoint gets pinned but unpinned right after with
+			// an error "grpc: the connection is drained", from endpoint switch.
+			// Thus, not safe to trigger endpoint switch; new healthy endpoint
+			// will be marked as unhealthy and not be pinned for another >3 seconds.
+			// Not acceptable when this healthy endpoint was the only available one!
+			// Workaround is wait up to dial timeout, and then endpoint switch
+			// only when the connection still has not been "Up" (still no pinned endpoint).
+			// TODO: remove this when gRPC has better way to track connection status
+			connectWait = true
+
+		case "grpc: the connection is closing",
+			"grpc: the connection is unavailable":
+			// gRPC v1.7 retries on these errors with FailFast=false
+			// etcd client sets FailFast=true, thus retry manually
+			unhealthy, connectWait, switchEp, retryEp = true, false, true, true
+
+		default:
+			// only retry immutable RPCs ("put at-most-once semantics")
+			// mutable RPCs should not be retried if unknown errors
+			if write {
+				unhealthy, connectWait, switchEp, retryEp = true, false, true, false
+			}
+		}
+	}
+
+	return unhealthy, connectWait, switchEp, retryEp, err
+}
+
 type retryRPCFunc func(context.Context, rpcFunc) error
-type retryStopErrFunc func(error) bool
 
-func isReadStopError(err error) bool {
-	eErr := rpctypes.Error(err)
-	// always stop retry on etcd errors
-	if _, ok := eErr.(rpctypes.EtcdError); ok {
-		return true
+const minDialDuration = 3 * time.Second
+
+func (c *Client) newRetryWrapper(write bool) retryRPCFunc {
+	dialTimeout := c.cfg.DialTimeout
+	if dialTimeout < minDialDuration {
+		dialTimeout = minDialDuration
 	}
-	// only retry if unavailable
-	ev, _ := status.FromError(err)
-	return ev.Code() != codes.Unavailable
-}
-
-func isWriteStopError(err error) bool {
-	ev, _ := status.FromError(err)
-	if ev.Code() != codes.Unavailable {
-		return true
+	dialWait := func(rpcCtx context.Context) (up bool, err error) {
+		select {
+		case <-c.balancer.ConnectNotify():
+			if logger.V(4) {
+				logger.Infof("clientv3/retry: new healthy endpoint %q is up!", c.balancer.pinned())
+			}
+			return true, nil
+		case <-time.After(dialTimeout):
+			return false, nil
+		case <-rpcCtx.Done():
+			return false, rpcCtx.Err()
+		case <-c.ctx.Done():
+			return false, c.ctx.Err()
+		}
 	}
-	return rpctypes.ErrorDesc(err) != "there is no address available"
-}
-
-func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 	return func(rpcCtx context.Context, f rpcFunc) error {
 		for {
-			select {
-			case <-c.balancer.ConnectNotify():
-			case <-rpcCtx.Done():
-				return rpcCtx.Err()
-			case <-c.ctx.Done():
-				return c.ctx.Err()
-			}
 			pinned := c.balancer.pinned()
-			err := f(rpcCtx)
-			if err == nil {
+			staleEp := pinned != "" && c.balancer.endpoint(pinned) == ""
+			eps := c.balancer.endpoints()
+			singleEp, multiEp := len(eps) == 1, len(eps) > 1
+
+			var unhealthy, connectWait, switchEp, retryEp bool
+			var err error
+			if pinned == "" {
+				// no endpoint has not been up, then wait for connection up and retry
+				unhealthy, connectWait, switchEp, retryEp = false, true, true, true
+			} else if staleEp {
+				// if stale, then endpoint switch and retry
+				unhealthy, switchEp, retryEp = false, true, true
+				// should wait in case this endpoint is stale from "SetEndpoints"
+				// which resets all connections, thus expecting new healthy endpoint "Up"
+				connectWait = true
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: found stale endpoint %q (switching and retrying)", pinned)
+				}
+			} else { // endpoint is up-to-date
+				unhealthy, connectWait, switchEp, retryEp, err = c.do(rpcCtx, pinned, write, f)
+			}
+			if !unhealthy && !connectWait && !switchEp && !retryEp && err == nil {
 				return nil
 			}
-			if logger.V(4) {
-				logger.Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
+
+			// single endpoint with failed gRPC connection, before RPC is sent
+			// should neither do endpoint switch nor retry
+			// because client might have manually closed the connection
+			// and there's no other endpoint to switch
+			// e.g. grpc.ErrClientConnClosing
+			if singleEp && connectWait {
+				ep := eps[0]
+				_, host, _ := parseEndpoint(ep)
+				ev, ok := c.balancer.isFailed(host)
+				if ok {
+					// error returned to gRPC balancer "Up" error function
+					// before RPC is sent (error is typed "grpc.downErr")
+					if ev.err.Error() == grpc.ErrClientConnClosing.Error() {
+						if logger.V(4) {
+							logger.Infof("clientv3/retry: single endpoint %q with error %q (returning)", host, ev.err.Error())
+						}
+						return grpc.ErrClientConnClosing
+					}
+					if logger.V(4) {
+						logger.Infof("clientv3/retry: single endpoint %q with error %q", host, ev.err.Error())
+					}
+				}
 			}
-			// mark this before endpoint switch is triggered
-			c.balancer.endpointError(pinned, err)
-			notify := c.balancer.ConnectNotify()
-			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+
+			// mark as unhealthy, only when there are multiple endpoints
+			if multiEp && unhealthy {
+				c.balancer.endpointError(pinned, err)
+			}
+
+			// wait for next healthy endpoint up
+			// before draining all current connections
+			if connectWait {
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: wait %v for healthy endpoint", dialTimeout)
+				}
+				up, derr := dialWait(rpcCtx)
+				if derr != nil {
+					return derr
+				}
+				if up { // connection is up, no need to switch endpoint
+					continue
+				}
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: took too long to reset transport (switching endpoints)")
+				}
+			}
+
+			// trigger endpoint switch in balancer
+			if switchEp {
 				c.balancer.next()
 			}
-			if isStop(err) {
-				return err
+
+			// wait for another endpoint to come up
+			if retryEp {
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: wait %v for connection before retry", dialTimeout)
+				}
+				up, derr := dialWait(rpcCtx)
+				if derr != nil {
+					return derr
+				}
+				if up { // retry with new endpoint
+					continue
+				}
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: took too long for connection up (retrying)")
+				}
 			}
-			select {
-			case <-notify:
-			case <-rpcCtx.Done():
-				return rpcCtx.Err()
-			case <-c.ctx.Done():
-				return c.ctx.Err()
-			}
+
+			// TODO: remove duplicate error handling inside toErr
+			return toErr(rpcCtx, err)
 		}
 	}
 }
@@ -115,14 +299,12 @@ func (c *Client) newAuthRetryWrapper() retryRPCFunc {
 
 // RetryKVClient implements a KVClient that uses the client's FailFast retry policy.
 func RetryKVClient(c *Client) pb.KVClient {
-	readRetry := c.newRetryWrapper(isReadStopError)
-	writeRetry := c.newRetryWrapper(isWriteStopError)
+	readRetry := c.newRetryWrapper(false)
+	writeRetry := c.newRetryWrapper(true)
 	conn := pb.NewKVClient(c.conn)
 	retryBasic := &retryKVClient{&retryWriteKVClient{conn, writeRetry}, readRetry}
 	retryAuthWrapper := c.newAuthRetryWrapper()
-	return &retryKVClient{
-		&retryWriteKVClient{retryBasic, retryAuthWrapper},
-		retryAuthWrapper}
+	return &retryKVClient{&retryWriteKVClient{retryBasic, retryAuthWrapper}, retryAuthWrapper}
 }
 
 type retryKVClient struct {
@@ -184,7 +366,7 @@ type retryLeaseClient struct {
 func RetryLeaseClient(c *Client) pb.LeaseClient {
 	retry := &retryLeaseClient{
 		pb.NewLeaseClient(c.conn),
-		c.newRetryWrapper(isReadStopError),
+		c.newRetryWrapper(false),
 	}
 	return &retryLeaseClient{retry, c.newAuthRetryWrapper()}
 }
@@ -213,7 +395,7 @@ type retryClusterClient struct {
 
 // RetryClusterClient implements a ClusterClient that uses the client's FailFast retry policy.
 func RetryClusterClient(c *Client) pb.ClusterClient {
-	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(true)}
 }
 
 func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
@@ -247,7 +429,7 @@ type retryAuthClient struct {
 
 // RetryAuthClient implements a AuthClient that uses the client's FailFast retry policy.
 func RetryAuthClient(c *Client) pb.AuthClient {
-	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(true)}
 }
 
 func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {
