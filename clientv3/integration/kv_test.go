@@ -881,7 +881,7 @@ func TestKVGetResetLoneEndpoint(t *testing.T) {
 	// have Get try to reconnect
 	donec := make(chan struct{})
 	go func() {
-		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.TODO(), 8*time.Second)
 		if _, err := cli.Get(ctx, "abc", clientv3.WithSerializable()); err != nil {
 			t.Fatal(err)
 		}
