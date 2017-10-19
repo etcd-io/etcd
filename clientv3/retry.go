@@ -29,7 +29,7 @@ type rpcFunc func(ctx context.Context) error
 type retryRPCFunc func(context.Context, rpcFunc) error
 type retryStopErrFunc func(error) bool
 
-func isReadStopError(err error) bool {
+func isRepeatableStopError(err error) bool {
 	eErr := rpctypes.Error(err)
 	// always stop retry on etcd errors
 	if _, ok := eErr.(rpctypes.EtcdError); ok {
@@ -40,7 +40,7 @@ func isReadStopError(err error) bool {
 	return ev.Code() != codes.Unavailable
 }
 
-func isWriteStopError(err error) bool {
+func isNonRepeatableStopError(err error) bool {
 	ev, _ := status.FromError(err)
 	if ev.Code() != codes.Unavailable {
 		return true
@@ -103,8 +103,8 @@ func (c *Client) newAuthRetryWrapper() retryRPCFunc {
 
 // RetryKVClient implements a KVClient.
 func RetryKVClient(c *Client) pb.KVClient {
-	repeatableRetry := c.newRetryWrapper(isReadStopError)
-	nonRepeatableRetry := c.newRetryWrapper(isWriteStopError)
+	repeatableRetry := c.newRetryWrapper(isRepeatableStopError)
+	nonRepeatableRetry := c.newRetryWrapper(isNonRepeatableStopError)
 	conn := pb.NewKVClient(c.conn)
 	retryBasic := &retryKVClient{&nonRepeatableKVClient{conn, nonRepeatableRetry}, repeatableRetry}
 	retryAuthWrapper := c.newAuthRetryWrapper()
@@ -173,7 +173,7 @@ type retryLeaseClient struct {
 func RetryLeaseClient(c *Client) pb.LeaseClient {
 	retry := &retryLeaseClient{
 		pb.NewLeaseClient(c.conn),
-		c.newRetryWrapper(isReadStopError),
+		c.newRetryWrapper(isRepeatableStopError),
 	}
 	return &retryLeaseClient{retry, c.newAuthRetryWrapper()}
 }
@@ -226,7 +226,7 @@ type retryClusterClient struct {
 
 // RetryClusterClient implements a ClusterClient that uses the client's FailFast retry policy.
 func RetryClusterClient(c *Client) pb.ClusterClient {
-	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryClusterClient{pb.NewClusterClient(c.conn), c.newRetryWrapper(isNonRepeatableStopError)}
 }
 
 func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
@@ -260,7 +260,7 @@ type retryAuthClient struct {
 
 // RetryAuthClient implements a AuthClient that uses the client's FailFast retry policy.
 func RetryAuthClient(c *Client) pb.AuthClient {
-	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(isWriteStopError)}
+	return &retryAuthClient{pb.NewAuthClient(c.conn), c.newRetryWrapper(isNonRepeatableStopError)}
 }
 
 func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {
