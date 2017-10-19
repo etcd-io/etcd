@@ -18,7 +18,6 @@ import (
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -75,27 +74,19 @@ func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveRes
 
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
 	// it is safe to retry on update.
-	for {
-		r := &pb.MemberUpdateRequest{ID: id, PeerURLs: peerAddrs}
-		resp, err := c.remote.MemberUpdate(ctx, r, grpc.FailFast(false))
-		if err == nil {
-			return (*MemberUpdateResponse)(resp), nil
-		}
-		if isHaltErr(ctx, err) {
-			return nil, toErr(ctx, err)
-		}
+	r := &pb.MemberUpdateRequest{ID: id, PeerURLs: peerAddrs}
+	resp, err := c.remote.MemberUpdate(ctx, r)
+	if err == nil {
+		return (*MemberUpdateResponse)(resp), nil
 	}
+	return nil, toErr(ctx, err)
 }
 
 func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 	// it is safe to retry on list.
-	for {
-		resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{}, grpc.FailFast(false))
-		if err == nil {
-			return (*MemberListResponse)(resp), nil
-		}
-		if isHaltErr(ctx, err) {
-			return nil, toErr(ctx, err)
-		}
+	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{})
+	if err == nil {
+		return (*MemberListResponse)(resp), nil
 	}
+	return nil, toErr(ctx, err)
 }
