@@ -18,8 +18,6 @@ import (
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
-	"google.golang.org/grpc"
 )
 
 type (
@@ -90,15 +88,17 @@ func (resp *TxnResponse) OpResponse() OpResponse {
 }
 
 type kv struct {
-	remote pb.KVClient
+	readWrite pb.KVClient
+	readOnly  pb.KVClient
 }
 
 func NewKV(c *Client) KV {
-	return &kv{remote: RetryKVClient(c)}
+	readWrite, readOnly := RetryKVClient(c)
+	return &kv{readWrite: readWrite, readOnly: readOnly}
 }
 
 func NewKVFromKVClient(remote pb.KVClient) KV {
-	return &kv{remote: remote}
+	return &kv{readWrite: remote, readOnly: remote}
 }
 
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
@@ -117,7 +117,7 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error) {
-	resp, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest())
+	resp, err := kv.readWrite.Compact(ctx, OpCompact(rev, opts...).toRequest())
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -132,53 +132,36 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 }
 
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
-	for {
-		resp, err := kv.do(ctx, op)
-		if err == nil {
-			return resp, nil
-		}
-
-		if isHaltErr(ctx, err) {
-			return resp, toErr(ctx, err)
-		}
-		// do not retry on modifications
-		if op.isWrite() {
-			return resp, toErr(ctx, err)
-		}
-	}
-}
-
-func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), grpc.FailFast(false))
+		resp, err = kv.readWrite.Range(ctx, op.toRangeRequest())
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
 	case tPut:
 		var resp *pb.PutResponse
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
-		resp, err = kv.remote.Put(ctx, r)
+		resp, err = kv.readWrite.Put(ctx, r)
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
 		var resp *pb.DeleteRangeResponse
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
-		resp, err = kv.remote.DeleteRange(ctx, r)
+		resp, err = kv.readWrite.DeleteRange(ctx, r)
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
 	case tTxn:
 		var resp *pb.TxnResponse
-		resp, err = kv.remote.Txn(ctx, op.toTxnRequest())
+		resp, err = kv.readWrite.Txn(ctx, op.toTxnRequest())
 		if err == nil {
 			return OpResponse{txn: (*TxnResponse)(resp)}, nil
 		}
 	default:
 		panic("Unknown op")
 	}
-	return OpResponse{}, err
+	return OpResponse{}, toErr(ctx, err)
 }

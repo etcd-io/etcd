@@ -473,8 +473,8 @@ func TestKVNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := cli.Get(context.TODO(), "foo"); err != context.Canceled {
-			t.Fatalf("expected %v, got %v", context.Canceled, err)
+		if _, err := cli.Get(context.TODO(), "foo"); err != context.Canceled && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -881,7 +881,7 @@ func TestKVGetResetLoneEndpoint(t *testing.T) {
 	// have Get try to reconnect
 	donec := make(chan struct{})
 	go func() {
-		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.TODO(), 8*time.Second)
 		if _, err := cli.Get(ctx, "abc", clientv3.WithSerializable()); err != nil {
 			t.Fatal(err)
 		}

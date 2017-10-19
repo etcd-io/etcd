@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -33,7 +34,7 @@ func TestNetworkPartitionBalancerPut(t *testing.T) {
 	testNetworkPartitionBalancer(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
 		return err
-	})
+	}, []error{context.DeadlineExceeded, etcdserver.ErrTimeout})
 }
 
 // TestNetworkPartitionBalancerGet tests when one member becomes isolated,
@@ -43,10 +44,10 @@ func TestNetworkPartitionBalancerGet(t *testing.T) {
 	testNetworkPartitionBalancer(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		return err
-	})
+	}, []error{context.DeadlineExceeded})
 }
 
-func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, context.Context) error, errs []error) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -82,8 +83,15 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 		if err == nil {
 			break
 		}
-		if err != context.DeadlineExceeded {
-			t.Fatalf("#%d: expected %v, got %v", i, context.DeadlineExceeded, err)
+		match := false
+		for _, e := range errs {
+			if err == e {
+				match = true
+				break
+			}
+		}
+		if !match {
+			t.Fatalf("#%d: expected %+v, got %v", i, errs, err)
 		}
 		// give enough time for endpoint switch
 		// TODO: remove random sleep by syncing directly with balancer
