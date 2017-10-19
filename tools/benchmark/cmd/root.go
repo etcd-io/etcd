@@ -67,7 +67,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&tls.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
 	RootCmd.PersistentFlags().StringVar(&tls.CAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
-	RootCmd.PersistentFlags().StringVar(&user, "user", "", "specify username and password in username:password format")
+	RootCmd.PersistentFlags().StringVar(&user, "user", "", "provide username[:password] and prompt if password is not supplied.")
 	RootCmd.PersistentFlags().DurationVar(&dialTimeout, "dial-timeout", 0, "dial timeout for client connections")
 
 	RootCmd.PersistentFlags().BoolVar(&targetLeader, "target-leader", false, "connect only to the leader node")
