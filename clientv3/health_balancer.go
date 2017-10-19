@@ -143,6 +143,13 @@ func (hb *healthBalancer) updateUnhealthy(timeout time.Duration) {
 		case <-time.After(timeout):
 			hb.mu.Lock()
 			for k, v := range hb.unhealthy {
+				if _, ok := hb.host2ep[k]; !ok {
+					delete(hb.unhealthy, k)
+					if logger.V(4) {
+						logger.Infof("clientv3/health-balancer: removes stale host:port %q from unhealthy", k)
+					}
+					continue
+				}
 				if time.Since(v) > timeout {
 					delete(hb.unhealthy, k)
 					if logger.V(4) {
@@ -189,6 +196,10 @@ func (hb *healthBalancer) endpointError(addr string, err error) {
 
 func (hb *healthBalancer) mayPin(addr grpc.Address) bool {
 	hb.mu.RLock()
+	if _, ok := hb.host2ep[addr.Addr]; !ok { // stale endpoint
+		hb.mu.RUnlock()
+		return false
+	}
 	skip := len(hb.addrs) == 1 || len(hb.unhealthy) == 0 || len(hb.addrs) == len(hb.unhealthy)
 	failedTime, bad := hb.unhealthy[addr.Addr]
 	dur := hb.healthCheckTimeout
