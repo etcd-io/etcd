@@ -1259,7 +1259,7 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 		}
 		if isLearner {
 			// can only change Learner to Voter
-			r.logger.Infof("%x ignore addLearner for %x [%s]", r.id, id, r.prs[id])
+			r.logger.Infof("%x ignore addLearner for existing node %x [%s]", r.id, id, r.prs[id])
 			return
 		}
 		r.prs[id].isLearner = isLearner

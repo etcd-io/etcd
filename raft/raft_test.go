@@ -3388,7 +3388,7 @@ func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	for i, term := range terms {
 		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
-	cfg := newTestConfig(1, []uint64{1, 2, 3, 4, 5}, 5, 1, storage)
+	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
 	if configFunc != nil {
 		configFunc(cfg)
 	}
@@ -3403,7 +3403,7 @@ func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 func votedWithConfig(configFunc func(*Config), vote, term uint64) *raft {
 	storage := NewMemoryStorage()
 	storage.SetHardState(pb.HardState{Vote: vote, Term: term})
-	cfg := newTestConfig(1, []uint64{1, 2, 3, 4, 5}, 5, 1, storage)
+	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
 	if configFunc != nil {
 		configFunc(cfg)
 	}
