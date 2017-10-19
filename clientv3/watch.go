@@ -762,6 +762,8 @@ func (w *watchGrpcStream) joinSubstreams() {
 }
 
 // openWatchClient retries opening a watch client until success or halt.
+// manually retry in case "ws==nil && err==nil"
+// TODO: remove FailFast=false
 func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 	for {
 		select {
