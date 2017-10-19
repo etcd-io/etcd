@@ -164,11 +164,11 @@ func (rkv *retryWriteKVClient) Compact(ctx context.Context, in *pb.CompactionReq
 }
 
 type retryLeaseClient struct {
-	pb.LeaseClient
-	readRetry retryRPCFunc
+	lc              pb.LeaseClient
+	repeatableRetry retryRPCFunc
 }
 
-// RetryLeaseClient implements a LeaseClient that uses the client's FailFast retry policy.
+// RetryLeaseClient implements a LeaseClient.
 func RetryLeaseClient(c *Client) pb.LeaseClient {
 	retry := &retryLeaseClient{
 		pb.NewLeaseClient(c.conn),
@@ -177,9 +177,25 @@ func RetryLeaseClient(c *Client) pb.LeaseClient {
 	return &retryLeaseClient{retry, c.newAuthRetryWrapper()}
 }
 
+func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (resp *pb.LeaseTimeToLiveResponse, err error) {
+	err = rlc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rlc.lc.LeaseTimeToLive(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (resp *pb.LeaseLeasesResponse, err error) {
+	err = rlc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rlc.lc.LeaseLeases(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
 func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
-	err = rlc.readRetry(ctx, func(rctx context.Context) error {
-		resp, err = rlc.LeaseClient.LeaseGrant(rctx, in, opts...)
+	err = rlc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rlc.lc.LeaseGrant(rctx, in, opts...)
 		return err
 	})
 	return resp, err
@@ -187,11 +203,19 @@ func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRe
 }
 
 func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts ...grpc.CallOption) (resp *pb.LeaseRevokeResponse, err error) {
-	err = rlc.readRetry(ctx, func(rctx context.Context) error {
-		resp, err = rlc.LeaseClient.LeaseRevoke(rctx, in, opts...)
+	err = rlc.repeatableRetry(ctx, func(rctx context.Context) error {
+		resp, err = rlc.lc.LeaseRevoke(rctx, in, opts...)
 		return err
 	})
 	return resp, err
+}
+
+func (rlc *retryLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (stream pb.Lease_LeaseKeepAliveClient, err error) {
+	err = rlc.repeatableRetry(ctx, func(rctx context.Context) error {
+		stream, err = rlc.lc.LeaseKeepAlive(rctx, opts...)
+		return err
+	})
+	return stream, err
 }
 
 type retryClusterClient struct {
