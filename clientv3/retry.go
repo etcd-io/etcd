@@ -51,12 +51,8 @@ func isWriteStopError(err error) bool {
 func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 	return func(rpcCtx context.Context, f rpcFunc) error {
 		for {
-			select {
-			case <-c.balancer.ConnectNotify():
-			case <-rpcCtx.Done():
-				return rpcCtx.Err()
-			case <-c.ctx.Done():
-				return c.ctx.Err()
+			if err := readyWait(rpcCtx, c.ctx, c.balancer.ConnectNotify()); err != nil {
+				return err
 			}
 			pinned := c.balancer.pinned()
 			err := f(rpcCtx)
@@ -68,19 +64,11 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 			}
 			// mark this before endpoint switch is triggered
 			c.balancer.hostPortError(pinned, err)
-			notify := c.balancer.ConnectNotify()
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				c.balancer.next()
 			}
 			if isStop(err) {
 				return err
-			}
-			select {
-			case <-notify:
-			case <-rpcCtx.Done():
-				return rpcCtx.Err()
-			case <-c.ctx.Done():
-				return c.ctx.Err()
 			}
 		}
 	}
