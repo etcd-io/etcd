@@ -658,7 +658,7 @@ func TestWatchEventType(t *testing.T) {
 func TestWatchErrConnClosed(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientDialWithBlock: true})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -687,7 +687,7 @@ func TestWatchErrConnClosed(t *testing.T) {
 func TestWatchAfterClose(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientDialWithBlock: true})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

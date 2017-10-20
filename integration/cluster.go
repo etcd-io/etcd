@@ -92,11 +92,14 @@ var (
 )
 
 type ClusterConfig struct {
-	Size                  int
-	PeerTLS               *transport.TLSInfo
-	ClientTLS             *transport.TLSInfo
-	DiscoveryURL          string
-	UseGRPC               bool
+	Size         int
+	PeerTLS      *transport.TLSInfo
+	ClientTLS    *transport.TLSInfo
+	DiscoveryURL string
+	UseGRPC      bool
+	// ClientDialWithBlock makes sure clientv3 blocks until
+	// connection is up.
+	ClientDialWithBlock   bool
 	QuotaBackendBytes     int64
 	MaxTxnOps             uint
 	MaxRequestBytes       uint
@@ -500,6 +503,7 @@ type member struct {
 	serverClient *clientv3.Client
 
 	keepDataDirTerminate bool
+	clientDialWithBlock  bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -627,6 +631,9 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.grpcAddr},
 		DialTimeout: 5 * time.Second,
+	}
+	if m.clientDialWithBlock {
+		cfg.DialOptions = append(cfg.DialOptions, grpc.WithBlock())
 	}
 
 	if m.ClientTLSInfo != nil {
@@ -987,6 +994,7 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 	}
 	clus.Launch(t)
 	for _, m := range clus.Members {
+		m.clientDialWithBlock = cfg.ClientDialWithBlock
 		client, err := NewClientV3(m)
 		if err != nil {
 			t.Fatalf("cannot create client: %v", err)
