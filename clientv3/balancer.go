@@ -36,28 +36,6 @@ const (
 	notifyNext
 )
 
-type balancer interface {
-	grpc.Balancer
-	ConnectNotify() <-chan struct{}
-
-	endpoint(hostPort string) string
-	endpoints() []string
-	// pinned returns the current pinned endpoint.
-	pinned() string
-	// hostPortError handles error from server-side.
-	hostPortError(hostPort string, err error)
-
-	// up is Up but includes whether the balancer will use the connection.
-	up(addr grpc.Address) (func(error), bool)
-
-	// updateAddrs changes the balancer's endpoints.
-	updateAddrs(endpoints ...string)
-	// ready returns a channel that closes when the balancer first connects.
-	ready() <-chan struct{}
-	// next forces the balancer to switch endpoints.
-	next()
-}
-
 // simpleBalancer does the bare minimum to expose multiple eps
 // to the grpc reconnection code path
 type simpleBalancer struct {
@@ -151,8 +129,6 @@ func (b *simpleBalancer) pinned() string {
 	defer b.mu.RUnlock()
 	return b.pinAddr
 }
-
-func (b *simpleBalancer) hostPortError(hostPort string, err error) { return }
 
 func getHostPort2ep(eps []string) map[string]string {
 	hm := make(map[string]string, len(eps))

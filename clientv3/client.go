@@ -55,7 +55,7 @@ type Client struct {
 
 	cfg      Config
 	creds    *credentials.TransportCredentials
-	balancer balancer
+	balancer *healthBalancer
 	mu       sync.Mutex
 
 	ctx    context.Context

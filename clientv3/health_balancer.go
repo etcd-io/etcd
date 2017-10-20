@@ -33,7 +33,7 @@ type healthCheckFunc func(ep string) (bool, error)
 // healthBalancer wraps a balancer so that it uses health checking
 // to choose its endpoints.
 type healthBalancer struct {
-	balancer
+	*simpleBalancer
 
 	// healthCheck checks an endpoint's health.
 	healthCheck        healthCheckFunc
@@ -59,15 +59,15 @@ type healthBalancer struct {
 	wg sync.WaitGroup
 }
 
-func newHealthBalancer(b balancer, timeout time.Duration, hc healthCheckFunc) *healthBalancer {
+func newHealthBalancer(b *simpleBalancer, timeout time.Duration, hc healthCheckFunc) *healthBalancer {
 	hb := &healthBalancer{
-		balancer:    b,
-		healthCheck: hc,
-		eps:         b.endpoints(),
-		addrs:       eps2addrs(b.endpoints()),
-		hostPort2ep: getHostPort2ep(b.endpoints()),
-		unhealthy:   make(map[string]time.Time),
-		stopc:       make(chan struct{}),
+		simpleBalancer: b,
+		healthCheck:    hc,
+		eps:            b.endpoints(),
+		addrs:          eps2addrs(b.endpoints()),
+		hostPort2ep:    getHostPort2ep(b.endpoints()),
+		unhealthy:      make(map[string]time.Time),
+		stopc:          make(chan struct{}),
 	}
 	if timeout < minHealthRetryDuration {
 		timeout = minHealthRetryDuration
@@ -107,13 +107,13 @@ func (hb *healthBalancer) up(addr grpc.Address) (func(error), bool) {
 	if !hb.mayPin(addr) {
 		return func(err error) {}, false
 	}
-	return hb.balancer.up(addr)
+	return hb.simpleBalancer.up(addr)
 }
 
 func (hb *healthBalancer) Close() error {
 	hb.stopOnce.Do(func() { close(hb.stopc) })
 	hb.wg.Wait()
-	return hb.balancer.Close()
+	return hb.simpleBalancer.Close()
 }
 
 func (hb *healthBalancer) updateAddrs(eps ...string) {
@@ -122,7 +122,7 @@ func (hb *healthBalancer) updateAddrs(eps ...string) {
 	hb.addrs, hb.eps, hb.hostPort2ep = addrs, eps, hostPort2ep
 	hb.unhealthy = make(map[string]time.Time)
 	hb.mu.Unlock()
-	hb.balancer.updateAddrs(eps...)
+	hb.simpleBalancer.updateAddrs(eps...)
 }
 
 func (hb *healthBalancer) endpoint(host string) string {
@@ -162,7 +162,7 @@ func (hb *healthBalancer) updateUnhealthy(timeout time.Duration) {
 			for _, addr := range hb.liveAddrs() {
 				eps = append(eps, hb.endpoint(addr.Addr))
 			}
-			hb.balancer.updateAddrs(eps...)
+			hb.simpleBalancer.updateAddrs(eps...)
 		case <-hb.stopc:
 			return
 		}
