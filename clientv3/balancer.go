@@ -188,11 +188,17 @@ func (b *simpleBalancer) updateAddrs(eps ...string) {
 	// only update addrs if all connections are down
 	// or addrs does not include pinAddr.
 	update := !hasAddr(b.addrs, b.pinAddr)
+	downc := b.downc
 	b.mu.Unlock()
 
 	if update {
 		select {
 		case b.updateAddrsC <- notifyReset:
+		case <-b.stopc:
+		}
+
+		select {
+		case <-downc:
 		case <-b.stopc:
 		}
 	}
