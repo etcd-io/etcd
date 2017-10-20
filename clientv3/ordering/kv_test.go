@@ -83,6 +83,10 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
 
+	// give enough time for gRPC to "Up" new endpoint
+	// TODO: remove this after balancer fix
+	time.Sleep(1 * time.Second)
+
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
@@ -147,6 +151,10 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	clus.Members[2].Restart(t)
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
+
+	// give enough time for gRPC to "Up" new endpoint
+	// TODO: remove this after balancer fix
+	time.Sleep(1 * time.Second)
 
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != errOrderViolation {
