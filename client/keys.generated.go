@@ -8,10 +8,11 @@ package client
 import (
 	"errors"
 	"fmt"
-	codec1978 "github.com/ugorji/go/codec"
 	"reflect"
 	"runtime"
 	time "time"
+
+	codec1978 "github.com/ugorji/go/codec"
 )
 
 const (
@@ -2172,7 +2173,7 @@ func (x *Node) CodecEncodeSelf(e *codec1978.Encoder) {
 			_, _ = yysep2, yy2arr2
 			const yyr2 bool = false
 			yyq2[1] = x.Dir != false
-			yyq2[6] = x.Expiration != nil && x.Expiration != nil
+			yyq2[6] = x.Expiration != nil
 			yyq2[7] = x.TTL != 0
 			if yyr2 || yy2arr2 {
 				r.WriteArrayStart(8)
