@@ -2185,7 +2185,6 @@ func (x *Node) CodecEncodeSelf(e *codec1978.Encoder) {
 					}
 				}
 				r.WriteMapStart(yynn2)
-				yynn2 = 0
 			}
 			if yyr2 || yy2arr2 {
 				r.WriteArrayElem()
