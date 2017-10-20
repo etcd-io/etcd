@@ -136,7 +136,10 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	clus.Members[3].Restart(t)
 	clus.Members[4].Restart(t)
 	cli.SetEndpoints(clus.Members[3].GRPCAddr())
-	time.Sleep(1 * time.Second) // give enough time for operation
+
+	// give enough time for gRPC to "Up" new endpoint
+	// TODO: remove this after balancer fix
+	time.Sleep(1 * time.Second)
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ErrNoGreaterRev {
