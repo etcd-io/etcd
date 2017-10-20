@@ -31,8 +31,13 @@ the standard library (ie json, xml, gob, etc).
 Rich Feature Set includes:
 
   - Simple but extremely powerful and feature-rich API
+  - Support for go1.4 and above, while selectively using newer APIs for later releases
+  - Good code coverage ( > 70% )
   - Very High Performance.
     Our extensive benchmarks show us outperforming Gob, Json, Bson, etc by 2-4X.
+  - Careful selected use of 'unsafe' for targeted performance gains.
+    100% mode exists where 'unsafe' is not used at all.
+  - Lock-free (sans mutex) concurrency for scaling to 100's of cores
   - Multiple conversions:
     Package coerces types where appropriate
     e.g. decode an int in the stream into a float, etc.
@@ -156,40 +161,25 @@ Sample usage model:
     //OR rpcCodec := codec.MsgpackSpecRpc.ClientCodec(conn, h)
     client := rpc.NewClientWithCodec(rpcCodec)
 
+Running Tests
+
+To run tests, use the following:
+
+    go test
+
+To run the full suite of tests, use the following:
+
+    go test -tags alltests -run Suite
+
+You can run the tag 'safe' to run tests or build in safe mode. e.g.
+
+    go test -tags safe -run Json
+    go test -tags "alltests safe" -run Suite
+
+Running Benchmarks
+
+Please see http://github.com/ugorji/go-codec-bench .
+
 */
 package codec
 
-// Benefits of go-codec:
-//
-//    - encoding/json always reads whole file into memory first.
-//      This makes it unsuitable for parsing very large files.
-//    - encoding/xml cannot parse into a map[string]interface{}
-//      I found this out on reading https://github.com/clbanning/mxj
-
-// TODO:
-//
-//   - optimization for codecgen:
-//     if len of entity is <= 3 words, then support a value receiver for encode.
-//   - (En|De)coder should store an error when it occurs.
-//     Until reset, subsequent calls return that error that was stored.
-//     This means that free panics must go away.
-//     All errors must be raised through errorf method.
-//   - Decoding using a chan is good, but incurs concurrency costs.
-//     This is because there's no fast way to use a channel without it
-//     having to switch goroutines constantly.
-//     Callback pattern is still the best. Maybe consider supporting something like:
-//        type X struct {
-//             Name string
-//             Ys []Y
-//             Ys chan <- Y
-//             Ys func(Y) -> call this function for each entry
-//        }
-//    - Consider adding a isZeroer interface { isZero() bool }
-//      It is used within isEmpty, for omitEmpty support.
-//    - Consider making Handle used AS-IS within the encoding/decoding session.
-//      This means that we don't cache Handle information within the (En|De)coder,
-//      except we really need it at Reset(...)
-//    - Consider adding math/big support
-//    - Consider reducing the size of the generated functions:
-//      Maybe use one loop, and put the conditionals in the loop.
-//      for ... { if cLen > 0 { if j == cLen { break } } else if dd.CheckBreak() { break } }

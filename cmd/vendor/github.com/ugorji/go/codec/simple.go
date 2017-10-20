@@ -30,7 +30,8 @@ const (
 
 type simpleEncDriver struct {
 	noBuiltInTypes
-	encNoSeparator
+	encDriverNoopContainerWriter
+	// encNoSeparator
 	e *Encoder
 	h *SimpleHandle
 	w encWriter
@@ -124,11 +125,11 @@ func (e *simpleEncDriver) encodeExtPreamble(xtag byte, length int) {
 	e.w.writen1(xtag)
 }
 
-func (e *simpleEncDriver) EncodeArrayStart(length int) {
+func (e *simpleEncDriver) WriteArrayStart(length int) {
 	e.encLen(simpleVdArray, length)
 }
 
-func (e *simpleEncDriver) EncodeMapStart(length int) {
+func (e *simpleEncDriver) WriteMapStart(length int) {
 	e.encLen(simpleVdMap, length)
 }
 
@@ -155,10 +156,10 @@ type simpleDecDriver struct {
 	bdRead bool
 	bd     byte
 	br     bool // bytes reader
+	b      [scratchByteArrayLen]byte
 	noBuiltInTypes
-	noStreamingCodec
-	decNoSeparator
-	b [scratchByteArrayLen]byte
+	// noStreamingCodec
+	decDriverNoopContainerReader
 }
 
 func (d *simpleDecDriver) readNextBd() {
@@ -433,7 +434,7 @@ func (d *simpleDecDriver) DecodeNaked() {
 		d.readNextBd()
 	}
 
-	n := &d.d.n
+	n := d.d.n
 	var decodeFurther bool
 
 	switch d.bd {
@@ -512,6 +513,7 @@ func (d *simpleDecDriver) DecodeNaked() {
 type SimpleHandle struct {
 	BasicHandle
 	binaryEncodingType
+	noElemSeparators
 }
 
 func (h *SimpleHandle) SetBytesExt(rt reflect.Type, tag uint64, ext BytesExt) (err error) {

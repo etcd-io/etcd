@@ -30,6 +30,19 @@ func bytesView(v string) []byte {
 	return []byte(v)
 }
 
+func definitelyNil(v interface{}) bool {
+	return false
+	// rv := reflect.ValueOf(v)
+	// switch rv.Kind() {
+	// case reflect.Invalid:
+	// 	return true
+	// case reflect.Ptr, reflect.Interface, reflect.Chan, reflect.Slice, reflect.Map, reflect.Func:
+	// 	return rv.IsNil()
+	// default:
+	// 	return false
+	// }
+}
+
 // // keepAlive4BytesView maintains a reference to the input parameter for bytesView.
 // //
 // // Usage: call this at point where done with the bytes view.
@@ -48,13 +61,17 @@ func rt2id(rt reflect.Type) uintptr {
 	return reflect.ValueOf(rt).Pointer()
 }
 
-// --------------------------
-type ptrToRvMap struct{}
-
-func (_ *ptrToRvMap) init() {}
-func (_ *ptrToRvMap) get(i interface{}) reflect.Value {
-	return reflect.ValueOf(i).Elem()
+func rv2rtid(rv reflect.Value) uintptr {
+	return reflect.ValueOf(rv.Type()).Pointer()
 }
+
+// --------------------------
+// type ptrToRvMap struct{}
+
+// func (_ *ptrToRvMap) init() {}
+// func (_ *ptrToRvMap) get(i interface{}) reflect.Value {
+// 	return reflect.ValueOf(i).Elem()
+// }
 
 // --------------------------
 type atomicTypeInfoSlice struct {
@@ -74,70 +91,66 @@ func (x *atomicTypeInfoSlice) store(p *[]rtid2ti) {
 }
 
 // --------------------------
-func (f *decFnInfo) raw(rv reflect.Value) {
-	rv.SetBytes(f.d.raw())
+func (d *Decoder) raw(f *codecFnInfo, rv reflect.Value) {
+	rv.SetBytes(d.rawBytes())
 }
 
-func (f *decFnInfo) kString(rv reflect.Value) {
-	rv.SetString(f.d.d.DecodeString())
+func (d *Decoder) kString(f *codecFnInfo, rv reflect.Value) {
+	rv.SetString(d.d.DecodeString())
 }
 
-func (f *decFnInfo) kBool(rv reflect.Value) {
-	rv.SetBool(f.d.d.DecodeBool())
+func (d *Decoder) kBool(f *codecFnInfo, rv reflect.Value) {
+	rv.SetBool(d.d.DecodeBool())
 }
 
-func (f *decFnInfo) kFloat32(rv reflect.Value) {
-	rv.SetFloat(f.d.d.DecodeFloat(true))
+func (d *Decoder) kFloat32(f *codecFnInfo, rv reflect.Value) {
+	rv.SetFloat(d.d.DecodeFloat(true))
 }
 
-func (f *decFnInfo) kFloat64(rv reflect.Value) {
-	rv.SetFloat(f.d.d.DecodeFloat(false))
+func (d *Decoder) kFloat64(f *codecFnInfo, rv reflect.Value) {
+	rv.SetFloat(d.d.DecodeFloat(false))
 }
 
-func (f *decFnInfo) kInt(rv reflect.Value) {
-	rv.SetInt(f.d.d.DecodeInt(intBitsize))
+func (d *Decoder) kInt(f *codecFnInfo, rv reflect.Value) {
+	rv.SetInt(d.d.DecodeInt(intBitsize))
 }
 
-func (f *decFnInfo) kInt8(rv reflect.Value) {
-	rv.SetInt(f.d.d.DecodeInt(8))
+func (d *Decoder) kInt8(f *codecFnInfo, rv reflect.Value) {
+	rv.SetInt(d.d.DecodeInt(8))
 }
 
-func (f *decFnInfo) kInt16(rv reflect.Value) {
-	rv.SetInt(f.d.d.DecodeInt(16))
+func (d *Decoder) kInt16(f *codecFnInfo, rv reflect.Value) {
+	rv.SetInt(d.d.DecodeInt(16))
 }
 
-func (f *decFnInfo) kInt32(rv reflect.Value) {
-	rv.SetInt(f.d.d.DecodeInt(32))
+func (d *Decoder) kInt32(f *codecFnInfo, rv reflect.Value) {
+	rv.SetInt(d.d.DecodeInt(32))
 }
 
-func (f *decFnInfo) kInt64(rv reflect.Value) {
-	rv.SetInt(f.d.d.DecodeInt(64))
+func (d *Decoder) kInt64(f *codecFnInfo, rv reflect.Value) {
+	rv.SetInt(d.d.DecodeInt(64))
 }
 
-func (f *decFnInfo) kUint(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(uintBitsize))
+func (d *Decoder) kUint(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(uintBitsize))
 }
 
-func (f *decFnInfo) kUintptr(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(uintBitsize))
+func (d *Decoder) kUintptr(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(uintBitsize))
 }
 
-func (f *decFnInfo) kUint8(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(8))
+func (d *Decoder) kUint8(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(8))
 }
 
-func (f *decFnInfo) kUint16(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(16))
+func (d *Decoder) kUint16(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(16))
 }
 
-func (f *decFnInfo) kUint32(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(32))
+func (d *Decoder) kUint32(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(32))
 }
 
-func (f *decFnInfo) kUint64(rv reflect.Value) {
-	rv.SetUint(f.d.d.DecodeUint(64))
+func (d *Decoder) kUint64(f *codecFnInfo, rv reflect.Value) {
+	rv.SetUint(d.d.DecodeUint(64))
 }
-
-// func i2rv(i interface{}) reflect.Value {
-// 	return reflect.ValueOf(i)
-// }

@@ -61,7 +61,8 @@ const (
 
 type cborEncDriver struct {
 	noBuiltInTypes
-	encNoSeparator
+	encDriverNoopContainerWriter
+	// encNoSeparator
 	e *Encoder
 	w encWriter
 	h *CborHandle
@@ -134,21 +135,41 @@ func (e *cborEncDriver) EncodeExt(rv interface{}, xtag uint64, ext Ext, en *Enco
 
 func (e *cborEncDriver) EncodeRawExt(re *RawExt, en *Encoder) {
 	e.encUint(uint64(re.Tag), cborBaseTag)
-	if re.Data != nil {
+	if false && re.Data != nil {
 		en.encode(re.Data)
-	} else if re.Value == nil {
-		e.EncodeNil()
-	} else {
+	} else if re.Value != nil {
 		en.encode(re.Value)
+	} else {
+		e.EncodeNil()
 	}
 }
 
-func (e *cborEncDriver) EncodeArrayStart(length int) {
-	e.encLen(cborBaseArray, length)
+func (e *cborEncDriver) WriteArrayStart(length int) {
+	if e.h.IndefiniteLength {
+		e.w.writen1(cborBdIndefiniteArray)
+	} else {
+		e.encLen(cborBaseArray, length)
+	}
 }
 
-func (e *cborEncDriver) EncodeMapStart(length int) {
-	e.encLen(cborBaseMap, length)
+func (e *cborEncDriver) WriteMapStart(length int) {
+	if e.h.IndefiniteLength {
+		e.w.writen1(cborBdIndefiniteMap)
+	} else {
+		e.encLen(cborBaseMap, length)
+	}
+}
+
+func (e *cborEncDriver) WriteMapEnd() {
+	if e.h.IndefiniteLength {
+		e.w.writen1(cborBdBreak)
+	}
+}
+
+func (e *cborEncDriver) WriteArrayEnd() {
+	if e.h.IndefiniteLength {
+		e.w.writen1(cborBdBreak)
+	}
 }
 
 func (e *cborEncDriver) EncodeString(c charEncoding, v string) {
@@ -180,7 +201,8 @@ type cborDecDriver struct {
 	bdRead bool
 	bd     byte
 	noBuiltInTypes
-	decNoSeparator
+	// decNoSeparator
+	decDriverNoopContainerReader
 }
 
 func (d *cborDecDriver) readNextBd() {
@@ -469,7 +491,7 @@ func (d *cborDecDriver) DecodeNaked() {
 		d.readNextBd()
 	}
 
-	n := &d.d.n
+	n := d.d.n
 	var decodeFurther bool
 
 	switch d.bd {
@@ -577,7 +599,11 @@ func (d *cborDecDriver) DecodeNaked() {
 //
 type CborHandle struct {
 	binaryEncodingType
+	noElemSeparators
 	BasicHandle
+
+	// IndefiniteLength=true, means that we encode using indefinitelength
+	IndefiniteLength bool
 }
 
 func (h *CborHandle) SetInterfaceExt(rt reflect.Type, tag uint64, ext InterfaceExt) (err error) {

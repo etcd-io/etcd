@@ -61,7 +61,8 @@ type bincEncDriver struct {
 	m map[string]uint16 // symbols
 	b [scratchByteArrayLen]byte
 	s uint16 // symbols sequencer
-	encNoSeparator
+	// encNoSeparator
+	encDriverNoopContainerWriter
 }
 
 func (e *bincEncDriver) IsBuiltinType(rt uintptr) bool {
@@ -195,11 +196,11 @@ func (e *bincEncDriver) encodeExtPreamble(xtag byte, length int) {
 	e.w.writen1(xtag)
 }
 
-func (e *bincEncDriver) EncodeArrayStart(length int) {
+func (e *bincEncDriver) WriteArrayStart(length int) {
 	e.encLen(bincVdArray<<4, uint64(length))
 }
 
-func (e *bincEncDriver) EncodeMapStart(length int) {
+func (e *bincEncDriver) WriteMapStart(length int) {
 	e.encLen(bincVdMap<<4, uint64(length))
 }
 
@@ -332,13 +333,14 @@ type bincDecDriver struct {
 	bd     byte
 	vd     byte
 	vs     byte
-	noStreamingCodec
-	decNoSeparator
+	// noStreamingCodec
+	// decNoSeparator
 	b [scratchByteArrayLen]byte
 
 	// linear searching on this slice is ok,
 	// because we typically expect < 32 symbols in each stream.
 	s []bincDecSymbol
+	decDriverNoopContainerReader
 }
 
 func (d *bincDecDriver) readNextBd() {
@@ -512,7 +514,7 @@ func (d *bincDecDriver) DecodeInt(bitsize uint8) (i int64) {
 		i = -i
 	}
 	if chkOvf.Int(i, bitsize) {
-		d.d.errorf("binc: overflow integer: %v", i)
+		d.d.errorf("binc: overflow integer: %v for num bits: %v", i, bitsize)
 		return
 	}
 	d.bdRead = false
@@ -804,7 +806,7 @@ func (d *bincDecDriver) DecodeNaked() {
 		d.readNextBd()
 	}
 
-	n := &d.d.n
+	n := d.d.n
 	var decodeFurther bool
 
 	switch d.vd {
@@ -909,6 +911,7 @@ func (d *bincDecDriver) DecodeNaked() {
 type BincHandle struct {
 	BasicHandle
 	binaryEncodingType
+	noElemSeparators
 }
 
 func (h *BincHandle) SetBytesExt(rt reflect.Type, tag uint64, ext BytesExt) (err error) {
@@ -921,6 +924,10 @@ func (h *BincHandle) newEncDriver(e *Encoder) encDriver {
 
 func (h *BincHandle) newDecDriver(d *Decoder) decDriver {
 	return &bincDecDriver{d: d, h: h, r: d.r, br: d.bytes}
+}
+
+func (_ *BincHandle) IsBuiltinType(rt uintptr) bool {
+	return rt == timeTypId
 }
 
 func (e *bincEncDriver) reset() {
