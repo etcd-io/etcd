@@ -1,5 +1,5 @@
-hash: c93e1fcd25d4fc0c1c35583de5b660e9369ec23f19c229aa1ffc1158fe19616f
-updated: 2017-10-06T15:12:44.328716326-07:00
+hash: 80a7efc9ff8767f29e9a02c19337e00655b25cc19ffa0bb95adeb83e4776dedb
+updated: 2017-10-19T23:09:56.080605596-06:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -113,7 +113,7 @@ imports:
   subpackages:
   - wsproxy
 - name: github.com/ugorji/go
-  version: 54210f4e076c57f351166f0ed60e67d3fca57a36
+  version: bdcc60b419d136a85cdf2e7cbcac34b3f1cd6e57
   subpackages:
   - codec
 - name: github.com/urfave/cli
