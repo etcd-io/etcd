@@ -392,6 +392,7 @@ func makeDB(snapdir, dbfile string, commit int) {
 	txn.End()
 	s.Commit()
 	s.Close()
+	be.Close()
 }
 
 type dbstatus struct {
