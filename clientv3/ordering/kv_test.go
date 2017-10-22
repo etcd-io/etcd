@@ -18,6 +18,7 @@ import (
 	"context"
 	gContext "context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -26,7 +27,19 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/pkg/capnslog"
 )
+
+func TestLoop(t *testing.T) {
+	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
+
+	for {
+		TestDetectKvOrderViolation(t)
+		fmt.Println("ok")
+		TestDetectTxnOrderViolation(t)
+		fmt.Println("ok")
+	}
+}
 
 func TestDetectKvOrderViolation(t *testing.T) {
 	var errOrderViolation = errors.New("Detected Order Violation")
