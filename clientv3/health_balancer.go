@@ -93,13 +93,8 @@ func (hb *healthBalancer) Up(addr grpc.Address) func(error) {
 		// timeout will induce a network I/O error, and retrying until success;
 		// finding healthy endpoint on retry could take several timeouts and redials.
 		// To avoid wasting retries, gray-list unhealthy endpoints.
-		hb.mu.Lock()
-		hb.unhealthy[addr.Addr] = time.Now()
-		hb.mu.Unlock()
+		hb.hostPortError(addr.Addr, err)
 		f(err)
-		if logger.V(4) {
-			logger.Infof("clientv3/health-balancer: %q becomes unhealthy (%q)", addr.Addr, err.Error())
-		}
 	}
 }
 
