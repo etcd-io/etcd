@@ -100,6 +100,8 @@ func TestTxnWriteFail(t *testing.T) {
 }
 
 func TestTxnReadRetry(t *testing.T) {
+	t.Skipf("skipping txn read retry test: re-enable after we do retry on txn read request")
+
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
