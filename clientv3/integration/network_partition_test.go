@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -70,10 +71,7 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr())
-
-	time.Sleep(3 * time.Second)
 	clus.Members[0].InjectPartition(t, clus.Members[1:])
-	defer clus.Members[0].RecoverPartition(t, clus.Members[1:])
 
 	for i := 0; i < 2; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -82,8 +80,10 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 		if err == nil {
 			break
 		}
-		if err != context.DeadlineExceeded {
-			t.Fatalf("#%d: expected %v, got %v", i, context.DeadlineExceeded, err)
+		// todo: separate put and get test for error checking.
+		// we do not really expect errTimeout on get.
+		if err != context.DeadlineExceeded && err != rpctypes.ErrTimeout {
+			t.Errorf("#%d: expected %v or %v, got %v", i, context.DeadlineExceeded, rpctypes.ErrTimeout, err)
 		}
 		// give enough time for endpoint switch
 		// TODO: remove random sleep by syncing directly with balancer
@@ -92,6 +92,6 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 		}
 	}
 	if err != nil {
-		t.Fatalf("balancer did not switch in time (%v)", err)
+		t.Errorf("balancer did not switch in time (%v)", err)
 	}
 }
