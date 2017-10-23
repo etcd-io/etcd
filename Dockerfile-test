@@ -21,7 +21,9 @@ RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
   && go get -v -u github.com/wadey/gocovmerge \
   && go get -v -u github.com/gordonklaus/ineffassign \
-  && ./scripts/install-marker.sh amd64
+  && ./scripts/install-marker.sh amd64 \
+  && curl -s https://codecov.io/bash >/codecov \
+  && chmod 700 /codecov
 
 # e.g.
 # docker build --tag etcd-test --file ./Dockerfile-test .
