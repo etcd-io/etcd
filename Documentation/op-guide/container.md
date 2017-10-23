@@ -76,6 +76,13 @@ Use the host IP address when configuring etcd:
 export NODE1=192.168.1.21
 ```
 
+Configure a Docker volume to store etcd data:
+
+```
+docker volume create --name etcd-data
+export DATA_DIR="etcd-data"
+```
+
 Run the latest version of etcd:
 
 ```
