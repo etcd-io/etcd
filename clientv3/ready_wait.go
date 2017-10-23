@@ -14,7 +14,9 @@
 
 package clientv3
 
-import "context"
+import (
+	"context"
+)
 
 // TODO: remove this when "FailFast=false" is fixed.
 // See https://github.com/grpc/grpc-go/issues/1532.
