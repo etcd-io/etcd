@@ -32,7 +32,7 @@ type retryStopErrFunc func(error) bool
 func isRepeatableStopError(err error) bool {
 	eErr := rpctypes.Error(err)
 	// always stop retry on etcd errors
-	if _, ok := eErr.(rpctypes.EtcdError); ok {
+	if serverErr, ok := eErr.(rpctypes.EtcdError); ok && serverErr.Code() != codes.Unavailable {
 		return true
 	}
 	// only retry if unavailable
@@ -62,11 +62,16 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 			if logger.V(4) {
 				logger.Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
 			}
-			// mark this before endpoint switch is triggered
-			c.balancer.hostPortError(pinned, err)
-			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+
+			if s, ok := status.FromError(err); ok && (s.Code() == codes.Unavailable || s.Code() == codes.DeadlineExceeded || s.Code() == codes.Internal) {
+				// mark this before endpoint switch is triggered
+				c.balancer.hostPortError(pinned, err)
 				c.balancer.next()
+				if logger.V(4) {
+					logger.Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
+				}
 			}
+
 			if isStop(err) {
 				return err
 			}

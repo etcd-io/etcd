@@ -263,9 +263,28 @@ func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 	}
 	b.mu.RLock()
 	addrs := b.addrs
+	pinAddr := b.pinAddr
+	downc := b.downc
 	b.mu.RUnlock()
+
+	var waitDown bool
+	if pinAddr != "" {
+		waitDown = true
+		for _, a := range addrs {
+			if a.Addr == pinAddr {
+				waitDown = false
+			}
+		}
+	}
+
 	select {
 	case b.notifyCh <- addrs:
+		if waitDown {
+			select {
+			case <-downc:
+			case <-b.stopc:
+			}
+		}
 	case <-b.stopc:
 	}
 }
