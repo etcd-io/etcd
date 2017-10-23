@@ -168,7 +168,7 @@ func (b *simpleBalancer) updateAddrs(eps ...string) {
 
 	if update {
 		select {
-		case b.updateAddrsC <- notifyReset:
+		case b.updateAddrsC <- notifyNext:
 		case <-b.stopc:
 		}
 	}
