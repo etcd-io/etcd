@@ -41,14 +41,18 @@ func TestWatchKeepAlive(t *testing.T) {
 
 	ccfg := clientv3.Config{
 		Endpoints:            []string{clus.Members[0].GRPCAddr()},
-		DialTimeout:          3 * time.Second,
+		DialTimeout:          1 * time.Second,
 		DialKeepAliveTime:    1 * time.Second,
 		DialKeepAliveTimeout: 500 * time.Millisecond,
 	}
 
 	// gRPC internal implementation related.
 	pingInterval := ccfg.DialKeepAliveTime + ccfg.DialKeepAliveTimeout
-	timeout := pingInterval + 2*time.Second // 2s for slow machine to process watch and reset connections
+	// 3s for slow machine to process watch and reset connections
+	// TODO: only send healthy endpoint to gRPC so gRPC wont waste time to
+	// dial for unhealthy endpoint.
+	// then we can reduce 3s to 1s.
+	timeout := pingInterval + 3*time.Second
 
 	cli, err := clientv3.New(ccfg)
 	if err != nil {
@@ -76,6 +80,10 @@ func TestWatchKeepAlive(t *testing.T) {
 	}
 
 	clus.Members[0].Unblackhole()
+
+	// waiting for moving ep0 out of unhealthy, so that it can be re-pined.
+	time.Sleep(ccfg.DialTimeout)
+
 	clus.Members[1].Blackhole()
 
 	// make sure client0 can connect to member 0 after remove the blackhole.
@@ -86,6 +94,7 @@ func TestWatchKeepAlive(t *testing.T) {
 	if _, err = clus.Client(0).Put(context.TODO(), "foo", "bar1"); err != nil {
 		t.Fatal(err)
 	}
+
 	select {
 	case <-wch:
 	case <-time.After(timeout):
