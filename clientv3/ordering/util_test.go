@@ -82,7 +82,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 
 func TestUnresolvableOrderViolation(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 	cfg := clientv3.Config{
 		Endpoints: []string{

@@ -53,6 +53,7 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                 3,
 		GRPCKeepAliveMinTime: time.Millisecond, // avoid too_many_pings
+		SkipCreatingClient:   true,
 	})
 	defer clus.Terminate(t)
 
