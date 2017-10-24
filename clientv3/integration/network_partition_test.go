@@ -80,8 +80,8 @@ func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, contex
 		if err == nil {
 			break
 		}
-		// todo: separate put and get test for error checking.
-		// we do not really expect errTimeout on get.
+		// TODO: separate put and get test for error checking.
+		// we do not really expect ErrTimeout on get.
 		if err != context.DeadlineExceeded && err != rpctypes.ErrTimeout {
 			t.Errorf("#%d: expected %v or %v, got %v", i, context.DeadlineExceeded, rpctypes.ErrTimeout, err)
 		}

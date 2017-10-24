@@ -46,7 +46,7 @@ func TestWatchKeepAlive(t *testing.T) {
 		DialKeepAliveTimeout: 500 * time.Millisecond,
 	}
 
-	// gRPC internal implmentation related.
+	// gRPC internal implementation related.
 	pingInterval := ccfg.DialKeepAliveTime + ccfg.DialKeepAliveTimeout
 	timeout := pingInterval + 2*time.Second // 2s for slow machine to process watch and reset connections
 
