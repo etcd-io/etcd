@@ -139,7 +139,7 @@ func TestSwitchSetEndpoints(t *testing.T) {
 	eps := []string{clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
 
 	cli := clus.Client(0)
-	clus.Members[0].InjectPartition(t, clus.Members[1:])
+	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	cli.SetEndpoints(eps...)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

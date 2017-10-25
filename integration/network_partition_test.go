@@ -149,12 +149,12 @@ func getMembersByIndexSlice(clus *cluster, idxs []int) []*member {
 
 func injectPartition(t *testing.T, src, others []*member) {
 	for _, m := range src {
-		m.InjectPartition(t, others)
+		m.InjectPartition(t, others...)
 	}
 }
 
 func recoverPartition(t *testing.T, src, others []*member) {
 	for _, m := range src {
-		m.RecoverPartition(t, others)
+		m.RecoverPartition(t, others...)
 	}
 }
