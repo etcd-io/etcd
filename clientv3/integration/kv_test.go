@@ -828,7 +828,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 // TestKVGetOneEndpointDown ensures a client can connect and get if one endpoint is down.
 func TestKVGetOneEndpointDown(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
 	// get endpoint list
@@ -858,7 +858,7 @@ func TestKVGetOneEndpointDown(t *testing.T) {
 // endpoints are down, then it will reconnect.
 func TestKVGetResetLoneEndpoint(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
 	// get endpoint list
@@ -936,7 +936,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 
 func TestKVSwitchUnavailable(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
 	clus.Members[0].InjectPartition(t, clus.Members[1:])

@@ -103,6 +103,8 @@ type ClusterConfig struct {
 	GRPCKeepAliveMinTime  time.Duration
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
+	// SkipCreatingClient to skip creating clients for each member.
+	SkipCreatingClient bool
 }
 
 type cluster struct {
@@ -986,12 +988,15 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 		cluster: NewClusterByConfig(t, cfg),
 	}
 	clus.Launch(t)
-	for _, m := range clus.Members {
-		client, err := NewClientV3(m)
-		if err != nil {
-			t.Fatalf("cannot create client: %v", err)
+
+	if !cfg.SkipCreatingClient {
+		for _, m := range clus.Members {
+			client, err := NewClientV3(m)
+			if err != nil {
+				t.Fatalf("cannot create client: %v", err)
+			}
+			clus.clients = append(clus.clients, client)
 		}
-		clus.clients = append(clus.clients, client)
 	}
 
 	return clus
