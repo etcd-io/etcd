@@ -939,7 +939,7 @@ func TestKVSwitchUnavailable(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
-	clus.Members[0].InjectPartition(t, clus.Members[1:])
+	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 	// try to connect with dead node in the endpoint list
 	cfg := clientv3.Config{
 		Endpoints: []string{

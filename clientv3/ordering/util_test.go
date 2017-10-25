@@ -52,7 +52,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	// create partition between third members and the first two members
 	// in order to guarantee that the third member's revision of "foo"
 	// falls behind as updates to "foo" are issued to the first two members.
-	clus.Members[2].InjectPartition(t, clus.Members[:2])
+	clus.Members[2].InjectPartition(t, clus.Members[:2]...)
 	time.Sleep(1 * time.Second) // give enough time for the operation
 
 	// update to "foo" will not be replicated to the third member due to the partition
