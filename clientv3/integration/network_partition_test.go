@@ -27,27 +27,27 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-// TestNetworkPartitionBalancerPut tests when one member becomes isolated,
+// TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
 // first Put request fails, and following retry succeeds with client balancer
 // switching to others.
-func TestNetworkPartitionBalancerPut(t *testing.T) {
-	testNetworkPartitionBalancer(t, func(cli *clientv3.Client, ctx context.Context) error {
+func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
 		return err
 	})
 }
 
-// TestNetworkPartitionBalancerGet tests when one member becomes isolated,
+// TestBalancerUnderNetworkPartitionGet tests when one member becomes isolated,
 // first Get request fails, and following retry succeeds with client balancer
 // switching to others.
-func TestNetworkPartitionBalancerGet(t *testing.T) {
-	testNetworkPartitionBalancer(t, func(cli *clientv3.Client, ctx context.Context) error {
+func TestBalancerUnderNetworkPartitionGet(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		return err
 	})
 }
 
-func testNetworkPartitionBalancer(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
