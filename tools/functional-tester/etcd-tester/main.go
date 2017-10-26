@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/pkg/debugutil"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/time/rate"
 )
 
@@ -138,7 +138,7 @@ func main() {
 
 	sh := statusHandler{status: &t.status}
 	http.Handle("/status", sh)
-	http.Handle("/metrics", prometheus.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 
 	if *enablePprof {
 		for p, h := range debugutil.PProfHandlers() {
