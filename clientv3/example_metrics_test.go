@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -54,7 +54,7 @@ func ExampleClient_metrics() {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		http.Serve(ln, prometheus.Handler())
+		http.Serve(ln, promhttp.Handler())
 	}()
 	defer func() {
 		ln.Close()
