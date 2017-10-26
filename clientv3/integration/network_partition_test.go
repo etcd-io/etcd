@@ -70,6 +70,9 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	}
 	defer cli.Close()
 
+	// wait for ep[0] to be pinned
+	waitPinReady(t, cli)
+
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr())
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
