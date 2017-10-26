@@ -47,13 +47,8 @@ func TestBlackholePutWithoutKeealiveEnabled(t *testing.T) {
 	}
 	defer cli.Close()
 
-	// wait for eps[0] to be pinned
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	_, err = cli.Get(ctx, "foo")
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// wait for ep[0] to be pinned
+	waitPinReady(t, cli)
 
 	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr())
 	clus.Members[0].Blackhole()
