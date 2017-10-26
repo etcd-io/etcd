@@ -18,6 +18,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -27,12 +28,19 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
+var (
+	errExpected = errors.New("expected error")
+)
+
 // TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
 // first Put request fails, and following retry succeeds with client balancer
 // switching to others.
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
 		return err
 	})
 }
@@ -43,6 +51,9 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 func TestBalancerUnderNetworkPartitionGet(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
+		if err == context.DeadlineExceeded {
+			return errExpected
+		}
 		return err
 	})
 }
@@ -81,10 +92,9 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		if err == nil {
 			break
 		}
-		// TODO: separate put and get test for error checking.
-		// we do not really expect ErrTimeout on get.
-		if err != context.DeadlineExceeded && err != rpctypes.ErrTimeout {
-			t.Errorf("#%d: expected %v or %v, got %v", i, context.DeadlineExceeded, rpctypes.ErrTimeout, err)
+
+		if err != errExpected {
+			t.Errorf("#%d: expected %v, got %v", i, errExpected, err)
 		}
 		// give enough time for endpoint switch
 		// TODO: remove random sleep by syncing directly with balancer
