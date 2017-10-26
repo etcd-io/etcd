@@ -48,12 +48,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	defer watchCli.Close()
 
 	// wait for eps[lead] to be pinned
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	_, err = watchCli.Get(ctx, "foo")
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
+	waitPinReady(t, watchCli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
