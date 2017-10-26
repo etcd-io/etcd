@@ -1,11 +1,13 @@
-dist: trusty
 language: go
 go_import_path: github.com/coreos/etcd
-sudo: false
+
+sudo: required
+
+services: docker
 
 go:
-  - 1.8.4
-  - tip
+- 1.8.5
+- tip
 
 notifications:
   on_success: never
@@ -13,19 +15,25 @@ notifications:
 
 env:
   matrix:
-   - TARGET=amd64
-   - TARGET=darwin-amd64
-   - TARGET=windows-amd64
-   - TARGET=arm64
-   - TARGET=arm
-   - TARGET=386
-   - TARGET=ppc64le
+  - TARGET=amd64
+  - TARGET=amd64-go-tip
+  - TARGET=darwin-amd64
+  - TARGET=windows-amd64
+  - TARGET=arm64
+  - TARGET=arm
+  - TARGET=386
+  - TARGET=ppc64le
 
 matrix:
   fast_finish: true
   allow_failures:
-    - go: tip
+  - go: tip
+    env: TARGET=amd64-go-tip
   exclude:
+  - go: 1.8.5
+    env: TARGET=amd64-go-tip
+  - go: tip
+    env: TARGET=amd64
   - go: tip
     env: TARGET=darwin-amd64
   - go: tip
@@ -39,45 +47,42 @@ matrix:
   - go: tip
     env: TARGET=ppc64le
 
-addons:
-  apt:
-    sources:
-    - debian-sid
-    packages:
-    - libpcap-dev
-    - libaspell-dev
-    - libhunspell-dev
-    - shellcheck
-
 before_install:
- - go get -v -u github.com/chzchzchz/goword
- - go get -v -u github.com/coreos/license-bill-of-materials
- - go get -v -u honnef.co/go/tools/cmd/gosimple
- - go get -v -u honnef.co/go/tools/cmd/unused
- - go get -v -u honnef.co/go/tools/cmd/staticcheck
- - ./scripts/install-marker.sh amd64
+- docker pull gcr.io/etcd-development/etcd-test:go1.8.5
 
-# disable godep restore override
 install:
- - pushd cmd/etcd && go get -t -v ./... && popd
+- pushd cmd/etcd && go get -t -v ./... && popd
 
 script:
  - >
     case "${TARGET}" in
       amd64)
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.8.5 \
+          /bin/bash -c "GOARCH=amd64 ./test"
+        ;;
+      amd64-go-tip)
         GOARCH=amd64 ./test
         ;;
       darwin-amd64)
-        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=darwin GOARCH=amd64 ./build
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.8.5 \
+          /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOOS=darwin GOARCH=amd64 ./build"
         ;;
       windows-amd64)
-        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=windows GOARCH=amd64 ./build
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.8.5 \
+          /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOOS=windows GOARCH=amd64 ./build"
         ;;
       386)
-        GOARCH=386 PASSES="build unit" ./test
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.8.5 \
+          /bin/bash -c "GOARCH=386 PASSES='build unit' ./test"
         ;;
       *)
         # test building out of gopath
-        GO_BUILD_FLAGS="-a -v" GOPATH="" GOARCH="${TARGET}" ./build
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.8.5 \
+          /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOARCH='${TARGET}' ./build"
         ;;
     esac
