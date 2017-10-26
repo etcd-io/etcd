@@ -31,7 +31,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -49,7 +49,7 @@ func TestV3ClientMetrics(t *testing.T) {
 	go func() {
 		defer close(donec)
 
-		srv := &http.Server{Handler: prometheus.Handler()}
+		srv := &http.Server{Handler: promhttp.Handler()}
 		srv.SetKeepAlivesEnabled(false)
 
 		ln, err = transport.NewUnixListener(addr)
