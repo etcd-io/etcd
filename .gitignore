@@ -6,6 +6,7 @@
 /release
 /machine*
 /bin
+.Dockerfile-test
 .vagrant
 *.etcd
 *.log
@@ -14,5 +15,7 @@
 /hack/insta-discovery/.env
 *.test
 tools/functional-tester/docker/bin
+hack/scripts-dev/docker-dns/.Dockerfile
+hack/scripts-dev/docker-dns-srv/.Dockerfile
 hack/tls-setup/certs
 .idea
