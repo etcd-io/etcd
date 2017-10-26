@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -34,13 +34,13 @@ const (
 
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(pathMetrics, prometheus.Handler())
+	mux.Handle(pathMetrics, promhttp.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
 func HandlePrometheus(mux *http.ServeMux) {
-	mux.Handle(pathMetrics, prometheus.Handler())
+	mux.Handle(pathMetrics, promhttp.Handler())
 }
 
 // HandleHealth registers health handler on '/health'.
