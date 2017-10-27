@@ -40,35 +40,76 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 			return errExpected
 		}
 		return err
-	})
+	}, time.Second)
 }
 
-// TestBalancerUnderNetworkPartitionGet tests when one member becomes isolated,
-// first Get request fails, and following retry succeeds with client balancer
-// switching to others.
-func TestBalancerUnderNetworkPartitionGet(t *testing.T) {
+func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Delete(ctx, "a")
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
+		return err
+	}, time.Second)
+}
+
+func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Txn(ctx).
+			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
+			Then(clientv3.OpPut("foo", "bar")).
+			Else(clientv3.OpPut("foo", "baz")).Commit()
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
+		return err
+	}, time.Second)
+}
+
+// TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout tests
+// when one member becomes isolated, first quorum Get request succeeds
+// by switching endpoints within the timeout (long enough to cover endpoint switch).
+func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a")
+		return err
+	}, 7*time.Second)
+}
+
+// TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout tests
+// when one member becomes isolated, first quorum Get request fails,
+// and following retry succeeds with client balancer switching to others.
+func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
 		if err == context.DeadlineExceeded {
 			return errExpected
 		}
 		return err
-	})
+	}, time.Second)
 }
 
-func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
+	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a", clientv3.WithSerializable())
+		return err
+	}, time.Second)
+}
+
+func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
-		Size:                 3,
-		GRPCKeepAliveMinTime: time.Millisecond, // avoid too_many_pings
-		SkipCreatingClient:   true,
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 
-	// expect pin ep[0]
+	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+
+	// expect pin eps[0]
 	ccfg := clientv3.Config{
-		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		Endpoints:   []string{eps[0]},
 		DialTimeout: 3 * time.Second,
 	}
 	cli, err := clientv3.New(ccfg)
@@ -77,15 +118,15 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	}
 	defer cli.Close()
 
-	// wait for ep[0] to be pinned
+	// wait for eps[0] to be pinned
 	mustWaitPinReady(t, cli)
 
 	// add other endpoints for later endpoint switch
-	cli.SetEndpoints(clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr())
+	cli.SetEndpoints(eps...)
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	for i := 0; i < 2; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		err = op(cli, ctx)
 		cancel()
 		if err == nil {
