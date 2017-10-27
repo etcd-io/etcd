@@ -48,7 +48,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	defer watchCli.Close()
 
 	// wait for eps[lead] to be pinned
-	waitPinReady(t, watchCli)
+	mustWaitPinReady(t, watchCli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -158,7 +158,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	waitPinReady(t, cli)
+	mustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -216,7 +216,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	waitPinReady(t, cli)
+	mustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps

@@ -22,8 +22,9 @@ import (
 	"github.com/coreos/etcd/clientv3"
 )
 
-// waitPinReady waits until connection is up (new pinned address).
-func waitPinReady(t *testing.T, cli *clientv3.Client) {
+// mustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
+// Fatal on time-out.
+func mustWaitPinReady(t *testing.T, cli *clientv3.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	_, err := cli.Get(ctx, "foo")
 	cancel()
