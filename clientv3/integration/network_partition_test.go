@@ -28,9 +28,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-var (
-	errExpected = errors.New("expected error")
-)
+var errExpected = errors.New("expected error")
 
 // TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
 // first Put request fails, and following retry succeeds with client balancer
@@ -70,10 +68,8 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 
 	// expect pin ep[0]
 	ccfg := clientv3.Config{
-		Endpoints:            []string{clus.Members[0].GRPCAddr()},
-		DialTimeout:          3 * time.Second,
-		DialKeepAliveTime:    2 * time.Second,
-		DialKeepAliveTimeout: 2 * time.Second,
+		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		DialTimeout: 3 * time.Second,
 	}
 	cli, err := clientv3.New(ccfg)
 	if err != nil {
@@ -95,7 +91,6 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		if err == nil {
 			break
 		}
-
 		if err != errExpected {
 			t.Errorf("#%d: expected %v, got %v", i, errExpected, err)
 		}
