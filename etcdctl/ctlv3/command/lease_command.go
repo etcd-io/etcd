@@ -175,7 +175,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	id := leaseFromArgs(args[0])
-	
+
 	if leaseKeepAliveOnce {
 		respc, kerr := mustClientFromCmd(cmd).KeepAliveOnce(context.TODO(), id)
 		if kerr != nil {
