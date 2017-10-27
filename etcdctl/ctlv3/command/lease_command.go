@@ -150,14 +150,20 @@ func leaseListCommandFunc(cmd *cobra.Command, args []string) {
 	display.Leases(*resp)
 }
 
+var (
+	leaseKeepAliveOnce bool
+)
+
 // NewLeaseKeepAliveCommand returns the cobra command for "lease keep-alive".
 func NewLeaseKeepAliveCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "keep-alive <leaseID>",
+		Use:   "keep-alive [options] <leaseID>",
 		Short: "Keeps leases alive (renew)",
 
 		Run: leaseKeepAliveCommandFunc,
 	}
+
+	lc.Flags().BoolVar(&leaseKeepAliveOnce, "once", false, "Resets the keep-alive time to its original value and exits immediately")
 
 	return lc
 }
@@ -169,11 +175,20 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	id := leaseFromArgs(args[0])
+
+	if leaseKeepAliveOnce {
+		respc, kerr := mustClientFromCmd(cmd).KeepAliveOnce(context.TODO(), id)
+		if kerr != nil {
+			ExitWithError(ExitBadConnection, kerr)
+		}
+		display.KeepAlive(*respc)
+		return
+	}
+
 	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), id)
 	if kerr != nil {
 		ExitWithError(ExitBadConnection, kerr)
 	}
-
 	for resp := range respc {
 		display.KeepAlive(*resp)
 	}
