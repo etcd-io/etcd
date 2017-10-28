@@ -399,22 +399,19 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 	if err := checkHostURLs(cfg.APUrls); err != nil {
-		// TODO: return err in v3.4
 		addrs := make([]string, len(cfg.APUrls))
 		for i := range cfg.APUrls {
 			addrs[i] = cfg.APUrls[i].String()
 		}
-		plog.Warningf("advertise-peer-urls %q is deprecated (%v)", strings.Join(addrs, ","), err)
+		return fmt.Errorf(`--initial-advertise-peer-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
 	}
 	if err := checkHostURLs(cfg.ACUrls); err != nil {
-		// TODO: return err in v3.4
 		addrs := make([]string, len(cfg.ACUrls))
 		for i := range cfg.ACUrls {
 			addrs[i] = cfg.ACUrls[i].String()
 		}
-		plog.Warningf("advertise-client-urls %q is deprecated (%v)", strings.Join(addrs, ","), err)
+		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
 	}
-
 	// Check if conflicting flags are passed.
 	nSet := 0
 	for _, v := range []bool{cfg.Durl != "", cfg.InitialCluster != "", cfg.DNSCluster != ""} {
