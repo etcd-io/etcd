@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/grpcproxy"
+	"github.com/coreos/etcd/proxy/grpcproxy/readonly"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -75,6 +76,8 @@ var (
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
+
+	grpcProxyReadOnlyMode bool
 )
 
 func init() {
@@ -127,6 +130,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
+
+	cmd.Flags().BoolVar(&grpcProxyReadOnlyMode, "read-only", false, "read-only proxy.")
 	return &cmd
 }
 
@@ -303,6 +308,17 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 	authp := grpcproxy.NewAuthProxy(client)
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
+
+	if grpcProxyReadOnlyMode {
+		// Skip watch proxy whose method is acceptable in read-only mode.
+		kvp = readonly.NewReadOnlyKvProxy(kvp)
+		clusterp = readonly.NewReadOnlyClusterProxy(clusterp)
+		leasep = readonly.NewReadOnlyLeaseProxy(leasep)
+		mainp = readonly.NewReadOnlyMaintenanceProxy(mainp)
+		authp = readonly.NewReadOnlyAuthProxy(authp)
+		electionp = readonly.NewReadOnlyElectionProxy(electionp)
+		lockp = readonly.NewReadOnlyLockProxy(lockp)
+	}
 
 	server := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
