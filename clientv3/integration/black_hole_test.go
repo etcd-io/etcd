@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -103,30 +104,61 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 }
 
 func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAliveMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
 		return err
 	})
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveDelete(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAliveMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "foo")
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
 		return err
 	})
 }
 
 func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
-	testBalancerUnderBlackholeNoKeepAliveMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Txn(ctx).
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
 		return err
 	})
 }
 
-func testBalancerUnderBlackholeNoKeepAliveMutable(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a")
+		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+			return errExpected
+		}
+		return err
+	})
+}
+
+func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
+	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
+		_, err := cli.Get(ctx, "a", clientv3.WithSerializable())
+		if err == context.DeadlineExceeded {
+			return errExpected
+		}
+		return err
+	})
+}
+
+// testBalancerUnderBlackholeNoKeepAlive ensures that first request to blackholed endpoint
+// fails due to context timeout, but succeeds on next try, with endpoint switch.
+func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Client, context.Context) error) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -158,18 +190,21 @@ func testBalancerUnderBlackholeNoKeepAliveMutable(t *testing.T, op func(*clientv
 	clus.Members[0].Blackhole()
 
 	// fail first due to blackhole, retry should succeed
-	// TODO: first mutable operation can succeed
+	// TODO: first operation can succeed
 	// when gRPC supports better retry on non-delivered request
 	for i := 0; i < 2; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		err = op(cli, ctx)
 		cancel()
+		if err == nil {
+			break
+		}
 		if i == 0 {
-			if err != context.DeadlineExceeded {
-				t.Fatalf("#%d: err = %v, want %v", i, err, context.DeadlineExceeded)
+			if err != errExpected {
+				t.Errorf("#%d: expected %v, got %v", i, errExpected, err)
 			}
 		} else if err != nil {
-			t.Errorf("#%d: mutable operation failed with error %v", i, err)
+			t.Errorf("#%d: failed with error %v", i, err)
 		}
 	}
 }
