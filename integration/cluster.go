@@ -608,8 +608,8 @@ func (m *member) listenGRPC() error {
 	return nil
 }
 
-func (m *member) electionTimeout() time.Duration {
-	return time.Duration(m.s.Cfg.ElectionTicks) * time.Millisecond
+func (m *member) ElectionTimeout() time.Duration {
+	return time.Duration(m.s.Cfg.ElectionTicks*int(m.s.Cfg.TickMs)) * time.Millisecond
 }
 
 func (m *member) ID() types.ID { return m.s.ID() }

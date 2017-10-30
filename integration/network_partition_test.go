@@ -44,7 +44,7 @@ func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 	clus.waitNoLeader(t, minorityMembers)
 
 	// wait extra election timeout
-	time.Sleep(2 * majorityMembers[0].electionTimeout())
+	time.Sleep(2 * majorityMembers[0].ElectionTimeout())
 
 	// new leader must be from majority
 	clus.waitLeader(t, majorityMembers)
@@ -92,7 +92,7 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 	clus.waitNoLeader(t, minorityMembers)
 
 	// wait extra election timeout
-	time.Sleep(2 * majorityMembers[0].electionTimeout())
+	time.Sleep(2 * majorityMembers[0].ElectionTimeout())
 
 	// leader must be hold in majority
 	leadIndex2 := clus.waitLeader(t, majorityMembers)
