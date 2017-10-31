@@ -27,6 +27,7 @@ localhost
 mutex
 prefetching
 protobuf
+repin
 serializable
 teardown
 too_many_pings
