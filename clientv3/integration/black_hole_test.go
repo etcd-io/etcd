@@ -26,6 +26,82 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
+// TestBalancerUnderBlackholeKeepAliveWatch tests when watch discovers it cannot talk to
+// blackholed endpoint, client balancer switches to healthy one.
+// TODO: test server-to-client keepalive ping
+func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:                 2,
+		GRPCKeepAliveMinTime: 1 * time.Millisecond, // avoid too_many_pings
+	})
+	defer clus.Terminate(t)
+
+	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()}
+
+	ccfg := clientv3.Config{
+		Endpoints:            []string{eps[0]},
+		DialTimeout:          1 * time.Second,
+		DialKeepAliveTime:    1 * time.Second,
+		DialKeepAliveTimeout: 500 * time.Millisecond,
+	}
+
+	// gRPC internal implementation related.
+	pingInterval := ccfg.DialKeepAliveTime + ccfg.DialKeepAliveTimeout
+	// 3s for slow machine to process watch and reset connections
+	// TODO: only send healthy endpoint to gRPC so gRPC wont waste time to
+	// dial for unhealthy endpoint.
+	// then we can reduce 3s to 1s.
+	timeout := pingInterval + 3*time.Second
+
+	cli, err := clientv3.New(ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
+	if _, ok := <-wch; !ok {
+		t.Fatalf("watch failed on creation")
+	}
+
+	// endpoint can switch to eps[1] when it detects the failure of eps[0]
+	cli.SetEndpoints(eps...)
+
+	clus.Members[0].Blackhole()
+
+	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-wch:
+	case <-time.After(timeout):
+		t.Error("took too long to receive watch events")
+	}
+
+	clus.Members[0].Unblackhole()
+
+	// waiting for moving eps[0] out of unhealthy, so that it can be re-pined.
+	time.Sleep(ccfg.DialTimeout)
+
+	clus.Members[1].Blackhole()
+
+	// make sure client[0] can connect to eps[0] after remove the blackhole.
+	if _, err = clus.Client(0).Get(context.TODO(), "foo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = clus.Client(0).Put(context.TODO(), "foo", "bar1"); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-wch:
+	case <-time.After(timeout):
+		t.Error("took too long to receive watch events")
+	}
+}
+
 func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAliveMutable(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
