@@ -348,6 +348,58 @@ func testLeaderElection(t *testing.T, preVote bool) {
 	}
 }
 
+func TestLearnerElectionTimeout(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	n1.prs[2].isLearner = true
+
+	n2 := newTestRaft(2, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	n2.isLearner = true
+	n2.prs[2].isLearner = true
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+
+	nt := newNetwork(n1, n2)
+
+	// Learner can't start election
+	setRandomizedElectionTimeout(n2, n2.electionTimeout)
+	for i := 0; i < n2.electionTimeout; i++ {
+		n2.tick()
+	}
+	if n1.state != StateFollower {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateFollower {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
+	}
+
+	// n1 should become leader
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if n1.state != StateLeader {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.state != StateFollower {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateFollower)
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
+
+	n1.addNode(2)
+	n2.addNode(2)
+	if n2.isLearner {
+		t.Errorf("peer 2 isLearner: %t, want %t", n2.isLearner, false)
+	}
+
+	// n2 start election, should become leader
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+	if n1.state != StateFollower {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateLeader {
+		t.Errorf("peer 2 state: %s, want %s", n2.state, StateLeader)
+	}
+}
+
 func TestLeaderCycle(t *testing.T) {
 	testLeaderCycle(t, false)
 }
@@ -1058,7 +1110,7 @@ func TestCommit(t *testing.T) {
 
 		sm := newTestRaft(1, []uint64{1}, 5, 1, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1)
+			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -2326,6 +2378,47 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func TestRestoreWithLearner(t *testing.T) {
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
+		},
+	}
+
+	storage := NewMemoryStorage()
+	sm := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, storage)
+	if ok := sm.restore(s); !ok {
+		t.Fatal("restore fail, want succeed")
+	}
+
+	if sm.raftLog.lastIndex() != s.Metadata.Index {
+		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Metadata.Index)
+	}
+	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
+		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
+	}
+	sg := sm.nodes()
+	if len(sg) != len(s.Metadata.ConfState.Nodes)+len(s.Metadata.ConfState.Learners) {
+		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState)
+	}
+	for _, n := range s.Metadata.ConfState.Nodes {
+		if sm.prs[n].isLearner {
+			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs[n], true)
+		}
+	}
+	for _, n := range s.Metadata.ConfState.Learners {
+		if !sm.prs[n].isLearner {
+			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs[n], false)
+		}
+	}
+
+	if ok := sm.restore(s); ok {
+		t.Fatal("restore succeed, want fail")
+	}
+}
+
 func TestRestoreIgnoreSnapshot(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
 	commit := uint64(1)
@@ -2566,6 +2659,23 @@ func TestAddNode(t *testing.T) {
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
+	}
+}
+
+func TestAddLearner(t *testing.T) {
+	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	r.pendingConf = true
+	r.addLearner(2)
+	if r.pendingConf {
+		t.Errorf("pendingConf = %v, want false", r.pendingConf)
+	}
+	nodes := r.nodes()
+	wnodes := []uint64{1, 2}
+	if !reflect.DeepEqual(nodes, wnodes) {
+		t.Errorf("nodes = %v, want %v", nodes, wnodes)
+	}
+	if !r.prs[2].isLearner {
+		t.Fatalf("node 2 has suffrage %t, want %t", r.prs[2].isLearner, true)
 	}
 }
 
@@ -3338,10 +3448,17 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
+			learners := make(map[uint64]bool, 0)
+			for i, pr := range p.(*raft).prs {
+				if pr.isLearner {
+					learners[i] = true
+				}
+			}
 			v.id = id
 			v.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
-				v.prs[peerAddrs[i]] = &Progress{}
+				_, isLearner := learners[peerAddrs[i]]
+				v.prs[peerAddrs[i]] = &Progress{isLearner: isLearner}
 			}
 			v.reset(v.Term)
 			npeers[id] = v
