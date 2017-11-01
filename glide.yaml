@@ -5,7 +5,7 @@ import:
 - package: github.com/bgentry/speakeasy
   version: v0.1.0
 - package: github.com/coreos/bbolt
-  version: v1.3.1-coreos.2
+  version: v1.3.1-coreos.3
 - package: github.com/coreos/go-semver
   version: v0.2.0
   subpackages:
@@ -20,6 +20,8 @@ import:
   version: v3
   subpackages:
   - capnslog
+- package: github.com/cpuguy83/go-md2man
+  version: 23709d0847197db6021a51fdb193e66e9222d4e7
 - package: github.com/dustin/go-humanize
   version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
 - package: github.com/ghodss/yaml
@@ -28,6 +30,8 @@ import:
   version: v0.4
   subpackages:
   - proto
+- package: github.com/gorilla/websocket
+  version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
 - package: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:

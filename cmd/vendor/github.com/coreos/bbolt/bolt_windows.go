@@ -62,7 +62,7 @@ func flock(db *DB, mode os.FileMode, exclusive bool, timeout time.Duration) erro
 	if timeout != 0 {
 		t = time.Now()
 	}
-	fd := db.file.Fd()
+	fd := f.Fd()
 	var flag uint32 = flagLockFailImmediately
 	if exclusive {
 		flag |= flagLockExclusive
