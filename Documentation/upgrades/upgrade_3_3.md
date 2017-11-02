@@ -6,9 +6,169 @@ In the general case, upgrading from etcd 3.2 to 3.3 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Client upgrade checklists
+### Upgrade checklists
 
-3.3 introduces breaking changes (TODO: update this before 3.3 release).
+Highlighted breaking changes in 3.3.
+
+#### Change in `etcdserver.EtcdServer` struct
+
+`etcdserver.EtcdServer` has changed the type of its member field `*etcdserver.ServerConfig` to `etcdserver.ServerConfig`. And `etcdserver.NewServer` now takes `etcdserver.ServerConfig`, instead of `*etcdserver.ServerConfig`.
+
+Before and after (e.g. [k8s.io/kubernetes/test/e2e_node/services/etcd.go](https://github.com/kubernetes/kubernetes/blob/release-1.8/test/e2e_node/services/etcd.go#L50-L55))
+
+```diff
+import "github.com/coreos/etcd/etcdserver"
+
+type EtcdServer struct {
+	*etcdserver.EtcdServer
+-	config *etcdserver.ServerConfig
++	config etcdserver.ServerConfig
+}
+
+func NewEtcd(dataDir string) *EtcdServer {
+-	config := &etcdserver.ServerConfig{
++	config := etcdserver.ServerConfig{
+		DataDir: dataDir,
+        ...
+	}
+	return &EtcdServer{config: config}
+}
+
+func (e *EtcdServer) Start() error {
+	var err error
+	e.EtcdServer, err = etcdserver.NewServer(e.config)
+    ...
+```
+
+#### Change in `embed.EtcdServer` struct
+
+Field `LogOutput` is added to `embed.Config`:
+
+```diff
+package embed
+
+type Config struct {
+ 	Debug bool `json:"debug"`
+ 	LogPkgLevels string `json:"log-package-levels"`
++	LogOutput string `json:"log-output"`
+ 	...
+```
+
+Before gRPC server warnings were logged in etcdserver.
+
+```
+WARNING: 2017/11/02 11:35:51 grpc: addrConn.resetTransport failed to create client transport: connection error: desc = "transport: Error while dialing dial tcp: operation was canceled"; Reconnecting to {localhost:2379 <nil>}
+WARNING: 2017/11/02 11:35:51 grpc: addrConn.resetTransport failed to create client transport: connection error: desc = "transport: Error while dialing dial tcp: operation was canceled"; Reconnecting to {localhost:2379 <nil>}
+```
+
+From v3.3, gRPC server logs are disabled by default.
+
+```go
+import "github.com/coreos/etcd/embed"
+
+cfg := &embed.Config{Debug: false}
+cfg.SetupLogging()
+```
+
+Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
+
+#### Change in `/health` endpoint response value
+
+Previously, `[endpoint]:[client-port]/health` returns manually marshaled JSON value. 3.3 instead defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and returns properly encoded JSON value with errors, if any.
+
+Before
+
+```bash
+$ curl http://localhost:2379/health
+{"health": "true"}
+```
+
+After
+
+```bash
+$ curl http://localhost:2379/health
+{"health":true}
+
+# Or
+{"health":false,"errors":["NOSPACE"]}
+```
+
+#### Change in gRPC gateway HTTP endpoints (replaced `/v3alpha` with `/v3beta`)
+
+Before
+
+```bash
+curl -L http://localhost:2379/v3alpha/kv/put \
+	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+```
+
+After
+
+```bash
+curl -L http://localhost:2379/v3beta/kv/put \
+	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+```
+
+Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.
+
+#### Deprecate `quay.io/coreos/etcd` for Docker container
+
+Before
+
+```bash
+docker pull quay.io/coreos/etcd:v3.2.5
+```
+
+After
+
+```bash
+docker pull gcr.io/etcd-development/etcd:v3.3.0
+```
+
+#### Deprecate `golang.org/x/net/context` imports
+
+`clientv3` has deprecated `golang.org/x/net/context`. If a project vendors `golang.org/x/net/context` in other code (e.g. etcd generated protocol buffer code) and imports `github.com/coreos/etcd/clientv3`, it requires Go 1.9+ to compile.
+
+Before
+
+```go
+import "golang.org/x/net/context"
+cli.Put(context.Background(), "f", "v")
+```
+
+After
+
+```go
+import "context"
+cli.Put(context.Background(), "f", "v")
+```
+
+#### Upgrade grpc/grpc-go to `v1.7.x`
+
+3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.x`.
+
+##### Deprecate `grpclog.Logger`
+
+`grpclog.Logger` has been deprecated in favor of [`grpclog.LoggerV2`](https://github.com/grpc/grpc-go/blob/master/grpclog/loggerv2.go). `clientv3.Logger` is now `grpclog.LoggerV2`.
+
+Before
+
+```go
+import "github.com/coreos/etcd/clientv3"
+clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
+```
+
+After
+
+```go
+import "github.com/coreos/etcd/clientv3"
+import "google.golang.org/grpc/grpclog"
+clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+
+// log.New above cannot be used (not implement grpclog.LoggerV2 interface)
+```
+
+##### Deprecate `grpc.ErrClientConnTimeout`
 
 Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.3 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
