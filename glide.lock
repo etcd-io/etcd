@@ -1,5 +1,5 @@
-hash: cdebbb3363633998c182ec2dfffe470f7cec39446630fad859b1bb498a0603a0
-updated: 2017-11-15T16:59:54.336266-08:00
+hash: 1f8c90fc46d1142a8536aac6461ecc5c8ba22351f90e17dad20b18d21b64c413
+updated: 2017-11-16T12:42:55.67763215-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -7,10 +7,10 @@ imports:
   - quantile
 - name: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
-- name: github.com/boltdb/bolt
-  version: 583e8937c61f1af6513608ccc75c97b6abdf4ff9
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
+- name: github.com/coreos/bbolt
+  version: 3c6cbfb299c11444eb2f8c9d48f0d2ce09157423
 - name: github.com/coreos/go-semver
   version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:
@@ -133,7 +133,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: b19bf474d317b857955b12035d2c5acb57ce8b01
+  version: 4ee4af566555f5fbe026368b75596286a312663a
   subpackages:
   - secure/bidirule
   - transform
