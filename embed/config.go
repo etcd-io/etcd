@@ -15,11 +15,13 @@
 package embed
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -31,6 +33,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 
+	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
 	"google.golang.org/grpc"
 )
@@ -136,6 +139,7 @@ type Config struct {
 
 	Debug                 bool   `json:"debug"`
 	LogPkgLevels          string `json:"log-package-levels"`
+	LogOutput             string `json:"log-output"`
 	EnablePprof           bool   `json:"enable-pprof"`
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
@@ -226,6 +230,43 @@ func NewConfig() *Config {
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
+}
+
+// SetupLogging initializes etcd logging.
+// Must be called after flag parsing.
+func (cfg *Config) SetupLogging() {
+	cfg.ClientTLSInfo.HandshakeFailure = func(conn *tls.Conn, err error) {
+		plog.Infof("rejected connection from %q (%v)", conn.RemoteAddr().String(), err)
+	}
+	cfg.PeerTLSInfo.HandshakeFailure = cfg.ClientTLSInfo.HandshakeFailure
+
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+	if cfg.Debug {
+		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+		grpc.EnableTracing = true
+	}
+	if cfg.LogPkgLevels != "" {
+		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
+		settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
+		if err != nil {
+			plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
+			return
+		}
+		repoLog.SetLogLevel(settings)
+	}
+
+	// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
+	// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
+	// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
+	switch cfg.LogOutput {
+	case "stdout":
+		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
+	case "stderr":
+		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
+	case "default":
+	default:
+		plog.Panicf(`unknown log-output %q (only supports "default", "stdout", "stderr")`, cfg.LogOutput)
+	}
 }
 
 func ConfigFromFile(path string) (*Config, error) {
