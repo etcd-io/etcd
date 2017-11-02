@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -39,6 +38,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy/httpproxy"
 	"github.com/coreos/etcd/version"
+
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
@@ -69,7 +69,7 @@ func startEtcdOrProxyV2() {
 		}
 		os.Exit(1)
 	}
-	setupLogging(cfg)
+	cfg.Config.SetupLogging()
 
 	var stopped <-chan struct{}
 	var errc <-chan error
@@ -385,41 +385,6 @@ func identifyDataDirOrDie(dir string) dirType {
 		return dirProxy
 	}
 	return dirEmpty
-}
-
-func setupLogging(cfg *config) {
-	cfg.ClientTLSInfo.HandshakeFailure = func(conn *tls.Conn, err error) {
-		plog.Infof("rejected connection from %q (%v)", conn.RemoteAddr().String(), err)
-	}
-	cfg.PeerTLSInfo.HandshakeFailure = cfg.ClientTLSInfo.HandshakeFailure
-
-	capnslog.SetGlobalLogLevel(capnslog.INFO)
-	if cfg.Debug {
-		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
-		grpc.EnableTracing = true
-	}
-	if cfg.LogPkgLevels != "" {
-		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
-		settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
-		if err != nil {
-			plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
-			return
-		}
-		repoLog.SetLogLevel(settings)
-	}
-
-	// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-	// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
-	// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-	switch cfg.logOutput {
-	case "stdout":
-		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
-	case "stderr":
-		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
-	case "default":
-	default:
-		plog.Panicf(`unknown log-output %q (only supports "default", "stdout", "stderr")`, cfg.logOutput)
-	}
 }
 
 func checkSupportArch() {
