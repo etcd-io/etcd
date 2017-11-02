@@ -15,15 +15,11 @@ RUN apt-get -y update \
   sudo \
   bash \
   curl \
-  wget \
   tar \
   git \
   netcat \
-  libaspell-dev \
-  libhunspell-dev \
-  hunspell-en-us \
-  aspell-en \
-  shellcheck \
+  bind9 \
+  dnsutils \
   && apt-get -y update \
   && apt-get -y upgrade \
   && apt-get -y autoremove \
@@ -39,19 +35,14 @@ RUN rm -rf ${GOROOT} \
   && mkdir -p ${GOPATH}/src ${GOPATH}/bin \
   && go version
 
-RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
-WORKDIR ${GOPATH}/src/github.com/coreos/etcd
+RUN mkdir -p /var/bind /etc/bind
+RUN chown root:bind /var/bind /etc/bind
+ADD Procfile /Procfile
+ADD run.sh /run.sh
 
-ADD ./scripts/install-marker.sh /tmp/install-marker.sh
+ADD named.conf etcd.zone rdns.zone /etc/bind/
+RUN chown root:bind /etc/bind/named.conf /etc/bind/etcd.zone /etc/bind/rdns.zone
+ADD resolv.conf /etc/resolv.conf
 
-RUN go get -v -u -tags spell github.com/chzchzchz/goword \
-  && go get -v -u github.com/coreos/license-bill-of-materials \
-  && go get -v -u honnef.co/go/tools/cmd/gosimple \
-  && go get -v -u honnef.co/go/tools/cmd/unused \
-  && go get -v -u honnef.co/go/tools/cmd/staticcheck \
-  && go get -v -u github.com/wadey/gocovmerge \
-  && go get -v -u github.com/gordonklaus/ineffassign \
-  && /tmp/install-marker.sh amd64 \
-  && rm -f /tmp/install-marker.sh \
-  && curl -s https://codecov.io/bash >/codecov \
-  && chmod 700 /codecov
+RUN go get github.com/mattn/goreman
+CMD ["/run.sh"]
