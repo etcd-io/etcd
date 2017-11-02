@@ -1011,6 +1011,10 @@ func (ac *addrConn) transportMonitor() {
 		default:
 		}
 		ac.mu.Lock()
+		if ac.state == connectivity.Shutdown {
+			ac.mu.Unlock()
+			return
+		}
 		// Set connectivity state to TransientFailure before calling
 		// resetTransport. Transition READY->CONNECTING is not valid.
 		ac.state = connectivity.TransientFailure
