@@ -55,6 +55,8 @@ const (
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
 
+	DefaultLogOutput = "default"
+
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
@@ -225,6 +227,7 @@ func NewConfig() *Config {
 		ClusterState:          ClusterStateFlagNew,
 		InitialClusterToken:   "etcd-cluster",
 		StrictReconfigCheck:   true,
+		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              true,
 		AuthToken:             "simple",
@@ -266,9 +269,9 @@ func (cfg *Config) SetupLogging() {
 		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 	case "stderr":
 		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
-	case "default":
+	case DefaultLogOutput:
 	default:
-		plog.Panicf(`unknown log-output %q (only supports "default", "stdout", "stderr")`, cfg.LogOutput)
+		plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
 	}
 }
 
