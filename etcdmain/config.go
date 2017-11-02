@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
+
 	"github.com/ghodss/yaml"
 )
 
@@ -80,7 +81,6 @@ type config struct {
 	configFile   string
 	printVersion bool
 	ignored      []string
-	logOutput    string
 }
 
 // configFlags has the set of flags used for command line parsing a Config
@@ -192,7 +192,7 @@ func newConfig() *config {
 	// logging
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
-	fs.StringVar(&cfg.logOutput, "log-output", "default", "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.")
+	fs.StringVar(&cfg.LogOutput, "log-output", "default", "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.")
 
 	// unsafe
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
