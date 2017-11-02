@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 const (
@@ -244,6 +245,8 @@ func (cfg *Config) SetupLogging() {
 	if cfg.Debug {
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
 		grpc.EnableTracing = true
+	} else {
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 	}
 	if cfg.LogPkgLevels != "" {
 		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
