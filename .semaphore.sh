@@ -13,4 +13,4 @@ docker run \
 	gcr.io/etcd-development/etcd-test:go1.9.2 \
 	/bin/bash -c "${TEST_OPTS} ./test 2>&1 | tee test-${TEST_SUFFIX}.log"
 
-! grep FAIL -A10 -B50 test-${TEST_SUFFIX}.log
+! egrep "(--- FAIL:|leak)" -A10 -B50 test-${TEST_SUFFIX}.log
