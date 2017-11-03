@@ -173,7 +173,6 @@ func (ht *serverHandlerTransport) do(fn func()) error {
 		case <-ht.closedCh:
 			return ErrConnClosing
 		}
-
 	}
 }
 
@@ -183,6 +182,7 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, st *status.Status) erro
 		ht.mu.Unlock()
 		return nil
 	}
+	ht.streamDone = true
 	ht.mu.Unlock()
 	err := ht.do(func() {
 		ht.writeCommonHeaders(s)
@@ -223,9 +223,6 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, st *status.Status) erro
 		}
 	})
 	close(ht.writes)
-	ht.mu.Lock()
-	ht.streamDone = true
-	ht.mu.Unlock()
 	return err
 }
 

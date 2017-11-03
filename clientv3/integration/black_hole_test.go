@@ -18,6 +18,9 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -25,6 +28,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc/grpclog"
 )
 
 // TestBalancerUnderBlackholeKeepAliveWatch tests when watch discovers it cannot talk to
@@ -159,6 +164,14 @@ func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
 // testBalancerUnderBlackholeNoKeepAlive ensures that first request to blackholed endpoint
 // fails due to context timeout, but succeeds on next try, with endpoint switch.
 func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Client, context.Context) error) {
+	clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+
+	defer func() {
+		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	}()
+
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
@@ -168,6 +181,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	defer clus.Terminate(t)
 
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()}
+	fmt.Println("[DEBUG] eps:", eps)
 
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},
@@ -187,14 +201,18 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	cli.SetEndpoints(eps...)
 
 	// blackhole eps[0]
+	fmt.Println("[DEBUG] Blackhole 1:", eps[0])
 	clus.Members[0].Blackhole()
+	fmt.Println("[DEBUG] Blackhole 2:", eps[0])
 
 	// fail first due to blackhole, retry should succeed
 	// TODO: first operation can succeed
 	// when gRPC supports better retry on non-delivered request
 	for i := 0; i < 2; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		fmt.Println("[DEBUG] ep 1")
 		err = op(cli, ctx)
+		fmt.Println("[DEBUG] ep 2", err)
 		cancel()
 		if err == nil {
 			break

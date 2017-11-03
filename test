@@ -82,16 +82,16 @@ fi
 
 function unit_pass {
 	echo "Running unit tests..."
-	GO_TEST_FLAG=""
-	if [ "${VERBOSE}" == "1" ]; then
-		GO_TEST_FLAG="-v"
-	fi
-	if [ "${VERBOSE}" == "2" ]; then
-		GO_TEST_FLAG="-v"
-		export CLIENT_DEBUG=1
-	fi
-	# only -run=Test so examples can run in integration tests
-	go test ${GO_TEST_FLAG} -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
+	# GO_TEST_FLAG=""
+	# if [ "${VERBOSE}" == "1" ]; then
+	# 	GO_TEST_FLAG="-v"
+	# fi
+	# if [ "${VERBOSE}" == "2" ]; then
+	# 	GO_TEST_FLAG="-v"
+	# 	export CLIENT_DEBUG=1
+	# fi
+	# # only -run=Test so examples can run in integration tests
+	# go test ${GO_TEST_FLAG} -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
 }
 
 function integration_pass {
@@ -141,7 +141,7 @@ function functional_pass {
 	rm -rf ./agent-*
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
-		echo "FAIL with exit code" ${ETCD_TESTER_EXIT_CODE}
+		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi
 }
@@ -211,7 +211,7 @@ function cov_pass {
 	# held failures to generate the full coverage file, now fail
 	if [ -n "$failed" ]; then
 		for f in $failed; do
-			echo FAIL "$f"
+			echo "--- FAIL:" "$f"
 		done
 		exit 255
 	fi
@@ -225,11 +225,11 @@ function e2e_pass {
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e" &
-	e2epid="$!"
+	# go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e" &
+	# e2epid="$!"
 	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
 	intpid="$!"
-	wait $e2epid
+	# wait $e2epid
 	wait $intpid
 	integration_extra "$@"
 }
@@ -262,7 +262,7 @@ function release_pass {
 	set -e
 	case $result in
 		0)	;;
-		*)	echo "FAIL with" ${result}
+		*)	echo "--- FAIL:" ${result}
 			exit $result
 			;;
 	esac
