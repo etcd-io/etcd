@@ -192,6 +192,7 @@ func (bw *balancerWrapper) lbWatcher() {
 			}
 			for a, c := range bw.conns {
 				if _, ok := resAddrs[a]; !ok {
+					grpclog.Infof("[DEBUG] will del subconn %q", a.Addr)
 					del = append(del, c)
 					delete(bw.conns, a)
 					// Keep the state of this sc in bw.connSt until its state becomes Shutdown.
@@ -199,6 +200,7 @@ func (bw *balancerWrapper) lbWatcher() {
 			}
 			bw.mu.Unlock()
 			for _, a := range add {
+				grpclog.Infof("[DEBUG] add subconn %q", a.Addr)
 				sc, err := bw.cc.NewSubConn([]resolver.Address{a}, balancer.NewSubConnOptions{})
 				if err != nil {
 					grpclog.Warningf("Error creating connection to %v. Err: %v", a, err)
@@ -231,6 +233,7 @@ func (bw *balancerWrapper) HandleSubConnStateChange(sc balancer.SubConn, s conne
 	if s == connectivity.Idle {
 		sc.Connect()
 	}
+	grpclog.Infof("balancerWrapper: handle subconn state change: %p, %v (was for %q)", sc, s, scSt.addr.Addr)
 	oldS := scSt.s
 	scSt.s = s
 	if oldS != connectivity.Ready && s == connectivity.Ready {

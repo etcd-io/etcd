@@ -255,8 +255,12 @@ func (b *simpleBalancer) updateNotifyLoop() {
 
 func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 	if msg == notifyNext {
+		logger.Infof("1 notifyAddrs notifyNext sending empty to b.notifyCh")
 		select {
 		case b.notifyCh <- []grpc.Address{}:
+			if logger.V(4) {
+				logger.Infof("2 notifyAddrs notifyNext sent empty to b.notifyCh")
+			}
 		case <-b.stopc:
 			return
 		}
@@ -277,8 +281,12 @@ func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 		}
 	}
 
+	logger.Infof("1 notifyAddrs sending %+v to b.notifyCh", addrs)
 	select {
 	case b.notifyCh <- addrs:
+		if logger.V(4) {
+			logger.Infof("2 notifyAddrs sent %+v to b.notifyCh", addrs)
+		}
 		if waitDown {
 			select {
 			case <-downc:
