@@ -141,7 +141,7 @@ function functional_pass {
 	rm -rf ./agent-*
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
-		echo "FAIL with exit code" ${ETCD_TESTER_EXIT_CODE}
+		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi
 }
@@ -211,7 +211,7 @@ function cov_pass {
 	# held failures to generate the full coverage file, now fail
 	if [ -n "$failed" ]; then
 		for f in $failed; do
-			echo FAIL "$f"
+			echo "--- FAIL:" "$f"
 		done
 		exit 255
 	fi
@@ -262,7 +262,7 @@ function release_pass {
 	set -e
 	case $result in
 		0)	;;
-		*)	echo "FAIL with" ${result}
+		*)	echo "--- FAIL:" ${result}
 			exit $result
 			;;
 	esac
