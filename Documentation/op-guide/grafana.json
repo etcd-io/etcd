@@ -550,7 +550,7 @@
                         "values": []
                     },
                     "yaxes": [{
-                            "format": "short",
+                            "format": "Bps",
                             "label": null,
                             "logBase": 1,
                             "max": null,
