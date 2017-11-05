@@ -15,6 +15,11 @@
 package rpctypes
 
 import (
+	"context"
+	"io"
+	"os"
+
+	netctx "golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -209,4 +214,34 @@ func ErrorDesc(err error) string {
 		return s.Message()
 	}
 	return err.Error()
+}
+
+// ConvertCode converts a standard Go error into its canonical code. Note that
+// this is only used to translate the error returned by the server applications.
+// (copied from grpc.convertCode)
+// TODO: remove "golang.org/x/net/context" in Go 1.10
+func ConvertCode(err error) codes.Code {
+	switch err {
+	case nil:
+		return codes.OK
+	case io.EOF:
+		return codes.OutOfRange
+	case io.ErrClosedPipe, io.ErrNoProgress, io.ErrShortBuffer, io.ErrShortWrite, io.ErrUnexpectedEOF:
+		return codes.FailedPrecondition
+	case os.ErrInvalid:
+		return codes.InvalidArgument
+	case context.Canceled, netctx.Canceled:
+		return codes.Canceled
+	case context.DeadlineExceeded, netctx.DeadlineExceeded:
+		return codes.DeadlineExceeded
+	}
+	switch {
+	case os.IsExist(err):
+		return codes.AlreadyExists
+	case os.IsNotExist(err):
+		return codes.NotFound
+	case os.IsPermission(err):
+		return codes.PermissionDenied
+	}
+	return codes.Unknown
 }
