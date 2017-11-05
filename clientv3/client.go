@@ -507,10 +507,16 @@ func toErr(ctx context.Context, err error) error {
 	code := ev.Code()
 	switch code {
 	case codes.DeadlineExceeded:
-		fallthrough
+		if ctx.Err() != nil {
+			err = ctx.Err()
+		} else if strings.Contains(err.Error(), "context deadline exceeded") {
+			err = context.DeadlineExceeded
+		}
 	case codes.Canceled:
 		if ctx.Err() != nil {
 			err = ctx.Err()
+		} else if strings.Contains(err.Error(), "context canceled") {
+			err = context.Canceled
 		}
 	case codes.Unavailable:
 	case codes.FailedPrecondition:
