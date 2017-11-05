@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -91,7 +92,7 @@ func (wr *WatchResponse) Err() error {
 		return v3rpc.ErrCompacted
 	case wr.Canceled:
 		if len(wr.cancelReason) != 0 {
-			return v3rpc.Error(grpc.Errorf(codes.FailedPrecondition, "%s", wr.cancelReason))
+			return v3rpc.Error(status.Error(codes.FailedPrecondition, wr.cancelReason))
 		}
 		return v3rpc.ErrFutureRev
 	}
