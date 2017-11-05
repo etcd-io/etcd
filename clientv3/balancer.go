@@ -22,12 +22,13 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ErrNoAddrAvilable is returned by Get() when the balancer does not have
 // any active connection to endpoints at the time.
 // This error is returned only when opts.BlockingWait is true.
-var ErrNoAddrAvilable = grpc.Errorf(codes.Unavailable, "there is no address available")
+var ErrNoAddrAvilable = status.Error(codes.Unavailable, "there is no address available")
 
 type notifyMsg int
 
