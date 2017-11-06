@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
-	"google.golang.org/grpc/codes"
+
 	"google.golang.org/grpc/status"
 )
 
@@ -70,7 +70,7 @@ var toGRPCErrorMap = map[error]error{
 func togRPCError(err error) error {
 	grpcErr, ok := toGRPCErrorMap[err]
 	if !ok {
-		return status.Error(codes.Unknown, err.Error())
+		return status.Error(rpctypes.ConvertCode(err), err.Error())
 	}
 	return grpcErr
 }
