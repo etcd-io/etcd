@@ -467,14 +467,14 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
-
-	var resp pb.AuthUserGetResponse
-
 	user := getUser(tx, r.Name)
+	tx.Unlock()
+
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
+
+	var resp pb.AuthUserGetResponse
 	resp.Roles = append(resp.Roles, user.Roles...)
 	return &resp, nil
 }
@@ -482,9 +482,8 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
-
 	users := getAllUsers(tx)
+	tx.Unlock()
 
 	resp := &pb.AuthUserListResponse{Users: make([]string, len(users))}
 	for i := range users {
@@ -551,9 +550,8 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 func (as *authStore) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
-
 	roles := getAllRoles(tx)
+	tx.Unlock()
 
 	resp := &pb.AuthRoleListResponse{Roles: make([]string, len(roles))}
 	for i := range roles {
@@ -785,9 +783,9 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 
 	tx := as.be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
-
 	u := getUser(tx, authInfo.Username)
+	tx.Unlock()
+
 	if u == nil {
 		return ErrUserNotFound
 	}
@@ -1092,9 +1090,9 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 func (as *authStore) HasRole(user, role string) bool {
 	tx := as.be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
-
 	u := getUser(tx, user)
+	tx.Unlock()
+
 	if u == nil {
 		plog.Warningf("tried to check user %s has role %s, but user %s doesn't exist", user, role, user)
 		return false
