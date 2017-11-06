@@ -484,15 +484,13 @@ func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListRespon
 	tx.Lock()
 	defer tx.Unlock()
 
-	var resp pb.AuthUserListResponse
-
 	users := getAllUsers(tx)
 
-	for _, u := range users {
-		resp.Users = append(resp.Users, string(u.Name))
+	resp := &pb.AuthUserListResponse{Users: make([]string, len(users))}
+	for i := range users {
+		resp.Users[i] = string(users[i].Name)
 	}
-
-	return &resp, nil
+	return resp, nil
 }
 
 func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
@@ -555,15 +553,13 @@ func (as *authStore) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListRespon
 	tx.Lock()
 	defer tx.Unlock()
 
-	var resp pb.AuthRoleListResponse
-
 	roles := getAllRoles(tx)
 
-	for _, r := range roles {
-		resp.Roles = append(resp.Roles, string(r.Name))
+	resp := &pb.AuthRoleListResponse{Roles: make([]string, len(roles))}
+	for i := range roles {
+		resp.Roles[i] = string(roles[i].Name)
 	}
-
-	return &resp, nil
+	return resp, nil
 }
 
 func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
@@ -823,18 +819,15 @@ func getAllUsers(tx backend.BatchTx) []*authpb.User {
 		return nil
 	}
 
-	var users []*authpb.User
-
-	for _, v := range vs {
+	users := make([]*authpb.User, len(vs))
+	for i := range vs {
 		user := &authpb.User{}
-		err := user.Unmarshal(v)
+		err := user.Unmarshal(vs[i])
 		if err != nil {
 			plog.Panicf("failed to unmarshal user struct: %s", err)
 		}
-
-		users = append(users, user)
+		users[i] = user
 	}
-
 	return users
 }
 
@@ -870,18 +863,15 @@ func getAllRoles(tx backend.BatchTx) []*authpb.Role {
 		return nil
 	}
 
-	var roles []*authpb.Role
-
-	for _, v := range vs {
+	roles := make([]*authpb.Role, len(vs))
+	for i := range vs {
 		role := &authpb.Role{}
-		err := role.Unmarshal(v)
+		err := role.Unmarshal(vs[i])
 		if err != nil {
 			plog.Panicf("failed to unmarshal role struct: %s", err)
 		}
-
-		roles = append(roles, role)
+		roles[i] = role
 	}
-
 	return roles
 }
 
