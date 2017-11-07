@@ -16,14 +16,22 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 )
+
+const minHealthRetryDuration = 3 * time.Second
+const unknownService = "unknown service grpc.health.v1.Health"
+
+type healthCheckFunc func(ep string) (bool, error)
 
 // ErrNoAddrAvilable is returned by Get() when the balancer does not have
 // any active connection to endpoints at the time.
@@ -53,6 +61,10 @@ type simpleBalancer struct {
 	readyc    chan struct{}
 	readyOnce sync.Once
 
+	// healthCheck checks an endpoint's health.
+	healthCheck        healthCheckFunc
+	healthCheckTimeout time.Duration
+
 	// mu protects all fields below.
 	mu sync.RWMutex
 
@@ -63,7 +75,9 @@ type simpleBalancer struct {
 	downc chan struct{}
 
 	// stopc is closed to signal updateNotifyLoop should stop.
-	stopc chan struct{}
+	stopc    chan struct{}
+	stopOnce sync.Once
+	wg       sync.WaitGroup
 
 	// donec closes when all goroutines are exited
 	donec chan struct{}
@@ -76,6 +90,9 @@ type simpleBalancer struct {
 	// have a map from hosts to the original endpoint.
 	hostPort2ep map[string]string
 
+	// unhealthy tracks the last unhealthy time of endpoints.
+	unhealthy map[string]time.Time
+
 	// pinAddr is the currently pinned address; set to the empty string on
 	// initialization and shutdown.
 	pinAddr string
@@ -83,7 +100,7 @@ type simpleBalancer struct {
 	closed bool
 }
 
-func newSimpleBalancer(eps []string) *simpleBalancer {
+func newSimpleBalancer(eps []string, timeout time.Duration, hc healthCheckFunc) *simpleBalancer {
 	notifyCh := make(chan []grpc.Address)
 	addrs := eps2addrs(eps)
 	sb := &simpleBalancer{
@@ -91,15 +108,27 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 		eps:          eps,
 		notifyCh:     notifyCh,
 		readyc:       make(chan struct{}),
+		healthCheck:  hc,
 		upc:          make(chan struct{}),
 		stopc:        make(chan struct{}),
 		downc:        make(chan struct{}),
 		donec:        make(chan struct{}),
 		updateAddrsC: make(chan notifyMsg),
 		hostPort2ep:  getHostPort2ep(eps),
+		unhealthy:    make(map[string]time.Time),
 	}
+	if timeout < minHealthRetryDuration {
+		timeout = minHealthRetryDuration
+	}
+	sb.healthCheckTimeout = timeout
+
 	close(sb.downc)
 	go sb.updateNotifyLoop()
+	sb.wg.Add(1)
+	go func() {
+		defer sb.wg.Done()
+		sb.updateUnhealthy()
+	}()
 	return sb
 }
 
@@ -114,15 +143,9 @@ func (b *simpleBalancer) ConnectNotify() <-chan struct{} {
 func (b *simpleBalancer) ready() <-chan struct{} { return b.readyc }
 
 func (b *simpleBalancer) endpoint(hostPort string) string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.hostPort2ep[hostPort]
-}
-
-func (b *simpleBalancer) endpoints() []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return b.eps
+	return b.hostPort2ep[hostPort]
 }
 
 func (b *simpleBalancer) pinned() string {
@@ -131,13 +154,34 @@ func (b *simpleBalancer) pinned() string {
 	return b.pinAddr
 }
 
-func getHostPort2ep(eps []string) map[string]string {
-	hm := make(map[string]string, len(eps))
-	for i := range eps {
-		_, host, _ := parseEndpoint(eps[i])
-		hm[host] = eps[i]
+func (b *simpleBalancer) hostPortError(hostPort string, err error) {
+	b.mu.Lock()
+	if _, ok := b.hostPort2ep[hostPort]; ok {
+		b.unhealthy[hostPort] = time.Now()
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %q is marked unhealthy (%q)", hostPort, err.Error())
+		}
+	} else {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %q is stale (skip marking as unhealthy on %q)", hostPort, err.Error())
+		}
 	}
-	return hm
+	b.mu.Unlock()
+}
+
+func (b *simpleBalancer) removeUnhealthy(hostPort, msg string) {
+	b.mu.Lock()
+	if _, ok := b.unhealthy[hostPort]; ok {
+		delete(b.unhealthy, hostPort)
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %q is removed from unhealthy (%q)", hostPort, msg)
+		}
+	} else {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %q was not in unhealthy (%q)", hostPort, msg)
+		}
+	}
+	b.mu.Unlock()
 }
 
 func (b *simpleBalancer) updateAddrs(eps ...string) {
@@ -160,6 +204,7 @@ func (b *simpleBalancer) updateAddrs(eps ...string) {
 
 	b.hostPort2ep = np
 	b.addrs, b.eps = eps2addrs(eps), eps
+	b.unhealthy = make(map[string]time.Time)
 
 	// updating notifyCh can trigger new connections,
 	// only update addrs if all connections are down
@@ -188,15 +233,6 @@ func (b *simpleBalancer) next() {
 	case <-downc:
 	case <-b.stopc:
 	}
-}
-
-func hasAddr(addrs []grpc.Address, targetAddr string) bool {
-	for _, addr := range addrs {
-		if targetAddr == addr.Addr {
-			return true
-		}
-	}
-	return false
 }
 
 func (b *simpleBalancer) updateNotifyLoop() {
@@ -291,11 +327,10 @@ func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 }
 
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
-	f, _ := b.up(addr)
-	return f
-}
+	if !b.mayPin(addr) {
+		return func(err error) {}
+	}
 
-func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -303,18 +338,18 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	// to "fix" it up at application layer. Otherwise, will panic
 	// if b.upc is already closed.
 	if b.closed {
-		return func(err error) {}, false
+		return func(err error) {}
 	}
 	// gRPC might call Up on a stale address.
 	// Prevent updating pinAddr with a stale address.
 	if !hasAddr(b.addrs, addr.Addr) {
-		return func(err error) {}, false
+		return func(err error) {}
 	}
 	if b.pinAddr != "" {
 		if logger.V(4) {
 			logger.Infof("clientv3/balancer: %q is up but not pinned (already pinned %q)", addr.Addr, b.pinAddr)
 		}
-		return func(err error) {}, false
+		return func(err error) {}
 	}
 	// notify waiting Get()s and pin first connected address
 	close(b.upc)
@@ -326,6 +361,12 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
 	return func(err error) {
+		// If connected to a black hole endpoint or a killed server, the gRPC ping
+		// timeout will induce a network I/O error, and retrying until success;
+		// finding healthy endpoint on retry could take several timeouts and redials.
+		// To avoid wasting retries, gray-list unhealthy endpoints.
+		b.hostPortError(addr.Addr, err)
+
 		b.mu.Lock()
 		b.upc = make(chan struct{})
 		close(b.downc)
@@ -334,7 +375,78 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 		if logger.V(4) {
 			logger.Infof("clientv3/balancer: unpin %q (%q)", addr.Addr, err.Error())
 		}
-	}, true
+	}
+}
+
+func (b *simpleBalancer) mayPin(addr grpc.Address) bool {
+	if b.endpoint(addr.Addr) == "" { // stale host:port
+		return false
+	}
+	b.mu.RLock()
+	skip := len(b.addrs) == 1 || len(b.unhealthy) == 0 || len(b.addrs) == len(b.unhealthy)
+	failedTime, bad := b.unhealthy[addr.Addr]
+	b.mu.RUnlock()
+	if skip || !bad {
+		return true
+	}
+	// prevent isolated member's endpoint from being infinitely retried, as follows:
+	//   1. keepalive pings detects GoAway with http2.ErrCodeEnhanceYourCalm
+	//   2. balancer 'Up' unpins with grpc: failed with network I/O error
+	//   3. grpc-healthcheck still SERVING, thus retry to pin
+	// instead, return before grpc-healthcheck if failed within healthcheck timeout
+	if elapsed := time.Since(failedTime); elapsed < b.healthCheckTimeout {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: %q is up but not pinned (failed %v ago, require minimum %v after failure)", addr.Addr, elapsed, b.healthCheckTimeout)
+		}
+		return false
+	}
+	if ok, _ := b.healthCheck(addr.Addr); ok {
+		b.removeUnhealthy(addr.Addr, "health check success")
+		return true
+	}
+	b.hostPortError(addr.Addr, errors.New("health check failed"))
+	return false
+}
+
+func (b *simpleBalancer) updateUnhealthy() {
+	for {
+		select {
+		case <-time.After(b.healthCheckTimeout):
+			b.mu.Lock()
+			for k, v := range b.unhealthy {
+				if time.Since(v) > b.healthCheckTimeout {
+					delete(b.unhealthy, k)
+					if logger.V(4) {
+						logger.Infof("clientv3/balancer: removes %q from unhealthy after %v", k, b.healthCheckTimeout)
+					}
+				}
+			}
+			b.mu.Unlock()
+			eps := []string{}
+			for _, addr := range b.liveAddrs() {
+				eps = append(eps, b.endpoint(addr.Addr))
+			}
+			b.updateAddrs(eps...)
+		case <-b.stopc:
+			return
+		}
+	}
+}
+
+func (b *simpleBalancer) liveAddrs() []grpc.Address {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	hbAddrs := b.addrs
+	if len(b.addrs) == 1 || len(b.unhealthy) == 0 || len(b.unhealthy) == len(b.addrs) {
+		return hbAddrs
+	}
+	addrs := make([]grpc.Address, 0, len(b.addrs)-len(b.unhealthy))
+	for _, addr := range b.addrs {
+		if _, ok := b.unhealthy[addr.Addr]; !ok {
+			addrs = append(addrs, addr)
+		}
+	}
+	return addrs
 }
 
 func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) (grpc.Address, func(), error) {
@@ -397,7 +509,7 @@ func (b *simpleBalancer) Close() error {
 		return nil
 	}
 	b.closed = true
-	close(b.stopc)
+	b.stopOnce.Do(func() { close(b.stopc) })
 	b.pinAddr = ""
 
 	// In the case of following scenario:
@@ -414,6 +526,7 @@ func (b *simpleBalancer) Close() error {
 	}
 
 	b.mu.Unlock()
+	b.wg.Wait()
 
 	// wait for updateNotifyLoop to finish
 	<-b.donec
@@ -436,4 +549,44 @@ func eps2addrs(eps []string) []grpc.Address {
 		addrs[i].Addr = getHost(eps[i])
 	}
 	return addrs
+}
+
+func getHostPort2ep(eps []string) map[string]string {
+	hm := make(map[string]string, len(eps))
+	for i := range eps {
+		_, host, _ := parseEndpoint(eps[i])
+		hm[host] = eps[i]
+	}
+	return hm
+}
+
+func hasAddr(addrs []grpc.Address, targetAddr string) bool {
+	for _, addr := range addrs {
+		if targetAddr == addr.Addr {
+			return true
+		}
+	}
+	return false
+}
+
+func grpcHealthCheck(client *Client, ep string) (bool, error) {
+	conn, err := client.dial(ep)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	cli := healthpb.NewHealthClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	resp, err := cli.Check(ctx, &healthpb.HealthCheckRequest{})
+	cancel()
+	if err != nil {
+		if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+			if s.Message() == unknownService {
+				// etcd < v3.3.0
+				return true, nil
+			}
+		}
+		return false, err
+	}
+	return resp.Status == healthpb.HealthCheckResponse_SERVING, nil
 }
