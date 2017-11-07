@@ -15,12 +15,15 @@
 package v3rpc
 
 import (
+	"context"
+
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -68,6 +71,10 @@ var toGRPCErrorMap = map[error]error{
 }
 
 func togRPCError(err error) error {
+	// let gRPC server convert to codes.Canceled, codes.DeadlineExceeded
+	if err == context.Canceled || err == context.DeadlineExceeded {
+		return err
+	}
 	grpcErr, ok := toGRPCErrorMap[err]
 	if !ok {
 		return status.Error(codes.Unknown, err.Error())
