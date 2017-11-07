@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,29 +28,27 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	endpoints = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
-)
+var endpoints = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 
 func TestBalancerGetUnblocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
-	defer sb.Close()
-	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
+	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	defer hb.Close()
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
 	}
 	unblockingOpts := grpc.BalancerGetOptions{BlockingWait: false}
 
-	_, _, err := sb.Get(context.Background(), unblockingOpts)
+	_, _, err := hb.Get(context.Background(), unblockingOpts)
 	if err != ErrNoAddrAvilable {
 		t.Errorf("Get() with no up endpoints should return ErrNoAddrAvailable, got: %v", err)
 	}
 
-	down1 := sb.Up(grpc.Address{Addr: endpoints[1]})
-	if addrs := <-sb.Notify(); len(addrs) != 1 {
+	down1 := hb.Up(grpc.Address{Addr: endpoints[1]})
+	if addrs := <-hb.Notify(); len(addrs) != 1 {
 		t.Errorf("first Up() should have triggered balancer to send the first connected address via Notify chan so that other connections can be closed")
 	}
-	down2 := sb.Up(grpc.Address{Addr: endpoints[2]})
-	addrFirst, putFun, err := sb.Get(context.Background(), unblockingOpts)
+	down2 := hb.Up(grpc.Address{Addr: endpoints[2]})
+	addrFirst, putFun, err := hb.Get(context.Background(), unblockingOpts)
 	if err != nil {
 		t.Errorf("Get() with up endpoints should success, got %v", err)
 	}
@@ -60,32 +58,32 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	if putFun == nil {
 		t.Errorf("Get() returned unexpected nil put function")
 	}
-	addrSecond, _, _ := sb.Get(context.Background(), unblockingOpts)
+	addrSecond, _, _ := hb.Get(context.Background(), unblockingOpts)
 	if addrFirst.Addr != addrSecond.Addr {
 		t.Errorf("Get() didn't return the same address as previous call, got %v and %v", addrFirst, addrSecond)
 	}
 
 	down1(errors.New("error"))
-	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
 	}
 	down2(errors.New("error"))
-	_, _, err = sb.Get(context.Background(), unblockingOpts)
+	_, _, err = hb.Get(context.Background(), unblockingOpts)
 	if err != ErrNoAddrAvilable {
 		t.Errorf("Get() with no up endpoints should return ErrNoAddrAvailable, got: %v", err)
 	}
 }
 
 func TestBalancerGetBlocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
-	defer sb.Close()
-	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
+	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	defer hb.Close()
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
 	}
 	blockingOpts := grpc.BalancerGetOptions{BlockingWait: true}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
-	_, _, err := sb.Get(ctx, blockingOpts)
+	_, _, err := hb.Get(ctx, blockingOpts)
 	cancel()
 	if err != context.DeadlineExceeded {
 		t.Errorf("Get() with no up endpoints should timeout, got %v", err)
@@ -94,15 +92,15 @@ func TestBalancerGetBlocking(t *testing.T) {
 	downC := make(chan func(error), 1)
 
 	go func() {
-		// ensure sb.Up() will be called after sb.Get() to see if Up() releases blocking Get()
+		// ensure hb.Up() will be called after hb.Get() to see if Up() releases blocking Get()
 		time.Sleep(time.Millisecond * 100)
-		f := sb.Up(grpc.Address{Addr: endpoints[1]})
-		if addrs := <-sb.Notify(); len(addrs) != 1 {
+		f := hb.Up(grpc.Address{Addr: endpoints[1]})
+		if addrs := <-hb.Notify(); len(addrs) != 1 {
 			t.Errorf("first Up() should have triggered balancer to send the first connected address via Notify chan so that other connections can be closed")
 		}
 		downC <- f
 	}()
-	addrFirst, putFun, err := sb.Get(context.Background(), blockingOpts)
+	addrFirst, putFun, err := hb.Get(context.Background(), blockingOpts)
 	if err != nil {
 		t.Errorf("Get() with up endpoints should success, got %v", err)
 	}
@@ -114,19 +112,19 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 	down1 := <-downC
 
-	down2 := sb.Up(grpc.Address{Addr: endpoints[2]})
-	addrSecond, _, _ := sb.Get(context.Background(), blockingOpts)
+	down2 := hb.Up(grpc.Address{Addr: endpoints[2]})
+	addrSecond, _, _ := hb.Get(context.Background(), blockingOpts)
 	if addrFirst.Addr != addrSecond.Addr {
 		t.Errorf("Get() didn't return the same address as previous call, got %v and %v", addrFirst, addrSecond)
 	}
 
 	down1(errors.New("error"))
-	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
 	}
 	down2(errors.New("error"))
 	ctx, cancel = context.WithTimeout(context.Background(), time.Millisecond*100)
-	_, _, err = sb.Get(ctx, blockingOpts)
+	_, _, err = hb.Get(ctx, blockingOpts)
 	cancel()
 	if err != context.DeadlineExceeded {
 		t.Errorf("Get() with no up endpoints should timeout, got %v", err)
@@ -168,9 +166,8 @@ func TestHealthBalancerGraylist(t *testing.T) {
 		}()
 	}
 
-	sb := newSimpleBalancer(eps)
 	tf := func(s string) (bool, error) { return false, nil }
-	hb := newHealthBalancer(sb, 5*time.Second, tf)
+	hb := newHealthBalancer(eps, 5*time.Second, tf)
 
 	conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 	testutil.AssertNil(t, err)
@@ -203,13 +200,13 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 	defer kcl.close()
 
 	for i := 0; i < 5; i++ {
-		sb := newSimpleBalancer(kcl.endpoints())
-		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(sb))
+		hb := newHealthBalancer(kcl.endpoints(), minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 		if err != nil {
 			t.Fatal(err)
 		}
 		kvc := pb.NewKVClient(conn)
-		<-sb.readyc
+		<-hb.readyc
 
 		var wg sync.WaitGroup
 		wg.Add(100)
@@ -225,7 +222,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 		bclosec, cclosec := make(chan struct{}), make(chan struct{})
 		go func() {
 			defer close(bclosec)
-			sb.Close()
+			hb.Close()
 		}()
 		go func() {
 			defer close(cclosec)
