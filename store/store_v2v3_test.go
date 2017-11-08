@@ -17,12 +17,21 @@
 package store_test
 
 import (
+	"io/ioutil"
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/api/v2v3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/store"
+
+	"github.com/coreos/pkg/capnslog"
+	"google.golang.org/grpc/grpclog"
 )
+
+func init() {
+	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+}
 
 type v2v3TestStore struct {
 	store.Store
