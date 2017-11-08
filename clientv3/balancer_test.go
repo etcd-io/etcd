@@ -33,7 +33,7 @@ var (
 )
 
 func TestBalancerGetUnblocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
+	sb := newSimpleBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
@@ -77,7 +77,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 }
 
 func TestBalancerGetBlocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
+	sb := newSimpleBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
@@ -168,9 +168,8 @@ func TestHealthBalancerGraylist(t *testing.T) {
 		}()
 	}
 
-	sb := newSimpleBalancer(eps)
 	tf := func(s string) (bool, error) { return false, nil }
-	hb := newHealthBalancer(sb, 5*time.Second, tf)
+	hb := newSimpleBalancer(eps, 5*time.Second, tf)
 
 	conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 	testutil.AssertNil(t, err)
@@ -203,7 +202,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 	defer kcl.close()
 
 	for i := 0; i < 5; i++ {
-		sb := newSimpleBalancer(kcl.endpoints())
+		sb := newSimpleBalancer(kcl.endpoints(), minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(sb))
 		if err != nil {
 			t.Fatal(err)

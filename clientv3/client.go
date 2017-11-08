@@ -55,7 +55,7 @@ type Client struct {
 
 	cfg      Config
 	creds    *credentials.TransportCredentials
-	balancer *healthBalancer
+	balancer *simpleBalancer
 	mu       sync.Mutex
 
 	ctx    context.Context
@@ -378,9 +378,9 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	sb := newSimpleBalancer(cfg.Endpoints)
-	hc := func(ep string) (bool, error) { return grpcHealthCheck(client, ep) }
-	client.balancer = newHealthBalancer(sb, cfg.DialTimeout, hc)
+	client.balancer = newSimpleBalancer(cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {
+		return grpcHealthCheck(client, ep)
+	})
 
 	// use Endpoints[0] so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
