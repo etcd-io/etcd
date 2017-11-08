@@ -937,29 +937,3 @@ func TestKVPutAtMostOnce(t *testing.T) {
 		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
 	}
 }
-
-func TestKVSwitchUnavailable(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, SkipCreatingClient: true})
-	defer clus.Terminate(t)
-
-	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
-	// try to connect with dead node in the endpoint list
-	cfg := clientv3.Config{
-		Endpoints: []string{
-			clus.Members[0].GRPCAddr(),
-			clus.Members[1].GRPCAddr(),
-		},
-		DialTimeout: 1 * time.Second}
-	cli, err := clientv3.New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cli.Close()
-	timeout := 3 * clus.Members[0].ServerConfig.ReqTimeout()
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-	if _, err := cli.Get(ctx, "abc"); err != nil {
-		t.Fatal(err)
-	}
-	cancel()
-}
