@@ -12,6 +12,8 @@ cancelation
 cluster_proxy
 defragment
 defragmenting
+errConnClosing
+errConnDrain
 etcd
 gRPC
 goroutine
@@ -29,9 +31,10 @@ prefetching
 protobuf
 repin
 serializable
+subconnection
 teardown
+tearDown
 too_many_pings
 uncontended
 unprefixed
 unlisting
-

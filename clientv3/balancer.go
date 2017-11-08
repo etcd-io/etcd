@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -76,6 +77,10 @@ type simpleBalancer struct {
 	// have a map from hosts to the original endpoint.
 	hostPort2ep map[string]string
 
+	// set of addresses that are "Up" by gRPC
+	// removed when "down" is called
+	upHostPorts map[string]struct{}
+
 	// pinAddr is the currently pinned address; set to the empty string on
 	// initialization and shutdown.
 	pinAddr string
@@ -97,6 +102,7 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 		donec:        make(chan struct{}),
 		updateAddrsC: make(chan notifyMsg),
 		hostPort2ep:  getHostPort2ep(eps),
+		upHostPorts:  make(map[string]struct{}),
 	}
 	close(sb.downc)
 	go sb.updateNotifyLoop()
@@ -129,6 +135,47 @@ func (b *simpleBalancer) pinned() string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.pinAddr
+}
+
+func (b *simpleBalancer) addUp(hostPort string) {
+	b.mu.Lock()
+	if _, ok := b.hostPort2ep[hostPort]; ok {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: up %q", hostPort)
+		}
+		b.upHostPorts[hostPort] = struct{}{}
+	} else {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: up %q but stale", hostPort)
+		}
+	}
+	b.mu.Unlock()
+}
+
+func (b *simpleBalancer) removeUp(hostPort string, err error) {
+	if logger.V(4) {
+		logger.Infof("clientv3/balancer: down %q due to %q", hostPort, err.Error())
+	}
+	b.mu.Lock()
+	delete(b.upHostPorts, hostPort)
+	b.mu.Unlock()
+}
+
+func (b *simpleBalancer) allUps() (ups []string) {
+	b.mu.RLock()
+	ups = make([]string, 0, len(b.upHostPorts))
+	for hp := range b.upHostPorts {
+		ups = append(ups, hp)
+	}
+	b.mu.RUnlock()
+	return ups
+}
+
+func (b *simpleBalancer) isUpEmpty() (empty bool) {
+	b.mu.RLock()
+	empty = len(b.upHostPorts) == 0
+	b.mu.RUnlock()
+	return empty
 }
 
 func getHostPort2ep(eps []string) map[string]string {
@@ -254,11 +301,56 @@ func (b *simpleBalancer) updateNotifyLoop() {
 	}
 }
 
+// drainAndSync drains all current connections and waits until gRPC
+// subconnection state changes are propagated via down functions.
+// This is needed in gRPC v1.7.x because sending []grpc.Address{}
+// to notify channel does not trigger "down" on pinned endpoint
+// until the actually connection is down, while v1.6.x notifies
+// immediately with "tearDown(errConnDrain)".
+// TODO: remove this after balancer rewrite
+func (b *simpleBalancer) drainAndSync() (stopped bool) {
+	ups := b.allUps()
+	if len(ups) == 0 {
+		if logger.V(4) {
+			logger.Infof("clientv3/balancer: no connections to drain")
+		}
+		return false
+	}
+
+	if logger.V(4) {
+		logger.Infof("clientv3/balancer: draining all connections (%q)", ups)
+	}
+	select {
+	case b.notifyCh <- []grpc.Address{}:
+	case <-b.stopc:
+		return true
+	}
+
+	// wait for "down(errConnClosing)" from gRPC
+	for {
+		select {
+		case <-b.stopc:
+			return true
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		if ups = b.allUps(); len(ups) == 0 {
+			if logger.V(4) {
+				logger.Infof("clientv3/balancer: drained all connections")
+			}
+			break
+		} else {
+			if logger.V(4) {
+				logger.Infof("clientv3/balancer: %q are still up", ups)
+			}
+		}
+	}
+	return false
+}
+
 func (b *simpleBalancer) notifyAddrs(msg notifyMsg) {
 	if msg == notifyNext {
-		select {
-		case b.notifyCh <- []grpc.Address{}:
-		case <-b.stopc:
+		if b.drainAndSync() {
 			return
 		}
 	}
@@ -303,18 +395,18 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	// to "fix" it up at application layer. Otherwise, will panic
 	// if b.upc is already closed.
 	if b.closed {
-		return func(err error) {}, false
+		return func(err error) { b.removeUp(addr.Addr, err) }, false
 	}
 	// gRPC might call Up on a stale address.
 	// Prevent updating pinAddr with a stale address.
 	if !hasAddr(b.addrs, addr.Addr) {
-		return func(err error) {}, false
+		return func(err error) { b.removeUp(addr.Addr, err) }, false
 	}
 	if b.pinAddr != "" {
 		if logger.V(4) {
 			logger.Infof("clientv3/balancer: %q is up but not pinned (already pinned %q)", addr.Addr, b.pinAddr)
 		}
-		return func(err error) {}, false
+		return func(err error) { b.removeUp(addr.Addr, err) }, false
 	}
 	// notify waiting Get()s and pin first connected address
 	close(b.upc)
@@ -326,6 +418,7 @@ func (b *simpleBalancer) up(addr grpc.Address) (func(error), bool) {
 	// notify client that a connection is up
 	b.readyOnce.Do(func() { close(b.readyc) })
 	return func(err error) {
+		b.removeUp(addr.Addr, err)
 		b.mu.Lock()
 		b.upc = make(chan struct{})
 		close(b.downc)

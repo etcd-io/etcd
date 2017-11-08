@@ -84,6 +84,7 @@ func newHealthBalancer(b *simpleBalancer, timeout time.Duration, hc healthCheckF
 }
 
 func (hb *healthBalancer) Up(addr grpc.Address) func(error) {
+	hb.simpleBalancer.addUp(addr.Addr)
 	f, used := hb.up(addr)
 	if !used {
 		return f
@@ -100,7 +101,7 @@ func (hb *healthBalancer) Up(addr grpc.Address) func(error) {
 
 func (hb *healthBalancer) up(addr grpc.Address) (func(error), bool) {
 	if !hb.mayPin(addr) {
-		return func(err error) {}, false
+		return func(err error) { hb.simpleBalancer.removeUp(addr.Addr, err) }, false
 	}
 	return hb.simpleBalancer.up(addr)
 }

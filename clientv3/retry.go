@@ -62,6 +62,11 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 			if logger.V(4) {
 				logger.Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
 			}
+			// retry when initial connection has not been established
+			// grpc/grpc-go >v1.7.x (balancer v1 wrapper)
+			if rpctypes.ErrorDesc(err) == "there is no connection available" {
+				continue
+			}
 
 			if s, ok := status.FromError(err); ok && (s.Code() == codes.Unavailable || s.Code() == codes.DeadlineExceeded || s.Code() == codes.Internal) {
 				// mark this before endpoint switch is triggered
