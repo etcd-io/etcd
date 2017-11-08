@@ -825,53 +825,6 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	}
 }
 
-// TestKVGetResetLoneEndpoint ensures that if an endpoint resets and all other
-// endpoints are down, then it will reconnect.
-func TestKVGetResetLoneEndpoint(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2, SkipCreatingClient: true})
-	defer clus.Terminate(t)
-
-	// get endpoint list
-	eps := make([]string, 2)
-	for i := range eps {
-		eps[i] = clus.Members[i].GRPCAddr()
-	}
-
-	cfg := clientv3.Config{Endpoints: eps, DialTimeout: 500 * time.Millisecond}
-	cli, err := clientv3.New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cli.Close()
-
-	// disconnect everything
-	clus.Members[0].Stop(t)
-	clus.Members[1].Stop(t)
-
-	// have Get try to reconnect
-	donec := make(chan struct{})
-	go func() {
-		// 3-second is the minimum interval between endpoint being marked
-		// as unhealthy and being removed from unhealthy, so possibly
-		// takes >5-second to unpin and repin an endpoint
-		// TODO: decrease timeout when balancer switch rewrite
-		ctx, cancel := context.WithTimeout(context.TODO(), 7*time.Second)
-		if _, err := cli.Get(ctx, "abc", clientv3.WithSerializable()); err != nil {
-			t.Fatal(err)
-		}
-		cancel()
-		close(donec)
-	}()
-	time.Sleep(500 * time.Millisecond)
-	clus.Members[0].Restart(t)
-	select {
-	case <-time.After(10 * time.Second):
-		t.Fatalf("timed out waiting for Get")
-	case <-donec:
-	}
-}
-
 // TestKVPutAtMostOnce ensures that a Put will only occur at most once
 // in the presence of network errors.
 func TestKVPutAtMostOnce(t *testing.T) {
