@@ -58,7 +58,7 @@ func startEtcdOrProxyV2() {
 	grpc.EnableTracing = false
 
 	cfg := newConfig()
-	defaultInitialCluster := cfg.InitialCluster
+	defaultInitialCluster := cfg.ec.InitialCluster
 
 	err := cfg.parse(os.Args[1:])
 	if err != nil {
@@ -69,7 +69,7 @@ func startEtcdOrProxyV2() {
 		}
 		os.Exit(1)
 	}
-	cfg.Config.SetupLogging()
+	cfg.ec.SetupLogging()
 
 	var stopped <-chan struct{}
 	var errc <-chan error
@@ -82,7 +82,7 @@ func startEtcdOrProxyV2() {
 	GoMaxProcs := runtime.GOMAXPROCS(0)
 	plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 
-	defaultHost, dhErr := (&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
+	defaultHost, dhErr := (&cfg.ec).UpdateDefaultClusterFromName(defaultInitialCluster)
 	if defaultHost != "" {
 		plog.Infof("advertising using detected default host %q", defaultHost)
 	}
@@ -90,17 +90,17 @@ func startEtcdOrProxyV2() {
 		plog.Noticef("failed to detect default host (%v)", dhErr)
 	}
 
-	if cfg.Dir == "" {
-		cfg.Dir = fmt.Sprintf("%v.etcd", cfg.Name)
-		plog.Warningf("no data-dir provided, using default data-dir ./%s", cfg.Dir)
+	if cfg.ec.Dir == "" {
+		cfg.ec.Dir = fmt.Sprintf("%v.etcd", cfg.ec.Name)
+		plog.Warningf("no data-dir provided, using default data-dir ./%s", cfg.ec.Dir)
 	}
 
-	which := identifyDataDirOrDie(cfg.Dir)
+	which := identifyDataDirOrDie(cfg.ec.Dir)
 	if which != dirEmpty {
 		plog.Noticef("the server is already initialized as %v before, starting as etcd %v...", which, which)
 		switch which {
 		case dirMember:
-			stopped, errc, err = startEtcd(&cfg.Config)
+			stopped, errc, err = startEtcd(&cfg.ec)
 		case dirProxy:
 			err = startProxy(cfg)
 		default:
@@ -109,7 +109,7 @@ func startEtcdOrProxyV2() {
 	} else {
 		shouldProxy := cfg.isProxy()
 		if !shouldProxy {
-			stopped, errc, err = startEtcd(&cfg.Config)
+			stopped, errc, err = startEtcd(&cfg.ec)
 			if derr, ok := err.(*etcdserver.DiscoveryError); ok && derr.Err == discovery.ErrFullCluster {
 				if cfg.shouldFallbackToProxy() {
 					plog.Noticef("discovery cluster full, falling back to %s", fallbackFlagProxy)
@@ -126,17 +126,17 @@ func startEtcdOrProxyV2() {
 		if derr, ok := err.(*etcdserver.DiscoveryError); ok {
 			switch derr.Err {
 			case discovery.ErrDuplicateID:
-				plog.Errorf("member %q has previously registered with discovery service token (%s).", cfg.Name, cfg.Durl)
-				plog.Errorf("But etcd could not find valid cluster configuration in the given data dir (%s).", cfg.Dir)
+				plog.Errorf("member %q has previously registered with discovery service token (%s).", cfg.ec.Name, cfg.ec.Durl)
+				plog.Errorf("But etcd could not find valid cluster configuration in the given data dir (%s).", cfg.ec.Dir)
 				plog.Infof("Please check the given data dir path if the previous bootstrap succeeded")
 				plog.Infof("or use a new discovery token if the previous bootstrap failed.")
 			case discovery.ErrDuplicateName:
-				plog.Errorf("member with duplicated name has registered with discovery service token(%s).", cfg.Durl)
+				plog.Errorf("member with duplicated name has registered with discovery service token(%s).", cfg.ec.Durl)
 				plog.Errorf("please check (cURL) the discovery token for more information.")
 				plog.Errorf("please do not reuse the discovery token and generate a new one to bootstrap the cluster.")
 			default:
 				plog.Errorf("%v", err)
-				plog.Infof("discovery token %s was used, but failed to bootstrap the cluster.", cfg.Durl)
+				plog.Infof("discovery token %s was used, but failed to bootstrap the cluster.", cfg.ec.Durl)
 				plog.Infof("please generate a new discovery token and try to bootstrap again.")
 			}
 			os.Exit(1)
@@ -144,13 +144,13 @@ func startEtcdOrProxyV2() {
 
 		if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
 			plog.Infof("%v", err)
-			if cfg.InitialCluster == cfg.InitialClusterFromName(cfg.Name) {
+			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) {
 				plog.Infof("forgot to set --initial-cluster flag?")
 			}
-			if types.URLs(cfg.APUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
+			if types.URLs(cfg.ec.APUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
 				plog.Infof("forgot to set --initial-advertise-peer-urls flag?")
 			}
-			if cfg.InitialCluster == cfg.InitialClusterFromName(cfg.Name) && len(cfg.Durl) == 0 {
+			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.Durl) == 0 {
 				plog.Infof("if you want to use discovery service, please set --discovery flag.")
 			}
 			os.Exit(1)
@@ -199,45 +199,45 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 func startProxy(cfg *config) error {
 	plog.Notice("proxy: this proxy supports v2 API only!")
 
-	clientTLSInfo := cfg.ClientTLSInfo
+	clientTLSInfo := cfg.ec.ClientTLSInfo
 	if clientTLSInfo.Empty() {
 		// Support old proxy behavior of defaulting to PeerTLSInfo
 		// for both client and peer connections.
-		clientTLSInfo = cfg.PeerTLSInfo
+		clientTLSInfo = cfg.ec.PeerTLSInfo
 	}
-	clientTLSInfo.InsecureSkipVerify = cfg.ClientAutoTLS
-	cfg.PeerTLSInfo.InsecureSkipVerify = cfg.PeerAutoTLS
+	clientTLSInfo.InsecureSkipVerify = cfg.ec.ClientAutoTLS
+	cfg.ec.PeerTLSInfo.InsecureSkipVerify = cfg.ec.PeerAutoTLS
 
-	pt, err := transport.NewTimeoutTransport(clientTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
+	pt, err := transport.NewTimeoutTransport(clientTLSInfo, time.Duration(cfg.cp.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.cp.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.cp.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
 	}
 	pt.MaxIdleConnsPerHost = httpproxy.DefaultMaxIdleConnsPerHost
 
-	if err = cfg.PeerSelfCert(); err != nil {
+	if err = cfg.ec.PeerSelfCert(); err != nil {
 		plog.Fatalf("could not get certs (%v)", err)
 	}
-	tr, err := transport.NewTimeoutTransport(cfg.PeerTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
+	tr, err := transport.NewTimeoutTransport(cfg.ec.PeerTLSInfo, time.Duration(cfg.cp.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.cp.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.cp.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
 	}
 
-	cfg.Dir = filepath.Join(cfg.Dir, "proxy")
-	err = os.MkdirAll(cfg.Dir, fileutil.PrivateDirMode)
+	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
+	err = os.MkdirAll(cfg.ec.Dir, fileutil.PrivateDirMode)
 	if err != nil {
 		return err
 	}
 
 	var peerURLs []string
-	clusterfile := filepath.Join(cfg.Dir, "cluster")
+	clusterfile := filepath.Join(cfg.ec.Dir, "cluster")
 
 	b, err := ioutil.ReadFile(clusterfile)
 	switch {
 	case err == nil:
-		if cfg.Durl != "" {
+		if cfg.ec.Durl != "" {
 			plog.Warningf("discovery token ignored since the proxy has already been initialized. Valid cluster file found at %q", clusterfile)
 		}
-		if cfg.DNSCluster != "" {
+		if cfg.ec.DNSCluster != "" {
 			plog.Warningf("DNS SRV discovery ignored since the proxy has already been initialized. Valid cluster file found at %q", clusterfile)
 		}
 		urls := struct{ PeerURLs []string }{}
@@ -249,14 +249,14 @@ func startProxy(cfg *config) error {
 		plog.Infof("proxy: using peer urls %v from cluster file %q", peerURLs, clusterfile)
 	case os.IsNotExist(err):
 		var urlsmap types.URLsMap
-		urlsmap, _, err = cfg.PeerURLsMapAndToken("proxy")
+		urlsmap, _, err = cfg.ec.PeerURLsMapAndToken("proxy")
 		if err != nil {
 			return fmt.Errorf("error setting up initial cluster: %v", err)
 		}
 
-		if cfg.Durl != "" {
+		if cfg.ec.Durl != "" {
 			var s string
-			s, err = discovery.GetCluster(cfg.Durl, cfg.Dproxy)
+			s, err = discovery.GetCluster(cfg.ec.Durl, cfg.ec.Dproxy)
 			if err != nil {
 				return err
 			}
@@ -305,10 +305,10 @@ func startProxy(cfg *config) error {
 
 		return clientURLs
 	}
-	ph := httpproxy.NewHandler(pt, uf, time.Duration(cfg.ProxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.ProxyRefreshIntervalMs)*time.Millisecond)
+	ph := httpproxy.NewHandler(pt, uf, time.Duration(cfg.cp.ProxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.cp.ProxyRefreshIntervalMs)*time.Millisecond)
 	ph = &cors.CORSHandler{
 		Handler: ph,
-		Info:    cfg.CorsInfo,
+		Info:    cfg.ec.CorsInfo,
 	}
 
 	if cfg.isReadonlyProxy() {
@@ -317,24 +317,24 @@ func startProxy(cfg *config) error {
 
 	// setup self signed certs when serving https
 	cHosts, cTLS := []string{}, false
-	for _, u := range cfg.LCUrls {
+	for _, u := range cfg.ec.LCUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
-	for _, u := range cfg.ACUrls {
+	for _, u := range cfg.ec.ACUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
-	listenerTLS := cfg.ClientTLSInfo
-	if cfg.ClientAutoTLS && cTLS {
-		listenerTLS, err = transport.SelfCert(filepath.Join(cfg.Dir, "clientCerts"), cHosts)
+	listenerTLS := cfg.ec.ClientTLSInfo
+	if cfg.ec.ClientAutoTLS && cTLS {
+		listenerTLS, err = transport.SelfCert(filepath.Join(cfg.ec.Dir, "clientCerts"), cHosts)
 		if err != nil {
 			plog.Fatalf("proxy: could not initialize self-signed client certs (%v)", err)
 		}
 	}
 
 	// Start a proxy server goroutine for each listen address
-	for _, u := range cfg.LCUrls {
+	for _, u := range cfg.ec.LCUrls {
 		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)
 		if err != nil {
 			return err
