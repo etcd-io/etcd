@@ -7,7 +7,7 @@
 * Backwards-compatible bug fixes should target the master branch and subsequently be ported to stable branches.
 * Once the master branch is ready for release, it will be tagged and become the new stable branch.
 
-The etcd team has adopted a *rolling release model* and supports one stable version of etcd.
+The etcd team has adopted a *rolling release model* and supports two stable versions of etcd.
 
 ### Master branch
 
@@ -21,6 +21,6 @@ Before the release of the next stable version, feature PRs will be frozen. We wi
 
 All branches with prefix `release-` are considered _stable_ branches.
 
-After every minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest stable release, but not previous releases. The _patch_ release, incorporating any bug fixes, will be once every two weeks, given any patches.
+After every minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest two stable releases. A _patch_ release to each supported release branch, incorporating any bug fixes, will be once every two weeks, given any patches.
 
 [master]: https://github.com/coreos/etcd/tree/master
