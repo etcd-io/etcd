@@ -10,7 +10,7 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
 	exit 255
 fi
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.3.0" ]]; then
+if [[ $(protoc --version | cut -f2 -d' ') != "3.4.0" ]]; then
 	echo "could not find protoc 3.3.0, is it installed + in PATH?"
 	exit 255
 fi
@@ -20,7 +20,7 @@ DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/m
 
 # exact version of packages to build
 GOGO_PROTO_SHA="100ba4e885062801d56799d78530b73b178a78f3"
-GRPC_GATEWAY_SHA="18d159699f2e83fc5bb9ef2f79465ca3f3122676"
+GRPC_GATEWAY_SHA="8cc3a55af3bcf171a1c23a90c4df9cf591706104"
 SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
 
 # set up self-contained GOPATH for building
