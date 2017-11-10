@@ -27,6 +27,7 @@ localhost
 mutex
 prefetching
 protobuf
+prometheus
 repin
 serializable
 teardown

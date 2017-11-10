@@ -523,15 +523,19 @@ func parseNFSTransportStats(ss []string, statVersion string) (*NFSTransportStats
 	}
 
 	// Allocate enough for v1.1 stats since zero value for v1.1 stats will be okay
-	// in a v1.0 response
-	ns := make([]uint64, 0, fieldTransport11Len)
-	for _, s := range ss {
+	// in a v1.0 response.
+	//
+	// Note: slice length must be set to length of v1.1 stats to avoid a panic when
+	// only v1.0 stats are present.
+	// See: https://github.com/prometheus/node_exporter/issues/571.
+	ns := make([]uint64, fieldTransport11Len)
+	for i, s := range ss {
 		n, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 
-		ns = append(ns, n)
+		ns[i] = n
 	}
 
 	return &NFSTransportStats{

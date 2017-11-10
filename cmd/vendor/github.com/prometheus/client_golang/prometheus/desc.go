@@ -16,32 +16,14 @@ package prometheus
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/common/model"
 
 	dto "github.com/prometheus/client_model/go"
 )
-
-var (
-	metricNameRE = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_:]*$`)
-	labelNameRE  = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
-)
-
-// reservedLabelPrefix is a prefix which is not legal in user-supplied
-// label names.
-const reservedLabelPrefix = "__"
-
-// Labels represents a collection of label name -> value mappings. This type is
-// commonly used with the With(Labels) and GetMetricWith(Labels) methods of
-// metric vector Collectors, e.g.:
-//     myVec.With(Labels{"code": "404", "method": "GET"}).Add(42)
-//
-// The other use-case is the specification of constant label pairs in Opts or to
-// create a Desc.
-type Labels map[string]string
 
 // Desc is the descriptor used by every Prometheus Metric. It is essentially
 // the immutable meta-data of a Metric. The normal Metric implementations
@@ -78,7 +60,7 @@ type Desc struct {
 	// Help string. Each Desc with the same fqName must have the same
 	// dimHash.
 	dimHash uint64
-	// err is an error that occured during construction. It is reported on
+	// err is an error that occurred during construction. It is reported on
 	// registration time.
 	err error
 }
@@ -103,7 +85,7 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 		d.err = errors.New("empty help string")
 		return d
 	}
-	if !metricNameRE.MatchString(fqName) {
+	if !model.IsValidMetricName(model.LabelValue(fqName)) {
 		d.err = fmt.Errorf("%q is not a valid metric name", fqName)
 		return d
 	}
@@ -127,6 +109,12 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 	for _, labelName := range labelNames {
 		labelValues = append(labelValues, constLabels[labelName])
 	}
+	// Validate the const label values. They can't have a wrong cardinality, so
+	// use in len(labelValues) as expectedNumberOfValues.
+	if err := validateLabelValues(labelValues, len(labelValues)); err != nil {
+		d.err = err
+		return d
+	}
 	// Now add the variable label names, but prefix them with something that
 	// cannot be in a regular label name. That prevents matching the label
 	// dimension with a different mix between preset and variable labels.
@@ -142,6 +130,7 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 		d.err = errors.New("duplicate label names")
 		return d
 	}
+
 	vh := hashNew()
 	for _, val := range labelValues {
 		vh = hashAdd(vh, val)
@@ -197,9 +186,4 @@ func (d *Desc) String() string {
 		strings.Join(lpStrings, ","),
 		d.variableLabels,
 	)
-}
-
-func checkLabelName(l string) bool {
-	return labelNameRE.MatchString(l) &&
-		!strings.HasPrefix(l, reservedLabelPrefix)
 }

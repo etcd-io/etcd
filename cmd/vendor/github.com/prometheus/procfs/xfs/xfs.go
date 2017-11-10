@@ -22,6 +22,11 @@ package xfs
 // kernel source. Most counters are uint32s (same data types used in
 // xfs_stats.h), but some of the "extended precision stats" are uint64s.
 type Stats struct {
+	// The name of the filesystem used to source these statistics.
+	// If empty, this indicates aggregated statistics for all XFS
+	// filesystems on the host.
+	Name string
+
 	ExtentAllocation   ExtentAllocationStats
 	AllocationBTree    BTreeStats
 	BlockMapping       BlockMappingStats
