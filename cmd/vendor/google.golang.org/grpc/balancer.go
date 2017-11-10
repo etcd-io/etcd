@@ -403,6 +403,6 @@ type pickFirst struct {
 	*roundRobin
 }
 
-func pickFirstBalancer(r naming.Resolver) Balancer {
+func pickFirstBalancerV1(r naming.Resolver) Balancer {
 	return &pickFirst{&roundRobin{r: r}}
 }

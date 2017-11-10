@@ -45,7 +45,8 @@ func isNonRepeatableStopError(err error) bool {
 	if ev.Code() != codes.Unavailable {
 		return true
 	}
-	return rpctypes.ErrorDesc(err) != "there is no address available"
+	desc := rpctypes.ErrorDesc(err)
+	return desc != "there is no address available" && desc != "there is no connection available"
 }
 
 func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
