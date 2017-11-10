@@ -1,5 +1,5 @@
-hash: 7e13ef2acb8e54723a9530aadee7f8ef83d3ac58a2d902fbc1a7f80ee36c61f7
-updated: 2017-11-08T18:45:57.327801-08:00
+hash: 80a7efc9ff8767f29e9a02c19337e00655b25cc19ffa0bb95adeb83e4776dedb
+updated: 2017-11-10T01:53:06.048482538-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -25,7 +25,7 @@ imports:
   - capnslog
   - dlopen
 - name: github.com/cpuguy83/go-md2man
-  version: 23709d0847197db6021a51fdb193e66e9222d4e7
+  version: 1d903dcb749992f3741d744c0f8376b4bd7eb3e1
   subpackages:
   - md2man
 - name: github.com/dgrijalva/jwt-go
@@ -55,7 +55,7 @@ imports:
 - name: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - name: github.com/gorilla/websocket
-  version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
+  version: 3da6ca0cb65383f2b607a677b6b55e8358cacee6
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: github.com/grpc-ecosystem/grpc-gateway
@@ -84,6 +84,7 @@ imports:
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
   - prometheus
+  - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: 6f3806018612930941127f2a7c6c453ba2c527d2
   subpackages:
