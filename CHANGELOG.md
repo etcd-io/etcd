@@ -326,6 +326,11 @@ See [upgrade 3.1](https://github.com/coreos/etcd/blob/master/Documentation/upgra
 
 ### Changed
 
+- Deprecated following gRPC metrics in favor of [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus):
+  - `etcd_grpc_requests_total`
+  - `etcd_grpc_requests_failed_total`
+  - `etcd_grpc_active_streams`
+  - `etcd_grpc_unary_requests_duration_seconds`
 - etcd uses default route IP if advertise URL is not given
 - Cluster rejects removing members if quorum will be lost
 - SRV records (e.g., infra1.example.com) must match the discovery domain (i.e., example.com) if no custom certificate authority is given
