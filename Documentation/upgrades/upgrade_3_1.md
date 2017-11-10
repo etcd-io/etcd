@@ -8,6 +8,15 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 ### Upgrade checklists
 
+#### Monitoring
+
+Following metrics from v3.0.x have been deprecated in favor of [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus):
+
+- `etcd_grpc_requests_total`
+- `etcd_grpc_requests_failed_total`
+- `etcd_grpc_active_streams`
+- `etcd_grpc_unary_requests_duration_seconds`
+
 #### Upgrade requirements
 
 To upgrade an existing etcd deployment to 3.1, the running cluster must be 3.0 or greater. If it's before 3.0, please [upgrade to 3.0](upgrade_3_0.md) before upgrading to 3.1.
