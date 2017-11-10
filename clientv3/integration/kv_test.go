@@ -17,7 +17,6 @@ package integration
 import (
 	"bytes"
 	"context"
-	"math/rand"
 	"os"
 	"reflect"
 	"strings"
@@ -823,35 +822,6 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	if err != nil && err != context.DeadlineExceeded {
 		t.Fatal(err)
 	}
-}
-
-// TestKVGetOneEndpointDown ensures a client can connect and get if one endpoint is down.
-func TestKVGetOneEndpointDown(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, SkipCreatingClient: true})
-	defer clus.Terminate(t)
-
-	// get endpoint list
-	eps := make([]string, 3)
-	for i := range eps {
-		eps[i] = clus.Members[i].GRPCAddr()
-	}
-
-	// make a dead node
-	clus.Members[rand.Intn(len(eps))].Stop(t)
-
-	// try to connect with dead node in the endpoint list
-	cfg := clientv3.Config{Endpoints: eps, DialTimeout: 1 * time.Second}
-	cli, err := clientv3.New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cli.Close()
-	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
-	if _, err := cli.Get(ctx, "abc", clientv3.WithSerializable()); err != nil {
-		t.Fatal(err)
-	}
-	cancel()
 }
 
 // TestKVGetResetLoneEndpoint ensures that if an endpoint resets and all other
