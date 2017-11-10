@@ -12,16 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ordering
+package integration
 
 import (
-	"io/ioutil"
+	"context"
+	"testing"
+	"time"
 
-	"github.com/coreos/pkg/capnslog"
-	"google.golang.org/grpc/grpclog"
+	"github.com/coreos/etcd/clientv3"
 )
 
-func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+// mustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
+// Fatal on time-out.
+func mustWaitPinReady(t *testing.T, cli *clientv3.Client) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	_, err := cli.Get(ctx, "foo")
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

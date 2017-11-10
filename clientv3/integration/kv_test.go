@@ -881,7 +881,11 @@ func TestKVGetResetLoneEndpoint(t *testing.T) {
 	// have Get try to reconnect
 	donec := make(chan struct{})
 	go func() {
-		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		// 3-second is the minimum interval between endpoint being marked
+		// as unhealthy and being removed from unhealthy, so possibly
+		// takes >5-second to unpin and repin an endpoint
+		// TODO: decrease timeout when balancer switch rewrite
+		ctx, cancel := context.WithTimeout(context.TODO(), 7*time.Second)
 		if _, err := cli.Get(ctx, "abc", clientv3.WithSerializable()); err != nil {
 			t.Fatal(err)
 		}

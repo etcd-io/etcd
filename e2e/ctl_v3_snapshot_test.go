@@ -93,6 +93,35 @@ func snapshotCorruptTest(cx ctlCtx) {
 	}
 }
 
+// This test ensures that the snapshot status does not modify the snapshot file
+func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
+
+func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
+	fpath := "test.snapshot"
+	defer os.RemoveAll(fpath)
+
+	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
+	}
+
+	// snapshot status on the fresh snapshot file
+	_, err := getSnapshotStatus(cx, fpath)
+	if err != nil {
+		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
+	}
+
+	defer os.RemoveAll("snap.etcd")
+	serr := spawnWithExpect(
+		append(cx.PrefixArgs(), "snapshot", "restore",
+			"--data-dir", "snap.etcd",
+			fpath),
+		"added member")
+
+	if serr != nil {
+		cx.t.Fatal(serr)
+	}
+}
+
 func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 	cmdArgs := append(cx.PrefixArgs(), "snapshot", "save", fpath)
 	return spawnWithExpect(cmdArgs, fmt.Sprintf("Snapshot saved at %s", fpath))

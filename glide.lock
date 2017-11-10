@@ -8,7 +8,7 @@ imports:
 - name: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
 - name: github.com/coreos/bbolt
-  version: 54f6fad6e4859cf6c17d98577f5aab4903c3fdde
+  version: 3c6cbfb299c11444eb2f8c9d48f0d2ce09157423
 - name: github.com/coreos/go-semver
   version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:
@@ -59,7 +59,7 @@ imports:
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 589b126116b5fc961939b3e156c29e4d9d58222f
+  version: 8cc3a55af3bcf171a1c23a90c4df9cf591706104
   subpackages:
   - runtime
   - runtime/internal

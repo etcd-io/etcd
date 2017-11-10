@@ -383,7 +383,7 @@ func TestConfigIsNewCluster(t *testing.T) {
 		if err := cfg.parse(args); err != nil {
 			t.Fatalf("#%d: unexpected clusterState.Set error: %v", i, err)
 		}
-		if g := cfg.IsNewCluster(); g != tt.wIsNew {
+		if g := cfg.ec.IsNewCluster(); g != tt.wIsNew {
 			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
 		}
 	}
@@ -400,7 +400,7 @@ func TestConfigIsProxy(t *testing.T) {
 	}
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.proxy.Set(tt.proxy); err != nil {
+		if err := cfg.cf.proxy.Set(tt.proxy); err != nil {
 			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
 		}
 		if g := cfg.isProxy(); g != tt.wIsProxy {
@@ -420,7 +420,7 @@ func TestConfigIsReadonlyProxy(t *testing.T) {
 	}
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.proxy.Set(tt.proxy); err != nil {
+		if err := cfg.cf.proxy.Set(tt.proxy); err != nil {
 			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
 		}
 		if g := cfg.isReadonlyProxy(); g != tt.wIsReadonly {
@@ -439,7 +439,7 @@ func TestConfigShouldFallbackToProxy(t *testing.T) {
 	}
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.fallback.Set(tt.fallback); err != nil {
+		if err := cfg.cf.fallback.Set(tt.fallback); err != nil {
 			t.Fatalf("#%d: unexpected fallback.Set error: %v", i, err)
 		}
 		if g := cfg.shouldFallbackToProxy(); g != tt.wFallback {
@@ -512,62 +512,62 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 		SnapCount:    10,
 	}
 
-	if cfg.Dir != wcfg.Dir {
-		t.Errorf("dir = %v, want %v", cfg.Dir, wcfg.Dir)
+	if cfg.ec.Dir != wcfg.Dir {
+		t.Errorf("dir = %v, want %v", cfg.ec.Dir, wcfg.Dir)
 	}
-	if cfg.MaxSnapFiles != wcfg.MaxSnapFiles {
-		t.Errorf("maxsnap = %v, want %v", cfg.MaxSnapFiles, wcfg.MaxSnapFiles)
+	if cfg.ec.MaxSnapFiles != wcfg.MaxSnapFiles {
+		t.Errorf("maxsnap = %v, want %v", cfg.ec.MaxSnapFiles, wcfg.MaxSnapFiles)
 	}
-	if cfg.MaxWalFiles != wcfg.MaxWalFiles {
-		t.Errorf("maxwal = %v, want %v", cfg.MaxWalFiles, wcfg.MaxWalFiles)
+	if cfg.ec.MaxWalFiles != wcfg.MaxWalFiles {
+		t.Errorf("maxwal = %v, want %v", cfg.ec.MaxWalFiles, wcfg.MaxWalFiles)
 	}
-	if cfg.Name != wcfg.Name {
-		t.Errorf("name = %v, want %v", cfg.Name, wcfg.Name)
+	if cfg.ec.Name != wcfg.Name {
+		t.Errorf("name = %v, want %v", cfg.ec.Name, wcfg.Name)
 	}
-	if cfg.SnapCount != wcfg.SnapCount {
-		t.Errorf("snapcount = %v, want %v", cfg.SnapCount, wcfg.SnapCount)
+	if cfg.ec.SnapCount != wcfg.SnapCount {
+		t.Errorf("snapcount = %v, want %v", cfg.ec.SnapCount, wcfg.SnapCount)
 	}
-	if !reflect.DeepEqual(cfg.LPUrls, wcfg.LPUrls) {
-		t.Errorf("listen-peer-urls = %v, want %v", cfg.LPUrls, wcfg.LPUrls)
+	if !reflect.DeepEqual(cfg.ec.LPUrls, wcfg.LPUrls) {
+		t.Errorf("listen-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.LPUrls)
 	}
-	if !reflect.DeepEqual(cfg.LCUrls, wcfg.LCUrls) {
-		t.Errorf("listen-client-urls = %v, want %v", cfg.LCUrls, wcfg.LCUrls)
+	if !reflect.DeepEqual(cfg.ec.LCUrls, wcfg.LCUrls) {
+		t.Errorf("listen-client-urls = %v, want %v", cfg.ec.LCUrls, wcfg.LCUrls)
 	}
 }
 
 func validateClusteringFlags(t *testing.T, cfg *config) {
 	wcfg := newConfig()
-	wcfg.APUrls = []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}}
-	wcfg.ACUrls = []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}}
-	wcfg.ClusterState = embed.ClusterStateFlagExisting
-	wcfg.fallback.Set(fallbackFlagExit)
-	wcfg.InitialCluster = "0=http://localhost:8000"
-	wcfg.InitialClusterToken = "etcdtest"
+	wcfg.ec.APUrls = []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}}
+	wcfg.ec.ACUrls = []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}}
+	wcfg.ec.ClusterState = embed.ClusterStateFlagExisting
+	wcfg.cf.fallback.Set(fallbackFlagExit)
+	wcfg.ec.InitialCluster = "0=http://localhost:8000"
+	wcfg.ec.InitialClusterToken = "etcdtest"
 
-	if cfg.ClusterState != wcfg.ClusterState {
-		t.Errorf("clusterState = %v, want %v", cfg.ClusterState, wcfg.ClusterState)
+	if cfg.ec.ClusterState != wcfg.ec.ClusterState {
+		t.Errorf("clusterState = %v, want %v", cfg.ec.ClusterState, wcfg.ec.ClusterState)
 	}
-	if cfg.fallback.String() != wcfg.fallback.String() {
-		t.Errorf("fallback = %v, want %v", cfg.fallback, wcfg.fallback)
+	if cfg.cf.fallback.String() != wcfg.cf.fallback.String() {
+		t.Errorf("fallback = %v, want %v", cfg.cf.fallback, wcfg.cf.fallback)
 	}
-	if cfg.InitialCluster != wcfg.InitialCluster {
-		t.Errorf("initialCluster = %v, want %v", cfg.InitialCluster, wcfg.InitialCluster)
+	if cfg.ec.InitialCluster != wcfg.ec.InitialCluster {
+		t.Errorf("initialCluster = %v, want %v", cfg.ec.InitialCluster, wcfg.ec.InitialCluster)
 	}
-	if cfg.InitialClusterToken != wcfg.InitialClusterToken {
-		t.Errorf("initialClusterToken = %v, want %v", cfg.InitialClusterToken, wcfg.InitialClusterToken)
+	if cfg.ec.InitialClusterToken != wcfg.ec.InitialClusterToken {
+		t.Errorf("initialClusterToken = %v, want %v", cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken)
 	}
-	if !reflect.DeepEqual(cfg.APUrls, wcfg.APUrls) {
-		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.LPUrls, wcfg.LPUrls)
+	if !reflect.DeepEqual(cfg.ec.APUrls, wcfg.ec.APUrls) {
+		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.ec.LPUrls)
 	}
-	if !reflect.DeepEqual(cfg.ACUrls, wcfg.ACUrls) {
-		t.Errorf("advertise-client-urls = %v, want %v", cfg.LCUrls, wcfg.LCUrls)
+	if !reflect.DeepEqual(cfg.ec.ACUrls, wcfg.ec.ACUrls) {
+		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.LCUrls, wcfg.ec.LCUrls)
 	}
 }
 
 func validateOtherFlags(t *testing.T, cfg *config) {
 	wcfg := newConfig()
-	wcfg.proxy.Set(proxyFlagReadonly)
-	if cfg.proxy.String() != wcfg.proxy.String() {
-		t.Errorf("proxy = %v, want %v", cfg.proxy, wcfg.proxy)
+	wcfg.cf.proxy.Set(proxyFlagReadonly)
+	if cfg.cf.proxy.String() != wcfg.cf.proxy.String() {
+		t.Errorf("proxy = %v, want %v", cfg.cf.proxy, wcfg.cf.proxy)
 	}
 }
