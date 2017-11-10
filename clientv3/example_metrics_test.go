@@ -46,7 +46,7 @@ func ExampleClient_metrics() {
 	// get a key so it shows up in the metrics as a range RPC
 	cli.Get(context.TODO(), "test_key")
 
-	// listen for all prometheus metrics
+	// listen for all Prometheus metrics
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatal(err)
@@ -61,7 +61,7 @@ func ExampleClient_metrics() {
 		<-donec
 	}()
 
-	// make an http request to fetch all prometheus metrics
+	// make an http request to fetch all Prometheus metrics
 	url := "http://" + ln.Addr().String() + "/metrics"
 	resp, err := http.Get(url)
 	if err != nil {
