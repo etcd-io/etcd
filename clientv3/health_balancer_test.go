@@ -64,8 +64,8 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	}
 
 	down1(errors.New("error"))
-	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints)-1 { // we call down on one endpoint
+		t.Errorf("closing the only connection should triggered balancer to send the %d endpoints via Notify chan so that we can establish a connection", len(endpoints)-1)
 	}
 	down2(errors.New("error"))
 	_, _, err = hb.Get(context.Background(), unblockingOpts)
@@ -119,8 +119,8 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 
 	down1(errors.New("error"))
-	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
+	if addrs := <-hb.Notify(); len(addrs) != len(endpoints)-1 { // we call down on one endpoint
+		t.Errorf("closing the only connection should triggered balancer to send the %d endpoints via Notify chan so that we can establish a connection", len(endpoints)-1)
 	}
 	down2(errors.New("error"))
 	ctx, cancel = context.WithTimeout(context.Background(), time.Millisecond*100)

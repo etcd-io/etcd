@@ -367,19 +367,15 @@ func (b *healthBalancer) notifyAddrs(msg notifyMsg) {
 		}
 	}
 	b.mu.RLock()
-	addrs := b.addrs
 	pinAddr := b.pinAddr
 	downc := b.downc
 	b.mu.RUnlock()
+	addrs, hostPorts := b.liveAddrs()
 
 	var waitDown bool
 	if pinAddr != "" {
-		waitDown = true
-		for _, a := range addrs {
-			if a.Addr == pinAddr {
-				waitDown = false
-			}
-		}
+		_, ok := hostPorts[pinAddr]
+		waitDown = !ok
 	}
 
 	select {
