@@ -60,13 +60,22 @@ import:
   subpackages:
   - runewidth.go
 - package: github.com/prometheus/client_golang
-  version: v0.8.0
+  version: 5cec1d0429b02e4323e042eb04dafdb079ddf568
   subpackages:
   - prometheus
+  - prometheus/promhttp
+- package: github.com/prometheus/client_model
+  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+  subpackages:
+  - go
 - package: github.com/prometheus/common
-  version: 49fee292b27bfff7f354ee0f64e1bc4850462edf
+  version: e3fb1a1acd7605367a2b378bc2e2f893c05174b7
 - package: github.com/prometheus/procfs
-  version: a1dba9ce8baed984a2495b658c82687f8157b98f
+  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
+  subpackages:
+  - xfs
+- package: github.com/grpc-ecosystem/go-grpc-prometheus
+  version: 0dafe0d496ea71181bf2dd039e7e3f44b6bd11a7
 - package: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - package: github.com/spf13/pflag
@@ -79,8 +88,6 @@ import:
   version: v1.18.0
 - package: github.com/xiang90/probing
   version: 0.0.1
-- package: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: v1.1
 - package: golang.org/x/crypto
   version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
