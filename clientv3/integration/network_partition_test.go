@@ -146,6 +146,51 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	}
 }
 
+// TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection ensures balancer
+// switches endpoint when leader fails and linearizable get requests returns
+// "etcdserver: request timed out".
+func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
+	})
+	defer clus.Terminate(t)
+	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+
+	lead := clus.WaitLeader(t)
+
+	timeout := 3 * clus.Members[(lead+1)%2].ServerConfig.ReqTimeout()
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{eps[(lead+1)%2]},
+		DialTimeout: 1 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	// wait for non-leader to be pinned
+	mustWaitPinReady(t, cli)
+
+	// add all eps to list, so that when the original pined one fails
+	// the client can switch to other available eps
+	cli.SetEndpoints(eps[lead], eps[(lead+1)%2])
+
+	// isolate leader
+	clus.Members[lead].InjectPartition(t, clus.Members[(lead+1)%3], clus.Members[(lead+2)%3])
+
+	// expects balancer endpoint switch while ongoing leader election
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	_, err = cli.Get(ctx, "a")
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBalancerUnderNetworkPartitionWatchLeader(t *testing.T) {
 	testBalancerUnderNetworkPartitionWatch(t, true)
 }
