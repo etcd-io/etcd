@@ -403,6 +403,17 @@ function fmt_pass {
 		echo "Skipping ineffassign..."
 	fi
 
+	if which nakedret >/dev/null; then
+		echo "Checking nakedret..."
+		nakedretResult=$(nakedret "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${nakedretResult}" ]; then
+			echo -e "nakedret checking failed:\n${nakedretResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping nakedret..."
+	fi
+
 	echo "Checking for license header..."
 	licRes=""
 	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
