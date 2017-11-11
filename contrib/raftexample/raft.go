@@ -133,7 +133,7 @@ func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 	if rc.appliedIndex-firstIdx+1 < uint64(len(ents)) {
 		nents = ents[rc.appliedIndex-firstIdx+1:]
 	}
-	return
+	return nents
 }
 
 // publishEntries writes committed log entries to commit channel and returns

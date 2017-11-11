@@ -40,7 +40,7 @@ func getBuckets(dbPath string) (buckets []string, err error) {
 			return nil
 		})
 	})
-	return
+	return buckets, err
 }
 
 func iterateBucket(dbPath, bucket string, limit uint64) (err error) {
@@ -70,7 +70,7 @@ func iterateBucket(dbPath, bucket string, limit uint64) (err error) {
 
 		return nil
 	})
-	return
+	return err
 }
 
 func getHash(dbPath string) (hash uint32, err error) {

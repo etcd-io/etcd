@@ -192,7 +192,7 @@ func parseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	host = endpoint
 	url, uerr := url.Parse(endpoint)
 	if uerr != nil || !strings.Contains(endpoint, "://") {
-		return
+		return proto, host, scheme
 	}
 	scheme = url.Scheme
 
@@ -206,7 +206,7 @@ func parseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	default:
 		proto, host = "", ""
 	}
-	return
+	return proto, host, scheme
 }
 
 func (c *Client) processCreds(scheme string) (creds *credentials.TransportCredentials) {
@@ -225,7 +225,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 	default:
 		creds = nil
 	}
-	return
+	return creds
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication

@@ -141,7 +141,7 @@ func parseWALMetadata(b []byte) (id, cid types.ID) {
 	pbutil.MustUnmarshal(&metadata, b)
 	id = types.ID(metadata.NodeID)
 	cid = types.ID(metadata.ClusterID)
-	return
+	return id, cid
 }
 
 func genIDSlice(a []uint64) []types.ID {

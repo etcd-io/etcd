@@ -135,5 +135,5 @@ func interestingGoroutines() (gs []string) {
 		gs = append(gs, stack)
 	}
 	sort.Strings(gs)
-	return
+	return gs
 }
