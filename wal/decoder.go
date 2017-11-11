@@ -119,7 +119,7 @@ func decodeFrameSize(lenField int64) (recBytes int64, padBytes int64) {
 		// padding is stored in lower 3 bits of length MSB
 		padBytes = int64((uint64(lenField) >> 56) & 0x7)
 	}
-	return
+	return recBytes, padBytes
 }
 
 // isTornEntry determines whether the last entry of the WAL was partially written

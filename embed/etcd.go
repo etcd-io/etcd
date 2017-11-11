@@ -108,10 +108,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}()
 
 	if e.Peers, err = startPeerListeners(cfg); err != nil {
-		return
+		return e, err
 	}
 	if e.sctxs, err = startClientListeners(cfg); err != nil {
-		return
+		return e, err
 	}
 	for _, sctx := range e.sctxs {
 		e.Clients = append(e.Clients, sctx.l)
@@ -177,7 +177,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
-		return
+		return e, err
 	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
@@ -190,7 +190,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	var peerTLScfg *tls.Config
 	if !cfg.PeerTLSInfo.Empty() {
 		if peerTLScfg, err = cfg.PeerTLSInfo.ServerConfig(); err != nil {
-			return
+			return e, err
 		}
 	}
 	for _, p := range e.Peers {
@@ -214,10 +214,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 
 	if err = e.serve(); err != nil {
-		return
+		return e, err
 	}
 	serving = true
-	return
+	return e, nil
 }
 
 // Config returns the current configuration.

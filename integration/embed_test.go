@@ -151,7 +151,7 @@ func newEmbedURLs(n int) (urls []url.URL) {
 		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d%06d", os.Getpid(), i))
 		urls = append(urls, *u)
 	}
-	return
+	return urls
 }
 
 func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {

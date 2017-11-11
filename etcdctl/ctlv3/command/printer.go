@@ -169,7 +169,7 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 			strings.Join(m.ClientURLs, ","),
 		})
 	}
-	return
+	return hdr, rows
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
@@ -185,7 +185,7 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			fmt.Sprint(status.Resp.RaftIndex),
 		})
 	}
-	return
+	return hdr, rows
 }
 
 func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string) {
@@ -196,7 +196,7 @@ func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string
 			fmt.Sprint(h.Resp.Hash),
 		})
 	}
-	return
+	return hdr, rows
 }
 
 func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
@@ -207,5 +207,5 @@ func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
 		fmt.Sprint(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
 	})
-	return
+	return hdr, rows
 }

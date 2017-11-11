@@ -416,7 +416,7 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
 	advanceTicksForElection(n, c.ElectionTick)
-	return
+	return id, n, s, w
 }
 
 func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
