@@ -272,24 +272,23 @@ function release_pass {
 	mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function fmt_pass {
-	toggle_failpoints disable
-
-	echo "Checking gofmt..."
+function gofmt_pass {
 	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
 	if [ -n "${fmtRes}" ]; then
 		echo -e "gofmt checking failed:\n${fmtRes}"
 		exit 255
 	fi
+}
 
-	echo "Checking govet..."
+function govet_pass {
 	vetRes=$(go vet "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet checking failed:\n${vetRes}"
 		exit 255
 	fi
+}
 
-	echo "Checking 'go tool vet -all -shadow'..."
+function govet_shadow_pass {
 	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
 	fmtpkgs=($fmtpkgs)
 	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
@@ -297,27 +296,30 @@ function fmt_pass {
 		echo -e "govet -all -shadow checking failed:\n${vetRes}"
 		exit 255
 	fi
+}
 
+function shellcheck_pass {
 	if which shellcheck >/dev/null; then
-		echo "Checking shellcheck..."
 		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\n${shellcheckResult}"
 			exit 255
 		fi
 	fi
+}
 
-	echo "Checking documentation style..."
+function markdown_you_pass {
 	# eschew you
 	yous=$(find . -name \*.md -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true)
 	if [ ! -z "$yous" ]; then
 		echo -e "found 'you' in documentation:\n${yous}"
 		exit 255
 	fi
+}
 
+function markdown_marker_pass {
 	# TODO: check other markdown files when marker handles headers with '[]'
 	if which marker >/dev/null; then
-		echo "Checking marker to find broken links..."
 		markerResult=$(marker --skip-http --root ./Documentation 2>&1 || true)
 		if [ -n "${markerResult}" ]; then
 			echo -e "marker checking failed:\n${markerResult}"
@@ -326,9 +328,10 @@ function fmt_pass {
 	else
 		echo "Skipping marker..."
 	fi
+}
 
+function goword_pass {
 	if which goword >/dev/null; then
-		echo "Checking goword..."
 		# get all go files to process
 		gofiles=$(find "${FMT[@]}" -iname '*.go' 2>/dev/null)
 		gofiles_all=($gofiles)
@@ -350,9 +353,10 @@ function fmt_pass {
 	else
 		echo "Skipping goword..."
 	fi
+}
 
+function gosimple_pass {
 	if which gosimple >/dev/null; then
-		echo "Checking gosimple..."
 		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${gosimpleResult}" ]; then
 			echo -e "gosimple checking failed:\n${gosimpleResult}"
@@ -361,9 +365,10 @@ function fmt_pass {
 	else
 		echo "Skipping gosimple..."
 	fi
+}
 
+function unused_pass {
 	if which unused >/dev/null; then
-		echo "Checking unused..."
 		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unusedResult}" ]; then
 			echo -e "unused checking failed:\n${unusedResult}"
@@ -372,9 +377,10 @@ function fmt_pass {
 	else
 		echo "Skipping unused..."
 	fi
+}
 
+function staticcheck_pass {
 	if which staticcheck >/dev/null; then
-		echo "Checking staticcheck..."
 		staticcheckResult=$(staticcheck "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
@@ -391,9 +397,10 @@ function fmt_pass {
 	else
 		echo "Skipping staticcheck..."
 	fi
+}
 
+function ineffassign_pass {
 	if which ineffassign >/dev/null; then
-		echo "Checking ineffassign..."
 		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${ineffassignResult}" ]; then
 			echo -e "ineffassign checking failed:\n${ineffassignResult}"
@@ -402,9 +409,10 @@ function fmt_pass {
 	else
 		echo "Skipping ineffassign..."
 	fi
+}
 
+function nakedret_pass {
 	if which nakedret >/dev/null; then
-		echo "Checking nakedret..."
 		nakedretResult=$(nakedret "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${nakedretResult}" ]; then
 			echo -e "nakedret checking failed:\n${nakedretResult}"
@@ -413,8 +421,9 @@ function fmt_pass {
 	else
 		echo "Skipping nakedret..."
 	fi
+}
 
-	echo "Checking for license header..."
+function license_header_pass {
 	licRes=""
 	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
 	for file in $files; do
@@ -426,8 +435,9 @@ function fmt_pass {
 		echo -e "license header checking failed:\n${licRes}"
 		exit 255
 	fi
+}
 
-	echo "Checking receiver names..."
+function receiver_name_pass {
 	recvs=$(grep 'func ([^*]' {*,*/*,*/*/*}.go  | grep -Ev "(generated|pb/)" | tr  ':' ' ' |  \
 		awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
 		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
@@ -439,8 +449,9 @@ function fmt_pass {
 		done
 		exit 255
 	fi
+}
 
-	echo "Checking commit titles..."
+function commit_title_pass {
 	git log --oneline "$(git merge-base HEAD master)"...HEAD | while read -r l; do
 		commitMsg=$(echo "$l" | cut -f2- -d' ')
 		if [[ "$commitMsg" == Merge* ]]; then
@@ -461,6 +472,31 @@ function fmt_pass {
 			echo "Got: $l"
 			exit 255
 		fi
+	done
+}
+
+function fmt_pass {
+	toggle_failpoints disable
+
+	for p in gofmt \
+			govet \
+			govet_shadow \
+			shellcheck \
+			markdown_you \
+			markdown_marker \
+			goword \
+			gosimple \
+			unused \
+			staticcheck \
+			ineffassign \
+			nakedret \
+			license_header \
+			receiver_name \
+			commit_title \
+			; do
+		echo "Starting '$p' pass at $(date)"
+		"${p}"_pass "$@"
+		echo "Finished '$p' pass at $(date)"
 	done
 }
 
