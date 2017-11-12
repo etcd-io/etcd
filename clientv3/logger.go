@@ -61,6 +61,7 @@ func GetLogger() Logger {
 func (s *settableLogger) set(l Logger) {
 	s.mu.Lock()
 	logger.l = l
+	grpclog.SetLoggerV2(&logger)
 	s.mu.Unlock()
 }
 
