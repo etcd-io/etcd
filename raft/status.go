@@ -49,6 +49,10 @@ func getStatus(r *raft) Status {
 		for id, p := range r.prs {
 			s.Progress[id] = *p
 		}
+
+		for id, p := range r.learnerPrs {
+			s.Progress[id] = *p
+		}
 	}
 
 	return s
