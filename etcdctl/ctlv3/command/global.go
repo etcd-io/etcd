@@ -114,6 +114,8 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		fs.VisitAll(func(f *pflag.Flag) {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
+	} else {
+		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 	}
 
 	cfg := &clientConfig{}

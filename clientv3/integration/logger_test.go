@@ -17,11 +17,13 @@ package integration
 import (
 	"io/ioutil"
 
+	"github.com/coreos/etcd/clientv3"
+
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/grpc/grpclog"
 )
 
 func init() {
 	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 }
