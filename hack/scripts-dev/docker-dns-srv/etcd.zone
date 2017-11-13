@@ -1,16 +1,21 @@
-etcd.local.	IN	SOA	bindhostname. admin.etcd.local. (
-1452607488
-10800
-3600
-604800
-38400 )
-etcd.local.	IN	NS	bindhostname.
-m1.etcd.local.	300	IN	A	127.0.0.1
-m2.etcd.local.	300	IN	A	127.0.0.1
-m3.etcd.local.	300	IN	A	127.0.0.1
-_etcd-client-ssl._tcp	300	IN	SRV	0 0 2379 m1.etcd.local.
-_etcd-client-ssl._tcp	300	IN	SRV	0 0 22379 m2.etcd.local.
-_etcd-client-ssl._tcp	300	IN	SRV	0 0 32379 m3.etcd.local.
-_etcd-server-ssl._tcp	300	IN	SRV	0 0 2380 m1.etcd.local.
-_etcd-server-ssl._tcp	300	IN	SRV	0 0 22380 m2.etcd.local.
-_etcd-server-ssl._tcp	300	IN	SRV	0 0 32380 m3.etcd.local.
+$TTL    86400
+@   IN  SOA  etcdns.local. root.etcdns.local. (
+             100500     ; Serial
+             604800     ; Refresh
+              86400     ; Retry
+            2419200     ; Expire
+              86400 )   ; Negative Cache TTL
+    IN  NS  ns.etcdns.local.
+    IN  A   127.0.0.1
+
+ns IN A 127.0.0.1
+m1 IN A 127.0.0.1
+m2 IN A 127.0.0.1
+m3 IN A 127.0.0.1
+
+_etcd-client-ssl._tcp IN SRV 0 0 2379 m1.etcd.local.
+_etcd-server-ssl._tcp IN SRV 0 0 2380 m1.etcd.local.
+_etcd-client-ssl._tcp IN SRV 0 0 22379 m2.etcd.local.
+_etcd-server-ssl._tcp IN SRV 0 0 22380 m2.etcd.local.
+_etcd-client-ssl._tcp IN SRV 0 0 32379 m3.etcd.local.
+_etcd-server-ssl._tcp IN SRV 0 0 32380 m3.etcd.local.

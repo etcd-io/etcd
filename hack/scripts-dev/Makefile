@@ -15,6 +15,7 @@ clean:
 	rm -rf ./covdir
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
+	rm -rf ./agent-*
 	rm -rf ./bin/*.etcd
 	rm -rf ./gopath
 	rm -rf ./release
@@ -94,7 +95,7 @@ test:
 	$(info TEST_OPTS: $(_TEST_OPTS))
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	$(_TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log
-	! egrep "(--- FAIL:|leak|panic: test timed out)" -A10 -B50 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test:
 	$(info GO_VERSION: $(_GO_VERSION))
@@ -105,7 +106,7 @@ docker-test:
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "$(_TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
-	! egrep "(--- FAIL:|leak|panic: test timed out)" -A10 -B50 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test-coverage:
 	$(info GO_VERSION: $(_GO_VERSION))
@@ -115,7 +116,7 @@ docker-test-coverage:
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
-	! egrep "(--- FAIL:|leak|panic: test timed out)" -A10 -B50 docker-test-coverage-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
 
 # build release container image with Linux
 _ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
@@ -154,9 +155,11 @@ push-docker-release-master:
 #   make push-docker-dns-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-test -f ./hack/scripts-dev/Makefile
-#   make docker-dns-test-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-certs-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-certs-common-name-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-certs-gateway-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
 
-# build base container image for DNS testing
 build-docker-dns-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	@cat ./hack/scripts-dev/docker-dns/Dockerfile | sed s/REPLACE_ME_GO_VERSION/$(_GO_VERSION)/ \
@@ -181,17 +184,53 @@ pull-docker-dns-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker pull gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION)
 
-# run DNS tests inside container
-docker-dns-test-run:
+docker-dns-test-certs-run:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker run \
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
 	  --volume=`pwd`/bin:/etcd \
-	  --volume=`pwd`/integration/fixtures:/certs \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
-	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
+	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
+
+docker-dns-test-certs-common-name-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs-common-name:/certs-common-name \
+	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-common-name/run.sh && rm -rf m*.etcd"
+
+docker-dns-test-certs-gateway-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs-gateway:/certs-gateway \
+	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-gateway/run.sh && rm -rf m*.etcd"
+
+docker-dns-test-certs-wildcard-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs-wildcard:/certs-wildcard \
+	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
 
 # Example:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
@@ -201,9 +240,10 @@ docker-dns-test-run:
 #   make push-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
-#   make docker-dns-srv-test-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-gateway-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
 
-# build base container image for DNS/SRV testing
 build-docker-dns-srv-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	@cat ./hack/scripts-dev/docker-dns-srv/Dockerfile | sed s/REPLACE_ME_GO_VERSION/$(_GO_VERSION)/ \
@@ -228,16 +268,38 @@ pull-docker-dns-srv-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker pull gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION)
 
-# run DNS/SRV tests inside container
-docker-dns-srv-test-run:
+docker-dns-srv-test-certs-run:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker run \
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
 	  --volume=`pwd`/bin:/etcd \
-	  --volume=`pwd`/integration/fixtures:/certs \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
-	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
+	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
 
-# TODO: add DNS integration tests
+docker-dns-srv-test-certs-gateway-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-gateway:/certs-gateway \
+	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-gateway/run.sh && rm -rf m*.etcd"
+
+docker-dns-srv-test-certs-wildcard-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-wildcard:/certs-wildcard \
+	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
