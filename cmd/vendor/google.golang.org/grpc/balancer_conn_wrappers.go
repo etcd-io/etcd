@@ -171,7 +171,9 @@ func (ccb *ccBalancerWrapper) NewSubConn(addrs []resolver.Address, opts balancer
 		return nil, err
 	}
 	acbw := &acBalancerWrapper{ac: ac}
+	ac.mu.Lock()
 	ac.acbw = acbw
+	ac.mu.Unlock()
 	return acbw, nil
 }
 
@@ -228,7 +230,9 @@ func (acbw *acBalancerWrapper) UpdateAddresses(addrs []resolver.Address) {
 			return
 		}
 		acbw.ac = ac
+		ac.mu.Lock()
 		ac.acbw = acbw
+		ac.mu.Unlock()
 		if acState != connectivity.Idle {
 			ac.connect(false)
 		}

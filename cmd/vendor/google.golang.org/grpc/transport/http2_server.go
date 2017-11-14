@@ -152,12 +152,12 @@ func newHTTP2Server(conn net.Conn, config *ServerConfig) (_ ServerTransport, err
 			Val: uint32(iwz)})
 	}
 	if err := framer.fr.WriteSettings(isettings...); err != nil {
-		return nil, connectionErrorf(true, err, "transport: %v", err)
+		return nil, connectionErrorf(false, err, "transport: %v", err)
 	}
 	// Adjust the connection flow control window if needed.
 	if delta := uint32(icwz - defaultWindowSize); delta > 0 {
 		if err := framer.fr.WriteWindowUpdate(0, delta); err != nil {
-			return nil, connectionErrorf(true, err, "transport: %v", err)
+			return nil, connectionErrorf(false, err, "transport: %v", err)
 		}
 	}
 	kp := config.KeepaliveParams
@@ -223,6 +223,31 @@ func newHTTP2Server(conn net.Conn, config *ServerConfig) (_ ServerTransport, err
 		t.stats.HandleConn(t.ctx, connBegin)
 	}
 	t.framer.writer.Flush()
+
+	// Check the validity of client preface.
+	preface := make([]byte, len(clientPreface))
+	if _, err := io.ReadFull(t.conn, preface); err != nil {
+		return nil, connectionErrorf(false, err, "transport: http2Server.HandleStreams failed to receive the preface from client: %v", err)
+	}
+	if !bytes.Equal(preface, clientPreface) {
+		return nil, connectionErrorf(false, nil, "transport: http2Server.HandleStreams received bogus greeting from client: %q", preface)
+	}
+
+	frame, err := t.framer.fr.ReadFrame()
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		t.Close()
+		return
+	}
+	if err != nil {
+		return nil, connectionErrorf(false, err, "transport: http2Server.HandleStreams failed to read initial settings frame: %v", err)
+	}
+	atomic.StoreUint32(&t.activity, 1)
+	sf, ok := frame.(*http2.SettingsFrame)
+	if !ok {
+		return nil, connectionErrorf(false, nil, "transport: http2Server.HandleStreams saw invalid preface type %T from client", frame)
+	}
+	t.handleSettings(sf)
+
 	go func() {
 		loopyWriter(t.ctx, t.controlBuf, t.itemHandler)
 		t.Close()
@@ -354,41 +379,6 @@ func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(
 // typically run in a separate goroutine.
 // traceCtx attaches trace to ctx and returns the new context.
 func (t *http2Server) HandleStreams(handle func(*Stream), traceCtx func(context.Context, string) context.Context) {
-	// Check the validity of client preface.
-	preface := make([]byte, len(clientPreface))
-	if _, err := io.ReadFull(t.conn, preface); err != nil {
-		// Only log if it isn't a simple tcp accept check (ie: tcp balancer doing open/close socket)
-		if err != io.EOF {
-			errorf("transport: http2Server.HandleStreams failed to receive the preface from client: %v", err)
-		}
-		t.Close()
-		return
-	}
-	if !bytes.Equal(preface, clientPreface) {
-		errorf("transport: http2Server.HandleStreams received bogus greeting from client: %q", preface)
-		t.Close()
-		return
-	}
-
-	frame, err := t.framer.fr.ReadFrame()
-	if err == io.EOF || err == io.ErrUnexpectedEOF {
-		t.Close()
-		return
-	}
-	if err != nil {
-		errorf("transport: http2Server.HandleStreams failed to read initial settings frame: %v", err)
-		t.Close()
-		return
-	}
-	atomic.StoreUint32(&t.activity, 1)
-	sf, ok := frame.(*http2.SettingsFrame)
-	if !ok {
-		errorf("transport: http2Server.HandleStreams saw invalid preface type %T from client", frame)
-		t.Close()
-		return
-	}
-	t.handleSettings(sf)
-
 	for {
 		frame, err := t.framer.fr.ReadFrame()
 		atomic.StoreUint32(&t.activity, 1)
