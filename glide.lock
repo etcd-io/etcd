@@ -1,5 +1,5 @@
-hash: f93ce836ad95fff4294b4b774ef1465d243ab4d6b20d96f27fabf9f003e71332
-updated: 2017-11-21T11:33:17.843967822-08:00
+hash: 8a2307db167c2f9bc511956fbec0a4400bc38db103603fc6a87bb179ac853bf5
+updated: 2017-11-21T11:36:36.822426751-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -10,7 +10,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/bbolt
-  version: 3c6cbfb299c11444eb2f8c9d48f0d2ce09157423
+  version: 32c383e75ce054674c53b5a07e55de85332aee14
 - name: github.com/coreos/go-semver
   version: 568e959cd89871e61434c1143528d9162da89ef2
   subpackages:
