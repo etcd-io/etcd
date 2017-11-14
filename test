@@ -109,6 +109,9 @@ function integration_extra {
 }
 
 function functional_pass {
+  	# Clean up any data and logs from previous runs
+  	rm -rf ./agent-*
+
 	for a in 1 2 3; do
 		mkdir -p ./agent-$a
 		./bin/etcd-agent -etcd-path ./bin/etcd -etcd-log-dir "./agent-$a" -port ":${a}9027" -use-root=false &
@@ -138,7 +141,6 @@ function functional_pass {
 	agent_pids=($agent_pids)
 	kill -s TERM "${agent_pids[@]}"
 	for a in "${agent_pids[@]}"; do wait "$a" || true; done
-	rm -rf ./agent-*
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
 		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
