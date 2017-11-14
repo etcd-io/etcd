@@ -46,6 +46,37 @@ import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
 clientv3yaml.NewConfig
 ```
 
+### Client upgrade checklists (>=3.2.10)
+
+>=3.2.10 upgrades `grpc/grpc-go` to >=v1.7.x from v1.2.1, which introduces some breaking changes.
+
+Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. >=3.2.10 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
+
+Before
+
+```go
+// expect dial time-out on ipv4 blackhole
+_, err := clientv3.New(clientv3.Config{
+    Endpoints:   []string{"http://254.0.0.1:12345"},
+    DialTimeout: 2 * time.Second
+})
+if err == grpc.ErrClientConnTimeout {
+	// handle errors
+}
+```
+
+After
+
+```go
+_, err := clientv3.New(clientv3.Config{
+    Endpoints:   []string{"http://254.0.0.1:12345"},
+    DialTimeout: 2 * time.Second
+})
+if err == context.DeadlineExceeded {
+	// handle errors
+}
+```
+
 ### Server upgrade checklists
 
 #### Upgrade requirements
