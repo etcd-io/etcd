@@ -216,7 +216,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 	}
 
 	httpmux.Handle(
-		"/v3alpha/",
+		"/v3beta/",
 		wsproxy.WebsocketProxy(
 			gwmux,
 			wsproxy.WithRequestMutator(
