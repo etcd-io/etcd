@@ -318,6 +318,10 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 	pb.RegisterAuthServer(server, authp)
 	v3electionpb.RegisterElectionServer(server, electionp)
 	v3lockpb.RegisterLockServer(server, lockp)
+
+	// set zero values for metrics registered for this grpc server
+	grpc_prometheus.Register(server)
+
 	return server
 }
 
