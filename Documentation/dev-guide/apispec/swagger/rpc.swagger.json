@@ -15,7 +15,7 @@
     "version": "version not set"
   },
   "paths": {
-    "/v3alpha/auth/authenticate": {
+    "/v3beta/auth/authenticate": {
       "post": {
         "tags": [
           "Auth"
@@ -42,7 +42,7 @@
         }
       }
     },
-    "/v3alpha/auth/disable": {
+    "/v3beta/auth/disable": {
       "post": {
         "tags": [
           "Auth"
@@ -69,7 +69,7 @@
         }
       }
     },
-    "/v3alpha/auth/enable": {
+    "/v3beta/auth/enable": {
       "post": {
         "tags": [
           "Auth"
@@ -96,7 +96,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/add": {
+    "/v3beta/auth/role/add": {
       "post": {
         "tags": [
           "Auth"
@@ -123,7 +123,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/delete": {
+    "/v3beta/auth/role/delete": {
       "post": {
         "tags": [
           "Auth"
@@ -150,7 +150,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/get": {
+    "/v3beta/auth/role/get": {
       "post": {
         "tags": [
           "Auth"
@@ -177,7 +177,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/grant": {
+    "/v3beta/auth/role/grant": {
       "post": {
         "tags": [
           "Auth"
@@ -204,7 +204,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/list": {
+    "/v3beta/auth/role/list": {
       "post": {
         "tags": [
           "Auth"
@@ -231,7 +231,7 @@
         }
       }
     },
-    "/v3alpha/auth/role/revoke": {
+    "/v3beta/auth/role/revoke": {
       "post": {
         "tags": [
           "Auth"
@@ -258,7 +258,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/add": {
+    "/v3beta/auth/user/add": {
       "post": {
         "tags": [
           "Auth"
@@ -285,7 +285,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/changepw": {
+    "/v3beta/auth/user/changepw": {
       "post": {
         "tags": [
           "Auth"
@@ -312,7 +312,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/delete": {
+    "/v3beta/auth/user/delete": {
       "post": {
         "tags": [
           "Auth"
@@ -339,7 +339,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/get": {
+    "/v3beta/auth/user/get": {
       "post": {
         "tags": [
           "Auth"
@@ -366,7 +366,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/grant": {
+    "/v3beta/auth/user/grant": {
       "post": {
         "tags": [
           "Auth"
@@ -393,7 +393,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/list": {
+    "/v3beta/auth/user/list": {
       "post": {
         "tags": [
           "Auth"
@@ -420,7 +420,7 @@
         }
       }
     },
-    "/v3alpha/auth/user/revoke": {
+    "/v3beta/auth/user/revoke": {
       "post": {
         "tags": [
           "Auth"
@@ -447,7 +447,7 @@
         }
       }
     },
-    "/v3alpha/cluster/member/add": {
+    "/v3beta/cluster/member/add": {
       "post": {
         "tags": [
           "Cluster"
@@ -474,7 +474,7 @@
         }
       }
     },
-    "/v3alpha/cluster/member/list": {
+    "/v3beta/cluster/member/list": {
       "post": {
         "tags": [
           "Cluster"
@@ -501,7 +501,7 @@
         }
       }
     },
-    "/v3alpha/cluster/member/remove": {
+    "/v3beta/cluster/member/remove": {
       "post": {
         "tags": [
           "Cluster"
@@ -528,7 +528,7 @@
         }
       }
     },
-    "/v3alpha/cluster/member/update": {
+    "/v3beta/cluster/member/update": {
       "post": {
         "tags": [
           "Cluster"
@@ -555,7 +555,7 @@
         }
       }
     },
-    "/v3alpha/kv/compaction": {
+    "/v3beta/kv/compaction": {
       "post": {
         "tags": [
           "KV"
@@ -582,7 +582,7 @@
         }
       }
     },
-    "/v3alpha/kv/deleterange": {
+    "/v3beta/kv/deleterange": {
       "post": {
         "tags": [
           "KV"
@@ -609,7 +609,7 @@
         }
       }
     },
-    "/v3alpha/kv/lease/leases": {
+    "/v3beta/kv/lease/leases": {
       "post": {
         "tags": [
           "Lease"
@@ -636,7 +636,7 @@
         }
       }
     },
-    "/v3alpha/kv/lease/revoke": {
+    "/v3beta/kv/lease/revoke": {
       "post": {
         "tags": [
           "Lease"
@@ -663,7 +663,7 @@
         }
       }
     },
-    "/v3alpha/kv/lease/timetolive": {
+    "/v3beta/kv/lease/timetolive": {
       "post": {
         "tags": [
           "Lease"
@@ -690,7 +690,7 @@
         }
       }
     },
-    "/v3alpha/kv/put": {
+    "/v3beta/kv/put": {
       "post": {
         "tags": [
           "KV"
@@ -717,7 +717,7 @@
         }
       }
     },
-    "/v3alpha/kv/range": {
+    "/v3beta/kv/range": {
       "post": {
         "tags": [
           "KV"
@@ -744,7 +744,7 @@
         }
       }
     },
-    "/v3alpha/kv/txn": {
+    "/v3beta/kv/txn": {
       "post": {
         "tags": [
           "KV"
@@ -771,7 +771,7 @@
         }
       }
     },
-    "/v3alpha/lease/grant": {
+    "/v3beta/lease/grant": {
       "post": {
         "tags": [
           "Lease"
@@ -798,7 +798,7 @@
         }
       }
     },
-    "/v3alpha/lease/keepalive": {
+    "/v3beta/lease/keepalive": {
       "post": {
         "tags": [
           "Lease"
@@ -826,7 +826,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/alarm": {
+    "/v3beta/maintenance/alarm": {
       "post": {
         "tags": [
           "Maintenance"
@@ -853,7 +853,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/defragment": {
+    "/v3beta/maintenance/defragment": {
       "post": {
         "tags": [
           "Maintenance"
@@ -880,7 +880,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/hash": {
+    "/v3beta/maintenance/hash": {
       "post": {
         "tags": [
           "Maintenance"
@@ -907,7 +907,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/snapshot": {
+    "/v3beta/maintenance/snapshot": {
       "post": {
         "tags": [
           "Maintenance"
@@ -934,7 +934,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/status": {
+    "/v3beta/maintenance/status": {
       "post": {
         "tags": [
           "Maintenance"
@@ -961,7 +961,7 @@
         }
       }
     },
-    "/v3alpha/maintenance/transfer-leadership": {
+    "/v3beta/maintenance/transfer-leadership": {
       "post": {
         "tags": [
           "Maintenance"
@@ -988,7 +988,7 @@
         }
       }
     },
-    "/v3alpha/watch": {
+    "/v3beta/watch": {
       "post": {
         "tags": [
           "Watch"
