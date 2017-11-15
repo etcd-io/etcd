@@ -181,6 +181,10 @@ To disable certificate chain checking, invoke curl with the `-k` flag:
 $ curl -k https://127.0.0.1:2379/v2/keys/foo -Xput -d value=bar -v
 ```
 
+## Notes for DNS SRV
+
+Since v3.1.0 (except v3.2.9), discovery SRV bootstrapping authenticates `ServerName` with a root domain name from `--discovery-srv` flag. This is to avoid man-in-the-middle cert attacks, by requiring a certificate to have matching root domain name in its Subject Alternative Name (SAN) field. For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `etcd.local` as an entry in Subject Alternative Name (SAN) field
+
 ## Notes for etcd proxy
 
 etcd proxy terminates the TLS from its client if the connection is secure, and uses proxy's own key/cert specified in `--peer-key-file` and `--peer-cert-file` to communicate with etcd members.
