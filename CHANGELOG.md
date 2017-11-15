@@ -1,3 +1,18 @@
+## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-20)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
+
+### Fixed
+
+- Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009)
+- Fix clientv3 balancer to handle [network partition](https://github.com/coreos/etcd/issues/8711)
+  - Upgrade `google.golang.org/grpc` v1.2.1 to v1.7.3
+  - Upgrade `github.com/grpc-ecosystem/grpc-gateway` v1.2 to v1.3
+  - Upgrade gRPC v1.2.1 to v1.7.3
+- Revert [discovery SRV auth `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651) to support non-wildcard subject alternative names in the certs (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts)
+  - For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `etcd.local` (**not `*.etcd.local`**) as an entry in Subject Alternative Name (SAN) field
+
+
 ## [v3.2.9](https://github.com/coreos/etcd/releases/tag/v3.2.9) (2017-10-06)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9).
@@ -6,7 +21,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9).
 
 - Compile with [Go 1.8.4](https://groups.google.com/d/msg/golang-nuts/sHfMg4gZNps/a-HDgDDDAAAJ)
 - Update `golang.org/x/crypto/bcrypt` (See [golang/crypto@6c586e1](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117) for more)
-- Fix HTTPS + DNS SRV discovery with subdomain
+- Fix discovery SRV bootstrapping to [authenticate `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651), in order to support sub-domain wildcard matching (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts)
+  - For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `*.etcd.local` as an entry in Subject Alternative Name (SAN) field
 
 
 ## [v3.2.8](https://github.com/coreos/etcd/releases/tag/v3.2.8) (2017-09-29)
@@ -334,8 +350,8 @@ See [upgrade 3.1](https://github.com/coreos/etcd/blob/master/Documentation/upgra
 - etcd uses default route IP if advertise URL is not given
 - Cluster rejects removing members if quorum will be lost
 - SRV records (e.g., infra1.example.com) must match the discovery domain (i.e., example.com) if no custom certificate authority is given
-  - TLSConfig ServerName is ignored with user-provided certificates
-    for backwards compatibility; to be deprecated in 3.2
+  - TLSConfig ServerName is ignored with user-provided certificates for backwards compatibility; to be deprecated in 3.2
+  - For example, `etcd --discovery-srv=example.com` will only authenticate peers/clients when the provided certs have root domain `example.com` as an entry in Subject Alternative Name (SAN) field
 - Discovery now has upper limit for waiting on retries
 - Warn on binding listeners through domain names; to be deprecated in 3.2
 
