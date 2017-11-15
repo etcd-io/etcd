@@ -444,9 +444,7 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
 		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.CAFile == "" {
-			// SRV targets have subdomains under the given DNSCluster, so wildcard matching
-			// is needed.
-			cfg.PeerTLSInfo.ServerName = "*." + cfg.DNSCluster
+			cfg.PeerTLSInfo.ServerName = cfg.DNSCluster
 		}
 		urlsmap, err = types.NewURLsMap(clusterStr)
 		// only etcd member must belong to the discovered cluster.
