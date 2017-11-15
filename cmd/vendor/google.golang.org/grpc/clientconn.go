@@ -929,6 +929,16 @@ func (ac *addrConn) resetTransport() error {
 			newTransport, err := transport.NewClientTransport(ac.cc.ctx, sinfo, copts, timeout)
 			if err != nil {
 				if e, ok := err.(transport.ConnectionError); ok && !e.Temporary() {
+					ac.mu.Lock()
+					if ac.state != connectivity.Shutdown {
+						ac.state = connectivity.TransientFailure
+						if ac.cc.balancerWrapper != nil {
+							ac.cc.balancerWrapper.handleSubConnStateChange(ac.acbw, ac.state)
+						} else {
+							ac.cc.csMgr.updateState(ac.state)
+						}
+					}
+					ac.mu.Unlock()
 					return err
 				}
 				grpclog.Warningf("grpc: addrConn.resetTransport failed to create client transport: %v; Reconnecting to %v", err, addr)
