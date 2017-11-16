@@ -15,6 +15,8 @@ import (
 
 	authpb "github.com/coreos/etcd/auth/authpb"
 
+	_ "google.golang.org/genproto/googleapis/api/annotations"
+
 	context "golang.org/x/net/context"
 
 	grpc "google.golang.org/grpc"
@@ -223,6 +225,34 @@ func (m *ResponseHeader) String() string            { return proto.CompactTextSt
 func (*ResponseHeader) ProtoMessage()               {}
 func (*ResponseHeader) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
 
+func (m *ResponseHeader) GetClusterId() uint64 {
+	if m != nil {
+		return m.ClusterId
+	}
+	return 0
+}
+
+func (m *ResponseHeader) GetMemberId() uint64 {
+	if m != nil {
+		return m.MemberId
+	}
+	return 0
+}
+
+func (m *ResponseHeader) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+func (m *ResponseHeader) GetRaftTerm() uint64 {
+	if m != nil {
+		return m.RaftTerm
+	}
+	return 0
+}
+
 type RangeRequest struct {
 	// key is the first key for the range. If range_end is not given, the request only looks up key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -273,6 +303,97 @@ func (m *RangeRequest) String() string            { return proto.CompactTextStri
 func (*RangeRequest) ProtoMessage()               {}
 func (*RangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1} }
 
+func (m *RangeRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *RangeRequest) GetRangeEnd() []byte {
+	if m != nil {
+		return m.RangeEnd
+	}
+	return nil
+}
+
+func (m *RangeRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *RangeRequest) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+func (m *RangeRequest) GetSortOrder() RangeRequest_SortOrder {
+	if m != nil {
+		return m.SortOrder
+	}
+	return RangeRequest_NONE
+}
+
+func (m *RangeRequest) GetSortTarget() RangeRequest_SortTarget {
+	if m != nil {
+		return m.SortTarget
+	}
+	return RangeRequest_KEY
+}
+
+func (m *RangeRequest) GetSerializable() bool {
+	if m != nil {
+		return m.Serializable
+	}
+	return false
+}
+
+func (m *RangeRequest) GetKeysOnly() bool {
+	if m != nil {
+		return m.KeysOnly
+	}
+	return false
+}
+
+func (m *RangeRequest) GetCountOnly() bool {
+	if m != nil {
+		return m.CountOnly
+	}
+	return false
+}
+
+func (m *RangeRequest) GetMinModRevision() int64 {
+	if m != nil {
+		return m.MinModRevision
+	}
+	return 0
+}
+
+func (m *RangeRequest) GetMaxModRevision() int64 {
+	if m != nil {
+		return m.MaxModRevision
+	}
+	return 0
+}
+
+func (m *RangeRequest) GetMinCreateRevision() int64 {
+	if m != nil {
+		return m.MinCreateRevision
+	}
+	return 0
+}
+
+func (m *RangeRequest) GetMaxCreateRevision() int64 {
+	if m != nil {
+		return m.MaxCreateRevision
+	}
+	return 0
+}
+
 type RangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// kvs is the list of key-value pairs matched by the range request.
@@ -303,6 +424,20 @@ func (m *RangeResponse) GetKvs() []*mvccpb.KeyValue {
 	return nil
 }
 
+func (m *RangeResponse) GetMore() bool {
+	if m != nil {
+		return m.More
+	}
+	return false
+}
+
+func (m *RangeResponse) GetCount() int64 {
+	if m != nil {
+		return m.Count
+	}
+	return 0
+}
+
 type PutRequest struct {
 	// key is the key, in bytes, to put into the key-value store.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -326,6 +461,48 @@ func (m *PutRequest) Reset()                    { *m = PutRequest{} }
 func (m *PutRequest) String() string            { return proto.CompactTextString(m) }
 func (*PutRequest) ProtoMessage()               {}
 func (*PutRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{3} }
+
+func (m *PutRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *PutRequest) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+func (m *PutRequest) GetLease() int64 {
+	if m != nil {
+		return m.Lease
+	}
+	return 0
+}
+
+func (m *PutRequest) GetPrevKv() bool {
+	if m != nil {
+		return m.PrevKv
+	}
+	return false
+}
+
+func (m *PutRequest) GetIgnoreValue() bool {
+	if m != nil {
+		return m.IgnoreValue
+	}
+	return false
+}
+
+func (m *PutRequest) GetIgnoreLease() bool {
+	if m != nil {
+		return m.IgnoreLease
+	}
+	return false
+}
 
 type PutResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -371,6 +548,27 @@ func (m *DeleteRangeRequest) String() string            { return proto.CompactTe
 func (*DeleteRangeRequest) ProtoMessage()               {}
 func (*DeleteRangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{5} }
 
+func (m *DeleteRangeRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *DeleteRangeRequest) GetRangeEnd() []byte {
+	if m != nil {
+		return m.RangeEnd
+	}
+	return nil
+}
+
+func (m *DeleteRangeRequest) GetPrevKv() bool {
+	if m != nil {
+		return m.PrevKv
+	}
+	return false
+}
+
 type DeleteRangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// deleted is the number of keys deleted by the delete range request.
@@ -389,6 +587,13 @@ func (m *DeleteRangeResponse) GetHeader() *ResponseHeader {
 		return m.Header
 	}
 	return nil
+}
+
+func (m *DeleteRangeResponse) GetDeleted() int64 {
+	if m != nil {
+		return m.Deleted
+	}
+	return 0
 }
 
 func (m *DeleteRangeResponse) GetPrevKvs() []*mvccpb.KeyValue {
@@ -761,6 +966,27 @@ func (m *Compare) GetTargetUnion() isCompare_TargetUnion {
 	return nil
 }
 
+func (m *Compare) GetResult() Compare_CompareResult {
+	if m != nil {
+		return m.Result
+	}
+	return Compare_EQUAL
+}
+
+func (m *Compare) GetTarget() Compare_CompareTarget {
+	if m != nil {
+		return m.Target
+	}
+	return Compare_VERSION
+}
+
+func (m *Compare) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
 func (m *Compare) GetVersion() int64 {
 	if x, ok := m.GetTargetUnion().(*Compare_Version); ok {
 		return x.Version
@@ -957,6 +1183,13 @@ func (m *TxnResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *TxnResponse) GetSucceeded() bool {
+	if m != nil {
+		return m.Succeeded
+	}
+	return false
+}
+
 func (m *TxnResponse) GetResponses() []*ResponseOp {
 	if m != nil {
 		return m.Responses
@@ -979,6 +1212,20 @@ func (m *CompactionRequest) Reset()                    { *m = CompactionRequest{
 func (m *CompactionRequest) String() string            { return proto.CompactTextString(m) }
 func (*CompactionRequest) ProtoMessage()               {}
 func (*CompactionRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{12} }
+
+func (m *CompactionRequest) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+func (m *CompactionRequest) GetPhysical() bool {
+	if m != nil {
+		return m.Physical
+	}
+	return false
+}
 
 type CompactionResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1022,6 +1269,13 @@ func (m *HashResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *HashResponse) GetHash() uint32 {
+	if m != nil {
+		return m.Hash
+	}
+	return 0
+}
+
 type SnapshotRequest struct {
 }
 
@@ -1048,6 +1302,20 @@ func (*SnapshotResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc
 func (m *SnapshotResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
+	}
+	return nil
+}
+
+func (m *SnapshotResponse) GetRemainingBytes() uint64 {
+	if m != nil {
+		return m.RemainingBytes
+	}
+	return 0
+}
+
+func (m *SnapshotResponse) GetBlob() []byte {
+	if m != nil {
+		return m.Blob
 	}
 	return nil
 }
@@ -1205,6 +1473,48 @@ func (m *WatchCreateRequest) String() string            { return proto.CompactTe
 func (*WatchCreateRequest) ProtoMessage()               {}
 func (*WatchCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{19} }
 
+func (m *WatchCreateRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *WatchCreateRequest) GetRangeEnd() []byte {
+	if m != nil {
+		return m.RangeEnd
+	}
+	return nil
+}
+
+func (m *WatchCreateRequest) GetStartRevision() int64 {
+	if m != nil {
+		return m.StartRevision
+	}
+	return 0
+}
+
+func (m *WatchCreateRequest) GetProgressNotify() bool {
+	if m != nil {
+		return m.ProgressNotify
+	}
+	return false
+}
+
+func (m *WatchCreateRequest) GetFilters() []WatchCreateRequest_FilterType {
+	if m != nil {
+		return m.Filters
+	}
+	return nil
+}
+
+func (m *WatchCreateRequest) GetPrevKv() bool {
+	if m != nil {
+		return m.PrevKv
+	}
+	return false
+}
+
 type WatchCancelRequest struct {
 	// watch_id is the watcher id to cancel so that no more events are transmitted.
 	WatchId int64 `protobuf:"varint,1,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
@@ -1214,6 +1524,13 @@ func (m *WatchCancelRequest) Reset()                    { *m = WatchCancelReques
 func (m *WatchCancelRequest) String() string            { return proto.CompactTextString(m) }
 func (*WatchCancelRequest) ProtoMessage()               {}
 func (*WatchCancelRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{20} }
+
+func (m *WatchCancelRequest) GetWatchId() int64 {
+	if m != nil {
+		return m.WatchId
+	}
+	return 0
+}
 
 type WatchResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1253,6 +1570,41 @@ func (m *WatchResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *WatchResponse) GetWatchId() int64 {
+	if m != nil {
+		return m.WatchId
+	}
+	return 0
+}
+
+func (m *WatchResponse) GetCreated() bool {
+	if m != nil {
+		return m.Created
+	}
+	return false
+}
+
+func (m *WatchResponse) GetCanceled() bool {
+	if m != nil {
+		return m.Canceled
+	}
+	return false
+}
+
+func (m *WatchResponse) GetCompactRevision() int64 {
+	if m != nil {
+		return m.CompactRevision
+	}
+	return 0
+}
+
+func (m *WatchResponse) GetCancelReason() string {
+	if m != nil {
+		return m.CancelReason
+	}
+	return ""
+}
+
 func (m *WatchResponse) GetEvents() []*mvccpb.Event {
 	if m != nil {
 		return m.Events
@@ -1271,6 +1623,20 @@ func (m *LeaseGrantRequest) Reset()                    { *m = LeaseGrantRequest{
 func (m *LeaseGrantRequest) String() string            { return proto.CompactTextString(m) }
 func (*LeaseGrantRequest) ProtoMessage()               {}
 func (*LeaseGrantRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{22} }
+
+func (m *LeaseGrantRequest) GetTTL() int64 {
+	if m != nil {
+		return m.TTL
+	}
+	return 0
+}
+
+func (m *LeaseGrantRequest) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
 
 type LeaseGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1293,6 +1659,27 @@ func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *LeaseGrantResponse) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *LeaseGrantResponse) GetTTL() int64 {
+	if m != nil {
+		return m.TTL
+	}
+	return 0
+}
+
+func (m *LeaseGrantResponse) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
 type LeaseRevokeRequest struct {
 	// ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -1302,6 +1689,13 @@ func (m *LeaseRevokeRequest) Reset()                    { *m = LeaseRevokeReques
 func (m *LeaseRevokeRequest) String() string            { return proto.CompactTextString(m) }
 func (*LeaseRevokeRequest) ProtoMessage()               {}
 func (*LeaseRevokeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{24} }
+
+func (m *LeaseRevokeRequest) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
 
 type LeaseRevokeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1329,6 +1723,13 @@ func (m *LeaseKeepAliveRequest) String() string            { return proto.Compac
 func (*LeaseKeepAliveRequest) ProtoMessage()               {}
 func (*LeaseKeepAliveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{26} }
 
+func (m *LeaseKeepAliveRequest) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
 type LeaseKeepAliveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// ID is the lease ID from the keep alive request.
@@ -1349,6 +1750,20 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *LeaseKeepAliveResponse) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *LeaseKeepAliveResponse) GetTTL() int64 {
+	if m != nil {
+		return m.TTL
+	}
+	return 0
+}
+
 type LeaseTimeToLiveRequest struct {
 	// ID is the lease ID for the lease.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -1360,6 +1775,20 @@ func (m *LeaseTimeToLiveRequest) Reset()                    { *m = LeaseTimeToLi
 func (m *LeaseTimeToLiveRequest) String() string            { return proto.CompactTextString(m) }
 func (*LeaseTimeToLiveRequest) ProtoMessage()               {}
 func (*LeaseTimeToLiveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{28} }
+
+func (m *LeaseTimeToLiveRequest) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *LeaseTimeToLiveRequest) GetKeys() bool {
+	if m != nil {
+		return m.Keys
+	}
+	return false
+}
 
 type LeaseTimeToLiveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1385,6 +1814,34 @@ func (m *LeaseTimeToLiveResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *LeaseTimeToLiveResponse) GetID() int64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *LeaseTimeToLiveResponse) GetTTL() int64 {
+	if m != nil {
+		return m.TTL
+	}
+	return 0
+}
+
+func (m *LeaseTimeToLiveResponse) GetGrantedTTL() int64 {
+	if m != nil {
+		return m.GrantedTTL
+	}
+	return 0
+}
+
+func (m *LeaseTimeToLiveResponse) GetKeys() [][]byte {
+	if m != nil {
+		return m.Keys
+	}
+	return nil
+}
+
 type Member struct {
 	// ID is the member ID for this member.
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -1401,6 +1858,34 @@ func (m *Member) String() string            { return proto.CompactTextString(m) 
 func (*Member) ProtoMessage()               {}
 func (*Member) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{30} }
 
+func (m *Member) GetID() uint64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *Member) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Member) GetPeerURLs() []string {
+	if m != nil {
+		return m.PeerURLs
+	}
+	return nil
+}
+
+func (m *Member) GetClientURLs() []string {
+	if m != nil {
+		return m.ClientURLs
+	}
+	return nil
+}
+
 type MemberAddRequest struct {
 	// peerURLs is the list of URLs the added member will use to communicate with the cluster.
 	PeerURLs []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
@@ -1410,6 +1895,13 @@ func (m *MemberAddRequest) Reset()                    { *m = MemberAddRequest{} 
 func (m *MemberAddRequest) String() string            { return proto.CompactTextString(m) }
 func (*MemberAddRequest) ProtoMessage()               {}
 func (*MemberAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{31} }
+
+func (m *MemberAddRequest) GetPeerURLs() []string {
+	if m != nil {
+		return m.PeerURLs
+	}
+	return nil
+}
 
 type MemberAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1455,6 +1947,13 @@ func (m *MemberRemoveRequest) String() string            { return proto.CompactT
 func (*MemberRemoveRequest) ProtoMessage()               {}
 func (*MemberRemoveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{33} }
 
+func (m *MemberRemoveRequest) GetID() uint64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
 type MemberRemoveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// members is a list of all members after removing the member.
@@ -1491,6 +1990,20 @@ func (m *MemberUpdateRequest) Reset()                    { *m = MemberUpdateRequ
 func (m *MemberUpdateRequest) String() string            { return proto.CompactTextString(m) }
 func (*MemberUpdateRequest) ProtoMessage()               {}
 func (*MemberUpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{35} }
+
+func (m *MemberUpdateRequest) GetID() uint64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
+func (m *MemberUpdateRequest) GetPeerURLs() []string {
+	if m != nil {
+		return m.PeerURLs
+	}
+	return nil
+}
 
 type MemberUpdateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1591,6 +2104,27 @@ func (m *AlarmRequest) String() string            { return proto.CompactTextStri
 func (*AlarmRequest) ProtoMessage()               {}
 func (*AlarmRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{41} }
 
+func (m *AlarmRequest) GetAction() AlarmRequest_AlarmAction {
+	if m != nil {
+		return m.Action
+	}
+	return AlarmRequest_GET
+}
+
+func (m *AlarmRequest) GetMemberID() uint64 {
+	if m != nil {
+		return m.MemberID
+	}
+	return 0
+}
+
+func (m *AlarmRequest) GetAlarm() AlarmType {
+	if m != nil {
+		return m.Alarm
+	}
+	return AlarmType_NONE
+}
+
 type AlarmMember struct {
 	// memberID is the ID of the member associated with the raised alarm.
 	MemberID uint64 `protobuf:"varint,1,opt,name=memberID,proto3" json:"memberID,omitempty"`
@@ -1602,6 +2136,20 @@ func (m *AlarmMember) Reset()                    { *m = AlarmMember{} }
 func (m *AlarmMember) String() string            { return proto.CompactTextString(m) }
 func (*AlarmMember) ProtoMessage()               {}
 func (*AlarmMember) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{42} }
+
+func (m *AlarmMember) GetMemberID() uint64 {
+	if m != nil {
+		return m.MemberID
+	}
+	return 0
+}
+
+func (m *AlarmMember) GetAlarm() AlarmType {
+	if m != nil {
+		return m.Alarm
+	}
+	return AlarmType_NONE
+}
 
 type AlarmResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1662,6 +2210,41 @@ func (m *StatusResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *StatusResponse) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+func (m *StatusResponse) GetDbSize() int64 {
+	if m != nil {
+		return m.DbSize
+	}
+	return 0
+}
+
+func (m *StatusResponse) GetLeader() uint64 {
+	if m != nil {
+		return m.Leader
+	}
+	return 0
+}
+
+func (m *StatusResponse) GetRaftIndex() uint64 {
+	if m != nil {
+		return m.RaftIndex
+	}
+	return 0
+}
+
+func (m *StatusResponse) GetRaftTerm() uint64 {
+	if m != nil {
+		return m.RaftTerm
+	}
+	return 0
+}
+
 type AuthEnableRequest struct {
 }
 
@@ -1688,6 +2271,20 @@ func (m *AuthenticateRequest) String() string            { return proto.CompactT
 func (*AuthenticateRequest) ProtoMessage()               {}
 func (*AuthenticateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{48} }
 
+func (m *AuthenticateRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *AuthenticateRequest) GetPassword() string {
+	if m != nil {
+		return m.Password
+	}
+	return ""
+}
+
 type AuthUserAddRequest struct {
 	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
@@ -1698,6 +2295,20 @@ func (m *AuthUserAddRequest) String() string            { return proto.CompactTe
 func (*AuthUserAddRequest) ProtoMessage()               {}
 func (*AuthUserAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{49} }
 
+func (m *AuthUserAddRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *AuthUserAddRequest) GetPassword() string {
+	if m != nil {
+		return m.Password
+	}
+	return ""
+}
+
 type AuthUserGetRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 }
@@ -1706,6 +2317,13 @@ func (m *AuthUserGetRequest) Reset()                    { *m = AuthUserGetReques
 func (m *AuthUserGetRequest) String() string            { return proto.CompactTextString(m) }
 func (*AuthUserGetRequest) ProtoMessage()               {}
 func (*AuthUserGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{50} }
+
+func (m *AuthUserGetRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
 
 type AuthUserDeleteRequest struct {
 	// name is the name of the user to delete.
@@ -1716,6 +2334,13 @@ func (m *AuthUserDeleteRequest) Reset()                    { *m = AuthUserDelete
 func (m *AuthUserDeleteRequest) String() string            { return proto.CompactTextString(m) }
 func (*AuthUserDeleteRequest) ProtoMessage()               {}
 func (*AuthUserDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{51} }
+
+func (m *AuthUserDeleteRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
 
 type AuthUserChangePasswordRequest struct {
 	// name is the name of the user whose password is being changed.
@@ -1731,6 +2356,20 @@ func (*AuthUserChangePasswordRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptorRpc, []int{52}
 }
 
+func (m *AuthUserChangePasswordRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *AuthUserChangePasswordRequest) GetPassword() string {
+	if m != nil {
+		return m.Password
+	}
+	return ""
+}
+
 type AuthUserGrantRoleRequest struct {
 	// user is the name of the user which should be granted a given role.
 	User string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
@@ -1743,6 +2382,20 @@ func (m *AuthUserGrantRoleRequest) String() string            { return proto.Com
 func (*AuthUserGrantRoleRequest) ProtoMessage()               {}
 func (*AuthUserGrantRoleRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{53} }
 
+func (m *AuthUserGrantRoleRequest) GetUser() string {
+	if m != nil {
+		return m.User
+	}
+	return ""
+}
+
+func (m *AuthUserGrantRoleRequest) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
+
 type AuthUserRevokeRoleRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
@@ -1752,6 +2405,20 @@ func (m *AuthUserRevokeRoleRequest) Reset()                    { *m = AuthUserRe
 func (m *AuthUserRevokeRoleRequest) String() string            { return proto.CompactTextString(m) }
 func (*AuthUserRevokeRoleRequest) ProtoMessage()               {}
 func (*AuthUserRevokeRoleRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{54} }
+
+func (m *AuthUserRevokeRoleRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *AuthUserRevokeRoleRequest) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
 
 type AuthRoleAddRequest struct {
 	// name is the name of the role to add to the authentication system.
@@ -1763,6 +2430,13 @@ func (m *AuthRoleAddRequest) String() string            { return proto.CompactTe
 func (*AuthRoleAddRequest) ProtoMessage()               {}
 func (*AuthRoleAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{55} }
 
+func (m *AuthRoleAddRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 type AuthRoleGetRequest struct {
 	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
 }
@@ -1771,6 +2445,13 @@ func (m *AuthRoleGetRequest) Reset()                    { *m = AuthRoleGetReques
 func (m *AuthRoleGetRequest) String() string            { return proto.CompactTextString(m) }
 func (*AuthRoleGetRequest) ProtoMessage()               {}
 func (*AuthRoleGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{56} }
+
+func (m *AuthRoleGetRequest) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
 
 type AuthUserListRequest struct {
 }
@@ -1797,6 +2478,13 @@ func (m *AuthRoleDeleteRequest) String() string            { return proto.Compac
 func (*AuthRoleDeleteRequest) ProtoMessage()               {}
 func (*AuthRoleDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{59} }
 
+func (m *AuthRoleDeleteRequest) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
+
 type AuthRoleGrantPermissionRequest struct {
 	// name is the name of the role which will be granted the permission.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -1809,6 +2497,13 @@ func (m *AuthRoleGrantPermissionRequest) String() string { return proto.CompactT
 func (*AuthRoleGrantPermissionRequest) ProtoMessage()    {}
 func (*AuthRoleGrantPermissionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptorRpc, []int{60}
+}
+
+func (m *AuthRoleGrantPermissionRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
 }
 
 func (m *AuthRoleGrantPermissionRequest) GetPerm() *authpb.Permission {
@@ -1829,6 +2524,27 @@ func (m *AuthRoleRevokePermissionRequest) String() string { return proto.Compact
 func (*AuthRoleRevokePermissionRequest) ProtoMessage()    {}
 func (*AuthRoleRevokePermissionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptorRpc, []int{61}
+}
+
+func (m *AuthRoleRevokePermissionRequest) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
+
+func (m *AuthRoleRevokePermissionRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *AuthRoleRevokePermissionRequest) GetRangeEnd() string {
+	if m != nil {
+		return m.RangeEnd
+	}
+	return ""
 }
 
 type AuthEnableResponse struct {
@@ -1881,6 +2597,13 @@ func (m *AuthenticateResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *AuthenticateResponse) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
 type AuthUserAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
@@ -1910,6 +2633,13 @@ func (*AuthUserGetResponse) Descriptor() ([]byte, []int) { return fileDescriptor
 func (m *AuthUserGetResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
+	}
+	return nil
+}
+
+func (m *AuthUserGetResponse) GetRoles() []string {
+	if m != nil {
+		return m.Roles
 	}
 	return nil
 }
@@ -2037,6 +2767,13 @@ func (m *AuthRoleListResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+func (m *AuthRoleListResponse) GetRoles() []string {
+	if m != nil {
+		return m.Roles
+	}
+	return nil
+}
+
 type AuthUserListResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	Users  []string        `protobuf:"bytes,2,rep,name=users" json:"users,omitempty"`
@@ -2050,6 +2787,13 @@ func (*AuthUserListResponse) Descriptor() ([]byte, []int) { return fileDescripto
 func (m *AuthUserListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
+	}
+	return nil
+}
+
+func (m *AuthUserListResponse) GetUsers() []string {
+	if m != nil {
+		return m.Users
 	}
 	return nil
 }
@@ -10511,7 +11255,24 @@ func (m *WatchCreateRequest) Unmarshal(dAtA []byte) error {
 			}
 			m.ProgressNotify = bool(v != 0)
 		case 5:
-			if wireType == 2 {
+			if wireType == 0 {
+				var v WatchCreateRequest_FilterType
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowRpc
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (WatchCreateRequest_FilterType(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Filters = append(m.Filters, v)
+			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
@@ -10552,23 +11313,6 @@ func (m *WatchCreateRequest) Unmarshal(dAtA []byte) error {
 					}
 					m.Filters = append(m.Filters, v)
 				}
-			} else if wireType == 0 {
-				var v WatchCreateRequest_FilterType
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowRpc
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (WatchCreateRequest_FilterType(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.Filters = append(m.Filters, v)
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}

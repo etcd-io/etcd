@@ -25,6 +25,8 @@ import (
 
 	etcdserverpb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
+	_ "google.golang.org/genproto/googleapis/api/annotations"
+
 	context "golang.org/x/net/context"
 
 	grpc "google.golang.org/grpc"
@@ -59,6 +61,20 @@ func (m *LockRequest) String() string            { return proto.CompactTextStrin
 func (*LockRequest) ProtoMessage()               {}
 func (*LockRequest) Descriptor() ([]byte, []int) { return fileDescriptorV3Lock, []int{0} }
 
+func (m *LockRequest) GetName() []byte {
+	if m != nil {
+		return m.Name
+	}
+	return nil
+}
+
+func (m *LockRequest) GetLease() int64 {
+	if m != nil {
+		return m.Lease
+	}
+	return 0
+}
+
 type LockResponse struct {
 	Header *etcdserverpb.ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// key is a key that will exist on etcd for the duration that the Lock caller
@@ -79,6 +95,13 @@ func (m *LockResponse) GetHeader() *etcdserverpb.ResponseHeader {
 	return nil
 }
 
+func (m *LockResponse) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
 type UnlockRequest struct {
 	// key is the lock ownership key granted by Lock.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -88,6 +111,13 @@ func (m *UnlockRequest) Reset()                    { *m = UnlockRequest{} }
 func (m *UnlockRequest) String() string            { return proto.CompactTextString(m) }
 func (*UnlockRequest) ProtoMessage()               {}
 func (*UnlockRequest) Descriptor() ([]byte, []int) { return fileDescriptorV3Lock, []int{2} }
+
+func (m *UnlockRequest) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
 
 type UnlockResponse struct {
 	Header *etcdserverpb.ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
