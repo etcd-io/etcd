@@ -66,6 +66,14 @@ member flags:
 		comma-separated whitelist of origins for CORS (cross-origin resource sharing).
 	--quota-backend-bytes '0'
 		raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
+	--max-request-bytes '1572864'
+		maximum client request size in bytes the server will accept.
+	--grpc-keepalive-min-time '5s'
+		minimum duration interval that a client should wait before pinging server.
+	--grpc-keepalive-interval '2h'
+		frequency duration of server-to-client ping to check if a connection is alive (0 to disable).
+	--grpc-keepalive-timeout '20s'
+		additional duration of wait before closing a non-responsive connection (0 to disable).
 
 clustering flags:
 

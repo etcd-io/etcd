@@ -55,6 +55,9 @@ type ServerConfig struct {
 	AutoCompactionRetention int
 	QuotaBackendBytes       int64
 
+	// MaxRequestBytes is the maximum request size to send over raft.
+	MaxRequestBytes uint
+
 	StrictReconfigCheck bool
 
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.
