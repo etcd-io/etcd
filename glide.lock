@@ -1,5 +1,5 @@
-hash: 0d3f3703d96e2e3e92b8488d93429062ad0c9d5034b12001e73746c7eee434a3
-updated: 2017-11-14T13:55:48.257041-08:00
+hash: 2244aad388c98d02a53083ff704bc2f5da72978ef7330ef588ced88822b70e23
+updated: 2017-11-16T10:30:18.004311-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -8,7 +8,7 @@ imports:
 - name: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
 - name: github.com/coreos/bbolt
-  version: 3c6cbfb299c11444eb2f8c9d48f0d2ce09157423
+  version: 32c383e75ce054674c53b5a07e55de85332aee14
 - name: github.com/coreos/go-semver
   version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:

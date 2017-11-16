@@ -5,7 +5,7 @@ import:
 - package: github.com/bgentry/speakeasy
   version: v0.1.0
 - package: github.com/coreos/bbolt
-  version: v1.3.1-coreos.3
+  version: v1.3.1-coreos.5
 - package: github.com/coreos/go-semver
   version: v0.2.0
   subpackages:
