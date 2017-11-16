@@ -14,13 +14,6 @@ const (
 	MaxValueSize = (1 << 31) - 2
 )
 
-const (
-	maxUint = ^uint(0)
-	minUint = 0
-	maxInt  = int(^uint(0) >> 1)
-	minInt  = -maxInt - 1
-)
-
 const bucketHeaderSize = int(unsafe.Sizeof(bucket{}))
 
 const (
@@ -130,9 +123,17 @@ func (b *Bucket) Bucket(name []byte) *Bucket {
 func (b *Bucket) openBucket(value []byte) *Bucket {
 	var child = newBucket(b.tx)
 
+	// If unaligned load/stores are broken on this arch and value is
+	// unaligned simply clone to an aligned byte array.
+	unaligned := brokenUnaligned && uintptr(unsafe.Pointer(&value[0]))&3 != 0
+
+	if unaligned {
+		value = cloneBytes(value)
+	}
+
 	// If this is a writable transaction then we need to copy the bucket entry.
 	// Read-only transactions can point directly at the mmap entry.
-	if b.tx.writable {
+	if b.tx.writable && !unaligned {
 		child.bucket = &bucket{}
 		*child.bucket = *(*bucket)(unsafe.Pointer(&value[0]))
 	} else {
@@ -167,9 +168,8 @@ func (b *Bucket) CreateBucket(key []byte) (*Bucket, error) {
 	if bytes.Equal(key, k) {
 		if (flags & bucketLeafFlag) != 0 {
 			return nil, ErrBucketExists
-		} else {
-			return nil, ErrIncompatibleValue
 		}
+		return nil, ErrIncompatibleValue
 	}
 
 	// Create empty, inline bucket.
@@ -316,7 +316,12 @@ func (b *Bucket) Delete(key []byte) error {
 
 	// Move cursor to correct position.
 	c := b.Cursor()
-	_, _, flags := c.seek(key)
+	k, _, flags := c.seek(key)
+
+	// Return nil if the key doesn't exist.
+	if !bytes.Equal(key, k) {
+		return nil
+	}
 
 	// Return an error if there is already existing bucket value.
 	if (flags & bucketLeafFlag) != 0 {
@@ -326,6 +331,28 @@ func (b *Bucket) Delete(key []byte) error {
 	// Delete the node if we have a matching key.
 	c.node().del(key)
 
+	return nil
+}
+
+// Sequence returns the current integer for the bucket without incrementing it.
+func (b *Bucket) Sequence() uint64 { return b.bucket.sequence }
+
+// SetSequence updates the sequence number for the bucket.
+func (b *Bucket) SetSequence(v uint64) error {
+	if b.tx.db == nil {
+		return ErrTxClosed
+	} else if !b.Writable() {
+		return ErrTxNotWritable
+	}
+
+	// Materialize the root node if it hasn't been already so that the
+	// bucket will be saved during commit.
+	if b.rootNode == nil {
+		_ = b.node(b.root, nil)
+	}
+
+	// Increment and return the sequence.
+	b.bucket.sequence = v
 	return nil
 }
 

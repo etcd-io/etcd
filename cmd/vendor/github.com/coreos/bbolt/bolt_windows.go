@@ -59,29 +59,30 @@ func flock(db *DB, mode os.FileMode, exclusive bool, timeout time.Duration) erro
 	db.lockfile = f
 
 	var t time.Time
+	if timeout != 0 {
+		t = time.Now()
+	}
+	fd := f.Fd()
+	var flag uint32 = flagLockFailImmediately
+	if exclusive {
+		flag |= flagLockExclusive
+	}
 	for {
-		// If we're beyond our timeout then return an error.
-		// This can only occur after we've attempted a flock once.
-		if t.IsZero() {
-			t = time.Now()
-		} else if timeout > 0 && time.Since(t) > timeout {
-			return ErrTimeout
-		}
-
-		var flag uint32 = flagLockFailImmediately
-		if exclusive {
-			flag |= flagLockExclusive
-		}
-
-		err := lockFileEx(syscall.Handle(db.lockfile.Fd()), flag, 0, 1, 0, &syscall.Overlapped{})
+		// Attempt to obtain an exclusive lock.
+		err := lockFileEx(syscall.Handle(fd), flag, 0, 1, 0, &syscall.Overlapped{})
 		if err == nil {
 			return nil
 		} else if err != errLockViolation {
 			return err
 		}
 
+		// If we timed oumercit then return an error.
+		if timeout != 0 && time.Since(t) > timeout-flockRetryTimeout {
+			return ErrTimeout
+		}
+
 		// Wait for a bit and try again.
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(flockRetryTimeout)
 	}
 }
 
@@ -89,7 +90,7 @@ func flock(db *DB, mode os.FileMode, exclusive bool, timeout time.Duration) erro
 func funlock(db *DB) error {
 	err := unlockFileEx(syscall.Handle(db.lockfile.Fd()), 0, 1, 0, &syscall.Overlapped{})
 	db.lockfile.Close()
-	os.Remove(db.path+lockExt)
+	os.Remove(db.path + lockExt)
 	return err
 }
 

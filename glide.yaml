@@ -2,8 +2,8 @@ package: github.com/coreos/etcd
 import:
 - package: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
-- package: github.com/boltdb/bolt
-  version: v1.3.0
+- package: github.com/coreos/bbolt
+  version: v1.3.1-coreos.5
 - package: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - package: github.com/coreos/go-semver
@@ -115,3 +115,20 @@ import:
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 - package: github.com/dgrijalva/jwt-go
   version: v3.0.0
+- package: github.com/beorn7/perks
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+- package: github.com/cpuguy83/go-md2man
+  version: 23709d0847197db6021a51fdb193e66e9222d4e7
+- package: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+- package: github.com/prometheus/client_model
+  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+- package: github.com/russross/blackfriday
+  version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
+- package: golang.org/x/text
+  version: 4ee4af566555f5fbe026368b75596286a312663a
+- package: google.golang.org/genproto
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
+  subpackages:
+  - googleapis/api/annotations
+  - googleapis/rpc/status
