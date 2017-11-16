@@ -233,6 +233,9 @@ func (f *freelist) freed(pgid pgid) bool {
 
 // read initializes the freelist from a freelist page.
 func (f *freelist) read(p *page) {
+	if (p.flags & freelistPageFlag) == 0 {
+		panic(fmt.Sprintf("invalid freelist page: %d, page type is %s", p.id, p.typ()))
+	}
 	// If the page.count is at the max uint16 value (64k) then it's considered
 	// an overflow and the size of the freelist is stored as the first element.
 	idx, count := 0, int(p.count)
