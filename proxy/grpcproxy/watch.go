@@ -95,7 +95,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	}
 
 	var lostLeaderC <-chan struct{}
-	if md, ok := metadata.FromContext(stream.Context()); ok {
+	if md, ok := metadata.FromOutgoingContext(stream.Context()); ok {
 		v := md[rpctypes.MetadataRequireLeaderKey]
 		if len(v) > 0 && v[0] == rpctypes.MetadataHasLeader {
 			lostLeaderC = wp.leader.lostNotify()
