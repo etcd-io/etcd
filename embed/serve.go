@@ -104,7 +104,7 @@ func (sctx *serveCtx) serve(
 		httpmux := sctx.createMux(gwmux, handler)
 
 		srvhttp := &http.Server{
-			Handler:  httpmux,
+			Handler:  wrapMux(httpmux),
 			ErrorLog: logger, // do not log user error
 		}
 		httpl := m.Match(cmux.HTTP1())
@@ -144,7 +144,7 @@ func (sctx *serveCtx) serve(
 		httpmux := sctx.createMux(gwmux, handler)
 
 		srv := &http.Server{
-			Handler:   httpmux,
+			Handler:   wrapMux(httpmux),
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
@@ -216,7 +216,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 	}
 
 	httpmux.Handle(
-		"/v3alpha/",
+		"/v3beta/",
 		wsproxy.WebsocketProxy(
 			gwmux,
 			wsproxy.WithRequestMutator(
@@ -232,6 +232,21 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 		httpmux.Handle("/", handler)
 	}
 	return httpmux
+}
+
+// wraps HTTP multiplexer to mute requests to /v3alpha
+// TODO: deprecate this in 3.4 release
+func wrapMux(mux *http.ServeMux) http.Handler { return &v3alphaMutator{mux: mux} }
+
+type v3alphaMutator struct {
+	mux *http.ServeMux
+}
+
+func (m *v3alphaMutator) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if req != nil && req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3alpha/") {
+		req.URL.Path = strings.Replace(req.URL.Path, "/v3alpha/", "/v3beta/", 1)
+	}
+	m.mux.ServeHTTP(rw, req)
 }
 
 func (sctx *serveCtx) registerUserHandler(s string, h http.Handler) {

@@ -15,7 +15,7 @@
     "application/json"
   ],
   "paths": {
-    "/v3alpha/election/campaign": {
+    "/v3beta/election/campaign": {
       "post": {
         "summary": "Campaign waits to acquire leadership in an election, returning a LeaderKey\nrepresenting the leadership if successful. The LeaderKey can then be used\nto issue new values on the election, transactionally guard API requests on\nleadership still being held, and resign from the election.",
         "operationId": "Campaign",
@@ -42,7 +42,7 @@
         ]
       }
     },
-    "/v3alpha/election/leader": {
+    "/v3beta/election/leader": {
       "post": {
         "summary": "Leader returns the current election proclamation, if any.",
         "operationId": "Leader",
@@ -69,7 +69,7 @@
         ]
       }
     },
-    "/v3alpha/election/observe": {
+    "/v3beta/election/observe": {
       "post": {
         "summary": "Observe streams election proclamations in-order as made by the election's\nelected leaders.",
         "operationId": "Observe",
@@ -96,7 +96,7 @@
         ]
       }
     },
-    "/v3alpha/election/proclaim": {
+    "/v3beta/election/proclaim": {
       "post": {
         "summary": "Proclaim updates the leader's posted value with a new value.",
         "operationId": "Proclaim",
@@ -123,7 +123,7 @@
         ]
       }
     },
-    "/v3alpha/election/resign": {
+    "/v3beta/election/resign": {
       "post": {
         "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
         "operationId": "Resign",
