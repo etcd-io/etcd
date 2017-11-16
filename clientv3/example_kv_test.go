@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+
 	"golang.org/x/net/context"
 )
 
@@ -236,8 +237,11 @@ func ExampleKV_txn() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	_, err = kvc.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value("key"), ">", "abc")). // txn value comparisons are lexical
-		Then(clientv3.OpPut("key", "XYZ")).                      // this runs, since 'xyz' > 'abc'
+		// txn value comparisons are lexical
+		If(clientv3.Compare(clientv3.Value("key"), ">", "abc")).
+		// the "Then" runs, since "xyz" > "abc"
+		Then(clientv3.OpPut("key", "XYZ")).
+		// the "Else" does not run
 		Else(clientv3.OpPut("key", "ABC")).
 		Commit()
 	cancel()

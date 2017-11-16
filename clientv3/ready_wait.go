@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package clientv3
 
-import (
-	"io/ioutil"
+import "golang.org/x/net/context"
 
-	"github.com/coreos/etcd/clientv3"
-
-	"github.com/coreos/pkg/capnslog"
-	"google.golang.org/grpc/grpclog"
-)
-
-func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+// TODO: remove this when "FailFast=false" is fixed.
+// See https://github.com/grpc/grpc-go/issues/1532.
+func readyWait(rpcCtx, clientCtx context.Context, ready <-chan struct{}) error {
+	select {
+	case <-ready:
+		return nil
+	case <-rpcCtx.Done():
+		return rpcCtx.Err()
+	case <-clientCtx.Done():
+		return clientCtx.Err()
+	}
 }

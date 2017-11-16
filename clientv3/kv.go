@@ -16,8 +16,8 @@ package clientv3
 
 import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -66,11 +66,26 @@ type OpResponse struct {
 	put *PutResponse
 	get *GetResponse
 	del *DeleteResponse
+	txn *TxnResponse
 }
 
 func (op OpResponse) Put() *PutResponse    { return op.put }
 func (op OpResponse) Get() *GetResponse    { return op.get }
 func (op OpResponse) Del() *DeleteResponse { return op.del }
+func (op OpResponse) Txn() *TxnResponse    { return op.txn }
+
+func (resp *PutResponse) OpResponse() OpResponse {
+	return OpResponse{put: resp}
+}
+func (resp *GetResponse) OpResponse() OpResponse {
+	return OpResponse{get: resp}
+}
+func (resp *DeleteResponse) OpResponse() OpResponse {
+	return OpResponse{del: resp}
+}
+func (resp *TxnResponse) OpResponse() OpResponse {
+	return OpResponse{txn: resp}
+}
 
 type kv struct {
 	remote pb.KVClient
@@ -115,29 +130,11 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 }
 
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
-	for {
-		resp, err := kv.do(ctx, op)
-		if err == nil {
-			return resp, nil
-		}
-
-		if isHaltErr(ctx, err) {
-			return resp, toErr(ctx, err)
-		}
-		// do not retry on modifications
-		if op.isWrite() {
-			return resp, toErr(ctx, err)
-		}
-	}
-}
-
-func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
-	// TODO: handle other ops
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), grpc.FailFast(false))
+		resp, err = kv.remote.Range(ctx, op.toRangeRequest())
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
@@ -155,8 +152,14 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
+	case tTxn:
+		var resp *pb.TxnResponse
+		resp, err = kv.remote.Txn(ctx, op.toTxnRequest())
+		if err == nil {
+			return OpResponse{txn: (*TxnResponse)(resp)}, nil
+		}
 	default:
 		panic("Unknown op")
 	}
-	return OpResponse{}, err
+	return OpResponse{}, toErr(ctx, err)
 }

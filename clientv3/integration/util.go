@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,21 @@
 package integration
 
 import (
-	"io/ioutil"
+	"testing"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 
-	"github.com/coreos/pkg/capnslog"
-	"google.golang.org/grpc/grpclog"
+	"golang.org/x/net/context"
 )
 
-func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+// mustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
+// Fatal on time-out.
+func mustWaitPinReady(t *testing.T, cli *clientv3.Client) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	_, err := cli.Get(ctx, "foo")
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

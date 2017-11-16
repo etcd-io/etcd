@@ -50,7 +50,7 @@ func TestConfigFromFile(t *testing.T) {
 			&yamlConfig{
 				Keyfile:               privateKeyPath,
 				Certfile:              certPath,
-				CAfile:                caPath,
+				TrustedCAfile:         caPath,
 				InsecureSkipTLSVerify: true,
 			},
 			false,
@@ -64,9 +64,9 @@ func TestConfigFromFile(t *testing.T) {
 		},
 		{
 			&yamlConfig{
-				Keyfile:  privateKeyPath,
-				Certfile: certPath,
-				CAfile:   "bad",
+				Keyfile:       privateKeyPath,
+				Certfile:      certPath,
+				TrustedCAfile: "bad",
 			},
 			true,
 		},
@@ -113,7 +113,7 @@ func TestConfigFromFile(t *testing.T) {
 			if tt.ym.Certfile != "" && len(cfg.TLS.Certificates) == 0 {
 				t.Errorf("#%d: failed to load in cert", i)
 			}
-			if tt.ym.CAfile != "" && cfg.TLS.RootCAs == nil {
+			if tt.ym.TrustedCAfile != "" && cfg.TLS.RootCAs == nil {
 				t.Errorf("#%d: failed to load in ca cert", i)
 			}
 			if cfg.TLS.InsecureSkipVerify != tt.ym.InsecureSkipTLSVerify {

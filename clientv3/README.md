@@ -1,6 +1,6 @@
 # etcd/clientv3
 
-[![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/coreos/etcd/clientv3)
+[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/coreos/etcd/clientv3)
 
 `etcd/clientv3` is the official Go etcd client for v3.
 

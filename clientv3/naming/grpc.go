@@ -19,11 +19,12 @@ import (
 	"fmt"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/naming"
+	"google.golang.org/grpc/status"
+
+	"golang.org/x/net/context"
 )
 
 var ErrWatcherClosed = fmt.Errorf("naming: watch closed")
@@ -39,13 +40,13 @@ func (gr *GRPCResolver) Update(ctx context.Context, target string, nm naming.Upd
 	case naming.Add:
 		var v []byte
 		if v, err = json.Marshal(nm); err != nil {
-			return grpc.Errorf(codes.InvalidArgument, err.Error())
+			return status.Error(codes.InvalidArgument, err.Error())
 		}
 		_, err = gr.Client.KV.Put(ctx, target+"/"+nm.Addr, string(v), opts...)
 	case naming.Delete:
 		_, err = gr.Client.Delete(ctx, target+"/"+nm.Addr, opts...)
 	default:
-		return grpc.Errorf(codes.InvalidArgument, "naming: bad naming op")
+		return status.Error(codes.InvalidArgument, "naming: bad naming op")
 	}
 	return err
 }
@@ -80,7 +81,7 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 	// process new events on target/*
 	wr, ok := <-gw.wch
 	if !ok {
-		gw.err = grpc.Errorf(codes.Unavailable, "%s", ErrWatcherClosed)
+		gw.err = status.Error(codes.Unavailable, ErrWatcherClosed.Error())
 		return nil, gw.err
 	}
 	if gw.err = wr.Err(); gw.err != nil {
