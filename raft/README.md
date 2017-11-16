@@ -21,7 +21,7 @@ This raft implementation is a full feature implementation of Raft protocol. Feat
 
 - Leader election
 - Log replication
-- Log compaction 
+- Log compaction
 - Membership changes
 - Leadership transfer extension
 - Efficient linearizable read-only queries served by both the leader and followers
@@ -40,7 +40,7 @@ This raft implementation also includes a few optional enhancements:
 - Batching log entries to reduce disk synchronized I/O
 - Writing to leader's disk in parallel
 - Internal proposal redirection from followers to leader
-- Automatic stepping down when the leader loses quorum 
+- Automatic stepping down when the leader loses quorum
 
 ## Notable Users
 
@@ -140,11 +140,14 @@ The total state machine handling loop will look something like this:
     case <-s.Ticker:
       n.Tick()
     case rd := <-s.Node.Ready():
-      saveToStorage(rd.State, rd.Entries, rd.Snapshot)
-      send(rd.Messages)
+      persistToStorage(rd.HardState, rd.Entries, rd.Snapshot)
       if !raft.IsEmptySnap(rd.Snapshot) {
         processSnapshot(rd.Snapshot)
+        storage.ApplySnapshot(rd.Snapshot)
       }
+      // make persisted log entries available to the raft node
+      storage.Append(rd.Entries)
+      send(rd.Messages)
       for _, entry := range rd.CommittedEntries {
         process(entry)
         if entry.Type == raftpb.EntryConfChange {
@@ -166,7 +169,7 @@ To propose changes to the state machine from the node to take application data, 
 	n.Propose(ctx, data)
 ```
 
-If the proposal is committed, data will appear in committed entries with type raftpb.EntryNormal. There is no guarantee that a proposed command will be committed; the command may have to be reproposed after a timeout. 
+If the proposal is committed, data will appear in committed entries with type raftpb.EntryNormal. There is no guarantee that a proposed command will be committed; the command may have to be reproposed after a timeout.
 
 To add or remove node in a cluster, build ConfChange struct 'cc' and call:
 
