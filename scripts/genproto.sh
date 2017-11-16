@@ -11,8 +11,8 @@ if ! [[ "$0" =~ "scripts/genproto.sh" ]]; then
 fi
 
 # for now, be conservative about what version of protoc we expect
-if ! [[ $(protoc --version) =~ "3.2.0" ]]; then
-	echo "could not find protoc 3.2.0, is it installed + in PATH?"
+if ! [[ $(protoc --version) =~ "3.4.0" ]]; then
+	echo "could not find protoc 3.4.0, is it installed + in PATH?"
 	exit 255
 fi
 
@@ -20,8 +20,8 @@ fi
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
 
 # exact version of protoc-gen-gogo to build
-GOGO_PROTO_SHA="8d70fb3182befc465c4a1eac8ad4d38ff49778e2"
-GRPC_GATEWAY_SHA="84398b94e188ee336f307779b57b3aa91af7063c"
+GOGO_PROTO_SHA="100ba4e885062801d56799d78530b73b178a78f3"
+GRPC_GATEWAY_SHA="8cc3a55af3bcf171a1c23a90c4df9cf591706104"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath.proto
