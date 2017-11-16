@@ -992,7 +992,7 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) *AuthInfo {
 }
 
 func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
-	md, ok := metadata.FromContext(ctx)
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, nil
 	}

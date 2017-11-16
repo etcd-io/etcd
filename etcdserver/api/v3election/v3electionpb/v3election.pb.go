@@ -32,6 +32,8 @@ import (
 
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 
+	_ "google.golang.org/genproto/googleapis/api/annotations"
+
 	context "golang.org/x/net/context"
 
 	grpc "google.golang.org/grpc"
@@ -66,6 +68,27 @@ func (m *CampaignRequest) Reset()                    { *m = CampaignRequest{} }
 func (m *CampaignRequest) String() string            { return proto.CompactTextString(m) }
 func (*CampaignRequest) ProtoMessage()               {}
 func (*CampaignRequest) Descriptor() ([]byte, []int) { return fileDescriptorV3Election, []int{0} }
+
+func (m *CampaignRequest) GetName() []byte {
+	if m != nil {
+		return m.Name
+	}
+	return nil
+}
+
+func (m *CampaignRequest) GetLease() int64 {
+	if m != nil {
+		return m.Lease
+	}
+	return 0
+}
+
+func (m *CampaignRequest) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
 
 type CampaignResponse struct {
 	Header *etcdserverpb.ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -111,6 +134,34 @@ func (m *LeaderKey) String() string            { return proto.CompactTextString(
 func (*LeaderKey) ProtoMessage()               {}
 func (*LeaderKey) Descriptor() ([]byte, []int) { return fileDescriptorV3Election, []int{2} }
 
+func (m *LeaderKey) GetName() []byte {
+	if m != nil {
+		return m.Name
+	}
+	return nil
+}
+
+func (m *LeaderKey) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *LeaderKey) GetRev() int64 {
+	if m != nil {
+		return m.Rev
+	}
+	return 0
+}
+
+func (m *LeaderKey) GetLease() int64 {
+	if m != nil {
+		return m.Lease
+	}
+	return 0
+}
+
 type LeaderRequest struct {
 	// name is the election identifier for the leadership information.
 	Name []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -120,6 +171,13 @@ func (m *LeaderRequest) Reset()                    { *m = LeaderRequest{} }
 func (m *LeaderRequest) String() string            { return proto.CompactTextString(m) }
 func (*LeaderRequest) ProtoMessage()               {}
 func (*LeaderRequest) Descriptor() ([]byte, []int) { return fileDescriptorV3Election, []int{3} }
+
+func (m *LeaderRequest) GetName() []byte {
+	if m != nil {
+		return m.Name
+	}
+	return nil
+}
 
 type LeaderResponse struct {
 	Header *etcdserverpb.ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -194,6 +252,13 @@ func (*ProclaimRequest) Descriptor() ([]byte, []int) { return fileDescriptorV3El
 func (m *ProclaimRequest) GetLeader() *LeaderKey {
 	if m != nil {
 		return m.Leader
+	}
+	return nil
+}
+
+func (m *ProclaimRequest) GetValue() []byte {
+	if m != nil {
+		return m.Value
 	}
 	return nil
 }

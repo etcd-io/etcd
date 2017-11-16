@@ -44,7 +44,7 @@ func TestV3ClientMetrics(t *testing.T) {
 		err  error
 	)
 
-	// listen for all prometheus metrics
+	// listen for all Prometheus metrics
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
@@ -65,7 +65,7 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	url := "unix://" + addr + "/metrics"
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{

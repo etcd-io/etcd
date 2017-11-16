@@ -48,8 +48,11 @@ func populateFieldValueFromPath(msg proto.Message, fieldPath []string, values []
 			return fmt.Errorf("non-aggregate type in the mid of path: %s", strings.Join(fieldPath, "."))
 		}
 		var f reflect.Value
-		f, props = fieldByProtoName(m, fieldName)
-		if !f.IsValid() {
+		var err error
+		f, props, err = fieldByProtoName(m, fieldName)
+		if err != nil {
+			return err
+		} else if !f.IsValid() {
 			grpclog.Printf("field not found in %T: %s", msg, strings.Join(fieldPath, "."))
 			return nil
 		}
@@ -92,14 +95,29 @@ func populateFieldValueFromPath(msg proto.Message, fieldPath []string, values []
 
 // fieldByProtoName looks up a field whose corresponding protobuf field name is "name".
 // "m" must be a struct value. It returns zero reflect.Value if no such field found.
-func fieldByProtoName(m reflect.Value, name string) (reflect.Value, *proto.Properties) {
+func fieldByProtoName(m reflect.Value, name string) (reflect.Value, *proto.Properties, error) {
 	props := proto.GetProperties(m.Type())
+
+	// look up field name in oneof map
+	if op, ok := props.OneofTypes[name]; ok {
+		v := reflect.New(op.Type.Elem())
+		field := m.Field(op.Field)
+		if !field.IsNil() {
+			return reflect.Value{}, nil, fmt.Errorf("field already set for %s oneof", props.Prop[op.Field].OrigName)
+		}
+		field.Set(v)
+		return v.Elem().Field(0), op.Prop, nil
+	}
+
 	for _, p := range props.Prop {
 		if p.OrigName == name {
-			return m.FieldByName(p.Name), p
+			return m.FieldByName(p.Name), p, nil
+		}
+		if p.JSONName == name {
+			return m.FieldByName(p.Name), p, nil
 		}
 	}
-	return reflect.Value{}, nil
+	return reflect.Value{}, nil, nil
 }
 
 func populateRepeatedField(f reflect.Value, values []string, props *proto.Properties) error {
@@ -145,6 +163,45 @@ func populateField(f reflect.Value, value string, props *proto.Properties) error
 			}
 			f.Field(0).SetInt(int64(t.Unix()))
 			f.Field(1).SetInt(int64(t.Nanosecond()))
+			return nil
+		case "DoubleValue":
+			fallthrough
+		case "FloatValue":
+			float64Val, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return fmt.Errorf("bad DoubleValue: %s", value)
+			}
+			f.Field(0).SetFloat(float64Val)
+			return nil
+		case "Int64Value":
+			fallthrough
+		case "Int32Value":
+			int64Val, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return fmt.Errorf("bad DoubleValue: %s", value)
+			}
+			f.Field(0).SetInt(int64Val)
+			return nil
+		case "UInt64Value":
+			fallthrough
+		case "UInt32Value":
+			uint64Val, err := strconv.ParseUint(value, 10, 64)
+			if err != nil {
+				return fmt.Errorf("bad DoubleValue: %s", value)
+			}
+			f.Field(0).SetUint(uint64Val)
+			return nil
+		case "BoolValue":
+			if value == "true" {
+				f.Field(0).SetBool(true)
+			} else if value == "false" {
+				f.Field(0).SetBool(false)
+			} else {
+				return fmt.Errorf("bad BoolValue: %s", value)
+			}
+			return nil
+		case "StringValue":
+			f.Field(0).SetString(value)
 			return nil
 		}
 	}

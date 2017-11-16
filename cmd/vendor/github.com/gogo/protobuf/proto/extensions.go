@@ -167,6 +167,7 @@ type ExtensionDesc struct {
 	Field         int32       // field number
 	Name          string      // fully-qualified name of extension, for text formatting
 	Tag           string      // protobuf tag style
+	Filename      string      // name of the file in which the extension is defined
 }
 
 func (ed *ExtensionDesc) repeated() bool {
@@ -587,6 +588,9 @@ func ExtensionDescs(pb Message) ([]*ExtensionDesc, error) {
 	registeredExtensions := RegisteredExtensions(pb)
 
 	emap, mu := epb.extensionsRead()
+	if emap == nil {
+		return nil, nil
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	extensions := make([]*ExtensionDesc, 0, len(emap))

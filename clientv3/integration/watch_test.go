@@ -28,8 +28,10 @@ import (
 	"github.com/coreos/etcd/integration"
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type watcherTest func(*testing.T, *watchctx)
@@ -51,8 +53,8 @@ func runWatchTest(t *testing.T, f watcherTest) {
 
 	wclientMember := rand.Intn(3)
 	w := clus.Client(wclientMember).Watcher
-	// select a different client from wclient so puts succeed if
-	// a test knocks out the watcher client
+	// select a different client for KV operations so puts succeed if
+	// a test knocks out the watcher client.
 	kvMember := rand.Intn(3)
 	for kvMember == wclientMember {
 		kvMember = rand.Intn(3)
@@ -309,7 +311,7 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 	select {
 	case <-time.After(time.Second):
 		t.Fatalf("took too long to cancel")
-	case v, ok := <-wctx.ch:
+	case _, ok := <-wctx.ch:
 		if !ok {
 			// closed before getting put; OK
 			break
@@ -318,8 +320,8 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 		select {
 		case <-time.After(time.Second):
 			t.Fatalf("took too long to close")
-		case v, ok = <-wctx.ch:
-			if ok {
+		case v, ok2 := <-wctx.ch:
+			if ok2 {
 				t.Fatalf("expected watcher channel to close, got %v", v)
 			}
 		}
@@ -800,7 +802,8 @@ func TestWatchWithFilter(t *testing.T) {
 	}
 }
 
-// TestWatchWithCreatedNotification checks that createdNotification works.
+// TestWatchWithCreatedNotification checks that WithCreatedNotify returns a
+// Created watch response.
 func TestWatchWithCreatedNotification(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
@@ -837,8 +840,7 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 	cluster.Members[0].DropConnections()
 
-	// try to receive from watch channel again
-	// ensure it doesn't post another createNotify
+	// check watch channel doesn't post another watch response.
 	select {
 	case wresp := <-wch:
 		t.Fatalf("got unexpected watch response: %+v\n", wresp)
@@ -856,10 +858,26 @@ func TestWatchCancelOnServer(t *testing.T) {
 	client := cluster.RandClient()
 	numWatches := 10
 
+	// The grpc proxy starts watches to detect leadership after the proxy server
+	// returns as started; to avoid racing on the proxy's internal watches, wait
+	// until require leader watches get create responses to ensure the leadership
+	// watches have started.
+	for {
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
+		ww := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		wresp := <-ww
+		cancel()
+		if wresp.Err() == nil {
+			break
+		}
+	}
+
 	cancels := make([]context.CancelFunc, numWatches)
 	for i := 0; i < numWatches; i++ {
-		// use WithTimeout to force separate streams in client
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		// force separate streams in client
+		md := metadata.Pairs("some-key", fmt.Sprintf("%d", i))
+		mctx := metadata.NewOutgoingContext(context.Background(), md)
+		ctx, cancel := context.WithCancel(mctx)
 		cancels[i] = cancel
 		w := client.Watch(ctx, fmt.Sprintf("%d", i), clientv3.WithCreatedNotify())
 		<-w
@@ -885,7 +903,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 		t.Fatalf("expected n=2 and err=nil, got n=%d and err=%v", n, serr)
 	}
 
-	if maxWatchV-minWatchV != numWatches {
+	if maxWatchV-minWatchV < numWatches {
 		t.Fatalf("expected %d canceled watchers, got %d", numWatches, maxWatchV-minWatchV)
 	}
 }
@@ -916,12 +934,12 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	// each unique context "%v" has a unique grpc stream
 	n := 100
 	ctxs, ctxc := make([]context.Context, 5), make([]chan struct{}, 5)
 	for i := range ctxs {
-		// make "%v" unique
-		ctxs[i] = context.WithValue(context.TODO(), "key", i)
+		// make unique stream
+		md := metadata.Pairs("some-key", fmt.Sprintf("%d", i))
+		ctxs[i] = metadata.NewOutgoingContext(context.Background(), md)
 		// limits the maximum number of outstanding watchers per stream
 		ctxc[i] = make(chan struct{}, 2)
 	}
@@ -946,7 +964,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 					t.Fatalf("unexpected closed channel %p", wch)
 				}
 			// may take a second or two to reestablish a watcher because of
-			// grpc backoff policies for disconnects
+			// grpc back off policies for disconnects
 			case <-time.After(5 * time.Second):
 				t.Errorf("timed out waiting for watch on %p", wch)
 			}
@@ -970,7 +988,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 	}
 }
 
-// TestWatchCanelAndCloseClient ensures that canceling a watcher then immediately
+// TestWatchCancelAndCloseClient ensures that canceling a watcher then immediately
 // closing the client does not return a client closing error.
 func TestWatchCancelAndCloseClient(t *testing.T) {
 	defer testutil.AfterTest(t)

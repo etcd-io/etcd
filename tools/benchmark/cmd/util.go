@@ -17,13 +17,14 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/report"
+
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
@@ -98,7 +99,7 @@ func mustCreateConn() *clientv3.Client {
 		return mustCreateConn()
 	}
 
-	clientv3.SetLogger(log.New(os.Stderr, "grpc", 0))
+	clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)

@@ -32,17 +32,23 @@ func init() { auth.BcryptCost = bcrypt.MinCost }
 
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
-	useCluster := true // default to running all tests
+	useCluster, hasRunArg := false, false // default to running only Test*
 	for _, arg := range os.Args {
 		if strings.HasPrefix(arg, "-test.run=") {
 			exp := strings.Split(arg, "=")[1]
 			match, err := regexp.MatchString(exp, "Example")
 			useCluster = (err == nil && match) || strings.Contains(exp, "Example")
+			hasRunArg = true
 			break
 		}
 	}
+	if !hasRunArg {
+		// force only running Test* if no args given to avoid leak false
+		// positives from having a long-running cluster for the examples.
+		os.Args = append(os.Args, "-test.run=Test")
+	}
 
-	v := 0
+	var v int
 	if useCluster {
 		cfg := integration.ClusterConfig{Size: 3}
 		clus := integration.NewClusterV3(nil, &cfg)
