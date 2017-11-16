@@ -1,4 +1,4 @@
-## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-20)
+## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-16)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
 
