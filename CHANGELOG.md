@@ -4,11 +4,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
 
 ### Fixed
 
-- Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009)
+- Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009)
 - Fix clientv3 balancer to handle [network partition](https://github.com/coreos/etcd/issues/8711)
-  - Upgrade `google.golang.org/grpc` v1.2.1 to v1.7.3
-  - Upgrade `github.com/grpc-ecosystem/grpc-gateway` v1.2 to v1.3
-  - Upgrade gRPC v1.2.1 to v1.7.3
+  - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) v1.2.1 to v1.7.3
+  - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) v1.2 to v1.3
 - Revert [discovery SRV auth `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651) to support non-wildcard subject alternative names in the certs (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts)
   - For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `etcd.local` (**not `*.etcd.local`**) as an entry in Subject Alternative Name (SAN) field
 
