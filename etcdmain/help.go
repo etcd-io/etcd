@@ -139,7 +139,7 @@ security flags:
 	--client-crl-file ''
 		path to the client certificate revocation list file.
 	--trusted-ca-file ''
-		path to the client server TLS trusted CA key file.
+		path to the client server TLS trusted CA cert file.
 	--auto-tls 'false'
 		client TLS using generated certificates.
 	--peer-ca-file '' [DEPRECATED]
