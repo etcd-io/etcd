@@ -1,5 +1,5 @@
-hash: 2244aad388c98d02a53083ff704bc2f5da72978ef7330ef588ced88822b70e23
-updated: 2017-11-16T10:30:18.004311-08:00
+hash: 8136b7373396e6f72a1f99838d706292c688ccb94bb1bddee7124babde335e31
+updated: 2017-11-17T14:01:41.761462-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -31,7 +31,7 @@ imports:
 - name: github.com/dgrijalva/jwt-go
   version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/dustin/go-humanize
-  version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
+  version: bb3d318650d48840a39aa21a027c6630e198e626
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/gogo/protobuf
