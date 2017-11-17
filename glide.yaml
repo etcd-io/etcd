@@ -23,7 +23,7 @@ import:
 - package: github.com/cpuguy83/go-md2man
   version: 23709d0847197db6021a51fdb193e66e9222d4e7
 - package: github.com/dustin/go-humanize
-  version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
+  version: bb3d318650d48840a39aa21a027c6630e198e626
 - package: github.com/ghodss/yaml
   version: v1.0.0
 - package: github.com/gogo/protobuf
@@ -44,7 +44,7 @@ import:
 - package: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - package: github.com/grpc-ecosystem/grpc-gateway
-  version: v1.3
+  version: v1.3.0
   subpackages:
   - runtime
   - runtime/internal
