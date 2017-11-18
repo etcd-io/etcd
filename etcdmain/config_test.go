@@ -148,9 +148,8 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 		DNSCluster     string `json:"discovery-srv"`
 		Durl           string `json:"discovery"`
 	}{
-		{
 		// Use default name and generate a default initial-cluster
-		},
+		{},
 		{
 			Name: "non-default",
 		},
