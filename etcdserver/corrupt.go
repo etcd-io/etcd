@@ -56,8 +56,12 @@ func (s *EtcdServer) checkHashKV() error {
 			continue
 		}
 
-		cli, cerr := clientv3.New(clientv3.Config{Endpoints: m.PeerURLs})
+		cli, cerr := clientv3.New(clientv3.Config{
+			DialTimeout: s.Cfg.ReqTimeout(),
+			Endpoints:   m.PeerURLs,
+		})
 		if cerr != nil {
+			plog.Warningf("%s failed to create client to peer %s for hash checking (%v)", s.ID(), types.ID(m.ID), cerr)
 			continue
 		}
 
