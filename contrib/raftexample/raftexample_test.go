@@ -15,9 +15,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/raft/raftpb"
 )
@@ -155,5 +158,72 @@ func TestCloseProposerInflight(t *testing.T) {
 	// wait for one message
 	if c, ok := <-clus.commitC[0]; *c != "foo" || !ok {
 		t.Fatalf("Commit failed")
+	}
+}
+
+// TestTriggerSnapshotRestart starts single node cluster and trigger snapshot,
+// and ensure it can recover from the snapshot on disk.
+func TestTriggerSnapshotRestart(t *testing.T) {
+	old := defaultSnapCount
+	defaultSnapCount = 3
+	defer func() {
+		defaultSnapCount = old
+		os.RemoveAll("raftexample-1")
+		os.RemoveAll("raftexample-1-snap")
+	}()
+
+	startWithSnapshot(t, true)
+	time.Sleep(3 * time.Second)
+	startWithSnapshot(t, false)
+}
+
+func startWithSnapshot(t *testing.T, write bool) {
+	proposeC := make(chan string)
+	defer close(proposeC)
+	confChangeC := make(chan raftpb.ConfChange)
+	defer close(confChangeC)
+
+	// raft provides a commit stream for the proposals from the http api
+	var kvs *kvstore
+	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
+	commitC, errorC, snapshotterReady := newRaftNode(1, []string{"http://127.0.0.1:10050"}, false, getSnapshot, proposeC, confChangeC)
+
+	snapshotter := <-snapshotterReady
+	kvs = newKVStore(snapshotter, proposeC, commitC, errorC)
+
+	if write {
+		// trigger snapshot
+		kvs.Propose("foo", "bar")
+		kvs.Propose("foo", "bar")
+	}
+
+	// wait until snapshot gets triggered
+	// or kvs is recovered
+	committed := false
+	for i := 0; i < 5; i++ {
+		time.Sleep(3 * time.Second)
+		v, ok := kvs.Lookup("foo")
+		if v == "bar" && ok {
+			committed = true
+			break
+		}
+	}
+	if !committed {
+		t.Fatal("key 'foo' not found")
+	}
+
+	if write {
+		// wait until snapshot is written to disk
+		s, err := snapshotter.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var store map[string]string
+		if err := json.Unmarshal(s.Data, &store); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(store, map[string]string{"foo": "bar"}) {
+			t.Fatalf("expected {'foo':'bar'}, got %v", store)
+		}
 	}
 }
