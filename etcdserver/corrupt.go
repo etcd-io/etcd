@@ -88,6 +88,8 @@ func (s *EtcdServer) checkHashKV() error {
 
 	for _, resp := range resps {
 		id := resp.Header.MemberId
+
+		// leader expects follower's latest revision less than or equal to leader's
 		if resp.Header.Revision > rev2 {
 			plog.Warningf(
 				"revision %d from member %v, expected at most %d",
@@ -96,6 +98,8 @@ func (s *EtcdServer) checkHashKV() error {
 				rev2)
 			mismatch(id)
 		}
+
+		// leader expects follower's latest compact revision less than or equal to leader's
 		if resp.CompactRevision > crev2 {
 			plog.Warningf(
 				"compact revision %d from member %v, expected at most %d",
@@ -105,6 +109,8 @@ func (s *EtcdServer) checkHashKV() error {
 			)
 			mismatch(id)
 		}
+
+		// follower's compact revision is leader's old one, then hashes must match
 		if resp.CompactRevision == crev && resp.Hash != h {
 			plog.Warningf(
 				"hash %d at revision %d from member %v, expected hash %d",
