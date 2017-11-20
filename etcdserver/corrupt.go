@@ -50,38 +50,7 @@ func (s *EtcdServer) checkHashKV() error {
 	if err != nil {
 		plog.Fatalf("failed to hash kv store (%v)", err)
 	}
-	resps := []*clientv3.HashKVResponse{}
-	for _, m := range s.cluster.Members() {
-		if m.ID == s.ID() {
-			continue
-		}
-
-		cli, cerr := clientv3.New(clientv3.Config{
-			DialTimeout: s.Cfg.ReqTimeout(),
-			Endpoints:   m.PeerURLs,
-		})
-		if cerr != nil {
-			plog.Warningf("%s failed to create client to peer %s for hash checking (%v)", s.ID(), types.ID(m.ID), cerr)
-			continue
-		}
-
-		respsLen := len(resps)
-		for _, c := range cli.Endpoints() {
-			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-			resp, herr := cli.HashKV(ctx, c, rev)
-			cancel()
-			if herr == nil {
-				cerr = herr
-				resps = append(resps, resp)
-				break
-			}
-		}
-		cli.Close()
-
-		if respsLen == len(resps) {
-			plog.Warningf("failed to hash kv for peer %s (%v)", types.ID(m.ID), cerr)
-		}
-	}
+	resps := s.getPeerHashKVs(rev)
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 	err = s.linearizableReadNotify(ctx)
@@ -148,6 +117,41 @@ func (s *EtcdServer) checkHashKV() error {
 		}
 	}
 	return nil
+}
+
+func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*clientv3.HashKVResponse) {
+	for _, m := range s.cluster.Members() {
+		if m.ID == s.ID() {
+			continue
+		}
+
+		cli, cerr := clientv3.New(clientv3.Config{
+			DialTimeout: s.Cfg.ReqTimeout(),
+			Endpoints:   m.PeerURLs,
+		})
+		if cerr != nil {
+			plog.Warningf("%s failed to create client to peer %s for hash checking (%q)", s.ID(), types.ID(m.ID), cerr.Error())
+			continue
+		}
+
+		respsLen := len(resps)
+		for _, c := range cli.Endpoints() {
+			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
+			resp, herr := cli.HashKV(ctx, c, rev)
+			cancel()
+			if herr == nil {
+				cerr = herr
+				resps = append(resps, resp)
+				break
+			}
+		}
+		cli.Close()
+
+		if respsLen == len(resps) {
+			plog.Warningf("%s failed to hash kv for peer %s (%v)", s.ID(), types.ID(m.ID), cerr)
+		}
+	}
+	return resps
 }
 
 type applierV3Corrupt struct {
