@@ -81,6 +81,12 @@ type AuthInfo struct {
 	Revision uint64
 }
 
+// AuthenticateParamIndex is used for a key of context in the parameters of Authenticate()
+type AuthenticateParamIndex struct{}
+
+// AuthenticateParamSimpleTokenPrefix is used for a key of context in the parameters of Authenticate()
+type AuthenticateParamSimpleTokenPrefix struct{}
+
 type AuthStore interface {
 	// AuthEnable turns on the authentication feature
 	AuthEnable() error
@@ -1062,13 +1068,13 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 
 	var ctxForAssign context.Context
 	if ts := as.tokenProvider.(*tokenSimple); ts != nil {
-		ctx1 := context.WithValue(ctx, "index", uint64(0))
+		ctx1 := context.WithValue(ctx, AuthenticateParamIndex{}, uint64(0))
 		prefix, err := ts.genTokenPrefix()
 		if err != nil {
 			plog.Errorf("failed to generate prefix of internally used token")
 			return ctx
 		}
-		ctxForAssign = context.WithValue(ctx1, "simpleToken", prefix)
+		ctxForAssign = context.WithValue(ctx1, AuthenticateParamSimpleTokenPrefix{}, prefix)
 	} else {
 		ctxForAssign = ctx
 	}
