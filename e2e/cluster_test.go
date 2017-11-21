@@ -112,10 +112,11 @@ type etcdProcessClusterConfig struct {
 	isClientAutoTLS       bool
 	isClientCRL           bool
 
-	forceNewCluster   bool
-	initialToken      string
-	quotaBackendBytes int64
-	noStrictReconfig  bool
+	forceNewCluster     bool
+	initialToken        string
+	quotaBackendBytes   int64
+	noStrictReconfig    bool
+	initialCorruptCheck bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -223,6 +224,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		}
 		if cfg.noStrictReconfig {
 			args = append(args, "--strict-reconfig-check=false")
+		}
+		if cfg.initialCorruptCheck {
+			args = append(args, "--experimental-initial-corrupt-check")
 		}
 		var murl string
 		if cfg.metricsURLScheme != "" {
