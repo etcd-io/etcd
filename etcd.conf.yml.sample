@@ -106,7 +106,7 @@ client-transport-security:
   # Enable client cert authentication.
   client-cert-auth: false
 
-  # Path to the client server TLS trusted CA key file.
+  # Path to the client server TLS trusted CA cert file.
   trusted-ca-file:
 
   # Client TLS using generated certificates
@@ -125,7 +125,7 @@ peer-transport-security:
   # Enable peer client cert authentication.
   peer-client-cert-auth: false
 
-  # Path to the peer server TLS trusted CA key file.
+  # Path to the peer server TLS trusted CA cert file.
   trusted-ca-file:
 
   # Peer TLS using generated certificates.

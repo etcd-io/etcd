@@ -248,7 +248,7 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_CLIENT_CRL_FILE
 
 ### --trusted-ca-file
-+ Path to the client server TLS trusted CA key file.
++ Path to the client server TLS trusted CA cert file.
 + default: ""
 + env variable: ETCD_TRUSTED_CA_FILE
 
