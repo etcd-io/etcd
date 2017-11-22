@@ -48,7 +48,7 @@ clientv3yaml.NewConfig
 
 ### Client upgrade checklists (>=3.2.10)
 
->=3.2.10 upgrades `grpc/grpc-go` to >=v1.7.x from v1.2.1, which introduces some breaking changes.
+Note that >=3.2.10 requires `grpc/grpc-go` v1.7.3 (<=3.2.9 with v1.2.1), which introduces some breaking changes.
 
 Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. >=3.2.10 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
