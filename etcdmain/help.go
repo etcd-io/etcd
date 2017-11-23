@@ -187,8 +187,10 @@ auth flags:
 		Specify a v3 authentication token type and its options ('simple' or 'jwt').
 
 experimental flags:
+	--experimental-initial-corrupt-check 'false'
+		enable to check data corruption before serving any client/peer traffic.
 	--experimental-corrupt-check-time '0s'
-	        duration of time between cluster corruption check passes.
+		duration of time between cluster corruption check passes.
 	--experimental-enable-v2v3 ''
 		serve v2 requests through the v3 backend under a given prefix.
 `

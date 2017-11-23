@@ -124,7 +124,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		token   string
 	)
 
+	memberInitialized := true
 	if !isMemberInitialized(cfg) {
+		memberInitialized = false
 		urlsmap, token, err = cfg.PeerURLsMapAndToken("etcd")
 		if err != nil {
 			return e, fmt.Errorf("error setting up initial cluster: %v", err)
@@ -175,6 +177,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
 		AuthToken:               cfg.AuthToken,
+		InitialCorruptCheck:     cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
 	}
 
@@ -185,6 +188,16 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	// buffer channel so goroutines on closed connections won't wait forever
 	e.errc = make(chan error, len(e.Peers)+len(e.Clients)+2*len(e.sctxs))
 
+	// newly started member ("memberInitialized==false")
+	// does not need corruption check
+	if memberInitialized {
+		if err = e.Server.CheckInitialHashKV(); err != nil {
+			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
+			// (nothing to close since rafthttp transports have not been started)
+			e.Server = nil
+			return e, err
+		}
+	}
 	e.Server.Start()
 
 	if err = e.servePeers(); err != nil {

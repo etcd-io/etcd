@@ -171,8 +171,9 @@ type Config struct {
 
 	// Experimental flags
 
-	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
-	ExperimentalEnableV2V3       string        `json:"experimental-enable-v2v3"`
+	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
+	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
 }
 
 // configYAML holds the config suitable for yaml parsing
