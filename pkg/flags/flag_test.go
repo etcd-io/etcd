@@ -76,3 +76,18 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 		t.Errorf("err=nil, want != nil")
 	}
 }
+
+func TestSetFlagsFromEnvParsingError(t *testing.T) {
+	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
+	var tickMs uint
+	fs.UintVar(&tickMs, "heartbeat-interval", 0, "Time (in milliseconds) of a heartbeat interval.")
+
+	if oerr := os.Setenv("ETCD_HEARTBEAT_INTERVAL", "100 # ms"); oerr != nil {
+		t.Fatal(oerr)
+	}
+	defer os.Unsetenv("ETCD_HEARTBEAT_INTERVAL")
+
+	if serr := SetFlagsFromEnv("ETCD", fs); serr.Error() != `invalid value "100 # ms" for ETCD_HEARTBEAT_INTERVAL: strconv.ParseUint: parsing "100 # ms": invalid syntax` {
+		t.Fatalf("expected parsing error, got %v", serr)
+	}
+}

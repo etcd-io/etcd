@@ -78,7 +78,9 @@ func SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error {
 	})
 	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *flag.Flag) {
-		err = setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, true)
+		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, true); serr != nil {
+			err = serr
+		}
 	})
 	verifyEnv(prefix, usedEnvKey, alreadySet)
 	return err
