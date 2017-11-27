@@ -82,6 +82,7 @@ func (cx *ctlCtx) applyOpts(opts []ctlOption) {
 	for _, opt := range opts {
 		opt(cx)
 	}
+	cx.initialCorruptCheck = true
 }
 
 func withCfg(cfg etcdProcessClusterConfig) ctlOption {

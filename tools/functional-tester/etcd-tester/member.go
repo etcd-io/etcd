@@ -47,6 +47,7 @@ func (m *member) Flags() []string {
 		"--listen-peer-urls", m.PeerURL,
 		"--initial-advertise-peer-urls", m.PeerURL,
 		"--initial-cluster-state", "new",
+		"--experimental-initial-corrupt-check",
 	}
 }
 
