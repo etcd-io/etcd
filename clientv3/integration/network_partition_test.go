@@ -19,6 +19,7 @@ package integration
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var errExpected = errors.New("expected error")
@@ -36,7 +39,7 @@ var errExpected = errors.New("expected error")
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -46,7 +49,7 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "a")
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -59,7 +62,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -82,11 +85,23 @@ func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.
 func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if err == context.DeadlineExceeded {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) {
 			return errExpected
 		}
 		return err
 	}, time.Second)
+}
+
+// e.g. due to clock drifts in server-side,
+// client context times out first in server-side
+// while original client-side context is not timed out yet
+func isServerCtxTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	ev, _ := status.FromError(err)
+	code := ev.Code()
+	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
 }
 
 func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {

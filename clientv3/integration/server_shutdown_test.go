@@ -100,7 +100,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
