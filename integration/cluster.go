@@ -587,6 +587,9 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 			Timeout: mcfg.grpcKeepAliveTimeout,
 		}))
 	}
+
+	m.InitialCorruptCheck = true
+
 	return m
 }
 
