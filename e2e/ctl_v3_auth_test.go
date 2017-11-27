@@ -780,32 +780,32 @@ func authTestWatch(cx ctlCtx) {
 		puts []kv
 		args []string
 
-		wkv  []kv
+		wkv  []kvExec
 		want bool
 	}{
 		{ // watch 1 key, should be successful
 			[]kv{{"key", "value"}},
 			[]string{"key", "--rev", "1"},
-			[]kv{{"key", "value"}},
+			[]kvExec{{key: "key", val: "value"}},
 			true,
 		},
 		{ // watch 3 keys by range, should be successful
 			[]kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
 			[]string{"key", "key3", "--rev", "1"},
-			[]kv{{"key1", "val1"}, {"key2", "val2"}},
+			[]kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}},
 			true,
 		},
 
 		{ // watch 1 key, should not be successful
 			[]kv{},
 			[]string{"key5", "--rev", "1"},
-			[]kv{},
+			[]kvExec{},
 			false,
 		},
 		{ // watch 3 keys by range, should not be successful
 			[]kv{},
 			[]string{"key", "key6", "--rev", "1"},
-			[]kv{},
+			[]kvExec{},
 			false,
 		},
 	}
