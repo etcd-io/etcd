@@ -106,7 +106,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -116,7 +116,7 @@ func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAliveDelete(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "foo")
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -129,7 +129,7 @@ func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -139,7 +139,7 @@ func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if err == context.DeadlineExceeded || err == rpctypes.ErrTimeout {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -149,7 +149,7 @@ func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a", clientv3.WithSerializable())
-		if err == context.DeadlineExceeded {
+		if err == context.DeadlineExceeded || isServerCtxTimeout(err) {
 			return errExpected
 		}
 		return err
