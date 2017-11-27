@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,9 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
@@ -234,4 +238,16 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 	if err != nil {
 		t.Errorf("failed to finish range request in time %v (timeout %v)", err, timeout)
 	}
+}
+
+// e.g. due to clock drifts in server-side,
+// client context times out first in server-side
+// while original client-side context is not timed out yet
+func isServerCtxTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	ev, _ := status.FromError(err)
+	code := ev.Code()
+	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
 }

@@ -19,7 +19,6 @@ package integration
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -27,8 +26,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var errExpected = errors.New("expected error")
@@ -90,18 +87,6 @@ func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing
 		}
 		return err
 	}, time.Second)
-}
-
-// e.g. due to clock drifts in server-side,
-// client context times out first in server-side
-// while original client-side context is not timed out yet
-func isServerCtxTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-	ev, _ := status.FromError(err)
-	code := ev.Code()
-	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
 }
 
 func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
