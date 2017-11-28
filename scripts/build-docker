@@ -10,7 +10,6 @@ fi
 VERSION=${1}
 ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release"
-if [ -z "$TAG" ]; then TAG="quay.io/coreos/etcd"; fi
 
 if [ -z "${BINARYDIR}" ]; then
 	RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
@@ -40,4 +39,9 @@ cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${IMAGEDIR}"
 
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
-docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+if [ -z "$TAG" ]; then
+    docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+else
+    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+fi
