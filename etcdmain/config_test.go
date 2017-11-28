@@ -460,7 +460,18 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 		},
 		{
 			ElectionMs: 60000,
+			TickMs:     10000,
 			errStr:     "is too long, and should be set less than",
+		},
+		{
+			ElectionMs: 100,
+			TickMs:     0,
+			errStr:     "--heartbeat-interval must be >0 (set to 0ms)",
+		},
+		{
+			ElectionMs: 0,
+			TickMs:     100,
+			errStr:     "--election-timeout must be >0 (set to 0ms)",
 		},
 	}
 
