@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+if [ "$#" -ne 1 ]; then
+	echo "Usage: $0 VERSION" >&2
+	exit 1
+fi
+
+VERSION=${1}
 BINARYDIR=${BINARYDIR:-.}
 BUILDDIR=${BUILDDIR:-.}
 
@@ -10,4 +16,9 @@ cp ${BINARYDIR}/etcd ${BINARYDIR}/etcdctl ${IMAGEDIR}
 
 cat ./Dockerfile-release > ${IMAGEDIR}/Dockerfile
 
-docker build -t quay.io/coreos/etcd:${1} ${IMAGEDIR}
+if [ -z "$TAG" ]; then
+    docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+else
+    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+fi
