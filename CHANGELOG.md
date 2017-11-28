@@ -1,3 +1,13 @@
+## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11).
+
+### Fixed
+
+- [#8411](https://github.com/coreos/etcd/issues/8411),[#8806](https://github.com/coreos/etcd/pull/8806) mvcc: fix watch restore from snapshot
+- [#8009](https://github.com/coreos/etcd/issues/8009),[#8902](https://github.com/coreos/etcd/pull/8902) backport coreos/bbolt v1.3.1-coreos.5
+
+
 ## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-16)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
