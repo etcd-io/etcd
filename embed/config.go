@@ -409,6 +409,12 @@ func (cfg *Config) Validate() error {
 		return ErrConflictBootstrapFlags
 	}
 
+	if cfg.TickMs <= 0 {
+		return fmt.Errorf("--heartbeat-interval must be >0 (set to %dms)", cfg.TickMs)
+	}
+	if cfg.ElectionMs <= 0 {
+		return fmt.Errorf("--election-timeout must be >0 (set to %dms)", cfg.ElectionMs)
+	}
 	if 5*cfg.TickMs > cfg.ElectionMs {
 		return fmt.Errorf("--election-timeout[%vms] should be at least as 5 times as --heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
 	}
