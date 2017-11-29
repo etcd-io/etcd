@@ -4,6 +4,17 @@ The guide talks about how to release a new version of etcd.
 
 The procedure includes some manual steps for sanity checking, but it can probably be further scripted. Please keep this document up-to-date if making changes to the release process.
 
+## Release management
+
+etcd community members are assigned to manage the release each etcd major/minor version as well as manage patches
+and to each stable release branch. The managers are responsible for communicating the timelines and status of each
+release and for ensuring the stability of the release branch.
+
+| Releases | Manager |
+| -------- | ------- |
+| 3.1 patch (post 3.1.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
+| 3.2 patch (post 3.2.0) | Gyuho Lee [@gyuho](https://github.com/gyuho) |
+
 ## Prepare release
 
 Set desired version as environment variable for following steps. Here is an example to release 2.3.0:
