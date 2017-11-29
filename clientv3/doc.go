@@ -16,6 +16,15 @@
 //
 // Create client using `clientv3.New`:
 //
+//	// expect dial time-out on ipv4 blackhole
+//	_, err := clientv3.New(clientv3.Config{
+//		Endpoints:   []string{"http://254.0.0.1:12345"},
+//		DialTimeout: 2 * time.Second
+//	})
+//	if err == grpc.ErrClientConnTimeout {
+//		// handle errors
+//	}
+//
 //	cli, err := clientv3.New(clientv3.Config{
 //		Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
 //		DialTimeout: 5 * time.Second,
@@ -41,10 +50,11 @@
 // The Client has internal state (watchers and leases), so Clients should be reused instead of created as needed.
 // Clients are safe for concurrent use by multiple goroutines.
 //
-// etcd client returns 2 types of errors:
+// etcd client returns 3 types of errors:
 //
 //	1. context error: canceled or deadline exceeded.
-//	2. gRPC error: see https://github.com/coreos/etcd/blob/master/etcdserver/api/v3rpc/rpctypes/error.go
+//  2. gRPC status error: e.g. when clock drifts in server-side before client's context deadline exceeded.
+//	3. gRPC error: see https://github.com/coreos/etcd/blob/master/etcdserver/api/v3rpc/rpctypes/error.go
 //
 // Here is the example code to handle client errors:
 //
@@ -64,6 +74,16 @@
 //			// process (verr.Errors)
 //		} else {
 //			// bad cluster endpoints, which are not etcd servers
+//		}
+//	}
+//
+//	go func() { cli.Close() }()
+//	_, err := kvc.Get(ctx, "a")
+//	if err != nil {
+//		if err == context.Canceled {
+//			// grpc balancer calls 'Get' with an inflight client.Close
+//		} else if err == grpc.ErrClientConnClosing {
+//			// grpc balancer calls 'Get' after client.Close.
 //		}
 //	}
 //
