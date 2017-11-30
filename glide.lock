@@ -1,5 +1,5 @@
-hash: 8136b7373396e6f72a1f99838d706292c688ccb94bb1bddee7124babde335e31
-updated: 2017-11-17T14:01:41.761462-08:00
+hash: 775ef3aaeb7c16c54b68880b78cc6f4bccd40798f5b923d37bfa50b1b8867ca5
+updated: 2017-11-30T10:02:20.77689-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -102,7 +102,7 @@ imports:
 - name: github.com/russross/blackfriday
   version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
 - name: github.com/sirupsen/logrus
-  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
 - name: github.com/soheilhy/cmux
   version: bb79a83465015a27a175925ebd155e660f55e9f1
 - name: github.com/spf13/cobra
