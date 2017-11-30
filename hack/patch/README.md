@@ -1,4 +1,4 @@
-# hack/cherrypick.sh
+# ./hack/patch/cherrypick.sh
 
 Handles cherry-picks of PR(s) from etcd master to a stable etcd release branch automatically.
 
@@ -15,22 +15,23 @@ one on github.com and register it locally with `git remote add ...`.
 ```
 export UPSTREAM_REMOTE=origin
 export FORK_REMOTE=${github-username}
+export GITHUB_USER=${github-username}
 ```
 
 Next, install hub from https://github.com/github/hub
 
 ## Usage
 
-To cherry pick PR 12345 onto release-2.22 and propose is as a PR, run:
+To cherry pick PR 12345 onto release-3.2 and propose is as a PR, run:
 
 ```sh
-hack/cherrypick.sh upstream/release-2.2 12345
+./hack/patch/cherrypick.sh ${UPSTREAM_REMOTE}/release-3.2 12345
 ```
 
 To cherry pick 12345 then 56789 and propose them togther as a single PR, run:
 
 ```
-hack/cherrypick.sh upstream/release-2.2 12345 56789
+./hack/patch/cherrypick.sh ${UPSTREAM_REMOTE}/release-3.2 12345 56789
 ```
 
 
