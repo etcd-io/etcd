@@ -19,6 +19,7 @@
 package grpc
 
 import (
+	"fmt"
 	"strings"
 
 	"google.golang.org/grpc/grpclog"
@@ -36,39 +37,36 @@ type ccResolverWrapper struct {
 }
 
 // split2 returns the values from strings.SplitN(s, sep, 2).
-// If sep is not found, it returns "", s instead.
-func split2(s, sep string) (string, string) {
+// If sep is not found, it returns ("", s, false) instead.
+func split2(s, sep string) (string, string, bool) {
 	spl := strings.SplitN(s, sep, 2)
 	if len(spl) < 2 {
-		return "", s
+		return "", "", false
 	}
-	return spl[0], spl[1]
+	return spl[0], spl[1], true
 }
 
 // parseTarget splits target into a struct containing scheme, authority and
 // endpoint.
 func parseTarget(target string) (ret resolver.Target) {
-	ret.Scheme, ret.Endpoint = split2(target, "://")
-	ret.Authority, ret.Endpoint = split2(ret.Endpoint, "/")
+	var ok bool
+	ret.Scheme, ret.Endpoint, ok = split2(target, "://")
+	if !ok {
+		return resolver.Target{Endpoint: target}
+	}
+	ret.Authority, ret.Endpoint, _ = split2(ret.Endpoint, "/")
 	return ret
 }
 
 // newCCResolverWrapper parses cc.target for scheme and gets the resolver
 // builder for this scheme. It then builds the resolver and starts the
 // monitoring goroutine for it.
-//
-// This function could return nil, nil, in tests for old behaviors.
-// TODO(bar) never return nil, nil when DNS becomes the default resolver.
 func newCCResolverWrapper(cc *ClientConn) (*ccResolverWrapper, error) {
-	target := parseTarget(cc.target)
-	grpclog.Infof("dialing to target with scheme: %q", target.Scheme)
+	grpclog.Infof("dialing to target with scheme: %q", cc.parsedTarget.Scheme)
 
-	rb := resolver.Get(target.Scheme)
+	rb := resolver.Get(cc.parsedTarget.Scheme)
 	if rb == nil {
-		// TODO(bar) return error when DNS becomes the default (implemented and
-		// registered by DNS package).
-		grpclog.Infof("could not get resolver for scheme: %q", target.Scheme)
-		return nil, nil
+		return nil, fmt.Errorf("could not get resolver for scheme: %q", cc.parsedTarget.Scheme)
 	}
 
 	ccr := &ccResolverWrapper{
@@ -79,7 +77,7 @@ func newCCResolverWrapper(cc *ClientConn) (*ccResolverWrapper, error) {
 	}
 
 	var err error
-	ccr.resolver, err = rb.Build(target, ccr, resolver.BuildOption{})
+	ccr.resolver, err = rb.Build(cc.parsedTarget, ccr, resolver.BuildOption{})
 	if err != nil {
 		return nil, err
 	}
@@ -100,14 +98,21 @@ func (ccr *ccResolverWrapper) watcher() {
 
 		select {
 		case addrs := <-ccr.addrCh:
-			grpclog.Infof("ccResolverWrapper: sending new addresses to balancer wrapper: %v", addrs)
-			// TODO(bar switching) this should never be nil. Pickfirst should be default.
-			if ccr.cc.balancerWrapper != nil {
-				// TODO(bar switching) create balancer if it's nil?
-				ccr.cc.balancerWrapper.handleResolvedAddrs(addrs, nil)
+			select {
+			case <-ccr.done:
+				return
+			default:
 			}
+			grpclog.Infof("ccResolverWrapper: sending new addresses to cc: %v", addrs)
+			ccr.cc.handleResolvedAddrs(addrs, nil)
 		case sc := <-ccr.scCh:
+			select {
+			case <-ccr.done:
+				return
+			default:
+			}
 			grpclog.Infof("ccResolverWrapper: got new service config: %v", sc)
+			ccr.cc.handleServiceConfig(sc)
 		case <-ccr.done:
 			return
 		}

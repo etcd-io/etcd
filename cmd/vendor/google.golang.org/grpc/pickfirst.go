@@ -37,7 +37,7 @@ func (*pickfirstBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions
 }
 
 func (*pickfirstBuilder) Name() string {
-	return "pickfirst"
+	return "pick_first"
 }
 
 type pickfirstBalancer struct {
@@ -57,14 +57,20 @@ func (b *pickfirstBalancer) HandleResolvedAddrs(addrs []resolver.Address, err er
 			return
 		}
 		b.cc.UpdateBalancerState(connectivity.Idle, &picker{sc: b.sc})
+		b.sc.Connect()
 	} else {
 		b.sc.UpdateAddresses(addrs)
+		b.sc.Connect()
 	}
 }
 
 func (b *pickfirstBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connectivity.State) {
 	grpclog.Infof("pickfirstBalancer: HandleSubConnStateChange: %p, %v", sc, s)
-	if b.sc != sc || s == connectivity.Shutdown {
+	if b.sc != sc {
+		grpclog.Infof("pickfirstBalancer: ignored state change because sc is not recognized")
+		return
+	}
+	if s == connectivity.Shutdown {
 		b.sc = nil
 		return
 	}
@@ -92,4 +98,8 @@ func (p *picker) Pick(ctx context.Context, opts balancer.PickOptions) (balancer.
 		return nil, nil, p.err
 	}
 	return p.sc, nil, nil
+}
+
+func init() {
+	balancer.Register(newPickfirstBuilder())
 }

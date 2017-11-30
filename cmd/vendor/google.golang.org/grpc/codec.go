@@ -92,13 +92,11 @@ func (protoCodec) String() string {
 	return "proto"
 }
 
-var (
-	protoBufferPool = &sync.Pool{
-		New: func() interface{} {
-			return &cachedProtoBuffer{
-				Buffer:            proto.Buffer{},
-				lastMarshaledSize: 16,
-			}
-		},
-	}
-)
+var protoBufferPool = &sync.Pool{
+	New: func() interface{} {
+		return &cachedProtoBuffer{
+			Buffer:            proto.Buffer{},
+			lastMarshaledSize: 16,
+		}
+	},
+}

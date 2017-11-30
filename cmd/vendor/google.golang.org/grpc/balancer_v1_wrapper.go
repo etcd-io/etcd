@@ -19,6 +19,7 @@
 package grpc
 
 import (
+	"strings"
 	"sync"
 
 	"golang.org/x/net/context"
@@ -34,20 +35,27 @@ type balancerWrapperBuilder struct {
 }
 
 func (bwb *balancerWrapperBuilder) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
-	bwb.b.Start(cc.Target(), BalancerConfig{
+	targetAddr := cc.Target()
+	targetSplitted := strings.Split(targetAddr, ":///")
+	if len(targetSplitted) >= 2 {
+		targetAddr = targetSplitted[1]
+	}
+
+	bwb.b.Start(targetAddr, BalancerConfig{
 		DialCreds: opts.DialCreds,
 		Dialer:    opts.Dialer,
 	})
 	_, pickfirst := bwb.b.(*pickFirst)
 	bw := &balancerWrapper{
-		balancer:  bwb.b,
-		pickfirst: pickfirst,
-		cc:        cc,
-		startCh:   make(chan struct{}),
-		conns:     make(map[resolver.Address]balancer.SubConn),
-		connSt:    make(map[balancer.SubConn]*scState),
-		csEvltr:   &connectivityStateEvaluator{},
-		state:     connectivity.Idle,
+		balancer:   bwb.b,
+		pickfirst:  pickfirst,
+		cc:         cc,
+		targetAddr: targetAddr,
+		startCh:    make(chan struct{}),
+		conns:      make(map[resolver.Address]balancer.SubConn),
+		connSt:     make(map[balancer.SubConn]*scState),
+		csEvltr:    &connectivityStateEvaluator{},
+		state:      connectivity.Idle,
 	}
 	cc.UpdateBalancerState(connectivity.Idle, bw)
 	go bw.lbWatcher()
@@ -68,7 +76,8 @@ type balancerWrapper struct {
 	balancer  Balancer // The v1 balancer.
 	pickfirst bool
 
-	cc balancer.ClientConn
+	cc         balancer.ClientConn
+	targetAddr string // Target without the scheme.
 
 	// To aggregate the connectivity state.
 	csEvltr *connectivityStateEvaluator
@@ -88,12 +97,11 @@ type balancerWrapper struct {
 // connections accordingly.
 func (bw *balancerWrapper) lbWatcher() {
 	<-bw.startCh
-	grpclog.Infof("balancerWrapper: is pickfirst: %v\n", bw.pickfirst)
 	notifyCh := bw.balancer.Notify()
 	if notifyCh == nil {
 		// There's no resolver in the balancer. Connect directly.
 		a := resolver.Address{
-			Addr: bw.cc.Target(),
+			Addr: bw.targetAddr,
 			Type: resolver.Backend,
 		}
 		sc, err := bw.cc.NewSubConn([]resolver.Address{a}, balancer.NewSubConnOptions{})
@@ -103,7 +111,7 @@ func (bw *balancerWrapper) lbWatcher() {
 			bw.mu.Lock()
 			bw.conns[a] = sc
 			bw.connSt[sc] = &scState{
-				addr: Address{Addr: bw.cc.Target()},
+				addr: Address{Addr: bw.targetAddr},
 				s:    connectivity.Idle,
 			}
 			bw.mu.Unlock()
@@ -221,7 +229,6 @@ func (bw *balancerWrapper) lbWatcher() {
 }
 
 func (bw *balancerWrapper) HandleSubConnStateChange(sc balancer.SubConn, s connectivity.State) {
-	grpclog.Infof("balancerWrapper: handle subconn state change: %p, %v", sc, s)
 	bw.mu.Lock()
 	defer bw.mu.Unlock()
 	scSt, ok := bw.connSt[sc]
