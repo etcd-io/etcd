@@ -28,6 +28,8 @@ import (
 	"github.com/coreos/etcd/clientv3/leasing"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -216,7 +218,11 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	_, err = lkv.Get(ctx, "k")
 	cancel()
-	testutil.AssertEqual(t, err, ctx.Err())
+	if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
+		// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
+		// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
+		t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
+	}
 }
 
 // TestLeasingGetSerializable checks the leasing KV can make serialized requests
