@@ -127,7 +127,7 @@ Cherry pick of ${PULLSUBJ} on ${rel}.
 $(printf '%s\n' "${SUBJECTS[@]}")
 EOF
 
-  hub pull-request -F "${prtext}" -h "${GITHUB_USER}:${NEWBRANCH}" -b "etcd:${rel}"
+  hub pull-request -F "${prtext}" -h "${GITHUB_USER}:${NEWBRANCH}" -b "coreos:${rel}"
 }
 
 git checkout -b "${NEWBRANCHUNIQ}" "${BRANCH}"
