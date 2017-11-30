@@ -111,7 +111,9 @@ curl -L http://localhost:2379/v3beta/kv/put \
 
 Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.
 
-#### Deprecate `quay.io/coreos/etcd` for Docker container
+#### `gcr.io/etcd-development/etcd` as primary container registry
+
+etcd uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
 
 Before
 
