@@ -42,14 +42,4 @@ mv server-revoked-key.pem server-revoked.key.insecure
 grep serial revoked.stderr | awk ' { print $9 } ' >revoke.txt
 cfssl gencrl revoke.txt ca.crt ca-key.pem | base64 --decode >revoke.crl
 
-# generate wildcard certificates DNS: *.etcd.local
-cfssl gencert \
-    --ca ./ca.crt \
-    --ca-key ./ca-key.pem \
-    --config ./gencert.json \
-    ./server-ca-csr-wildcard.json | cfssljson --bare ./server-wildcard
-mv server-wildcard.pem server-wildcard.crt
-mv server-wildcard-key.pem server-wildcard.key.insecure
-
-
 rm -f *.csr *.pem *.stderr *.txt
