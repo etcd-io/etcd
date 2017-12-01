@@ -214,9 +214,9 @@ docker-dns-test-certs-wildcard-run:
 #   make push-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
-#   make docker-dns-srv-test-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
 
-# build base container image for DNS/SRV testing
 build-docker-dns-srv-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	@cat ./hack/scripts-dev/docker-dns-srv/Dockerfile | sed s/REPLACE_ME_GO_VERSION/$(_GO_VERSION)/ \
@@ -241,16 +241,26 @@ pull-docker-dns-srv-test:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker pull gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION)
 
-# run DNS/SRV tests inside container
-docker-dns-srv-test-run:
+docker-dns-srv-test-certs-run:
 	$(info GO_VERSION: $(_GO_VERSION))
 	docker run \
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
 	  --volume=`pwd`/bin:/etcd \
-	  --volume=`pwd`/integration/fixtures:/certs \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
-	  /bin/bash -c "cd /etcd && /run.sh && rm -rf m*.etcd"
+	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
 
-# TODO: add DNS integration tests
+docker-dns-srv-test-certs-wildcard-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-wildcard:/certs-wildcard \
+	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
