@@ -356,11 +356,22 @@ func identifyDataDirOrDie(dir string) dirType {
 	return dirEmpty
 }
 
-func setupLogging(cfg *config) {
-	cfg.ClientTLSInfo.HandshakeFailure = func(conn *tls.Conn, err error) {
-		plog.Infof("rejected connection from %q (%v)", conn.RemoteAddr().String(), err)
+func logTLSHandshakeFailure(conn *tls.Conn, err error) {
+	state := conn.ConnectionState()
+	remoteAddr := conn.RemoteAddr().String()
+	serverName := state.ServerName
+	if len(state.PeerCertificates) > 0 {
+		cert := state.PeerCertificates[0]
+		ips, dns := cert.IPAddresses, cert.DNSNames
+		plog.Infof("rejected connection from %q (error %q, ServerName %q, IPAddresses %q, DNSNames %q)", remoteAddr, err.Error(), serverName, ips, dns)
+	} else {
+		plog.Infof("rejected connection from %q (error %q, ServerName %q)", remoteAddr, err.Error(), serverName)
 	}
-	cfg.PeerTLSInfo.HandshakeFailure = cfg.ClientTLSInfo.HandshakeFailure
+}
+
+func setupLogging(cfg *config) {
+	cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+	cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
 
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
 	if cfg.Debug {
