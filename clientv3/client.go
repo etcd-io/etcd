@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 var (
@@ -526,6 +527,9 @@ func toErr(ctx context.Context, err error) error {
 			err = ctx.Err()
 		}
 	case codes.Unavailable:
+		if ev.Message() == transport.ErrConnClosing.Desc {
+			err = grpc.ErrClientConnClosing
+		}
 	case codes.FailedPrecondition:
 		err = grpc.ErrClientConnClosing
 	}
