@@ -31,8 +31,10 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	gtransport "google.golang.org/grpc/transport"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
@@ -1880,11 +1882,23 @@ func eqErrGRPC(err1 error, err2 error) bool {
 
 // waitForRestart tries a range request until the client's server responds.
 // This is mainly a stop-gap function until grpcproxy's KVClient adapter
-// (and by extension, clientv3) supports grpc.CallOption pass-through so
-// FailFast=false works with Put.
+// (and by extension, clientv3) supports grpc.CallOption pass-through.
 func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
-	if _, err := kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
-		t.Fatal(err)
+	// TODO: remove this when gRPC retry is fixed; "grpc.FailFast(false)" is broken
+	for i := 0; i < 5; i++ {
+		if _, err := kvc.Range(context.TODO(), req); err != nil {
+			ev, _ := status.FromError(err)
+			code := ev.Code()
+			if code == codes.Unavailable {
+				if ev.Message() == gtransport.ErrConnClosing.Desc ||
+					ev.Message() == "there is no address available" {
+					time.Sleep(2 * time.Second)
+					continue
+				}
+			}
+			t.Fatal(err)
+		}
+		break
 	}
 }
