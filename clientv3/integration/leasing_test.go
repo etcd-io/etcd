@@ -218,10 +218,14 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	_, err = lkv.Get(ctx, "k")
 	cancel()
-	if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
+	if err != nil &&
+		err != grpc.ErrClientConnClosing &&
+		err != context.Canceled &&
+		err != context.DeadlineExceeded {
 		// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
 		// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
-		t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
+		// context.DeadlineExceeded if request went through before connection close
+		t.Fatalf("expected %v or %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, context.DeadlineExceeded, err)
 	}
 }
 
