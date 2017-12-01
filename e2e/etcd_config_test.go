@@ -183,7 +183,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		if i <= 1 {
 			expect = etcdServerReadyLines
 		} else {
-			expect = []string{"(remote error: tls: bad certificate)"}
+			expect = []string{"remote error: tls: bad certificate"}
 		}
 		if err := waitReadyExpectProc(p, expect); err != nil {
 			t.Fatal(err)
