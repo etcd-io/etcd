@@ -1,5 +1,8 @@
+// +build go1.8
+
 /*
- * Copyright 2016 gRPC authors.
+ *
+ * Copyright 2017 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +18,12 @@
  *
  */
 
-// Package internal contains gRPC-internal code for testing, to avoid polluting
-// the godoc of the top-level grpc package.
-package internal
+package dns
 
-// TestingUseHandlerImpl enables the http.Handler-based server implementation.
-// It must be called before Serve and requires TLS credentials.
-//
-// The provided grpcServer must be of type *grpc.Server. It is untyped
-// for circular dependency reasons.
-var TestingUseHandlerImpl func(grpcServer interface{})
+import "net"
+
+var (
+	lookupHost = net.DefaultResolver.LookupHost
+	lookupSRV  = net.DefaultResolver.LookupSRV
+	lookupTXT  = net.DefaultResolver.LookupTXT
+)
