@@ -392,7 +392,7 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	client.balancer = newHealthBalancer(cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {
+	client.balancer = newHealthBalancer(ctx, cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {
 		return grpcHealthCheck(client, ep)
 	})
 
