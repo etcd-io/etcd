@@ -102,6 +102,8 @@ func (ccr *ccResolverWrapper) watcher() {
 		select {
 		case <-ccr.done:
 			return
+		case <-ccr.cc.ctx.Done():
+			return
 		default:
 		}
 
@@ -109,6 +111,8 @@ func (ccr *ccResolverWrapper) watcher() {
 		case addrs := <-ccr.addrCh:
 			select {
 			case <-ccr.done:
+				return
+			case <-ccr.cc.ctx.Done():
 				return
 			default:
 			}
@@ -118,11 +122,15 @@ func (ccr *ccResolverWrapper) watcher() {
 			select {
 			case <-ccr.done:
 				return
+			case <-ccr.cc.ctx.Done():
+				return
 			default:
 			}
 			grpclog.Infof("ccResolverWrapper: got new service config: %v", sc)
 			ccr.cc.handleServiceConfig(sc)
 		case <-ccr.done:
+			return
+		case <-ccr.cc.ctx.Done():
 			return
 		}
 	}
