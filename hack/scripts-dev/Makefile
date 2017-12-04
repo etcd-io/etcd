@@ -228,6 +228,7 @@ docker-dns-test-certs-wildcard-run:
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
 #   make docker-dns-srv-test-certs-run -f ./hack/scripts-dev/Makefile
+#   make docker-dns-srv-test-certs-gateway-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-srv-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
 
 build-docker-dns-srv-test:
@@ -265,6 +266,18 @@ docker-dns-srv-test-certs-run:
 	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
+
+docker-dns-srv-test-certs-gateway-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  --volume=`pwd`/bin:/etcd \
+	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-gateway:/certs-gateway \
+	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-gateway/run.sh && rm -rf m*.etcd"
 
 docker-dns-srv-test-certs-wildcard-run:
 	$(info GO_VERSION: $(_GO_VERSION))
