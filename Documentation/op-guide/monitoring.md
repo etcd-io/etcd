@@ -41,10 +41,6 @@ When	Elapsed (s)
 17:34:51.999535 	 .    36 	... sent: header:<cluster_id:14841639068965178418 member_id:10276657743932975437 revision:15 raft_term:17 > kvs:<key:"abc" create_revision:6 mod_revision:14 version:9 value:"asda" > count:1
 ```
 
-## Metrics endpoint
-
-Each etcd server exports metrics under the `/metrics` path on its client port and optionally on interfaces given by `--listen-metrics-urls`.
-
 The metrics can be fetched with `curl`:
 
 ```sh
