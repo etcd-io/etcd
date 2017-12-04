@@ -24,7 +24,7 @@ var (
 	// m is a map from scheme to resolver builder.
 	m = make(map[string]Builder)
 	// defaultScheme is the default scheme to use.
-	defaultScheme string
+	defaultScheme = "passthrough"
 )
 
 // TODO(bar) install dns resolver in init(){}.
