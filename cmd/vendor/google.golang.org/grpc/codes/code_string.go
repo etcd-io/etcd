@@ -2,7 +2,7 @@
 
 package codes
 
-import "fmt"
+import "strconv"
 
 const _Code_name = "OKCanceledUnknownInvalidArgumentDeadlineExceededNotFoundAlreadyExistsPermissionDeniedResourceExhaustedFailedPreconditionAbortedOutOfRangeUnimplementedInternalUnavailableDataLossUnauthenticated"
 
@@ -10,7 +10,7 @@ var _Code_index = [...]uint8{0, 2, 10, 17, 32, 48, 56, 69, 85, 102, 120, 127, 13
 
 func (i Code) String() string {
 	if i >= Code(len(_Code_index)-1) {
-		return fmt.Sprintf("Code(%d)", i)
+		return "Code(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _Code_name[_Code_index[i]:_Code_index[i+1]]
 }

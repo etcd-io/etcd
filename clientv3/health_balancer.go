@@ -100,12 +100,15 @@ type healthBalancer struct {
 	pinAddr string
 
 	closed bool
+
+	ctx context.Context
 }
 
-func newHealthBalancer(eps []string, timeout time.Duration, hc healthCheckFunc) *healthBalancer {
+func newHealthBalancer(ctx context.Context, eps []string, timeout time.Duration, hc healthCheckFunc) *healthBalancer {
 	notifyCh := make(chan []grpc.Address)
 	addrs := eps2addrs(eps)
 	hb := &healthBalancer{
+		ctx:                ctx,
 		addrs:              addrs,
 		eps:                eps,
 		notifyCh:           notifyCh,
@@ -252,9 +255,13 @@ func (b *healthBalancer) updateUnhealthy() {
 				case b.updateAddrsC <- notifyNext:
 				case <-b.stopc:
 					return
+				case <-b.ctx.Done():
+					return
 				}
 			}
 		case <-b.stopc:
+			return
+		case <-b.ctx.Done():
 			return
 		}
 	}
@@ -327,6 +334,8 @@ func (b *healthBalancer) updateNotifyLoop() {
 			select {
 			case <-b.stopc:
 				return
+			case <-b.ctx.Done():
+				return
 			default:
 			}
 		case downc == nil:
@@ -336,6 +345,8 @@ func (b *healthBalancer) updateNotifyLoop() {
 			case msg := <-b.updateAddrsC:
 				b.notifyAddrs(msg)
 			case <-b.stopc:
+				return
+			case <-b.ctx.Done():
 				return
 			}
 		case upc == nil:
@@ -353,6 +364,8 @@ func (b *healthBalancer) updateNotifyLoop() {
 				b.notifyAddrs(msg)
 			case <-b.stopc:
 				return
+			case <-b.ctx.Done():
+				return
 			}
 		}
 	}
@@ -363,6 +376,8 @@ func (b *healthBalancer) notifyAddrs(msg notifyMsg) {
 		select {
 		case b.notifyCh <- []grpc.Address{}:
 		case <-b.stopc:
+			return
+		case <-b.ctx.Done():
 			return
 		}
 	}
@@ -387,6 +402,7 @@ func (b *healthBalancer) notifyAddrs(msg notifyMsg) {
 			}
 		}
 	case <-b.stopc:
+	case <-b.ctx.Done():
 	}
 }
 

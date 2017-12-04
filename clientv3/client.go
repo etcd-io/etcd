@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 var (
@@ -391,7 +392,7 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	client.balancer = newHealthBalancer(cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {
+	client.balancer = newHealthBalancer(ctx, cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {
 		return grpcHealthCheck(client, ep)
 	})
 
@@ -526,6 +527,9 @@ func toErr(ctx context.Context, err error) error {
 			err = ctx.Err()
 		}
 	case codes.Unavailable:
+		if ev.Message() == transport.ErrConnClosing.Desc {
+			err = grpc.ErrClientConnClosing
+		}
 	case codes.FailedPrecondition:
 		err = grpc.ErrClientConnClosing
 	}

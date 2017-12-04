@@ -31,7 +31,7 @@ import (
 var endpoints = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 
 func TestBalancerGetUnblocking(t *testing.T) {
-	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	hb := newHealthBalancer(context.TODO(), endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
@@ -75,7 +75,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 }
 
 func TestBalancerGetBlocking(t *testing.T) {
-	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	hb := newHealthBalancer(context.TODO(), endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
@@ -167,7 +167,7 @@ func TestHealthBalancerGraylist(t *testing.T) {
 	}
 
 	tf := func(s string) (bool, error) { return false, nil }
-	hb := newHealthBalancer(eps, 5*time.Second, tf)
+	hb := newHealthBalancer(context.TODO(), eps, 5*time.Second, tf)
 
 	conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 	testutil.AssertNil(t, err)
@@ -200,7 +200,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 	defer kcl.close()
 
 	for i := 0; i < 5; i++ {
-		hb := newHealthBalancer(kcl.endpoints(), minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+		hb := newHealthBalancer(context.TODO(), kcl.endpoints(), minHealthRetryDuration, func(string) (bool, error) { return true, nil })
 		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 		if err != nil {
 			t.Fatal(err)
