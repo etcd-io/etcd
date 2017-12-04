@@ -458,7 +458,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	user.Roles = append(user.Roles, r.Role)
-	sort.Sort(sort.StringSlice(user.Roles))
+	sort.Strings(user.Roles)
 
 	putUser(tx, user)
 
