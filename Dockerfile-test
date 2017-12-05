@@ -49,7 +49,7 @@ RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u honnef.co/go/tools/cmd/gosimple \
   && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
-  && go get -v -u github.com/wadey/gocovmerge \
+  && go get -v -u github.com/gyuho/gocovmerge \
   && go get -v -u github.com/gordonklaus/ineffassign \
   && go get -v -u github.com/alexkohler/nakedret \
   && /tmp/install-marker.sh amd64 \
