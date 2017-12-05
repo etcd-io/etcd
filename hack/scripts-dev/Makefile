@@ -31,7 +31,7 @@ endif
 # Example:
 #   GO_VERSION=1.8.5 make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd.json)" https://gcr.io
+#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 #   GO_VERSION=1.8.5 make push-docker-test -f ./hack/scripts-dev/Makefile
 #   make push-docker-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -151,7 +151,7 @@ push-docker-release-master:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
 #   make build-docker-dns-test -f ./hack/scripts-dev/Makefile
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd.json)" https://gcr.io
+#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 #   make push-docker-dns-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-test -f ./hack/scripts-dev/Makefile
@@ -223,7 +223,7 @@ docker-dns-test-certs-wildcard-run:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
 #   make build-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd.json)" https://gcr.io
+#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 #   make push-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-srv-test -f ./hack/scripts-dev/Makefile
