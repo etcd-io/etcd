@@ -183,7 +183,7 @@ func TestLessorRevoke(t *testing.T) {
 	}
 
 	wdeleted := []string{"bar_", "foo_"}
-	sort.Sort(sort.StringSlice(fd.deleted))
+	sort.Strings(fd.deleted)
 	if !reflect.DeepEqual(fd.deleted, wdeleted) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}
