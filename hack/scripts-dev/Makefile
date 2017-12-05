@@ -103,6 +103,7 @@ docker-test:
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	docker run \
 	  --rm \
+	  --volume=/tmp:/tmp \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "$(_TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
@@ -113,6 +114,7 @@ docker-test-coverage:
 	$(info log-file: docker-test-coverage-$(TEST_SUFFIX).log)
 	docker run \
 	  --rm \
+	  --volume=/tmp:/tmp \
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
@@ -189,8 +191,8 @@ docker-dns-test-certs-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
@@ -201,8 +203,8 @@ docker-dns-test-certs-gateway-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs-gateway:/certs-gateway \
 	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-gateway/run.sh && rm -rf m*.etcd"
@@ -213,8 +215,8 @@ docker-dns-test-certs-wildcard-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns/certs-wildcard:/certs-wildcard \
 	  gcr.io/etcd-development/etcd-dns-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
@@ -261,8 +263,8 @@ docker-dns-srv-test-certs-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs:/certs \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
@@ -273,8 +275,8 @@ docker-dns-srv-test-certs-gateway-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-gateway:/certs-gateway \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-gateway/run.sh && rm -rf m*.etcd"
@@ -285,8 +287,8 @@ docker-dns-srv-test-certs-wildcard-run:
 	  --rm \
 	  --tty \
 	  --dns 127.0.0.1 \
-	  --volume=`pwd`/bin:/etcd \
 	  --volume=/tmp:/tmp \
+	  --volume=`pwd`/bin:/etcd \
 	  --volume=`pwd`/hack/scripts-dev/docker-dns-srv/certs-wildcard:/certs-wildcard \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
