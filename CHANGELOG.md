@@ -1,3 +1,19 @@
+## [v3.2.11](https://github.com/coreos/etcd/releases/tag/v3.2.11) (2017-12-05)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11).
+
+### Fixed
+
+- Fix racey grpc-go's server handler transport `WriteStatus` call to prevent [TLS-enabled etcd server crash](https://github.com/coreos/etcd/issues/8904)
+  - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) v1.7.3 to v1.7.4
+  - Add [gRPC RPC failure warnings](https://github.com/coreos/etcd/pull/8939) to help debug such issues in the future
+- Remove `--listen-metrics-urls` flag in monitoring document (non-released in v3.2.x, planned for v3.3.x)
+
+### Added
+
+- Provide [more cert details](https://github.com/coreos/etcd/pull/8952/files) on TLS handshake failures
+
+
 ## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11).
@@ -15,7 +31,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
 ### Fixed
 
 - Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009)
-- Fix clientv3 balancer to handle [network partition](https://github.com/coreos/etcd/issues/8711)
+- Fix clientv3 balancer to handle [network partitions](https://github.com/coreos/etcd/issues/8711)
   - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) v1.2.1 to v1.7.3
   - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) v1.2 to v1.3
 - Revert [discovery SRV auth `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651) to support non-wildcard subject alternative names in the certs (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts)
