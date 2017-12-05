@@ -202,6 +202,7 @@ function cov_pass {
 	# expects to start with a non-empty file
 	cp "$COVERDIR"/etcdserver.coverprofile "$COVERDIR"/cover.out
 	for f in "$COVERDIR"/*.coverprofile; do
+		echo "merging test coverage file ${f}"
 		gocovmerge "$f" "$COVERDIR"/cover.out  >"$COVERDIR"/cover.tmp || failed="$failed $f"
 		if [ -s "$COVERDIR"/cover.tmp ]; then
 			mv "$COVERDIR"/cover.tmp "$COVERDIR"/cover.out
