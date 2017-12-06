@@ -95,7 +95,7 @@ test:
 	$(info TEST_OPTS: $(_TEST_OPTS))
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	$(_TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test:
 	$(info GO_VERSION: $(_GO_VERSION))
@@ -107,7 +107,7 @@ docker-test:
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "$(_TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test-coverage:
 	$(info GO_VERSION: $(_GO_VERSION))
@@ -118,7 +118,7 @@ docker-test-coverage:
 	  --volume=`pwd`:/go/src/github.com/coreos/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(_GO_VERSION) \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
 
 # build release container image with Linux
 _ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")

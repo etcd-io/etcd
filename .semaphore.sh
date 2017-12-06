@@ -13,4 +13,4 @@ docker run \
 	gcr.io/etcd-development/etcd-test:go1.9.2 \
 	/bin/bash -c "${TEST_OPTS} ./test 2>&1 | tee test-${TEST_SUFFIX}.log"
 
-! egrep "(--- FAIL:|panic: test timed out|appears to have leaked|Too many goroutines)" -B50 -A10 test-${TEST_SUFFIX}.log
+! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-${TEST_SUFFIX}.log
