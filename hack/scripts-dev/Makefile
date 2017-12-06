@@ -167,6 +167,61 @@ push-docker-release-master:
 # Example:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
+#   make build-docker-static-ip-test -f ./hack/scripts-dev/Makefile
+#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+#   make push-docker-static-ip-test -f ./hack/scripts-dev/Makefile
+#   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
+#   make pull-docker-static-ip-test -f ./hack/scripts-dev/Makefile
+#   make docker-static-ip-test-certs-run -f ./hack/scripts-dev/Makefile
+#   make docker-static-ip-test-certs-metrics-proxy-run -f ./hack/scripts-dev/Makefile
+
+build-docker-static-ip-test:
+	$(info GO_VERSION: $(_GO_VERSION))
+	@cat ./hack/scripts-dev/docker-static-ip/Dockerfile | sed s/REPLACE_ME_GO_VERSION/$(_GO_VERSION)/ \
+	  > ./hack/scripts-dev/docker-static-ip/.Dockerfile
+
+	docker build \
+	  --tag gcr.io/etcd-development/etcd-static-ip-test:go$(_GO_VERSION) \
+	  --file ./hack/scripts-dev/docker-static-ip/.Dockerfile \
+	  ./hack/scripts-dev/docker-static-ip
+
+push-docker-static-ip-test:
+	$(info GO_VERSION: $(_GO_VERSION))
+	gcloud docker -- push gcr.io/etcd-development/etcd-static-ip-test:go$(_GO_VERSION)
+
+pull-docker-static-ip-test:
+	$(info GO_VERSION: $(_GO_VERSION))
+	docker pull gcr.io/etcd-development/etcd-static-ip-test:go$(_GO_VERSION)
+
+docker-static-ip-test-certs-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(_TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  $(_TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/hack/scripts-dev/docker-static-ip/certs,destination=/certs \
+	  gcr.io/etcd-development/etcd-static-ip-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs/run.sh && rm -rf m*.etcd"
+
+docker-static-ip-test-certs-metrics-proxy-run:
+	$(info GO_VERSION: $(_GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(_TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  $(_TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/hack/scripts-dev/docker-static-ip/certs-metrics-proxy,destination=/certs-metrics-proxy \
+	  gcr.io/etcd-development/etcd-static-ip-test:go$(_GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-metrics-proxy/run.sh && rm -rf m*.etcd"
+
+# Example:
+#   make build-docker-test -f ./hack/scripts-dev/Makefile
+#   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
 #   make build-docker-dns-test -f ./hack/scripts-dev/Makefile
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 #   make push-docker-dns-test -f ./hack/scripts-dev/Makefile
