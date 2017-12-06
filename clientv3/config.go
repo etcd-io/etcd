@@ -38,7 +38,7 @@ type Config struct {
 	DialKeepAliveTime time.Duration `json:"dial-keep-alive-time"`
 
 	// DialKeepAliveTimeout is the time that the client waits for a response for the
-	// keep-alive probe.  If the response is not received in this time, the connection is closed.
+	// keep-alive probe. If the response is not received in this time, the connection is closed.
 	DialKeepAliveTimeout time.Duration `json:"dial-keep-alive-timeout"`
 
 	// TLS holds the client secure credentials, if any.
