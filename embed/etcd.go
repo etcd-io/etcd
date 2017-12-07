@@ -100,9 +100,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			return
 		}
 		if !serving {
-			// errored before starting gRPC server for serveCtx.grpcServerC
+			// errored before starting gRPC server for serveCtx
 			for _, sctx := range e.sctxs {
-				close(sctx.grpcServerC)
+				close(sctx.secureGrpcServerC)
+				close(sctx.insecureGrpcServerC)
 			}
 		}
 		e.Close()
@@ -222,15 +223,14 @@ func (e *Etcd) Config() Config {
 func (e *Etcd) Close() {
 	e.closeOnce.Do(func() { close(e.stopc) })
 
+	reqTimeout := 2 * time.Second
+	if e.Server != nil {
+		reqTimeout = e.Server.Cfg.ReqTimeout()
+	}
 	for _, sctx := range e.sctxs {
-		for gs := range sctx.grpcServerC {
-			e.stopGRPCServer(gs)
-		}
+		teardownServeCtx(sctx, reqTimeout)
 	}
 
-	for _, sctx := range e.sctxs {
-		sctx.cancel()
-	}
 	for i := range e.Clients {
 		if e.Clients[i] != nil {
 			e.Clients[i].Close()
