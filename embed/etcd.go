@@ -82,7 +82,7 @@ type Etcd struct {
 type peerListener struct {
 	net.Listener
 	serve func() error
-	close func(context.Context) error
+	close func(time.Duration) error
 }
 
 // StartEtcd launches the etcd server and HTTP handlers for client/server communication.
@@ -100,10 +100,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			return
 		}
 		if !serving {
-			// errored before starting gRPC server for serveCtx
+			// errored before starting gRPC server for serveCtx.serversC
 			for _, sctx := range e.sctxs {
-				close(sctx.secureGrpcServerC)
-				close(sctx.insecureGrpcServerC)
+				close(sctx.serversC)
 			}
 		}
 		e.Close()
@@ -220,15 +219,22 @@ func (e *Etcd) Config() Config {
 	return e.cfg
 }
 
+// Close gracefully shuts down all servers/listeners.
 func (e *Etcd) Close() {
 	e.closeOnce.Do(func() { close(e.stopc) })
 
-	reqTimeout := 2 * time.Second
+	timeout := 2 * time.Second
 	if e.Server != nil {
-		reqTimeout = e.Server.Cfg.ReqTimeout()
+		timeout = e.Server.Cfg.ReqTimeout()
 	}
 	for _, sctx := range e.sctxs {
-		teardownServeCtx(sctx, reqTimeout)
+		for ss := range sctx.serversC {
+			stopServers(ss, timeout)
+		}
+	}
+
+	for _, sctx := range e.sctxs {
+		sctx.cancel()
 	}
 
 	for i := range e.Clients {
@@ -236,6 +242,7 @@ func (e *Etcd) Close() {
 			e.Clients[i].Close()
 		}
 	}
+
 	for i := range e.metricsListeners {
 		e.metricsListeners[i].Close()
 	}
@@ -248,32 +255,46 @@ func (e *Etcd) Close() {
 	// close all idle connections in peer handler (wait up to 1-second)
 	for i := range e.Peers {
 		if e.Peers[i] != nil && e.Peers[i].close != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			e.Peers[i].close(ctx)
-			cancel()
+			e.Peers[i].close(time.Second)
 		}
 	}
 }
 
-func (e *Etcd) stopGRPCServer(gs *grpc.Server) {
-	timeout := 2 * time.Second
-	if e.Server != nil {
-		timeout = e.Server.Cfg.ReqTimeout()
+func stopServers(ss *servers, timeout time.Duration) {
+	shutdownNow := func() {
+		// first, close the http.Server
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ss.http.Shutdown(ctx)
+		cancel()
+
+		// and then close grpc.Server; cancels all active RPCs
+		ss.grpc.Stop()
 	}
+
+	// do not grpc.Server.GracefulStop with TLS enabled etcd server
+	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
+	// and https://github.com/coreos/etcd/issues/8916
+	if ss.secure {
+		shutdownNow()
+		return
+	}
+
 	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
 		// close listeners to stop accepting new connections,
 		// will block on any existing transports
-		gs.GracefulStop()
+		ss.grpc.GracefulStop()
 	}()
+
 	// wait until all pending RPCs are finished
 	select {
 	case <-ch:
 	case <-time.After(timeout):
 		// took too long, manually close open transports
 		// e.g. watch streams
-		gs.Stop()
+		shutdownNow()
+
 		// concurrent GracefulStop should be interrupted
 		<-ch
 	}
@@ -297,7 +318,7 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		for i := range peers {
 			if peers[i] != nil && peers[i].close != nil {
 				plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
-				peers[i].close(context.Background())
+				peers[i].close(time.Second)
 			}
 		}
 	}()
@@ -311,13 +332,13 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 				plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
 			}
 		}
-		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
+		peers[i] = &peerListener{close: func(time.Duration) error { return nil }}
 		peers[i].Listener, err = rafthttp.NewListener(u, &cfg.PeerTLSInfo)
 		if err != nil {
 			return nil, err
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
-		peers[i].close = func(context.Context) error {
+		peers[i].close = func(time.Duration) error {
 			return peers[i].Listener.Close()
 		}
 		plog.Info("listening for peers on ", u.String())
@@ -334,6 +355,7 @@ func (e *Etcd) servePeers() (err error) {
 			return err
 		}
 	}
+
 	for _, p := range e.Peers {
 		gs := v3rpc.Server(e.Server, peerTLScfg)
 		m := cmux.New(p.Listener)
@@ -345,12 +367,12 @@ func (e *Etcd) servePeers() (err error) {
 		}
 		go srv.Serve(m.Match(cmux.Any()))
 		p.serve = func() error { return m.Serve() }
-		p.close = func(ctx context.Context) error {
+		p.close = func(timeout time.Duration) error {
 			// gracefully shutdown http.Server
 			// close open listeners, idle connections
 			// until context cancel or time-out
-			e.stopGRPCServer(gs)
-			return srv.Shutdown(ctx)
+			stopServers(&servers{secure: peerTLScfg != nil, grpc: gs, http: srv}, timeout)
+			return nil
 		}
 	}
 
