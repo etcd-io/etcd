@@ -100,10 +100,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			return
 		}
 		if !serving {
-			// errored before starting gRPC server for serveCtx
+			// errored before starting gRPC server for serveCtx.serversC
 			for _, sctx := range e.sctxs {
-				close(sctx.secureGrpcServerC)
-				close(sctx.insecureGrpcServerC)
+				close(sctx.serversC)
 			}
 		}
 		e.Close()
@@ -220,15 +219,27 @@ func (e *Etcd) Config() Config {
 	return e.cfg
 }
 
+// Close gracefully shuts down all servers/listeners.
+// Client requests will be terminated with request timeout.
+// After timeout, enforce remaning requests be closed immediately.
 func (e *Etcd) Close() {
 	e.closeOnce.Do(func() { close(e.stopc) })
 
-	reqTimeout := 2 * time.Second
+	// close client requests with request timeout
+	timeout := 2 * time.Second
 	if e.Server != nil {
-		reqTimeout = e.Server.Cfg.ReqTimeout()
+		timeout = e.Server.Cfg.ReqTimeout()
 	}
 	for _, sctx := range e.sctxs {
-		teardownServeCtx(sctx, reqTimeout)
+		for ss := range sctx.serversC {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			stopServers(ctx, ss)
+			cancel()
+		}
+	}
+
+	for _, sctx := range e.sctxs {
+		sctx.cancel()
 	}
 
 	for i := range e.Clients {
@@ -236,6 +247,7 @@ func (e *Etcd) Close() {
 			e.Clients[i].Close()
 		}
 	}
+
 	for i := range e.metricsListeners {
 		e.metricsListeners[i].Close()
 	}
@@ -255,25 +267,38 @@ func (e *Etcd) Close() {
 	}
 }
 
-func (e *Etcd) stopGRPCServer(gs *grpc.Server) {
-	timeout := 2 * time.Second
-	if e.Server != nil {
-		timeout = e.Server.Cfg.ReqTimeout()
+func stopServers(ctx context.Context, ss *servers) {
+	shutdownNow := func() {
+		// first, close the http.Server
+		ss.http.Shutdown(ctx)
+		// then close grpc.Server; cancels all active RPCs
+		ss.grpc.Stop()
 	}
+
+	// do not grpc.Server.GracefulStop with TLS enabled etcd server
+	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
+	// and https://github.com/coreos/etcd/issues/8916
+	if ss.secure {
+		shutdownNow()
+		return
+	}
+
 	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
 		// close listeners to stop accepting new connections,
 		// will block on any existing transports
-		gs.GracefulStop()
+		ss.grpc.GracefulStop()
 	}()
+
 	// wait until all pending RPCs are finished
 	select {
 	case <-ch:
-	case <-time.After(timeout):
+	case <-ctx.Done():
 		// took too long, manually close open transports
 		// e.g. watch streams
-		gs.Stop()
+		shutdownNow()
+
 		// concurrent GracefulStop should be interrupted
 		<-ch
 	}
@@ -297,7 +322,9 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		for i := range peers {
 			if peers[i] != nil && peers[i].close != nil {
 				plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
-				peers[i].close(context.Background())
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				peers[i].close(ctx)
+				cancel()
 			}
 		}
 	}()
@@ -334,6 +361,7 @@ func (e *Etcd) servePeers() (err error) {
 			return err
 		}
 	}
+
 	for _, p := range e.Peers {
 		gs := v3rpc.Server(e.Server, peerTLScfg)
 		m := cmux.New(p.Listener)
@@ -349,8 +377,8 @@ func (e *Etcd) servePeers() (err error) {
 			// gracefully shutdown http.Server
 			// close open listeners, idle connections
 			// until context cancel or time-out
-			e.stopGRPCServer(gs)
-			return srv.Shutdown(ctx)
+			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
+			return nil
 		}
 	}
 
