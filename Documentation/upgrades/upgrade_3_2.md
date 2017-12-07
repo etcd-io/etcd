@@ -6,7 +6,13 @@ In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Client upgrade checklists
+### Server upgrade checklists
+
+3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+
+See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+
+### Client upgrade checklists (>=3.2.0)
 
 3.2 introduces two breaking changes.
 
