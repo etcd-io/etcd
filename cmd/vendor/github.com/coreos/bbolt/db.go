@@ -802,9 +802,7 @@ retry:
 
 		// pass success, or bolt internal errors, to all callers
 		for _, c := range b.calls {
-			if c.err != nil {
-				c.err <- err
-			}
+			c.err <- err
 		}
 		break retry
 	}

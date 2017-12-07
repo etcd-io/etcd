@@ -5,7 +5,7 @@ import:
 - package: github.com/bgentry/speakeasy
   version: v0.1.0
 - package: github.com/coreos/bbolt
-  version: v1.3.1-coreos.5
+  version: v1.3.1-coreos.6
 - package: github.com/coreos/go-semver
   version: v0.2.0
   subpackages:
@@ -27,9 +27,10 @@ import:
 - package: github.com/ghodss/yaml
   version: v1.0.0
 - package: github.com/gogo/protobuf
-  version: v0.4
+  version: v0.5
   subpackages:
   - proto
+  - gogoproto
 - package: github.com/gorilla/websocket
   version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
 - package: github.com/golang/groupcache
@@ -37,7 +38,7 @@ import:
   subpackages:
   - lru
 - package: github.com/golang/protobuf
-  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - jsonpb
   - proto
