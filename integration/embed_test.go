@@ -47,7 +47,7 @@ func TestEmbedEtcd(t *testing.T) {
 		{werr: "expected IP"},
 	}
 
-	urls := newEmbedURLs(10)
+	urls := newEmbedURLs(false, 10)
 
 	// setup defaults
 	for i := range tests {
@@ -105,12 +105,19 @@ func TestEmbedEtcd(t *testing.T) {
 	}
 }
 
-// TestEmbedEtcdGracefulStop ensures embedded server stops
-// cutting existing transports.
-func TestEmbedEtcdGracefulStop(t *testing.T) {
-	cfg := embed.NewConfig()
+func TestEmbedEtcdGracefulStopSecure(t *testing.T)   { testEmbedEtcdGracefulStop(t, true) }
+func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop(t, false) }
 
-	urls := newEmbedURLs(2)
+// testEmbedEtcdGracefulStop ensures embedded server stops
+// cutting existing transports.
+func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
+	cfg := embed.NewConfig()
+	if secure {
+		cfg.ClientTLSInfo = testTLSInfo
+		cfg.PeerTLSInfo = testTLSInfo
+	}
+
+	urls := newEmbedURLs(secure, 2)
 	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
 
 	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
@@ -123,7 +130,16 @@ func TestEmbedEtcdGracefulStop(t *testing.T) {
 	}
 	<-e.Server.ReadyNotify() // wait for e.Server to join the cluster
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{urls[0].String()}})
+	clientCfg := clientv3.Config{
+		Endpoints: []string{urls[0].String()},
+	}
+	if secure {
+		clientCfg.TLS, err = testTLSInfo.ClientConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	cli, err := clientv3.New(clientCfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,9 +162,13 @@ func TestEmbedEtcdGracefulStop(t *testing.T) {
 	}
 }
 
-func newEmbedURLs(n int) (urls []url.URL) {
+func newEmbedURLs(secure bool, n int) (urls []url.URL) {
+	scheme := "unix"
+	if secure {
+		scheme = "unixs"
+	}
 	for i := 0; i < n; i++ {
-		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d%06d", os.Getpid(), i))
+		u, _ := url.Parse(fmt.Sprintf("%s://localhost:%d%06d", scheme, os.Getpid(), i))
 		urls = append(urls, *u)
 	}
 	return
