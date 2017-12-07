@@ -108,7 +108,7 @@
 		]
 	},
 	{
-		"project": "github.com/gogo/protobuf/proto",
+		"project": "github.com/gogo/protobuf",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
