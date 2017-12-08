@@ -145,9 +145,9 @@ import "context"
 cli.Put(context.Background(), "f", "v")
 ```
 
-#### Upgrade grpc/grpc-go to `v1.7.x`
+#### Upgrade grpc/grpc-go to `v1.7.4`
 
-3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.x`.
+3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.4`.
 
 ##### Deprecate `grpclog.Logger`
 

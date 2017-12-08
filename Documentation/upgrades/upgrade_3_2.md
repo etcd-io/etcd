@@ -6,7 +6,7 @@ In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Server upgrade checklists
+### Server upgrade checklists (breaking change)
 
 3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
 
@@ -54,7 +54,7 @@ clientv3yaml.NewConfig
 
 ### Client upgrade checklists (>=3.2.10)
 
-Note that >=3.2.10 requires `grpc/grpc-go` v1.7.3 (<=3.2.9 with v1.2.1), which introduces some breaking changes.
+Note that >=3.2.10 requires `grpc/grpc-go` v1.7.4 (<=3.2.9 with v1.2.1), which introduces some breaking changes.
 
 Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. >=3.2.10 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
