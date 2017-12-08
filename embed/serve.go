@@ -78,7 +78,7 @@ func (sctx *serveCtx) serve(
 	tlsinfo *transport.TLSInfo,
 	handler http.Handler,
 	errHandler func(error),
-	gopts ...grpc.ServerOption) error {
+	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 	plog.Info("ready to serve client requests")
@@ -88,8 +88,15 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
+	var gs *grpc.Server
+	defer func() {
+		if err != nil && gs != nil {
+			gs.Stop()
+		}
+	}()
+
 	if sctx.insecure {
-		gs := v3rpc.Server(s, nil, gopts...)
+		gs = v3rpc.Server(s, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -98,8 +105,8 @@ func (sctx *serveCtx) serve(
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { errHandler(gs.Serve(grpcl)) }()
 
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-		gwmux, err := sctx.registerGateway(opts)
+		var gwmux *gw.ServeMux
+		gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
 		if err != nil {
 			return err
 		}
@@ -122,7 +129,7 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs := v3rpc.Server(s, tlscfg, gopts...)
+		gs = v3rpc.Server(s, tlscfg, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -135,14 +142,16 @@ func (sctx *serveCtx) serve(
 		dtls.InsecureSkipVerify = true
 		creds := credentials.NewTLS(dtls)
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-		gwmux, err := sctx.registerGateway(opts)
+		var gwmux *gw.ServeMux
+		gwmux, err = sctx.registerGateway(opts)
 		if err != nil {
 			return err
 		}
 
-		tlsl, lerr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-		if lerr != nil {
-			return lerr
+		var tlsl net.Listener
+		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+		if err != nil {
+			return err
 		}
 		// TODO: add debug flag; enable logging when debug flag is set
 		httpmux := sctx.createMux(gwmux, handler)
