@@ -141,7 +141,7 @@ func RegisterElectionHandler(ctx context.Context, mux *runtime.ServeMux, conn *g
 func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, client v3electionpb.ElectionClient) error {
 
 	mux.Handle("POST", pattern_Election_Campaign_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -170,7 +170,7 @@ func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 	})
 
 	mux.Handle("POST", pattern_Election_Proclaim_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -199,7 +199,7 @@ func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 	})
 
 	mux.Handle("POST", pattern_Election_Leader_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -228,7 +228,7 @@ func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 	})
 
 	mux.Handle("POST", pattern_Election_Observe_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -257,7 +257,7 @@ func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 	})
 
 	mux.Handle("POST", pattern_Election_Resign_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {

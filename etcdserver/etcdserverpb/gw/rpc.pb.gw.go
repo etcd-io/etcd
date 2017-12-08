@@ -648,7 +648,7 @@ func RegisterKVHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cl
 func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.KVClient) error {
 
 	mux.Handle("POST", pattern_KV_Range_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -677,7 +677,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 	})
 
 	mux.Handle("POST", pattern_KV_Put_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -706,7 +706,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 	})
 
 	mux.Handle("POST", pattern_KV_DeleteRange_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -735,7 +735,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 	})
 
 	mux.Handle("POST", pattern_KV_Txn_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -764,7 +764,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 	})
 
 	mux.Handle("POST", pattern_KV_Compact_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -858,7 +858,7 @@ func RegisterWatchHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc
 func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.WatchClient) error {
 
 	mux.Handle("POST", pattern_Watch_Watch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -936,7 +936,7 @@ func RegisterLeaseHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc
 func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.LeaseClient) error {
 
 	mux.Handle("POST", pattern_Lease_LeaseGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -965,7 +965,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 	})
 
 	mux.Handle("POST", pattern_Lease_LeaseRevoke_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -994,7 +994,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 	})
 
 	mux.Handle("POST", pattern_Lease_LeaseKeepAlive_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1023,7 +1023,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 	})
 
 	mux.Handle("POST", pattern_Lease_LeaseTimeToLive_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1052,7 +1052,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 	})
 
 	mux.Handle("POST", pattern_Lease_LeaseLeases_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1146,7 +1146,7 @@ func RegisterClusterHandler(ctx context.Context, mux *runtime.ServeMux, conn *gr
 func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.ClusterClient) error {
 
 	mux.Handle("POST", pattern_Cluster_MemberAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1175,7 +1175,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 	})
 
 	mux.Handle("POST", pattern_Cluster_MemberRemove_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1204,7 +1204,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 	})
 
 	mux.Handle("POST", pattern_Cluster_MemberUpdate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1233,7 +1233,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 	})
 
 	mux.Handle("POST", pattern_Cluster_MemberList_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1323,7 +1323,7 @@ func RegisterMaintenanceHandler(ctx context.Context, mux *runtime.ServeMux, conn
 func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.MaintenanceClient) error {
 
 	mux.Handle("POST", pattern_Maintenance_Alarm_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1352,7 +1352,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_Status_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1381,7 +1381,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_Defragment_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1410,7 +1410,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_Hash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1439,7 +1439,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_HashKV_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1468,7 +1468,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_Snapshot_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1497,7 +1497,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 	})
 
 	mux.Handle("POST", pattern_Maintenance_MoveLeader_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1599,7 +1599,7 @@ func RegisterAuthHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.
 func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.AuthClient) error {
 
 	mux.Handle("POST", pattern_Auth_AuthEnable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1628,7 +1628,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_AuthDisable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1657,7 +1657,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_Authenticate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1686,7 +1686,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1715,7 +1715,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserGet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1744,7 +1744,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserList_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1773,7 +1773,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserDelete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1802,7 +1802,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserChangePassword_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1831,7 +1831,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserGrantRole_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1860,7 +1860,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_UserRevokeRole_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1889,7 +1889,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1918,7 +1918,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleGet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1947,7 +1947,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleList_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -1976,7 +1976,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleDelete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -2005,7 +2005,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleGrantPermission_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
@@ -2034,7 +2034,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 	})
 
 	mux.Handle("POST", pattern_Auth_RoleRevokePermission_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
 			go func(done <-chan struct{}, closed <-chan bool) {
