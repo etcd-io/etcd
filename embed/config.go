@@ -573,7 +573,6 @@ func (cfg *Config) UpdateDefaultClusterFromName(defaultInitialCluster string) (s
 }
 
 // checkBindURLs returns an error if any URL uses a domain name.
-// TODO: return error in 3.2.0
 func checkBindURLs(urls []url.URL) error {
 	for _, url := range urls {
 		if url.Scheme == "unix" || url.Scheme == "unixs" {
