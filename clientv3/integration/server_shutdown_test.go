@@ -63,7 +63,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	wch := watchCli.Watch(context.Background(), key, clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -348,7 +348,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	clus.Members[target].Restart(t)
 
 	select {
-	case <-time.After(clientTimeout + 3*time.Second):
+	case <-time.After(clientTimeout + integration.RequestWaitTimeout):
 		t.Fatalf("timed out waiting for Get [linearizable: %v, opt: %+v]", linearizable, opt)
 	case <-donec:
 	}
