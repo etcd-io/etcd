@@ -38,6 +38,11 @@
 - [maciej/etcd-client](https://github.com/maciej/etcd-client) - Supports v2. Akka HTTP-based fully async client
 - [eiipii/etcdhttpclient](https://bitbucket.org/eiipii/etcdhttpclient) - Supports v2. Async HTTP client based on Netty and Scala Futures.
 
+**Perl libraries**
+
+- [hexfusion/perl-net-etcd](https://github.com/hexfusion/perl-net-etcd) Supports v3 grpc gateway HTTP API
+- [robn/p5-etcd](https://github.com/robn/p5-etcd) Supports v2
+
 **Python libraries**
 
 - [kragniz/python-etcd3](https://github.com/kragniz/python-etcd3) - Client for v3
