@@ -47,7 +47,7 @@ message ResponseHeader {
 
 An application may read the Cluster_ID (Member_ID) field to ensure it is communicating with the intended cluster (member).
 
-Applications can use the `Revision` to know the latest revision of the key-value store. This is especially useful when applications specify a historical revision to make time `travel query` and wish to know the latest revision at the time of the request.
+Applications can use the `Revision` to know the latest revision of the key-value store. This is especially useful when applications specify a historical revision to make a `time travel query` and wish to know the latest revision at the time of the request.
 
 Applications can use `Raft_Term` to detect when the cluster completes a new leader election.
 
@@ -86,7 +86,7 @@ In addition to just the key and value, etcd attaches additional revision metadat
 
 etcd maintains a 64-bit cluster-wide counter, the store revision, that is incremented each time the key space is modified. The revision serves as a global logical clock, sequentially ordering all updates to the store. The change represented by a new revisions is incremental; the data associated with a revision is the data that changed the store. Internally, a new revision means writing the changes to the backend's B+tree, keyed by the incremented revision.
 
-Revisions become more valuable when taking considering etcd3's [multi-version concurrency control][mvcc] backend. The MVCC model means that the key-value store can be viewed from past revisions since historical key revisions are retained. The retention policy for this history can be configured by cluster administrators for fine-grained storage management; usually etcd3 discards old revisions of keys on a timer. A typical etcd3 cluster retains superseded key data for hours. This also buys reliable handling for long client disconnection, not just transient network disruptions: watchers simply resume from the last observed historical revision. Similarly, to read from the store at a particular point-in-time, read requests can be tagged with a revision to return keys from a view of the key space at the point in time that revision was committed.
+Revisions become more valuable when considering etcd3's [multi-version concurrency control][mvcc] backend. The MVCC model means that the key-value store can be viewed from past revisions since historical key revisions are retained. The retention policy for this history can be configured by cluster administrators for fine-grained storage management; usually etcd3 discards old revisions of keys on a timer. A typical etcd3 cluster retains superseded key data for hours. This also buys reliable handling for long client disconnection, not just transient network disruptions: watchers simply resume from the last observed historical revision. Similarly, to read from the store at a particular point-in-time, read requests can be tagged with a revision to return keys from a view of the key space at the point in time that revision was committed.
 
 #### Key ranges
 
@@ -133,7 +133,7 @@ message RangeRequest {
 
 * Key, Range_End - The key range to fetch.
 * Limit - the maximum number of keys returned for the request. When limit is set to 0, it is treated as no limit.
-* Revision - the point-in-time of the key-value store to use for the range. If revision is less or equal to zero, the range is over the latest key-value store If the revision is compacted, ErrCompacted is returned as a response.
+* Revision - the point-in-time of the key-value store to use for the range. If revision is less or equal to zero, the range is over the latest key-value store. If the revision is compacted, ErrCompacted is returned as a response.
 * Sort_Order - the ordering for sorted requests.
 * Sort_Target - the key-value field to sort.
 * Serializable - sets the range request to use serializable member-local reads. By default, Range is linearizable; it reflects the current consensus of the cluster. For better performance and availability, in exchange for possible stale reads, a serializable range request is served locally without needing to reach consensus with other nodes in the cluster.
@@ -345,7 +345,7 @@ message Event {
 
 ### Watch streams
 
-Watches are long-running requests and use gRPC streams to stream event data. A watch stream is bi-directional; the client writes to the stream to establish watches and reads to receive watch event. A single watch stream can multiplex many distinct watches by tagging events with per-watch identifiers. This multiplexing helps reducing the memory footprint and connection overhead on the core etcd cluster.
+Watches are long-running requests and use gRPC streams to stream event data. A watch stream is bi-directional; the client writes to the stream to establish watches and reads to receive watch events. A single watch stream can multiplex many distinct watches by tagging events with per-watch identifiers. This multiplexing helps reducing the memory footprint and connection overhead on the core etcd cluster.
 
 Watches make three guarantees about events:
 * Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted.
@@ -391,7 +391,7 @@ message WatchResponse {
 ```
 
 * Watch_ID - the ID of the watch that corresponds to the response.
-* Created - set to true if the response is for a create watch request. The client should record ID and expect to receive events for the watch on the stream. All events sent to the created watcher will have the same watch_id.
+* Created - set to true if the response is for a create watch request. The client should store the ID and expect to receive events for the watch on the stream. All events sent to the created watcher will have the same watch_id.
 * Canceled - set to true if the response is for a cancel watch request. No further events will be sent to the canceled watcher.
 * Compact_Revision - set to the minimum historical revision available to etcd if a watcher tries watching at a compacted revision. This happens when creating a watcher at a compacted revision or the watcher cannot catch up with the progress of the key-value store. The watcher will be canceled; creating new watches with the same start_revision will fail.
 * Events - a list of new events in sequence corresponding to the given watch ID.
