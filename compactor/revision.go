@@ -82,7 +82,7 @@ func (t *Revision) Run() {
 				previous = rev
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
-				plog.Noticef("Failed auto-compaction at revision %d (%v)", err, rev)
+				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
 				plog.Noticef("Retry after %v", checkCompactionInterval)
 			}
 		}
