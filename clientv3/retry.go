@@ -60,17 +60,13 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRPCFunc {
 			if err == nil {
 				return nil
 			}
-			if logger.V(4) {
-				logger.Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
-			}
+			logger.Lvl(4).Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
 
 			if s, ok := status.FromError(err); ok && (s.Code() == codes.Unavailable || s.Code() == codes.DeadlineExceeded || s.Code() == codes.Internal) {
 				// mark this before endpoint switch is triggered
 				c.balancer.hostPortError(pinned, err)
 				c.balancer.next()
-				if logger.V(4) {
-					logger.Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
-				}
+				logger.Lvl(4).Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
 			}
 
 			if isStop(err) {
@@ -88,16 +84,12 @@ func (c *Client) newAuthRetryWrapper() retryRPCFunc {
 			if err == nil {
 				return nil
 			}
-			if logger.V(4) {
-				logger.Infof("clientv3/auth-retry: error %q on pinned endpoint %q", err.Error(), pinned)
-			}
+			logger.Lvl(4).Infof("clientv3/auth-retry: error %q on pinned endpoint %q", err.Error(), pinned)
 			// always stop retry on etcd errors other than invalid auth token
 			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(rpcCtx)
 				if gterr != nil {
-					if logger.V(4) {
-						logger.Infof("clientv3/auth-retry: cannot retry due to error %q(%q) on pinned endpoint %q", err.Error(), gterr.Error(), pinned)
-					}
+					logger.Lvl(4).Infof("clientv3/auth-retry: cannot retry due to error %q(%q) on pinned endpoint %q", err.Error(), gterr.Error(), pinned)
 					return err // return the original error for simplicity
 				}
 				continue
