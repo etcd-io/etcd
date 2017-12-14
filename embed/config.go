@@ -57,6 +57,14 @@ const (
 
 	DefaultLogOutput = "default"
 
+	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
+	// It's enabled by default.
+	DefaultStrictReconfigCheck = true
+	// DefaultEnableV2 is the default value for "--enable-v2" flag.
+	// v2 is enabled by default.
+	// TODO: disable v2 when deprecated.
+	DefaultEnableV2 = true
+
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
@@ -227,10 +235,10 @@ func NewConfig() *Config {
 		ACUrls:                []url.URL{*acurl},
 		ClusterState:          ClusterStateFlagNew,
 		InitialClusterToken:   "etcd-cluster",
-		StrictReconfigCheck:   true,
+		StrictReconfigCheck:   DefaultStrictReconfigCheck,
 		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
-		EnableV2:              true,
+		EnableV2:              DefaultEnableV2,
 		AuthToken:             "simple",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
