@@ -100,13 +100,13 @@ clustering flags:
 		HTTP proxy to use for traffic to discovery service.
 	--discovery-srv ''
 		dns srv domain used to bootstrap the cluster.
-	--strict-reconfig-check
+	--strict-reconfig-check '` + strconv.FormatBool(embed.DefaultStrictReconfigCheck) + `'
 		reject reconfiguration requests that would cause quorum loss.
 	--auto-compaction-retention '0'
 		auto compaction retention length. 0 means disable auto compaction.
 	--auto-compaction-mode 'periodic'
 		interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
-	--enable-v2
+	--enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
 		Accept etcd V2 client requests.
 
 proxy flags:
