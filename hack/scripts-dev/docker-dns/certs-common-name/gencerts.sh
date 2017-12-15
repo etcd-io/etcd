@@ -14,7 +14,7 @@ cfssl gencert --initca=true ./ca-csr.json | cfssljson --bare ./ca
 mv ca.pem ca.crt
 openssl x509 -in ca.crt -noout -text
 
-# generate wildcard certificates DNS: *.etcd.local
+# generate wildcard certificates DNS: m1/m2/m3.etcd.local
 cfssl gencert \
     --ca ./ca.crt \
     --ca-key ./ca-key.pem \
