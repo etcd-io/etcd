@@ -158,3 +158,55 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// TestV3AuthWithLeaseRevokeWithRoot ensures that granted leases
+// with root user be revoked after TTL.
+func TestV3AuthWithLeaseRevokeWithRoot(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	api := toGRPC(clus.Client(0))
+	authSetupRoot(t, api.Auth)
+
+	rootc, cerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer rootc.Close()
+
+	leaseResp, err := rootc.Grant(context.TODO(), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseID := leaseResp.ID
+
+	if _, err = rootc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(leaseID)); err != nil {
+		t.Fatal(err)
+	}
+
+	// wait for lease expire
+	time.Sleep(3 * time.Second)
+
+	tresp, terr := api.Lease.LeaseTimeToLive(
+		context.TODO(),
+		&pb.LeaseTimeToLiveRequest{
+			ID:   int64(leaseID),
+			Keys: true,
+		},
+	)
+	if terr != nil {
+		t.Error(terr)
+	}
+	if len(tresp.Keys) > 0 || tresp.GrantedTTL != 0 {
+		t.Errorf("lease %016x should have been revoked, got %+v", leaseID, tresp)
+	}
+	if tresp.TTL != -1 {
+		t.Errorf("lease %016x should have been expired, got %+v", leaseID, tresp)
+	}
+}
