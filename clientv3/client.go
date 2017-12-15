@@ -56,7 +56,7 @@ type Client struct {
 	cfg      Config
 	creds    *credentials.TransportCredentials
 	balancer *healthBalancer
-	mu       sync.Mutex
+	mu       *sync.Mutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -385,6 +385,7 @@ func newClient(cfg *Config) (*Client, error) {
 		creds:    creds,
 		ctx:      ctx,
 		cancel:   cancel,
+		mu:       new(sync.Mutex),
 	}
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
