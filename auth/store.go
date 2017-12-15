@@ -1090,7 +1090,9 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		"token": token,
 	}
 	tokenMD := metadata.New(mdMap)
-	return metadata.NewOutgoingContext(ctx, tokenMD)
+
+	// use "mdIncomingKey{}" since it's called from local etcdserver
+	return metadata.NewIncomingContext(ctx, tokenMD)
 }
 
 func (as *authStore) HasRole(user, role string) bool {

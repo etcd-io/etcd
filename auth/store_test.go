@@ -701,3 +701,34 @@ func TestRolesOrder(t *testing.T) {
 		}
 	}
 }
+
+// TestAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
+func TestAuthInfoFromCtxWithRoot(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(b, tp)
+	defer as.Close()
+
+	if err = enableAuthAndCreateRoot(as); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	ctx = as.WithRoot(ctx)
+
+	ai, aerr := as.AuthInfoFromCtx(ctx)
+	if aerr != nil {
+		t.Error(err)
+	}
+	if ai == nil {
+		t.Error("expected non-nil *AuthInfo")
+	}
+	if ai.Username != "root" {
+		t.Errorf("expected user name 'root', got %+v", ai)
+	}
+}
