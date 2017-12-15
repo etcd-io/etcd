@@ -9,6 +9,7 @@ ResourceExhausted
 RPC
 RPCs
 TODO
+WithRequireLeader
 backoff
 blackhole
 blackholed
@@ -35,6 +36,7 @@ protobuf
 prometheus
 repin
 serializable
+statusError
 teardown
 too_many_pings
 uncontended
