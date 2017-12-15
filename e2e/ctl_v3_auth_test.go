@@ -41,6 +41,9 @@ func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgm
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
+func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T)         { testCtl(t, authLeaseTestKeepAlive) }
+func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, authLeaseTestTimeToLiveExpired) }
+
 func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
 func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
 func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
@@ -720,6 +723,43 @@ func authTestFromKeyPerm(cx ctlCtx) {
 		if err := ctlV3PutFailPerm(cx, key, "val"); err != nil {
 			cx.t.Fatal(err)
 		}
+	}
+}
+
+func authLeaseTestKeepAlive(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+	// put with TTL 10 seconds and keep-alive
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseGrant error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
+		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Put error (%v)", err)
+	}
+	if err := ctlV3LeaseKeepAlive(cx, leaseID); err != nil {
+		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseKeepAlive error (%v)", err)
+	}
+	if err := ctlV3Get(cx, []string{"key"}, kv{"key", "val"}); err != nil {
+		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Get error (%v)", err)
+	}
+}
+
+func authLeaseTestTimeToLiveExpired(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	ttl := 3
+	if err := leaseTestTimeToLiveExpire(cx, ttl); err != nil {
+		cx.t.Fatal(err)
 	}
 }
 
