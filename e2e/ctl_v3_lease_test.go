@@ -19,13 +19,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
-func TestCtlV3LeaseGrantLeases(t *testing.T)     { testCtl(t, leaseTestGrantLeasesList) }
-func TestCtlV3LeaseKeepAlive(t *testing.T)       { testCtl(t, leaseTestKeepAlive) }
-func TestCtlV3LeaseKeepAliveOnce(t *testing.T)   { testCtl(t, leaseTestKeepAliveOnce) }
-func TestCtlV3LeaseRevoke(t *testing.T)          { testCtl(t, leaseTestRevoke) }
+func TestCtlV3LeaseGrantTimeToLive(t *testing.T)       { testCtl(t, leaseTestGrantTimeToLive) }
+func TestCtlV3LeaseGrantLeases(t *testing.T)           { testCtl(t, leaseTestGrantLeasesList) }
+func TestCtlV3LeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, leaseTestTimeToLiveExpired) }
+func TestCtlV3LeaseKeepAlive(t *testing.T)             { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAliveOnce(t *testing.T)         { testCtl(t, leaseTestKeepAliveOnce) }
+func TestCtlV3LeaseRevoke(t *testing.T)                { testCtl(t, leaseTestRevoke) }
 
 func leaseTestGrantTimeToLive(cx ctlCtx) {
 	id, err := ctlV3LeaseGrant(cx, 10)
@@ -71,6 +73,39 @@ func leaseTestGrantLeasesList(cx ctlCtx) {
 	if err = proc.Close(); err != nil {
 		cx.t.Fatal(err)
 	}
+}
+
+func leaseTestTimeToLiveExpired(cx ctlCtx) {
+	err := leaseTestTimeToLiveExpire(cx, 3)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
+	leaseID, err := ctlV3LeaseGrant(cx, ttl)
+	if err != nil {
+		return err
+	}
+
+	if err = ctlV3Put(cx, "key", "val", leaseID); err != nil {
+		return fmt.Errorf("leaseTestTimeToLiveExpire: ctlV3Put error (%v)", err)
+	}
+	// eliminate false positive
+	time.Sleep(time.Duration(ttl+1) * time.Second)
+	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		return err
+	}
+	_, err = proc.Expect("TTL(0s), remaining(-1s)") // expect expired lease
+	if err != nil {
+		return err
+	}
+	if err := ctlV3Get(cx, []string{"key"}); err != nil {
+		return fmt.Errorf("leaseTestTimeToLiveExpire: ctlV3Get error (%v)", err)
+	}
+	return nil
 }
 
 func leaseTestKeepAlive(cx ctlCtx) {
