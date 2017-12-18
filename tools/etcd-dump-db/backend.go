@@ -15,12 +15,15 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"path/filepath"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 func snapDir(dataDir string) string {
@@ -43,7 +46,53 @@ func getBuckets(dbPath string) (buckets []string, err error) {
 	return buckets, err
 }
 
-func iterateBucket(dbPath, bucket string, limit uint64) (err error) {
+// TODO: import directly from packages, rather than copy&paste
+
+type decoder func(k, v []byte)
+
+var decoders = map[string]decoder{
+	"key":   keyDecoder,
+	"lease": leaseDecoder,
+}
+
+type revision struct {
+	main int64
+	sub  int64
+}
+
+func bytesToRev(bytes []byte) revision {
+	return revision{
+		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
+		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
+	}
+}
+
+func keyDecoder(k, v []byte) {
+	rev := bytesToRev(k)
+	var kv mvccpb.KeyValue
+	if err := kv.Unmarshal(v); err != nil {
+		panic(err)
+	}
+	fmt.Printf("rev=%+v, value=[key %q | val %q | created %d | mod %d | ver %d]\n", rev, string(kv.Key), string(kv.Value), kv.CreateRevision, kv.ModRevision, kv.Version)
+}
+
+func bytesToLeaseID(bytes []byte) int64 {
+	if len(bytes) != 8 {
+		panic(fmt.Errorf("lease ID must be 8-byte"))
+	}
+	return int64(binary.BigEndian.Uint64(bytes))
+}
+
+func leaseDecoder(k, v []byte) {
+	leaseID := bytesToLeaseID(k)
+	var lpb leasepb.Lease
+	if err := lpb.Unmarshal(v); err != nil {
+		panic(err)
+	}
+	fmt.Printf("lease ID=%016x, TTL=%ds\n", leaseID, lpb.TTL)
+}
+
+func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error) {
 	db, derr := bolt.Open(dbPath, 0600, &bolt.Options{})
 	if derr != nil {
 		return derr
@@ -60,7 +109,13 @@ func iterateBucket(dbPath, bucket string, limit uint64) (err error) {
 
 		// iterate in reverse order (use First() and Next() for ascending order)
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			fmt.Printf("key=%q, value=%q\n", k, v)
+			// TODO: remove sensitive information
+			// (https://github.com/coreos/etcd/issues/7620)
+			if dec, ok := decoders[bucket]; decode && ok {
+				dec(k, v)
+			} else {
+				fmt.Printf("key=%q, value=%q\n", k, v)
+			}
 
 			limit--
 			if limit == 0 {
