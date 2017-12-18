@@ -152,6 +152,43 @@ func TestLeaseKeepAlive(t *testing.T) {
 	}
 }
 
+func TestLeaseKeepAliveContext(t *testing.T)     { testLeaseKeepAliveContext(t, false) }
+func TestLeaseKeepAliveOnceContext(t *testing.T) { testLeaseKeepAliveContext(t, true) }
+func testLeaseKeepAliveContext(t *testing.T, once bool) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	lapi := clus.Client(0)
+	resp, err := lapi.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if once {
+		_, err = lapi.KeepAliveOnce(ctx, resp.ID)
+	} else {
+		_, err = lapi.KeepAlive(ctx, resp.ID)
+	}
+	if err != context.Canceled {
+		t.Errorf("error expected %v, got %v", context.Canceled, err)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 0)
+	if once {
+		_, err = lapi.KeepAliveOnce(ctx, resp.ID)
+	} else {
+		_, err = lapi.KeepAlive(ctx, resp.ID)
+	}
+	cancel()
+	if err != context.DeadlineExceeded {
+		t.Errorf("error expected %v, got %v", context.DeadlineExceeded, err)
+	}
+}
+
 func TestLeaseKeepAliveOneSecond(t *testing.T) {
 	defer testutil.AfterTest(t)
 

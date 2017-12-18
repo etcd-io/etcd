@@ -244,6 +244,11 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 		l.mu.Unlock()
 		close(ch)
 		return ch, ErrKeepAliveHalted{Reason: err}
+	case <-ctx.Done():
+		// TODO(v4.0): return this error via response channel
+		l.mu.Unlock()
+		close(ch)
+		return ch, ctx.Err()
 	default:
 	}
 	ka, ok := l.keepAlives[id]
