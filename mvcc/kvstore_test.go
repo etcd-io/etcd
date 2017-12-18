@@ -583,6 +583,35 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	}
 }
 
+// TestHashKVZeroRevision ensures that "HashByRev(0)" computes
+// correct hash value with latest revision.
+func TestHashKVZeroRevision(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b, &lease.FakeLessor{}, nil)
+	defer os.Remove(tmpPath)
+
+	rev := 1000
+	for i := 2; i <= rev; i++ {
+		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
+	}
+	if _, err := s.Compact(int64(rev / 2)); err != nil {
+		t.Fatal(err)
+	}
+
+	hash1, _, _, err := s.HashByRev(int64(rev))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hash2 uint32
+	hash2, _, _, err = s.HashByRev(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hash1 != hash2 {
+		t.Errorf("hash %d (rev %d) != hash %d (rev 0)", hash1, rev, hash2)
+	}
+}
+
 func TestTxnPut(t *testing.T) {
 	// assign arbitrary size
 	bytesN := 30

@@ -175,16 +175,15 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 		return 0, currentRev, 0, ErrFutureRev
 	}
 
+	if rev == 0 {
+		rev = currentRev
+	}
 	keep := s.kvindex.Keep(rev)
 
 	tx := s.b.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()
 	s.mu.RUnlock()
-
-	if rev == 0 {
-		rev = currentRev
-	}
 
 	upper := revision{main: rev + 1}
 	lower := revision{main: compactRev + 1}
