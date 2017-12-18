@@ -46,7 +46,7 @@ var (
 // rev except the largest one. If the generation becomes empty
 // during compaction, it will be removed. if all the generations get
 // removed, the keyIndex should be removed.
-
+//
 // For example:
 // compact(2) on the previous example
 // generations:
@@ -223,9 +223,8 @@ func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
 }
 
 func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (genIdx int, revIndex int) {
-	// walk until reaching the first revision that has an revision smaller or equal to
-	// the atRev.
-	// add it to the available map
+	// walk until reaching the first revision smaller or equal to "atRev",
+	// and add the revision to the available map
 	f := func(rev revision) bool {
 		if rev.main <= atRev {
 			available[rev] = struct{}{}
