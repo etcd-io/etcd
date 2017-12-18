@@ -196,7 +196,17 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 		}
 		pw.Close()
 	}()
-	return pr, nil
+	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, nil
+}
+
+type snapshotReadCloser struct {
+	ctx context.Context
+	io.ReadCloser
+}
+
+func (rc *snapshotReadCloser) Read(p []byte) (n int, err error) {
+	n, err = rc.ReadCloser.Read(p)
+	return n, toErr(rc.ctx, err)
 }
 
 func (m *maintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error) {
