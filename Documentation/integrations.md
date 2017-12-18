@@ -40,8 +40,8 @@
 
 **Perl libraries**
 
-- [hexfusion/perl-net-etcd](https://github.com/hexfusion/perl-net-etcd) Supports v3 grpc gateway HTTP API
-- [robn/p5-etcd](https://github.com/robn/p5-etcd) Supports v2
+- [hexfusion/perl-net-etcd](https://github.com/hexfusion/perl-net-etcd) - Supports v3 grpc gateway HTTP API
+- [robn/p5-etcd](https://github.com/robn/p5-etcd) - Supports v2
 
 **Python libraries**
 
