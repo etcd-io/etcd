@@ -74,7 +74,7 @@ Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
 
 #### Change in `/health` endpoint response value
 
-Previously, `[endpoint]:[client-port]/health` returns manually marshaled JSON value. 3.3 instead defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and returns properly encoded JSON value with errors, if any.
+Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 instead defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and returns properly encoded JSON value with errors, if any.
 
 Before
 
@@ -125,6 +125,52 @@ After
 
 ```bash
 docker pull gcr.io/etcd-development/etcd:v3.3.0
+```
+
+#### Change in `Snapshot` API error type
+
+Previously, clientv3 `Snapshot` API returned raw [`grpc/*status.statusError`] type error. v3.3 now translates those errors to corresponding public error types, to be consistent with other APIs.
+
+Before
+
+```go
+import "context"
+
+// reading snapshot with canceled context should error out
+ctx, cancel := context.WithCancel(context.Background())
+rc, _ := cli.Snapshot(ctx)
+cancel()
+_, err := io.Copy(f, rc)
+err.Error() == "rpc error: code = Canceled desc = context canceled"
+
+// reading snapshot with deadline exceeded should error out
+ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+rc, _ = cli.Snapshot(ctx)
+time.Sleep(2 * time.Second)
+_, err = io.Copy(f, rc)
+err.Error() == "rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+```
+
+After
+
+```go
+import "context"
+
+// reading snapshot with canceled context should error out
+ctx, cancel := context.WithCancel(context.Background())
+rc, _ := cli.Snapshot(ctx)
+cancel()
+_, err := io.Copy(f, rc)
+err == context.Canceled
+
+// reading snapshot with deadline exceeded should error out
+ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+rc, _ = cli.Snapshot(ctx)
+time.Sleep(2 * time.Second)
+_, err = io.Copy(f, rc)
+err == context.DeadlineExceeded
 ```
 
 #### Deprecate `golang.org/x/net/context` imports
