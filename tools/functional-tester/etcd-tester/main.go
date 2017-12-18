@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc/grpclog"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-tester")
@@ -57,6 +59,9 @@ func main() {
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	enablePprof := flag.Bool("enable-pprof", false, "true to enable pprof")
 	flag.Parse()
+
+	// to discard gRPC-side balancer logs
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 
 	eps := strings.Split(*endpointStr, ",")
 	cports := portsFromArg(*clientPorts, len(eps), defaultClientPort)
