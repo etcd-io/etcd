@@ -31,13 +31,15 @@ import (
 )
 
 func main() {
-	from := flag.String("data-dir", "", "")
 	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
 	index := flag.Uint64("start-index", 0, "The index to start dumping")
 	flag.Parse()
-	if *from == "" {
-		log.Fatal("Must provide -data-dir flag.")
+
+	if len(flag.Args()) != 1 {
+		log.Fatalf("Must provide data-dir argument (got %+v)", flag.Args())
 	}
+	dataDir := flag.Args()[0]
+
 	if *snapfile != "" && *index != 0 {
 		log.Fatal("start-snap and start-index flags cannot be used together.")
 	}
@@ -55,10 +57,10 @@ func main() {
 		walsnap.Index = *index
 	} else {
 		if *snapfile == "" {
-			ss := snap.New(snapDir(*from))
+			ss := snap.New(snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
-			snapshot, err = snap.Read(filepath.Join(snapDir(*from), *snapfile))
+			snapshot, err = snap.Read(filepath.Join(snapDir(dataDir), *snapfile))
 		}
 
 		switch err {
@@ -75,7 +77,7 @@ func main() {
 		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
-	w, err := wal.OpenForRead(walDir(*from), walsnap)
+	w, err := wal.OpenForRead(walDir(dataDir), walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
@@ -104,6 +106,8 @@ func main() {
 				break
 			}
 
+			// TODO: remove sensitive information
+			// (https://github.com/coreos/etcd/issues/7620)
 			var r etcdserverpb.Request
 			if err := r.Unmarshal(e.Data); err == nil {
 				switch r.Method {
