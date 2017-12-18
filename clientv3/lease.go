@@ -50,7 +50,7 @@ type LeaseTimeToLiveResponse struct {
 	*pb.ResponseHeader
 	ID LeaseID `json:"id"`
 
-	// TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds.
+	// TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds. Expired lease will return -1.
 	TTL int64 `json:"ttl"`
 
 	// GrantedTTL is the initial granted time in seconds upon lease creation/renewal.
