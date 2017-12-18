@@ -113,23 +113,24 @@ type Lease interface {
 	// Leases retrieves all leases.
 	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
 
-	// KeepAlive keeps the given lease alive forever.
+	// KeepAlive keeps the given lease alive forever. If the keepalive response
+	// posted to the channel is not consumed immediately, the lease client will
+	// continue sending keep alive requests to the etcd server at least every
+	// second until latest response is consumed.
 	//
-	// KeepAlive keeps the given lease alive forever. If the keepalive response posted to
-	// the channel is not consumed immediately, the lease client will continue sending keep alive requests
-	// to the etcd server at least every second until latest response is consumed.
+	// The returned "LeaseKeepAliveResponse" channel closes if underlying keep
+	// alive stream is interrupted in some way the client cannot handle itself;
+	// given context "ctx" is canceled or timed out. "LeaseKeepAliveResponse"
+	// from this closed channel is nil.
 	//
-	// The KeepAlive channel closes if the underlying keep alive stream is interrupted in some
-	// way the client cannot handle itself; the error will be posted in the last keep
-	// alive message before closing. If there is no keepalive response within the
-	// lease's time-out, the channel will close with no error. In most cases calling
-	// KeepAlive again will re-establish keepalives with the target lease if it has not
-	// expired.
+	// If client keep alive loop halts with an unexpected error (e.g. "etcdserver:
+	// no leader") or canceled by the caller (e.g. context.Canceled), the error
+	// is returned. Otherwise, it retries.
+	//
+	// TODO(v4.0): post errors to last keep alive message before closing
+	// (see https://github.com/coreos/etcd/pull/7866)
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
-	// KeepAliveOnce renews the lease once. In most of the cases, KeepAlive
-	// should be used instead of KeepAliveOnce.
-	//
 	// KeepAliveOnce renews the lease once. The response corresponds to the
 	// first message from calling KeepAlive. If the response has a recoverable
 	// error, KeepAliveOnce will retry the RPC with a new keep alive message.
