@@ -297,7 +297,7 @@ func (c *Client) getToken(ctx context.Context) error {
 		endpoint := c.cfg.Endpoints[i]
 		host := getHost(endpoint)
 		// use dial options without dopts to avoid reusing the client balancer
-		auth, err = newAuthenticator(host, c.dialSetupOpts(endpoint))
+		auth, err = newAuthenticator(host, c.dialSetupOpts(endpoint), c)
 		if err != nil {
 			continue
 		}
