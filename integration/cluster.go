@@ -102,6 +102,9 @@ type ClusterConfig struct {
 	GRPCKeepAliveTimeout  time.Duration
 	// SkipCreatingClient to skip creating clients for each member.
 	SkipCreatingClient bool
+
+	ClientMaxCallSendMsgSize int
+	ClientMaxCallRecvMsgSize int
 }
 
 type cluster struct {
@@ -229,14 +232,16 @@ func (c *cluster) HTTPMembers() []client.Member {
 func (c *cluster) mustNewMember(t *testing.T) *member {
 	m := mustNewMember(t,
 		memberConfig{
-			name:                  c.name(rand.Int()),
-			peerTLS:               c.cfg.PeerTLS,
-			clientTLS:             c.cfg.ClientTLS,
-			quotaBackendBytes:     c.cfg.QuotaBackendBytes,
-			maxRequestBytes:       c.cfg.MaxRequestBytes,
-			grpcKeepAliveMinTime:  c.cfg.GRPCKeepAliveMinTime,
-			grpcKeepAliveInterval: c.cfg.GRPCKeepAliveInterval,
-			grpcKeepAliveTimeout:  c.cfg.GRPCKeepAliveTimeout,
+			name:                     c.name(rand.Int()),
+			peerTLS:                  c.cfg.PeerTLS,
+			clientTLS:                c.cfg.ClientTLS,
+			quotaBackendBytes:        c.cfg.QuotaBackendBytes,
+			maxRequestBytes:          c.cfg.MaxRequestBytes,
+			grpcKeepAliveMinTime:     c.cfg.GRPCKeepAliveMinTime,
+			grpcKeepAliveInterval:    c.cfg.GRPCKeepAliveInterval,
+			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
+			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
+			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -494,20 +499,24 @@ type member struct {
 	// serverClient is a clientv3 that directly calls the etcdserver.
 	serverClient *clientv3.Client
 
-	keepDataDirTerminate bool
+	keepDataDirTerminate     bool
+	clientMaxCallSendMsgSize int
+	clientMaxCallRecvMsgSize int
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
 
 type memberConfig struct {
-	name                  string
-	peerTLS               *transport.TLSInfo
-	clientTLS             *transport.TLSInfo
-	quotaBackendBytes     int64
-	maxRequestBytes       uint
-	grpcKeepAliveMinTime  time.Duration
-	grpcKeepAliveInterval time.Duration
-	grpcKeepAliveTimeout  time.Duration
+	name                     string
+	peerTLS                  *transport.TLSInfo
+	clientTLS                *transport.TLSInfo
+	quotaBackendBytes        int64
+	maxRequestBytes          uint
+	grpcKeepAliveMinTime     time.Duration
+	grpcKeepAliveInterval    time.Duration
+	grpcKeepAliveTimeout     time.Duration
+	clientMaxCallSendMsgSize int
+	clientMaxCallRecvMsgSize int
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -575,6 +584,10 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 			Timeout: mcfg.grpcKeepAliveTimeout,
 		}))
 	}
+
+	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
+	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
+
 	return m
 }
 
@@ -613,8 +626,10 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:   []string{m.grpcAddr},
-		DialTimeout: 5 * time.Second,
+		Endpoints:          []string{m.grpcAddr},
+		DialTimeout:        5 * time.Second,
+		MaxCallSendMsgSize: m.clientMaxCallSendMsgSize,
+		MaxCallRecvMsgSize: m.clientMaxCallRecvMsgSize,
 	}
 
 	if m.ClientTLSInfo != nil {
