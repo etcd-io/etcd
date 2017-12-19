@@ -18,6 +18,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -43,20 +44,29 @@ type Cluster interface {
 }
 
 type cluster struct {
-	remote pb.ClusterClient
+	remote   pb.ClusterClient
+	callOpts []grpc.CallOption
 }
 
 func NewCluster(c *Client) Cluster {
-	return &cluster{remote: RetryClusterClient(c)}
+	api := &cluster{remote: RetryClusterClient(c)}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api
 }
 
-func NewClusterFromClusterClient(remote pb.ClusterClient) Cluster {
-	return &cluster{remote: remote}
+func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
+	api := &cluster{remote: remote}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
-	resp, err := c.remote.MemberAdd(ctx, r)
+	resp, err := c.remote.MemberAdd(ctx, r, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -65,7 +75,7 @@ func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAdd
 
 func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
 	r := &pb.MemberRemoveRequest{ID: id}
-	resp, err := c.remote.MemberRemove(ctx, r)
+	resp, err := c.remote.MemberRemove(ctx, r, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -75,7 +85,7 @@ func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveRes
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
 	// it is safe to retry on update.
 	r := &pb.MemberUpdateRequest{ID: id, PeerURLs: peerAddrs}
-	resp, err := c.remote.MemberUpdate(ctx, r)
+	resp, err := c.remote.MemberUpdate(ctx, r, c.callOpts...)
 	if err == nil {
 		return (*MemberUpdateResponse)(resp), nil
 	}
@@ -84,7 +94,7 @@ func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []strin
 
 func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 	// it is safe to retry on list.
-	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{})
+	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil
 	}

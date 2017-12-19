@@ -22,6 +22,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -139,6 +140,8 @@ type lessor struct {
 
 	// firstKeepAliveOnce ensures stream starts after first KeepAlive call.
 	firstKeepAliveOnce sync.Once
+
+	callOpts []grpc.CallOption
 }
 
 // keepAlive multiplexes a keepalive for a lease over multiple channels
@@ -154,10 +157,10 @@ type keepAlive struct {
 }
 
 func NewLease(c *Client) Lease {
-	return NewLeaseFromLeaseClient(RetryLeaseClient(c), c.cfg.DialTimeout+time.Second)
+	return NewLeaseFromLeaseClient(RetryLeaseClient(c), c, c.cfg.DialTimeout+time.Second)
 }
 
-func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Duration) Lease {
+func NewLeaseFromLeaseClient(remote pb.LeaseClient, c *Client, keepAliveTimeout time.Duration) Lease {
 	l := &lessor{
 		donec:                 make(chan struct{}),
 		keepAlives:            make(map[LeaseID]*keepAlive),
@@ -167,6 +170,9 @@ func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Durati
 	if l.firstKeepAliveTimeout == time.Second {
 		l.firstKeepAliveTimeout = defaultTTL
 	}
+	if c != nil {
+		l.callOpts = c.callOpts
+	}
 	reqLeaderCtx := WithRequireLeader(context.Background())
 	l.stopCtx, l.stopCancel = context.WithCancel(reqLeaderCtx)
 	return l
@@ -174,7 +180,7 @@ func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Durati
 
 func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, error) {
 	r := &pb.LeaseGrantRequest{TTL: ttl}
-	resp, err := l.remote.LeaseGrant(ctx, r)
+	resp, err := l.remote.LeaseGrant(ctx, r, l.callOpts...)
 	if err == nil {
 		gresp := &LeaseGrantResponse{
 			ResponseHeader: resp.GetHeader(),
@@ -189,7 +195,7 @@ func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, err
 
 func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, error) {
 	r := &pb.LeaseRevokeRequest{ID: int64(id)}
-	resp, err := l.remote.LeaseRevoke(ctx, r)
+	resp, err := l.remote.LeaseRevoke(ctx, r, l.callOpts...)
 	if err == nil {
 		return (*LeaseRevokeResponse)(resp), nil
 	}
@@ -198,7 +204,7 @@ func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, 
 
 func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption) (*LeaseTimeToLiveResponse, error) {
 	r := toLeaseTimeToLiveRequest(id, opts...)
-	resp, err := l.remote.LeaseTimeToLive(ctx, r)
+	resp, err := l.remote.LeaseTimeToLive(ctx, r, l.callOpts...)
 	if err == nil {
 		gresp := &LeaseTimeToLiveResponse{
 			ResponseHeader: resp.GetHeader(),
@@ -350,7 +356,7 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	stream, err := l.remote.LeaseKeepAlive(cctx)
+	stream, err := l.remote.LeaseKeepAlive(cctx, l.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -421,7 +427,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 // resetRecv opens a new lease stream and starts sending keep alive requests.
 func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
 	sctx, cancel := context.WithCancel(l.stopCtx)
-	stream, err := l.remote.LeaseKeepAlive(sctx)
+	stream, err := l.remote.LeaseKeepAlive(sctx, l.callOpts...)
 	if err != nil {
 		cancel()
 		return nil, err
