@@ -41,6 +41,19 @@ type Config struct {
 	// keep-alive probe.  If the response is not received in this time, the connection is closed.
 	DialKeepAliveTimeout time.Duration `json:"dial-keep-alive-timeout"`
 
+	// MaxCallSendMsgSize is the client-side request send limit in bytes.
+	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
+	// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.
+	// ("--max-request-bytes" flag to etcd or "embed.Config.MaxRequestBytes").
+	MaxCallSendMsgSize int
+
+	// MaxCallRecvMsgSize is the client-side response receive limit.
+	// If 0, it defaults to "math.MaxInt32", because range response can
+	// easily exceed request send limits.
+	// Make sure that "MaxCallRecvMsgSize" >= server-side default send/recv limit.
+	// ("--max-request-bytes" flag to etcd or "embed.Config.MaxRequestBytes").
+	MaxCallRecvMsgSize int
+
 	// TLS holds the client secure credentials, if any.
 	TLS *tls.Config
 
