@@ -173,6 +173,40 @@ _, err = io.Copy(f, rc)
 err == context.DeadlineExceeded
 ```
 
+#### Change in `KeepAlive`/`KeepAliveOnce` API error
+
+Previously, clientv3 `KeepAlive` API returned no error when given canceled/deadline exceeded contexts. v3.3 now returns corresponding public errors.
+
+Before
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+cancel()
+
+_, err = cli.KeepAlive(ctx, resp.ID)
+err == nil
+
+_, err = cli.KeepAliveOnce(ctx, resp.ID)
+err == nil
+
+// same applies for context timeout
+```
+
+After
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+cancel()
+
+_, err = cli.KeepAlive(ctx, resp.ID)
+err == context.Canceled
+
+_, err = cli.KeepAliveOnce(ctx, resp.ID)
+err == context.Canceled
+
+// same applies for "context.DeadlineExceeded"
+```
+
 #### Deprecate `golang.org/x/net/context` imports
 
 `clientv3` has deprecated `golang.org/x/net/context`. If a project vendors `golang.org/x/net/context` in other code (e.g. etcd generated protocol buffer code) and imports `github.com/coreos/etcd/clientv3`, it requires Go 1.9+ to compile.
