@@ -40,7 +40,7 @@ import:
 - package: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - package: github.com/grpc-ecosystem/grpc-gateway
-  version: v1.3
+  version: v1.3.0
   subpackages:
   - runtime
   - runtime/internal
@@ -97,7 +97,7 @@ import:
   subpackages:
   - rate
 - package: google.golang.org/grpc
-  version: v1.7.4
+  version: v1.7.5
   subpackages:
   - codes
   - credentials
