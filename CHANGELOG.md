@@ -1,7 +1,8 @@
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
-## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-??)
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
+
+## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-??)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).
 
@@ -376,8 +377,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1).
 
 ## [v3.2.0](https://github.com/coreos/etcd/releases/tag/v3.2.0) (2017-06-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.2.0).
-See [upgrade 3.2](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).
 
 ### Improved
 
@@ -539,8 +539,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v2.3.7...v2.3.8).
 
 ## [v3.1.0](https://github.com/coreos/etcd/releases/tag/v3.1.0) (2017-01-20)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.16...v3.1.0).
-See [upgrade 3.1](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.1.0) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).
 
 ### Improved
 
@@ -716,5 +715,4 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.0.1).
 
 ## [v3.0.0](https://github.com/coreos/etcd/releases/tag/v3.0.0) (2016-06-30)
 
-See [code changes](https://github.com/coreos/etcd/compare/v2.3.8...v3.0.0).
-See [upgrade 3.0](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).
+See [code changes](https://github.com/coreos/etcd/compare/v2.3.0...v3.0.0) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).
