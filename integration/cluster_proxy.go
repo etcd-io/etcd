@@ -99,7 +99,7 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 		return nil, err
 	}
 	rpc := toGRPC(c)
-	c.KV = clientv3.NewKVFromKVClient(rpc.KV)
+	c.KV = clientv3.NewKVFromKVClient(rpc.KV, c)
 	pmu.Lock()
 	lc := c.Lease
 	c.Lease = clientv3.NewLeaseFromLeaseClient(rpc.Lease, cfg.DialTimeout)
