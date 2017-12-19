@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 func TestKVPutError(t *testing.T) {
@@ -859,5 +860,97 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	}
 	if resp.Kvs[0].Version > 11 {
 		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
+	}
+}
+
+// TestKVLargeRequests tests various client/server side request limits.
+func TestKVLargeRequests(t *testing.T) {
+	defer testutil.AfterTest(t)
+	tests := []struct {
+		// make sure that "MaxCallSendMsgSize" < server-side default send/recv limit
+		maxRequestBytesServer  uint
+		maxCallSendBytesClient int
+		maxCallRecvBytesClient int
+
+		valueSize   int
+		expectError error
+	}{
+		{
+			maxRequestBytesServer:  1,
+			maxCallSendBytesClient: 0,
+			maxCallRecvBytesClient: 0,
+			valueSize:              1024,
+			expectError:            rpctypes.ErrRequestTooLarge,
+		},
+
+		// without proper client-side receive size limit
+		// "code = ResourceExhausted desc = grpc: received message larger than max (5242929 vs. 4194304)"
+		{
+
+			maxRequestBytesServer:  7*1024*1024 + 512*1024,
+			maxCallSendBytesClient: 7 * 1024 * 1024,
+			maxCallRecvBytesClient: 0,
+			valueSize:              5 * 1024 * 1024,
+			expectError:            nil,
+		},
+
+		{
+			maxRequestBytesServer:  10 * 1024 * 1024,
+			maxCallSendBytesClient: 100 * 1024 * 1024,
+			maxCallRecvBytesClient: 0,
+			valueSize:              10 * 1024 * 1024,
+			expectError:            rpctypes.ErrRequestTooLarge,
+		},
+		{
+			maxRequestBytesServer:  10 * 1024 * 1024,
+			maxCallSendBytesClient: 10 * 1024 * 1024,
+			maxCallRecvBytesClient: 0,
+			valueSize:              10 * 1024 * 1024,
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max (%d vs. %d)", 10485770, 10485760),
+		},
+		{
+			maxRequestBytesServer:  10 * 1024 * 1024,
+			maxCallSendBytesClient: 100 * 1024 * 1024,
+			maxCallRecvBytesClient: 0,
+			valueSize:              10*1024*1024 + 5,
+			expectError:            rpctypes.ErrRequestTooLarge,
+		},
+		{
+			maxRequestBytesServer:  10 * 1024 * 1024,
+			maxCallSendBytesClient: 10 * 1024 * 1024,
+			maxCallRecvBytesClient: 0,
+			valueSize:              10*1024*1024 + 5,
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max (%d vs. %d)", 10485775, 10485760),
+		},
+	}
+	for i, test := range tests {
+		clus := integration.NewClusterV3(t,
+			&integration.ClusterConfig{
+				Size:                     1,
+				MaxRequestBytes:          test.maxRequestBytesServer,
+				ClientMaxCallSendMsgSize: test.maxCallSendBytesClient,
+				ClientMaxCallRecvMsgSize: test.maxCallRecvBytesClient,
+			},
+		)
+		cli := clus.Client(0)
+		_, err := cli.Put(context.TODO(), "foo", strings.Repeat("a", test.valueSize))
+
+		if _, ok := err.(rpctypes.EtcdError); ok {
+			if err != test.expectError {
+				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
+			}
+		} else if err != nil && err.Error() != test.expectError.Error() {
+			t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
+		}
+
+		// put request went through, now expects large response back
+		if err == nil {
+			_, err = cli.Get(context.TODO(), "foo")
+			if err != nil {
+				t.Errorf("#%d: get expected no error, got %v", i, err)
+			}
+		}
+
+		clus.Terminate(t)
 	}
 }
