@@ -182,7 +182,7 @@ func TestDialForeignEndpoint(t *testing.T) {
 
 	// grpc can return a lazy connection that's not connected yet; confirm
 	// that it can communicate with the cluster.
-	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn))
+	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), clus.Client(0))
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 	if _, gerr := kvc.Get(ctx, "abc"); gerr != nil {

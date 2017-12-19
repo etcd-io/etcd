@@ -19,6 +19,8 @@ import (
 	"sync"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
+	"google.golang.org/grpc"
 )
 
 // Txn is the interface that wraps mini-transactions.
@@ -65,6 +67,8 @@ type txn struct {
 
 	sus []*pb.RequestOp
 	fas []*pb.RequestOp
+
+	callOpts []grpc.CallOption
 }
 
 func (txn *txn) If(cs ...Cmp) Txn {
@@ -139,7 +143,7 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 
 	var resp *pb.TxnResponse
 	var err error
-	resp, err = txn.kv.remote.Txn(txn.ctx, r)
+	resp, err = txn.kv.remote.Txn(txn.ctx, r, txn.callOpts...)
 	if err != nil {
 		return nil, toErr(txn.ctx, err)
 	}

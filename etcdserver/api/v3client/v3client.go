@@ -31,7 +31,7 @@ func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	c := clientv3.NewCtxClient(context.Background())
 
 	kvc := adapter.KvServerToKvClient(v3rpc.NewQuotaKVServer(s))
-	c.KV = clientv3.NewKVFromKVClient(kvc)
+	c.KV = clientv3.NewKVFromKVClient(kvc, c)
 
 	lc := adapter.LeaseServerToLeaseClient(v3rpc.NewQuotaLeaseServer(s))
 	c.Lease = clientv3.NewLeaseFromLeaseClient(lc, time.Second)

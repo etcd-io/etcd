@@ -204,7 +204,7 @@ var rangeTests = []struct {
 
 func TestKvOrdering(t *testing.T) {
 	for i, tt := range rangeTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil), tt.response.OpResponse()}
+		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
 			func(r *clientv3.GetResponse) OrderViolationFunc {
@@ -258,7 +258,7 @@ var txnTests = []struct {
 
 func TestTxnOrdering(t *testing.T) {
 	for i, tt := range txnTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil), tt.response.OpResponse()}
+		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
 			func(r *clientv3.TxnResponse) OrderViolationFunc {
