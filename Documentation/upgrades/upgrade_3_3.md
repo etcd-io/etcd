@@ -111,6 +111,79 @@ curl -L http://localhost:2379/v3beta/kv/put \
 
 Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.
 
+#### Change in maximum request size limits
+
+3.3 now allows custom request size limits for both server and **client side**.
+
+Server-side request limits can be configured with `--max-request-bytes` flag:
+
+```bash
+# limits request size to 1.5 KiB
+etcd --max-request-bytes 1536
+
+# client writes exceeding 1.5 KiB will be rejected
+etcdctl put foo [LARGE VALUE...]
+# etcdserver: request is too large
+```
+
+Or configure `embed.Config.MaxRequestBytes` field:
+
+```go
+import "github.com/coreos/etcd/embed"
+import "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+
+// limit requests to 5 MiB
+cfg := embed.NewConfig()
+cfg.MaxRequestBytes = 5 * 1024 * 1024
+
+// client writes exceeding 5 MiB will be rejected
+_, err := cli.Put(ctx, "foo", [LARGE VALUE...])
+err == rpctypes.ErrRequestTooLarge
+```
+
+**If not specified, server-side limit defaults to 1.5 MiB**.
+
+Client-side request limits must be configured based on server-side limits.
+
+```bash
+# limits request size to 1 MiB
+etcd --max-request-bytes 1048576
+```
+
+```go
+import "github.com/coreos/etcd/clientv3"
+
+cli, _ := clientv3.New(clientv3.Config{
+    Endpoints: []string{"127.0.0.1:2379"},
+    MaxCallSendMsgSize: 2 * 1024 * 1024,
+    MaxCallRecvMsgSize: 3 * 1024 * 1024,
+})
+
+
+// client writes exceeding "--max-request-bytes" will be rejected from etcd server
+_, err := cli.Put(ctx, "foo", strings.Repeat("a", 1*1024*1024+5))
+err == rpctypes.ErrRequestTooLarge
+
+
+// client writes exceeding "MaxCallSendMsgSize" will be rejected from client-side
+_, err = cli.Put(ctx, "foo", strings.Repeat("a", 5*1024*1024))
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: trying to send message larger than max (5242890 vs. 2097152)"
+
+
+// some writes under limits
+for i := range []int{0,1,2,3,4} {
+    _, err = cli.Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("a", 1*1024*1024-500))
+    if err != nil {
+        panic(err)
+    }
+}
+// client reads exceeding "MaxCallRecvMsgSize" will be rejected from client-side
+_, err = cli.Get(ctx, "foo", clientv3.WithPrefix())
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received message larger than max (5240509 vs. 3145728)"
+```
+
+**If not specified, client-side send limit defaults to 2 MiB (1.5 MiB + gRPC overhead bytes) and receive limit to `math.MaxInt32`**. Please see [clientv3 godoc](https://godoc.org/github.com/coreos/etcd/clientv3#Config) for more detail.
+
 #### Change in clientv3 `Snapshot` API error type
 
 Previously, clientv3 `Snapshot` API returned raw [`grpc/*status.statusError`] type error. v3.3 now translates those errors to corresponding public error types, to be consistent with other APIs.
