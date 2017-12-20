@@ -31,6 +31,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) for v2 `client`.
   - [Regenerated](https://github.com/coreos/etcd/pull/8721) v2 `client` source code with latest `ugorji/go/codec`.
 - Fix [`/health` endpoint JSON output](https://github.com/coreos/etcd/pull/8312).
+- v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
+  - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
 
 ### Added(`etcd`)
 
@@ -97,6 +99,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Add [`--keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
 - Add [`lease list`](https://github.com/coreos/etcd/pull/8358) command.
 - Add [`lease keep-alive --once`](https://github.com/coreos/etcd/pull/8775) flag.
+- Make [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease print [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
+  - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
 - Add [`defrag --data-dir`](https://github.com/coreos/etcd/pull/8367) flag.
 - Add [`move-leader`](https://github.com/coreos/etcd/pull/8153) command.
 - Add [`endpoint hashkv`](https://github.com/coreos/etcd/pull/8351) command.
