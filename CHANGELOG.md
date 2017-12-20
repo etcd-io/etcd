@@ -4,7 +4,7 @@
 
 ## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 ### Improved
 
@@ -211,7 +211,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 
 ## [v3.2.12](https://github.com/coreos/etcd/releases/tag/v3.2.12) (2017-12-20)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -233,7 +233,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 ## [v3.2.11](https://github.com/coreos/etcd/releases/tag/v3.2.11) (2017-12-05)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -249,7 +249,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11).
 
 ## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -259,7 +259,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11).
 
 ## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-16)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -273,7 +273,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10).
 
 ## [v3.2.9](https://github.com/coreos/etcd/releases/tag/v3.2.9) (2017-10-06)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed(Security)
 
@@ -285,7 +285,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9).
 
 ## [v3.2.8](https://github.com/coreos/etcd/releases/tag/v3.2.8) (2017-09-29)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -295,7 +295,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8).
 
 ## [v3.2.7](https://github.com/coreos/etcd/releases/tag/v3.2.7) (2017-09-01)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.6...v3.2.7).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.6...v3.2.7) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -318,7 +318,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6).
 
 ## [v3.2.5](https://github.com/coreos/etcd/releases/tag/v3.2.5) (2017-08-04)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Changed
 
@@ -337,7 +337,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5).
 
 ## [v3.2.4](https://github.com/coreos/etcd/releases/tag/v3.2.4) (2017-07-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -347,7 +347,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4).
 
 ## [v3.2.3](https://github.com/coreos/etcd/releases/tag/v3.2.3) (2017-07-14)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -361,7 +361,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3).
 
 ## [v3.1.10](https://github.com/coreos/etcd/releases/tag/v3.1.10) (2017-07-14)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.9...v3.1.10).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.9...v3.1.10) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Changed
 
@@ -375,7 +375,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.9...v3.1.10).
 
 ## [v3.2.2](https://github.com/coreos/etcd/releases/tag/v3.2.2) (2017-07-07)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Improved
 
@@ -394,7 +394,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2).
 
 ## [v3.2.1](https://github.com/coreos/etcd/releases/tag/v3.2.1) (2017-06-23)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Fixed
 
@@ -405,7 +405,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1).
 
 ## [v3.2.0](https://github.com/coreos/etcd/releases/tag/v3.2.0) (2017-06-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
 ### Improved
 
@@ -471,7 +471,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 
 ## [v3.1.9](https://github.com/coreos/etcd/releases/tag/v3.1.9) (2017-06-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.8...v3.1.9).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.8...v3.1.9) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Fixed
 
@@ -480,17 +480,17 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.8...v3.1.9).
 
 ## [v3.1.8](https://github.com/coreos/etcd/releases/tag/v3.1.8) (2017-05-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.7...v3.1.8).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.7...v3.1.8) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 
 ## [v3.1.7](https://github.com/coreos/etcd/releases/tag/v3.1.7) (2017-04-28)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.6...v3.1.7).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.6...v3.1.7) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 
 ## [v3.1.6](https://github.com/coreos/etcd/releases/tag/v3.1.6) (2017-04-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.5...v3.1.6).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.5...v3.1.6) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Changed
 
@@ -503,7 +503,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.5...v3.1.6).
 
 ## [v3.1.5](https://github.com/coreos/etcd/releases/tag/v3.1.5) (2017-03-27)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.4...v3.1.5).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.4...v3.1.5) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Added
 
@@ -517,12 +517,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.4...v3.1.5).
 
 ## [v3.1.4](https://github.com/coreos/etcd/releases/tag/v3.1.4) (2017-03-22)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.3...v3.1.4).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.3...v3.1.4) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 
 ## [v3.1.3](https://github.com/coreos/etcd/releases/tag/v3.1.3) (2017-03-10)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.2...v3.1.3).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.2...v3.1.3) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Changed
 
@@ -536,7 +536,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.2...v3.1.3).
 
 ## [v3.1.2](https://github.com/coreos/etcd/releases/tag/v3.1.2) (2017-02-24)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.1...v3.1.2).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.1...v3.1.2) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Changed
 
@@ -549,7 +549,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.1...v3.1.2).
 
 ## [v3.1.1](https://github.com/coreos/etcd/releases/tag/v3.1.1) (2017-02-17)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.1.1).
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.1.1) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Changed
 
@@ -567,7 +567,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v2.3.7...v2.3.8).
 
 ## [v3.1.0](https://github.com/coreos/etcd/releases/tag/v3.1.0) (2017-01-20)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.1.0) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.1.0) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Improved
 
@@ -614,12 +614,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.1.0) and [
 
 ## [v3.0.16](https://github.com/coreos/etcd/releases/tag/v3.0.16) (2016-11-13)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.15...v3.0.16).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.15...v3.0.16) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.15](https://github.com/coreos/etcd/releases/tag/v3.0.15) (2016-11-11)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.14...v3.0.15).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.14...v3.0.15) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Fixed
 
@@ -628,7 +628,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.14...v3.0.15).
 
 ## [v3.0.14](https://github.com/coreos/etcd/releases/tag/v3.0.14) (2016-11-04)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.13...v3.0.14).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.13...v3.0.14) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Added
 
@@ -637,17 +637,17 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.13...v3.0.14).
 
 ## [v3.0.13](https://github.com/coreos/etcd/releases/tag/v3.0.13) (2016-10-24)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.12...v3.0.13).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.12...v3.0.13) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.12](https://github.com/coreos/etcd/releases/tag/v3.0.12) (2016-10-07)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.11...v3.0.12).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.11...v3.0.12) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.11](https://github.com/coreos/etcd/releases/tag/v3.0.11) (2016-10-07)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.10...v3.0.11).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.10...v3.0.11) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Added
 
@@ -658,12 +658,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.10...v3.0.11).
 
 ## [v3.0.10](https://github.com/coreos/etcd/releases/tag/v3.0.10) (2016-09-23)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.9...v3.0.10).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.9...v3.0.10) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.9](https://github.com/coreos/etcd/releases/tag/v3.0.9) (2016-09-15)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.8...v3.0.9).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.8...v3.0.9) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Added
 
@@ -672,7 +672,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.8...v3.0.9).
 
 ## [v3.0.8](https://github.com/coreos/etcd/releases/tag/v3.0.8) (2016-09-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.7...v3.0.8).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.7...v3.0.8) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -681,7 +681,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.7...v3.0.8).
 
 ## [v3.0.7](https://github.com/coreos/etcd/releases/tag/v3.0.7) (2016-08-31)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.6...v3.0.7).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.6...v3.0.7) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -690,12 +690,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.6...v3.0.7).
 
 ## [v3.0.6](https://github.com/coreos/etcd/releases/tag/v3.0.6) (2016-08-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.5...v3.0.6).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.5...v3.0.6) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.5](https://github.com/coreos/etcd/releases/tag/v3.0.5) (2016-08-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.4...v3.0.5).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.4...v3.0.5) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -704,7 +704,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.4...v3.0.5).
 
 ## [v3.0.4](https://github.com/coreos/etcd/releases/tag/v3.0.4) (2016-07-27)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.3...v3.0.4).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.3...v3.0.4) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -718,7 +718,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.3...v3.0.4).
 
 ## [v3.0.3](https://github.com/coreos/etcd/releases/tag/v3.0.3) (2016-07-15)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.2...v3.0.3).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.2...v3.0.3) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -729,7 +729,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.2...v3.0.3).
 
 ## [v3.0.2](https://github.com/coreos/etcd/releases/tag/v3.0.2) (2016-07-08)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.1...v3.0.2).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.1...v3.0.2) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 ### Changed
 
@@ -738,9 +738,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.1...v3.0.2).
 
 ## [v3.0.1](https://github.com/coreos/etcd/releases/tag/v3.0.1) (2016-07-01)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.0.1).
+See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.0.1) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
 
 
 ## [v3.0.0](https://github.com/coreos/etcd/releases/tag/v3.0.0) (2016-06-30)
 
-See [code changes](https://github.com/coreos/etcd/compare/v2.3.0...v3.0.0) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).
+See [code changes](https://github.com/coreos/etcd/compare/v2.3.0...v3.0.0) and [v3.0 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
