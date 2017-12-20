@@ -137,6 +137,29 @@ err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received messag
 
 **If not specified, client-side send limit defaults to 2 MiB (1.5 MiB + gRPC overhead bytes) and receive limit to `math.MaxInt32`**. Please see [clientv3 godoc](https://godoc.org/github.com/coreos/etcd/clientv3#Config) for more detail.
 
+#### Change in raw gRPC client wrappers
+
+3.2.12 or later changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/coreos/etcd/pull/9047).
+
+Before and after
+
+```diff
+-func NewKVFromKVClient(remote pb.KVClient) KV {
++func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
+
+-func NewClusterFromClusterClient(remote pb.ClusterClient) Cluster {
++func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
+
+-func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Duration) Lease {
++func NewLeaseFromLeaseClient(remote pb.LeaseClient, c *Client, keepAliveTimeout time.Duration) Lease {
+
+-func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient) Maintenance {
++func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client) Maintenance {
+
+-func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
++func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
+```
+
 #### Change in `--listen-peer-urls` and `--listen-client-urls`
 
 3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
