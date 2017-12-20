@@ -468,6 +468,9 @@ Prints lease information.
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c --write-out=json --keys
 # {"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":459,"granted-ttl":500,"keys":["Zm9vMQ==","Zm9vMg=="]}
+
+./etcdctl lease timetolive 2d8257079fa1bc0c
+# lease 2d8257079fa1bc0c already expired
 ```
 
 ### LEASE LIST
