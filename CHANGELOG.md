@@ -2,7 +2,7 @@
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
 
-## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-??)
+## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).
 
@@ -39,6 +39,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Add [`--experimental-initial-corrupt-check`](https://github.com/coreos/etcd/pull/8554) flag to [check database hash before serving client/peer traffic](https://github.com/coreos/etcd/issues/8313).
 - Add [`--max-txn-ops`](https://github.com/coreos/etcd/pull/7976) flag to [configure maximum number operations in transaction](https://github.com/coreos/etcd/issues/7826).
 - Add [`--max-request-bytes`](https://github.com/coreos/etcd/pull/7968) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
+  - If not configured, it defaults to 1.5 MiB.
 - Add [`--client-crl-file`, `--peer-crl-file`](https://github.com/coreos/etcd/pull/8124) flags for [Certificate revocation list](https://github.com/coreos/etcd/issues/4034).
 - Add [`--peer-require-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
 - Add [`--listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` endpoints.
@@ -74,6 +75,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 
 - Add [health balancer](https://github.com/coreos/etcd/pull/8545) to fix [watch API hangs](https://github.com/coreos/etcd/issues/7247), improve [endpoint switch under network faults](https://github.com/coreos/etcd/issues/7941).
 - [Refactor balancer](https://github.com/coreos/etcd/pull/8840) and add [client-side keepalive pings](https://github.com/coreos/etcd/pull/8199) to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
+- Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
+  - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).
+  - Address [kubernetes#51099](https://github.com/kubernetes/kubernetes/issues/51099).
+  - `MaxCallSendMsgSize` default value is 2 MiB, if not configured.
+  - `MaxCallRecvMsgSize` default value is `math.MaxInt32`, if not configured.
 - Accept [`Compare_LEASE`](https://github.com/coreos/etcd/pull/8324) in [`clientv3.Compare`](https://godoc.org/github.com/coreos/etcd/clientv3#Compare).
 - Add [`LeaseValue` helper](https://github.com/coreos/etcd/pull/8488) to `Cmp` `LeaseID` values in `Txn`.
 - Add [`MoveLeader`](https://github.com/coreos/etcd/pull/8153) to `Maintenance`.
@@ -201,6 +207,28 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
   - `*.aci` files won't be available from etcd `v3.4` release.
 - Add container registry [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd).
   - [quay.io/coreos/etcd](https://quay.io/coreos/etcd) is still supported as secondary.
+
+
+## [v3.2.12](https://github.com/coreos/etcd/releases/tag/v3.2.12) (2017-12-20)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).
+
+### Fixed
+
+- Fix [error message of `Revision` compactor](https://github.com/coreos/etcd/pull/8999) in server-side.
+
+### Added(`etcd/clientv3`,`etcdctl/v3`)
+
+- Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
+  - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).
+  - Address [kubernetes#51099](https://github.com/kubernetes/kubernetes/issues/51099).
+  - `MaxCallSendMsgSize` default value is 2 MiB, if not configured.
+  - `MaxCallRecvMsgSize` default value is `math.MaxInt32`, if not configured.
+
+### Other
+
+- Pin [grpc v1.7.5](https://github.com/grpc/grpc-go/releases/tag/v1.7.5), [grpc-gateway v1.3.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3.0).
+  - No code change, just to be explicit about recommended versions.
 
 
 ## [v3.2.11](https://github.com/coreos/etcd/releases/tag/v3.2.11) (2017-12-05)
