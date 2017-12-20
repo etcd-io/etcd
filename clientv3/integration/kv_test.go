@@ -40,7 +40,7 @@ func TestKVPutError(t *testing.T) {
 		maxReqBytes = 1.5 * 1024 * 1024 // hard coded max in v3_server.go
 		quota       = int64(int(maxReqBytes) + 8*os.Getpagesize())
 	)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
