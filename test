@@ -148,7 +148,7 @@ function e2e_pass {
 
 function integration_extra {
 	go test -timeout 15m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/client/integration"
-	go test -timeout 15m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 20m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
 }
 
 function integration_e2e_pass {
