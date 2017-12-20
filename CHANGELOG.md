@@ -1,8 +1,4 @@
-## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
-
-**v3.3.0 is not yet released; expected to be released in January 2018.**
-
-## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20)
+## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
