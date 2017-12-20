@@ -94,12 +94,8 @@ func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
 	// eliminate false positive
 	time.Sleep(time.Duration(ttl+1) * time.Second)
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
-	proc, err := spawnCmd(cmdArgs)
-	if err != nil {
-		return err
-	}
-	_, err = proc.Expect("TTL(0s), remaining(-1s)") // expect expired lease
-	if err != nil {
+	exp := fmt.Sprintf("lease %s already expired", leaseID)
+	if err = spawnWithExpect(cmdArgs, exp); err != nil {
 		return err
 	}
 	if err := ctlV3Get(cx, []string{"key"}); err != nil {
