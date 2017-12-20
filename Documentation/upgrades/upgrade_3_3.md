@@ -253,6 +253,23 @@ _, err = io.Copy(f, rc)
 err == context.DeadlineExceeded
 ```
 
+#### Change in `etcdctl lease timetolive` command output
+
+Previously, `lease timetolive LEASE_ID` command on expired lease prints `-1s` for remaining seconds. 3.3 now outputs clearer messages.
+
+Before
+
+
+```bash
+lease 2d8257079fa1bc0c granted with TTL(0s), remaining(-1s)
+```
+
+After
+
+```bash
+lease 2d8257079fa1bc0c already expired
+```
+
 #### Change in `golang.org/x/net/context` imports
 
 `clientv3` has deprecated `golang.org/x/net/context`. If a project vendors `golang.org/x/net/context` in other code (e.g. etcd generated protocol buffer code) and imports `github.com/coreos/etcd/clientv3`, it requires Go 1.9+ to compile.
