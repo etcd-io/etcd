@@ -28,16 +28,17 @@ func makeMirrorTest(cx ctlCtx) {
 	var (
 		flags  = []string{}
 		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+		kvs2   = []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}}
 		prefix = "key"
 	)
-	testMirrorCommand(cx, flags, kvs, kvs, prefix, prefix)
+	testMirrorCommand(cx, flags, kvs, kvs2, prefix, prefix)
 }
 
 func makeMirrorModifyDestPrefixTest(cx ctlCtx) {
 	var (
 		flags      = []string{"--prefix", "o_", "--dest-prefix", "d_"}
 		kvs        = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
-		kvs2       = []kv{{"d_key1", "val1"}, {"d_key2", "val2"}, {"d_key3", "val3"}}
+		kvs2       = []kvExec{{key: "d_key1", val: "val1"}, {key: "d_key2", val: "val2"}, {key: "d_key3", val: "val3"}}
 		srcprefix  = "o_"
 		destprefix = "d_"
 	)
@@ -48,7 +49,7 @@ func makeMirrorNoDestPrefixTest(cx ctlCtx) {
 	var (
 		flags      = []string{"--prefix", "o_", "--no-dest-prefix"}
 		kvs        = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
-		kvs2       = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+		kvs2       = []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}}
 		srcprefix  = "o_"
 		destprefix = "key"
 	)
@@ -56,7 +57,7 @@ func makeMirrorNoDestPrefixTest(cx ctlCtx) {
 	testMirrorCommand(cx, flags, kvs, kvs2, srcprefix, destprefix)
 }
 
-func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs, destkvs []kv, srcprefix, destprefix string) {
+func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvExec, srcprefix, destprefix string) {
 	// set up another cluster to mirror with
 	mirrorcfg := configAutoTLS
 	mirrorcfg.clusterSize = 1
