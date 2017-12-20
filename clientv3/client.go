@@ -67,6 +67,8 @@ type Client struct {
 	Password string
 	// tokenCred is an instance of WithPerRPCCredentials()'s argument
 	tokenCred *authTokenCredential
+
+	callOpts []grpc.CallOption
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -295,7 +297,7 @@ func (c *Client) getToken(ctx context.Context) error {
 		endpoint := c.cfg.Endpoints[i]
 		host := getHost(endpoint)
 		// use dial options without dopts to avoid reusing the client balancer
-		auth, err = newAuthenticator(host, c.dialSetupOpts(endpoint))
+		auth, err = newAuthenticator(host, c.dialSetupOpts(endpoint), c)
 		if err != nil {
 			continue
 		}
@@ -386,10 +388,28 @@ func newClient(cfg *Config) (*Client, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		mu:       new(sync.Mutex),
+		callOpts: defaultCallOpts,
 	}
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
+	}
+	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
+		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
+			return nil, fmt.Errorf("gRPC message recv limit (%d bytes) must be greater than send limit (%d bytes)", cfg.MaxCallRecvMsgSize, cfg.MaxCallSendMsgSize)
+		}
+		callOpts := []grpc.CallOption{
+			defaultFailFast,
+			defaultMaxCallSendMsgSize,
+			defaultMaxCallRecvMsgSize,
+		}
+		if cfg.MaxCallSendMsgSize > 0 {
+			callOpts[1] = grpc.MaxCallSendMsgSize(cfg.MaxCallSendMsgSize)
+		}
+		if cfg.MaxCallRecvMsgSize > 0 {
+			callOpts[2] = grpc.MaxCallRecvMsgSize(cfg.MaxCallRecvMsgSize)
+		}
+		client.callOpts = callOpts
 	}
 
 	client.balancer = newHealthBalancer(cfg.Endpoints, cfg.DialTimeout, func(ep string) (bool, error) {

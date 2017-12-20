@@ -6,57 +6,38 @@ In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Server upgrade checklists (breaking change)
+### Upgrade checklists
 
-3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+Highlighted breaking changes in 3.2.
 
-See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+#### Change in gRPC dependency (>=3.2.10)
 
-### Client upgrade checklists (>=3.2.0)
+3.2.10 or later now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.5` (<=3.2.9 requires `v1.2.1`).
 
-3.2 introduces two breaking changes.
+##### Deprecate `grpclog.Logger`
 
-Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
-
-Before
-
-```go
-// when leaseID does not exist
-resp, err := TimeToLive(ctx, leaseID)
-resp == nil
-err == lease.ErrLeaseNotFound
-```
-
-After
-
-```go
-// when leaseID does not exist
-resp, err := TimeToLive(ctx, leaseID)
-resp.TTL == -1
-err == nil
-```
-
-`clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
+`grpclog.Logger` has been deprecated in favor of [`grpclog.LoggerV2`](https://github.com/grpc/grpc-go/blob/master/grpclog/loggerv2.go). `clientv3.Logger` is now `grpclog.LoggerV2`.
 
 Before
 
 ```go
 import "github.com/coreos/etcd/clientv3"
-clientv3.NewFromConfigFile
+clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
 ```
 
 After
 
 ```go
-import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
-clientv3yaml.NewConfig
+import "github.com/coreos/etcd/clientv3"
+import "google.golang.org/grpc/grpclog"
+clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+
+// log.New above cannot be used (not implement grpclog.LoggerV2 interface)
 ```
 
-### Client upgrade checklists (>=3.2.10)
+##### Deprecate `grpc.ErrClientConnTimeout`
 
-Note that >=3.2.10 requires `grpc/grpc-go` v1.7.4 (<=3.2.9 with v1.2.1), which introduces some breaking changes.
-
-Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. >=3.2.10 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
+Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.2 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
 Before
 
@@ -81,6 +62,148 @@ _, err := clientv3.New(clientv3.Config{
 if err == context.DeadlineExceeded {
 	// handle errors
 }
+```
+
+#### Change in maximum request size limits (>=3.2.10)
+
+3.2.10 and 3.2.11 allow custom request size limits in server side. >=3.2.12 allows custom request size limits for both server and **client side**.
+
+Server-side request limits can be configured with `--max-request-bytes` flag:
+
+```bash
+# limits request size to 1.5 KiB
+etcd --max-request-bytes 1536
+
+# client writes exceeding 1.5 KiB will be rejected
+etcdctl put foo [LARGE VALUE...]
+# etcdserver: request is too large
+```
+
+Or configure `embed.Config.MaxRequestBytes` field:
+
+```go
+import "github.com/coreos/etcd/embed"
+import "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+
+// limit requests to 5 MiB
+cfg := embed.NewConfig()
+cfg.MaxRequestBytes = 5 * 1024 * 1024
+
+// client writes exceeding 5 MiB will be rejected
+_, err := cli.Put(ctx, "foo", [LARGE VALUE...])
+err == rpctypes.ErrRequestTooLarge
+```
+
+**If not specified, server-side limit defaults to 1.5 MiB**.
+
+Client-side request limits must be configured based on server-side limits.
+
+```bash
+# limits request size to 1 MiB
+etcd --max-request-bytes 1048576
+```
+
+```go
+import "github.com/coreos/etcd/clientv3"
+
+cli, _ := clientv3.New(clientv3.Config{
+    Endpoints: []string{"127.0.0.1:2379"},
+    MaxCallSendMsgSize: 2 * 1024 * 1024,
+    MaxCallRecvMsgSize: 3 * 1024 * 1024,
+})
+
+
+// client writes exceeding "--max-request-bytes" will be rejected from etcd server
+_, err := cli.Put(ctx, "foo", strings.Repeat("a", 1*1024*1024+5))
+err == rpctypes.ErrRequestTooLarge
+
+
+// client writes exceeding "MaxCallSendMsgSize" will be rejected from client-side
+_, err = cli.Put(ctx, "foo", strings.Repeat("a", 5*1024*1024))
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: trying to send message larger than max (5242890 vs. 2097152)"
+
+
+// some writes under limits
+for i := range []int{0,1,2,3,4} {
+    _, err = cli.Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("a", 1*1024*1024-500))
+    if err != nil {
+        panic(err)
+    }
+}
+// client reads exceeding "MaxCallRecvMsgSize" will be rejected from client-side
+_, err = cli.Get(ctx, "foo", clientv3.WithPrefix())
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received message larger than max (5240509 vs. 3145728)"
+```
+
+**If not specified, client-side send limit defaults to 2 MiB (1.5 MiB + gRPC overhead bytes) and receive limit to `math.MaxInt32`**. Please see [clientv3 godoc](https://godoc.org/github.com/coreos/etcd/clientv3#Config) for more detail.
+
+#### Change in raw gRPC client wrappers
+
+3.2.12 or later changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/coreos/etcd/pull/9047).
+
+Before and after
+
+```diff
+-func NewKVFromKVClient(remote pb.KVClient) KV {
++func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
+
+-func NewClusterFromClusterClient(remote pb.ClusterClient) Cluster {
++func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
+
+-func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Duration) Lease {
++func NewLeaseFromLeaseClient(remote pb.LeaseClient, c *Client, keepAliveTimeout time.Duration) Lease {
+
+-func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient) Maintenance {
++func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client) Maintenance {
+
+-func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
++func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
+```
+
+#### Change in `--listen-peer-urls` and `--listen-client-urls`
+
+3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+
+See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+
+#### Change in `clientv3.Lease.TimeToLive` API
+
+Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
+
+Before
+
+```go
+// when leaseID does not exist
+resp, err := TimeToLive(ctx, leaseID)
+resp == nil
+err == lease.ErrLeaseNotFound
+```
+
+After
+
+```go
+// when leaseID does not exist
+resp, err := TimeToLive(ctx, leaseID)
+resp.TTL == -1
+err == nil
+```
+
+#### Change in `clientv3.NewFromConfigFile`
+
+`clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
+
+Before
+
+```go
+import "github.com/coreos/etcd/clientv3"
+clientv3.NewFromConfigFile
+```
+
+After
+
+```go
+import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
+clientv3yaml.NewConfig
 ```
 
 ### Server upgrade checklists

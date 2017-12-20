@@ -1874,7 +1874,7 @@ func TestV3LargeRequests(t *testing.T) {
 			// limit receive call size with original value + gRPC overhead bytes
 			_, err = kvcli.Range(context.TODO(), reqget, grpc.MaxCallRecvMsgSize(test.valueSize+512*1024))
 			if err != nil {
-				t.Errorf("#%d: range expected no error , got %v", i, err)
+				t.Errorf("#%d: range expected no error, got %v", i, err)
 			}
 		}
 
