@@ -1767,7 +1767,7 @@ func (m *WatchResponse) GetEvents() []*mvccpb.Event {
 }
 
 type LeaseGrantRequest struct {
-	// TTL is the advisory time-to-live in seconds.
+	// TTL is the advisory time-to-live in seconds. Expired lease will return -1.
 	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	// ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
 	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`

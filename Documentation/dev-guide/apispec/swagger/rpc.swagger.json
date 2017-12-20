@@ -1639,7 +1639,7 @@
           "format": "int64"
         },
         "TTL": {
-          "description": "TTL is the advisory time-to-live in seconds.",
+          "description": "TTL is the advisory time-to-live in seconds. Expired lease will return -1.",
           "type": "string",
           "format": "int64"
         }

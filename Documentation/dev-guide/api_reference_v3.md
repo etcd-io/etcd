@@ -480,7 +480,7 @@ Empty field.
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| TTL | TTL is the advisory time-to-live in seconds. | int64 |
+| TTL | TTL is the advisory time-to-live in seconds. Expired lease will return -1. | int64 |
 | ID | ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID. | int64 |
 
 
