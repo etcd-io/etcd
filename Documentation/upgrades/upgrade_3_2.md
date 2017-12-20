@@ -6,57 +6,38 @@ In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Server upgrade checklists (breaking change)
+### Upgrade checklists
 
-3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+Highlighted breaking changes in 3.2.
 
-See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+#### Change in gRPC dependency (>=3.2.10)
 
-### Client upgrade checklists (>=3.2.0)
+3.2.10 or later now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.5` (<=3.2.9 requires `v1.2.1`).
 
-3.2 introduces two breaking changes.
+##### Deprecate `grpclog.Logger`
 
-Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
-
-Before
-
-```go
-// when leaseID does not exist
-resp, err := TimeToLive(ctx, leaseID)
-resp == nil
-err == lease.ErrLeaseNotFound
-```
-
-After
-
-```go
-// when leaseID does not exist
-resp, err := TimeToLive(ctx, leaseID)
-resp.TTL == -1
-err == nil
-```
-
-`clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
+`grpclog.Logger` has been deprecated in favor of [`grpclog.LoggerV2`](https://github.com/grpc/grpc-go/blob/master/grpclog/loggerv2.go). `clientv3.Logger` is now `grpclog.LoggerV2`.
 
 Before
 
 ```go
 import "github.com/coreos/etcd/clientv3"
-clientv3.NewFromConfigFile
+clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
 ```
 
 After
 
 ```go
-import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
-clientv3yaml.NewConfig
+import "github.com/coreos/etcd/clientv3"
+import "google.golang.org/grpc/grpclog"
+clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+
+// log.New above cannot be used (not implement grpclog.LoggerV2 interface)
 ```
 
-### Client upgrade checklists (>=3.2.10)
+##### Deprecate `grpc.ErrClientConnTimeout`
 
-Note that >=3.2.10 requires `grpc/grpc-go` v1.7.4 (<=3.2.9 with v1.2.1), which introduces some breaking changes.
-
-Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. >=3.2.10 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
+Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.2 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
 Before
 
@@ -81,6 +62,52 @@ _, err := clientv3.New(clientv3.Config{
 if err == context.DeadlineExceeded {
 	// handle errors
 }
+```
+
+#### Change in `--listen-peer-urls` and `--listen-client-urls`
+
+3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+
+See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+
+#### Change in `clientv3.Lease.TimeToLive` API
+
+Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
+
+Before
+
+```go
+// when leaseID does not exist
+resp, err := TimeToLive(ctx, leaseID)
+resp == nil
+err == lease.ErrLeaseNotFound
+```
+
+After
+
+```go
+// when leaseID does not exist
+resp, err := TimeToLive(ctx, leaseID)
+resp.TTL == -1
+err == nil
+```
+
+#### Change in `clientv3.NewFromConfigFile`
+
+`clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
+
+Before
+
+```go
+import "github.com/coreos/etcd/clientv3"
+clientv3.NewFromConfigFile
+```
+
+After
+
+```go
+import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
+clientv3yaml.NewConfig
 ```
 
 ### Server upgrade checklists

@@ -111,23 +111,7 @@ curl -L http://localhost:2379/v3beta/kv/put \
 
 Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.
 
-#### `gcr.io/etcd-development/etcd` as primary container registry
-
-etcd uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
-
-Before
-
-```bash
-docker pull quay.io/coreos/etcd:v3.2.5
-```
-
-After
-
-```bash
-docker pull gcr.io/etcd-development/etcd:v3.3.0
-```
-
-#### Change in `Snapshot` API error type
+#### Change in clientv3 `Snapshot` API error type
 
 Previously, clientv3 `Snapshot` API returned raw [`grpc/*status.statusError`] type error. v3.3 now translates those errors to corresponding public error types, to be consistent with other APIs.
 
@@ -173,7 +157,7 @@ _, err = io.Copy(f, rc)
 err == context.DeadlineExceeded
 ```
 
-#### Deprecate `golang.org/x/net/context` imports
+#### Change in `golang.org/x/net/context` imports
 
 `clientv3` has deprecated `golang.org/x/net/context`. If a project vendors `golang.org/x/net/context` in other code (e.g. etcd generated protocol buffer code) and imports `github.com/coreos/etcd/clientv3`, it requires Go 1.9+ to compile.
 
@@ -191,9 +175,9 @@ import "context"
 cli.Put(context.Background(), "f", "v")
 ```
 
-#### Upgrade grpc/grpc-go to `v1.7.4`
+#### Change in gRPC dependency
 
-3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.4`.
+3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.5`.
 
 ##### Deprecate `grpclog.Logger`
 
@@ -243,6 +227,22 @@ _, err := clientv3.New(clientv3.Config{
 if err == context.DeadlineExceeded {
 	// handle errors
 }
+```
+
+#### Change in official container registry
+
+etcd now uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
+
+Before
+
+```bash
+docker pull quay.io/coreos/etcd:v3.2.5
+```
+
+After
+
+```bash
+docker pull gcr.io/etcd-development/etcd:v3.3.0
 ```
 
 ### Server upgrade checklists
