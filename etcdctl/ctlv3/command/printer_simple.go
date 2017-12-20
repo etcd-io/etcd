@@ -93,6 +93,11 @@ func (p *simplePrinter) KeepAlive(resp v3.LeaseKeepAliveResponse) {
 }
 
 func (s *simplePrinter) TimeToLive(resp v3.LeaseTimeToLiveResponse, keys bool) {
+	if resp.GrantedTTL == 0 && resp.TTL == -1 {
+		fmt.Printf("lease %016x already expired\n", resp.ID)
+		return
+	}
+
 	txt := fmt.Sprintf("lease %016x granted with TTL(%ds), remaining(%ds)", resp.ID, resp.GrantedTTL, resp.TTL)
 	if keys {
 		ks := make([]string, len(resp.Keys))
