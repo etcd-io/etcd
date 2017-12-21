@@ -34,7 +34,9 @@ prefetching
 protobuf
 prometheus
 repin
+rpc
 serializable
+statusError
 teardown
 too_many_pings
 uncontended

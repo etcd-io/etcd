@@ -57,6 +57,8 @@ type Maintenance interface {
 	HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error)
 
 	// Snapshot provides a reader for a point-in-time snapshot of etcd.
+	// If the context "ctx" is canceled or timed out, reading from returned
+	// "io.ReadCloser" would error out (e.g. context.Canceled, context.DeadlineExceeded).
 	Snapshot(ctx context.Context) (io.ReadCloser, error)
 
 	// MoveLeader requests current leader to transfer its leadership to the transferee.
