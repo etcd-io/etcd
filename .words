@@ -9,6 +9,7 @@ ResourceExhausted
 RPC
 RPCs
 TODO
+WithRequireLeader
 backoff
 blackhole
 blackholed
