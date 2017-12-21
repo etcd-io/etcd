@@ -55,7 +55,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Provide [error information in `/health`](https://github.com/coreos/etcd/pull/8312).
   - e.g. `{"health":false,"errors":["NOSPACE"]}`.
 - Move [logging setup to embed package](https://github.com/coreos/etcd/pull/8810)
-  - Disable gRPC server log by default.
+  - Disable gRPC server info-level logs by default (can be enabled with `etcd --debug` flag).
 - Use [monotonic time in Go 1.9](https://github.com/coreos/etcd/pull/8507) for `lease` package.
 - Warn on [empty hosts in advertise URLs](https://github.com/coreos/etcd/pull/8384).
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
