@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -37,10 +38,12 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/grpcproxy"
 
+	"github.com/coreos/pkg/capnslog"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
@@ -75,6 +78,8 @@ var (
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
+
+	grpcProxyDebug bool
 )
 
 func init() {
@@ -127,11 +132,25 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
+
+	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
+
 	return &cmd
 }
 
 func startGRPCProxy(cmd *cobra.Command, args []string) {
 	checkArgs()
+
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+	if grpcProxyDebug {
+		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+		grpc.EnableTracing = true
+		// enable info, warning, error
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	} else {
+		// only discard info
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+	}
 
 	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey)
 	if tlsinfo == nil && grpcProxyListenAutoTLS {
