@@ -268,8 +268,11 @@ func (cfg *Config) SetupLogging() {
 	if cfg.Debug {
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
 		grpc.EnableTracing = true
+		// enable info, warning, error
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 	} else {
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+		// only discard info
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
 	}
 	if cfg.LogPkgLevels != "" {
 		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
