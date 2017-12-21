@@ -80,6 +80,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
   - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).
   - Address [kubernetes#51099](https://github.com/kubernetes/kubernetes/issues/51099).
+    - In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
   - `MaxCallSendMsgSize` default value is 2 MiB, if not configured.
   - `MaxCallRecvMsgSize` default value is `math.MaxInt32`, if not configured.
 - Accept [`Compare_LEASE`](https://github.com/coreos/etcd/pull/8324) in [`clientv3.Compare`](https://godoc.org/github.com/coreos/etcd/clientv3#Compare).
@@ -221,11 +222,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 - Fix [error message of `Revision` compactor](https://github.com/coreos/etcd/pull/8999) in server-side.
 
-### Added(`etcd/clientv3`,`etcdctl/v3`)
+### Added(`etcd/clientv3`)
 
 - Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
   - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).
   - Address [kubernetes#51099](https://github.com/kubernetes/kubernetes/issues/51099).
+    - In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
   - `MaxCallSendMsgSize` default value is 2 MiB, if not configured.
   - `MaxCallRecvMsgSize` default value is `math.MaxInt32`, if not configured.
 

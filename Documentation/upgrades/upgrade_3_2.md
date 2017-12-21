@@ -66,7 +66,7 @@ if err == context.DeadlineExceeded {
 
 #### Change in maximum request size limits (>=3.2.10)
 
-3.2.10 and 3.2.11 allow custom request size limits in server side. >=3.2.12 allows custom request size limits for both server and **client side**.
+3.2.10 and 3.2.11 allow custom request size limits in server side. >=3.2.12 allows custom request size limits for both server and **client side**. In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
 
 Server-side request limits can be configured with `--max-request-bytes` flag:
 
@@ -160,12 +160,6 @@ Before and after
 +func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 ```
 
-#### Change in `--listen-peer-urls` and `--listen-client-urls`
-
-3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
-
-See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
-
 #### Change in `clientv3.Lease.TimeToLive` API
 
 Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
@@ -205,6 +199,12 @@ After
 import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
 clientv3yaml.NewConfig
 ```
+
+#### Change in `--listen-peer-urls` and `--listen-client-urls`
+
+3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
+
+See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
 
 ### Server upgrade checklists
 
