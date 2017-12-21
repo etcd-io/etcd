@@ -445,8 +445,11 @@ func (lkv *leasingKV) revokeLeaseKvs(ctx context.Context, kvs []*mvccpb.KeyValue
 }
 
 func (lkv *leasingKV) waitSession(ctx context.Context) error {
+	lkv.leases.mu.RLock()
+	sessionc := lkv.sessionc
+	lkv.leases.mu.RUnlock()
 	select {
-	case <-lkv.sessionc:
+	case <-sessionc:
 		return nil
 	case <-lkv.ctx.Done():
 		return lkv.ctx.Err()
