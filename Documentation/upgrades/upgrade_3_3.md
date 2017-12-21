@@ -113,7 +113,7 @@ Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will
 
 #### Change in maximum request size limits
 
-3.3 now allows custom request size limits for both server and **client side**.
+3.3 now allows custom request size limits for both server and **client side**. In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
 
 Server-side request limits can be configured with `--max-request-bytes` flag:
 
