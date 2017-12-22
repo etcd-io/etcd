@@ -671,6 +671,13 @@ message WatchCreateRequest {
   // If prev_kv is set, created watcher gets the previous KV before the event happens.
   // If the previous KV is already compacted, nothing will be returned.
   bool prev_kv = 6;
+
+  // If watch_id is provided and non-zero, it will be assigned to this watcher.
+  // Since creating a watcher in etcd is not a synchronous operation,
+  // this can be used ensure that ordering is correct when creating multiple
+  // watchers on the same stream. Creating a watcher with an ID already in
+  // use on the stream will cause an error to be returned.
+  int64 watch_id = 7;
 }
 
 message WatchCancelRequest {
