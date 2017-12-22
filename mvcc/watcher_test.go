@@ -92,9 +92,9 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	// - Make sure the auto-assignment skips over things we manually assigned
 
 	tt := []struct {
-		GivenID     WatchID
-		ExpectedID  WatchID
-		ExpectedErr error
+		givenID     WatchID
+		expectedID  WatchID
+		expectedErr error
 	}{
 		{1, 1, nil},
 		{1, 0, ErrWatcherDuplicateID},
@@ -103,13 +103,13 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	}
 
 	for i, tcase := range tt {
-		id, err := w.Watch(tcase.GivenID, []byte("foo"), nil, 0)
-		if tcase.ExpectedErr != nil || err != nil {
-			if err != tcase.ExpectedErr {
-				t.Errorf("expected get error %q in test case %q, got %q", tcase.ExpectedErr, i, err)
+		id, err := w.Watch(tcase.givenID, []byte("foo"), nil, 0)
+		if tcase.expectedErr != nil || err != nil {
+			if err != tcase.expectedErr {
+				t.Errorf("expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
 			}
-		} else if tcase.ExpectedID != id {
-			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.ExpectedID, id, i)
+		} else if tcase.expectedID != id {
+			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.expectedID, id, i)
 		}
 	}
 }
