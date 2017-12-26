@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
+	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/coreos/etcd/version"
 	"github.com/urfave/cli"
 )
@@ -54,6 +56,12 @@ func Start(apiv string) {
 		cli.StringFlag{Name: "cert-file", Value: "", Usage: "identify HTTPS client using this SSL certificate file"},
 		cli.StringFlag{Name: "key-file", Value: "", Usage: "identify HTTPS client using this SSL key file"},
 		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
+		cli.BoolFlag{Name: "insecure-skip-tls-verify", Usage: "skip server certificate verification"},
+		cli.GenericFlag{Name: "cipher-suites",
+			Value: flags.NewStringSliceFlag(tlsutil.AvailableCipherSuites()...),
+			Usage: "Comma-separated list of cipher suites for the server. " +
+				"Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). " +
+				"If omitted, the default Go cipher suites will be used"},
 		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
 		cli.DurationFlag{Name: "timeout", Value: 2 * time.Second, Usage: "connection timeout per request"},
 		cli.DurationFlag{Name: "total-timeout", Value: 5 * time.Second, Usage: "timeout for the command execution (except watch)"},

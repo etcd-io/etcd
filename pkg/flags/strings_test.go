@@ -15,6 +15,7 @@
 package flags
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -43,6 +44,39 @@ func TestStringsSet(t *testing.T) {
 		err := sf.Set(tt.val)
 		if tt.pass != (err == nil) {
 			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		}
+	}
+}
+
+func TestStringSliceFlag(t *testing.T) {
+	tests := []struct {
+		vals []string
+
+		val  string
+		res  []string
+		pass bool
+	}{
+		// known values
+		{[]string{"abc", "def"}, "abc,def", []string{"abc", "def"}, true},
+		{[]string{"on", "off", "false"}, "on", []string{"on"}, true},
+
+		// unrecognized values
+		{[]string{"abc", "def"}, "ghi", nil, false},
+		{[]string{"abc", "def"}, "abc,ghi", nil, false},
+		{[]string{"on", "off"}, "", nil, false},
+	}
+
+	for i, tt := range tests {
+		sf := NewStringSliceFlag(tt.vals...)
+
+		err := sf.Set(tt.val)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		}
+
+		res := sf.Slice()
+		if tt.pass && !reflect.DeepEqual(res, tt.res) {
+			t.Errorf("#%d: want slice=%v, but got slice=%v", i, tt.res, res)
 		}
 	}
 }

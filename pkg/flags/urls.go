@@ -43,6 +43,11 @@ func (us *URLsValue) String() string {
 	return strings.Join(all, ",")
 }
 
+// Type returns the given type as urlSlice
+func (us *URLsValue) Type() string {
+	return "urlSlice"
+}
+
 func NewURLsValue(init string) *URLsValue {
 	v := &URLsValue{}
 	if err := v.Set(init); err != nil {

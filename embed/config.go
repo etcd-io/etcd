@@ -516,12 +516,15 @@ func (cfg Config) defaultClientHost() bool {
 }
 
 func (cfg *Config) ClientSelfCert() (err error) {
+	cipherSuites := cfg.ClientTLSInfo.CipherSuites
+
 	if cfg.ClientAutoTLS && cfg.ClientTLSInfo.Empty() {
 		chosts := make([]string, len(cfg.LCUrls))
 		for i, u := range cfg.LCUrls {
 			chosts[i] = u.Host
 		}
 		cfg.ClientTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
+		cfg.ClientTLSInfo.CipherSuites = cipherSuites
 		return err
 	} else if cfg.ClientAutoTLS {
 		plog.Warningf("ignoring client auto TLS since certs given")
@@ -530,12 +533,15 @@ func (cfg *Config) ClientSelfCert() (err error) {
 }
 
 func (cfg *Config) PeerSelfCert() (err error) {
+	cipherSuites := cfg.PeerTLSInfo.CipherSuites
+
 	if cfg.PeerAutoTLS && cfg.PeerTLSInfo.Empty() {
 		phosts := make([]string, len(cfg.LPUrls))
 		for i, u := range cfg.LPUrls {
 			phosts[i] = u.Host
 		}
 		cfg.PeerTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
+		cfg.PeerTLSInfo.CipherSuites = cipherSuites
 		return err
 	} else if cfg.PeerAutoTLS {
 		plog.Warningf("ignoring peer auto TLS since certs given")

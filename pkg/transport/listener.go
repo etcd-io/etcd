@@ -59,6 +59,7 @@ func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listene
 type TLSInfo struct {
 	CertFile           string
 	KeyFile            string
+	CipherSuites       []string
 	CAFile             string // TODO: deprecate this in v4
 	TrustedCAFile      string
 	ClientCertAuth     bool
@@ -83,7 +84,7 @@ type TLSInfo struct {
 }
 
 func (info TLSInfo) String() string {
-	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
+	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s, cipher-suites = [%s]", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile, strings.Join(info.CipherSuites, ", "))
 }
 
 func (info TLSInfo) Empty() bool {
@@ -177,6 +178,10 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		Certificates: []tls.Certificate{*tlsCert},
 		MinVersion:   tls.VersionTLS12,
 		ServerName:   info.ServerName,
+	}
+
+	if cfg.CipherSuites, err = tlsutil.TLSCipherSuites(info.CipherSuites); err != nil {
+		return nil, err
 	}
 
 	if info.AllowedCN != "" {

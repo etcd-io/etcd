@@ -60,6 +60,7 @@ type secureCfg struct {
 	cert       string
 	key        string
 	cacert     string
+	ciphers    []string
 	serverName string
 
 	insecureTransport  bool
@@ -173,6 +174,11 @@ func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeo
 		cfgtls = &tlsinfo
 	}
 
+	if len(scfg.ciphers) != 0 {
+		tlsinfo.CipherSuites = scfg.ciphers
+		cfgtls = &tlsinfo
+	}
+
 	if scfg.serverName != "" {
 		tlsinfo.ServerName = scfg.serverName
 		cfgtls = &tlsinfo
@@ -253,6 +259,7 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 	cert, key, cacert := keyAndCertFromCmd(cmd)
 	insecureTr := insecureTransportFromCmd(cmd)
 	skipVerify := insecureSkipVerifyFromCmd(cmd)
+	ciphers := ciphersFromCmd(cmd)
 	discoveryCfg := discoveryCfgFromCmd(cmd)
 
 	if discoveryCfg.insecure {
@@ -263,6 +270,7 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 		cert:       cert,
 		key:        key,
 		cacert:     cacert,
+		ciphers:    ciphers,
 		serverName: discoveryCfg.domain,
 
 		insecureTransport:  insecureTr,
@@ -307,6 +315,14 @@ func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 	}
 
 	return cert, key, cacert
+}
+
+func ciphersFromCmd(cmd *cobra.Command) []string {
+	ciphers, err := cmd.Flags().GetStringSlice("cipher-suites")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return ciphers
 }
 
 func authCfgFromCmd(cmd *cobra.Command) *authCfg {

@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
 
@@ -85,10 +86,11 @@ type config struct {
 
 // configFlags has the set of flags used for command line parsing a Config
 type configFlags struct {
-	flagSet      *flag.FlagSet
-	clusterState *flags.StringsFlag
-	fallback     *flags.StringsFlag
-	proxy        *flags.StringsFlag
+	flagSet         *flag.FlagSet
+	clusterState    *flags.StringsFlag
+	fallback        *flags.StringsFlag
+	proxy           *flags.StringsFlag
+	tlsCipherSuites *flags.StringSliceFlag
 }
 
 func newConfig() *config {
@@ -117,6 +119,9 @@ func newConfig() *config {
 			proxyFlagOff,
 			proxyFlagReadonly,
 			proxyFlagOn,
+		),
+		tlsCipherSuites: flags.NewStringSliceFlag(
+			tlsutil.AvailableCipherSuites()...,
 		),
 	}
 
@@ -188,6 +193,9 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
+	fs.Var(cfg.cf.tlsCipherSuites, "cipher-suites", "Comma-separated list of cipher suites for the server. "+
+		"Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). "+
+		"If omitted, the default Go cipher suites will be used")
 
 	// logging
 	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
@@ -277,6 +285,8 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
 	cfg.cp.Proxy = cfg.cf.proxy.String()
+	cfg.ec.ClientTLSInfo.CipherSuites = cfg.cf.tlsCipherSuites.Slice()
+	cfg.ec.PeerTLSInfo.CipherSuites = cfg.cf.tlsCipherSuites.Slice()
 
 	// disable default advertise-client-urls if lcurls is set
 	missingAC := flags.IsSet(cfg.cf.flagSet, "listen-client-urls") && !flags.IsSet(cfg.cf.flagSet, "advertise-client-urls")

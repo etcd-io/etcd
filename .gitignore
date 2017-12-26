@@ -20,3 +20,5 @@ hack/scripts-dev/docker-dns/.Dockerfile
 hack/scripts-dev/docker-dns-srv/.Dockerfile
 hack/tls-setup/certs
 .idea
+vendor
+.vscode
