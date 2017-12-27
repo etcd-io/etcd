@@ -247,7 +247,7 @@ func (cfg *config) parse(arguments []string) error {
 
 	var err error
 	if cfg.configFile != "" {
-		plog.Infof("Loading server configuration from %q", cfg.configFile)
+		plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
 		err = cfg.configFromFile(cfg.configFile)
 	} else {
 		err = cfg.configFromCmdLine()
