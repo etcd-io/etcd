@@ -54,9 +54,9 @@ member flags:
 		time (in milliseconds) of a heartbeat interval.
 	--election-timeout '1000'
 		time (in milliseconds) for an election to timeout. See tuning documentation for details.
-	--listen-peer-urls 'http://localhost:2380'
+	--listen-peer-urls 'http://127.0.0.1:2380'
 		list of URLs to listen on for peer traffic.
-	--listen-client-urls 'http://localhost:2379'
+	--listen-client-urls 'http://127.0.0.1:2379'
 		list of URLs to listen on for client traffic.
 	--max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
 		maximum number of snapshot files to retain (0 is unlimited).
@@ -79,16 +79,16 @@ member flags:
 
 clustering flags:
 
-	--initial-advertise-peer-urls 'http://localhost:2380'
+	--initial-advertise-peer-urls 'http://127.0.0.1:2380'
 		list of this member's peer URLs to advertise to the rest of the cluster.
-	--initial-cluster 'default=http://localhost:2380'
+	--initial-cluster 'default=http://127.0.0.1:2380'
 		initial cluster configuration for bootstrapping.
 	--initial-cluster-state 'new'
 		initial cluster state ('new' or 'existing').
 	--initial-cluster-token 'etcd-cluster'
 		initial cluster token for the etcd cluster during bootstrap.
 		Specifying this can protect you from unintended cross-cluster interaction when running multiple clusters.
-	--advertise-client-urls 'http://localhost:2379'
+	--advertise-client-urls 'http://127.0.0.1:2379'
 		list of this member's client URLs to advertise to the public.
 		The client URLs advertised should be accessible to machines that talk to etcd cluster. etcd client libraries parse these URLs to connect to the cluster.
 	--discovery ''
