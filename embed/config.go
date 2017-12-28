@@ -52,8 +52,8 @@ const (
 	DefaultGRPCKeepAliveInterval = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout  = 20 * time.Second
 
-	DefaultListenPeerURLs   = "http://localhost:2380"
-	DefaultListenClientURLs = "http://localhost:2379"
+	DefaultListenPeerURLs   = "http://127.0.0.1:2380"
+	DefaultListenClientURLs = "http://127.0.0.1:2379"
 
 	DefaultLogOutput = "default"
 
@@ -75,8 +75,8 @@ var (
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
 	ErrUnsetAdvertiseClientURLsFlag = fmt.Errorf("--advertise-client-urls is required when --listen-client-urls is set explicitly")
 
-	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
-	DefaultAdvertiseClientURLs      = "http://localhost:2379"
+	DefaultInitialAdvertisePeerURLs = "http://127.0.0.1:2380"
+	DefaultAdvertiseClientURLs      = "http://127.0.0.1:2379"
 
 	defaultHostname   string
 	defaultHostStatus error
@@ -544,8 +544,8 @@ func (cfg *Config) PeerSelfCert() (err error) {
 }
 
 // UpdateDefaultClusterFromName updates cluster advertise URLs with, if available, default host,
-// if advertise URLs are default values(localhost:2379,2380) AND if listen URL is 0.0.0.0.
-// e.g. advertise peer URL localhost:2380 or listen peer URL 0.0.0.0:2380
+// if advertise URLs are default values(127.0.0.1:2379,2380) AND if listen URL is 0.0.0.0.
+// e.g. advertise peer URL 127.0.0.1:2380 or listen peer URL 0.0.0.0:2380
 // then the advertise peer host would be updated with machine's default host,
 // while keeping the listen URL's port.
 // User can work around this by explicitly setting URL with 127.0.0.1.
