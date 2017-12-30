@@ -324,7 +324,6 @@ func (n *node) run(r *raft) {
 			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {
-				r.resetPendingConf()
 				select {
 				case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
 				case <-n.done:
@@ -344,7 +343,6 @@ func (n *node) run(r *raft) {
 				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
-				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
 			}

@@ -2736,8 +2736,8 @@ func TestStepConfig(t *testing.T) {
 	if g := r.raftLog.lastIndex(); g != index+1 {
 		t.Errorf("index = %d, want %d", g, index+1)
 	}
-	if !r.pendingConf {
-		t.Errorf("pendingConf = %v, want true", r.pendingConf)
+	if r.pendingConfIndex != index+1 {
+		t.Errorf("pendingConfIndex = %d, want %d", r.pendingConfIndex, index+1)
 	}
 }
 
@@ -2751,7 +2751,7 @@ func TestStepIgnoreConfig(t *testing.T) {
 	r.becomeLeader()
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange}}})
 	index := r.raftLog.lastIndex()
-	pendingConf := r.pendingConf
+	pendingConfIndex := r.pendingConfIndex
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange}}})
 	wents := []pb.Entry{{Type: pb.EntryNormal, Term: 1, Index: 3, Data: nil}}
 	ents, err := r.raftLog.entries(index+1, noLimit)
@@ -2761,57 +2761,39 @@ func TestStepIgnoreConfig(t *testing.T) {
 	if !reflect.DeepEqual(ents, wents) {
 		t.Errorf("ents = %+v, want %+v", ents, wents)
 	}
-	if r.pendingConf != pendingConf {
-		t.Errorf("pendingConf = %v, want %v", r.pendingConf, pendingConf)
+	if r.pendingConfIndex != pendingConfIndex {
+		t.Errorf("pendingConfIndex = %d, want %d", r.pendingConfIndex, pendingConfIndex)
 	}
 }
 
-// TestRecoverPendingConfig tests that new leader recovers its pendingConf flag
+// TestNewLeaderPendingConfig tests that new leader sets its pendingConfigIndex
 // based on uncommitted entries.
-func TestRecoverPendingConfig(t *testing.T) {
+func TestNewLeaderPendingConfig(t *testing.T) {
 	tests := []struct {
-		entType  pb.EntryType
-		wpending bool
+		addEntry      bool
+		wpendingIndex uint64
 	}{
-		{pb.EntryNormal, false},
-		{pb.EntryConfChange, true},
+		{false, 0},
+		{true, 1},
 	}
 	for i, tt := range tests {
 		r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.appendEntry(pb.Entry{Type: tt.entType})
+		if tt.addEntry {
+			r.appendEntry(pb.Entry{Type: pb.EntryNormal})
+		}
 		r.becomeCandidate()
 		r.becomeLeader()
-		if r.pendingConf != tt.wpending {
-			t.Errorf("#%d: pendingConf = %v, want %v", i, r.pendingConf, tt.wpending)
+		if r.pendingConfIndex != tt.wpendingIndex {
+			t.Errorf("#%d: pendingConfIndex = %d, want %d",
+				i, r.pendingConfIndex, tt.wpendingIndex)
 		}
 	}
 }
 
-// TestRecoverDoublePendingConfig tests that new leader will panic if
-// there exist two uncommitted config entries.
-func TestRecoverDoublePendingConfig(t *testing.T) {
-	func() {
-		defer func() {
-			if err := recover(); err == nil {
-				t.Errorf("expect panic, but nothing happens")
-			}
-		}()
-		r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
-		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
-		r.becomeCandidate()
-		r.becomeLeader()
-	}()
-}
-
-// TestAddNode tests that addNode could update pendingConf and nodes correctly.
+// TestAddNode tests that addNode could update nodes correctly.
 func TestAddNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	r.pendingConf = true
 	r.addNode(2)
-	if r.pendingConf {
-		t.Errorf("pendingConf = %v, want false", r.pendingConf)
-	}
 	nodes := r.nodes()
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
@@ -2819,14 +2801,10 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
-// TestAddLearner tests that addLearner could update pendingConf and nodes correctly.
+// TestAddLearner tests that addLearner could update nodes correctly.
 func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	r.pendingConf = true
 	r.addLearner(2)
-	if r.pendingConf {
-		t.Errorf("pendingConf = %v, want false", r.pendingConf)
-	}
 	nodes := r.nodes()
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
@@ -2841,7 +2819,6 @@ func TestAddLearner(t *testing.T) {
 // immediately when checkQuorum is set.
 func TestAddNodeCheckQuorum(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	r.pendingConf = true
 	r.checkQuorum = true
 
 	r.becomeCandidate()
@@ -2872,15 +2849,11 @@ func TestAddNodeCheckQuorum(t *testing.T) {
 	}
 }
 
-// TestRemoveNode tests that removeNode could update pendingConf, nodes and
+// TestRemoveNode tests that removeNode could update nodes and
 // and removed list correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-	r.pendingConf = true
 	r.removeNode(2)
-	if r.pendingConf {
-		t.Errorf("pendingConf = %v, want false", r.pendingConf)
-	}
 	w := []uint64{1}
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
@@ -2894,15 +2867,11 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
-// TestRemoveLearner tests that removeNode could update pendingConf, nodes and
+// TestRemoveLearner tests that removeNode could update nodes and
 // and removed list correctly.
 func TestRemoveLearner(t *testing.T) {
 	r := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
-	r.pendingConf = true
 	r.removeNode(2)
-	if r.pendingConf {
-		t.Errorf("pendingConf = %v, want false", r.pendingConf)
-	}
 	w := []uint64{1}
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
