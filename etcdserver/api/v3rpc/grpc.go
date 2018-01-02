@@ -16,7 +16,9 @@ package v3rpc
 
 import (
 	"crypto/tls"
+	"io/ioutil"
 	"math"
+	"os"
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -30,10 +32,6 @@ const (
 	maxStreams        = math.MaxUint32
 	maxSendBytes      = math.MaxInt32
 )
-
-func init() {
-	grpclog.SetLogger(plog)
-}
 
 func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOption) *grpc.Server {
 	var opts []grpc.ServerOption
@@ -55,5 +53,13 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOptio
 	pb.RegisterAuthServer(grpcServer, NewAuthServer(s))
 	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s))
 
+	if s.Cfg.Debug {
+		grpc.EnableTracing = true
+		// enable info, warning, error
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	} else {
+		// only discard info
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+	}
 	return grpcServer
 }
