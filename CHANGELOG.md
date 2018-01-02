@@ -2,6 +2,10 @@
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
 
+## [v3.3.0-rc.1](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.1) (2018-01-02)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0-rc.0...v3.3.0-rc.1) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
 ## [v3.3.0-rc.0](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
@@ -212,6 +216,16 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - `*.aci` files won't be available from etcd `v3.4` release.
 - Add container registry [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd).
   - [quay.io/coreos/etcd](https://quay.io/coreos/etcd) is still supported as secondary.
+
+
+## [v3.2.13](https://github.com/coreos/etcd/releases/tag/v3.2.13) (2018-01-02)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.12...v3.2.13) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Fixed
+
+- Remove [verbose error messages on stream cancel and gRPC info-level logs](https://github.com/coreos/etcd/pull/9080) in server-side.
+- Fix [gRPC server panic on `GracefulStop` TLS-enabled server](https://github.com/coreos/etcd/pull/8987).
 
 
 ## [v3.2.12](https://github.com/coreos/etcd/releases/tag/v3.2.12) (2017-12-20)
