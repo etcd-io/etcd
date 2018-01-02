@@ -128,7 +128,10 @@ func (f *failureDelay) Inject(c *cluster, round int) error {
 	if err := f.failure.Inject(c, round); err != nil {
 		return err
 	}
-	time.Sleep(f.delayDuration)
+	if f.delayDuration > 0 {
+		plog.Infof("sleeping delay duration %v for %q", f.delayDuration, f.failure.Desc())
+		time.Sleep(f.delayDuration)
+	}
 	return nil
 }
 
