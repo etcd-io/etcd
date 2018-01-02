@@ -24,6 +24,9 @@ const (
 	slowNetworkLatency = 500 // 500 millisecond
 	randomVariation    = 50
 
+	// delay duration to trigger leader election (default election timeout 1s)
+	triggerElectionDur = 5 * time.Second
+
 	// Wait more when it recovers from slow network, because network layer
 	// needs extra time to propagate traffic control (tc command) change.
 	// Otherwise, we get different hash values from the previous revision.
@@ -82,18 +85,26 @@ func injectDropPort(m *member) error  { return m.Agent.DropPort(m.peerPort()) }
 func recoverDropPort(m *member) error { return m.Agent.RecoverPort(m.peerPort()) }
 
 func newFailureIsolate() failure {
-	return &failureOne{
+	f := &failureOne{
 		description:   "isolate one member",
 		injectMember:  injectDropPort,
 		recoverMember: recoverDropPort,
 	}
+	return &failureDelay{
+		failure:       f,
+		delayDuration: triggerElectionDur,
+	}
 }
 
 func newFailureIsolateAll() failure {
-	return &failureAll{
+	f := &failureAll{
 		description:   "isolate all members",
 		injectMember:  injectDropPort,
 		recoverMember: recoverDropPort,
+	}
+	return &failureDelay{
+		failure:       f,
+		delayDuration: triggerElectionDur,
 	}
 }
 
@@ -115,10 +126,14 @@ func recoverLatency(m *member) error {
 
 func newFailureSlowNetworkOneMember() failure {
 	desc := fmt.Sprintf("slow down one member's network by adding %d ms latency", slowNetworkLatency)
-	return &failureOne{
+	f := &failureOne{
 		description:   description(desc),
 		injectMember:  injectLatency,
 		recoverMember: recoverLatency,
+	}
+	return &failureDelay{
+		failure:       f,
+		delayDuration: triggerElectionDur,
 	}
 }
 
@@ -129,14 +144,22 @@ func newFailureSlowNetworkLeader() failure {
 		injectMember:  injectLatency,
 		recoverMember: recoverLatency,
 	}
-	return &failureLeader{ff, 0}
+	f := &failureLeader{ff, 0}
+	return &failureDelay{
+		failure:       f,
+		delayDuration: triggerElectionDur,
+	}
 }
 
 func newFailureSlowNetworkAll() failure {
-	return &failureAll{
+	f := &failureAll{
 		description:   "slow down all members' network",
 		injectMember:  injectLatency,
 		recoverMember: recoverLatency,
+	}
+	return &failureDelay{
+		failure:       f,
+		delayDuration: triggerElectionDur,
 	}
 }
 
