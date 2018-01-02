@@ -46,7 +46,6 @@ type AgentConfig struct {
 	EtcdPath      string
 	LogDir        string
 	FailpointAddr string
-	UseRoot       bool
 }
 
 func newAgent(cfg AgentConfig) (*Agent, error) {
@@ -178,23 +177,14 @@ func (a *Agent) terminate() error {
 }
 
 func (a *Agent) dropPort(port int) error {
-	if !a.cfg.UseRoot {
-		return nil
-	}
 	return netutil.DropPort(port)
 }
 
 func (a *Agent) recoverPort(port int) error {
-	if !a.cfg.UseRoot {
-		return nil
-	}
 	return netutil.RecoverPort(port)
 }
 
 func (a *Agent) setLatency(ms, rv int) error {
-	if !a.cfg.UseRoot {
-		return nil
-	}
 	if ms == 0 {
 		return netutil.RemoveLatency()
 	}
