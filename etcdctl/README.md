@@ -83,7 +83,7 @@ Insert '--' for workaround:
 
 ### GET [options] \<key\> [range_end]
 
-GET gets the key or a range of keys [key, range_end) if `range-end` is given.
+GET gets the key or a range of keys [key, range_end) if range_end is given.
 
 RPC: Range
 
@@ -178,7 +178,7 @@ If any key or value contains non-printable characters or control characters, sim
 
 ### DEL [options] \<key\> [range_end]
 
-Removes the specified key or range of keys [key, range_end) if `range-end` is given.
+Removes the specified key or range of keys [key, range_end) if range_end is given.
 
 RPC: DeleteRange
 
@@ -339,7 +339,7 @@ Prints the compacted revision.
 
 ### WATCH [options] [key or prefix] [range_end] [--] [exec-command arg1 arg2 ...]
 
-Watch watches events stream on keys or prefixes, [key or prefix, range_end) if `range-end` is given. The watch command runs until it encounters an error or is terminated by the user.  If range_end is given, it must be lexicographically greater than key or "\x00".
+Watch watches events stream on keys or prefixes, [key or prefix, range_end) if range_end is given. The watch command runs until it encounters an error or is terminated by the user.  If range_end is given, it must be lexicographically greater than key or "\x00".
 
 RPC: Watch
 
