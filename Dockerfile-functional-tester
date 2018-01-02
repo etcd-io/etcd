@@ -1,0 +1,53 @@
+FROM ubuntu:17.10
+
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+RUN apt-get -y update \
+  && apt-get -y install \
+  build-essential \
+  gcc \
+  apt-utils \
+  pkg-config \
+  software-properties-common \
+  apt-transport-https \
+  libssl-dev \
+  sudo \
+  bash \
+  curl \
+  wget \
+  tar \
+  git \
+  && apt-get -y update \
+  && apt-get -y upgrade \
+  && apt-get -y autoremove \
+  && apt-get -y autoclean
+
+ENV GOROOT /usr/local/go
+ENV GOPATH /go
+ENV PATH ${GOPATH}/bin:${GOROOT}/bin:${PATH}
+ENV GO_VERSION REPLACE_ME_GO_VERSION
+ENV GO_DOWNLOAD_URL https://storage.googleapis.com/golang
+RUN rm -rf ${GOROOT} \
+  && curl -s ${GO_DOWNLOAD_URL}/go${GO_VERSION}.linux-amd64.tar.gz | tar -v -C /usr/local/ -xz \
+  && mkdir -p ${GOPATH}/src ${GOPATH}/bin \
+  && go version
+
+RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
+ADD . ${GOPATH}/src/github.com/coreos/etcd
+
+RUN go get -v github.com/coreos/gofail \
+  && pushd ${GOPATH}/src/github.com/coreos/etcd \
+  && GO_BUILD_FLAGS="-v" ./build \
+  && cp ./bin/etcd /etcd \
+  && cp ./bin/etcdctl /etcdctl \
+  && GO_BUILD_FLAGS="-v" FAILPOINTS=1 ./build \
+  && cp ./bin/etcd /etcd-failpoints \
+  && ./tools/functional-tester/build \
+  && cp ./bin/etcd-agent /etcd-agent \
+  && cp ./bin/etcd-tester /etcd-tester \
+  && cp ./bin/etcd-runner /etcd-runner \
+  && go build -v -o /benchmark ./cmd/tools/benchmark \
+  && go build -v -o /etcd-test-proxy ./cmd/tools/etcd-test-proxy \
+  && popd \
+  && rm -rf ${GOPATH}/src/github.com/coreos/etcd
