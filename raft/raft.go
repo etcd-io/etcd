@@ -116,8 +116,9 @@ type Config struct {
 	// used for testing right now.
 	peers []uint64
 
-	// learners contains the IDs of all leaner nodes (including self if the local node is a leaner) in the raft cluster.
-	// learners only receives entries from the leader node. It does not vote or promote itself.
+	// learners contains the IDs of all learner nodes (including self if the
+	// local node is a learner) in the raft cluster. learners only receives
+	// entries from the leader node. It does not vote or promote itself.
 	learners []uint64
 
 	// ElectionTick is the number of Node.Tick invocations that must pass between
@@ -1277,7 +1278,7 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 	} else {
 		if isLearner && !pr.IsLearner {
 			// can only change Learner to Voter
-			r.logger.Infof("%x ignored addLeaner: do not support changing %x from raft peer to learner.", r.id, id)
+			r.logger.Infof("%x ignored addLearner: do not support changing %x from raft peer to learner.", r.id, id)
 			return
 		}
 
