@@ -453,7 +453,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	clus.TakeClient(0)
 
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}
@@ -480,7 +480,7 @@ func TestKVNewAfterClose(t *testing.T) {
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}

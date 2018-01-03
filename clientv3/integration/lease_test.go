@@ -299,7 +299,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	}
 
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Grant took too long")
 	case <-donec:
 	}
@@ -325,7 +325,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Grant took too long")
 	case <-donec:
 	}
@@ -357,7 +357,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Revoke took too long")
 	case <-donec:
 	}
