@@ -1440,6 +1440,45 @@ Prints etcd version and API version.
 # API version: 3.1
 ```
 
+### CHECK \<subcommand\>
+
+CHECK provides commands for checking properties of the etcd cluster.
+
+### CHECK PERF [options]
+
+CHECK PERF checks the performance of the etcd cluster for 60 seconds.
+
+RPC: CheckPerf
+
+#### Options
+
+- load -- the performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)
+
+- prefix -- the prefix for writing the performance check's keys.
+
+#### Output
+
+Prints the result of performance check on different criteria like throughput. Also prints an overall status of the check as pass or fail.
+
+#### Examples
+
+Shows examples of both, pass and fail, status. The failure is due to the fact that a large workload was tried on a single node etcd cluster running on a laptop environment created for development and testing purpose.
+
+```bash
+./etcdctl check perf --load="s"
+# 60 / 60 Booooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo! 100.00%1m0s
+# PASS: Throughput is 150 writes/s
+# PASS: Slowest request took 0.087509s
+# PASS: Stddev is 0.011084s
+# PASS
+./etcdctl check perf --load="l"
+# 60 / 60 Booooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo! 100.00%1m0s
+# FAIL: Throughput too low: 6808 writes/s
+# PASS: Slowest request took 0.228191s
+# PASS: Stddev is 0.033547s
+# FAIL
+```
+
 ## Exit codes
 
 For all commands, a successful execution return a zero exit code. All failures will return non-zero exit codes.
