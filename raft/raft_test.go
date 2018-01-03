@@ -368,7 +368,7 @@ func TestLearnerElectionTimeout(t *testing.T) {
 	}
 }
 
-// TestLearnerPromotion verifies that the leaner should not election until
+// TestLearnerPromotion verifies that the learner should not election until
 // it is promoted to a normal peer.
 func TestLearnerPromotion(t *testing.T) {
 	n1 := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
