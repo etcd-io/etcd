@@ -24,8 +24,6 @@ import (
 )
 
 func Main() {
-	checkSupportArch()
-
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
 		if covArgs := os.Getenv("ETCDCOV_ARGS"); len(covArgs) > 0 {
