@@ -32,6 +32,8 @@ func TestCtlV2SetPeerTLS(t *testing.T)   { testCtlV2Set(t, &configPeerTLS, false
 func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, &configTLS, false) }
 func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	defer testutil.AfterTest(t)
+	os.Setenv("EXPECT_DEBUG", "1")
+	defer os.Unsetenv("EXPECT_DEBUG")
 
 	epc := setupEtcdctlTest(t, cfg, quorum)
 	defer func() {
