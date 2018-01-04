@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +73,7 @@ func TestEmbedEtcd(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i, tt := range tests {
+		tests[i].cfg.UnsupportedArch = runtime.GOARCH
 		tests[i].cfg.Dir = dir
 		e, err := embed.StartEtcd(&tests[i].cfg)
 		if e != nil {
@@ -112,6 +114,7 @@ func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop
 // cutting existing transports.
 func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	cfg := embed.NewConfig()
+	cfg.UnsupportedArch = runtime.GOARCH
 	if secure {
 		cfg.ClientTLSInfo = testTLSInfo
 		cfg.PeerTLSInfo = testTLSInfo
@@ -175,6 +178,7 @@ func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 }
 
 func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
+	cfg.UnsupportedArch = runtime.GOARCH
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = curls, curls
 	cfg.LPUrls, cfg.APUrls = purls, purls

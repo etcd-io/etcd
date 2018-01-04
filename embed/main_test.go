@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,26 +15,13 @@
 package embed
 
 import (
-	"io/ioutil"
 	"os"
 	"runtime"
 	"testing"
-
-	"github.com/coreos/etcd/auth"
 )
 
-// TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
-func TestStartEtcdWrongToken(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "token-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
-	cfg := NewConfig()
-	cfg.Dir = tdir
-	cfg.AuthToken = "wrong-token"
-	cfg.UnsupportedArch = runtime.GOARCH // for 32-bit CIs
-	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
-		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
-	}
+func TestMain(m *testing.M) {
+	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
+	v := m.Run()
+	os.Exit(v)
 }
