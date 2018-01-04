@@ -60,8 +60,10 @@ import (
 const (
 	// RequestWaitTimeout is the time duration to wait for a request to go through or detect leader loss.
 	RequestWaitTimeout = 3 * time.Second
-	tickDuration       = 10 * time.Millisecond
-	requestTimeout     = 20 * time.Second
+	// ApplyDuration is the time duration required for a request to apply.
+	ApplyDuration  = 100 * time.Millisecond
+	tickDuration   = 10 * time.Millisecond
+	requestTimeout = 20 * time.Second
 
 	clusterName  = "etcd"
 	basePort     = 21000
