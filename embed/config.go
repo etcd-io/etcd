@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -158,6 +159,10 @@ type Config struct {
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
+
+	// UnsupportedArch is specified to override unsupported architecture run warnings.
+	// (e.g. set "arm64" to run on arm64 when runtime.GOARCH=="arm64")
+	UnsupportedArch string `json:"unsupported-arch"`
 
 	// UserHandlers is for registering users handlers and only used for
 	// embedding etcd into other applications.
@@ -385,10 +390,22 @@ func (cfg *configYAML) configFromFile(path string) error {
 	cfg.ClientAutoTLS = cfg.ClientSecurityJSON.AutoTLS
 	cfg.PeerAutoTLS = cfg.PeerSecurityJSON.AutoTLS
 
+	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok {
+		cfg.UnsupportedArch = env
+	}
 	return cfg.Validate()
 }
 
 func (cfg *Config) Validate() error {
+	// TODO qualify arm64
+	goArch := runtime.GOARCH
+	if goArch != "amd64" && goArch != "ppc64le" {
+		arch := cfg.UnsupportedArch
+		if arch == "" || arch != goArch {
+			return fmt.Errorf("%q is not supported! Consider setting ETCD_UNSUPPORTED_ARCH=%s", goArch, goArch)
+		}
+		plog.Warningf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set", arch)
+	}
 	if err := checkBindURLs(cfg.LPUrls); err != nil {
 		return err
 	}

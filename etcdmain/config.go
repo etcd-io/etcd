@@ -197,6 +197,9 @@ func newConfig() *config {
 	// unsafe
 	fs.BoolVar(&cfg.ec.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
 
+	// unsupported architecture
+	fs.StringVar(&cfg.ec.UnsupportedArch, "unsupported-arch", "", "Specify the name of architecture name to override unsupported architecture warning (immediately exit if not set).")
+
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 

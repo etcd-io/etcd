@@ -54,6 +54,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
 - Add [`--auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
 - Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
+- Add [`--unsupported-arch`](https://github.com/coreos/etcd/pull/9088) flag to remove [confusing environment variable warnings](https://github.com/coreos/etcd/issues/9077).
 - Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm is raised](https://github.com/coreos/etcd/issues/8207).
 - Provide [error information in `/health`](https://github.com/coreos/etcd/pull/8312).

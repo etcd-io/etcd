@@ -386,16 +386,3 @@ func identifyDataDirOrDie(dir string) dirType {
 	}
 	return dirEmpty
 }
-
-func checkSupportArch() {
-	// TODO qualify arm64
-	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" {
-		return
-	}
-	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
-		plog.Warningf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set", env)
-		return
-	}
-	plog.Errorf("etcd on unsupported platform without ETCD_UNSUPPORTED_ARCH=%s set.", runtime.GOARCH)
-	os.Exit(1)
-}
