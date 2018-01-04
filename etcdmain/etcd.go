@@ -392,6 +392,9 @@ func checkSupportArch() {
 	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" {
 		return
 	}
+	// unsupported arch only configured via environment variable
+	// so unset here to not parse through flag
+	defer os.Unsetenv("ETCD_UNSUPPORTED_ARCH")
 	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
 		plog.Warningf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set", env)
 		return
