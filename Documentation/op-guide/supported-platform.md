@@ -6,7 +6,7 @@ The following table lists etcd support status for common architectures and opera
 
 | Architecture | Operating System | Status       | Maintainers                 |
 | ------------ | ---------------- | ------------ | --------------------------- |
-| amd64        | Darwin           | Experimental | etcd maintainers            | 
+| amd64        | Darwin           | Experimental | etcd maintainers            |
 | amd64        | Linux            | Stable       | etcd maintainers            |
 | amd64        | Windows          | Experimental |                             |
 | arm64        | Linux            | Experimental | @glevand                    |
@@ -32,7 +32,7 @@ For etcd to officially support a new platform as stable, a few requirements are 
 
 etcd has known issues on 32-bit systems due to a bug in the Go runtime. See the [Go issue][go-issue] and [atomic package][go-atomic] for more information.
 
-To avoid inadvertently running a possibly unstable etcd server, `etcd` on unstable or unsupported architectures will print a warning message and immediately exit if the environment variable `ETCD_UNSUPPORTED_ARCH` is not set to the target architecture.
+To avoid inadvertently running a possibly unstable etcd server, `etcd` on unstable or unsupported architectures will print a warning message and immediately exit if flag `--unsupported-arch` or environment variable `ETCD_UNSUPPORTED_ARCH` is not set to the target architecture.
 
 Currently amd64 and ppc64le architectures are officially supported by `etcd`.
 
