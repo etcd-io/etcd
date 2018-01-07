@@ -41,6 +41,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 
 	"github.com/coreos/pkg/capnslog"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -523,6 +524,10 @@ func (e *Etcd) serveClients() (err error) {
 }
 
 func (e *Etcd) serveMetrics() (err error) {
+	if e.cfg.Metrics == "extensive" {
+		grpc_prometheus.EnableHandlingTimeHistogram()
+	}
+
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
 		etcdhttp.HandleMetricsHealth(metricsMux, e.Server)
