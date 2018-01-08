@@ -81,3 +81,16 @@ func togRPCError(err error) error {
 	}
 	return grpcErr
 }
+
+func isClientCtxErr(ctxErr error, err error) bool {
+	if ctxErr != nil {
+		return true
+	}
+
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled || code == codes.DeadlineExceeded
+}
