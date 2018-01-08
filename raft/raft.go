@@ -377,10 +377,16 @@ func (r *raft) hardState() pb.HardState {
 func (r *raft) quorum() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) nodes() []uint64 {
-	nodes := make([]uint64, 0, len(r.prs)+len(r.learnerPrs))
+	nodes := make([]uint64, 0, len(r.prs))
 	for id := range r.prs {
 		nodes = append(nodes, id)
 	}
+	sort.Sort(uint64Slice(nodes))
+	return nodes
+}
+
+func (r *raft) learnerNodes() []uint64 {
+	nodes := make([]uint64, 0, len(r.learnerPrs))
 	for id := range r.learnerPrs {
 		nodes = append(nodes, id)
 	}
