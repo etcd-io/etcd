@@ -1,3 +1,18 @@
+## [v3.4.0](https://github.com/coreos/etcd/releases/tag/v3.4.0) (TBD)
+
+**v3.4.0 is not yet released.**
+
+### Added(`etcd`)
+
+- Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
+  - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
+
+### Improved(`etcd/raft`)
+
+- Improve [`becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
+  - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
+
+
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
@@ -106,6 +121,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`lease keep-alive --once`](https://github.com/coreos/etcd/pull/8775) flag.
 - Make [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease print [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
+- Add [`snapshot restore --wal-dir`](https://github.com/coreos/etcd/pull/9124) flag.
 - Add [`defrag --data-dir`](https://github.com/coreos/etcd/pull/8367) flag.
 - Add [`move-leader`](https://github.com/coreos/etcd/pull/8153) command.
 - Add [`endpoint hashkv`](https://github.com/coreos/etcd/pull/8351) command.
