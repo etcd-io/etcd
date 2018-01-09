@@ -52,7 +52,10 @@ func isRepeatableStopError(err error) bool {
 		return true
 	}
 	// only retry if unavailable
-	ev, _ := status.FromError(err)
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
 	return ev.Code() != codes.Unavailable
 }
 
@@ -68,8 +71,7 @@ func isRepeatableStopError(err error) bool {
 // Returning "true" means retry should stop, otherwise it violates
 // write-at-most-once semantics.
 func isNonRepeatableStopError(err error) bool {
-	ev, _ := status.FromError(err)
-	if ev.Code() != codes.Unavailable {
+	if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
 		return true
 	}
 	desc := rpctypes.ErrorDesc(err)

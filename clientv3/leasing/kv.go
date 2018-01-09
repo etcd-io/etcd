@@ -285,7 +285,7 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 		if _, ok := err.(rpctypes.EtcdError); ok {
 			return nil, err
 		}
-		if ev, _ := status.FromError(err); ev.Code() != codes.Unavailable {
+		if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
 			return nil, err
 		}
 	}
