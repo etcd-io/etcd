@@ -20,7 +20,7 @@ DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/m
 
 # exact version of packages to build
 GOGO_PROTO_SHA="41168f6614b7bb144818ec8967b8c702705df564"
-GRPC_GATEWAY_SHA="a92d37fb6339375fa4bb7d9c364f92373fe199c3"
+GRPC_GATEWAY_SHA="61c34cc7e0c7a0d85e4237d665e622640279ff3d"
 SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
 
 # set up self-contained GOPATH for building
