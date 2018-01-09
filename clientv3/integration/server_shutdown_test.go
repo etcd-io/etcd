@@ -361,7 +361,10 @@ func isServerCtxTimeout(err error) bool {
 	if err == nil {
 		return false
 	}
-	ev, _ := status.FromError(err)
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
 	code := ev.Code()
 	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
 }
