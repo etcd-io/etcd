@@ -348,6 +348,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 				n.Tick()
 			case rd := <-n.Ready():
 				s.Append(rd.Entries)
+				applied := false
 				for _, e := range rd.Entries {
 					rdyEntries = append(rdyEntries, e)
 					switch e.Type {
@@ -356,10 +357,13 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 						var cc raftpb.ConfChange
 						cc.Unmarshal(e.Data)
 						n.ApplyConfChange(cc)
-						applyConfChan <- struct{}{}
+						applied = true
 					}
 				}
 				n.Advance()
+				if applied {
+					applyConfChan <- struct{}{}
+				}
 			}
 		}
 	}()

@@ -256,8 +256,13 @@ type raft struct {
 	// leadTransferee is id of the leader transfer target when its value is not zero.
 	// Follow the procedure defined in raft thesis 3.10.
 	leadTransferee uint64
-	// New configuration is ignored if there exists unapplied configuration.
-	pendingConf bool
+	// Only one conf change may be pending (in the log, but not yet
+	// applied) at a time. This is enforced via pendingConfIndex, which
+	// is set to a value >= the log index of the latest pending
+	// configuration change (if any). Config changes are only allowed to
+	// be proposed if the leader's applied index is greater than this
+	// value.
+	pendingConfIndex uint64
 
 	readOnly *readOnly
 
@@ -579,7 +584,7 @@ func (r *raft) reset(term uint64) {
 		}
 	})
 
-	r.pendingConf = false
+	r.pendingConfIndex = 0
 	r.readOnly = newReadOnly(r.readOnly.option)
 }
 
@@ -683,12 +688,13 @@ func (r *raft) becomeLeader() {
 		r.logger.Panicf("unexpected error getting uncommitted entries (%v)", err)
 	}
 
-	nconf := numOfPendingConf(ents)
-	if nconf > 1 {
-		panic("unexpected multiple uncommitted config entry")
-	}
-	if nconf == 1 {
-		r.pendingConf = true
+	// Conservatively set the pendingConfIndex to the last index in the
+	// log. There may or may not be a pending config change, but it's
+	// safe to delay any future proposals until we commit all our
+	// pending log entries, and scanning the entire tail of the log
+	// could be expensive.
+	if len(ents) > 0 {
+		r.pendingConfIndex = ents[len(ents)-1].Index
 	}
 
 	r.appendEntry(pb.Entry{Data: nil})
@@ -902,11 +908,13 @@ func stepLeader(r *raft, m pb.Message) {
 
 		for i, e := range m.Entries {
 			if e.Type == pb.EntryConfChange {
-				if r.pendingConf {
-					r.logger.Infof("propose conf %s ignored since pending unapplied configuration", e.String())
+				if r.pendingConfIndex > r.raftLog.applied {
+					r.logger.Infof("propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
+						e.String(), r.pendingConfIndex, r.raftLog.applied)
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
+				} else {
+					r.pendingConfIndex = r.raftLog.lastIndex() + uint64(i) + 1
 				}
-				r.pendingConf = true
 			}
 		}
 		r.appendEntry(m.Entries...)
@@ -1271,7 +1279,6 @@ func (r *raft) addLearner(id uint64) {
 }
 
 func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
-	r.pendingConf = false
 	pr := r.getProgress(id)
 	if pr == nil {
 		r.setProgress(id, 0, r.raftLog.lastIndex()+1, isLearner)
@@ -1307,7 +1314,6 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 
 func (r *raft) removeNode(id uint64) {
 	r.delProgress(id)
-	r.pendingConf = false
 
 	// do not try to commit or abort transferring if there is no nodes in the cluster.
 	if len(r.prs) == 0 && len(r.learnerPrs) == 0 {
@@ -1324,8 +1330,6 @@ func (r *raft) removeNode(id uint64) {
 		r.abortLeaderTransfer()
 	}
 }
-
-func (r *raft) resetPendingConf() { r.pendingConf = false }
 
 func (r *raft) setProgress(id, match, next uint64, isLearner bool) {
 	if !isLearner {
