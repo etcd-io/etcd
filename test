@@ -133,6 +133,9 @@ function functional_pass {
 		-peer-ports 12380,22380,32380 \
 		-limit 1 \
 		-schedule-cases "0 1 2 3 4 5" \
+		-stress-qps 1000 \
+		-stress-key-txn-count 100 \
+		-stress-key-txn-ops 10 \
 		-exit-on-failure && echo "'etcd-tester' succeeded"
 	ETCD_TESTER_EXIT_CODE=$?
 	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
