@@ -56,6 +56,7 @@ var (
 	restoreCluster      string
 	restoreClusterToken string
 	restoreDataDir      string
+	restoreWalDir       string
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
@@ -99,6 +100,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 		Run:   snapshotRestoreCommandFunc,
 	}
 	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory")
+	cmd.Flags().StringVar(&restoreWalDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
 	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
 	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
@@ -187,7 +189,10 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		basedir = restoreName + ".etcd"
 	}
 
-	waldir := filepath.Join(basedir, "member", "wal")
+	waldir := restoreWalDir
+	if waldir == "" {
+		waldir = filepath.Join(basedir, "member", "wal")
+	}
 	snapdir := filepath.Join(basedir, "member", "snap")
 
 	if _, err := os.Stat(basedir); err == nil {
