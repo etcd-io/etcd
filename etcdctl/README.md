@@ -874,6 +874,8 @@ The snapshot restore options closely resemble to those used in the `etcd` comman
 
 - data-dir -- Path to the data directory. Uses \<name\>.etcd if none given.
 
+- wal-dir -- Path to the WAL directory. Uses data directory if none given.
+
 - initial-cluster -- The initial cluster configuration for the restored etcd cluster.
 
 - initial-cluster-token -- Initial cluster token for the restored etcd cluster.
