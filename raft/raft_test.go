@@ -1231,8 +1231,9 @@ func TestPastElectionTimeout(t *testing.T) {
 // actual stepX function.
 func TestStepIgnoreOldTermMsg(t *testing.T) {
 	called := false
-	fakeStep := func(r *raft, m pb.Message) {
+	fakeStep := func(r *raft, m pb.Message) error {
 		called = true
+		return nil
 	}
 	sm := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	sm.step = fakeStep
@@ -3219,6 +3220,10 @@ func TestLeaderTransferIgnoreProposal(t *testing.T) {
 	}
 
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+	err := lead.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+	if err != ErrProposalDropped {
+		t.Fatalf("should return drop proposal error while transferring")
+	}
 
 	if lead.prs[1].Match != 1 {
 		t.Fatalf("node 1 has match %x, want %x", lead.prs[1].Match, 1)
