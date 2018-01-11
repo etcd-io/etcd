@@ -225,7 +225,7 @@ func writeTxn(kvc pb.KVClient, keys []string, txnOps int) stressFunc {
 	return func(ctx context.Context) (error, int64) {
 		ks := make(map[string]struct{}, txnOps)
 		for len(ks) != txnOps {
-			ks[keys[rand.Intn(64)]] = struct{}{}
+			ks[keys[rand.Intn(len(keys))]] = struct{}{}
 		}
 		selected := make([]string, 0, txnOps)
 		for k := range ks {
