@@ -2475,8 +2475,12 @@ func TestRestoreWithLearner(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
 	sg := sm.nodes()
-	if len(sg) != len(s.Metadata.ConfState.Nodes)+len(s.Metadata.ConfState.Learners) {
-		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState)
+	if len(sg) != len(s.Metadata.ConfState.Nodes) {
+		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Nodes)
+	}
+	lns := sm.learnerNodes()
+	if len(lns) != len(s.Metadata.ConfState.Learners) {
+		t.Errorf("sm.LearnerNodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Learners)
 	}
 	for _, n := range s.Metadata.ConfState.Nodes {
 		if sm.prs[n].IsLearner {
@@ -2805,8 +2809,8 @@ func TestAddNode(t *testing.T) {
 func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.addLearner(2)
-	nodes := r.nodes()
-	wnodes := []uint64{1, 2}
+	nodes := r.learnerNodes()
+	wnodes := []uint64{2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
 	}
@@ -2877,9 +2881,13 @@ func TestRemoveLearner(t *testing.T) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
+	w = []uint64{}
+	if g := r.learnerNodes(); !reflect.DeepEqual(g, w) {
+		t.Errorf("nodes = %v, want %v", g, w)
+	}
+
 	// remove all nodes from cluster
 	r.removeNode(1)
-	w = []uint64{}
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
