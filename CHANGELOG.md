@@ -9,13 +9,17 @@
 
 ### Improved(`etcd/raft`)
 
-- [Improve `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
+- [Improve Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
 
 
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
+
+## [v3.3.0-rc.2](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.2) (2018-01-11)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0-rc.1...v3.3.0-rc.2) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 ## [v3.3.0-rc.1](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.1) (2018-01-02)
 
@@ -207,7 +211,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Fix [watch restore from snapshot](https://github.com/coreos/etcd/pull/8427).
 - Fix ["put at-most-once" in `clientv3`](https://github.com/coreos/etcd/pull/8335).
 - Handle [empty key permission](https://github.com/coreos/etcd/pull/8514) in `etcdctl`.
-- [Fix server crash](https://github.com/coreos/etcd/pull/8010) on [invalid transaction request from gRPC gateway](https://github.com/coreos/etcd/issues/7889).
+- Fix [`mvcc/backend.defragdb` nil-pointer dereference on create bucket failure](https://github.com/coreos/etcd/pull/9119).
+- Fix [server crash](https://github.com/coreos/etcd/pull/8010) on [invalid transaction request from gRPC gateway](https://github.com/coreos/etcd/issues/7889).
 - Fix [`clientv3.WatchResponse.Canceled`](https://github.com/coreos/etcd/pull/8283) on [compacted watch request](https://github.com/coreos/etcd/issues/8231).
 - Handle [WAL renaming failure on Windows](https://github.com/coreos/etcd/pull/8286).
 - Make [peer dial timeout longer](https://github.com/coreos/etcd/pull/8599).
@@ -232,6 +237,19 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - `*.aci` files won't be available from etcd `v3.4` release.
 - Add container registry [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd).
   - [quay.io/coreos/etcd](https://quay.io/coreos/etcd) is still supported as secondary.
+
+
+## [v3.2.14](https://github.com/coreos/etcd/releases/tag/v3.2.14) (2018-01-11)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.13...v3.2.14) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Fixed
+
+- Fix [`mvcc/backend.defragdb` nil-pointer dereference on create bucket failure](https://github.com/coreos/etcd/pull/9119).
+
+### Improved
+
+- Log [user context cancel errors on stream APIs in debug level](https://github.com/coreos/etcd/pull/9105).
 
 
 ## [v3.2.13](https://github.com/coreos/etcd/releases/tag/v3.2.13) (2018-01-02)
