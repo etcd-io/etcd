@@ -202,7 +202,26 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		}
 		return endpoints
 	}
-	c := mustClientFromCmd(cmd)
+
+	sec := secureCfgFromCmd(cmd)
+	dt := dialTimeoutFromCmd(cmd)
+	ka := keepAliveTimeFromCmd(cmd)
+	kat := keepAliveTimeoutFromCmd(cmd)
+	eps, err := endpointsFromCmd(cmd)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
+
+	cfg, err := newClientCfg(eps, dt, ka, kat, sec, nil)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	c, err := v3.New(*cfg)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
 	ctx, cancel := commandCtx(cmd)
 	defer func() {
 		c.Close()
