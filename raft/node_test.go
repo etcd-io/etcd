@@ -109,8 +109,9 @@ func TestNodeStepUnblock(t *testing.T) {
 // TestNodePropose ensures that node.Propose sends the given proposal to the underlying raft.
 func TestNodePropose(t *testing.T) {
 	msgs := []raftpb.Message{}
-	appendStep := func(r *raft, m raftpb.Message) {
+	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
+		return nil
 	}
 
 	n := newNode()
@@ -147,8 +148,9 @@ func TestNodePropose(t *testing.T) {
 // It also ensures that ReadState can be read out through ready chan.
 func TestNodeReadIndex(t *testing.T) {
 	msgs := []raftpb.Message{}
-	appendStep := func(r *raft, m raftpb.Message) {
+	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
+		return nil
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
@@ -284,8 +286,9 @@ func TestNodeReadIndexToOldLeader(t *testing.T) {
 // to the underlying raft.
 func TestNodeProposeConfig(t *testing.T) {
 	msgs := []raftpb.Message{}
-	appendStep := func(r *raft, m raftpb.Message) {
+	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
+		return nil
 	}
 
 	n := newNode()
