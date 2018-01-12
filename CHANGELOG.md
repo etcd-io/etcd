@@ -7,10 +7,16 @@
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
   - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
 
-### Improved(`etcd/raft`)
+### Package `raft`
 
-- [Improve Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
+- Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
+- Add [`raft.ErrProposalDropped`](https://github.com/coreos/etcd/pull/9067).
+  - Now `(r *raft) Step` returns `raft.ErrProposalDropped` if a proposal has been ignored.
+  - e.g. a node is removed from cluster, [ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975), etc.
+- Add [`raft.Node.ProposeWithCancel`](https://github.com/coreos/etcd/pull/9137).
+  - `context.CancelFunc` is called on `raft.ErrProposalDropped`.
+- Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/coreos/etcd/pull/9116).
 
 
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
@@ -171,7 +177,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Fix [`Watch` API with gRPC gateway](https://github.com/coreos/etcd/issues/8237).
 - Upgrade gRPC gateway to [v1.3.0](https://github.com/coreos/etcd/issues/8838).
 
-### Added(`etcd/raft`)
+### Package `raft`
 
 - Add [non-voting member](https://github.com/coreos/etcd/pull/8751).
   - To implement [Raft thesis 4.2.1 Catching up new servers](https://github.com/coreos/etcd/issues/8568).
