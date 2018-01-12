@@ -81,10 +81,9 @@ func (s *keyStresser) Stress() error {
 	}
 	if s.keyTxnSuffixRange > 0 {
 		// adjust to make up ±70% of workloads with writes
-		stressEntries[0].weight = 0.24
-		stressEntries[1].weight = 0.24
+		stressEntries[0].weight = 0.35
 		stressEntries = append(stressEntries, stressEntry{
-			weight: 0.24,
+			weight: 0.35,
 			f:      newStressTxn(kvc, s.keyTxnSuffixRange, s.keyTxnOps),
 		})
 	}
