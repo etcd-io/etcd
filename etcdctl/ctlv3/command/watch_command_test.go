@@ -21,9 +21,10 @@ import (
 
 func Test_parseWatchArgs(t *testing.T) {
 	tt := []struct {
-		osArgs      []string // raw arguments to "watch" command
-		commandArgs []string // arguments after "spf13/cobra" preprocessing
-		interactive bool
+		osArgs           []string // raw arguments to "watch" command
+		commandArgs      []string // arguments after "spf13/cobra" preprocessing
+		envKey, envRange string
+		interactive      bool
 
 		watchArgs []string
 		execArgs  []string
@@ -46,7 +47,64 @@ func Test_parseWatchArgs(t *testing.T) {
 			err:         errBadArgsNumSeparator,
 		},
 		{
+			osArgs:      []string{"./bin/etcdctl", "watch"},
+			commandArgs: nil,
+			envKey:      "foo",
+			envRange:    "bar",
+			interactive: false,
+			watchArgs:   []string{"foo", "bar"},
+			execArgs:    nil,
+			err:         nil,
+		},
+		{
 			osArgs:      []string{"./bin/etcdctl", "watch", "foo"},
+			commandArgs: []string{"foo"},
+			envKey:      "foo",
+			envRange:    "",
+			interactive: false,
+			watchArgs:   nil,
+			execArgs:    nil,
+			err:         errBadArgsNumConflictEnv,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "foo", "bar"},
+			commandArgs: []string{"foo", "bar"},
+			envKey:      "foo",
+			envRange:    "",
+			interactive: false,
+			watchArgs:   nil,
+			execArgs:    nil,
+			err:         errBadArgsNumConflictEnv,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "foo", "bar"},
+			commandArgs: []string{"foo", "bar"},
+			envKey:      "foo",
+			envRange:    "bar",
+			interactive: false,
+			watchArgs:   nil,
+			execArgs:    nil,
+			err:         errBadArgsNumConflictEnv,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "foo"},
+			commandArgs: []string{"foo"},
+			interactive: false,
+			watchArgs:   []string{"foo"},
+			execArgs:    nil,
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch"},
+			commandArgs: nil,
+			envKey:      "foo",
+			interactive: false,
+			watchArgs:   []string{"foo"},
+			execArgs:    nil,
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "--rev", "1", "foo"},
 			commandArgs: []string{"foo"},
 			interactive: false,
 			watchArgs:   []string{"foo"},
@@ -56,6 +114,16 @@ func Test_parseWatchArgs(t *testing.T) {
 		{
 			osArgs:      []string{"./bin/etcdctl", "watch", "--rev", "1", "foo"},
 			commandArgs: []string{"foo"},
+			envKey:      "foo",
+			interactive: false,
+			watchArgs:   nil,
+			execArgs:    nil,
+			err:         errBadArgsNumConflictEnv,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "--rev", "1"},
+			commandArgs: nil,
+			envKey:      "foo",
 			interactive: false,
 			watchArgs:   []string{"foo"},
 			execArgs:    nil,
@@ -118,6 +186,35 @@ func Test_parseWatchArgs(t *testing.T) {
 			err:         nil,
 		},
 		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "--rev", "1", "--", "echo", "Hello", "World"},
+			commandArgs: []string{"echo", "Hello", "World"},
+			envKey:      "foo",
+			envRange:    "",
+			interactive: false,
+			watchArgs:   []string{"foo"},
+			execArgs:    []string{"echo", "Hello", "World"},
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "--rev", "1", "--", "echo", "Hello", "World"},
+			commandArgs: []string{"echo", "Hello", "World"},
+			envKey:      "foo",
+			envRange:    "bar",
+			interactive: false,
+			watchArgs:   []string{"foo", "bar"},
+			execArgs:    []string{"echo", "Hello", "World"},
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "foo", "bar", "--rev", "1", "--", "echo", "Hello", "World"},
+			commandArgs: []string{"foo", "bar", "echo", "Hello", "World"},
+			envKey:      "foo",
+			interactive: false,
+			watchArgs:   nil,
+			execArgs:    nil,
+			err:         errBadArgsNumConflictEnv,
+		},
+		{
 			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
 			commandArgs: []string{"foo", "bar", "--", "echo", "Hello", "World"},
 			interactive: true,
@@ -138,6 +235,26 @@ func Test_parseWatchArgs(t *testing.T) {
 			commandArgs: []string{"watch", "foo", "bar"},
 			interactive: true,
 			watchArgs:   []string{"foo", "bar"},
+			execArgs:    nil,
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
+			commandArgs: []string{"watch"},
+			envKey:      "foo",
+			envRange:    "bar",
+			interactive: true,
+			watchArgs:   []string{"foo", "bar"},
+			execArgs:    nil,
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
+			commandArgs: []string{"watch"},
+			envKey:      "hello world!",
+			envRange:    "bar",
+			interactive: true,
+			watchArgs:   []string{"hello world!", "bar"},
 			execArgs:    nil,
 			err:         nil,
 		},
@@ -167,6 +284,25 @@ func Test_parseWatchArgs(t *testing.T) {
 		},
 		{
 			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
+			commandArgs: []string{"watch", "--", "echo", "Hello", "World"},
+			envKey:      "foo",
+			interactive: true,
+			watchArgs:   []string{"foo"},
+			execArgs:    []string{"echo", "Hello", "World"},
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
+			commandArgs: []string{"watch", "--", "echo", "Hello", "World"},
+			envKey:      "foo",
+			envRange:    "bar",
+			interactive: true,
+			watchArgs:   []string{"foo", "bar"},
+			execArgs:    []string{"echo", "Hello", "World"},
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
 			commandArgs: []string{"watch", "foo", "bar", "--", "echo", "Hello", "World"},
 			interactive: true,
 			watchArgs:   []string{"foo", "bar"},
@@ -176,6 +312,16 @@ func Test_parseWatchArgs(t *testing.T) {
 		{
 			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
 			commandArgs: []string{"watch", "--rev", "1", "foo", "bar", "--", "echo", "Hello", "World"},
+			interactive: true,
+			watchArgs:   []string{"foo", "bar"},
+			execArgs:    []string{"echo", "Hello", "World"},
+			err:         nil,
+		},
+		{
+			osArgs:      []string{"./bin/etcdctl", "watch", "-i"},
+			commandArgs: []string{"watch", "--rev", "1", "--", "echo", "Hello", "World"},
+			envKey:      "foo",
+			envRange:    "bar",
 			interactive: true,
 			watchArgs:   []string{"foo", "bar"},
 			execArgs:    []string{"echo", "Hello", "World"},
@@ -199,7 +345,7 @@ func Test_parseWatchArgs(t *testing.T) {
 		},
 	}
 	for i, ts := range tt {
-		watchArgs, execArgs, err := parseWatchArgs(ts.osArgs, ts.commandArgs, ts.interactive)
+		watchArgs, execArgs, err := parseWatchArgs(ts.osArgs, ts.commandArgs, ts.envKey, ts.envRange, ts.interactive)
 		if err != ts.err {
 			t.Fatalf("#%d: error expected %v, got %v", i, ts.err, err)
 		}
