@@ -378,12 +378,40 @@ watch [options] <key or prefix>\n
 # bar
 ```
 
+```bash
+ETCDCTL_WATCH_KEY=foo ./etcdctl watch
+# PUT
+# foo
+# bar
+```
+
 Receive events and execute `echo watch event received`:
 
 ```bash
 ./etcdctl watch foo -- echo watch event received
 # PUT
 # foo
+# bar
+# watch event received
+```
+
+Watch with environmental variables and execute `echo watch event received`:
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+./etcdctl watch -- echo watch event received
+# PUT
+# foo
+# bar
+# watch event received
+```
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+export ETCDCTL_WATCH_RANGE_END=foox
+./etcdctl watch -- echo watch event received
+# PUT
+# fob
 # bar
 # watch event received
 ```
@@ -409,6 +437,29 @@ Receive events and execute `echo watch event received`:
 watch foo -- echo watch event received
 # PUT
 # foo
+# bar
+# watch event received
+```
+
+Watch with environmental variables and execute `echo watch event received`:
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+./etcdctl watch -i
+watch -- echo watch event received
+# PUT
+# foo
+# bar
+# watch event received
+```
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+export ETCDCTL_WATCH_RANGE_END=foox
+./etcdctl watch -i
+watch -- echo watch event received
+# PUT
+# fob
 # bar
 # watch event received
 ```
