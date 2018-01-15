@@ -51,7 +51,7 @@ before_install:
 - docker pull gcr.io/etcd-development/etcd-test:go1.9.3
 
 install:
-- pushd cmd/etcd && go get -t -v ./... && popd
+- go get -t -v ./...
 
 script:
  - >
