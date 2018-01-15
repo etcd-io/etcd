@@ -40,12 +40,7 @@ if err != nil {
 // use the response
 ```
 
-etcd uses `cmd/vendor` directory to store external dependencies, which are
-to be compiled into etcd release binaries. `client` can be imported without
-vendoring. For full compatibility, it is recommended to vendor builds using
-etcd's vendored packages, using tools like godep, as in
-[vendor directories](https://golang.org/cmd/go/#hdr-Vendor_Directories).
-For more detail, please read [Go vendor design](https://golang.org/s/go15vendor).
+For full compatibility, it is recommended to vendor builds using etcd's vendored packages, using tools like `golang/dep`, as in [vendor directories](https://golang.org/cmd/go/#hdr-Vendor_Directories).
 
 ## Error Handling
 
