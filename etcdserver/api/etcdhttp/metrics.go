@@ -58,7 +58,7 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 		}
 		h := hfunc()
 		d, _ := json.Marshal(h)
-		if !h.Health {
+		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
 			return
 		}
@@ -70,12 +70,12 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 // Health defines etcd server health status.
 // TODO: remove manual parsing in etcdctl cluster-health
 type Health struct {
-	Health bool     `json:"health"`
+	Health string   `json:"health"`
 	Errors []string `json:"errors,omitempty"`
 }
 
 func checkHealth(srv etcdserver.ServerV2) Health {
-	h := Health{Health: false}
+	h := Health{Health: "false"}
 
 	as := srv.Alarms()
 	if len(as) > 0 {
@@ -96,7 +96,8 @@ func checkHealth(srv etcdserver.ServerV2) Health {
 	if err != nil {
 		h.Errors = append(h.Errors, err.Error())
 	}
-
-	h.Health = err == nil
+	if err == nil {
+		h.Health = "true"
+	}
 	return h
 }

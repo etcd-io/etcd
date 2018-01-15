@@ -29,5 +29,5 @@ curl http://10.0.0.10:2379/health
 ```
 
 ```json
-{"health":true}
+{"health":"true"}
 ```
