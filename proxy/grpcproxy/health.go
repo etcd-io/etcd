@@ -30,12 +30,14 @@ func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {
-	h := etcdhttp.Health{Health: false}
+	h := etcdhttp.Health{Health: "false"}
 	ctx, cancel := context.WithTimeout(c.Ctx(), time.Second)
 	_, err := c.Get(ctx, "a")
 	cancel()
-	h.Health = err == nil || err == rpctypes.ErrPermissionDenied
-	if !h.Health {
+	if err == nil || err == rpctypes.ErrPermissionDenied {
+		h.Health = "true"
+	}
+	if h.Health != "true" {
 		h.Errors = append(h.Errors, err.Error())
 	}
 	return h

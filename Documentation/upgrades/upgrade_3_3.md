@@ -74,23 +74,23 @@ Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
 
 #### Change in `/health` endpoint response value
 
-Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 instead defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and returns properly encoded JSON value with errors, if any.
+Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and includes errors, if any.
 
 Before
 
 ```bash
 $ curl http://localhost:2379/health
-{"health": "true"}
+{"health":"true"}
 ```
 
 After
 
 ```bash
 $ curl http://localhost:2379/health
-{"health":true}
+{"health":"true"}
 
 # Or
-{"health":false,"errors":["NOSPACE"]}
+{"health":"false","errors":["NOSPACE"]}
 ```
 
 #### Change in gRPC gateway HTTP endpoints (replaced `/v3alpha` with `/v3beta`)
