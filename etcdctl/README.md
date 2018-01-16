@@ -395,6 +395,20 @@ Receive events and execute `echo watch event received`:
 # watch event received
 ```
 
+Watch response is set via `ETCD_WATCH_*` environmental variables:
+
+```bash
+./etcdctl watch foo -- sh -c "env | grep ETCD_WATCH_"
+
+# PUT
+# foo
+# bar
+# ETCD_WATCH_REVISION=11
+# ETCD_WATCH_KEY="foo"
+# ETCD_WATCH_EVENT_TYPE="PUT"
+# ETCD_WATCH_VALUE="bar"
+```
+
 Watch with environmental variables and execute `echo watch event received`:
 
 ```bash
