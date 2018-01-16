@@ -163,6 +163,7 @@ func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) 
 				cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 				if err := cmd.Run(); err != nil {
 					fmt.Fprintf(os.Stderr, "command %q error (%v)\n", execArgs, err)
+					os.Exit(1)
 				}
 			}
 		}
