@@ -69,6 +69,11 @@ func watchTest(cx ctlCtx) {
 			args: []string{"sample", "--rev", "1", "--", "echo", "watch event received"},
 			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
 		},
+		{ // watch 1 key with ${ETCD_WATCH_VALUE}
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "--rev", "1", "--", "env"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: `ETCD_WATCH_VALUE="value"`}},
+		},
 		{ // watch 1 key with "echo watch event received", with env
 			puts:   []kv{{"sample", "value"}},
 			envKey: "sample",
