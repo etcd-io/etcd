@@ -155,11 +155,15 @@ func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) 
 		display.Watch(resp)
 
 		if len(execArgs) > 0 {
-			cmd := exec.CommandContext(c.Ctx(), execArgs[0], execArgs[1:]...)
-			cmd.Env = os.Environ()
-			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "command %q error (%v)\n", execArgs, err)
+			for _, ev := range resp.Events {
+				cmd := exec.CommandContext(c.Ctx(), execArgs[0], execArgs[1:]...)
+				cmd.Env = os.Environ()
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_KEY=%q", ev.Kv.Key))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_VALUE=%q", ev.Kv.Value))
+				cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+				if err := cmd.Run(); err != nil {
+					fmt.Fprintf(os.Stderr, "command %q error (%v)\n", execArgs, err)
+				}
 			}
 		}
 	}
