@@ -20,3 +20,21 @@ hack/scripts-dev/docker-dns/.Dockerfile
 hack/scripts-dev/docker-dns-srv/.Dockerfile
 hack/tls-setup/certs
 .idea
+
+# TODO: use dep prune
+# https://github.com/golang/dep/issues/120#issuecomment-306518546
+vendor/**/*
+!vendor/**/
+!vendor/**/*.go
+!vendor/**/*.c
+!vendor/**/*.cpp
+!vendor/**/*.s
+!vendor/**/COPYING*
+!vendor/**/PATENTS*
+!vendor/**/NOTICE*
+!vendor/**/Licence*
+!vendor/**/License*
+!vendor/**/LICENCE*
+!vendor/**/LICENSE*
+vendor/**/*_test.go
+
