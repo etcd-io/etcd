@@ -158,6 +158,8 @@ func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) 
 			for _, ev := range resp.Events {
 				cmd := exec.CommandContext(c.Ctx(), execArgs[0], execArgs[1:]...)
 				cmd.Env = os.Environ()
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_REVISION=%d", resp.Header.Revision))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_EVENT_TYPE=%q", ev.Type))
 				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_KEY=%q", ev.Kv.Key))
 				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_VALUE=%q", ev.Kv.Value))
 				cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
