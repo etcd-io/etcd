@@ -140,7 +140,7 @@ The total state machine handling loop will look something like this:
     case <-s.Ticker:
       n.Tick()
     case rd := <-s.Node.Ready():
-      saveToStorage(rd.State, rd.Entries, rd.Snapshot)
+      saveToStorage(rd.HardState, rd.Entries, rd.Snapshot)
       send(rd.Messages)
       if !raft.IsEmptySnap(rd.Snapshot) {
         processSnapshot(rd.Snapshot)
