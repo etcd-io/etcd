@@ -74,7 +74,7 @@ Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
 
 #### Change in `/health` endpoint response value
 
-Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and includes errors, if any.
+Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and includes errors, if any. Note that `"health"` field in `etcdhttp.Health` is `string` type (was boolean in v3.3.0-rc.0,1,2 but reverted to `string` for backward compatibilities).
 
 Before
 
