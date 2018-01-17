@@ -45,12 +45,12 @@ It is important to monitor your production etcd cluster for healthy information 
 
 #### Health Monitoring
 
-At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health":true}`, then the cluster is healthy.
+At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health":"true"}`, then the cluster is healthy.
 
 ```
 $ curl -L http://127.0.0.1:2379/health
 
-{"health":true}
+{"health":"true"}
 ```
 
 You can also use etcdctl to check the cluster-wide health information. It will contact all the members of the cluster and collect the health information for you.
