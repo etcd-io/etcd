@@ -378,12 +378,54 @@ watch [options] <key or prefix>\n
 # bar
 ```
 
+```bash
+ETCDCTL_WATCH_KEY=foo ./etcdctl watch
+# PUT
+# foo
+# bar
+```
+
 Receive events and execute `echo watch event received`:
 
 ```bash
 ./etcdctl watch foo -- echo watch event received
 # PUT
 # foo
+# bar
+# watch event received
+```
+
+Watch response is set via `ETCD_WATCH_*` environmental variables:
+
+```bash
+./etcdctl watch foo -- sh -c "env | grep ETCD_WATCH_"
+
+# PUT
+# foo
+# bar
+# ETCD_WATCH_REVISION=11
+# ETCD_WATCH_KEY="foo"
+# ETCD_WATCH_EVENT_TYPE="PUT"
+# ETCD_WATCH_VALUE="bar"
+```
+
+Watch with environmental variables and execute `echo watch event received`:
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+./etcdctl watch -- echo watch event received
+# PUT
+# foo
+# bar
+# watch event received
+```
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+export ETCDCTL_WATCH_RANGE_END=foox
+./etcdctl watch -- echo watch event received
+# PUT
+# fob
 # bar
 # watch event received
 ```
@@ -409,6 +451,29 @@ Receive events and execute `echo watch event received`:
 watch foo -- echo watch event received
 # PUT
 # foo
+# bar
+# watch event received
+```
+
+Watch with environmental variables and execute `echo watch event received`:
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+./etcdctl watch -i
+watch -- echo watch event received
+# PUT
+# foo
+# bar
+# watch event received
+```
+
+```bash
+export ETCDCTL_WATCH_KEY=foo
+export ETCDCTL_WATCH_RANGE_END=foox
+./etcdctl watch -i
+watch -- echo watch event received
+# PUT
+# fob
 # bar
 # watch event received
 ```
