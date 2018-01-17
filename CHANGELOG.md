@@ -59,7 +59,6 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Translate [gRPC status error in v3 client `Snapshot` API](https://github.com/coreos/etcd/pull/9038).
 - Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) for v2 `client`.
   - [Regenerated](https://github.com/coreos/etcd/pull/8721) v2 `client` source code with latest `ugorji/go/codec`.
-- Fix [`/health` endpoint JSON output](https://github.com/coreos/etcd/pull/8312).
 - v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
 
@@ -82,7 +81,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm is raised](https://github.com/coreos/etcd/issues/8207).
 - Provide [error information in `/health`](https://github.com/coreos/etcd/pull/8312).
-  - e.g. `{"health":false,"errors":["NOSPACE"]}`.
+  - e.g. `{"health":"false","errors":["NOSPACE"]}`.
+  - Note that `"health"` field is [`string` type, not `bool`](https://github.com/coreos/etcd/pull/9143).
+  - Define [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct with JSON encoder.
 - Move [logging setup to embed package](https://github.com/coreos/etcd/pull/8810)
   - Disable gRPC server info-level logs by default (can be enabled with `etcd --debug` flag).
 - Use [monotonic time in Go 1.9](https://github.com/coreos/etcd/pull/8507) for `lease` package.
@@ -139,6 +140,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Make `endpoint health` command terminate with [non-zero exit code on unhealthy status](https://github.com/coreos/etcd/pull/8342).
 - Add [`lock --ttl`](https://github.com/coreos/etcd/pull/8370) flag.
 - Support [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/8919), equivalent to [v2 `etcdctl exec-watch`](https://github.com/coreos/etcd/issues/8814).
+  - Make `watch -- [exec-command]` set environmental variables [`ETCD_WATCH_REVISION`, `ETCD_WATCH_EVENT_TYPE`, `ETCD_WATCH_KEY`, `ETCD_WATCH_VALUE`](https://github.com/coreos/etcd/pull/9142) for each event.
+- Support [`watch` with environmental variables `ETCDCTL_WATCH_KEY` and `ETCDCTL_WATCH_RANGE_END`](https://github.com/coreos/etcd/pull/9142).
 - Enable [`clientv3.WithRequireLeader(context.Context)` for `watch`](https://github.com/coreos/etcd/pull/8672) command.
 - Print [`"del"` instead of `"delete"`](https://github.com/coreos/etcd/pull/8297) in `txn` interactive mode.
 - Print [`ETCD_INITIAL_ADVERTISE_PEER_URLS` in `member add`](https://github.com/coreos/etcd/pull/8332).
