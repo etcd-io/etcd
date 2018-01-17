@@ -37,8 +37,5 @@ func checkHealth(c *clientv3.Client) etcdhttp.Health {
 	if err == nil || err == rpctypes.ErrPermissionDenied {
 		h.Health = "true"
 	}
-	if h.Health != "true" {
-		h.Errors = append(h.Errors, err.Error())
-	}
 	return h
 }
