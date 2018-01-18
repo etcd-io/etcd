@@ -26,7 +26,7 @@ defer cli.Close()
 ```
 
 etcd v3 uses [`gRPC`](http://www.grpc.io) for remote procedure calls. And `clientv3` uses
-[`grpc-go`](https://github.com/grpc/grpc-go) to connect to etcd. Make sure to close the client after using it. 
+[`grpc-go`](https://github.com/grpc/grpc-go) to connect to etcd. Make sure to close the client after using it.
 If the client is not closed, the connection will have leaky goroutines. To specify client request timeout,
 pass `context.WithTimeout` to APIs:
 
@@ -79,6 +79,10 @@ The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](http
 ## Namespacing
 
 The [namespace](https://godoc.org/github.com/coreos/etcd/clientv3/namespace) package provides `clientv3` interface wrappers to transparently isolate client requests to a user-defined prefix.
+
+## Request size limit
+
+Client request size limit is configurable via `clientv3.Config.MaxCallSendMsgSize` and `MaxCallRecvMsgSize` in bytes. If none given, client request send limit defaults to 2 MiB including gRPC overhead bytes. And receive limit defaults to `math.MaxInt32`.
 
 ## Examples
 
