@@ -19,9 +19,13 @@
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/coreos/etcd/pull/9116).
 
 
-## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-01-??)
+## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-02-01)
 
 **v3.3.0 is not yet released; expected to be released in January 2018.**
+
+## [v3.3.0-rc.3](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.3) (2018-01-17)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0-rc.2...v3.3.0-rc.3) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 ## [v3.3.0-rc.2](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.2) (2018-01-11)
 
@@ -79,11 +83,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`--auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
 - Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
 - Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
-- Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm is raised](https://github.com/coreos/etcd/issues/8207).
-- Provide [error information in `/health`](https://github.com/coreos/etcd/pull/8312).
-  - e.g. `{"health":"false","errors":["NOSPACE"]}`.
-  - Note that `"health"` field is [`string` type, not `bool`](https://github.com/coreos/etcd/pull/9143).
+- Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm (e.g. `NOSPACE`) is raised or there's no leader](https://github.com/coreos/etcd/issues/8207).
   - Define [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct with JSON encoder.
+  - Note that `"health"` field is [`string` type, not `bool`](https://github.com/coreos/etcd/pull/9143).
+    - e.g. `{"health":"false"}`, `{"health":"true"}`
+  - [Remove `"errors"` field](https://github.com/coreos/etcd/pull/9162) from `v3.3.0-rc.3` (did exist only in `v3.3.0-rc.0`, `v3.3.0-rc.1`, `v3.3.0-rc.2`).
 - Move [logging setup to embed package](https://github.com/coreos/etcd/pull/8810)
   - Disable gRPC server info-level logs by default (can be enabled with `etcd --debug` flag).
 - Use [monotonic time in Go 1.9](https://github.com/coreos/etcd/pull/8507) for `lease` package.
