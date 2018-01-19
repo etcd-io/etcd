@@ -18,6 +18,7 @@ cancelation
 cluster_proxy
 defragment
 defragmenting
+errClientDisconnected
 etcd
 gRPC
 goroutine
@@ -43,4 +44,3 @@ too_many_pings
 uncontended
 unprefixed
 unlisting
-

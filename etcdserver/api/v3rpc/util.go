@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	"strings"
 
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
@@ -91,6 +92,25 @@ func isClientCtxErr(ctxErr error, err error) bool {
 	if !ok {
 		return false
 	}
-	code := ev.Code()
-	return code == codes.Canceled || code == codes.DeadlineExceeded
+
+	switch ev.Code() {
+	case codes.Canceled, codes.DeadlineExceeded:
+		// client-side context cancel or deadline exceeded
+		// "rpc error: code = Canceled desc = context canceled"
+		// "rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+		return true
+	case codes.Unavailable:
+		msg := ev.Message()
+		// client-side context cancel or deadline exceeded with TLS ("http2.errClientDisconnected")
+		// "rpc error: code = Unavailable desc = client disconnected"
+		if msg == "client disconnected" {
+			return true
+		}
+		// "grpc/transport.ClientTransport.CloseStream" on canceled streams
+		// "rpc error: code = Unavailable desc = stream error: stream ID 21; CANCEL")
+		if strings.HasPrefix(msg, "stream error: ") && strings.HasSuffix(msg, "; CANCEL") {
+			return true
+		}
+	}
+	return false
 }
