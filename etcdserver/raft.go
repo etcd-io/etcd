@@ -73,6 +73,7 @@ func init() {
 
 type RaftTimer interface {
 	Index() uint64
+	AppliedIndex() uint64
 	Term() uint64
 }
 
@@ -91,9 +92,10 @@ type raftNode struct {
 	// Cache of the latest raft index and raft term the server has seen.
 	// These three unit64 fields must be the first elements to keep 64-bit
 	// alignment for atomic access to the fields.
-	index uint64
-	term  uint64
-	lead  uint64
+	index        uint64
+	appliedindex uint64
+	term         uint64
+	lead         uint64
 
 	raftNodeConfig
 

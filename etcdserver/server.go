@@ -1170,6 +1170,8 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 
 func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.r.index) }
 
+func (s *EtcdServer) AppliedIndex() uint64 { return atomic.LoadUint64(&s.r.appliedindex) }
+
 func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.r.term) }
 
 // Lead is only for testing purposes.
@@ -1667,6 +1669,7 @@ func (s *EtcdServer) getAppliedIndex() uint64 {
 
 func (s *EtcdServer) setAppliedIndex(v uint64) {
 	atomic.StoreUint64(&s.appliedIndex, v)
+	atomic.StoreUint64(&s.r.appliedindex, v)
 }
 
 func (s *EtcdServer) getCommittedIndex() uint64 {
