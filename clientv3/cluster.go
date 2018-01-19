@@ -18,6 +18,7 @@ import (
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 
 	"google.golang.org/grpc"
 )
@@ -66,6 +67,11 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	// fail-fast before panic in rafthttp
+	if _, err := types.NewURLs(peerAddrs); err != nil {
+		return nil, err
+	}
+
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
 	resp, err := c.remote.MemberAdd(ctx, r, c.callOpts...)
 	if err != nil {
@@ -84,6 +90,11 @@ func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveRes
 }
 
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
+	// fail-fast before panic in rafthttp
+	if _, err := types.NewURLs(peerAddrs); err != nil {
+		return nil, err
+	}
+
 	// it is safe to retry on update.
 	r := &pb.MemberUpdateRequest{ID: id, PeerURLs: peerAddrs}
 	resp, err := c.remote.MemberUpdate(ctx, r, c.callOpts...)
