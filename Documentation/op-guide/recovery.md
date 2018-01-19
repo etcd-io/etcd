@@ -61,3 +61,25 @@ $ etcd \
 ```
 
 Now the restored etcd cluster should be available and serving the keyspace given by the snapshot.
+
+## Restoring a cluster from membership mis-reconfiguration
+
+Previously, etcd panics on [membership mis-reconfiguration with wrong URLs](https://github.com/coreos/etcd/issues/9173). v3.2.15 and v3.3.0+ return [error early in client-side](https://github.com/coreos/etcd/pull/9174) before etcd server panic.
+
+To fix such misconfiguration while keeping original data, `--force-new-cluster` flag can be used to overwrite cluster configuration. Please be CAUTIOUS when using this flag because it will panic if other members from previous cluster are still alive. Please follow the instructions below.
+
+1. stop all etcd processes in the cluster.
+2. Choose one member to restore data from.
+3. Create a separate copy of original data/WAL directories, just in case.
+4. Start etcd with `--force-new-cluster` option pointing to original data/WAL directories. This will initialize a new, single-member cluster with default advertised peer URLs (or given URLs), but preserve the entire contents of the etcd data store. That is, it commits configuration changes forcing to remove all previous cluster members and add itself to a single-node cluster.
+  ```bash
+  etcd \
+    --data-dir=${PREV_DATA_DIR} \
+    --wal-dir=${PREV_WAL_DIR} \
+    --force-new-cluster
+  ```
+5. Verify that this single node is available serving the original data.
+6. Remove data/WAL directories in other members.
+7. Add back those members with `etcdctl member add` command.
+
+Optionally in step 4, you may start `etcd` with `--force-new-cluster --snapshot-count 1` and verify membership configuration is persisted on disk. Shut down. And restart without `--force-new-cluster` flag.
