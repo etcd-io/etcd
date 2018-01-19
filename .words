@@ -33,6 +33,7 @@ mutex
 prefetching
 protobuf
 prometheus
+rafthttp
 repin
 serializable
 teardown
