@@ -261,6 +261,66 @@ Since [v3.2.5](https://github.com/coreos/etcd/blob/master/CHANGELOG.md#v325-2017
 
 when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A reverse-lookup the IP `10.138.0.2` to get the list of host names. And either exact or wildcard match the host names with peer B's cert DNS names in Subject Alternative Name (SAN) field. If none of reverse/forward lookups worked, it returns an error `"tls: "10.138.0.2" does not match any of DNSNames ["*.example.default.svc","*.example.default.svc.cluster.local"]`. See [issue#8268](https://github.com/coreos/etcd/issues/8268) for more detail.
 
+[v3.3.0](https://github.com/coreos/etcd/blob/master/CHANGELOG.md#v330-2018-02-01) adds [`etcd --peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN(Common Name)-based auth for inter-peer connections](https://github.com/coreos/etcd/issues/8262). Kubernetes TLS bootstrapping involves generating dynamic certificates for etcd members and other system components (e.g. API server, kubelet, etc.). Maintaining different CAs for each component provides tighter access control to etcd cluster but often tedious. When `--peer-cert-allowed-cn` flag is specified, node can only join with matching common name even with shared CAs. For example, each member in 3-node cluster is set up with CSRs (with `cfssl`) as below:
+
+```json
+{
+  "CN": "etcd.local",
+  "hosts": [
+    "m1.etcd.local",
+    "127.0.0.1",
+    "localhost"
+  ],
+```
+
+```json
+{
+  "CN": "etcd.local",
+  "hosts": [
+    "m2.etcd.local",
+    "127.0.0.1",
+    "localhost"
+  ],
+```
+
+```json
+{
+  "CN": "etcd.local",
+  "hosts": [
+    "m3.etcd.local",
+    "127.0.0.1",
+    "localhost"
+  ],
+```
+
+Then only peers with matching common names will be authenticated if `--peer-cert-allowed-cn etcd.local` is given. And nodes with different CNs in CSRs or different `--peer-cert-allowed-cn` will be rejected:
+
+```bash
+$ etcd --peer-cert-allowed-cn m1.etcd.local
+
+I | embed: rejected connection from "127.0.0.1:48044" (error "CommonName authentication failed", ServerName "m1.etcd.local")
+I | embed: rejected connection from "127.0.0.1:55702" (error "remote error: tls: bad certificate", ServerName "m3.etcd.local")
+```
+
+Each process should be started with:
+
+```bash
+etcd --peer-cert-allowed-cn etcd.local
+
+I | pkg/netutil: resolving m3.etcd.local:32380 to 127.0.0.1:32380
+I | pkg/netutil: resolving m2.etcd.local:22380 to 127.0.0.1:22380
+I | pkg/netutil: resolving m1.etcd.local:2380 to 127.0.0.1:2380
+I | etcdserver: published {Name:m3 ClientURLs:[https://m3.etcd.local:32379]} to cluster 9db03f09b20de32b
+I | embed: ready to serve client requests
+I | etcdserver: published {Name:m1 ClientURLs:[https://m1.etcd.local:2379]} to cluster 9db03f09b20de32b
+I | embed: ready to serve client requests
+I | etcdserver: published {Name:m2 ClientURLs:[https://m2.etcd.local:22379]} to cluster 9db03f09b20de32b
+I | embed: ready to serve client requests
+I | embed: serving client requests on 127.0.0.1:32379
+I | embed: serving client requests on 127.0.0.1:22379
+I | embed: serving client requests on 127.0.0.1:2379
+```
+
 ## Frequently asked questions
 
 ### I'm seeing a SSLv3 alert handshake failure when using TLS client authentication?
