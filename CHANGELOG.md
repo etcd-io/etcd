@@ -75,7 +75,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`--max-request-bytes`](https://github.com/coreos/etcd/pull/7968) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
   - If not configured, it defaults to 1.5 MiB.
 - Add [`--client-crl-file`, `--peer-crl-file`](https://github.com/coreos/etcd/pull/8124) flags for [Certificate revocation list](https://github.com/coreos/etcd/issues/4034).
-- Add [`--peer-require-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
+- Add [`--peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
 - Add [`--listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` endpoints.
   - Support [additional (non) TLS `/metrics` endpoints for a TLS-enabled cluster](https://github.com/coreos/etcd/pull/8282).
   - e.g. `--listen-metrics-urls=https://localhost:2378,http://localhost:9379` to serve `/metrics` in secure port 2378 and insecure port 9379.
@@ -196,7 +196,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Document [TLS authentication changes](https://github.com/coreos/etcd/pull/8895).
   - [Server accepts connections if IP matches, without checking DNS entries](https://github.com/coreos/etcd/pull/8223). For instance, if peer cert contains IP addresses and DNS names in Subject Alternative Name (SAN) field, and the remote IP address matches one of those IP addresses, server just accepts connection without further checking the DNS names.
   - [Server supports reverse-lookup on wildcard DNS `SAN`](https://github.com/coreos/etcd/pull/8281). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server first reverse-lookups the remote IP address to get a list of names mapping to that address (e.g. `nslookup IPADDR`). Then accepts the connection if those names have a matching name with peer cert's DNS names (either by exact or wildcard match). If none is matched, server forward-lookups each DNS entry in peer cert (e.g. look up `example.default.svc` when the entry is `*.example.default.svc`), and accepts connection only when the host's resolved addresses have the matching IP address with the peer's remote IP address.
-- Add [`etcd --peer-require-cn`](https://github.com/coreos/etcd/pull/8616) flag.
+- Add [`etcd --peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag.
   - To support [CommonName(CN) based auth](https://github.com/coreos/etcd/issues/8262) for inter peer connection.
 - [Swap priority](https://github.com/coreos/etcd/pull/8594) of cert CommonName(CN) and username + password.
   - To address ["username and password specified in the request should take priority over CN in the cert"](https://github.com/coreos/etcd/issues/8584).
