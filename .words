@@ -35,6 +35,7 @@ mutex
 prefetching
 protobuf
 prometheus
+rafthttp
 repin
 rpc
 serializable
