@@ -24,12 +24,51 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func TestCtlV3MemberList(t *testing.T) { testCtl(t, memberListTest) }
+func TestCtlV3MemberList(t *testing.T)          { testCtl(t, memberListTest) }
+func TestCtlV3MemberListNoTLS(t *testing.T)     { testCtl(t, memberListTest, withCfg(configNoTLS)) }
+func TestCtlV3MemberListClientTLS(t *testing.T) { testCtl(t, memberListTest, withCfg(configClientTLS)) }
+func TestCtlV3MemberListClientAutoTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3MemberListPeerTLS(t *testing.T) { testCtl(t, memberListTest, withCfg(configPeerTLS)) }
 func TestCtlV3MemberRemove(t *testing.T) {
 	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
 }
-func TestCtlV3MemberAdd(t *testing.T)    { testCtl(t, memberAddTest) }
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberRemoveNoTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configNoTLS))
+}
+func TestCtlV3MemberRemoveClientTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configClientTLS))
+}
+func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(
+		// default clusterSize is 1
+		etcdProcessClusterConfig{
+			clusterSize:     3,
+			isClientAutoTLS: true,
+			clientTLS:       clientTLS,
+			initialToken:    "new",
+		}))
+}
+func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configPeerTLS))
+}
+func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
+func TestCtlV3MemberAddNoTLS(t *testing.T)     { testCtl(t, memberAddTest, withCfg(configNoTLS)) }
+func TestCtlV3MemberAddClientTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(configClientTLS)) }
+func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
+	testCtl(t, memberAddTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3MemberAddPeerTLS(t *testing.T)  { testCtl(t, memberAddTest, withCfg(configPeerTLS)) }
+func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdateNoTLS(t *testing.T) { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
+func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
+	testCtl(t, memberUpdateTest, withCfg(configClientTLS))
+}
+func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
+	testCtl(t, memberUpdateTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3MemberUpdatePeerTLS(t *testing.T) { testCtl(t, memberUpdateTest, withCfg(configPeerTLS)) }
 
 func memberListTest(cx ctlCtx) {
 	if err := ctlV3MemberList(cx); err != nil {
