@@ -16,6 +16,9 @@ package logger
 
 import "github.com/coreos/pkg/capnslog"
 
+// assert that Logger satisfies grpclog.LoggerV2
+var _ Logger = &packageLogger{}
+
 // NewPackageLogger wraps "*capnslog.PackageLogger" that implements "Logger" interface.
 //
 // For example:
@@ -24,11 +27,7 @@ import "github.com/coreos/pkg/capnslog"
 //  plog := capnslog.NewPackageLogger("github.com/coreos/etcd", "snapshot")
 //  defaultLogger = NewPackageLogger(plog)
 //
-func NewPackageLogger(p *capnslog.PackageLogger) Logger {
-	// assert that Logger satisfies grpclog.LoggerV2
-	var _ Logger = &packageLogger{}
-	return &packageLogger{p: p}
-}
+func NewPackageLogger(p *capnslog.PackageLogger) Logger { return &packageLogger{p: p} }
 
 type packageLogger struct {
 	p *capnslog.PackageLogger
