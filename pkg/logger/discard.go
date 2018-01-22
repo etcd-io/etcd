@@ -16,6 +16,9 @@ package logger
 
 import "log"
 
+// assert that Logger satisfies grpclog.LoggerV2
+var _ Logger = &discardLogger{}
+
 // NewDiscardLogger returns a new Logger that discards everything except "fatal".
 func NewDiscardLogger() Logger { return &discardLogger{} }
 
