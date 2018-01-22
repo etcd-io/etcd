@@ -39,6 +39,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/snapshot"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
@@ -400,19 +401,12 @@ func makeDB(snapdir, dbfile string, commit int) {
 	be.Close()
 }
 
-type dbstatus struct {
-	Hash      uint32 `json:"hash"`
-	Revision  int64  `json:"revision"`
-	TotalKey  int    `json:"totalKey"`
-	TotalSize int64  `json:"totalSize"`
-}
-
-func dbStatus(p string) dbstatus {
+func dbStatus(p string) snapshot.Status {
 	if _, err := os.Stat(p); err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	ds := dbstatus{}
+	ds := snapshot.Status{}
 
 	db, err := bolt.Open(p, 0400, &bolt.Options{ReadOnly: true})
 	if err != nil {
