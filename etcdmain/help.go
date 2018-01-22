@@ -54,6 +54,8 @@ member flags:
 		time (in milliseconds) of a heartbeat interval.
 	--election-timeout '1000'
 		time (in milliseconds) for an election to timeout. See tuning documentation for details.
+	--local-address '1.2.3.4'
+		local address bind for outgoing client connections
 	--listen-peer-urls 'http://localhost:2380'
 		list of URLs to listen on for peer traffic.
 	--listen-client-urls 'http://localhost:2379'

@@ -41,6 +41,9 @@ type Config struct {
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
 	DialKeepAliveTimeout time.Duration `json:"dial-keep-alive-timeout"`
 
+	// LocalAddress is the outbound local address bind
+	LocalAddr string `json:"local-address"`
+
 	// MaxCallSendMsgSize is the client-side request send limit in bytes.
 	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
 	// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.

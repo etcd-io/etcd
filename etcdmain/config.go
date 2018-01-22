@@ -131,6 +131,7 @@ func newConfig() *config {
 	fs.Var(cfg.ec.CorsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	fs.StringVar(&cfg.ec.Dir, "data-dir", cfg.ec.Dir, "Path to the data directory.")
 	fs.StringVar(&cfg.ec.WalDir, "wal-dir", cfg.ec.WalDir, "Path to the dedicated wal directory.")
+	fs.StringVar(&cfg.ec.LocalAddr, "local-address", cfg.ec.LocalAddr, "Local adddress bind for outgoing client connections.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenPeerURLs), "listen-peer-urls", "List of URLs to listen on for peer traffic.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenClientURLs), "listen-client-urls", "List of URLs to listen on for client traffic.")
 	fs.StringVar(&cfg.ec.ListenMetricsUrlsJSON, "listen-metrics-urls", "", "List of URLs to listen on for metrics.")

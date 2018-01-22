@@ -246,6 +246,8 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 
 	f := func(host string, t time.Duration) (net.Conn, error) {
 		proto, host, _ := parseEndpoint(c.balancer.endpoint(host))
+		q := net.ParseIP(c.cfg.LocalAddr)
+		localaddr := &net.IPAddr{q,""}
 		if host == "" && endpoint != "" {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial
@@ -260,6 +262,9 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 		default:
 		}
 		dialer := &net.Dialer{Timeout: t}
+		if localaddr != nil {
+			dialer = &net.Dialer{LocalAddr: localaddr, Timeout: t}
+		}
 		conn, err := dialer.DialContext(c.ctx, proto, host)
 		if err != nil {
 			select {
