@@ -2176,6 +2176,11 @@
           "type": "string",
           "format": "uint64"
         },
+        "raftAppliedIndex": {
+          "description": "appliedIndex is the current raft applied index of the responding member.",
+          "type": "string",
+          "format": "uint64"
+        },
         "raftIndex": {
           "description": "raftIndex is the current raft index of the responding member.",
           "type": "string",

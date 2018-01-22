@@ -907,6 +907,8 @@ message StatusResponse {
   uint64 raftIndex = 5;
   // raftTerm is the current raft term of the responding member.
   uint64 raftTerm = 6;
+  // raftAppliedIndex is the current raft applied index of the responding member.
+  uint64 raftAppliedIndex = 7;
 }
 
 message AuthEnableRequest {
