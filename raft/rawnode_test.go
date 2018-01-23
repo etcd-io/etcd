@@ -31,12 +31,11 @@ func TestRawNodeStep(t *testing.T) {
 			t.Fatal(err)
 		}
 		msgt := raftpb.MessageType(i)
-		err = rawNode.Step(raftpb.Message{Type: msgt})
+		err = rawNode.Step(raftpb.Message{Type: msgt, Term: 1})
 		// LocalMsg should be ignored.
-		if IsLocalMsg(msgt) {
-			if err != ErrStepLocalMsg {
-				t.Errorf("%d: step should ignore %s", msgt, msgn)
-			}
+		if IsLocalMsg(msgt) && err != ErrStepLocalMsg {
+			t.Errorf("%d: step should ignore %s", msgt, msgn)
+			return
 		}
 	}
 }
