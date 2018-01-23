@@ -101,6 +101,9 @@ type Config struct {
 	AutoCompactionRetention string `json:"auto-compaction-retention"`
 	AutoCompactionMode      string `json:"auto-compaction-mode"`
 
+	// Peer Local Address bind
+	LocalAddr               string `json:"peer-local-address"`
+
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
 	// make ticks a cluster wide configuration.
