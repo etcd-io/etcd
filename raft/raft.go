@@ -855,9 +855,14 @@ func (r *raft) Step(m pb.Message) error {
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
 			return nil
 		}
-		// The m.Term > r.Term clause is for MsgPreVote. For MsgVote m.Term should
-		// always equal r.Term.
-		if (r.Vote == None || m.Term > r.Term || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+		// We can vote if this is a repeat of a vote we've already cast...
+		canVote := r.Vote == m.From ||
+			// ...we haven't voted and we don't think there's a leader yet in this term...
+			(r.Vote == None && r.lead == None) ||
+			// ...or this is a PreVote for a future term...
+			(m.Type == pb.MsgPreVote && m.Term > r.Term)
+		// ...and we believe the candidate is up to date.
+		if canVote && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
 			// When responding to Msg{Pre,}Vote messages we include the term
