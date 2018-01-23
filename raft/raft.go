@@ -857,9 +857,11 @@ func (r *raft) Step(m pb.Message) error {
 		}
 		// The m.Term > r.Term clause is for MsgPreVote. For MsgVote m.Term should
 		// always equal r.Term.
-		if (r.Vote == None || m.Term > r.Term || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
-			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
-				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
+		if m.Type == pb.MsgVote && m.Term != r.Term {
+			panic(fmt.Sprintf("m.Type == pb.MsgVote && m.Term != r.Term: %d != %d", m.Term, r.Term))
+		}
+		if (r.Vote == None || r.Vote == m.From || (m.Type == pb.MsgPreVote && m.Term > r.Term)) &&
+			r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			// When responding to Msg{Pre,}Vote messages we include the term
 			// from the message, not the local term. To see why consider the
 			// case where a single node was previously partitioned away and
@@ -869,6 +871,8 @@ func (r *raft) Step(m pb.Message) error {
 			// the message (it ignores all out of date messages).
 			// The term in the original message and current local term are the
 			// same in the case of regular votes, but different for pre-votes.
+			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
+				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
 			r.send(pb.Message{To: m.From, Term: m.Term, Type: voteRespMsgType(m.Type)})
 			if m.Type == pb.MsgVote {
 				// Only record real votes.
