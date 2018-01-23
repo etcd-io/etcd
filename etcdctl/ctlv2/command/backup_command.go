@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 
@@ -102,14 +102,14 @@ func handleBackup(c *cli.Context) error {
 }
 
 func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
-	ss := snap.New(srcSnap)
+	ss := raftsnap.New(srcSnap)
 	snapshot, err := ss.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && err != raftsnap.ErrNoSnapshot {
 		log.Fatal(err)
 	}
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-		newss := snap.New(destSnap)
+		newss := raftsnap.New(destSnap)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)
 		}

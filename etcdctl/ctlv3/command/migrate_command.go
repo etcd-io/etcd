@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
@@ -134,9 +134,9 @@ func rebuildStoreV2() (store.Store, uint64) {
 	}
 	snapdir := filepath.Join(migrateDatadir, "member", "snap")
 
-	ss := snap.New(snapdir)
+	ss := raftsnap.New(snapdir)
 	snapshot, err := ss.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && err != raftsnap.ErrNoSnapshot {
 		ExitWithError(ExitError, err)
 	}
 
