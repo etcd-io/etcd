@@ -2,7 +2,11 @@
 
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-02-01)
 
-**v3.3.0 is not yet released; expected to be released in January 2018.**
+**v3.3.0 is not yet released.**
+
+## [v3.3.0-rc.4](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.4) (2018-01-22)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0-rc.3...v3.3.0-rc.4) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 ## [v3.3.0-rc.3](https://github.com/coreos/etcd/releases/tag/v3.3.0-rc.3) (2018-01-17)
 
@@ -207,6 +211,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Handle [empty key permission](https://github.com/coreos/etcd/pull/8514) in `etcdctl`.
 - Fix [`mvcc/backend.defragdb` nil-pointer dereference on create bucket failure](https://github.com/coreos/etcd/pull/9119).
 - Fix [server crash](https://github.com/coreos/etcd/pull/8010) on [invalid transaction request from gRPC gateway](https://github.com/coreos/etcd/issues/7889).
+- Prevent [server panic from member update/add](https://github.com/coreos/etcd/pull/9174) with [wrong scheme URLs](https://github.com/coreos/etcd/issues/9173).
 - Fix [`clientv3.WatchResponse.Canceled`](https://github.com/coreos/etcd/pull/8283) on [compacted watch request](https://github.com/coreos/etcd/issues/8231).
 - Handle [WAL renaming failure on Windows](https://github.com/coreos/etcd/pull/8286).
 - Make [peer dial timeout longer](https://github.com/coreos/etcd/pull/8599).

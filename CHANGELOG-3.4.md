@@ -10,15 +10,22 @@
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
   - `*.aci` files are not available from `v3.4` release.
+- Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
+  - Move `cmd/vendor` directory to `vendor` at repository root.
+  - Remove recursive symlinks in `cmd` directory.
+  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with `vendor` directory.
 
-### Added(`etcd`)
+### Added(API)
 
+- Add [`snapshot`](https://github.com/coreos/etcd/pull/9118) package for snapshot restore/save operations.
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
   - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
+- Add [`raftAppliedIndex` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9176) for current Raft applied index.
 
-### Added(`etcdctl`)
+### Added(v3 `etcdctl`)
 
-- Add [package `snapshot` for snapshot restore logic](https://github.com/coreos/etcd/pull/9118).
+- Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
+- Add ["raft applied index" to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 
 ### Package `raft`
 
