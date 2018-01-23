@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/expect"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/snapshot"
 )
 
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
@@ -127,33 +128,26 @@ func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 	return spawnWithExpect(cmdArgs, fmt.Sprintf("Snapshot saved at %s", fpath))
 }
 
-type snapshotStatus struct {
-	Hash      uint32 `json:"hash"`
-	Revision  int64  `json:"revision"`
-	TotalKey  int    `json:"totalKey"`
-	TotalSize int64  `json:"totalSize"`
-}
-
-func getSnapshotStatus(cx ctlCtx, fpath string) (snapshotStatus, error) {
+func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "snapshot", "status", fpath)
 
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
-		return snapshotStatus{}, err
+		return snapshot.Status{}, err
 	}
 	var txt string
 	txt, err = proc.Expect("totalKey")
 	if err != nil {
-		return snapshotStatus{}, err
+		return snapshot.Status{}, err
 	}
 	if err = proc.Close(); err != nil {
-		return snapshotStatus{}, err
+		return snapshot.Status{}, err
 	}
 
-	resp := snapshotStatus{}
+	resp := snapshot.Status{}
 	dec := json.NewDecoder(strings.NewReader(txt))
 	if err := dec.Decode(&resp); err == io.EOF {
-		return snapshotStatus{}, err
+		return snapshot.Status{}, err
 	}
 	return resp, nil
 }

@@ -20,6 +20,7 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/snapshot"
 )
 
 type fieldsPrinter struct{ printer }
@@ -172,7 +173,7 @@ func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 	}
 }
 
-func (p *fieldsPrinter) DBStatus(r dbstatus) {
+func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
 	fmt.Println(`"Hash" :`, r.Hash)
 	fmt.Println(`"Revision" :`, r.Revision)
 	fmt.Println(`"Keys" :`, r.TotalKey)
