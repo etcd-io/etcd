@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -38,10 +38,10 @@ type Storage interface {
 
 type storage struct {
 	*wal.WAL
-	*snap.Snapshotter
+	*raftsnap.Snapshotter
 }
 
-func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
+func NewStorage(w *wal.WAL, s *raftsnap.Snapshotter) Storage {
 	return &storage{w, s}
 }
 

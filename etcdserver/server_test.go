@@ -43,7 +43,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/store"
 )
 
@@ -986,7 +986,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
 		store:       st,
-		snapshotter: snap.New(snapdir),
+		snapshotter: raftsnap.New(snapdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
@@ -1111,7 +1111,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
 		store:       st,
-		snapshotter: snap.New(testdir),
+		snapshotter: raftsnap.New(testdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
