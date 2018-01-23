@@ -10,10 +10,15 @@
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
   - `*.aci` files are not available from `v3.4` release.
+- Exit on [empty hosts in advertise URLs](TODO).
+  - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
+  - e.g. `--advertise-client-urls=http://:2379`.
+- Exit on [shadowed environment variables](TODO).
+  - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
   - Move `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
-  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with `vendor` directory.
+  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 
 ### Added(API)
 

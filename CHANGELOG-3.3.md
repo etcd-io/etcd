@@ -37,9 +37,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 ### Changed(Breaking Changes)
 
 - Require [Go 1.9+](https://github.com/coreos/etcd/issues/6174).
-  - Compile with *Go 1.9.2*.
+  - Compile with *Go 1.9.3*.
   - Deprecate [`golang.org/x/net/context`](https://github.com/coreos/etcd/pull/8511).
-- Require [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) [**`v1.7.4`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.4) or [**`v1.7.5+`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5).
+- Require [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) [**`v1.7.4`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.4) or [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5).
   - Deprecate [`metadata.Incoming/OutgoingContext`](https://github.com/coreos/etcd/pull/7896).
   - Deprecate `grpclog.Logger`, upgrade to [`grpclog.LoggerV2`](https://github.com/coreos/etcd/pull/8533).
   - Deprecate [`grpc.ErrClientConnTimeout`](https://github.com/coreos/etcd/pull/8505) errors in `clientv3`.
@@ -72,7 +72,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Define [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct with JSON encoder.
   - Note that `"health"` field is [`string` type, not `bool`](https://github.com/coreos/etcd/pull/9143).
     - e.g. `{"health":"false"}`, `{"health":"true"}`
-  - [Remove `"errors"` field](https://github.com/coreos/etcd/pull/9162) from `v3.3.0-rc.3` (did exist only in `v3.3.0-rc.0`, `v3.3.0-rc.1`, `v3.3.0-rc.2`).
+  - [Remove `"errors"` field](https://github.com/coreos/etcd/pull/9162) since `v3.3.0-rc.3` (did exist only in `v3.3.0-rc.0`, `v3.3.0-rc.1`, `v3.3.0-rc.2`).
 - Move [logging setup to embed package](https://github.com/coreos/etcd/pull/8810)
   - Disable gRPC server info-level logs by default (can be enabled with `etcd --debug` flag).
 - Use [monotonic time in Go 1.9](https://github.com/coreos/etcd/pull/8507) for `lease` package.
