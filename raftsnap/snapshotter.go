@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package snap stores raft nodes' states with snapshots.
-package snap
+// Package raftsnap stores raft nodes' states with snapshots.
+package raftsnap
 
 import (
 	"errors"
@@ -30,7 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap/snappb"
+	"github.com/coreos/etcd/raftsnap/snappb"
 
 	"github.com/coreos/pkg/capnslog"
 )
