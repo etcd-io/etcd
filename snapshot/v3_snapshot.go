@@ -48,7 +48,7 @@ import (
 
 // Manager defines snapshot methods.
 type Manager interface {
-	// Save fetches snapshot from specified client's endpoints and saves to target path.
+	// Save fetches snapshot from remote etcd server and saves data to target path.
 	// If the context "ctx" is canceled or timed out, snapshot save stream will error out
 	// (e.g. context.Canceled, context.DeadlineExceeded).
 	Save(ctx context.Context, dbPath string) error
