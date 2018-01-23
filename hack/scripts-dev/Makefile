@@ -27,7 +27,7 @@ clean:
 
 
 
-_GO_VERSION = 1.9.2
+_GO_VERSION = 1.9.3
 ifdef GO_VERSION
 	_GO_VERSION = $(GO_VERSION)
 endif
