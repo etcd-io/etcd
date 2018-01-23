@@ -203,6 +203,7 @@ func newConfig() *config {
 
 	fs.StringVar(&cfg.ec.AutoCompactionRetention, "auto-compaction-retention", "0", "Auto compaction retention for mvcc key value store. 0 means disable auto compaction.")
 	fs.StringVar(&cfg.ec.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.")
+	fs.Uint64Var(&cfg.ec.RangeMaxKeysOnce, "range-max-keys-once", 0, "A number of maximum keys which can be read in a single read transaction during range request. 0 means the maximum number is not limited.")
 
 	// pprof profiler via HTTP
 	fs.BoolVar(&cfg.ec.EnablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof/\"")

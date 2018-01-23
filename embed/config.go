@@ -118,6 +118,7 @@ type Config struct {
 	SnapCount               uint64 `json:"snapshot-count"`
 	AutoCompactionRetention string `json:"auto-compaction-retention"`
 	AutoCompactionMode      string `json:"auto-compaction-mode"`
+	RangeMaxKeysOnce        uint64 `json:"range-max-keys-once"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).

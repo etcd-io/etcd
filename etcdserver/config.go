@@ -72,6 +72,8 @@ type ServerConfig struct {
 	CorruptCheckTime    time.Duration
 
 	Debug bool
+
+	RangeMaxKeysOnce uint64
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
