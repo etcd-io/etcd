@@ -26,7 +26,7 @@ import (
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/raftsnap"
 )
 
 var (
@@ -63,7 +63,7 @@ func newSnapshotSender(tr *Transport, picker *urlPicker, to types.ID, status *pe
 
 func (s *snapshotSender) stop() { close(s.stopc) }
 
-func (s *snapshotSender) send(merged snap.Message) {
+func (s *snapshotSender) send(merged raftsnap.Message) {
 	m := merged.Message
 
 	body := createSnapBody(merged)
@@ -142,7 +142,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-func createSnapBody(merged snap.Message) io.ReadCloser {
+func createSnapBody(merged raftsnap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
