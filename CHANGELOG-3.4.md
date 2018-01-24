@@ -19,7 +19,7 @@
   - Move `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
-- Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+- Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 
 ### Added(API)
 
