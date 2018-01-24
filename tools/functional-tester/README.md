@@ -10,42 +10,38 @@ The environment of the cluster must be stable enough, so etcd test suite can ass
 
 ## etcd agent
 
-etcd agent is a daemon on each machines. It can start, stop, restart, isolate and terminate an etcd process. The agent exposes these functionality via HTTP RPC. 
+etcd agent is a daemon on each machines. It can start, stop, restart, isolate and terminate an etcd process. The agent exposes these functionality via HTTP RPC.
 
 ## etcd tester
 
 etcd functional tester control the progress of the functional tests. It calls the RPC of the etcd agent to simulate various test cases. For example, it can start a three members cluster by sending three start RPC calls to three different etcd agents. It can make one of the member failed by sending stop RPC call to one etcd agent.
 
-## with Docker (optionally)
+### Run locally
 
-To run the functional tests using Docker, the provided script can be used to set up an environment using Docker Compose. 
-
-Script (on linux):
-```sh
-./tools/functional-tester/test
+```
+$ PASSES=functional ./test
 ```
 
-Running the script requires:
+### Run with Docker
 
-- Docker 1.9+ (with networking support) - to create isolated network
-- docker-compose - to create etcd cluster and tester
-- A multi-arch Go toolchain (OSX)
+To run locally, first build tester image:
 
-Notes:
-- Docker image is based on Alpine Linux OS running in privileged mode to allow iptables manipulation.
-- To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/docker/docker-compose.yml or start etcd-tester manually
-- (OSX) make sure that etcd binary is built for linux/amd64 (eg. `rm bin/etcd;GOOS=linux GOARCH=amd64 ./tools/functional-tester/test`) otherwise it will return `exec format error`
+```bash
+pushd ../..
 
+GO_VERSION=1.9.3 \
+  make build-docker-functional-tester \
+  -f ./hack/scripts-dev/Makefile
 
-## with Goreman
-
-To run the functional tests on a single machine using Goreman, build with the provided build script and run with the provided Procfile:
-
-```sh
-./tools/functional-tester/build
-goreman -f tools/functional-tester/Procfile start
+popd
 ```
 
-Notes:
-- The etcd-agent will not run with root privileges; iptables manipulation is disabled.
-- To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/Procfile or start etcd-tester manually
+And run [example scripts](./scripts).
+
+```bash
+./scripts/agent-1.sh
+./scripts/agent-2.sh
+./scripts/agent-3.sh
+
+./scripts/tester-limit.sh
+```
