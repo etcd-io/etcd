@@ -36,7 +36,7 @@
 //	fmt.Printf("%s\n", resp.Kvs[0].Value)
 //	// Output: 123
 //	unprefixedKV.Put(context.TODO(), "my-prefix/abc", "456")
-//	resp, _ = cli.Get("abc")
+//	resp, _ = cli.Get(context.TODO(), "abc")
 //	fmt.Printf("%s\n", resp.Kvs[0].Value)
 //	// Output: 456
 //
