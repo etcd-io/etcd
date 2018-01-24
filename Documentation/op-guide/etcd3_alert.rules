@@ -43,8 +43,8 @@ ANNOTATIONS {
 
 # alert if more than 1% of gRPC method calls have failed within the last 5 minutes
 ALERT HighNumberOfFailedGRPCRequests
-IF sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
-  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m])) > 0.01
+IF 100 * (sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
+  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 1
 FOR 10m
 LABELS {
   severity = "warning"
@@ -56,8 +56,8 @@ ANNOTATIONS {
 
 # alert if more than 5% of gRPC method calls have failed within the last 5 minutes
 ALERT HighNumberOfFailedGRPCRequests
-IF sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
-  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m])) > 0.05
+IF 100 * (sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
+  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 5
 FOR 5m
 LABELS {
   severity = "critical"
@@ -84,8 +84,8 @@ ANNOTATIONS {
 
 # alert if more than 1% of requests to an HTTP endpoint have failed within the last 5 minutes
 ALERT HighNumberOfFailedHTTPRequests
-IF sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
-  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method) > 0.01
+IF 100 * (sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
+  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method)) > 1
 FOR 10m
 LABELS {
   severity = "warning"
@@ -97,8 +97,8 @@ ANNOTATIONS {
 
 # alert if more than 5% of requests to an HTTP endpoint have failed within the last 5 minutes
 ALERT HighNumberOfFailedHTTPRequests
-IF sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
-  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method) > 0.05
+IF 100 * (sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
+  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method))  > 5
 FOR 5m
 LABELS {
   severity = "critical"
