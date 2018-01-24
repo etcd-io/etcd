@@ -423,3 +423,11 @@ docker-dns-srv-test-certs-wildcard-run:
 	  --mount type=bind,source=`pwd`/hack/scripts-dev/docker-dns-srv/certs-wildcard,destination=/certs-wildcard \
 	  gcr.io/etcd-development/etcd-dns-srv-test:go$(_GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-wildcard/run.sh && rm -rf m*.etcd"
+
+
+
+# Example:
+#   make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
+
+build-etcd-test-proxy:
+	go build -v -o ./bin/etcd-test-proxy ./cmd/tools/etcd-test-proxy
