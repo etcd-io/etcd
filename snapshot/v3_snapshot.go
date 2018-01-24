@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -38,7 +39,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
@@ -420,7 +420,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 			},
 		},
 	}
-	sn := snap.New(s.snapDir)
+	sn := raftsnap.New(s.snapDir)
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return err
 	}

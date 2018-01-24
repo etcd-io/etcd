@@ -23,10 +23,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreos/etcd/internal/raftsnap"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
 )
 
@@ -136,11 +136,11 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type snapshotHandler struct {
 	tr          Transporter
 	r           Raft
-	snapshotter *snap.Snapshotter
+	snapshotter *raftsnap.Snapshotter
 	cid         types.ID
 }
 
-func newSnapshotHandler(tr Transporter, r Raft, snapshotter *snap.Snapshotter, cid types.ID) http.Handler {
+func newSnapshotHandler(tr Transporter, r Raft, snapshotter *raftsnap.Snapshotter, cid types.ID) http.Handler {
 	return &snapshotHandler{
 		tr:          tr,
 		r:           r,

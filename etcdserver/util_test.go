@@ -20,10 +20,10 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
 )
 
 func TestLongestConnected(t *testing.T) {
@@ -76,7 +76,7 @@ func newNopTransporterWithActiveTime(memberIDs []types.ID) rafthttp.Transporter 
 func (s *nopTransporterWithActiveTime) Start() error                        { return nil }
 func (s *nopTransporterWithActiveTime) Handler() http.Handler               { return nil }
 func (s *nopTransporterWithActiveTime) Send(m []raftpb.Message)             {}
-func (s *nopTransporterWithActiveTime) SendSnapshot(m snap.Message)         {}
+func (s *nopTransporterWithActiveTime) SendSnapshot(m raftsnap.Message)     {}
 func (s *nopTransporterWithActiveTime) AddRemote(id types.ID, us []string)  {}
 func (s *nopTransporterWithActiveTime) AddPeer(id types.ID, us []string)    {}
 func (s *nopTransporterWithActiveTime) RemovePeer(id types.ID)              {}

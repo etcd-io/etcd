@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
 )
 
 type strReaderCloser struct{ *strings.Reader }
@@ -82,7 +82,7 @@ func TestSnapshotSend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sent, files := testSnapshotSend(t, snap.NewMessage(tt.m, tt.rc, tt.size))
+		sent, files := testSnapshotSend(t, raftsnap.NewMessage(tt.m, tt.rc, tt.size))
 		if tt.wsent != sent {
 			t.Errorf("#%d: snapshot expected %v, got %v", i, tt.wsent, sent)
 		}
@@ -92,7 +92,7 @@ func TestSnapshotSend(t *testing.T) {
 	}
 }
 
-func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.FileInfo) {
+func testSnapshotSend(t *testing.T, sm *raftsnap.Message) (bool, []os.FileInfo) {
 	d, err := ioutil.TempDir(os.TempDir(), "snapdir")
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.FileInfo) {
 	r := &fakeRaft{}
 	tr := &Transport{pipelineRt: &http.Transport{}, ClusterID: types.ID(1), Raft: r}
 	ch := make(chan struct{}, 1)
-	h := &syncHandler{newSnapshotHandler(tr, r, snap.New(d), types.ID(1)), ch}
+	h := &syncHandler{newSnapshotHandler(tr, r, raftsnap.New(d), types.ID(1)), ch}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 

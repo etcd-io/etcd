@@ -38,6 +38,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
@@ -52,7 +53,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
@@ -206,7 +206,7 @@ type EtcdServer struct {
 	cluster *membership.RaftCluster
 
 	store       store.Store
-	snapshotter *snap.Snapshotter
+	snapshotter *raftsnap.Snapshotter
 
 	applyV2 ApplierV2
 
@@ -279,7 +279,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
-	ss := snap.New(cfg.SnapDir())
+	ss := raftsnap.New(cfg.SnapDir())
 
 	bepath := cfg.backendPath()
 	beExist := fileutil.Exist(bepath)
@@ -373,7 +373,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
 		snapshot, err = ss.Load()
-		if err != nil && err != snap.ErrNoSnapshot {
+		if err != nil && err != raftsnap.ErrNoSnapshot {
 			return nil, err
 		}
 		if snapshot != nil {
@@ -1266,7 +1266,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 }
 
-func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
+func (s *EtcdServer) sendMergedSnap(merged raftsnap.Message) {
 	atomic.AddInt64(&s.inflightSnapshots, 1)
 
 	s.r.transport.SendSnapshot(merged)
