@@ -264,6 +264,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 - Dependencies
   - Update [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) to `v1.2.1`.
   - Update [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) to `v1.2.0`.
+- Rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since [domain name is invalid for network interface binding](https://github.com/coreos/etcd/issues/6336).
 
 ### Fixed
 

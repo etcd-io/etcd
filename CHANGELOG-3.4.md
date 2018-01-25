@@ -16,7 +16,8 @@
 - Exit on [shadowed environment variables](TODO).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
-  - Move `cmd/vendor` directory to `vendor` at repository root.
+  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/coreos/etcd/issues/4913).
+  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).

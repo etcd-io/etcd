@@ -48,8 +48,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Translate [gRPC status error in v3 client `Snapshot` API](https://github.com/coreos/etcd/pull/9038).
 - Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) for v2 `client`.
   - [Regenerated](https://github.com/coreos/etcd/pull/8721) v2 `client` source code with latest `ugorji/go/codec`.
-- v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
-  - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
+- v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`"lease LEASE_ID already expired"`](https://github.com/coreos/etcd/pull/9047).
+  - <=3.2 prints `"lease LEASE_ID granted with TTL(0s), remaining(-1s)"`.
 
 ### Added(`etcd`)
 
