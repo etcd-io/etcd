@@ -112,7 +112,7 @@ type Lessor interface {
 // lessor implements Lessor interface.
 // TODO: use clockwork for testability.
 type lessor struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	// demotec is set when the lessor is the primary.
 	// demotec will be closed if the lessor is demoted.
@@ -311,8 +311,8 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 }
 
 func (le *lessor) Lookup(id LeaseID) *Lease {
-	le.mu.Lock()
-	defer le.mu.Unlock()
+	le.mu.RLock()
+	defer le.mu.RUnlock()
 	return le.leaseMap[id]
 }
 
@@ -326,9 +326,9 @@ func (le *lessor) unsafeLeases() []*Lease {
 }
 
 func (le *lessor) Leases() []*Lease {
-	le.mu.Lock()
+	le.mu.RLock()
 	ls := le.unsafeLeases()
-	le.mu.Unlock()
+	le.mu.RUnlock()
 	return ls
 }
 
@@ -422,9 +422,9 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 }
 
 func (le *lessor) GetLease(item LeaseItem) LeaseID {
-	le.mu.Lock()
+	le.mu.RLock()
 	id := le.itemMap[item]
-	le.mu.Unlock()
+	le.mu.RUnlock()
 	return id
 }
 
@@ -477,11 +477,11 @@ func (le *lessor) runLoop() {
 		// rate limit
 		revokeLimit := leaseRevokeRate / 2
 
-		le.mu.Lock()
+		le.mu.RLock()
 		if le.isPrimary() {
 			ls = le.findExpiredLeases(revokeLimit)
 		}
-		le.mu.Unlock()
+		le.mu.RUnlock()
 
 		if len(ls) != 0 {
 			select {
