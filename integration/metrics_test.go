@@ -75,8 +75,8 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 
 	// clear out historical keys
 	creq := &pb.CompactionRequest{Revision: int64(numPuts), Physical: true}
-	if _, err := kvc.Compact(context.TODO(), creq); err != nil {
-		t.Fatal(err)
+	if _, kerr := kvc.Compact(context.TODO(), creq); kerr != nil {
+		t.Fatal(kerr)
 	}
 
 	// defrag should give freed space back to fs
