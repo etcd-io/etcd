@@ -359,6 +359,13 @@ If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communi
 
 If etcd is using TLS without a custom certificate authority, the discovery domain (e.g., example.com) must match the SRV record domain (e.g., infra1.example.com). This is to mitigate attacks that forge SRV records to point to a different domain; the domain would have a valid certificate under PKI but be controlled by an unknown third party.
 
+The `-discovery-srv-name` flag additionally configures a suffix to the SRV name that is queried during discovery.
+Use this flag to differentiate between multiple etcd clusters under the same domain.
+For example, if `discovery-srv=example.com` and `-discovery-srv-name=foo` are set, the following DNS SRV queries are made:
+
+* _etcd-server-ssl-foo._tcp.example.com
+* _etcd-server-foo._tcp.example.com
+
 #### Create DNS SRV records
 
 ```

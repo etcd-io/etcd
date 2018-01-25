@@ -129,15 +129,16 @@ type Config struct {
 
 	// clustering
 
-	APUrls, ACUrls      []url.URL
-	ClusterState        string `json:"initial-cluster-state"`
-	DNSCluster          string `json:"discovery-srv"`
-	Dproxy              string `json:"discovery-proxy"`
-	Durl                string `json:"discovery"`
-	InitialCluster      string `json:"initial-cluster"`
-	InitialClusterToken string `json:"initial-cluster-token"`
-	StrictReconfigCheck bool   `json:"strict-reconfig-check"`
-	EnableV2            bool   `json:"enable-v2"`
+	APUrls, ACUrls        []url.URL
+	ClusterState          string `json:"initial-cluster-state"`
+	DNSCluster            string `json:"discovery-srv"`
+	DNSClusterServiceName string `json:"discovery-srv-name"`
+	Dproxy                string `json:"discovery-proxy"`
+	Durl                  string `json:"discovery"`
+	InitialCluster        string `json:"initial-cluster"`
+	InitialClusterToken   string `json:"initial-cluster-token"`
+	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
+	EnableV2              bool   `json:"enable-v2"`
 
 	// security
 
@@ -463,7 +464,8 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		urlsmap[cfg.Name] = cfg.APUrls
 		token = cfg.Durl
 	case cfg.DNSCluster != "":
-		clusterStrs, cerr := srv.GetCluster("etcd-server", cfg.Name, cfg.DNSCluster, cfg.APUrls)
+		clusterStrs, cerr := cfg.GetDNSClusterNames()
+
 		if cerr != nil {
 			plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
 			return nil, "", cerr
@@ -488,6 +490,28 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		urlsmap, err = types.NewURLsMap(cfg.InitialCluster)
 	}
 	return urlsmap, token, err
+}
+
+// GetDNSClusterNames uses DNS SRV records to get a list of initial nodes for cluster bootstrapping.
+func (cfg *Config) GetDNSClusterNames() ([]string, error) {
+	var (
+		clusterStrs       []string
+		cerr              error
+		serviceNameSuffix string
+	)
+	if cfg.DNSClusterServiceName != "" {
+		serviceNameSuffix = "-" + cfg.DNSClusterServiceName
+	}
+	// Use both etcd-server-ssl and etcd-server for discovery. Combine the results if both are available.
+	clusterStrs, cerr = srv.GetCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
+	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
+	if cerr != nil {
+		clusterStrs = make([]string, 0)
+	}
+	if httpCerr != nil {
+		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
+	}
+	return clusterStrs, cerr
 }
 
 func (cfg Config) InitialClusterFromName(name string) (ret string) {
