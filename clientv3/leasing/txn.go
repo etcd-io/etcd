@@ -85,7 +85,7 @@ func (txn *txnLeasing) eval() (*v3.TxnResponse, error) {
 	if !ok {
 		return nil, nil
 	}
-	return &v3.TxnResponse{copyHeader(txn.lkv.leases.header), succeeded, resps}, nil
+	return &v3.TxnResponse{Header: copyHeader(txn.lkv.leases.header), Succeeded: succeeded, Responses: resps}, nil
 }
 
 // fallback computes the ops to fetch all possible conflicting
