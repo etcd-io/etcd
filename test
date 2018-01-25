@@ -21,9 +21,6 @@ if [[ "${PASSES}" == *"functional"* ]]; then
 	./tools/functional-tester/build
 fi
 
-# build tests with vendored dependencies
-etcd_setup_gopath
-
 if [ -z "$PASSES" ]; then
 	PASSES="fmt bom dep compile build unit"
 fi
@@ -34,7 +31,7 @@ USERPKG=${PKG:-}
 COVER=${COVER:-"-cover"}
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-IGNORE_PKGS="(cmd/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
+IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
@@ -431,7 +428,7 @@ function nakedret_pass {
 
 function license_header_pass {
 	licRes=""
-	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
+	files=$(find . -type f -iname '*.go' ! -path './vendor/*' ! -path './gopath.proto/*')
 	for file in $files; do
 		if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
 			licRes="${licRes}"$(echo -e "  ${file}")

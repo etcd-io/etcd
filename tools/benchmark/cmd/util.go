@@ -21,10 +21,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/report"
 	"google.golang.org/grpc/grpclog"
-	"github.com/bgentry/speakeasy"
 )
 
 var (
