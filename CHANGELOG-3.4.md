@@ -22,8 +22,10 @@
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Reorganize [internal packages](https://github.com/coreos/etcd/issues/9220).
-  - Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
-  - Rename `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
+  - Move `"github.com/coreos/etcd/alarm"` to [`"github.com/coreos/etcd/internal/alarm"`](https://github.com/coreos/etcd/pull/9234).
+  - Move `"github.com/coreos/etcd/compactor"` to [`"github.com/coreos/etcd/internal/compactor"`](https://github.com/coreos/etcd/pull/9234).
+  - Move `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
+  - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 
 ### Added(API)
 
