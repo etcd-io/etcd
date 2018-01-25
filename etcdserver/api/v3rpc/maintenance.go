@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/version"
 )
 
@@ -38,6 +39,9 @@ type BackendGetter interface {
 }
 
 type Alarmer interface {
+	// Alarms is implemented in Server interface located in etcdserver/server.go
+	// It returns a list of alarms present in the AlarmStore
+	Alarms() []*pb.AlarmMember
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 }
 
@@ -160,6 +164,15 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		RaftIndex:        ms.rg.Index(),
 		RaftTerm:         ms.rg.Term(),
 		RaftAppliedIndex: ms.rg.AppliedIndex(),
+	}
+	if uint64(ms.rg.Leader()) == raft.None {
+		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())
+	}
+	alarms := ms.a.Alarms()
+	if len(alarms) > 0 {
+		for _, alarm := range alarms {
+			resp.Errors = append(resp.Errors, alarm.String())
+		}
 	}
 	ms.hdr.fill(resp.Header)
 	return resp, nil

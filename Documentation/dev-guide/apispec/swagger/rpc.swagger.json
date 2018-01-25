@@ -2168,6 +2168,13 @@
           "type": "string",
           "format": "int64"
         },
+        "errors": {
+          "type": "array",
+          "title": "errors contains alarm/health information and status",
+          "items": {
+            "type": "string"
+          }
+        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },

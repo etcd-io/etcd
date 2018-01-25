@@ -174,7 +174,7 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
-	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index", "raft applied index"}
+	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index", "raft applied index", "errors"}
 	for _, status := range statusList {
 		rows = append(rows, []string{
 			status.Ep,
@@ -185,6 +185,7 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			fmt.Sprint(status.Resp.RaftTerm),
 			fmt.Sprint(status.Resp.RaftIndex),
 			fmt.Sprint(status.Resp.RaftAppliedIndex),
+			fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
 		})
 	}
 	return hdr, rows
