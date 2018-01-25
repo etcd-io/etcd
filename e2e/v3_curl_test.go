@@ -156,7 +156,7 @@ func testV3CurlTxn(t *testing.T, pathPrefix string) {
 				Key:         []byte("foo"),
 				Result:      pb.Compare_EQUAL,
 				Target:      pb.Compare_CREATE,
-				TargetUnion: &pb.Compare_CreateRevision{0},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 0},
 			},
 		},
 		Success: []*pb.RequestOp{

@@ -166,7 +166,7 @@ func TestV3HashKV(t *testing.T) {
 		}
 
 		rev := resp.Header.Revision
-		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{Revision: 0})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestV3HashKV(t *testing.T) {
 		prevHash := hresp.Hash
 		prevCompactRev := hresp.CompactRevision
 		for i := 0; i < 10; i++ {
-			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{Revision: 0})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -519,7 +519,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{6},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 6},
 			},
 			true,
 		},
@@ -530,7 +530,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{5},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
 			},
 			false,
 		},
@@ -541,7 +541,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{5},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
 			},
 			true,
 		},
@@ -552,7 +552,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{4},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 4},
 			},
 			false,
 		},
@@ -563,7 +563,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/b0"),
 				Target:      pb.Compare_VALUE,
 				Result:      pb.Compare_EQUAL,
-				TargetUnion: &pb.Compare_Value{[]byte("x")},
+				TargetUnion: &pb.Compare_Value{Value: []byte("x")},
 			},
 			false,
 		},
@@ -574,7 +574,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
 				Result:      pb.Compare_GREATER,
-				TargetUnion: &pb.Compare_Lease{0},
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
 			},
 			false,
 		},
@@ -585,7 +585,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
 				Result:      pb.Compare_EQUAL,
-				TargetUnion: &pb.Compare_Lease{0},
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
 			},
 			true,
 		},
