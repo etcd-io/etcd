@@ -10,9 +10,10 @@
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
   - `*.aci` files are not available from `v3.4` release.
-- Exit on [empty hosts in advertise URLs](TODO).
+- Exit on [empty hosts in advertise URLs](https://github.com/coreos/etcd/pull/8786).
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
   - e.g. `--advertise-client-urls=http://:2379`.
+  - e.g. `--initial-advertise-peer-urls=http://:2380`.
 - Exit on [shadowed environment variables](TODO).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
@@ -20,7 +21,9 @@
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
-- Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+- Reorganize [internal packages](https://github.com/coreos/etcd/issues/9220).
+  - Rename `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+  - Rename `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
 
 ### Added(API)
 
@@ -28,11 +31,14 @@
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
   - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
 - Add [`raftAppliedIndex` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9176) for current Raft applied index.
+- Add [`errors` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9206) for server-side error.
+  - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 
 ### Added(v3 `etcdctl`)
 
 - Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
 - Add ["raft applied index" to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
+- Add ["errors" to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 
 ### Package `raft`
 

@@ -33,6 +33,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Prevent [spikes in Raft proposal rate](https://github.com/coreos/etcd/issues/8096).
 - Support `clientv3` balancer failover under [network faults/partitions](https://github.com/coreos/etcd/issues/8711).
 - Better warning on [mismatched `--initial-cluster`](https://github.com/coreos/etcd/pull/8083) flag.
+  - etcd compares `--initial-advertise-peer-urls` against corresponding `--initial-cluster` URLs with forward-lookup.
+  - If resolved IP addresses of `--initial-advertise-peer-urls` and `--initial-cluster` do not match (e.g. [due to DNS error](https://github.com/coreos/etcd/pull/9210)), etcd will exit with errors.
+    - v3.2 error: `--initial-cluster must include s1=https://s1.test:2380 given --initial-advertise-peer-urls=https://s1.test:2380`.
+    - v3.3 error: `failed to resolve https://s1.test:2380 to match --initial-cluster=s1=https://s1.test:2380 (failed to resolve "https://s1.test:2380" (error ...))`.
 
 ### Changed(Breaking Changes)
 
