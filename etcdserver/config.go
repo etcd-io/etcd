@@ -124,7 +124,8 @@ func (c *ServerConfig) advertiseMatchesCluster() error {
 	sort.Strings(apurls)
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
-	if netutil.URLStringsEqual(ctx, apurls, urls.StringSlice()) {
+	ok, err := netutil.URLStringsEqual(ctx, apurls, urls.StringSlice())
+	if ok {
 		return nil
 	}
 
@@ -148,7 +149,7 @@ func (c *ServerConfig) advertiseMatchesCluster() error {
 		}
 		mstr := strings.Join(missing, ",")
 		apStr := strings.Join(apurls, ",")
-		return fmt.Errorf("--initial-cluster has %s but missing from --initial-advertise-peer-urls=%s ", mstr, apStr)
+		return fmt.Errorf("--initial-cluster has %s but missing from --initial-advertise-peer-urls=%s (%v)", mstr, apStr, err)
 	}
 
 	for url := range apMap {
@@ -156,9 +157,16 @@ func (c *ServerConfig) advertiseMatchesCluster() error {
 			missing = append(missing, url)
 		}
 	}
-	mstr := strings.Join(missing, ",")
+	if len(missing) > 0 {
+		mstr := strings.Join(missing, ",")
+		umap := types.URLsMap(map[string]types.URLs{c.Name: c.PeerURLs})
+		return fmt.Errorf("--initial-advertise-peer-urls has %s but missing from --initial-cluster=%s", mstr, umap.String())
+	}
+
+	// resolved URLs from "--initial-advertise-peer-urls" and "--initial-cluster" did not match or failed
+	apStr := strings.Join(apurls, ",")
 	umap := types.URLsMap(map[string]types.URLs{c.Name: c.PeerURLs})
-	return fmt.Errorf("--initial-advertise-peer-urls has %s but missing from --initial-cluster=%s", mstr, umap.String())
+	return fmt.Errorf("failed to resolve %s to match --initial-cluster=%s (%v)", apStr, umap.String(), err)
 }
 
 func (c *ServerConfig) MemberDir() string { return filepath.Join(c.DataDir, "member") }
