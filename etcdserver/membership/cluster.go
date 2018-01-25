@@ -490,8 +490,8 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 	for i := range ems {
-		if !netutil.URLStringsEqual(ctx, ems[i].PeerURLs, lms[i].PeerURLs) {
-			return fmt.Errorf("unmatched member while checking PeerURLs")
+		if ok, err := netutil.URLStringsEqual(ctx, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
+			return fmt.Errorf("unmatched member while checking PeerURLs (%v)", err)
 		}
 		lms[i].ID = ems[i].ID
 	}
