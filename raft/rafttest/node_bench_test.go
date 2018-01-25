@@ -23,7 +23,7 @@ import (
 )
 
 func BenchmarkProposal3Nodes(b *testing.B) {
-	peers := []raft.Peer{{1, nil}, {2, nil}, {3, nil}}
+	peers := []raft.Peer{{Id: 1, Context: nil}, {Id: 2, Context: nil}, {Id: 3, Context: nil}}
 	nt := newRaftNetwork(1, 2, 3)
 
 	nodes := make([]*node, 0)
