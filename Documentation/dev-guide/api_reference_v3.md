@@ -789,6 +789,8 @@ Empty field.
 | leader | leader is the member ID which the responding member believes is the current leader. | uint64 |
 | raftIndex | raftIndex is the current raft index of the responding member. | uint64 |
 | raftTerm | raftTerm is the current raft term of the responding member. | uint64 |
+| raftAppliedIndex | raftAppliedIndex is the current raft applied index of the responding member. | uint64 |
+| errors | errors contains alarm/health information and status. | (slice of) string |
 
 
 
@@ -860,7 +862,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Event` (mvcc/mvccpb/kv.proto)
+##### message `Event` (internal/mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -870,7 +872,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `KeyValue` (mvcc/mvccpb/kv.proto)
+##### message `KeyValue` (internal/mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -883,7 +885,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Lease` (lease/leasepb/lease.proto)
+##### message `Lease` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -892,7 +894,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+##### message `LeaseInternalRequest` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -900,7 +902,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+##### message `LeaseInternalResponse` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
