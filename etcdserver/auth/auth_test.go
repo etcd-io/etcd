@@ -23,7 +23,7 @@ import (
 	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	etcdstore "github.com/coreos/etcd/store"
+	etcdstore "github.com/coreos/etcd/internal/store"
 )
 
 type fakeDoer struct{}

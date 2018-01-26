@@ -2169,8 +2169,8 @@
           "format": "int64"
         },
         "errors": {
+          "description": "errors contains alarm/health information and status.",
           "type": "array",
-          "title": "errors contains alarm/health information and status",
           "items": {
             "type": "string"
           }
@@ -2184,7 +2184,7 @@
           "format": "uint64"
         },
         "raftAppliedIndex": {
-          "description": "appliedIndex is the current raft applied index of the responding member.",
+          "description": "raftAppliedIndex is the current raft applied index of the responding member.",
           "type": "string",
           "format": "uint64"
         },

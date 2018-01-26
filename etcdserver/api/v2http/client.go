@@ -36,8 +36,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/store"
 
 	"github.com/jonboulle/clockwork"
 )
