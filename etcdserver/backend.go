@@ -58,8 +58,8 @@ func openBackend(cfg ServerConfig) backend.Backend {
 	select {
 	case be := <-beOpened:
 		return be
-	case <-time.After(time.Second):
-		plog.Warningf("another etcd process is using %q and holds the file lock.", fn)
+	case <-time.After(10 * time.Second):
+		plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
 		plog.Warningf("waiting for it to exit before starting...")
 	}
 	return <-beOpened
