@@ -26,7 +26,10 @@
   - Move `"github.com/coreos/etcd/alarm"` to [`"github.com/coreos/etcd/internal/alarm"`](https://github.com/coreos/etcd/pull/9234).
   - Move `"github.com/coreos/etcd/compactor"` to [`"github.com/coreos/etcd/internal/compactor"`](https://github.com/coreos/etcd/pull/9234).
   - Move `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
+  - Move `"github.com/coreos/etcd/lease"` to [`"github.com/coreos/etcd/internal/lease"`](https://github.com/coreos/etcd/pull/9238).
+  - Move `"github.com/coreos/etcd/mvcc"` to [`"github.com/coreos/etcd/internal/mvcc"`](https://github.com/coreos/etcd/pull/9238).
   - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+  - Move `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/internal/store"`](https://github.com/coreos/etcd/pull/9238).
 
 ### Added(`etcd`)
 
