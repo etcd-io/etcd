@@ -19,7 +19,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 )
 

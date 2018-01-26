@@ -28,9 +28,9 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/internal/store"
-	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"

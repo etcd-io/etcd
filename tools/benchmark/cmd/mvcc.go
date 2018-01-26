@@ -18,7 +18,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/spf13/cobra"
