@@ -39,6 +39,7 @@ import (
 	"github.com/coreos/etcd/internal/compactor"
 	"github.com/coreos/etcd/internal/discovery"
 	"github.com/coreos/etcd/internal/raftsnap"
+	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
@@ -53,7 +54,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 

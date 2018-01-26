@@ -24,8 +24,8 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/store"
 )
 
 // store implements the Store interface for V2 using
