@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/gogo/protobuf/gogoproto"
 
-	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
+	mvccpb "github.com/coreos/etcd/internal/mvcc/mvccpb"
 
 	authpb "github.com/coreos/etcd/auth/authpb"
 

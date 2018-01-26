@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/internal/lease"
-	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/internal/mvcc/backend"
 )
 
 func BenchmarkWatchableStorePut(b *testing.B) {

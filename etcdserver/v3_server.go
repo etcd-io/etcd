@@ -25,7 +25,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/lease/leasehttp"
-	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/raft"
 
 	"github.com/gogo/protobuf/proto"

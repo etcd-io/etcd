@@ -17,8 +17,8 @@ package etcdserver
 import (
 	"io"
 
+	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/raftsnap"
-	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 

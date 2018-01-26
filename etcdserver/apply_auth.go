@@ -20,7 +20,7 @@ import (
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/internal/lease"
-	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/internal/mvcc"
 )
 
 type authApplierV3 struct {

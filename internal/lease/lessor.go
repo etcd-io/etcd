@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/internal/lease/leasepb"
-	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/internal/mvcc/backend"
 )
 
 // NoLease is a special LeaseID representing the absence of a lease.

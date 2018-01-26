@@ -24,8 +24,8 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/internal/mvcc/mvccpb"
 )
 
 type watchServer struct {
