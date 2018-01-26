@@ -12,10 +12,11 @@
   - `*.aci` files are not available from `v3.4` release.
 - Exit on [empty hosts in advertise URLs](https://github.com/coreos/etcd/pull/8786).
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
-  - e.g. `--advertise-client-urls=http://:2379`.
-  - e.g. `--initial-advertise-peer-urls=http://:2380`.
+  - e.g. exit with error on `--advertise-client-urls=http://:2379`.
+  - e.g. exit with error on `--initial-advertise-peer-urls=http://:2380`.
 - Exit on [shadowed environment variables](TODO).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
+  - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
   - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/coreos/etcd/issues/4913).
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
@@ -26,6 +27,13 @@
   - Move `"github.com/coreos/etcd/compactor"` to [`"github.com/coreos/etcd/internal/compactor"`](https://github.com/coreos/etcd/pull/9234).
   - Move `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
   - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+
+### Added(`etcd`)
+
+- Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
+  - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
+  - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
+  - Useful for operating multiple etcd clusters under the same domain.
 
 ### Added(API)
 
