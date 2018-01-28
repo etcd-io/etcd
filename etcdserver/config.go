@@ -72,6 +72,10 @@ type ServerConfig struct {
 	CorruptCheckTime    time.Duration
 
 	Debug bool
+
+	TestMode        bool
+	TestDNS         string
+	TestMaxDuration time.Duration
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
@@ -197,6 +201,15 @@ func (c *ServerConfig) peerDialTimeout() time.Duration {
 	// 1s for queue wait and election timeout
 	return time.Second + time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
+func (c *ServerConfig) CheckTestMode() error {
+	if c.TestDNS != "" && !c.TestMode {
+		return fmt.Errorf("test-dns also requires test-mode")
+	}
+	if c.TestMaxDuration != 0 && !c.TestMode {
+		return fmt.Errorf("test-max-duration also requires test-mode")
+	}
+	return nil
+}
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 
@@ -204,6 +217,9 @@ func (c *ServerConfig) Print() { c.print(false) }
 
 func (c *ServerConfig) print(initial bool) {
 	plog.Infof("name = %s", c.Name)
+	if c.TestMode {
+		plog.Infof("running in test-mode")
+	}
 	if c.ForceNewCluster {
 		plog.Infof("force new cluster")
 	}

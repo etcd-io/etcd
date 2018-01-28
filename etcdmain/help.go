@@ -157,6 +157,15 @@ security flags:
 	--peer-crl-file ''
 		path to the peer certificate revocation list file.
 
+test-mode flags:
+
+	--test-mode 'false'
+		enable test mode, if flags using the test- prefix are defined test-mode must be true.
+	--test-max-duration ''
+		the time duration that the etcd will run in test-mode before it shutsdown. test-mode default is 24h.
+	--test-dns ''
+		dns host:port to use during test-mode.
+
 logging flags
 
 	--debug 'false'

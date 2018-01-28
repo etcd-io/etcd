@@ -47,6 +47,7 @@ func TestSRVGetCluster(t *testing.T) {
 		scheme  string
 		records []*net.SRV
 		urls    []string
+		dns     string
 
 		expected string
 	}{
@@ -54,6 +55,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"https",
 			[]*net.SRV{},
 			nil,
+			"",
 
 			"",
 		},
@@ -61,6 +63,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"https",
 			srvAll,
 			nil,
+			"",
 
 			"0=https://1.example.com:2480,1=https://2.example.com:2480,2=https://3.example.com:2480",
 		},
@@ -68,6 +71,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"http",
 			srvAll,
 			nil,
+			"",
 
 			"0=http://1.example.com:2480,1=http://2.example.com:2480,2=http://3.example.com:2480",
 		},
@@ -75,6 +79,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"https",
 			srvAll,
 			[]string{"https://10.0.0.1:2480"},
+			"",
 
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
 		},
@@ -83,6 +88,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"https",
 			srvAll,
 			[]string{"https://10.0.0.1:2480"},
+			"",
 
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
 		},
@@ -91,6 +97,7 @@ func TestSRVGetCluster(t *testing.T) {
 			"http",
 			srvAll,
 			[]string{"https://10.0.0.1:2480"},
+			"",
 
 			"0=http://2.example.com:2480,1=http://3.example.com:2480",
 		},
@@ -112,7 +119,7 @@ func TestSRVGetCluster(t *testing.T) {
 			return "", tt.records, nil
 		}
 		urls := testutil.MustNewURLs(t, tt.urls)
-		str, err := GetCluster(tt.scheme, "etcd-server", name, "example.com", urls)
+		str, err := GetCluster(tt.scheme, "etcd-server", name, "example.com", urls, tt.dns)
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}
