@@ -910,7 +910,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Permission` (auth/authpb/auth.proto)
+##### message `Permission` (internal/auth/authpb/auth.proto)
 
 Permission is a single entity
 
@@ -922,7 +922,7 @@ Permission is a single entity
 
 
 
-##### message `Role` (auth/authpb/auth.proto)
+##### message `Role` (internal/auth/authpb/auth.proto)
 
 Role is a single entry in the bucket authRoles
 
@@ -933,7 +933,7 @@ Role is a single entry in the bucket authRoles
 
 
 
-##### message `User` (auth/authpb/auth.proto)
+##### message `User` (internal/auth/authpb/auth.proto)
 
 User is a single entry in the bucket authUsers
 
