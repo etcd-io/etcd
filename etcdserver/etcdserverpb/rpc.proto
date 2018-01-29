@@ -3,7 +3,7 @@ package etcdserverpb;
 
 import "gogoproto/gogo.proto";
 import "etcd/internal/mvcc/mvccpb/kv.proto";
-import "etcd/auth/authpb/auth.proto";
+import "etcd/internal/auth/authpb/auth.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";

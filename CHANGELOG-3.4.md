@@ -24,6 +24,7 @@
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Reorganize [internal packages](https://github.com/coreos/etcd/issues/9220).
   - Move `"github.com/coreos/etcd/alarm"` to [`"github.com/coreos/etcd/internal/alarm"`](https://github.com/coreos/etcd/pull/9234).
+  - Move `"github.com/coreos/etcd/auth"` to [`"github.com/coreos/etcd/internal/auth"`](https://github.com/coreos/etcd/pull/9243).
   - Move `"github.com/coreos/etcd/compactor"` to [`"github.com/coreos/etcd/internal/compactor"`](https://github.com/coreos/etcd/pull/9234).
   - Move `"github.com/coreos/etcd/discovery"` to [`"github.com/coreos/etcd/internal/discovery"`](https://github.com/coreos/etcd/pull/9233).
   - Move `"github.com/coreos/etcd/lease"` to [`"github.com/coreos/etcd/internal/lease"`](https://github.com/coreos/etcd/pull/9238).

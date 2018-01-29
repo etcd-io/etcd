@@ -19,7 +19,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/auth"
+	"github.com/coreos/etcd/internal/auth"
 )
 
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
