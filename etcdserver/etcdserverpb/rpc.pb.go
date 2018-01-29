@@ -14,7 +14,7 @@ import (
 
 	mvccpb "github.com/coreos/etcd/internal/mvcc/mvccpb"
 
-	authpb "github.com/coreos/etcd/auth/authpb"
+	authpb "github.com/coreos/etcd/internal/auth/authpb"
 
 	context "golang.org/x/net/context"
 
