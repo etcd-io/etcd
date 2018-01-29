@@ -31,6 +31,7 @@
   - Move `"github.com/coreos/etcd/mvcc"` to [`"github.com/coreos/etcd/internal/mvcc"`](https://github.com/coreos/etcd/pull/9238).
   - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
   - Move `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/internal/store"`](https://github.com/coreos/etcd/pull/9238).
+  - Move `"github.com/coreos/etcd/version"` to [`"github.com/coreos/etcd/internal/version"`](https://github.com/coreos/etcd/pull/9244).
 
 ### Added(`etcd`)
 
