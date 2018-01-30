@@ -48,7 +48,7 @@ Example application workload: A 50-node Kubernetes cluster
 | Provider | Type | vCPUs | Memory (GB) | Max concurrent IOPS | Disk bandwidth (MB/s) |
 |----------|------|-------|--------|------|----------------|
 | AWS | m4.large | 2 | 8 | 3600 | 56.25 |
-| GCE | n1-standard-1 + 50GB PD SSD | 2 | 7.5 | 1500 | 25 |
+| GCE | n1-standard-2 + 50GB PD SSD | 2 | 7.5 | 1500 | 25 |
 
 
 ### Medium cluster

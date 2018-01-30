@@ -72,25 +72,15 @@ cfg.SetupLogging()
 
 Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
 
-#### Change in `/health` endpoint response value
+#### Change in `/health` endpoint response
 
-Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and includes errors, if any.
+Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct.
 
-Before
-
-```bash
-$ curl http://localhost:2379/health
-{"health":"true"}
-```
-
-After
+Note that in v3.3.0-rc.0, v3.3.0-rc.1, and v3.3.0-rc.2, `etcdhttp.Health` has boolean type `"health"` and `"errors"` fields. For backward compatibilities, we reverted `"health"` field to `string` type and removed `"errors"` field. Further health information will be provided in separate APIs.
 
 ```bash
 $ curl http://localhost:2379/health
 {"health":"true"}
-
-# Or
-{"health":"false","errors":["NOSPACE"]}
 ```
 
 #### Change in gRPC gateway HTTP endpoints (replaced `/v3alpha` with `/v3beta`)
@@ -113,7 +103,7 @@ Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will
 
 #### Change in maximum request size limits
 
-3.3 now allows custom request size limits for both server and **client side**.
+3.3 now allows custom request size limits for both server and **client side**. In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
 
 Server-side request limits can be configured with `--max-request-bytes` flag:
 
