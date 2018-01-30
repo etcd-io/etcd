@@ -36,9 +36,9 @@ Error:  rpc error: code = 11 desc = etcdserver: mvcc: required revision has been
 
 ## Defragmentation
 
-After compacting the keyspace, the backend database may exhibit internal fragmentation. Any internal fragmentation is space that is free to use by the backend but still consumes storage space. The process of defragmentation releases this storage space back to the file system. Defragmentation is issued on a per-member so that cluster-wide latency spikes may be avoided.
+After compacting the keyspace, the backend database may exhibit internal fragmentation. Any internal fragmentation is space that is free to use by the backend but still consumes storage space. Compacting old revisions internally fragments `etcd` by leaving gaps in backend database. Fragmented space is available for use by `etcd` but unavailable to the host filesystem. In other words, deleting application data does not reclaim the space on disk.
 
-Compacting old revisions internally fragments `etcd` by leaving gaps in backend database. Fragmented space is available for use by `etcd` but unavailable to the host filesystem.
+The process of defragmentation releases this storage space back to the file system. Defragmentation is issued on a per-member so that cluster-wide latency spikes may be avoided.
 
 To defragment an etcd member, use the `etcdctl defrag` command:
 
@@ -46,6 +46,8 @@ To defragment an etcd member, use the `etcdctl defrag` command:
 $ etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 ```
+
+Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states.
 
 To defragment an etcd data directory directly, while etcd is not running, use the command:
 
@@ -80,7 +82,7 @@ $ ETCDCTL_API=3 etcdctl --write-out=table endpoint status
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 # confirm alarm is raised
 $ ETCDCTL_API=3 etcdctl alarm list
-memberID:13803658152347727308 alarm:NOSPACE 
+memberID:13803658152347727308 alarm:NOSPACE
 ```
 
 Removing excessive keyspace data and defragmenting the backend database will put the cluster back within the quota limits:
@@ -96,7 +98,7 @@ $ ETCDCTL_API=3 etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 # disarm alarm
 $ ETCDCTL_API=3 etcdctl alarm disarm
-memberID:13803658152347727308 alarm:NOSPACE 
+memberID:13803658152347727308 alarm:NOSPACE
 # test puts are allowed again
 $ ETCDCTL_API=3 etcdctl put newkey 123
 OK
