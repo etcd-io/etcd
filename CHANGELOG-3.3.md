@@ -165,6 +165,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Set `--metrics-addr=http://[HOST]:9379` to serve `/metrics` in insecure port 9379.
 - Serve [`/health` endpoint in grpc-proxy](https://github.com/coreos/etcd/pull/8322).
 - Add [`grpc-proxy start --debug`](https://github.com/coreos/etcd/pull/8994) flag.
+- Add [`grpc-proxy start --max-send-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
+- Add [`grpc-proxy start --max-recv-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
 
 ### Added(gRPC gateway)
 
