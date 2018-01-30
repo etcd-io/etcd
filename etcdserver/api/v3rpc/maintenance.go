@@ -164,6 +164,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		RaftIndex:        ms.rg.Index(),
 		RaftTerm:         ms.rg.Term(),
 		RaftAppliedIndex: ms.rg.AppliedIndex(),
+		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
 	}
 	if uint64(ms.rg.Leader()) == raft.None {
 		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())

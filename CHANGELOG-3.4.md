@@ -51,6 +51,8 @@
 - Add [`raftAppliedIndex` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9176) for current Raft applied index.
 - Add [`errors` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9206) for server-side error.
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
+- Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
+  - Also exposed as metric `etcd_debugging_mvcc_db_total_size_in_use_in_bytes`
 
 ### Added(v3 `etcdctl`)
 

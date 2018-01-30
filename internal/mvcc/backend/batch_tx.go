@@ -165,7 +165,10 @@ func (t *batchTx) commit(stop bool) {
 			// which initializes *bolt.Tx.db and *bolt.Tx.meta as nil; panics t.tx.Size().
 			// Server must make sure 'batchTx.commit(false)' does not follow
 			// 'batchTx.commit(true)' (e.g. stopping backend, and inflight Hash call).
-			atomic.StoreInt64(&t.backend.size, t.tx.Size())
+			size := t.tx.Size()
+			db := t.tx.DB()
+			atomic.StoreInt64(&t.backend.size, size)
+			atomic.StoreInt64(&t.backend.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
 			return
 		}
 
