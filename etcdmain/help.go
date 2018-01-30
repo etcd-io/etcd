@@ -100,6 +100,8 @@ clustering flags:
 		HTTP proxy to use for traffic to discovery service.
 	--discovery-srv ''
 		dns srv domain used to bootstrap the cluster.
+	--discovery-srv-name ''
+		suffix to the dns srv name queried when bootstrapping.
 	--strict-reconfig-check '` + strconv.FormatBool(embed.DefaultStrictReconfigCheck) + `'
 		reject reconfiguration requests that would cause quorum loss.
 	--auto-compaction-retention '0'
