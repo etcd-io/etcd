@@ -84,6 +84,8 @@ var (
 	grpcProxyDebug bool
 )
 
+const defaultGRPCMaxCallSendMsgSize = 1.5 * 1024 * 1024
+
 func init() {
 	rootCmd.AddCommand(newGRPCProxyCommand())
 }
@@ -117,7 +119,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
-	cmd.Flags().IntVar(&grpcMaxCallSendMsgSize, "max-send-bytes", 1.5*1024*1024, "message send limits in bytes (default value is 1.5 MiB)")
+	cmd.Flags().IntVar(&grpcMaxCallSendMsgSize, "max-send-bytes", defaultGRPCMaxCallSendMsgSize, "message send limits in bytes (default value is 1.5 MiB)")
 	cmd.Flags().IntVar(&grpcMaxCallRecvMsgSize, "max-recv-bytes", math.MaxInt32, "message receive limits in bytes (default value is math.MaxInt32)")
 
 	// client TLS for connecting to server
