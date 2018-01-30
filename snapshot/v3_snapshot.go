@@ -57,6 +57,8 @@ type Manager interface {
 	Status(dbPath string) (Status, error)
 
 	// Restore restores a new etcd data directory from given snapshot file.
+	// It returns an error if specified data directory already exists, to
+	// prevent unintended data directory overwrites.
 	Restore(dbPath string, cfg RestoreConfig) error
 }
 
@@ -73,6 +75,9 @@ type RestoreConfig struct {
 	// Name is the human-readable name of this member.
 	Name string
 	// OutputDataDir is the target data directory to save restored data.
+	// OutputDataDir should not conflict with existing etcd data directory.
+	// If OutputDataDir already exists, it will return an error to prevent
+	// unintended data directory overwrites.
 	// Defaults to "[Name].etcd" if not given.
 	OutputDataDir string
 	// OutputWALDir is the target WAL data directory.
