@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/pkg/keyutil"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/gogo/protobuf/proto"
@@ -213,7 +214,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	resp := &pb.DeleteRangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	end := mkGteRange(dr.RangeEnd)
+	end := keyutil.MkGteRange(dr.RangeEnd)
 
 	if txn == nil {
 		txn = a.s.kv.Write()
@@ -237,17 +238,6 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	return resp, nil
 }
 
-func nextKey(key []byte) []byte {
-	for i := len(key) - 1; 0 <= i; i-- {
-		if key[i] < 0xff {
-			key[i]++
-			return key[:i+1]
-		}
-	}
-
-	return []byte{0}
-}
-
 func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
@@ -266,7 +256,7 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 
 	var rr *mvcc.RangeResult
 	var err error
-	rangeEnd := mkGteRange(r.RangeEnd)
+	rangeEnd := keyutil.MkGteRange(r.RangeEnd)
 
 	if txn != nil {
 		ro := mvcc.RangeOptions{
@@ -491,7 +481,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 	// * rewrite rules for common patterns:
 	//	ex. "[a, b) createrev > 0" => "limit 1 /\ kvs > 0"
 	// * caching
-	rr, err := rv.Range(c.Key, mkGteRange(c.RangeEnd), mvcc.RangeOptions{})
+	rr, err := rv.Range(c.Key, keyutil.MkGteRange(c.RangeEnd), mvcc.RangeOptions{})
 	if err != nil {
 		return false
 	}
@@ -972,17 +962,6 @@ func compareInt64(a, b int64) int {
 	default:
 		return 0
 	}
-}
-
-// mkGteRange determines if the range end is a >= range. This works around grpc
-// sending empty byte strings as nil; >= is encoded in the range end as '\0'.
-// If it is a GTE range, then []byte{} is returned to indicate the empty byte
-// string (vs nil being no byte string).
-func mkGteRange(rangeEnd []byte) []byte {
-	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
-		return []byte{}
-	}
-	return rangeEnd
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {

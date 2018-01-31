@@ -48,7 +48,8 @@ type Op struct {
 	maxCreateRev int64
 
 	// for range, watch
-	rev int64
+	rev              int64
+	rangeMaxKeysOnce int64
 
 	// for watch, put, delete
 	prevKV bool
@@ -310,6 +311,10 @@ func WithLease(leaseID LeaseID) OpOption {
 // WithLimit limits the number of results to return from 'Get' request.
 // If WithLimit is given a 0 limit, it is treated as no limit.
 func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
+
+// WithRangeMaxKeysOnce limits the number of read keys in a single read transaction
+// during Range() RPC. If WithRangeMaxKeysOnce is given a 0 limit, it is treated as no limit.
+func WithRangeMaxKeysOnce(n int64) OpOption { return func(op *Op) { op.rangeMaxKeysOnce = n } }
 
 // WithRev specifies the store revision for 'Get' request.
 // Or the start revision of 'Watch' request.

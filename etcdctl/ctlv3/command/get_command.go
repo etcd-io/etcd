@@ -23,15 +23,16 @@ import (
 )
 
 var (
-	getConsistency string
-	getLimit       int64
-	getSortOrder   string
-	getSortTarget  string
-	getPrefix      bool
-	getFromKey     bool
-	getRev         int64
-	getKeysOnly    bool
-	printValueOnly bool
+	getConsistency      string
+	getLimit            int64
+	getSortOrder        string
+	getSortTarget       string
+	getPrefix           bool
+	getFromKey          bool
+	getRev              int64
+	getKeysOnly         bool
+	printValueOnly      bool
+	getRangeMaxKeysOnce int64
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -51,6 +52,8 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
+	cmd.Flags().Int64Var(&getRangeMaxKeysOnce, "range-max-keys-once", 0, "Specify the maximum number of read keys in a single read transaction")
+
 	return cmd
 }
 
@@ -157,6 +160,10 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 
 	if getKeysOnly {
 		opts = append(opts, clientv3.WithKeysOnly())
+	}
+
+	if getRangeMaxKeysOnce != 0 {
+		opts = append(opts, clientv3.WithRangeMaxKeysOnce(getRangeMaxKeysOnce))
 	}
 
 	return key, opts

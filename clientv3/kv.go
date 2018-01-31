@@ -15,9 +15,11 @@
 package clientv3
 
 import (
+	"bytes"
 	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/keyutil"
 
 	"google.golang.org/grpc"
 )
@@ -141,12 +143,63 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 	}
 }
 
+func (kv *kv) doRange(ctx context.Context, op Op) (*pb.RangeResponse, error) {
+	var resp pb.RangeResponse
+	resp.Header = &pb.ResponseHeader{}
+
+	totalLimit := op.limit
+	if op.limit == 0 || op.rangeMaxKeysOnce != 0 && op.rangeMaxKeysOnce < op.limit {
+		op.limit = op.rangeMaxKeysOnce
+	}
+
+	rr := op.toRangeRequest()
+
+	startKey := rr.Key
+	rangeEnd := keyutil.MkGteRange(op.end)
+	noEnd := bytes.Compare(rangeEnd, []byte{0}) != 0
+
+	rev := rr.Revision
+
+	for noEnd || bytes.Compare(startKey, rangeEnd) == -1 {
+		r, err := kv.remote.Range(ctx, rr, kv.callOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.Header == nil || rev == 0 {
+			// revision wasn't specified by the caller, let's use the revision of the first result
+			rev = r.Header.Revision
+			rr.Revision = rev
+
+			resp.Header = r.Header // reuse first response's header
+		}
+
+		if resp.Count == 0 {
+			break
+		}
+
+		resp.Kvs = append(resp.Kvs, r.Kvs...)
+		resp.Count += int64(len(r.Kvs))
+
+		if totalLimit != 0 && resp.Count == totalLimit {
+			break
+		}
+
+		startKey = keyutil.NextKey(r.Kvs[len(r.Kvs)-1].Key)
+		if bytes.Compare(startKey, []byte{0}) == 0 {
+			break
+		}
+	}
+
+	return &resp, nil
+}
+
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), kv.callOpts...)
+		resp, err = kv.doRange(ctx, op)
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
