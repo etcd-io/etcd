@@ -5,7 +5,6 @@
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
-  source = "https://github.com/beorn7/perks"
 
 [[projects]]
   name = "github.com/bgentry/speakeasy"
@@ -48,7 +47,6 @@
   name = "github.com/cpuguy83/go-md2man"
   packages = ["md2man"]
   revision = "23709d0847197db6021a51fdb193e66e9222d4e7"
-  source = "https://github.com/cpuguy83/go-md2man"
 
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
@@ -104,7 +102,6 @@
   name = "github.com/gorilla/websocket"
   packages = ["."]
   revision = "4201258b820c74ac8e6922fc9e6b52f71fe46f8d"
-  source = "https://github.com/gorilla/websocket"
 
 [[projects]]
   name = "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -143,7 +140,6 @@
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
   revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
-  source = "https://github.com/mattn/go-runewidth"
   version = "v0.0.2"
 
 [[projects]]
@@ -184,7 +180,6 @@
     "model"
   ]
   revision = "e3fb1a1acd7605367a2b378bc2e2f893c05174b7"
-  source = "https://github.com/prometheus/common"
 
 [[projects]]
   name = "github.com/prometheus/procfs"
@@ -193,19 +188,16 @@
     "xfs"
   ]
   revision = "a6e9df898b1336106c743392c48ee0b71f5c4efa"
-  source = "https://github.com/prometheus/procfs"
 
 [[projects]]
   name = "github.com/russross/blackfriday"
   packages = ["."]
   revision = "4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c"
-  source = "https://github.com/russross/blackfriday"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
-  source = "https://github.com/sirupsen/logrus"
   version = "v1.0.3"
 
 [[projects]]
@@ -276,7 +268,6 @@
     "windows"
   ]
   revision = "ebfc5b4631820b793c9010c87fd8fef0f39eb082"
-  source = "https://github.com/golang/sys"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -292,7 +283,6 @@
     "unicode/rangetable"
   ]
   revision = "b19bf474d317b857955b12035d2c5acb57ce8b01"
-  source = "https://github.com/golang/text"
 
 [[projects]]
   name = "golang.org/x/time"
@@ -303,7 +293,6 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   revision = "09f6ed296fc66555a25fe4ce95173148778dfa85"
-  source = "https://github.com/google/go-genproto"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -341,11 +330,10 @@
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
-  source = "https://github.com/go-yaml/yaml"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "96fbefc6136356d14bdf753a4a6ccf6279d81c55eba28c5f5bdb915d075fc171"
+  inputs-digest = "54d78c9d66910169e10670b6e078ade50428e2019bd28a5987470fb2da185e26"
   solver-name = "gps-cdcl"
   solver-version = 1
