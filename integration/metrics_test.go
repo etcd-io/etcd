@@ -72,26 +72,66 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	if expected := numPuts * len(putreq.Value); bv < expected {
 		t.Fatalf("expected db size greater than %d, got %d", expected, bv)
 	}
+	beforeDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	biu, err := strconv.Atoi(beforeDefragInUse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if biu != bv {
+		t.Fatalf("when db size is growing, db size (%d) and db size in use (%d) is expected to be equal", bv, biu)
+	}
 
-	// clear out historical keys
+	// clear out historical keys, in use bytes should free pages
 	creq := &pb.CompactionRequest{Revision: int64(numPuts), Physical: true}
 	if _, kerr := kvc.Compact(context.TODO(), creq); kerr != nil {
 		t.Fatal(kerr)
 	}
 
+	// Put to move PendingPages to FreePages
+	if _, err := kvc.Put(context.TODO(), putreq); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond)
+
+	afterCompactionInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	aciu, err := strconv.Atoi(afterCompactionInUse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if biu <= aciu {
+		t.Fatalf("expected less than %d, got %d after compaction", biu, aciu)
+	}
+
 	// defrag should give freed space back to fs
 	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
+
 	afterDefrag, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	av, err := strconv.Atoi(afterDefrag)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if bv <= av {
 		t.Fatalf("expected less than %d, got %d after defrag", bv, av)
+	}
+
+	afterDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	adiu, err := strconv.Atoi(afterDefragInUse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adiu > av {
+		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
 	}
 }
