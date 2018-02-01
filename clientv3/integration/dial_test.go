@@ -191,7 +191,8 @@ func TestDialForeignEndpoint(t *testing.T) {
 }
 
 // TestSetEndpointAndPut checks that a Put following a SetEndpoints
-// to a working endpoint will always succeed.
+// to a working endpoint succeeds with the new endpoint or returns
+// gRPC transport errors.
 func TestSetEndpointAndPut(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
@@ -199,7 +200,10 @@ func TestSetEndpointAndPut(t *testing.T) {
 
 	clus.Client(1).SetEndpoints(clus.Members[0].GRPCAddr())
 	_, err := clus.Client(1).Put(context.TODO(), "foo", "bar")
-	if err != nil && !strings.Contains(err.Error(), "closing") {
+	// grpc/transport.ErrConnClosing or grpc/transport.ErrConnDrain on balancer endpoint switch
+	if err != nil &&
+		!strings.Contains(err.Error(), "transport is closing") &&
+		!strings.Contains(err.Error(), "the server stops accepting new RPCs") {
 		t.Fatal(err)
 	}
 }
