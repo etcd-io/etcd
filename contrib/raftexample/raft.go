@@ -345,7 +345,7 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 var snapshotCatchUpEntriesN uint64 = 10000
 
 func (rc *raftNode) maybeTriggerSnapshot() {
-	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
+	if rc.appliedIndex-rc.snapshotIndex < rc.snapCount {
 		return
 	}
 
