@@ -14,9 +14,12 @@
 
 package logger
 
-import "github.com/coreos/pkg/capnslog"
+import (
+	"github.com/coreos/pkg/capnslog"
+	"google.golang.org/grpc/grpclog"
+)
 
-// assert that Logger satisfies grpclog.LoggerV2
+// assert that "packageLogger" satisfy "Logger" interface
 var _ Logger = &packageLogger{}
 
 // NewPackageLogger wraps "*capnslog.PackageLogger" that implements "Logger" interface.
@@ -24,10 +27,11 @@ var _ Logger = &packageLogger{}
 // For example:
 //
 //  var defaultLogger Logger
-//  plog := capnslog.NewPackageLogger("github.com/coreos/etcd", "snapshot")
-//  defaultLogger = NewPackageLogger(plog)
+//  defaultLogger = NewPackageLogger("github.com/coreos/etcd", "snapshot")
 //
-func NewPackageLogger(p *capnslog.PackageLogger) Logger { return &packageLogger{p: p} }
+func NewPackageLogger(repo, pkg string) Logger {
+	return &packageLogger{p: capnslog.NewPackageLogger(repo, pkg)}
+}
 
 type packageLogger struct {
 	p *capnslog.PackageLogger
@@ -47,4 +51,10 @@ func (l *packageLogger) Fatalln(args ...interface{})                 { l.p.Fatal
 func (l *packageLogger) Fatalf(format string, args ...interface{})   { l.p.Fatalf(format, args...) }
 func (l *packageLogger) V(lvl int) bool {
 	return l.p.LevelAt(capnslog.LogLevel(lvl))
+}
+func (l *packageLogger) Lvl(lvl int) grpclog.LoggerV2 {
+	if l.p.LevelAt(capnslog.LogLevel(lvl)) {
+		return l
+	}
+	return &discardLogger{}
 }
