@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/auth"
+	"github.com/coreos/etcd/etcdserver/v2auth"
 )
 
 const goodPassword = "good"
@@ -46,8 +46,8 @@ func mustJSONRequest(t *testing.T, method string, p string, body string) *http.R
 }
 
 type mockAuthStore struct {
-	users   map[string]*auth.User
-	roles   map[string]*auth.Role
+	users   map[string]*v2auth.User
+	roles   map[string]*v2auth.Role
 	err     error
 	enabled bool
 }
@@ -60,14 +60,14 @@ func (s *mockAuthStore) AllUsers() ([]string, error) {
 	sort.Strings(us)
 	return us, s.err
 }
-func (s *mockAuthStore) GetUser(name string) (auth.User, error) {
+func (s *mockAuthStore) GetUser(name string) (v2auth.User, error) {
 	u, ok := s.users[name]
 	if !ok {
-		return auth.User{}, s.err
+		return v2auth.User{}, s.err
 	}
 	return *u, s.err
 }
-func (s *mockAuthStore) CreateOrUpdateUser(user auth.User) (out auth.User, created bool, err error) {
+func (s *mockAuthStore) CreateOrUpdateUser(user v2auth.User) (out v2auth.User, created bool, err error) {
 	if s.users == nil {
 		out, err = s.CreateUser(user)
 		return out, true, err
@@ -75,31 +75,31 @@ func (s *mockAuthStore) CreateOrUpdateUser(user auth.User) (out auth.User, creat
 	out, err = s.UpdateUser(user)
 	return out, false, err
 }
-func (s *mockAuthStore) CreateUser(user auth.User) (auth.User, error) { return user, s.err }
-func (s *mockAuthStore) DeleteUser(name string) error                 { return s.err }
-func (s *mockAuthStore) UpdateUser(user auth.User) (auth.User, error) {
+func (s *mockAuthStore) CreateUser(user v2auth.User) (v2auth.User, error) { return user, s.err }
+func (s *mockAuthStore) DeleteUser(name string) error                     { return s.err }
+func (s *mockAuthStore) UpdateUser(user v2auth.User) (v2auth.User, error) {
 	return *s.users[user.User], s.err
 }
 func (s *mockAuthStore) AllRoles() ([]string, error) {
 	return []string{"awesome", "guest", "root"}, s.err
 }
-func (s *mockAuthStore) GetRole(name string) (auth.Role, error) {
+func (s *mockAuthStore) GetRole(name string) (v2auth.Role, error) {
 	r, ok := s.roles[name]
 	if ok {
 		return *r, s.err
 	}
-	return auth.Role{}, fmt.Errorf("%q does not exist (%v)", name, s.err)
+	return v2auth.Role{}, fmt.Errorf("%q does not exist (%v)", name, s.err)
 }
-func (s *mockAuthStore) CreateRole(role auth.Role) error { return s.err }
-func (s *mockAuthStore) DeleteRole(name string) error    { return s.err }
-func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) {
+func (s *mockAuthStore) CreateRole(role v2auth.Role) error { return s.err }
+func (s *mockAuthStore) DeleteRole(name string) error      { return s.err }
+func (s *mockAuthStore) UpdateRole(role v2auth.Role) (v2auth.Role, error) {
 	return *s.roles[role.Role], s.err
 }
 func (s *mockAuthStore) AuthEnabled() bool  { return s.enabled }
 func (s *mockAuthStore) EnableAuth() error  { return s.err }
 func (s *mockAuthStore) DisableAuth() error { return s.err }
 
-func (s *mockAuthStore) CheckPassword(user auth.User, password string) bool {
+func (s *mockAuthStore) CheckPassword(user v2auth.User, password string) bool {
 	return user.Password == password
 }
 
@@ -132,7 +132,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users", ""),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -149,7 +149,7 @@ func TestAuthFlow(t *testing.T) {
 						Password: "wheeee",
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"alicerole": {
 						Role: "alicerole",
 					},
@@ -173,14 +173,14 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users/alice", ""),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole"},
 						Password: "wheeee",
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"alicerole": {
 						Role: "alicerole",
 					},
@@ -204,7 +204,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "users/alice", `{"user": "alice", "password": "goodpassword"}`),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -218,7 +218,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "users/alice", `{"user": "alice", "grant": ["alicerole"]}`),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -232,8 +232,8 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users/alice", ``),
 			store: mockAuthStore{
-				users: map[string]*auth.User{},
-				err:   auth.Error{Status: http.StatusNotFound, Errmsg: "auth: User alice doesn't exist."},
+				users: map[string]*v2auth.User{},
+				err:   v2auth.Error{Status: http.StatusNotFound, Errmsg: "auth: User alice doesn't exist."},
 			},
 			wcode: http.StatusNotFound,
 			wbody: `{"message":"auth: User alice doesn't exist."}`,
@@ -241,7 +241,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "roles/manager", ""),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"manager": {
 						Role: "manager",
 					},
@@ -265,7 +265,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "roles/manager", `{"role":"manager","revoke":{"kv":{"read":["foo"],"write":[]}}}`),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"manager": {
 						Role: "manager",
 					},
@@ -277,7 +277,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "roles", ""),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"awesome": {
 						Role: "awesome",
 					},
@@ -318,14 +318,14 @@ func TestAuthFlow(t *testing.T) {
 			})(),
 			store: mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"root": {
 						Role: "root",
 					},
@@ -342,14 +342,14 @@ func TestAuthFlow(t *testing.T) {
 			})(),
 			store: mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"root": {
 						Role: "guest",
 					},
@@ -383,13 +383,13 @@ func TestAuthFlow(t *testing.T) {
 func TestGetUserGrantedWithNonexistingRole(t *testing.T) {
 	sh := &authHandler{
 		sec: &mockAuthStore{
-			users: map[string]*auth.User{
+			users: map[string]*v2auth.User{
 				"root": {
 					User:  "root",
 					Roles: []string{"root", "foo"},
 				},
 			},
-			roles: map[string]*auth.Role{
+			roles: map[string]*v2auth.Role{
 				"root": {
 					Role: "root",
 				},
@@ -483,14 +483,14 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "root", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"root": {
 						Role: "root",
 					},
@@ -505,18 +505,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo"},
 								Write: []string{"/foo"},
 							},
@@ -533,18 +533,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -561,18 +561,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "bad"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -589,7 +589,7 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users:   map[string]*auth.User{},
+				users:   map[string]*v2auth.User{},
 				err:     errors.New("Not the user"),
 				enabled: true,
 			},
@@ -601,18 +601,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustJSONRequest(t, "GET", "somepath", ""),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -629,18 +629,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/bar",
 			req: mustJSONRequest(t, "GET", "somepath", ""),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -658,21 +658,21 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"role1", "role2"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"role1": {
 						Role: "role1",
 					},
 					"role2": {
 						Role: "role2",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo"},
 								Write: []string{"/foo"},
 							},
@@ -694,18 +694,18 @@ func TestPrefixAccess(t *testing.T) {
 			})(),
 			store: &mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -724,18 +724,18 @@ func TestPrefixAccess(t *testing.T) {
 			})(),
 			store: &mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*v2auth.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*v2auth.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: v2auth.Permissions{
+							KV: v2auth.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -764,7 +764,7 @@ func TestPrefixAccess(t *testing.T) {
 
 func TestUserFromClientCertificate(t *testing.T) {
 	witherror := &mockAuthStore{
-		users: map[string]*auth.User{
+		users: map[string]*v2auth.User{
 			"user": {
 				User:     "user",
 				Roles:    []string{"root"},
@@ -776,7 +776,7 @@ func TestUserFromClientCertificate(t *testing.T) {
 				Password: "password",
 			},
 		},
-		roles: map[string]*auth.Role{
+		roles: map[string]*v2auth.Role{
 			"root": {
 				Role: "root",
 			},
@@ -785,7 +785,7 @@ func TestUserFromClientCertificate(t *testing.T) {
 	}
 
 	noerror := &mockAuthStore{
-		users: map[string]*auth.User{
+		users: map[string]*v2auth.User{
 			"user": {
 				User:     "user",
 				Roles:    []string{"root"},
@@ -797,7 +797,7 @@ func TestUserFromClientCertificate(t *testing.T) {
 				Password: "password",
 			},
 		},
-		roles: map[string]*auth.Role{
+		roles: map[string]*v2auth.Role{
 			"root": {
 				Role: "root",
 			},
@@ -807,7 +807,7 @@ func TestUserFromClientCertificate(t *testing.T) {
 	var table = []struct {
 		req        *http.Request
 		userExists bool
-		store      auth.Store
+		store      v2auth.Store
 		username   string
 	}{
 		{
@@ -846,14 +846,14 @@ func TestUserFromClientCertificate(t *testing.T) {
 
 func TestUserFromBasicAuth(t *testing.T) {
 	sec := &mockAuthStore{
-		users: map[string]*auth.User{
+		users: map[string]*v2auth.User{
 			"user": {
 				User:     "user",
 				Roles:    []string{"root"},
 				Password: "password",
 			},
 		},
-		roles: map[string]*auth.Role{
+		roles: map[string]*v2auth.Role{
 			"root": {
 				Role: "root",
 			},

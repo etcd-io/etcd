@@ -32,10 +32,10 @@ import (
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/etcdserver/v2auth"
 	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/pkg/types"
 
@@ -59,7 +59,7 @@ func NewClientHandler(server etcdserver.ServerPeer, timeout time.Duration) http.
 }
 
 func handleV2(mux *http.ServeMux, server etcdserver.ServerV2, timeout time.Duration) {
-	sec := auth.NewStore(server, timeout)
+	sec := v2auth.NewStore(server, timeout)
 	kh := &keysHandler{
 		sec:                   sec,
 		server:                server,
@@ -101,7 +101,7 @@ func handleV2(mux *http.ServeMux, server etcdserver.ServerV2, timeout time.Durat
 }
 
 type keysHandler struct {
-	sec                   auth.Store
+	sec                   v2auth.Store
 	server                etcdserver.ServerV2
 	cluster               api.Cluster
 	timeout               time.Duration
@@ -168,7 +168,7 @@ func (h *machinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type membersHandler struct {
-	sec                   auth.Store
+	sec                   v2auth.Store
 	server                etcdserver.ServerV2
 	cluster               api.Cluster
 	timeout               time.Duration
