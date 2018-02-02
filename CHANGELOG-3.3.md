@@ -28,6 +28,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 
 - Use [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) to replace [`boltdb/bolt`](https://github.com/boltdb/bolt#project-status).
   - Fix [etcd database size grows until `mvcc: database space exceeded`](https://github.com/coreos/etcd/issues/8009).
+- [Support database size larger than 8GiB](https://github.com/coreos/etcd/pull/7525) (8GiB is now a suggested maximum size for normal environments)
 - [Reduce memory allocation](https://github.com/coreos/etcd/pull/8428) on [Range operations](https://github.com/coreos/etcd/pull/8475).
 - [Rate limit](https://github.com/coreos/etcd/pull/8099) and [randomize](https://github.com/coreos/etcd/pull/8101) lease revoke on restart or leader elections.
   - Prevent [spikes in Raft proposal rate](https://github.com/coreos/etcd/issues/8096).
