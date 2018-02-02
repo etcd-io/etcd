@@ -91,7 +91,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	}
 
 	// Put to move PendingPages to FreePages
-	if _, err := kvc.Put(context.TODO(), putreq); err != nil {
+	if _, err = kvc.Put(context.TODO(), putreq); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(500 * time.Millisecond)
