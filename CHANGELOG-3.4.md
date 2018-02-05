@@ -35,6 +35,7 @@
   - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/internal/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
   - Move `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/internal/store"`](https://github.com/coreos/etcd/pull/9238).
   - Move `"github.com/coreos/etcd/version"` to [`"github.com/coreos/etcd/internal/version"`](https://github.com/coreos/etcd/pull/9244).
+- Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
 
 ### Added(`etcd`)
 

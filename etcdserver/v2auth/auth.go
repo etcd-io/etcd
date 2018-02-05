@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package auth implements etcd authentication.
-package auth
+// Package v2auth implements etcd authentication.
+package v2auth
 
 import (
 	"context"
