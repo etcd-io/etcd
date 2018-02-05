@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+package logger_test
 
 import (
 	"bytes"
@@ -20,30 +20,38 @@ import (
 	"strings"
 	"testing"
 
-	"google.golang.org/grpc/grpclog"
+	"github.com/coreos/pkg/capnslog"
+
+	"github.com/coreos/etcd/pkg/logger"
 )
 
-func TestLogger(t *testing.T) {
+func TestPackageLogger(t *testing.T) {
 	buf := new(bytes.Buffer)
+	capnslog.SetFormatter(capnslog.NewDefaultFormatter(buf))
 
-	l := NewLogger(grpclog.NewLoggerV2WithVerbosity(buf, buf, buf, 10))
+	l := logger.NewPackageLogger("github.com/coreos/etcd", "logger")
+
+	r := capnslog.MustRepoLogger("github.com/coreos/etcd")
+	r.SetLogLevel(map[string]capnslog.LogLevel{"logger": capnslog.INFO})
+
 	l.Infof("hello world!")
 	if !strings.Contains(buf.String(), "hello world!") {
 		t.Fatalf("expected 'hello world!', got %q", buf.String())
 	}
 	buf.Reset()
 
-	l.Lvl(10).Infof("Level 10")
-	l.Lvl(30).Infof("Level 30")
-	if !strings.Contains(buf.String(), "Level 10") {
-		t.Fatalf("expected 'Level 10', got %q", buf.String())
+	// capnslog.INFO is 3
+	l.Lvl(2).Infof("Level 2")
+	l.Lvl(5).Infof("Level 5")
+	if !strings.Contains(buf.String(), "Level 2") {
+		t.Fatalf("expected 'Level 2', got %q", buf.String())
 	}
-	if strings.Contains(buf.String(), "Level 30") {
-		t.Fatalf("unexpected 'Level 30', got %q", buf.String())
+	if strings.Contains(buf.String(), "Level 5") {
+		t.Fatalf("unexpected 'Level 5', got %q", buf.String())
 	}
 	buf.Reset()
 
-	l = NewLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	capnslog.SetFormatter(capnslog.NewDefaultFormatter(ioutil.Discard))
 	l.Infof("ignore this")
 	if len(buf.Bytes()) > 0 {
 		t.Fatalf("unexpected logs %q", buf.String())

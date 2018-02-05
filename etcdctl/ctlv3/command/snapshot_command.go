@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/snapshot"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
 
@@ -103,7 +102,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 	if debug {
-		lg = logger.NewPackageLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "snapshot"))
+		lg = logger.NewPackageLogger("github.com/coreos/etcd", "snapshot")
 	}
 	sp := snapshot.NewV3(mustClientFromCmd(cmd), lg)
 
@@ -127,7 +126,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 	if debug {
-		lg = logger.NewPackageLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "snapshot"))
+		lg = logger.NewPackageLogger("github.com/coreos/etcd", "snapshot")
 	}
 	sp := snapshot.NewV3(nil, lg)
 
@@ -165,7 +164,7 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 	if debug {
-		lg = logger.NewPackageLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "snapshot"))
+		lg = logger.NewPackageLogger("github.com/coreos/etcd", "snapshot")
 	}
 	sp := snapshot.NewV3(nil, lg)
 

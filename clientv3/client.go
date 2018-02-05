@@ -166,7 +166,7 @@ func (c *Client) autoSync() {
 			err := c.Sync(ctx)
 			cancel()
 			if err != nil && err != c.ctx.Err() {
-				logger.Println("Auto sync endpoints failed:", err)
+				lg.Lvl(4).Infof("Auto sync endpoints failed: %v", err)
 			}
 		}
 	}

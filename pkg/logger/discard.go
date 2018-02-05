@@ -14,9 +14,13 @@
 
 package logger
 
-import "log"
+import (
+	"log"
 
-// assert that Logger satisfies grpclog.LoggerV2
+	"google.golang.org/grpc/grpclog"
+)
+
+// assert that "discardLogger" satisfy "Logger" interface
 var _ Logger = &discardLogger{}
 
 // NewDiscardLogger returns a new Logger that discards everything except "fatal".
@@ -39,3 +43,4 @@ func (l *discardLogger) Fatalf(format string, args ...interface{})   { log.Fatal
 func (l *discardLogger) V(lvl int) bool {
 	return false
 }
+func (l *discardLogger) Lvl(lvl int) grpclog.LoggerV2 { return l }
