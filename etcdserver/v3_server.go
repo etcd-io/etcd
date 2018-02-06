@@ -95,6 +95,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	if s.ClusterVersion() == nil || s.ClusterVersion().LessThan(newRangeClusterVersion) {
 		return s.legacyRange(ctx, r)
 	}
+	defer warnOfExpensiveReadOnlyRangeRequest(time.Now(), r)
 
 	if !r.Serializable {
 		err := s.linearizableReadNotify(ctx)
@@ -108,6 +109,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 	get := func() { resp, err = s.applyV3Base.Range(noTxn, r) }
+	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		return nil, serr
 	}
@@ -178,6 +180,9 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		chk := func(ai *auth.AuthInfo) error {
 			return checkTxnAuth(s.authStore, ai, r)
 		}
+
+		defer warnOfExpensiveReadOnlyRangeRequest(time.Now(), r)
+
 		get := func() { resp, err = s.applyV3Base.Txn(r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
