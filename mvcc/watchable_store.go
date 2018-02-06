@@ -188,7 +188,7 @@ func (s *watchableStore) Restore(b backend.Backend) error {
 	}
 
 	for wa := range s.synced.watchers {
-		s.unsynced.watchers.add(wa)
+		s.unsynced.add(wa)
 	}
 	s.synced = newWatcherGroup()
 	return nil
