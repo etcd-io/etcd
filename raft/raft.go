@@ -604,8 +604,9 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 		es[i].Term = r.Term
 		es[i].Index = li + 1 + uint64(i)
 	}
-	r.raftLog.append(es...)
-	r.getProgress(r.id).maybeUpdate(r.raftLog.lastIndex())
+	// use latest "last" index after truncate/append
+	li = r.raftLog.append(es...)
+	r.getProgress(r.id).maybeUpdate(li)
 	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 }
