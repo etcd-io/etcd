@@ -18,12 +18,13 @@ package ctlv2
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
+	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/tlsutil"
-	"github.com/coreos/etcd/internal/version"
 
 	"github.com/urfave/cli"
 )
@@ -60,8 +61,8 @@ func Start(apiv string) {
 		cli.BoolFlag{Name: "insecure-skip-tls-verify", Usage: "skip server certificate verification"},
 		cli.GenericFlag{Name: "cipher-suites",
 			Value: flags.NewStringSliceFlag(tlsutil.AvailableCipherSuites()...),
-			Usage: "Comma-separated list of cipher suites for the server. " +
-				"Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). " +
+			Usage: "comma-separated list of cipher suites for the server. " +
+				"Available cipher suites include " + strings.Join(tlsutil.AvailableCipherSuites(), ",") + ". " +
 				"If omitted, the default Go cipher suites will be used"},
 		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
 		cli.DurationFlag{Name: "timeout", Value: 2 * time.Second, Usage: "connection timeout per request"},

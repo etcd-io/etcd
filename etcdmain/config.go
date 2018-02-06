@@ -194,8 +194,8 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
-	fs.Var(cfg.cf.tlsCipherSuites, "cipher-suites", "Comma-separated list of cipher suites for the server. "+
-		"Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). "+
+	fs.Var(cfg.cf.tlsCipherSuites, "cipher-suites", "comma-separated list of cipher suites for the server. "+
+		"Available cipher suites include "+strings.Join(tlsutil.AvailableCipherSuites(), ",")+". "+
 		"If omitted, the default Go cipher suites will be used")
 
 	// logging

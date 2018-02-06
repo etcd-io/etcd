@@ -16,8 +16,10 @@ package etcdmain
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/tlsutil"
 )
 
 var (
@@ -158,6 +160,8 @@ security flags:
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--peer-crl-file ''
 		path to the peer certificate revocation list file.
+	--cipher-suites ''
+		comma-separated list of cipher suites for the server. Available cipher suites include ` + strings.Join(tlsutil.AvailableCipherSuites(), ",") + `. If omitted, the default Go cipher suites will be used.
 
 logging flags
 
