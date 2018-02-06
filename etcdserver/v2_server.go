@@ -158,3 +158,8 @@ func (r *RequestV2) Handle(ctx context.Context, v2api RequestV2Handler) (Respons
 	}
 	return Response{}, ErrUnknownMethod
 }
+
+func (r *RequestV2) String() string {
+	rpb := pb.Request(*r)
+	return rpb.String()
+}

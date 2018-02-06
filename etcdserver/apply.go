@@ -107,6 +107,8 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 }
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
+	defer warnOfExpensiveRequest(time.Now(), r)
+
 	ar := &applyResult{}
 
 	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
