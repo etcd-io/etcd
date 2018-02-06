@@ -68,8 +68,7 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 
 		for {
 			lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
-			ev, _ := status.FromError(err)
-			if ev.Code() == codes.NotFound {
+			if ev, ok := status.FromError(err); ok && ev.Code() == codes.NotFound {
 				if time.Since(expire) < 0 {
 					log.Fatalf("bad renew! exceeded: %v", time.Since(expire))
 					for {

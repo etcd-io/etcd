@@ -10,7 +10,7 @@ if ($FSYS.StartsWith("FAT","CurrentCultureIgnoreCase")) {
 }
 
 # Set $Env:GO_LDFLAGS="-s" for building without symbols.
-$GO_LDFLAGS="$Env:GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
+$GO_LDFLAGS="$Env:GO_LDFLAGS -X $REPO_PATH/version.GitSHA=$GIT_SHA"
 
 # rebuild symlinks
 git ls-files -s cmd | select-string -pattern 120000 | ForEach {

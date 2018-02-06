@@ -19,7 +19,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/internal/store"
 )
 
 type RequestV2 pb.Request

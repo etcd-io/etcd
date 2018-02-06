@@ -19,14 +19,15 @@ import (
 	"crypto/sha256"
 	"io"
 
-	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/internal/auth"
+	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/version"
+	"github.com/coreos/etcd/raft"
 )
 
 type KVGetter interface {
@@ -38,6 +39,9 @@ type BackendGetter interface {
 }
 
 type Alarmer interface {
+	// Alarms is implemented in Server interface located in etcdserver/server.go
+	// It returns a list of alarms present in the AlarmStore
+	Alarms() []*pb.AlarmMember
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 }
 
@@ -153,12 +157,23 @@ func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*p
 
 func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
 	resp := &pb.StatusResponse{
-		Header:    &pb.ResponseHeader{Revision: ms.hdr.rev()},
-		Version:   version.Version,
-		DbSize:    ms.bg.Backend().Size(),
-		Leader:    uint64(ms.rg.Leader()),
-		RaftIndex: ms.rg.Index(),
-		RaftTerm:  ms.rg.Term(),
+		Header:           &pb.ResponseHeader{Revision: ms.hdr.rev()},
+		Version:          version.Version,
+		DbSize:           ms.bg.Backend().Size(),
+		Leader:           uint64(ms.rg.Leader()),
+		RaftIndex:        ms.rg.Index(),
+		RaftTerm:         ms.rg.Term(),
+		RaftAppliedIndex: ms.rg.AppliedIndex(),
+		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
+	}
+	if uint64(ms.rg.Leader()) == raft.None {
+		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())
+	}
+	alarms := ms.a.Alarms()
+	if len(alarms) > 0 {
+		for _, alarm := range alarms {
+			resp.Errors = append(resp.Errors, alarm.String())
+		}
 	}
 	ms.hdr.fill(resp.Header)
 	return resp, nil

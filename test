@@ -21,9 +21,6 @@ if [[ "${PASSES}" == *"functional"* ]]; then
 	./tools/functional-tester/build
 fi
 
-# build tests with vendored dependencies
-etcd_setup_gopath
-
 if [ -z "$PASSES" ]; then
 	PASSES="fmt bom dep compile build unit"
 fi
@@ -34,7 +31,7 @@ USERPKG=${PKG:-}
 COVER=${COVER:-"-cover"}
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-IGNORE_PKGS="(cmd/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
+IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
@@ -114,7 +111,7 @@ function functional_pass {
 
 	for a in 1 2 3; do
 		mkdir -p ./agent-$a
-		./bin/etcd-agent -etcd-path ./bin/etcd -etcd-log-dir "./agent-$a" -port ":${a}9027" -use-root=false &
+		./bin/etcd-agent -etcd-path ./bin/etcd -etcd-log-dir "./agent-$a" -port ":${a}9027" &
 		pid="$!"
 		agent_pids="${agent_pids} $pid"
 	done
@@ -129,10 +126,15 @@ function functional_pass {
 	echo "Starting 'etcd-tester'"
 	./bin/etcd-tester \
 		-agent-endpoints "127.0.0.1:19027,127.0.0.1:29027,127.0.0.1:39027" \
-		-client-ports 12379,22379,32379 \
-		-peer-ports 12380,22380,32380 \
+		-client-ports 1379,2379,3379 \
+		-advertise-client-ports 13790,23790,33790 \
+		-peer-ports 1380,2380,3380 \
+		-advertise-peer-ports 13800,23800,33800 \
 		-limit 1 \
-		-schedule-cases "0 1 2 3 4 5" \
+		-schedule-cases "0 1 2 3 4 5 6 7 8 9" \
+		-stress-qps 1000 \
+		-stress-key-txn-count 100 \
+		-stress-key-txn-ops 10 \
 		-exit-on-failure && echo "'etcd-tester' succeeded"
 	ETCD_TESTER_EXIT_CODE=$?
 	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
@@ -428,7 +430,7 @@ function nakedret_pass {
 
 function license_header_pass {
 	licRes=""
-	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
+	files=$(find . -type f -iname '*.go' ! -path './vendor/*' ! -path './gopath.proto/*')
 	for file in $files; do
 		if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
 			licRes="${licRes}"$(echo -e "  ${file}")

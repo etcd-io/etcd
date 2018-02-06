@@ -53,6 +53,8 @@ var (
 	grpcProxyDNSCluster        string
 	grpcProxyInsecureDiscovery bool
 	grpcProxyDataDir           string
+	grpcMaxCallSendMsgSize     int
+	grpcMaxCallRecvMsgSize     int
 
 	// tls for connecting to etcd
 
@@ -81,6 +83,8 @@ var (
 
 	grpcProxyDebug bool
 )
+
+const defaultGRPCMaxCallSendMsgSize = 1.5 * 1024 * 1024
 
 func init() {
 	rootCmd.AddCommand(newGRPCProxyCommand())
@@ -115,6 +119,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
+	cmd.Flags().IntVar(&grpcMaxCallSendMsgSize, "max-send-bytes", defaultGRPCMaxCallSendMsgSize, "message send limits in bytes (default value is 1.5 MiB)")
+	cmd.Flags().IntVar(&grpcMaxCallRecvMsgSize, "max-recv-bytes", math.MaxInt32, "message receive limits in bytes (default value is math.MaxInt32)")
 
 	// client TLS for connecting to server
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
@@ -241,6 +247,14 @@ func newClientCfg(eps []string) (*clientv3.Config, error) {
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
 	}
+
+	if grpcMaxCallSendMsgSize > 0 {
+		cfg.MaxCallSendMsgSize = grpcMaxCallSendMsgSize
+	}
+	if grpcMaxCallRecvMsgSize > 0 {
+		cfg.MaxCallRecvMsgSize = grpcMaxCallRecvMsgSize
+	}
+
 	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey)
 	if tls == nil && grpcProxyInsecureSkipTLSVerify {
 		tls = &transport.TLSInfo{}

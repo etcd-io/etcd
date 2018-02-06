@@ -29,19 +29,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/alarm"
-	"github.com/coreos/etcd/auth"
-	"github.com/coreos/etcd/compactor"
-	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/lease/leasehttp"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/internal/alarm"
+	"github.com/coreos/etcd/internal/auth"
+	"github.com/coreos/etcd/internal/compactor"
+	"github.com/coreos/etcd/internal/discovery"
+	"github.com/coreos/etcd/internal/lease"
+	"github.com/coreos/etcd/internal/lease/leasehttp"
+	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/internal/raftsnap"
+	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -52,9 +55,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 
 	"github.com/coreos/go-semver/semver"
@@ -206,7 +206,7 @@ type EtcdServer struct {
 	cluster *membership.RaftCluster
 
 	store       store.Store
-	snapshotter *snap.Snapshotter
+	snapshotter *raftsnap.Snapshotter
 
 	applyV2 ApplierV2
 
@@ -279,7 +279,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
-	ss := snap.New(cfg.SnapDir())
+	ss := raftsnap.New(cfg.SnapDir())
 
 	bepath := cfg.backendPath()
 	beExist := fileutil.Exist(bepath)
@@ -373,7 +373,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
 		snapshot, err = ss.Load()
-		if err != nil && err != snap.ErrNoSnapshot {
+		if err != nil && err != raftsnap.ErrNoSnapshot {
 			return nil, err
 		}
 		if snapshot != nil {
@@ -1170,6 +1170,8 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 
 func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.r.index) }
 
+func (s *EtcdServer) AppliedIndex() uint64 { return atomic.LoadUint64(&s.r.appliedindex) }
+
 func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.r.term) }
 
 // Lead is only for testing purposes.
@@ -1264,7 +1266,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 }
 
-func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
+func (s *EtcdServer) sendMergedSnap(merged raftsnap.Message) {
 	atomic.AddInt64(&s.inflightSnapshots, 1)
 
 	s.r.transport.SendSnapshot(merged)
@@ -1667,6 +1669,7 @@ func (s *EtcdServer) getAppliedIndex() uint64 {
 
 func (s *EtcdServer) setAppliedIndex(v uint64) {
 	atomic.StoreUint64(&s.appliedIndex, v)
+	atomic.StoreUint64(&s.r.appliedindex, v)
 }
 
 func (s *EtcdServer) getCommittedIndex() uint64 {

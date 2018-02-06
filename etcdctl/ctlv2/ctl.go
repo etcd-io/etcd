@@ -23,7 +23,8 @@ import (
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/tlsutil"
-	"github.com/coreos/etcd/version"
+	"github.com/coreos/etcd/internal/version"
+
 	"github.com/urfave/cli"
 )
 

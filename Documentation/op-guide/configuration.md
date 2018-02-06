@@ -155,6 +155,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: ""
 + env variable: ETCD_DISCOVERY_SRV
 
+### --discovery-srv-name
++ Suffix to the DNS srv name queried when bootstrapping using DNS.
++ default: ""
++ env variable: ETCD_DISCOVERY_SRV_NAME
+
 ### --discovery-fallback
 + Expected behavior ("exit" or "proxy") when discovery services fails. "proxy" supports v2 API only.
 + default: "proxy"
@@ -271,12 +276,12 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_PEER_CA_FILE
 
 ### --peer-cert-file
-+ Path to the peer server TLS cert file.
++ Path to the peer server TLS cert file. This is the cert for peer-to-peer traffic, used both for server and client.
 + default: ""
 + env variable: ETCD_PEER_CERT_FILE
 
 ### --peer-key-file
-+ Path to the peer server TLS key file.
++ Path to the peer server TLS key file. This is the key for peer-to-peer traffic, used both for server and client.
 + default: ""
 + env variable: ETCD_PEER_KEY_FILE
 

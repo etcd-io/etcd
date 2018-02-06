@@ -26,10 +26,10 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/version"
 
 	"github.com/ghodss/yaml"
 )
@@ -160,6 +160,7 @@ func newConfig() *config {
 
 	fs.StringVar(&cfg.ec.Dproxy, "discovery-proxy", cfg.ec.Dproxy, "HTTP proxy to use for traffic to discovery service.")
 	fs.StringVar(&cfg.ec.DNSCluster, "discovery-srv", cfg.ec.DNSCluster, "DNS domain used to bootstrap initial cluster.")
+	fs.StringVar(&cfg.ec.DNSClusterServiceName, "discovery-srv-name", cfg.ec.DNSClusterServiceName, "Service name to query when using DNS discovery.")
 	fs.StringVar(&cfg.ec.InitialCluster, "initial-cluster", cfg.ec.InitialCluster, "Initial cluster configuration for bootstrapping.")
 	fs.StringVar(&cfg.ec.InitialClusterToken, "initial-cluster-token", cfg.ec.InitialClusterToken, "Initial cluster token for the etcd cluster during bootstrap.")
 	fs.Var(cfg.cf.clusterState, "initial-cluster-state", "Initial cluster state ('new' or 'existing').")
@@ -255,7 +256,7 @@ func (cfg *config) parse(arguments []string) error {
 
 	var err error
 	if cfg.configFile != "" {
-		plog.Infof("Loading server configuration from %q", cfg.configFile)
+		plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
 		err = cfg.configFromFile(cfg.configFile)
 	} else {
 		err = cfg.configFromCmdLine()
@@ -295,7 +296,7 @@ func (cfg *config) configFromCmdLine() error {
 	}
 
 	// disable default initial-cluster if discovery is set
-	if (cfg.ec.Durl != "" || cfg.ec.DNSCluster != "") && !flags.IsSet(cfg.cf.flagSet, "initial-cluster") {
+	if (cfg.ec.Durl != "" || cfg.ec.DNSCluster != "" || cfg.ec.DNSClusterServiceName != "") && !flags.IsSet(cfg.cf.flagSet, "initial-cluster") {
 		cfg.ec.InitialCluster = ""
 	}
 

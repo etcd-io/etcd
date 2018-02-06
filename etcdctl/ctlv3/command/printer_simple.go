@@ -21,6 +21,7 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/snapshot"
 )
 
 type simplePrinter struct {
@@ -155,7 +156,7 @@ func (s *simplePrinter) EndpointHashKV(hashList []epHashKV) {
 	}
 }
 
-func (s *simplePrinter) DBStatus(ds dbstatus) {
+func (s *simplePrinter) DBStatus(ds snapshot.Status) {
 	_, rows := makeDBStatusTable(ds)
 	for _, row := range rows {
 		fmt.Println(strings.Join(row, ", "))

@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -45,55 +46,94 @@ type kvExec struct {
 
 func watchTest(cx ctlCtx) {
 	tests := []struct {
-		puts []kv
-		args []string
+		puts     []kv
+		envKey   string
+		envRange string
+		args     []string
 
 		wkv []kvExec
 	}{
 		{ // watch 1 key
-			[]kv{{"sample", "value"}},
-			[]string{"sample", "--rev", "1"},
-			[]kvExec{{key: "sample", val: "value"}},
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "--rev", "1"},
+			wkv:  []kvExec{{key: "sample", val: "value"}},
+		},
+		{ // watch 1 key with env
+			puts:   []kv{{"sample", "value"}},
+			envKey: "sample",
+			args:   []string{"--rev", "1"},
+			wkv:    []kvExec{{key: "sample", val: "value"}},
 		},
 		{ // watch 1 key with "echo watch event received"
-			[]kv{{"sample", "value"}},
-			[]string{"sample", "--rev", "1", "--", "echo", "watch event received"},
-			[]kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "--rev", "1", "--", "echo", "watch event received"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+		},
+		{ // watch 1 key with ${ETCD_WATCH_VALUE}
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "--rev", "1", "--", "env"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: `ETCD_WATCH_VALUE="value"`}},
+		},
+		{ // watch 1 key with "echo watch event received", with env
+			puts:   []kv{{"sample", "value"}},
+			envKey: "sample",
+			args:   []string{"--rev", "1", "--", "echo", "watch event received"},
+			wkv:    []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
 		},
 		{ // watch 1 key with "echo watch event received"
-			[]kv{{"sample", "value"}},
-			[]string{"--rev", "1", "sample", "--", "echo", "watch event received"},
-			[]kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+			puts: []kv{{"sample", "value"}},
+			args: []string{"--rev", "1", "sample", "--", "echo", "watch event received"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
 		},
 		{ // watch 1 key with "echo \"Hello World!\""
-			[]kv{{"sample", "value"}},
-			[]string{"--rev", "1", "sample", "--", "echo", "\"Hello World!\""},
-			[]kvExec{{key: "sample", val: "value", execOutput: "Hello World!"}},
+			puts: []kv{{"sample", "value"}},
+			args: []string{"--rev", "1", "sample", "--", "echo", "\"Hello World!\""},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "Hello World!"}},
 		},
 		{ // watch 1 key with "echo watch event received"
-			[]kv{{"sample", "value"}},
-			[]string{"sample", "samplx", "--rev", "1", "--", "echo", "watch event received"},
-			[]kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "samplx", "--rev", "1", "--", "echo", "watch event received"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
 		},
 		{ // watch 1 key with "echo watch event received"
-			[]kv{{"sample", "value"}},
-			[]string{"sample", "--rev", "1", "samplx", "--", "echo", "watch event received"},
-			[]kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+			puts:     []kv{{"sample", "value"}},
+			envKey:   "sample",
+			envRange: "samplx",
+			args:     []string{"--rev", "1", "--", "echo", "watch event received"},
+			wkv:      []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
+		},
+		{ // watch 1 key with "echo watch event received"
+			puts: []kv{{"sample", "value"}},
+			args: []string{"sample", "--rev", "1", "samplx", "--", "echo", "watch event received"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: "watch event received"}},
 		},
 		{ // watch 3 keys by prefix
-			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
-			[]string{"key", "--rev", "1", "--prefix"},
-			[]kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}},
+			puts: []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			args: []string{"key", "--rev", "1", "--prefix"},
+			wkv:  []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}},
+		},
+		{ // watch 3 keys by prefix, with env
+			puts:   []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			envKey: "key",
+			args:   []string{"--rev", "1", "--prefix"},
+			wkv:    []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}},
 		},
 		{ // watch by revision
-			[]kv{{"etcd", "revision_1"}, {"etcd", "revision_2"}, {"etcd", "revision_3"}},
-			[]string{"etcd", "--rev", "2"},
-			[]kvExec{{key: "etcd", val: "revision_2"}, {key: "etcd", val: "revision_3"}},
+			puts: []kv{{"etcd", "revision_1"}, {"etcd", "revision_2"}, {"etcd", "revision_3"}},
+			args: []string{"etcd", "--rev", "2"},
+			wkv:  []kvExec{{key: "etcd", val: "revision_2"}, {key: "etcd", val: "revision_3"}},
 		},
 		{ // watch 3 keys by range
-			[]kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
-			[]string{"key", "key3", "--rev", "1"},
-			[]kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}},
+			puts: []kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
+			args: []string{"key", "key3", "--rev", "1"},
+			wkv:  []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}},
+		},
+		{ // watch 3 keys by range, with env
+			puts:     []kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
+			envKey:   "key",
+			envRange: "key3",
+			args:     []string{"--rev", "1"},
+			wkv:      []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}},
 		},
 	}
 
@@ -107,11 +147,30 @@ func watchTest(cx ctlCtx) {
 			}
 			close(donec)
 		}(i, tt.puts)
+
+		unsetEnv := func() {}
+		if tt.envKey != "" || tt.envRange != "" {
+			if tt.envKey != "" {
+				os.Setenv("ETCDCTL_WATCH_KEY", tt.envKey)
+				unsetEnv = func() { os.Unsetenv("ETCDCTL_WATCH_KEY") }
+			}
+			if tt.envRange != "" {
+				os.Setenv("ETCDCTL_WATCH_RANGE_END", tt.envRange)
+				unsetEnv = func() { os.Unsetenv("ETCDCTL_WATCH_RANGE_END") }
+			}
+			if tt.envKey != "" && tt.envRange != "" {
+				unsetEnv = func() {
+					os.Unsetenv("ETCDCTL_WATCH_KEY")
+					os.Unsetenv("ETCDCTL_WATCH_RANGE_END")
+				}
+			}
+		}
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
 		}
+		unsetEnv()
 		<-donec
 	}
 }

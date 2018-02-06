@@ -166,7 +166,7 @@ func (c *Client) autoSync() {
 			err := c.Sync(ctx)
 			cancel()
 			if err != nil && err != c.ctx.Err() {
-				logger.Println("Auto sync endpoints failed:", err)
+				lg.Lvl(4).Infof("Auto sync endpoints failed: %v", err)
 			}
 		}
 	}
@@ -537,18 +537,19 @@ func toErr(ctx context.Context, err error) error {
 	if _, ok := err.(rpctypes.EtcdError); ok {
 		return err
 	}
-	ev, _ := status.FromError(err)
-	code := ev.Code()
-	switch code {
-	case codes.DeadlineExceeded:
-		fallthrough
-	case codes.Canceled:
-		if ctx.Err() != nil {
-			err = ctx.Err()
+	if ev, ok := status.FromError(err); ok {
+		code := ev.Code()
+		switch code {
+		case codes.DeadlineExceeded:
+			fallthrough
+		case codes.Canceled:
+			if ctx.Err() != nil {
+				err = ctx.Err()
+			}
+		case codes.Unavailable:
+		case codes.FailedPrecondition:
+			err = grpc.ErrClientConnClosing
 		}
-	case codes.Unavailable:
-	case codes.FailedPrecondition:
-		err = grpc.ErrClientConnClosing
 	}
 	return err
 }

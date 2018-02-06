@@ -52,7 +52,10 @@ func isRepeatableStopError(err error) bool {
 		return true
 	}
 	// only retry if unavailable
-	ev, _ := status.FromError(err)
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
 	return ev.Code() != codes.Unavailable
 }
 
@@ -68,8 +71,7 @@ func isRepeatableStopError(err error) bool {
 // Returning "true" means retry should stop, otherwise it violates
 // write-at-most-once semantics.
 func isNonRepeatableStopError(err error) bool {
-	ev, _ := status.FromError(err)
-	if ev.Code() != codes.Unavailable {
+	if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
 		return true
 	}
 	desc := rpctypes.ErrorDesc(err)
@@ -94,13 +96,13 @@ func (c *Client) newRetryWrapper() retryRPCFunc {
 			if err == nil {
 				return nil
 			}
-			logger.Lvl(4).Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
+			lg.Lvl(4).Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
 
 			if s, ok := status.FromError(err); ok && (s.Code() == codes.Unavailable || s.Code() == codes.DeadlineExceeded || s.Code() == codes.Internal) {
 				// mark this before endpoint switch is triggered
 				c.balancer.hostPortError(pinned, err)
 				c.balancer.next()
-				logger.Lvl(4).Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
+				lg.Lvl(4).Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
 			}
 
 			if isStop(err) {
@@ -118,12 +120,12 @@ func (c *Client) newAuthRetryWrapper(retryf retryRPCFunc) retryRPCFunc {
 			if err == nil {
 				return nil
 			}
-			logger.Lvl(4).Infof("clientv3/auth-retry: error %q on pinned endpoint %q", err.Error(), pinned)
+			lg.Lvl(4).Infof("clientv3/auth-retry: error %q on pinned endpoint %q", err.Error(), pinned)
 			// always stop retry on etcd errors other than invalid auth token
 			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(rpcCtx)
 				if gterr != nil {
-					logger.Lvl(4).Infof("clientv3/auth-retry: cannot retry due to error %q(%q) on pinned endpoint %q", err.Error(), gterr.Error(), pinned)
+					lg.Lvl(4).Infof("clientv3/auth-retry: cannot retry due to error %q(%q) on pinned endpoint %q", err.Error(), gterr.Error(), pinned)
 					return err // return the original error for simplicity
 				}
 				continue

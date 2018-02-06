@@ -44,51 +44,51 @@ func TestSRVGetCluster(t *testing.T) {
 	}
 
 	tests := []struct {
-		withSSL    []*net.SRV
-		withoutSSL []*net.SRV
-		urls       []string
+		scheme  string
+		records []*net.SRV
+		urls    []string
 
 		expected string
 	}{
 		{
-			[]*net.SRV{},
+			"https",
 			[]*net.SRV{},
 			nil,
 
 			"",
 		},
 		{
+			"https",
 			srvAll,
-			[]*net.SRV{},
 			nil,
 
 			"0=https://1.example.com:2480,1=https://2.example.com:2480,2=https://3.example.com:2480",
 		},
 		{
+			"http",
 			srvAll,
-			[]*net.SRV{{Target: "4.example.com.", Port: 2380}},
 			nil,
 
-			"0=https://1.example.com:2480,1=https://2.example.com:2480,2=https://3.example.com:2480,3=http://4.example.com:2380",
+			"0=http://1.example.com:2480,1=http://2.example.com:2480,2=http://3.example.com:2480",
 		},
 		{
+			"https",
 			srvAll,
-			[]*net.SRV{{Target: "4.example.com.", Port: 2380}},
 			[]string{"https://10.0.0.1:2480"},
 
-			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480,2=http://4.example.com:2380",
+			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
 		},
 		// matching local member with resolved addr and return unresolved hostnames
 		{
+			"https",
 			srvAll,
-			nil,
 			[]string{"https://10.0.0.1:2480"},
 
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
 		},
 		// reject if apurls are TLS but SRV is only http
 		{
-			nil,
+			"http",
 			srvAll,
 			[]string{"https://10.0.0.1:2480"},
 
@@ -109,16 +109,10 @@ func TestSRVGetCluster(t *testing.T) {
 
 	for i, tt := range tests {
 		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
-			if service == "etcd-server-ssl" {
-				return "", tt.withSSL, nil
-			}
-			if service == "etcd-server" {
-				return "", tt.withoutSSL, nil
-			}
-			return "", nil, errors.New("Unknown service in mock")
+			return "", tt.records, nil
 		}
 		urls := testutil.MustNewURLs(t, tt.urls)
-		str, err := GetCluster("etcd-server", name, "example.com", urls)
+		str, err := GetCluster(tt.scheme, "etcd-server", name, "example.com", urls)
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}

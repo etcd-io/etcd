@@ -234,7 +234,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -252,7 +252,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 		if err = ev.Err(); err != rpctypes.ErrNoLeader {
 			t.Fatalf("expected %v, got %v", rpctypes.ErrNoLeader, err)
 		}
-	case <-time.After(3 * time.Second): // enough time to detect leader lost
+	case <-time.After(integration.RequestWaitTimeout): // enough time to detect leader lost
 		t.Fatal("took too long to detect leader lost")
 	}
 }

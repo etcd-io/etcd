@@ -2164,15 +2164,32 @@
       "type": "object",
       "properties": {
         "dbSize": {
-          "description": "dbSize is the size of the backend database, in bytes, of the responding member.",
+          "description": "dbSize is the size of the backend database physically allocated, in bytes, of the responding member.",
           "type": "string",
           "format": "int64"
+        },
+        "dbSizeInUse": {
+          "description": "dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member.",
+          "type": "string",
+          "format": "int64"
+        },
+        "errors": {
+          "description": "errors contains alarm/health information and status.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "leader": {
           "description": "leader is the member ID which the responding member believes is the current leader.",
+          "type": "string",
+          "format": "uint64"
+        },
+        "raftAppliedIndex": {
+          "description": "raftAppliedIndex is the current raft applied index of the responding member.",
           "type": "string",
           "format": "uint64"
         },
@@ -2281,6 +2298,11 @@
         },
         "start_revision": {
           "description": "start_revision is an optional revision to watch from (inclusive). No start_revision is \"now\".",
+          "type": "string",
+          "format": "int64"
+        },
+        "watch_id": {
+          "description": "If watch_id is provided and non-zero, it will be assigned to this watcher.\nSince creating a watcher in etcd is not a synchronous operation,\nthis can be used ensure that ordering is correct when creating multiple\nwatchers on the same stream. Creating a watcher with an ID already in\nuse on the stream will cause an error to be returned.",
           "type": "string",
           "format": "int64"
         }

@@ -53,16 +53,16 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 	var leaderCli *clientv3.Client
 	var leaderID uint64
 	for _, ep := range eps {
-		cli, err := clientv3.New(clientv3.Config{
+		cli, cerr := clientv3.New(clientv3.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: 3 * time.Second,
 		})
-		if err != nil {
-			ExitWithError(ExitError, err)
+		if cerr != nil {
+			ExitWithError(ExitError, cerr)
 		}
-		resp, err := cli.Status(ctx, ep)
-		if err != nil {
-			ExitWithError(ExitError, err)
+		resp, serr := cli.Status(ctx, ep)
+		if serr != nil {
+			ExitWithError(ExitError, serr)
 		}
 
 		if resp.Header.GetMemberId() == resp.Leader {

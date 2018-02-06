@@ -19,7 +19,8 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	spb "github.com/coreos/etcd/mvcc/mvccpb"
+	spb "github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/snapshot"
 )
 
 type fieldsPrinter struct{ printer }
@@ -148,6 +149,8 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 		fmt.Println(`"Leader" :`, ep.Resp.Leader)
 		fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)
 		fmt.Println(`"RaftTerm" :`, ep.Resp.RaftTerm)
+		fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)
+		fmt.Println(`"Errors" :`, ep.Resp.Errors)
 		fmt.Printf("\"Endpoint\" : %q\n", ep.Ep)
 		fmt.Println()
 	}
@@ -171,7 +174,7 @@ func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 	}
 }
 
-func (p *fieldsPrinter) DBStatus(r dbstatus) {
+func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
 	fmt.Println(`"Hash" :`, r.Hash)
 	fmt.Println(`"Revision" :`, r.Revision)
 	fmt.Println(`"Keys" :`, r.TotalKey)

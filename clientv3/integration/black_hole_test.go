@@ -54,7 +54,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	// TODO: only send healthy endpoint to gRPC so gRPC wont waste time to
 	// dial for unhealthy endpoint.
 	// then we can reduce 3s to 1s.
-	timeout := pingInterval + 3*time.Second
+	timeout := pingInterval + integration.RequestWaitTimeout
 
 	cli, err := clientv3.New(ccfg)
 	if err != nil {

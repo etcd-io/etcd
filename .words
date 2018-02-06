@@ -10,6 +10,7 @@ RPC
 RPCs
 TODO
 WithRequireLeader
+args
 backoff
 blackhole
 blackholed
@@ -18,6 +19,7 @@ cancelation
 cluster_proxy
 defragment
 defragmenting
+errClientDisconnected
 etcd
 gRPC
 goroutine
@@ -34,6 +36,7 @@ mutex
 prefetching
 protobuf
 prometheus
+rafthttp
 repin
 rpc
 serializable
@@ -43,4 +46,3 @@ too_many_pings
 uncontended
 unprefixed
 unlisting
-

@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/internal/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
@@ -453,7 +453,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	clus.TakeClient(0)
 
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}
@@ -480,7 +480,7 @@ func TestKVNewAfterClose(t *testing.T) {
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}
@@ -906,7 +906,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10 * 1024 * 1024,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max (%d vs. %d)", 10485770, 10485760),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
 		},
 		{
 			maxRequestBytesServer:  10 * 1024 * 1024,
@@ -920,7 +920,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10*1024*1024 + 5,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max (%d vs. %d)", 10485775, 10485760),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
 		},
 	}
 	for i, test := range tests {
@@ -939,7 +939,7 @@ func TestKVLargeRequests(t *testing.T) {
 			if err != test.expectError {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}
-		} else if err != nil && err.Error() != test.expectError.Error() {
+		} else if err != nil && !strings.HasPrefix(err.Error(), test.expectError.Error()) {
 			t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 		}
 

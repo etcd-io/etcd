@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/etcdserver/auth"
+	"github.com/coreos/etcd/etcdserver/v2auth"
 	"github.com/coreos/etcd/pkg/logutil"
 
 	"github.com/coreos/pkg/capnslog"
@@ -42,7 +42,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
 	}
-	if e, ok := err.(auth.Error); ok {
+	if e, ok := err.(v2auth.Error); ok {
 		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
 		if et := herr.WriteTo(w); et != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)

@@ -2,8 +2,8 @@ syntax = "proto3";
 package etcdserverpb;
 
 import "gogoproto/gogo.proto";
-import "etcd/mvcc/mvccpb/kv.proto";
-import "etcd/auth/authpb/auth.proto";
+import "etcd/internal/mvcc/mvccpb/kv.proto";
+import "etcd/internal/auth/authpb/auth.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";
@@ -671,6 +671,13 @@ message WatchCreateRequest {
   // If prev_kv is set, created watcher gets the previous KV before the event happens.
   // If the previous KV is already compacted, nothing will be returned.
   bool prev_kv = 6;
+
+  // If watch_id is provided and non-zero, it will be assigned to this watcher.
+  // Since creating a watcher in etcd is not a synchronous operation,
+  // this can be used ensure that ordering is correct when creating multiple
+  // watchers on the same stream. Creating a watcher with an ID already in
+  // use on the stream will cause an error to be returned.
+  int64 watch_id = 7;
 }
 
 message WatchCancelRequest {
@@ -892,7 +899,7 @@ message StatusResponse {
   ResponseHeader header = 1;
   // version is the cluster protocol version used by the responding member.
   string version = 2;
-  // dbSize is the size of the backend database, in bytes, of the responding member.
+  // dbSize is the size of the backend database physically allocated, in bytes, of the responding member.
   int64 dbSize = 3;
   // leader is the member ID which the responding member believes is the current leader.
   uint64 leader = 4;
@@ -900,6 +907,12 @@ message StatusResponse {
   uint64 raftIndex = 5;
   // raftTerm is the current raft term of the responding member.
   uint64 raftTerm = 6;
+  // raftAppliedIndex is the current raft applied index of the responding member.
+  uint64 raftAppliedIndex = 7;
+  // errors contains alarm/health information and status.
+  repeated string errors = 8;
+  // dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member.
+  int64 dbSizeInUse = 9;
 }
 
 message AuthEnableRequest {

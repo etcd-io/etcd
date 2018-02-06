@@ -789,6 +789,8 @@ Empty field.
 | leader | leader is the member ID which the responding member believes is the current leader. | uint64 |
 | raftIndex | raftIndex is the current raft index of the responding member. | uint64 |
 | raftTerm | raftTerm is the current raft term of the responding member. | uint64 |
+| raftAppliedIndex | raftAppliedIndex is the current raft applied index of the responding member. | uint64 |
+| errors | errors contains alarm/health information and status. | (slice of) string |
 
 
 
@@ -832,6 +834,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | progress_notify | progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. It is useful when clients wish to recover a disconnected watcher starting from a recent known revision. The etcd server may decide how often it will send notifications based on current load. | bool |
 | filters | filters filter the events at server side before it sends back to the watcher. | (slice of) FilterType |
 | prev_kv | If prev_kv is set, created watcher gets the previous KV before the event happens. If the previous KV is already compacted, nothing will be returned. | bool |
+| watch_id | If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. | int64 |
 
 
 
@@ -859,7 +862,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Event` (mvcc/mvccpb/kv.proto)
+##### message `Event` (internal/mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -869,7 +872,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `KeyValue` (mvcc/mvccpb/kv.proto)
+##### message `KeyValue` (internal/mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -882,7 +885,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Lease` (lease/leasepb/lease.proto)
+##### message `Lease` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -891,7 +894,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+##### message `LeaseInternalRequest` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -899,7 +902,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+##### message `LeaseInternalResponse` (internal/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -907,7 +910,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Permission` (auth/authpb/auth.proto)
+##### message `Permission` (internal/auth/authpb/auth.proto)
 
 Permission is a single entity
 
@@ -919,7 +922,7 @@ Permission is a single entity
 
 
 
-##### message `Role` (auth/authpb/auth.proto)
+##### message `Role` (internal/auth/authpb/auth.proto)
 
 Role is a single entry in the bucket authRoles
 
@@ -930,7 +933,7 @@ Role is a single entry in the bucket authRoles
 
 
 
-##### message `User` (auth/authpb/auth.proto)
+##### message `User` (internal/auth/authpb/auth.proto)
 
 User is a single entry in the bucket authUsers
 

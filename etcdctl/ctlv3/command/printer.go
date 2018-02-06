@@ -20,9 +20,10 @@ import (
 	"strings"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/dustin/go-humanize"
-
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/snapshot"
+
+	"github.com/dustin/go-humanize"
 )
 
 type printer interface {
@@ -48,7 +49,7 @@ type printer interface {
 	MoveLeader(leader, target uint64, r v3.MoveLeaderResponse)
 
 	Alarm(v3.AlarmResponse)
-	DBStatus(dbstatus)
+	DBStatus(snapshot.Status)
 
 	RoleAdd(role string, r v3.AuthRoleAddResponse)
 	RoleGet(role string, r v3.AuthRoleGetResponse)
@@ -150,7 +151,7 @@ func newPrinterUnsupported(n string) printer {
 
 func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
 func (p *printerUnsupported) EndpointHashKV([]epHashKV) { p.p(nil) }
-func (p *printerUnsupported) DBStatus(dbstatus)         { p.p(nil) }
+func (p *printerUnsupported) DBStatus(snapshot.Status)  { p.p(nil) }
 
 func (p *printerUnsupported) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) { p.p(nil) }
 
@@ -173,7 +174,7 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
-	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"}
+	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index", "raft applied index", "errors"}
 	for _, status := range statusList {
 		rows = append(rows, []string{
 			status.Ep,
@@ -183,6 +184,8 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
 			fmt.Sprint(status.Resp.RaftTerm),
 			fmt.Sprint(status.Resp.RaftIndex),
+			fmt.Sprint(status.Resp.RaftAppliedIndex),
+			fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
 		})
 	}
 	return hdr, rows
@@ -199,7 +202,7 @@ func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string
 	return hdr, rows
 }
 
-func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
+func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 	hdr = []string{"hash", "revision", "total keys", "total size"}
 	rows = append(rows, []string{
 		fmt.Sprintf("%x", ds.Hash),

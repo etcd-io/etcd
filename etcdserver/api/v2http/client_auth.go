@@ -22,23 +22,23 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/etcdserver/auth"
+	"github.com/coreos/etcd/etcdserver/v2auth"
 )
 
 type authHandler struct {
-	sec                   auth.Store
+	sec                   v2auth.Store
 	cluster               api.Cluster
 	clientCertAuthEnabled bool
 }
 
-func hasWriteRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
+func hasWriteRootAccess(sec v2auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
 	if r.Method == "GET" || r.Method == "HEAD" {
 		return true
 	}
 	return hasRootAccess(sec, r, clientCertAuthEnabled)
 }
 
-func userFromBasicAuth(sec auth.Store, r *http.Request) *auth.User {
+func userFromBasicAuth(sec v2auth.Store, r *http.Request) *v2auth.User {
 	username, password, ok := r.BasicAuth()
 	if !ok {
 		plog.Warningf("auth: malformed basic auth encoding")
@@ -57,7 +57,7 @@ func userFromBasicAuth(sec auth.Store, r *http.Request) *auth.User {
 	return &user
 }
 
-func userFromClientCertificate(sec auth.Store, r *http.Request) *auth.User {
+func userFromClientCertificate(sec v2auth.Store, r *http.Request) *v2auth.User {
 	if r.TLS == nil {
 		return nil
 	}
@@ -75,7 +75,7 @@ func userFromClientCertificate(sec auth.Store, r *http.Request) *auth.User {
 	return nil
 }
 
-func hasRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
+func hasRootAccess(sec v2auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -84,7 +84,7 @@ func hasRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) 
 		return true
 	}
 
-	var rootUser *auth.User
+	var rootUser *v2auth.User
 	if r.Header.Get("Authorization") == "" && clientCertAuthEnabled {
 		rootUser = userFromClientCertificate(sec, r)
 		if rootUser == nil {
@@ -98,15 +98,15 @@ func hasRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) 
 	}
 
 	for _, role := range rootUser.Roles {
-		if role == auth.RootRoleName {
+		if role == v2auth.RootRoleName {
 			return true
 		}
 	}
-	plog.Warningf("auth: user %s does not have the %s role for resource %s.", rootUser.User, auth.RootRoleName, r.URL.Path)
+	plog.Warningf("auth: user %s does not have the %s role for resource %s.", rootUser.User, v2auth.RootRoleName, r.URL.Path)
 	return false
 }
 
-func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive, clientCertAuthEnabled bool) bool {
+func hasKeyPrefixAccess(sec v2auth.Store, r *http.Request, key string, recursive, clientCertAuthEnabled bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -115,7 +115,7 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive, 
 		return true
 	}
 
-	var user *auth.User
+	var user *v2auth.User
 	if r.Header.Get("Authorization") == "" {
 		if clientCertAuthEnabled {
 			user = userFromClientCertificate(sec, r)
@@ -148,9 +148,9 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive, 
 	return false
 }
 
-func hasGuestAccess(sec auth.Store, r *http.Request, key string) bool {
+func hasGuestAccess(sec v2auth.Store, r *http.Request, key string) bool {
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
-	role, err := sec.GetRole(auth.GuestRoleName)
+	role, err := sec.GetRole(v2auth.GuestRoleName)
 	if err != nil {
 		return false
 	}
@@ -204,10 +204,10 @@ func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rolesCollections struct {
-		Roles []auth.Role `json:"roles"`
+		Roles []v2auth.Role `json:"roles"`
 	}
 	for _, roleName := range roles {
-		var role auth.Role
+		var role v2auth.Role
 		role, err = sh.sec.GetRole(roleName)
 		if err != nil {
 			writeError(w, r, err)
@@ -265,7 +265,7 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 		}
 		return
 	case "PUT":
-		var in auth.Role
+		var in v2auth.Role
 		err := json.NewDecoder(r.Body).Decode(&in)
 		if err != nil {
 			writeError(w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -276,7 +276,7 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 			return
 		}
 
-		var out auth.Role
+		var out v2auth.Role
 
 		// create
 		if in.Grant.IsEmpty() && in.Revoke.IsEmpty() {
@@ -316,8 +316,8 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 }
 
 type userWithRoles struct {
-	User  string      `json:"user"`
-	Roles []auth.Role `json:"roles,omitempty"`
+	User  string        `json:"user"`
+	Roles []v2auth.Role `json:"roles,omitempty"`
 }
 
 type usersCollections struct {
@@ -352,7 +352,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 
 	ucs := usersCollections{}
 	for _, userName := range users {
-		var user auth.User
+		var user v2auth.User
 		user, err = sh.sec.GetUser(userName)
 		if err != nil {
 			writeError(w, r, err)
@@ -361,7 +361,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 
 		uwr := userWithRoles{User: user.User}
 		for _, roleName := range user.Roles {
-			var role auth.Role
+			var role v2auth.Role
 			role, err = sh.sec.GetRole(roleName)
 			if err != nil {
 				continue
@@ -423,7 +423,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 
 		uwr := userWithRoles{User: u.User}
 		for _, roleName := range u.Roles {
-			var role auth.Role
+			var role v2auth.Role
 			role, err = sh.sec.GetRole(roleName)
 			if err != nil {
 				writeError(w, r, err)
@@ -439,7 +439,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 		}
 		return
 	case "PUT":
-		var u auth.User
+		var u v2auth.User
 		err := json.NewDecoder(r.Body).Decode(&u)
 		if err != nil {
 			writeError(w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -451,7 +451,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 		}
 
 		var (
-			out     auth.User
+			out     v2auth.User
 			created bool
 		)
 

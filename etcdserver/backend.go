@@ -19,11 +19,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/internal/lease"
+	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
 )
 
 func newBackend(cfg ServerConfig) backend.Backend {
@@ -37,7 +37,7 @@ func newBackend(cfg ServerConfig) backend.Backend {
 }
 
 // openSnapshotBackend renames a snapshot db to the current etcd db and opens it.
-func openSnapshotBackend(cfg ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
+func openSnapshotBackend(cfg ServerConfig, ss *raftsnap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
 	if err != nil {
 		return nil, fmt.Errorf("database snapshot file path error: %v", err)
@@ -58,8 +58,8 @@ func openBackend(cfg ServerConfig) backend.Backend {
 	select {
 	case be := <-beOpened:
 		return be
-	case <-time.After(time.Second):
-		plog.Warningf("another etcd process is using %q and holds the file lock.", fn)
+	case <-time.After(10 * time.Second):
+		plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
 		plog.Warningf("waiting for it to exit before starting...")
 	}
 	return <-beOpened
@@ -77,5 +77,5 @@ func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot ra
 		return oldbe, nil
 	}
 	oldbe.Close()
-	return openSnapshotBackend(cfg, snap.New(cfg.SnapDir()), snapshot)
+	return openSnapshotBackend(cfg, raftsnap.New(cfg.SnapDir()), snapshot)
 }
