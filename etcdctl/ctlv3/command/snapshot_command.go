@@ -17,6 +17,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/snapshot"
 
+	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
 
@@ -88,6 +90,11 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
 
 	return cmd
+}
+
+func init() {
+	// overwrite output (capnslog defaults to os.Stderr)
+	capnslog.SetFormatter(capnslog.NewDefaultFormatter(os.Stdout))
 }
 
 func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
