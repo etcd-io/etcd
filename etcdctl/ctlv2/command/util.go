@@ -170,7 +170,7 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 	if keyfile == "" {
 		keyfile = os.Getenv("ETCDCTL_KEY_FILE")
 	}
-	if insecureSkipVerify == false {
+	if !insecureSkipVerify {
 		insecureSkipVerify = strings.EqualFold(os.Getenv("ETCDCTL_INSECURE_SKIP_TLS_VERIFY"), "TRUE")
 	}
 	if c := ciphers.Slice(); len(c) == 0 {
