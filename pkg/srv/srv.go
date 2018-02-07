@@ -16,6 +16,7 @@
 package srv
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -32,7 +33,11 @@ var (
 
 // GetCluster gets the cluster information via DNS discovery.
 // Also sees each entry as a separate instance.
-func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]string, error) {
+func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs, testDNS string) ([]string, error) {
+	if err := UseTestDNS(testDNS); err != nil {
+		return nil, err
+	}
+
 	tempName := int(0)
 	tcp2ap := make(map[string]url.URL)
 
@@ -93,6 +98,23 @@ func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]
 type SRVClients struct {
 	Endpoints []string
 	SRVs      []*net.SRV
+}
+
+func UseTestDNS(testDNS string) error {
+	if testDNS == "" {
+		return nil
+	}
+	resolver := net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (conn net.Conn, err error) {
+			if conn, err = net.Dial("udp", testDNS); err == nil {
+				return conn, nil
+			}
+			return nil, err
+		},
+	}
+	net.DefaultResolver = &resolver
+	return nil
 }
 
 // GetClient looks up the client endpoints for a service and domain.

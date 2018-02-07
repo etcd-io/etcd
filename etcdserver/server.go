@@ -86,6 +86,9 @@ const (
 	// maxPendingRevokes is the maximum number of outstanding expired lease revocations.
 	maxPendingRevokes = 16
 
+	// defaultTestMaxDuration is the default max duration etcd with run during test-mode
+	defaultTestMaxDuration = 24 * time.Hour
+
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
 )
 
@@ -291,6 +294,9 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
+	if err = cfg.CheckTestMode(); err != nil {
+		return nil, err
+	}
 	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.peerDialTimeout())
 	if err != nil {
 		return nil, err
@@ -533,6 +539,7 @@ func (s *EtcdServer) Start() {
 	s.goAttach(s.monitorVersions)
 	s.goAttach(s.linearizableReadLoop)
 	s.goAttach(s.monitorKVHash)
+	s.goAttach(s.testModeTimer)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -1068,6 +1075,33 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 	}
 
 	return s.AuthStore().IsAdminPermitted(authInfo)
+}
+
+// testModeTimer is enabled by the --test-mode flag and it's purpose is to
+// shutdown the server after a period of time.
+func (s *EtcdServer) testModeTimer() {
+	if !s.Cfg.TestMode {
+		return
+	}
+	d := s.Cfg.TestMaxDuration
+	if d == 0 || d > defaultTestMaxDuration {
+		s.Cfg.TestMaxDuration = defaultTestMaxDuration
+	}
+
+	testModeExpired := make(chan bool)
+	go func() {
+		time.Sleep(s.Cfg.TestMaxDuration)
+		testModeExpired <- true
+	}()
+	for {
+		select {
+		case <-s.stopping:
+			return
+		case <-testModeExpired:
+			plog.Infof("test-mode duration has passed, shutting down")
+			s.HardStop()
+		}
+	}
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {

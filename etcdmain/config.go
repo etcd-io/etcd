@@ -217,6 +217,11 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ec.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
 	fs.DurationVar(&cfg.ec.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ec.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes.")
 
+	// testmode
+	fs.BoolVar(&cfg.ec.TestMode, "test-mode", false, "Enable etcd test-mode.")
+	fs.StringVar(&cfg.ec.TestDNS, "test-dns", cfg.ec.TestDNS, "Define custom ip:port for DNS resolution.")
+	fs.DurationVar(&cfg.ec.TestMaxDuration, "test-max-duration", cfg.ec.TestMaxDuration, "Duration of time to run test-mode.")
+
 	// ignored
 	for _, f := range cfg.ignored {
 		fs.Var(&flags.IgnoredFlag{Name: f}, f, "")

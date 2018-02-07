@@ -175,6 +175,12 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
+	// test-mode
+
+	TestMode        bool          `json:"test-mode"`
+	TestDNS         string        `json:"test-dns"`
+	TestMaxDuration time.Duration `json:"test-max-duration"`
+
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
 
@@ -315,6 +321,22 @@ func (cfg *Config) SetupLogging() {
 	default:
 		plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
 	}
+}
+
+func (cfg *Config) SetupTestDNS() error {
+	d := cfg.TestDNS
+	if d != "" {
+		host, _, err := net.SplitHostPort(d)
+		if err != nil {
+			return err
+		}
+		if host != "localhost" {
+			if net.ParseIP(host) == nil {
+				return fmt.Errorf("expected ip:port for test-dns (%s)", d)
+			}
+		}
+	}
+	return nil
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -517,9 +539,13 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	if cfg.DNSClusterServiceName != "" {
 		serviceNameSuffix = "-" + cfg.DNSClusterServiceName
 	}
+	err := cfg.SetupTestDNS()
+	if err != nil {
+		plog.Errorf("couldn't setup testDNS for SRV discovery (%v)", err)
+	}
 	// Use both etcd-server-ssl and etcd-server for discovery. Combine the results if both are available.
-	clusterStrs, cerr = srv.GetCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
-	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
+	clusterStrs, cerr = srv.GetCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls, cfg.TestDNS)
+	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls, cfg.TestDNS)
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}

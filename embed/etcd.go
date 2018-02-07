@@ -181,6 +181,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialCorruptCheck:     cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
 		Debug:                   cfg.Debug,
+		TestMode:                cfg.TestMode,
+		TestDNS:                 cfg.TestDNS,
+		TestMaxDuration:         cfg.TestMaxDuration,
 	}
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
