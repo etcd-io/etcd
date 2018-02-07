@@ -271,7 +271,9 @@ func (b *backend) run() {
 			b.batchTx.CommitAndStop()
 			return
 		}
-		b.batchTx.Commit()
+		if b.batchTx.safePending() != 0 {
+			b.batchTx.Commit()
+		}
 		t.Reset(b.batchInterval)
 	}
 }
@@ -302,11 +304,7 @@ func (b *backend) defrag() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// block concurrent read requests while resetting tx
-	b.readTx.mu.Lock()
-	defer b.readTx.mu.Unlock()
-
-	b.batchTx.unsafeCommit(true)
+	b.batchTx.commit(true)
 	b.batchTx.tx = nil
 
 	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)

@@ -98,6 +98,7 @@ func unsafeRange(c *bolt.Cursor, key, endKey []byte, limit int64) (keys [][]byte
 		isMatch = func(b []byte) bool { return bytes.Equal(b, key) }
 		limit = 1
 	}
+
 	for ck, cv := c.Seek(key); ck != nil && isMatch(ck); ck, cv = c.Next() {
 		vs = append(vs, cv)
 		keys = append(keys, ck)
@@ -152,6 +153,12 @@ func (t *batchTx) Unlock() {
 		t.commit(false)
 	}
 	t.Mutex.Unlock()
+}
+
+func (t *batchTx) safePending() int {
+	t.Mutex.Lock()
+	defer t.Mutex.Unlock()
+	return t.pending
 }
 
 func (t *batchTx) commit(stop bool) {
