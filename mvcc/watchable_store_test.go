@@ -310,7 +310,7 @@ func TestWatchRestore(t *testing.T) {
 			defer cleanup(newStore, newBackend, newPath)
 
 			w := newStore.NewWatchStream()
-			w.Watch(0, testKey, nil, rev-1)
+			w.Watch(testKey, nil, rev-1)
 
 			time.Sleep(delay)
 
