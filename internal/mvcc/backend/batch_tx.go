@@ -158,17 +158,6 @@ func (t *batchTx) commit(stop bool) {
 	// commit the last tx
 	if t.tx != nil {
 		if t.pending == 0 && !stop {
-			t.backend.mu.RLock()
-			defer t.backend.mu.RUnlock()
-
-			// t.tx.DB()==nil if 'CommitAndStop' calls 'batchTx.commit(true)',
-			// which initializes *bolt.Tx.db and *bolt.Tx.meta as nil; panics t.tx.Size().
-			// Server must make sure 'batchTx.commit(false)' does not follow
-			// 'batchTx.commit(true)' (e.g. stopping backend, and inflight Hash call).
-			size := t.tx.Size()
-			db := t.tx.DB()
-			atomic.StoreInt64(&t.backend.size, size)
-			atomic.StoreInt64(&t.backend.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
 			return
 		}
 
