@@ -15,7 +15,7 @@ service KV {
   // Range gets the keys in the range from the key-value store.
   rpc Range(RangeRequest) returns (RangeResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/range"
+        post: "/v3/kv/range"
         body: "*"
     };
   }
@@ -25,7 +25,7 @@ service KV {
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/put"
+        post: "/v3/kv/put"
         body: "*"
     };
   }
@@ -35,7 +35,7 @@ service KV {
   // and generates a delete event in the event history for every deleted key.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/deleterange"
+        post: "/v3/kv/deleterange"
         body: "*"
     };
   }
@@ -46,7 +46,7 @@ service KV {
   // It is not allowed to modify the same key several times within one txn.
   rpc Txn(TxnRequest) returns (TxnResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/txn"
+        post: "/v3/kv/txn"
         body: "*"
     };
   }
@@ -56,7 +56,7 @@ service KV {
   // indefinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/compaction"
+        post: "/v3/kv/compaction"
         body: "*"
     };
   }
@@ -70,7 +70,7 @@ service Watch {
   // last compaction revision.
   rpc Watch(stream WatchRequest) returns (stream WatchResponse) {
       option (google.api.http) = {
-        post: "/v3beta/watch"
+        post: "/v3/watch"
         body: "*"
     };
   }
@@ -82,7 +82,7 @@ service Lease {
   // deleted if the lease expires. Each expired key generates a delete event in the event history.
   rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse) {
       option (google.api.http) = {
-        post: "/v3beta/lease/grant"
+        post: "/v3/lease/grant"
         body: "*"
     };
   }
@@ -90,7 +90,7 @@ service Lease {
   // LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
   rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/lease/revoke"
+        post: "/v3/kv/lease/revoke"
         body: "*"
     };
   }
@@ -99,7 +99,7 @@ service Lease {
   // to the server and streaming keep alive responses from the server to the client.
   rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {
       option (google.api.http) = {
-        post: "/v3beta/lease/keepalive"
+        post: "/v3/lease/keepalive"
         body: "*"
     };
   }
@@ -107,7 +107,7 @@ service Lease {
   // LeaseTimeToLive retrieves lease information.
   rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/lease/timetolive"
+        post: "/v3/kv/lease/timetolive"
         body: "*"
     };
   }
@@ -115,7 +115,7 @@ service Lease {
   // LeaseLeases lists all existing leases.
   rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {
       option (google.api.http) = {
-        post: "/v3beta/kv/lease/leases"
+        post: "/v3/kv/lease/leases"
         body: "*"
     };
   }
@@ -125,7 +125,7 @@ service Cluster {
   // MemberAdd adds a member into the cluster.
   rpc MemberAdd(MemberAddRequest) returns (MemberAddResponse) {
       option (google.api.http) = {
-        post: "/v3beta/cluster/member/add"
+        post: "/v3/cluster/member/add"
         body: "*"
     };
   }
@@ -133,7 +133,7 @@ service Cluster {
   // MemberRemove removes an existing member from the cluster.
   rpc MemberRemove(MemberRemoveRequest) returns (MemberRemoveResponse) {
       option (google.api.http) = {
-        post: "/v3beta/cluster/member/remove"
+        post: "/v3/cluster/member/remove"
         body: "*"
     };
   }
@@ -141,7 +141,7 @@ service Cluster {
   // MemberUpdate updates the member configuration.
   rpc MemberUpdate(MemberUpdateRequest) returns (MemberUpdateResponse) {
       option (google.api.http) = {
-        post: "/v3beta/cluster/member/update"
+        post: "/v3/cluster/member/update"
         body: "*"
     };
   }
@@ -149,7 +149,7 @@ service Cluster {
   // MemberList lists all the members in the cluster.
   rpc MemberList(MemberListRequest) returns (MemberListResponse) {
       option (google.api.http) = {
-        post: "/v3beta/cluster/member/list"
+        post: "/v3/cluster/member/list"
         body: "*"
     };
   }
@@ -159,7 +159,7 @@ service Maintenance {
   // Alarm activates, deactivates, and queries alarms regarding cluster health.
   rpc Alarm(AlarmRequest) returns (AlarmResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/alarm"
+        post: "/v3/maintenance/alarm"
         body: "*"
     };
   }
@@ -167,7 +167,7 @@ service Maintenance {
   // Status gets the status of the member.
   rpc Status(StatusRequest) returns (StatusResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/status"
+        post: "/v3/maintenance/status"
         body: "*"
     };
   }
@@ -175,7 +175,7 @@ service Maintenance {
   // Defragment defragments a member's backend database to recover storage space.
   rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/defragment"
+        post: "/v3/maintenance/defragment"
         body: "*"
     };
   }
@@ -185,7 +185,7 @@ service Maintenance {
   // are ongoing transactions.
   rpc Hash(HashRequest) returns (HashResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/hash"
+        post: "/v3/maintenance/hash"
         body: "*"
     };
   }
@@ -193,7 +193,7 @@ service Maintenance {
   // HashKV computes the hash of all MVCC keys up to a given revision.
   rpc HashKV(HashKVRequest) returns (HashKVResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/hash"
+        post: "/v3/maintenance/hash"
         body: "*"
     };
   }
@@ -201,7 +201,7 @@ service Maintenance {
   // Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
   rpc Snapshot(SnapshotRequest) returns (stream SnapshotResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/snapshot"
+        post: "/v3/maintenance/snapshot"
         body: "*"
     };
   }
@@ -209,7 +209,7 @@ service Maintenance {
   // MoveLeader requests current leader node to transfer its leadership to transferee.
   rpc MoveLeader(MoveLeaderRequest) returns (MoveLeaderResponse) {
       option (google.api.http) = {
-        post: "/v3beta/maintenance/transfer-leadership"
+        post: "/v3/maintenance/transfer-leadership"
         body: "*"
     };
   }
@@ -219,7 +219,7 @@ service Auth {
   // AuthEnable enables authentication.
   rpc AuthEnable(AuthEnableRequest) returns (AuthEnableResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/enable"
+        post: "/v3/auth/enable"
         body: "*"
     };
   }
@@ -227,7 +227,7 @@ service Auth {
   // AuthDisable disables authentication.
   rpc AuthDisable(AuthDisableRequest) returns (AuthDisableResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/disable"
+        post: "/v3/auth/disable"
         body: "*"
     };
   }
@@ -235,7 +235,7 @@ service Auth {
   // Authenticate processes an authenticate request.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/authenticate"
+        post: "/v3/auth/authenticate"
         body: "*"
     };
   }
@@ -243,7 +243,7 @@ service Auth {
   // UserAdd adds a new user.
   rpc UserAdd(AuthUserAddRequest) returns (AuthUserAddResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/add"
+        post: "/v3/auth/user/add"
         body: "*"
     };
   }
@@ -251,7 +251,7 @@ service Auth {
   // UserGet gets detailed user information.
   rpc UserGet(AuthUserGetRequest) returns (AuthUserGetResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/get"
+        post: "/v3/auth/user/get"
         body: "*"
     };
   }
@@ -259,7 +259,7 @@ service Auth {
   // UserList gets a list of all users.
   rpc UserList(AuthUserListRequest) returns (AuthUserListResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/list"
+        post: "/v3/auth/user/list"
         body: "*"
     };
   }
@@ -267,7 +267,7 @@ service Auth {
   // UserDelete deletes a specified user.
   rpc UserDelete(AuthUserDeleteRequest) returns (AuthUserDeleteResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/delete"
+        post: "/v3/auth/user/delete"
         body: "*"
     };
   }
@@ -275,7 +275,7 @@ service Auth {
   // UserChangePassword changes the password of a specified user.
   rpc UserChangePassword(AuthUserChangePasswordRequest) returns (AuthUserChangePasswordResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/changepw"
+        post: "/v3/auth/user/changepw"
         body: "*"
     };
   }
@@ -283,7 +283,7 @@ service Auth {
   // UserGrant grants a role to a specified user.
   rpc UserGrantRole(AuthUserGrantRoleRequest) returns (AuthUserGrantRoleResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/grant"
+        post: "/v3/auth/user/grant"
         body: "*"
     };
   }
@@ -291,7 +291,7 @@ service Auth {
   // UserRevokeRole revokes a role of specified user.
   rpc UserRevokeRole(AuthUserRevokeRoleRequest) returns (AuthUserRevokeRoleResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/user/revoke"
+        post: "/v3/auth/user/revoke"
         body: "*"
     };
   }
@@ -299,7 +299,7 @@ service Auth {
   // RoleAdd adds a new role.
   rpc RoleAdd(AuthRoleAddRequest) returns (AuthRoleAddResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/add"
+        post: "/v3/auth/role/add"
         body: "*"
     };
   }
@@ -307,7 +307,7 @@ service Auth {
   // RoleGet gets detailed role information.
   rpc RoleGet(AuthRoleGetRequest) returns (AuthRoleGetResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/get"
+        post: "/v3/auth/role/get"
         body: "*"
     };
   }
@@ -315,7 +315,7 @@ service Auth {
   // RoleList gets lists of all roles.
   rpc RoleList(AuthRoleListRequest) returns (AuthRoleListResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/list"
+        post: "/v3/auth/role/list"
         body: "*"
     };
   }
@@ -323,7 +323,7 @@ service Auth {
   // RoleDelete deletes a specified role.
   rpc RoleDelete(AuthRoleDeleteRequest) returns (AuthRoleDeleteResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/delete"
+        post: "/v3/auth/role/delete"
         body: "*"
     };
   }
@@ -331,7 +331,7 @@ service Auth {
   // RoleGrantPermission grants a permission of a specified key or range to a specified role.
   rpc RoleGrantPermission(AuthRoleGrantPermissionRequest) returns (AuthRoleGrantPermissionResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/grant"
+        post: "/v3/auth/role/grant"
         body: "*"
     };
   }
@@ -339,7 +339,7 @@ service Auth {
   // RoleRevokePermission revokes a key or range permission of a specified role.
   rpc RoleRevokePermission(AuthRoleRevokePermissionRequest) returns (AuthRoleRevokePermissionResponse) {
       option (google.api.http) = {
-        post: "/v3beta/auth/role/revoke"
+        post: "/v3/auth/role/revoke"
         body: "*"
     };
   }

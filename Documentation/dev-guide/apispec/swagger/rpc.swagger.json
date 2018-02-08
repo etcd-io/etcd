@@ -15,7 +15,7 @@
     "version": "version not set"
   },
   "paths": {
-    "/v3beta/auth/authenticate": {
+    "/v3/auth/authenticate": {
       "post": {
         "tags": [
           "Auth"
@@ -42,7 +42,7 @@
         }
       }
     },
-    "/v3beta/auth/disable": {
+    "/v3/auth/disable": {
       "post": {
         "tags": [
           "Auth"
@@ -69,7 +69,7 @@
         }
       }
     },
-    "/v3beta/auth/enable": {
+    "/v3/auth/enable": {
       "post": {
         "tags": [
           "Auth"
@@ -96,7 +96,7 @@
         }
       }
     },
-    "/v3beta/auth/role/add": {
+    "/v3/auth/role/add": {
       "post": {
         "tags": [
           "Auth"
@@ -123,7 +123,7 @@
         }
       }
     },
-    "/v3beta/auth/role/delete": {
+    "/v3/auth/role/delete": {
       "post": {
         "tags": [
           "Auth"
@@ -150,7 +150,7 @@
         }
       }
     },
-    "/v3beta/auth/role/get": {
+    "/v3/auth/role/get": {
       "post": {
         "tags": [
           "Auth"
@@ -177,7 +177,7 @@
         }
       }
     },
-    "/v3beta/auth/role/grant": {
+    "/v3/auth/role/grant": {
       "post": {
         "tags": [
           "Auth"
@@ -204,7 +204,7 @@
         }
       }
     },
-    "/v3beta/auth/role/list": {
+    "/v3/auth/role/list": {
       "post": {
         "tags": [
           "Auth"
@@ -231,7 +231,7 @@
         }
       }
     },
-    "/v3beta/auth/role/revoke": {
+    "/v3/auth/role/revoke": {
       "post": {
         "tags": [
           "Auth"
@@ -258,7 +258,7 @@
         }
       }
     },
-    "/v3beta/auth/user/add": {
+    "/v3/auth/user/add": {
       "post": {
         "tags": [
           "Auth"
@@ -285,7 +285,7 @@
         }
       }
     },
-    "/v3beta/auth/user/changepw": {
+    "/v3/auth/user/changepw": {
       "post": {
         "tags": [
           "Auth"
@@ -312,7 +312,7 @@
         }
       }
     },
-    "/v3beta/auth/user/delete": {
+    "/v3/auth/user/delete": {
       "post": {
         "tags": [
           "Auth"
@@ -339,7 +339,7 @@
         }
       }
     },
-    "/v3beta/auth/user/get": {
+    "/v3/auth/user/get": {
       "post": {
         "tags": [
           "Auth"
@@ -366,7 +366,7 @@
         }
       }
     },
-    "/v3beta/auth/user/grant": {
+    "/v3/auth/user/grant": {
       "post": {
         "tags": [
           "Auth"
@@ -393,7 +393,7 @@
         }
       }
     },
-    "/v3beta/auth/user/list": {
+    "/v3/auth/user/list": {
       "post": {
         "tags": [
           "Auth"
@@ -420,7 +420,7 @@
         }
       }
     },
-    "/v3beta/auth/user/revoke": {
+    "/v3/auth/user/revoke": {
       "post": {
         "tags": [
           "Auth"
@@ -447,7 +447,7 @@
         }
       }
     },
-    "/v3beta/cluster/member/add": {
+    "/v3/cluster/member/add": {
       "post": {
         "tags": [
           "Cluster"
@@ -474,7 +474,7 @@
         }
       }
     },
-    "/v3beta/cluster/member/list": {
+    "/v3/cluster/member/list": {
       "post": {
         "tags": [
           "Cluster"
@@ -501,7 +501,7 @@
         }
       }
     },
-    "/v3beta/cluster/member/remove": {
+    "/v3/cluster/member/remove": {
       "post": {
         "tags": [
           "Cluster"
@@ -528,7 +528,7 @@
         }
       }
     },
-    "/v3beta/cluster/member/update": {
+    "/v3/cluster/member/update": {
       "post": {
         "tags": [
           "Cluster"
@@ -555,7 +555,7 @@
         }
       }
     },
-    "/v3beta/kv/compaction": {
+    "/v3/kv/compaction": {
       "post": {
         "tags": [
           "KV"
@@ -582,7 +582,7 @@
         }
       }
     },
-    "/v3beta/kv/deleterange": {
+    "/v3/kv/deleterange": {
       "post": {
         "tags": [
           "KV"
@@ -609,7 +609,7 @@
         }
       }
     },
-    "/v3beta/kv/lease/leases": {
+    "/v3/kv/lease/leases": {
       "post": {
         "tags": [
           "Lease"
@@ -636,7 +636,7 @@
         }
       }
     },
-    "/v3beta/kv/lease/revoke": {
+    "/v3/kv/lease/revoke": {
       "post": {
         "tags": [
           "Lease"
@@ -663,7 +663,7 @@
         }
       }
     },
-    "/v3beta/kv/lease/timetolive": {
+    "/v3/kv/lease/timetolive": {
       "post": {
         "tags": [
           "Lease"
@@ -690,7 +690,7 @@
         }
       }
     },
-    "/v3beta/kv/put": {
+    "/v3/kv/put": {
       "post": {
         "tags": [
           "KV"
@@ -717,7 +717,7 @@
         }
       }
     },
-    "/v3beta/kv/range": {
+    "/v3/kv/range": {
       "post": {
         "tags": [
           "KV"
@@ -744,7 +744,7 @@
         }
       }
     },
-    "/v3beta/kv/txn": {
+    "/v3/kv/txn": {
       "post": {
         "tags": [
           "KV"
@@ -771,7 +771,7 @@
         }
       }
     },
-    "/v3beta/lease/grant": {
+    "/v3/lease/grant": {
       "post": {
         "tags": [
           "Lease"
@@ -798,7 +798,7 @@
         }
       }
     },
-    "/v3beta/lease/keepalive": {
+    "/v3/lease/keepalive": {
       "post": {
         "tags": [
           "Lease"
@@ -826,7 +826,7 @@
         }
       }
     },
-    "/v3beta/maintenance/alarm": {
+    "/v3/maintenance/alarm": {
       "post": {
         "tags": [
           "Maintenance"
@@ -853,7 +853,7 @@
         }
       }
     },
-    "/v3beta/maintenance/defragment": {
+    "/v3/maintenance/defragment": {
       "post": {
         "tags": [
           "Maintenance"
@@ -880,7 +880,7 @@
         }
       }
     },
-    "/v3beta/maintenance/hash": {
+    "/v3/maintenance/hash": {
       "post": {
         "tags": [
           "Maintenance"
@@ -907,7 +907,7 @@
         }
       }
     },
-    "/v3beta/maintenance/snapshot": {
+    "/v3/maintenance/snapshot": {
       "post": {
         "tags": [
           "Maintenance"
@@ -934,7 +934,7 @@
         }
       }
     },
-    "/v3beta/maintenance/status": {
+    "/v3/maintenance/status": {
       "post": {
         "tags": [
           "Maintenance"
@@ -961,7 +961,7 @@
         }
       }
     },
-    "/v3beta/maintenance/transfer-leadership": {
+    "/v3/maintenance/transfer-leadership": {
       "post": {
         "tags": [
           "Maintenance"
@@ -988,7 +988,7 @@
         }
       }
     },
-    "/v3beta/watch": {
+    "/v3/watch": {
       "post": {
         "tags": [
           "Watch"

@@ -796,15 +796,15 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 }
 
 var (
-	pattern_KV_Range_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "kv", "range"}, ""))
+	pattern_KV_Range_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "range"}, ""))
 
-	pattern_KV_Put_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "kv", "put"}, ""))
+	pattern_KV_Put_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "put"}, ""))
 
-	pattern_KV_DeleteRange_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "kv", "deleterange"}, ""))
+	pattern_KV_DeleteRange_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "deleterange"}, ""))
 
-	pattern_KV_Txn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "kv", "txn"}, ""))
+	pattern_KV_Txn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "txn"}, ""))
 
-	pattern_KV_Compact_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "kv", "compaction"}, ""))
+	pattern_KV_Compact_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "compaction"}, ""))
 )
 
 var (
@@ -890,7 +890,7 @@ func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Watch_Watch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v3beta", "watch"}, ""))
+	pattern_Watch_Watch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v3", "watch"}, ""))
 )
 
 var (
@@ -1084,15 +1084,15 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Lease_LeaseGrant_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "lease", "grant"}, ""))
+	pattern_Lease_LeaseGrant_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "grant"}, ""))
 
-	pattern_Lease_LeaseRevoke_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "kv", "lease", "revoke"}, ""))
+	pattern_Lease_LeaseRevoke_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "revoke"}, ""))
 
-	pattern_Lease_LeaseKeepAlive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "lease", "keepalive"}, ""))
+	pattern_Lease_LeaseKeepAlive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "keepalive"}, ""))
 
-	pattern_Lease_LeaseTimeToLive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "kv", "lease", "timetolive"}, ""))
+	pattern_Lease_LeaseTimeToLive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "timetolive"}, ""))
 
-	pattern_Lease_LeaseLeases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "kv", "lease", "leases"}, ""))
+	pattern_Lease_LeaseLeases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "leases"}, ""))
 )
 
 var (
@@ -1265,13 +1265,13 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 }
 
 var (
-	pattern_Cluster_MemberAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "cluster", "member", "add"}, ""))
+	pattern_Cluster_MemberAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "add"}, ""))
 
-	pattern_Cluster_MemberRemove_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "cluster", "member", "remove"}, ""))
+	pattern_Cluster_MemberRemove_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "remove"}, ""))
 
-	pattern_Cluster_MemberUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "cluster", "member", "update"}, ""))
+	pattern_Cluster_MemberUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "update"}, ""))
 
-	pattern_Cluster_MemberList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "cluster", "member", "list"}, ""))
+	pattern_Cluster_MemberList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "list"}, ""))
 )
 
 var (
@@ -1529,19 +1529,19 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 }
 
 var (
-	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "alarm"}, ""))
+	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "alarm"}, ""))
 
-	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "status"}, ""))
+	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "status"}, ""))
 
-	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "defragment"}, ""))
+	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "defragment"}, ""))
 
-	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "hash"}, ""))
+	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hash"}, ""))
 
-	pattern_Maintenance_HashKV_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "hash"}, ""))
+	pattern_Maintenance_HashKV_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hash"}, ""))
 
-	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "snapshot"}, ""))
+	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "snapshot"}, ""))
 
-	pattern_Maintenance_MoveLeader_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "maintenance", "transfer-leadership"}, ""))
+	pattern_Maintenance_MoveLeader_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "transfer-leadership"}, ""))
 )
 
 var (
@@ -2066,37 +2066,37 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 }
 
 var (
-	pattern_Auth_AuthEnable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "auth", "enable"}, ""))
+	pattern_Auth_AuthEnable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "enable"}, ""))
 
-	pattern_Auth_AuthDisable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "auth", "disable"}, ""))
+	pattern_Auth_AuthDisable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "disable"}, ""))
 
-	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3beta", "auth", "authenticate"}, ""))
+	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "authenticate"}, ""))
 
-	pattern_Auth_UserAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "add"}, ""))
+	pattern_Auth_UserAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "add"}, ""))
 
-	pattern_Auth_UserGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "get"}, ""))
+	pattern_Auth_UserGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "get"}, ""))
 
-	pattern_Auth_UserList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "list"}, ""))
+	pattern_Auth_UserList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "list"}, ""))
 
-	pattern_Auth_UserDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "delete"}, ""))
+	pattern_Auth_UserDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "delete"}, ""))
 
-	pattern_Auth_UserChangePassword_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "changepw"}, ""))
+	pattern_Auth_UserChangePassword_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "changepw"}, ""))
 
-	pattern_Auth_UserGrantRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "grant"}, ""))
+	pattern_Auth_UserGrantRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "grant"}, ""))
 
-	pattern_Auth_UserRevokeRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "user", "revoke"}, ""))
+	pattern_Auth_UserRevokeRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "revoke"}, ""))
 
-	pattern_Auth_RoleAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "add"}, ""))
+	pattern_Auth_RoleAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "add"}, ""))
 
-	pattern_Auth_RoleGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "get"}, ""))
+	pattern_Auth_RoleGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "get"}, ""))
 
-	pattern_Auth_RoleList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "list"}, ""))
+	pattern_Auth_RoleList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "list"}, ""))
 
-	pattern_Auth_RoleDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "delete"}, ""))
+	pattern_Auth_RoleDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "delete"}, ""))
 
-	pattern_Auth_RoleGrantPermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "grant"}, ""))
+	pattern_Auth_RoleGrantPermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "grant"}, ""))
 
-	pattern_Auth_RoleRevokePermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3beta", "auth", "role", "revoke"}, ""))
+	pattern_Auth_RoleRevokePermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "revoke"}, ""))
 )
 
 var (
