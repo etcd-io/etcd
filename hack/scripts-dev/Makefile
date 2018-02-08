@@ -27,7 +27,7 @@ clean:
 
 
 
-GO_VERSION ?= 1.9.3
+GO_VERSION ?= 1.9.4
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -41,13 +41,13 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.8.5 make build-docker-test -f ./hack/scripts-dev/Makefile
+#   GO_VERSION=1.8.7 make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.8.5 make push-docker-test -f ./hack/scripts-dev/Makefile
+#   GO_VERSION=1.8.7 make push-docker-test -f ./hack/scripts-dev/Makefile
 #   make push-docker-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
-#   GO_VERSION=1.8.5 make pull-docker-test -f ./hack/scripts-dev/Makefile
+#   GO_VERSION=1.8.7 make pull-docker-test -f ./hack/scripts-dev/Makefile
 #   make pull-docker-test -f ./hack/scripts-dev/Makefile
 
 build-docker-test:
