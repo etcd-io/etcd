@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.9.3
+- 1.9.4
 - tip
 
 notifications:
@@ -30,7 +30,7 @@ matrix:
   - go: tip
     env: TARGET=amd64-go-tip
   exclude:
-  - go: 1.9.3
+  - go: 1.9.4
     env: TARGET=amd64-go-tip
   - go: tip
     env: TARGET=amd64
@@ -48,17 +48,18 @@ matrix:
     env: TARGET=ppc64le
 
 before_install:
-- docker pull gcr.io/etcd-development/etcd-test:go1.9.3
+- if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
 
 install:
 - pushd cmd/etcd && go get -t -v ./... && popd
 
 script:
+ - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"
  - >
     case "${TARGET}" in
       amd64)
         docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.9.3 \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 ./test"
         ;;
       amd64-go-tip)
@@ -66,23 +67,23 @@ script:
         ;;
       darwin-amd64)
         docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.9.3 \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOOS=darwin GOARCH=amd64 ./build"
         ;;
       windows-amd64)
         docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.9.3 \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOOS=windows GOARCH=amd64 ./build"
         ;;
       386)
         docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.9.3 \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=386 PASSES='build unit' ./test"
         ;;
       *)
         # test building out of gopath
         docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go1.9.3 \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GO_BUILD_FLAGS='-a -v' GOARCH='${TARGET}' ./build"
         ;;
     esac
