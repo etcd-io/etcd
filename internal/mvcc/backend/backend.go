@@ -288,15 +288,7 @@ func (b *backend) Commits() int64 {
 }
 
 func (b *backend) Defrag() error {
-	err := b.defrag()
-	if err != nil {
-		return err
-	}
-
-	// commit to update metadata like db.size
-	b.batchTx.Commit()
-
-	return nil
+	return b.defrag()
 }
 
 func (b *backend) defrag() error {
