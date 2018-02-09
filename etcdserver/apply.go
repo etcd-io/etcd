@@ -243,7 +243,13 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 	resp.Header = &pb.ResponseHeader{}
 
 	if txn == nil {
-		txn = a.s.kv.Read()
+		// Correct me!
+		// We should issue a normal read with limit=1000
+		// If there are more keys to get, we should:
+		// 1. wait the pending transcation to commit by calling force commit
+		// 2. get a stale concurrent read transcation along with the revision
+		// inside the first revision to get more keys.
+		txn = a.s.kv.StaleConcurrentRead()
 		defer txn.End()
 	}
 

@@ -38,6 +38,19 @@ func (s *store) Read() TxnRead {
 	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
 }
 
+func (s *store) StaleConcurrentRead() TxnRead {
+	s.mu.RLock()
+	tx := s.b.StaleConcurrentReadTx()
+	tx.Lock()
+	s.revMu.RLock()
+	defer s.revMu.RUnlock()
+	// Correct me!
+	// Replace `s.currentRev - 10000` with revision in the backend.
+	// Also StaleConcurrentRead should only allow read with given revision.
+	// Probably we should have a different interface for it?!
+	return newMetricsTxnRead(&storeTxnRead{s, tx, s.compactMainRev, s.currentRev - 10000})
+}
+
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
 func (tr *storeTxnRead) Rev() int64      { return tr.rev }
 
