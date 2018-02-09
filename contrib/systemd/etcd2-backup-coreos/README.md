@@ -50,7 +50,7 @@ After extracting the contents of the tar file and running the install script, th
     A oneshot service which wipes all etcd2 data and restores a single-node cluster from the rclone backup. This is for restoring the **founding member** only.
 
 * `etcd2-join.service`
-   A oneshot service which wipes all etcd2 data and re-joins the new cluster. This is for adding members **after** the **founding member** has succesfully established the new cluster via `etcd2-restore.service`
+   A oneshot service which wipes all etcd2 data and re-joins the new cluster. This is for adding members **after** the **founding member** has successfully established the new cluster via `etcd2-restore.service`
 
 ## Recovery
 
