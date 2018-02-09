@@ -21,9 +21,30 @@ func TestCtlV3UserAddNoTLS(t *testing.T)     { testCtl(t, userAddTest, withCfg(c
 func TestCtlV3UserAddClientTLS(t *testing.T) { testCtl(t, userAddTest, withCfg(configClientTLS)) }
 func TestCtlV3UserAddPeerTLS(t *testing.T)   { testCtl(t, userAddTest, withCfg(configPeerTLS)) }
 func TestCtlV3UserAddTimeout(t *testing.T)   { testCtl(t, userAddTest, withDialTimeout(0)) }
-
-func TestCtlV3UserDelete(t *testing.T) { testCtl(t, userDelTest) }
-func TestCtlV3UserPasswd(t *testing.T) { testCtl(t, userPasswdTest) }
+func TestCtlV3UserAddClientAutoTLS(t *testing.T) {
+	testCtl(t, userAddTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3UserList(t *testing.T)          { testCtl(t, userListTest) }
+func TestCtlV3UserListNoTLS(t *testing.T)     { testCtl(t, userListTest, withCfg(configNoTLS)) }
+func TestCtlV3UserListClientTLS(t *testing.T) { testCtl(t, userListTest, withCfg(configClientTLS)) }
+func TestCtlV3UserListPeerTLS(t *testing.T)   { testCtl(t, userListTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserListClientAutoTLS(t *testing.T) {
+	testCtl(t, userListTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3UserDelete(t *testing.T)          { testCtl(t, userDelTest) }
+func TestCtlV3UserDeleteNoTLS(t *testing.T)     { testCtl(t, userDelTest, withCfg(configNoTLS)) }
+func TestCtlV3UserDeleteClientTLS(t *testing.T) { testCtl(t, userDelTest, withCfg(configClientTLS)) }
+func TestCtlV3UserDeletePeerTLS(t *testing.T)   { testCtl(t, userDelTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserDeleteClientAutoTLS(t *testing.T) {
+	testCtl(t, userDelTest, withCfg(configClientAutoTLS))
+}
+func TestCtlV3UserPasswd(t *testing.T)          { testCtl(t, userPasswdTest) }
+func TestCtlV3UserPasswdNoTLS(t *testing.T)     { testCtl(t, userPasswdTest, withCfg(configNoTLS)) }
+func TestCtlV3UserPasswdClientTLS(t *testing.T) { testCtl(t, userPasswdTest, withCfg(configClientTLS)) }
+func TestCtlV3UserPasswdPeerTLS(t *testing.T)   { testCtl(t, userPasswdTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserPasswdClientAutoTLS(t *testing.T) {
+	testCtl(t, userPasswdTest, withCfg(configClientAutoTLS))
+}
 
 type userCmdDesc struct {
 	args        []string
@@ -64,6 +85,28 @@ func userAddTest(cx ctlCtx) {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Fatalf("userAddTest #%d: ctlV3User error (%v)", i, err)
 			}
+		}
+	}
+}
+
+func userListTest(cx ctlCtx) {
+	cmdSet := []userCmdDesc{
+		// Adds a user name.
+		{
+			args:        []string{"add", "username", "--interactive=false"},
+			expectedStr: "User username created",
+			stdIn:       []string{"password"},
+		},
+		// List user name
+		{
+			args:        []string{"list"},
+			expectedStr: "username",
+		},
+	}
+
+	for i, cmd := range cmdSet {
+		if err := ctlV3User(cx, cmd.args, cmd.expectedStr, cmd.stdIn); err != nil {
+			cx.t.Fatalf("userListTest #%d: ctlV3User error (%v)", i, err)
 		}
 	}
 }
