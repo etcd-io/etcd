@@ -99,6 +99,11 @@ func (e *Event) IsModify() bool {
 	return e.Type == EventTypePut && e.Kv.CreateRevision != e.Kv.ModRevision
 }
 
+// IsDelete returns true if the event tells that the key was deleted.
+func (e *Event) IsDelete() bool {
+	return e.Type == EventTypeDelete
+}
+
 // Err is the error value if this WatchResponse holds an error.
 func (wr *WatchResponse) Err() error {
 	switch {

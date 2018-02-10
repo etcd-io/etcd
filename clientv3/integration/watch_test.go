@@ -620,11 +620,13 @@ func TestWatchEventType(t *testing.T) {
 		isModify: true,
 	}, {
 		et: clientv3.EventTypeDelete,
+		isDelete: true,
 	}, {
 		et:       clientv3.EventTypePut,
 		isCreate: true,
 	}, {
 		et: clientv3.EventTypeDelete,
+		isDelete: true,
 	}}
 
 	var res []*clientv3.Event
@@ -651,6 +653,9 @@ func TestWatchEventType(t *testing.T) {
 		}
 		if tt.isModify && !ev.IsModify() {
 			t.Errorf("#%d: event should be ModifyEvent", i)
+		}
+		if tt.isDelete && !ev.IsDelete() {
+			t.Errorf("#%d: event should be DeleteEvent", i)
 		}
 	}
 }
