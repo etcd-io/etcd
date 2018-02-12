@@ -1,5 +1,27 @@
 
 
+## [v3.3.1](https://github.com/coreos/etcd/releases/tag/v3.3.1) (2018-02-12)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Improved
+
+- Add [warnings on requests taking too long](https://github.com/coreos/etcd/pull/9288).
+  - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
+
+### Fixed(v3)
+
+- Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9281).
+  - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
+  - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
+  - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
+  - Which possibly causes missing events from "unsynced" watchers.
+
+### Security
+
+- Compile with [*Go 1.9.4*](https://groups.google.com/forum/#!topic/golang-announce/lGkem2e5WyQ) (v3.3.0 was compiled with Go *1.9.3*).
+
+
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-02-01)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.

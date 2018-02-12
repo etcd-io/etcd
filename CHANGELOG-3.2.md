@@ -1,5 +1,18 @@
 
 
+## [v3.2.16](https://github.com/coreos/etcd/releases/tag/v3.2.16) (2018-02-12)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Fixed(v3)
+
+- Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9297).
+  - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
+  - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
+  - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
+  - Which possibly causes missing events from "unsynced" watchers.
+
+
 ## [v3.2.15](https://github.com/coreos/etcd/releases/tag/v3.2.15) (2018-01-22)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.14...v3.2.15) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
