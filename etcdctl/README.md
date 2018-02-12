@@ -818,7 +818,7 @@ Get the status for all endpoints in the cluster associated with the default endp
 +------------------------+------------+
 |        ENDPOINT        |    HASH    |
 +------------------------+------------+
-| http://127.0.0.1:12379 | 1084519789 |
+| http://127.0.0.1:2379  | 1084519789 |
 | http://127.0.0.1:22379 | 1084519789 |
 | http://127.0.0.1:32379 | 1084519789 |
 +------------------------+------------+
@@ -1015,7 +1015,7 @@ MOVE-LEADER transfers leadership from the leader to another member in the cluste
 ```bash
 # to choose transferee
 transferee_id=$(./etcdctl \
-  --endpoints localhost:12379,localhost:22379,localhost:32379 \
+  --endpoints localhost:2379,localhost:22379,localhost:32379 \
   endpoint status | grep -m 1 "false" | awk -F', ' '{print $2}')
 echo ${transferee_id}
 # c89feb932daef420
