@@ -50,7 +50,7 @@ type LockRequest struct {
 	// lease is the ID of the lease that will be attached to ownership of the
 	// lock. If the lease expires or is revoked and currently holds the lock,
 	// the lock is automatically released. Calls to Lock with the same lease will
-	// be treated as a single acquistion; locking twice with the same lease is a
+	// be treated as a single acquisition; locking twice with the same lease is a
 	// no-op.
 	Lease int64 `protobuf:"varint,2,opt,name=lease,proto3" json:"lease,omitempty"`
 }
