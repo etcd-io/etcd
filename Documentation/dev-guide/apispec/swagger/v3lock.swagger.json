@@ -107,7 +107,7 @@
         "lease": {
           "type": "string",
           "format": "int64",
-          "description": "lease is the ID of the lease that will be attached to ownership of the\nlock. If the lease expires or is revoked and currently holds the lock,\nthe lock is automatically released. Calls to Lock with the same lease will\nbe treated as a single acquistion; locking twice with the same lease is a\nno-op."
+          "description": "lease is the ID of the lease that will be attached to ownership of the\nlock. If the lease expires or is revoked and currently holds the lock,\nthe lock is automatically released. Calls to Lock with the same lease will\nbe treated as a single acquisition; locking twice with the same lease is a\nno-op."
         }
       }
     },
