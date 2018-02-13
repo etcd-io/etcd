@@ -43,6 +43,8 @@ func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
 func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T)         { testCtl(t, authLeaseTestKeepAlive) }
 func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, authLeaseTestTimeToLiveExpired) }
+func TestCtlV3AuthLeaseGrantLeases(t *testing.T)           { testCtl(t, authLeaseTestLeaseGrantLeases) }
+func TestCtlV3AuthLeaseRevoke(t *testing.T)                { testCtl(t, authLeaseTestLeaseRevoke) }
 
 func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
 func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
@@ -759,7 +761,25 @@ func authLeaseTestTimeToLiveExpired(cx ctlCtx) {
 
 	ttl := 3
 	if err := leaseTestTimeToLiveExpire(cx, ttl); err != nil {
-		cx.t.Fatal(err)
+		cx.t.Fatalf("leaseTestTimeToLiveExpire: error (%v)", err)
+	}
+}
+
+func authLeaseTestLeaseGrantLeases(cx ctlCtx) {
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	if err := leaseTestGrantLeasesList(cx); err != nil {
+		cx.t.Fatalf("authLeaseTestLeaseGrantLeases: error (%v)", err)
+	}
+}
+
+func authLeaseTestLeaseRevoke(cx ctlCtx) {
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	if err := leaseTestRevoke(cx); err != nil {
+		cx.t.Fatalf("authLeaseTestLeaseRevoke: error (%v)", err)
 	}
 }
 
