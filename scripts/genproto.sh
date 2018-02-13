@@ -114,10 +114,10 @@ schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
 # install protodoc
 # go get -v -u github.com/coreos/protodoc
 #
-# by default, do not run this option.
-# only run when './scripts/genproto.sh -g'
+# run './scripts/genproto.sh --skip-protodoc'
+# to skip protodoc generation
 #
-if [ "$1" = "-g" ]; then
+if [ "$1" != "--skip-protodoc" ]; then
 	echo "protodoc is auto-generating grpc API reference documentation..."
 	go get -v -u github.com/coreos/protodoc
 	SHA_PROTODOC="4372ee725035a208404e2d5465ba921469decc32"
