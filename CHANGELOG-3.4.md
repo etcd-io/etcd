@@ -61,6 +61,11 @@
 - Add ["raft applied index" to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 
+### Added(gRPC gateway)
+
+- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3`](https://github.com/coreos/etcd/pull/9298).
+  - To deprecate [`/v3beta`] in `v3.5`.
+
 ### Package `raft`
 
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
