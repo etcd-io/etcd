@@ -53,6 +53,7 @@ func dialWithSchemeTest(cx ctlCtx) {
 
 type ctlCtx struct {
 	t                 *testing.T
+	apiPrefix         string
 	cfg               etcdProcessClusterConfig
 	quotaBackendBytes int64
 	corruptFunc       func(string) error
@@ -119,6 +120,10 @@ func withCorruptFunc(f func(string) error) ctlOption {
 
 func withNoStrictReconfig() ctlOption {
 	return func(cx *ctlCtx) { cx.noStrictReconfig = true }
+}
+
+func withApiPrefix(p string) ctlOption {
+	return func(cx *ctlCtx) { cx.apiPrefix = p }
 }
 
 func withFlagByEnv() ctlOption {

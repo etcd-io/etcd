@@ -10,7 +10,7 @@ The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][
 
 ### Put and get keys
 
-Use the `/v3beta/kv/range` and `/v3beta/kv/put` services to read and write keys:
+Use the `/v3/kv/range` and `/v3/kv/put` services to read and write keys:
 
 ```bash
 <<COMMENT
@@ -19,40 +19,40 @@ foo is 'Zm9v' in Base64
 bar is 'YmFy'
 COMMENT
 
-curl -L http://localhost:2379/v3beta/kv/put \
+curl -L http://localhost:2379/v3/kv/put \
 	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"}}
 
-curl -L http://localhost:2379/v3beta/kv/range \
+curl -L http://localhost:2379/v3/kv/range \
 	-X POST -d '{"key": "Zm9v"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 
 # get all keys prefixed with "foo"
-curl -L http://localhost:2379/v3beta/kv/range \
+curl -L http://localhost:2379/v3/kv/range \
 	-X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 ```
 
 ### Watch keys
 
-Use the `/v3beta/watch` service to watch keys:
+Use the `/v3/watch` service to watch keys:
 
 ```bash
-curl http://localhost:2379/v3beta/watch \
+curl http://localhost:2379/v3/watch \
         -X POST -d '{"create_request": {"key":"Zm9v"} }' &
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
 
-curl -L http://localhost:2379/v3beta/kv/put \
+curl -L http://localhost:2379/v3/kv/put \
 	-X POST -d '{"key": "Zm9v", "value": "YmFy"}' >/dev/null 2>&1
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"2"},"events":[{"kv":{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}}]}}
 ```
 
 ### Transactions
 
-Issue a transaction with `/v3beta/kv/txn`:
+Issue a transaction with `/v3/kv/txn`:
 
 ```bash
-curl -L http://localhost:2379/v3beta/kv/txn \
+curl -L http://localhost:2379/v3/kv/txn \
 	-X POST \
 	-d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
@@ -60,34 +60,34 @@ curl -L http://localhost:2379/v3beta/kv/txn \
 
 ### Authentication
 
-Set up authentication with the `/v3beta/auth` service:
+Set up authentication with the `/v3/auth` service:
 
 ```bash
 # create root user
-curl -L http://localhost:2379/v3beta/auth/user/add \
+curl -L http://localhost:2379/v3/auth/user/add \
 	-X POST -d '{"name": "root", "password": "pass"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # create root role
-curl -L http://localhost:2379/v3beta/auth/role/add \
+curl -L http://localhost:2379/v3/auth/role/add \
 	-X POST -d '{"name": "root"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # grant root role
-curl -L http://localhost:2379/v3beta/auth/user/grant \
+curl -L http://localhost:2379/v3/auth/user/grant \
 	-X POST -d '{"user": "root", "role": "root"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # enable auth
-curl -L http://localhost:2379/v3beta/auth/enable -X POST -d '{}'
+curl -L http://localhost:2379/v3/auth/enable -X POST -d '{}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 ```
 
-Authenticate with etcd for an authentication token using `/v3beta/auth/authenticate`:
+Authenticate with etcd for an authentication token using `/v3/auth/authenticate`:
 
 ```bash
 # get the auth token for the root user
-curl -L http://localhost:2379/v3beta/auth/authenticate \
+curl -L http://localhost:2379/v3/auth/authenticate \
 	-X POST -d '{"name": "root", "password": "pass"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"},"token":"sssvIpwfnLAcWAQH.9"}
 ```
@@ -95,7 +95,7 @@ curl -L http://localhost:2379/v3beta/auth/authenticate \
 Set the `Authorization` header to the authentication token to fetch a key using authentication credentials:
 
 ```bash
-curl -L http://localhost:2379/v3beta/kv/put \
+curl -L http://localhost:2379/v3/kv/put \
 	-H 'Authorization : sssvIpwfnLAcWAQH.9' \
 	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"2","raft_term":"2"}}
