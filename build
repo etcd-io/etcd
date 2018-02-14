@@ -16,7 +16,7 @@ GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/internal/version.GitSHA=${GIT_SHA}"
 toggle_failpoints() {
 	mode="$1"
 	if which gofail >/dev/null 2>&1; then
-		gofail "$mode" etcdserver/ mvcc/backend/
+		gofail "$mode" etcdserver/ internal/mvcc/backend/
 	elif [ "$mode" != "disable" ]; then
 		echo "FAILPOINTS set but gofail not found"
 		exit 1
