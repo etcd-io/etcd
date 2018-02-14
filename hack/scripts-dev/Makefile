@@ -418,7 +418,7 @@ docker-dns-srv-test-certs-wildcard-run:
 #   make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
 
 build-etcd-test-proxy:
-	go build -v -o ./bin/etcd-test-proxy ./cmd/tools/etcd-test-proxy
+	go build -v -o ./bin/etcd-test-proxy ./tools/etcd-test-proxy
 
 
 
