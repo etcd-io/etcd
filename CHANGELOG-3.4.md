@@ -75,6 +75,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
 
+### Added(gRPC gateway)
+
+- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3`](https://github.com/coreos/etcd/pull/9298).
+  - To deprecate [`/v3beta`] in `v3.5`.
+
 ### Package `raft`
 
 - Fix [deadlock during PreVote migration process](https://github.com/coreos/etcd/pull/8525).
