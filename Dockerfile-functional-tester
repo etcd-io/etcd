@@ -47,7 +47,7 @@ RUN go get -v github.com/coreos/gofail \
   && cp ./bin/etcd-agent /etcd-agent \
   && cp ./bin/etcd-tester /etcd-tester \
   && cp ./bin/etcd-runner /etcd-runner \
-  && go build -v -o /benchmark ./cmd/tools/benchmark \
-  && go build -v -o /etcd-test-proxy ./cmd/tools/etcd-test-proxy \
+  && go build -v -o /benchmark ./tools/benchmark \
+  && go build -v -o /etcd-test-proxy ./tools/etcd-test-proxy \
   && popd \
   && rm -rf ${GOPATH}/src/github.com/coreos/etcd

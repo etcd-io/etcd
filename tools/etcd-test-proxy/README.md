@@ -20,7 +20,7 @@ $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar
 Proxy overhead per request is under 500μs
 
 ```bash
-$ go build -v -o ./bin/benchmark ./cmd/tools/benchmark
+$ go build -v -o ./bin/benchmark ./tools/benchmark
 
 $ ./bin/benchmark \
   --endpoints localhost:2379 \
