@@ -44,15 +44,15 @@ elif [[ "${ETCD_EXEC_PATH}" != "/etcd-failpoints" ]]; then
 fi
 echo "ETCD_EXEC_PATH:" ${ETCD_EXEC_PATH}
 
-rm -rf `pwd`/${AGENT_NAME} && mkdir -p `pwd`/${AGENT_NAME}
-docker run \
-  --rm \
-  --net=host \
-  --name ${AGENT_NAME} \
-  --mount type=bind,source=`pwd`/${AGENT_NAME},destination=/${AGENT_NAME} \
-  gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
-  /bin/bash -c "/etcd-agent \
-    --etcd-path ${ETCD_EXEC_PATH} \
-    --etcd-log-dir /${AGENT_NAME} \
-    ${AGENT_PORT_FLAG} \
-    ${FAILPOINT_ADDR_FLAG}"
+rm -rf `pwd`/${AGENT_NAME} && mkdir -p `pwd`/${AGENT_NAME} && \
+  docker run \
+    --rm \
+    --net=host \
+    --name ${AGENT_NAME} \
+    --mount type=bind,source=`pwd`/${AGENT_NAME},destination=/${AGENT_NAME} \
+    gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
+    /bin/bash -c "/etcd-agent \
+      --etcd-path ${ETCD_EXEC_PATH} \
+      --etcd-log-dir /${AGENT_NAME} \
+      ${AGENT_PORT_FLAG} \
+      ${FAILPOINT_ADDR_FLAG}"
