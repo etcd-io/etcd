@@ -33,8 +33,10 @@ import (
 )
 
 var (
-	checkPerfLoad   string
-	checkPerfPrefix string
+	checkPerfLoad        string
+	checkPerfPrefix      string
+	checkPerfAutoCompact bool
+	checkPerfAutoDefrag  bool
 )
 
 type checkPerfCfg struct {
@@ -90,6 +92,8 @@ func NewCheckPerfCommand() *cobra.Command {
 	// TODO: support customized configuration
 	cmd.Flags().StringVar(&checkPerfLoad, "load", "s", "The performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)")
 	cmd.Flags().StringVar(&checkPerfPrefix, "prefix", "/etcdctl-check-perf/", "The prefix for writing the performance check's keys.")
+	cmd.Flags().BoolVar(&checkPerfAutoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
+	cmd.Flags().BoolVar(&checkPerfAutoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
 
 	return cmd
 }
@@ -175,10 +179,20 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	s := <-sc
 
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	_, err = clients[0].Delete(ctx, checkPerfPrefix, v3.WithPrefix())
+	dresp, err := clients[0].Delete(ctx, checkPerfPrefix, v3.WithPrefix())
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
+	}
+
+	if checkPerfAutoCompact {
+		compact(clients[0], dresp.Header.Revision)
+	}
+
+	if checkPerfAutoDefrag {
+		for _, ep := range clients[0].Endpoints() {
+			defrag(clients[0], ep)
+		}
 	}
 
 	ok = true
@@ -215,4 +229,26 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		fmt.Println("FAIL")
 		os.Exit(ExitError)
 	}
+}
+
+func compact(c *v3.Client, rev int64) {
+	fmt.Printf("Compacting with revision %d\n", rev)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Compacted with revision %d\n", rev)
+}
+
+func defrag(c *v3.Client, ep string) {
+	fmt.Printf("Defragmenting %q\n", ep)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Defragment(ctx, ep)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Defragmented %q\n", ep)
 }
