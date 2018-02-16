@@ -534,14 +534,22 @@ func (e *Etcd) serveMetrics() (err error) {
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
-			if murl.Scheme == "http" {
+			if murl.Scheme == "http" || murl.Scheme == "unix" {
 				tlsInfo = nil
 			}
-			ml, err := transport.NewListener(murl.Host, murl.Scheme, tlsInfo)
+
+			laddr := murl.Host
+			if murl.Scheme == "unix" || murl.Scheme == "unixs" {
+				laddr = murl.Path
+			}
+
+			ml, err := transport.NewListener(laddr, murl.Scheme, tlsInfo)
+
 			if err != nil {
 				return err
 			}
 			e.metricsListeners = append(e.metricsListeners, ml)
+
 			go func(u url.URL, ln net.Listener) {
 				plog.Info("listening for metrics on ", u.String())
 				e.errHandler(http.Serve(ln, metricsMux))
