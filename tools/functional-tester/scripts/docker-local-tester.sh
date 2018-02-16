@@ -3,8 +3,8 @@
 <<COMMENT
 # to run with different Go version
 # requires prebuilt Docker image
-#   GO_VERSION=1.9.4 make build-docker-functional-tester -f ./hack/scripts-dev/Makefile
-GO_VERSION=1.9.4 ./scripts/docker-local-tester.sh
+#   GO_VERSION=1.10 make build-docker-functional-tester -f ./hack/scripts-dev/Makefile
+GO_VERSION=1.10 ./scripts/docker-local-tester.sh
 
 # to run only 1 tester round
 LIMIT=1 ./scripts/docker-local-tester.sh
@@ -27,7 +27,7 @@ if ! [[ "${0}" =~ "scripts/docker-local-tester.sh" ]]; then
 fi
 
 if [[ -z "${GO_VERSION}" ]]; then
-  GO_VERSION=1.9.4
+  GO_VERSION=1.10
 fi
 echo "Running with GO_VERSION:" ${GO_VERSION}
 
