@@ -29,7 +29,6 @@ func TestValidateURLsValueBad(t *testing.T) {
 		"127.0.0.1:",
 		// unix sockets not supported
 		"unix://",
-		"unix://tmp/etcd.sock",
 		// bad strings
 		"somewhere",
 		"234#$",
@@ -51,6 +50,7 @@ func TestValidateURLsValueGood(t *testing.T) {
 		"http://10.1.1.1:80",
 		"http://localhost:80",
 		"http://:80",
+		"unix://tmp/etcd.sock",
 	}
 	for i, in := range tests {
 		u := URLsValue{}
