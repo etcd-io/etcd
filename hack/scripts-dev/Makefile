@@ -27,7 +27,7 @@ clean:
 
 
 
-GO_VERSION ?= 1.9.4
+GO_VERSION ?= 1.10
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
