@@ -148,3 +148,12 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 	}
 	return tmpfile
 }
+
+func TestAutoCompactionModeInvalid(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AutoCompactionMode = "period"
+	err := cfg.Validate()
+	if err == nil {
+		t.Errorf("expected non-nil error, got %v", err)
+	}
+}
