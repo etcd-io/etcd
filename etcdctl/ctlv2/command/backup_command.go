@@ -189,11 +189,11 @@ func saveDB(destDB, srcDB string, idx uint64, v3 bool) {
 		var src *bolt.DB
 		ch := make(chan *bolt.DB, 1)
 		go func() {
-			src, err := bolt.Open(srcDB, 0444, &bolt.Options{ReadOnly: true})
+			db, err := bolt.Open(srcDB, 0444, &bolt.Options{ReadOnly: true})
 			if err != nil {
 				log.Fatal(err)
 			}
-			ch <- src
+			ch <- db
 		}()
 		select {
 		case src = <-ch:
