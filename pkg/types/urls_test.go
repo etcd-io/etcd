@@ -125,6 +125,10 @@ func TestURLsStringSlice(t *testing.T) {
 			[]string{"http://127.0.0.1:2379"},
 		},
 		{
+			testutil.MustNewURLs(t, []string{"unix://var/run/socket"}),
+			[]string{"unix://var/run/socket"},
+		},
+		{
 			testutil.MustNewURLs(t, []string{
 				"http://127.0.0.1:2379",
 				"http://127.0.0.2:2379",
@@ -159,6 +163,8 @@ func TestNewURLsFail(t *testing.T) {
 		{"http://127.0.0.1"},
 		// contain a path
 		{"http://127.0.0.1:2379/path"},
+		// contain a path
+		{"unix://"},
 	}
 	for i, tt := range tests {
 		_, err := NewURLs(tt)

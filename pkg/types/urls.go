@@ -40,7 +40,9 @@ func NewURLs(strs []string) (URLs, error) {
 			return nil, fmt.Errorf("URL scheme must be http, https, unix, or unixs: %s", in)
 		}
 		if u.Scheme == "unix" || u.Scheme == "unixs" {
-			return nil, fmt.Errorf("Unix scheme must have a proper path set in the form unix://path/to/socket: %s", in)
+			if u.Path == "" {
+				return nil, fmt.Errorf("Unix scheme must have a proper path set in the form unix://path/to/socket: %s", in)
+			}
 		}
 		if u.Scheme != "unix" && u.Scheme != "unixs" {
 			if _, _, err := net.SplitHostPort(u.Host); err != nil {
