@@ -106,9 +106,9 @@ func doRounds(rcs []roundClient, rounds int, requests int) {
 }
 
 func endpointsFromFlag(cmd *cobra.Command) []string {
-	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+	eps, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	return endpoints
+	return eps
 }
