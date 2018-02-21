@@ -108,16 +108,22 @@ func init() {
 type Config struct {
 	// member
 
-	CorsInfo                *cors.CORSInfo
-	LPUrls, LCUrls          []url.URL
-	Dir                     string `json:"data-dir"`
-	WalDir                  string `json:"wal-dir"`
-	MaxSnapFiles            uint   `json:"max-snapshots"`
-	MaxWalFiles             uint   `json:"max-wals"`
-	Name                    string `json:"name"`
-	SnapCount               uint64 `json:"snapshot-count"`
+	CorsInfo       *cors.CORSInfo
+	LPUrls, LCUrls []url.URL
+	Dir            string `json:"data-dir"`
+	WalDir         string `json:"wal-dir"`
+	MaxSnapFiles   uint   `json:"max-snapshots"`
+	MaxWalFiles    uint   `json:"max-wals"`
+	Name           string `json:"name"`
+	SnapCount      uint64 `json:"snapshot-count"`
+
+	// AutoCompactionMode is either 'periodic' or 'revision'.
+	AutoCompactionMode string `json:"auto-compaction-mode"`
+	// AutoCompactionRetention is either duration string with time unit
+	// (e.g. '5m' for 5-minute), or revision unit (e.g. '5000').
+	// If no time unit is provided and compaction mode is 'periodic',
+	// the unit defaults to hour. For example, '5' translates into 5-hour.
 	AutoCompactionRetention string `json:"auto-compaction-retention"`
-	AutoCompactionMode      string `json:"auto-compaction-mode"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
@@ -407,6 +413,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
+// Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
 	if err := checkBindURLs(cfg.LPUrls); err != nil {
 		return err
@@ -463,6 +470,13 @@ func (cfg *Config) Validate() error {
 	// check this last since proxying in etcdmain may make this OK
 	if cfg.LCUrls != nil && cfg.ACUrls == nil {
 		return ErrUnsetAdvertiseClientURLsFlag
+	}
+
+	switch cfg.AutoCompactionMode {
+	case "":
+	case CompactorModeRevision, CompactorModePeriodic:
+	default:
+		return fmt.Errorf("unknown auto-compaction-mode %q", cfg.AutoCompactionMode)
 	}
 
 	return nil
