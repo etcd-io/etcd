@@ -148,3 +148,22 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 	}
 	return tmpfile
 }
+
+func TestAutoCompactionModeInvalid(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AutoCompactionMode = "period"
+	err := cfg.Validate()
+	if err == nil {
+		t.Errorf("expected non-nil error, got %v", err)
+	}
+}
+
+func TestAutoCompactionModeParse(t *testing.T) {
+	dur, err := parseCompactionRetention("revision", "1")
+	if err != nil {
+		t.Error(err)
+	}
+	if dur != 1 {
+		t.Fatalf("AutoCompactionRetention expected 1, got %d", dur)
+	}
+}
