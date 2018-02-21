@@ -1,5 +1,21 @@
 
 
+## [v3.3.2](https://github.com/coreos/etcd/releases/tag/v3.3.2) (TBD)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Fixed(v2)
+
+- Fix [v2 proxy leaky HTTP requests](https://github.com/coreos/etcd/pull/9336).
+
+### Fixed(v3)
+
+- Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
+  - Previously, `--auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
+  - Now, `--auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
+- Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
+
+
 ## [v3.3.1](https://github.com/coreos/etcd/releases/tag/v3.3.1) (2018-02-12)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
@@ -19,7 +35,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [
 
 ### Security
 
-- Compile with [*Go 1.9.4*](https://groups.google.com/forum/#!topic/golang-announce/lGkem2e5WyQ) (v3.3.0 was compiled with Go *1.9.3*).
+- Compile with [Go 1.9.4](https://groups.google.com/forum/#!topic/golang-announce/lGkem2e5WyQ).
 
 
 ## [v3.3.0](https://github.com/coreos/etcd/releases/tag/v3.3.0) (2018-02-01)

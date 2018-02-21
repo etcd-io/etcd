@@ -16,7 +16,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.9...v3.1.10) and 
 
 ### Changed
 
-- Compile with Go 1.8.3 to fix panic on `net/http.CloseNotify`
+- Compile with Go 1.8.3; fix panic on `net/http.CloseNotify`
 
 ### Added
 
