@@ -157,3 +157,13 @@ func TestAutoCompactionModeInvalid(t *testing.T) {
 		t.Errorf("expected non-nil error, got %v", err)
 	}
 }
+
+func TestAutoCompactionModeParse(t *testing.T) {
+	dur, err := parseCompactionRetention("revision", "1")
+	if err != nil {
+		t.Error(err)
+	}
+	if dur != 1 {
+		t.Fatalf("AutoCompactionRetention expected 1, got %d", dur)
+	}
+}
