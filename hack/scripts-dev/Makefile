@@ -234,6 +234,7 @@ docker-static-ip-test-certs-metrics-proxy-run:
 #   make push-docker-dns-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-test -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-insecure-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-gateway-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
@@ -262,6 +263,20 @@ push-docker-dns-test:
 pull-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker pull gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION)
+
+docker-dns-test-insecure-run:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  $(TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/hack/scripts-dev/docker-dns/insecure,destination=/insecure \
+	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /insecure/run.sh && rm -rf m*.etcd"
 
 docker-dns-test-certs-run:
 	$(info GO_VERSION: $(GO_VERSION))
