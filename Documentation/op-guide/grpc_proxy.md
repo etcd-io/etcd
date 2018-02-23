@@ -85,7 +85,7 @@ Start the etcd gRPC proxy to use these static endpoints with the command:
 $ etcd grpc-proxy start --endpoints=infra0.example.com,infra1.example.com,infra2.example.com --listen-addr=127.0.0.1:2379
 ```
 
-The etcd gRPC proxy starts and listens on port 8080. It forwards client requests to one of the three endpoints provided above.
+The etcd gRPC proxy starts and listens on port 2379. It forwards client requests to one of the three endpoints provided above.
 
 Sending requests through the proxy:
 
