@@ -1993,6 +1993,207 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	}
 }
 
+// TestDisruptiveFollower tests isolated follower,
+// with slow network incoming from leader, election times out
+// to become a candidate with an increased term. Then, the
+// candiate's response to late leader heartbeat forces the leader
+// to step down.
+func TestDisruptiveFollower(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.checkQuorum = true
+	n2.checkQuorum = true
+	n3.checkQuorum = true
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	nt := newNetwork(n1, n2, n3)
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// check state
+	// n1.state == StateLeader
+	// n2.state == StateFollower
+	// n3.state == StateFollower
+	if n1.state != StateLeader {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.state != StateFollower {
+		t.Fatalf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StateFollower {
+		t.Fatalf("node 3 state: %s, want %s", n3.state, StateFollower)
+	}
+
+	// etcd server "advanceTicksForElection" on restart;
+	// this is to expedite campaign trigger when given larger
+	// election timeouts (e.g. multi-datacenter deploy)
+	// Or leader messages are being delayed while ticks elapse
+	setRandomizedElectionTimeout(n3, n3.electionTimeout+2)
+	for i := 0; i < n3.randomizedElectionTimeout-1; i++ {
+		n3.tick()
+	}
+
+	// ideally, before last election tick elapses,
+	// the follower n3 receives "pb.MsgApp" or "pb.MsgHeartbeat"
+	// from leader n1, and then resets its "electionElapsed"
+	// however, last tick may elapse before receiving any
+	// messages from leader, thus triggering campaign
+	n3.tick()
+
+	// n1 is still leader yet
+	// while its heartbeat to candidate n3 is being delayed
+
+	// check state
+	// n1.state == StateLeader
+	// n2.state == StateFollower
+	// n3.state == StateCandidate
+	if n1.state != StateLeader {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.state != StateFollower {
+		t.Fatalf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StateCandidate {
+		t.Fatalf("node 3 state: %s, want %s", n3.state, StateCandidate)
+	}
+	// check term
+	// n1.Term == 2
+	// n2.Term == 2
+	// n3.Term == 3
+	if n1.Term != 2 {
+		t.Fatalf("node 1 term: %d, want %d", n1.Term, 2)
+	}
+	if n2.Term != 2 {
+		t.Fatalf("node 2 term: %d, want %d", n2.Term, 2)
+	}
+	if n3.Term != 3 {
+		t.Fatalf("node 3 term: %d, want %d", n3.Term, 3)
+	}
+
+	// while outgoing vote requests are still queued in n3,
+	// leader heartbeat finally arrives at candidate n3
+	// however, due to delayed network from leader, leader
+	// heartbeat was sent with lower term than candidate's
+	nt.send(pb.Message{From: 1, To: 3, Term: n1.Term, Type: pb.MsgHeartbeat})
+
+	// then candidate n3 responds with "pb.MsgAppResp" of higher term
+	// and leader steps down from a message with higher term
+	// this is to disrupt the current leader, so that candidate
+	// with higher term can be freed with following election
+
+	// check state
+	// n1.state == StateFollower
+	// n2.state == StateFollower
+	// n3.state == StateCandidate
+	if n1.state != StateFollower {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateFollower {
+		t.Fatalf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StateCandidate {
+		t.Fatalf("node 3 state: %s, want %s", n3.state, StateCandidate)
+	}
+	// check term
+	// n1.Term == 3
+	// n2.Term == 2
+	// n3.Term == 3
+	if n1.Term != 3 {
+		t.Fatalf("node 1 term: %d, want %d", n1.Term, 3)
+	}
+	if n2.Term != 2 {
+		t.Fatalf("node 2 term: %d, want %d", n2.Term, 2)
+	}
+	if n3.Term != 3 {
+		t.Fatalf("node 3 term: %d, want %d", n3.Term, 3)
+	}
+}
+
+// TestDisruptiveFollowerPreVote tests isolated follower,
+// with slow network incoming from leader, election times out
+// to become a pre-candidate with less log than current leader.
+// Then pre-vote phase prevents this isolated node from forcing
+// current leader to step down, thus less disruptions.
+func TestDisruptiveFollowerPreVote(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.checkQuorum = true
+	n2.checkQuorum = true
+	n3.checkQuorum = true
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	nt := newNetwork(n1, n2, n3)
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// check state
+	// n1.state == StateLeader
+	// n2.state == StateFollower
+	// n3.state == StateFollower
+	if n1.state != StateLeader {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.state != StateFollower {
+		t.Fatalf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StateFollower {
+		t.Fatalf("node 3 state: %s, want %s", n3.state, StateFollower)
+	}
+
+	nt.isolate(3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	n1.preVote = true
+	n2.preVote = true
+	n3.preVote = true
+	nt.recover()
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+
+	// check state
+	// n1.state == StateLeader
+	// n2.state == StateFollower
+	// n3.state == StatePreCandidate
+	if n1.state != StateLeader {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.state != StateFollower {
+		t.Fatalf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	if n3.state != StatePreCandidate {
+		t.Fatalf("node 3 state: %s, want %s", n3.state, StatePreCandidate)
+	}
+	// check term
+	// n1.Term == 2
+	// n2.Term == 2
+	// n3.Term == 2
+	if n1.Term != 2 {
+		t.Fatalf("node 1 term: %d, want %d", n1.Term, 2)
+	}
+	if n2.Term != 2 {
+		t.Fatalf("node 2 term: %d, want %d", n2.Term, 2)
+	}
+	if n3.Term != 2 {
+		t.Fatalf("node 2 term: %d, want %d", n3.Term, 2)
+	}
+
+	// delayed leader heartbeat does not force current leader to step down
+	nt.send(pb.Message{From: 1, To: 3, Term: n1.Term, Type: pb.MsgHeartbeat})
+	if n1.state != StateLeader {
+		t.Fatalf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+}
+
 func TestReadOnlyOptionSafe(t *testing.T) {
 	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
