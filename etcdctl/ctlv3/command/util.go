@@ -23,7 +23,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/internal/mvcc/mvccpb"
 
 	"github.com/spf13/cobra"
@@ -117,4 +119,28 @@ func endpointMemoryMetrics(host string) float64 {
 	}
 
 	return residentMemoryBytes
+}
+
+// compact keyspace history to a provided revision
+func compact(c *v3.Client, rev int64) {
+	fmt.Printf("Compacting with revision %d\n", rev)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Compacted with revision %d\n", rev)
+}
+
+// defrag a given endpoint
+func defrag(c *v3.Client, ep string) {
+	fmt.Printf("Defragmenting %q\n", ep)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Defragment(ctx, ep)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Defragmented %q\n", ep)
 }
