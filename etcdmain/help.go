@@ -197,5 +197,7 @@ experimental flags:
 		duration of time between cluster corruption check passes.
 	--experimental-enable-v2v3 ''
 		serve v2 requests through the v3 backend under a given prefix.
+	--experimental-pre-vote 'false'
+		enable to run an additional Raft election phase.
 `
 )
