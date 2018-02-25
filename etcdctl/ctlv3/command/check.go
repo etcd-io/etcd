@@ -36,10 +36,10 @@ import (
 var (
 	checkPerfLoad        string
 	checkPerfPrefix      string
-	checkPerfAutoCompact bool
-	checkPerfAutoDefrag  bool
 	checkDatascaleLoad   string
 	checkDatascalePrefix string
+	autoCompact          bool
+	autoDefrag           bool
 )
 
 type checkPerfCfg struct {
@@ -126,8 +126,8 @@ func NewCheckPerfCommand() *cobra.Command {
 	// TODO: support customized configuration
 	cmd.Flags().StringVar(&checkPerfLoad, "load", "s", "The performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)")
 	cmd.Flags().StringVar(&checkPerfPrefix, "prefix", "/etcdctl-check-perf/", "The prefix for writing the performance check's keys.")
-	cmd.Flags().BoolVar(&checkPerfAutoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
-	cmd.Flags().BoolVar(&checkPerfAutoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
+	cmd.Flags().BoolVar(&autoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
+	cmd.Flags().BoolVar(&autoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
 
 	return cmd
 }
@@ -219,11 +219,11 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	if checkPerfAutoCompact {
+	if autoCompact {
 		compact(clients[0], dresp.Header.Revision)
 	}
 
-	if checkPerfAutoDefrag {
+	if autoDefrag {
 		for _, ep := range clients[0].Endpoints() {
 			defrag(clients[0], ep)
 		}
@@ -265,28 +265,6 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 }
 
-func compact(c *v3.Client, rev int64) {
-	fmt.Printf("Compacting with revision %d\n", rev)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
-	cancel()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	fmt.Printf("Compacted with revision %d\n", rev)
-}
-
-func defrag(c *v3.Client, ep string) {
-	fmt.Printf("Defragmenting %q\n", ep)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	_, err := c.Defragment(ctx, ep)
-	cancel()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	fmt.Printf("Defragmented %q\n", ep)
-}
-
 // NewCheckDatascaleCommand returns the cobra command for "check datascale".
 func NewCheckDatascaleCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -298,6 +276,8 @@ func NewCheckDatascaleCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&checkDatascaleLoad, "load", "s", "The datascale check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)")
 	cmd.Flags().StringVar(&checkDatascalePrefix, "prefix", "/etcdctl-check-datascale/", "The prefix for writing the datascale check's keys.")
+	cmd.Flags().BoolVar(&autoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
+	cmd.Flags().BoolVar(&autoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
 
 	return cmd
 }
@@ -389,10 +369,20 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	// delete the created kv pairs
 	ctx, cancel = context.WithCancel(context.Background())
-	_, err = clients[0].Delete(ctx, checkDatascalePrefix, v3.WithPrefix())
+	dresp, derr := clients[0].Delete(ctx, checkDatascalePrefix, v3.WithPrefix())
 	defer cancel()
-	if err != nil {
-		ExitWithError(ExitError, err)
+	if derr != nil {
+		ExitWithError(ExitError, derr)
+	}
+
+	if autoCompact {
+		compact(clients[0], dresp.Header.Revision)
+	}
+
+	if autoDefrag {
+		for _, ep := range clients[0].Endpoints() {
+			defrag(clients[0], ep)
+		}
 	}
 
 	if bytesAfter == 0 {
