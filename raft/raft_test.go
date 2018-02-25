@@ -1697,6 +1697,74 @@ func TestAllServerStepdown(t *testing.T) {
 	}
 }
 
+func TestCandidateResetTermMsgHeartbeat(t *testing.T) {
+	testCandidateResetTerm(t, pb.MsgHeartbeat)
+}
+
+func TestCandidateResetTermMsgApp(t *testing.T) {
+	testCandidateResetTerm(t, pb.MsgApp)
+}
+
+// testCandidateResetTerm tests when a candidate receives a
+// MsgHeartbeat or MsgApp from leader, "Step" resets the term
+// with leader's and reverts back to follower.
+func testCandidateResetTerm(t *testing.T, mt pb.MessageType) {
+	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	nt := newNetwork(a, b, c)
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if a.state != StateLeader {
+		t.Errorf("state = %s, want %s", a.state, StateLeader)
+	}
+	if b.state != StateFollower {
+		t.Errorf("state = %s, want %s", b.state, StateFollower)
+	}
+	if c.state != StateFollower {
+		t.Errorf("state = %s, want %s", c.state, StateFollower)
+	}
+
+	// isolate 3 and increase term in rest
+	nt.isolate(3)
+
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	if a.state != StateLeader {
+		t.Errorf("state = %s, want %s", a.state, StateLeader)
+	}
+	if b.state != StateFollower {
+		t.Errorf("state = %s, want %s", b.state, StateFollower)
+	}
+
+	// trigger campaign in isolated c
+	c.resetRandomizedElectionTimeout()
+	for i := 0; i < c.randomizedElectionTimeout; i++ {
+		c.tick()
+	}
+
+	if c.state != StateCandidate {
+		t.Errorf("state = %s, want %s", c.state, StateCandidate)
+	}
+
+	nt.recover()
+
+	// leader sends to isolated candidate
+	// and expects candidate to revert to follower
+	nt.send(pb.Message{From: 1, To: 3, Term: a.Term, Type: mt})
+
+	if c.state != StateFollower {
+		t.Errorf("state = %s, want %s", c.state, StateFollower)
+	}
+
+	// follower c term is reset with leader's
+	if a.Term != c.Term {
+		t.Errorf("follower term expected same term as leader's %d, got %d", a.Term, c.Term)
+	}
+}
+
 func TestLeaderStepdownWhenQuorumActive(t *testing.T) {
 	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 
