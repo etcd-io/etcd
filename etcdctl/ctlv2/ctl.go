@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
-	"github.com/coreos/etcd/internal/version"
+	"github.com/coreos/etcd/version"
 
 	"github.com/urfave/cli"
 )

@@ -27,10 +27,10 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 	"golang.org/x/time/rate"

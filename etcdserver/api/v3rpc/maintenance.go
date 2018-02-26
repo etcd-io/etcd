@@ -25,9 +25,9 @@ import (
 	"github.com/coreos/etcd/internal/auth"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/version"
 )
 
 type KVGetter interface {

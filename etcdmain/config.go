@@ -26,9 +26,9 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/version"
 
 	"github.com/ghodss/yaml"
 )

@@ -44,7 +44,6 @@ import (
 	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/internal/store"
-	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -55,6 +54,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 
 	"github.com/coreos/go-semver/semver"

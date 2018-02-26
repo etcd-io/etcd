@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/internal/version"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 )
