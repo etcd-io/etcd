@@ -863,7 +863,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Event` (internal/mvcc/mvccpb/kv.proto)
+##### message `Event` (mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -873,7 +873,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `KeyValue` (internal/mvcc/mvccpb/kv.proto)
+##### message `KeyValue` (mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -886,7 +886,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Lease` (internal/lease/leasepb/lease.proto)
+##### message `Lease` (lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -895,7 +895,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalRequest` (internal/lease/leasepb/lease.proto)
+##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -903,7 +903,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `LeaseInternalResponse` (internal/lease/leasepb/lease.proto)
+##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -911,7 +911,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `Permission` (internal/auth/authpb/auth.proto)
+##### message `Permission` (auth/authpb/auth.proto)
 
 Permission is a single entity
 
@@ -923,7 +923,7 @@ Permission is a single entity
 
 
 
-##### message `Role` (internal/auth/authpb/auth.proto)
+##### message `Role` (auth/authpb/auth.proto)
 
 Role is a single entry in the bucket authRoles
 
@@ -934,7 +934,7 @@ Role is a single entry in the bucket authRoles
 
 
 
-##### message `User` (internal/auth/authpb/auth.proto)
+##### message `User` (auth/authpb/auth.proto)
 
 User is a single entry in the bucket authUsers
 
