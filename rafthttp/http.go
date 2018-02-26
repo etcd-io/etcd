@@ -23,10 +23,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/etcd/internal/raftsnap"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 )
 

@@ -34,10 +34,10 @@ import (
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/mvcc/mvccpb"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 

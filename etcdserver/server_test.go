@@ -31,7 +31,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -46,6 +45,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/raftsnap"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,

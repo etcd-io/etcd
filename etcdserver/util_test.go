@@ -20,10 +20,10 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/raftsnap"
 )
 
 func TestLongestConnected(t *testing.T) {

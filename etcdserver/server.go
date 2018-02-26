@@ -41,7 +41,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -54,6 +53,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 

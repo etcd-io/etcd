@@ -21,9 +21,9 @@ import (
 
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap"
 )
 
 func newBackend(cfg ServerConfig) backend.Backend {

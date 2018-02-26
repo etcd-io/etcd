@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 )
 

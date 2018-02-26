@@ -25,11 +25,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/internal/raftsnap/snappb"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap/snappb"
 
 	"github.com/coreos/pkg/capnslog"
 )

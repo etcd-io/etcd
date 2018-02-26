@@ -21,12 +21,12 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/internal/raftsnap"
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raftsnap"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/xiang90/probing"
