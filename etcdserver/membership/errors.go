@@ -17,7 +17,7 @@ package membership
 import (
 	"errors"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 )
 
 var (
@@ -28,6 +28,6 @@ var (
 )
 
 func isKeyNotFound(err error) bool {
-	e, ok := err.(*etcdErr.Error)
-	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
+	e, ok := err.(*v2error.Error)
+	return ok && e.ErrorCode == v2error.EcodeKeyNotFound
 }

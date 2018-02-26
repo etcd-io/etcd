@@ -25,11 +25,11 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -241,7 +241,7 @@ func applyRequest(req *pb.Request, applyV2 etcdserver.ApplierV2) {
 func writeStore(w io.Writer, st v2store.Store) uint64 {
 	all, err := st.Get("/1", true, true)
 	if err != nil {
-		if eerr, ok := err.(*etcdErr.Error); ok && eerr.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if eerr, ok := err.(*v2error.Error); ok && eerr.ErrorCode == v2error.EcodeKeyNotFound {
 			fmt.Println("no v2 keys to migrate")
 			os.Exit(0)
 		}

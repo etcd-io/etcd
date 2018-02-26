@@ -21,7 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 )
 
 // A watcherHub contains all subscribed watchers
@@ -56,7 +56,7 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is true, the first change after index under key will be sent to the event channel of the watcher.
 // If recursive is false, the first change after index at key will be sent to the event channel of the watcher.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeIndex uint64) (Watcher, *etcdErr.Error) {
+func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeIndex uint64) (Watcher, *v2error.Error) {
 	reportWatchRequest()
 	event, err := wh.EventHistory.scan(key, recursive, index)
 

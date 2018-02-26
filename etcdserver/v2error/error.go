@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package error describes errors in etcd project. When any change happens,
+// Package v2error describes errors in etcd project. When any change happens,
 // Documentation/v2/errorcode.md needs to be updated correspondingly.
-package error
+// To be deprecated in favor of v3 APIs.
+package v2error
 
 import (
 	"encoding/json"

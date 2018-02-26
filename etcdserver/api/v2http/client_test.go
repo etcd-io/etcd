@@ -29,12 +29,12 @@ import (
 	"testing"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -193,19 +193,19 @@ func TestBadRefreshRequest(t *testing.T) {
 	}{
 		{
 			mustNewRequest(t, "foo?refresh=true&value=test"),
-			etcdErr.EcodeRefreshValue,
+			v2error.EcodeRefreshValue,
 		},
 		{
 			mustNewRequest(t, "foo?refresh=true&value=10"),
-			etcdErr.EcodeRefreshValue,
+			v2error.EcodeRefreshValue,
 		},
 		{
 			mustNewRequest(t, "foo?refresh=true"),
-			etcdErr.EcodeRefreshTTLRequired,
+			v2error.EcodeRefreshTTLRequired,
 		},
 		{
 			mustNewRequest(t, "foo?refresh=true&ttl="),
-			etcdErr.EcodeRefreshTTLRequired,
+			v2error.EcodeRefreshTTLRequired,
 		},
 	}
 	for i, tt := range tests {
@@ -214,7 +214,7 @@ func TestBadRefreshRequest(t *testing.T) {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
 		}
-		ee, ok := err.(*etcdErr.Error)
+		ee, ok := err.(*v2error.Error)
 		if !ok {
 			t.Errorf("#%d: err is not etcd.Error!", i)
 			continue
@@ -240,119 +240,119 @@ func TestBadParseRequest(t *testing.T) {
 				Body:   nil,
 				Method: "PUT",
 			},
-			etcdErr.EcodeInvalidForm,
+			v2error.EcodeInvalidForm,
 		},
 		{
 			// bad key prefix
 			&http.Request{
 				URL: testutil.MustNewURL(t, "/badprefix/"),
 			},
-			etcdErr.EcodeInvalidForm,
+			v2error.EcodeInvalidForm,
 		},
 		// bad values for prevIndex, waitIndex, ttl
 		{
 			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"garbage"}}),
-			etcdErr.EcodeIndexNaN,
+			v2error.EcodeIndexNaN,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"1.5"}}),
-			etcdErr.EcodeIndexNaN,
+			v2error.EcodeIndexNaN,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"-1"}}),
-			etcdErr.EcodeIndexNaN,
+			v2error.EcodeIndexNaN,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"waitIndex": []string{"garbage"}}),
-			etcdErr.EcodeIndexNaN,
+			v2error.EcodeIndexNaN,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"waitIndex": []string{"??"}}),
-			etcdErr.EcodeIndexNaN,
+			v2error.EcodeIndexNaN,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
-			etcdErr.EcodeTTLNaN,
+			v2error.EcodeTTLNaN,
 		},
 		// bad values for recursive, sorted, wait, prevExist, dir, stream
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"1234"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"?"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"sorted": []string{"?"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"sorted": []string{"x"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"wait": []string{"?!"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"wait": []string{"yes"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevExist": []string{"yes"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevExist": []string{"#2"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"dir": []string{"no"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"dir": []string{"file"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"quorum": []string{"no"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"quorum": []string{"file"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"stream": []string{"zzz"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"stream": []string{"something"}}),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		// prevValue cannot be empty
 		{
 			mustNewForm(t, "foo", url.Values{"prevValue": []string{""}}),
-			etcdErr.EcodePrevValueRequired,
+			v2error.EcodePrevValueRequired,
 		},
 		// wait is only valid with GET requests
 		{
 			mustNewMethodRequest(t, "HEAD", "foo?wait=true"),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		// query values are considered
 		{
 			mustNewRequest(t, "foo?prevExist=wrong"),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 		{
 			mustNewRequest(t, "foo?ttl=wrong"),
-			etcdErr.EcodeTTLNaN,
+			v2error.EcodeTTLNaN,
 		},
 		// but body takes precedence if both are specified
 		{
@@ -361,7 +361,7 @@ func TestBadParseRequest(t *testing.T) {
 				"foo?ttl=12",
 				url.Values{"ttl": []string{"garbage"}},
 			),
-			etcdErr.EcodeTTLNaN,
+			v2error.EcodeTTLNaN,
 		},
 		{
 			mustNewForm(
@@ -369,7 +369,7 @@ func TestBadParseRequest(t *testing.T) {
 				"foo?prevExist=false",
 				url.Values{"prevExist": []string{"yes"}},
 			),
-			etcdErr.EcodeInvalidField,
+			v2error.EcodeInvalidField,
 		},
 	}
 	for i, tt := range tests {
@@ -378,7 +378,7 @@ func TestBadParseRequest(t *testing.T) {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
 		}
-		ee, ok := err.(*etcdErr.Error)
+		ee, ok := err.(*v2error.Error)
 		if !ok {
 			t.Errorf("#%d: err is not etcd.Error!", i)
 			continue
@@ -1470,7 +1470,7 @@ func TestBadServeKeys(t *testing.T) {
 			// etcdserver.Server etcd error
 			mustNewRequest(t, "foo"),
 			&errServer{
-				err: etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/1/pant", 0),
+				err: v2error.NewError(v2error.EcodeKeyNotFound, "/1/pant", 0),
 			},
 
 			http.StatusNotFound,

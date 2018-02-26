@@ -23,7 +23,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
@@ -81,7 +81,7 @@ func (s *v2v3Store) Get(nodePath string, recursive, sorted bool) (*v2store.Event
 
 	kvs := resp.Responses[1].GetResponseRange().Kvs
 	if len(kvs) == 0 {
-		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 
 	return &v2store.Event{
@@ -138,14 +138,14 @@ func (s *v2v3Store) Set(
 	}
 
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 
 	ecode := 0
 	applyf := func(stm concurrency.STM) error {
 		parent := path.Dir(nodePath)
 		if !isRoot(parent) && stm.Rev(s.mkPath(parent)+"/") == 0 {
-			ecode = etcdErr.EcodeKeyNotFound
+			ecode = v2error.EcodeKeyNotFound
 			return nil
 		}
 
@@ -153,12 +153,12 @@ func (s *v2v3Store) Set(
 		if dir {
 			if stm.Rev(key) != 0 {
 				// exists as non-dir
-				ecode = etcdErr.EcodeNotDir
+				ecode = v2error.EcodeNotDir
 				return nil
 			}
 			key = key + "/"
 		} else if stm.Rev(key+"/") != 0 {
-			ecode = etcdErr.EcodeNotFile
+			ecode = v2error.EcodeNotFile
 			return nil
 		}
 		stm.Put(key, value, clientv3.WithPrevKV())
@@ -171,7 +171,7 @@ func (s *v2v3Store) Set(
 		return nil, err
 	}
 	if ecode != 0 {
-		return nil, etcdErr.NewError(ecode, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(ecode, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 
 	createRev := resp.Header.Revision
@@ -201,7 +201,7 @@ func (s *v2v3Store) Set(
 
 func (s *v2v3Store) Update(nodePath, newValue string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 
 	if expireOpts.Refresh || !expireOpts.ExpireTime.IsZero() {
@@ -212,11 +212,11 @@ func (s *v2v3Store) Update(nodePath, newValue string, expireOpts v2store.TTLOpti
 	ecode := 0
 	applyf := func(stm concurrency.STM) error {
 		if rev := stm.Rev(key + "/"); rev != 0 {
-			ecode = etcdErr.EcodeNotFile
+			ecode = v2error.EcodeNotFile
 			return nil
 		}
 		if rev := stm.Rev(key); rev == 0 {
-			ecode = etcdErr.EcodeKeyNotFound
+			ecode = v2error.EcodeKeyNotFound
 			return nil
 		}
 		stm.Put(key, newValue, clientv3.WithPrevKV())
@@ -229,7 +229,7 @@ func (s *v2v3Store) Update(nodePath, newValue string, expireOpts v2store.TTLOpti
 		return nil, err
 	}
 	if ecode != 0 {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 
 	pkv := prevKeyFromPuts(resp)
@@ -254,7 +254,7 @@ func (s *v2v3Store) Create(
 	expireOpts v2store.TTLOptionSet,
 ) (*v2store.Event, error) {
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 	if expireOpts.Refresh || !expireOpts.ExpireTime.IsZero() {
 		return nil, errUnsupported
@@ -275,7 +275,7 @@ func (s *v2v3Store) Create(
 			}
 		}
 		if stm.Rev(key) > 0 || stm.Rev(key+"/") > 0 {
-			ecode = etcdErr.EcodeNodeExist
+			ecode = v2error.EcodeNodeExist
 			return nil
 		}
 		// build path if any directories in path do not exist
@@ -283,7 +283,7 @@ func (s *v2v3Store) Create(
 		for p := path.Dir(nodePath); !isRoot(p); p = path.Dir(p) {
 			pp := s.mkPath(p)
 			if stm.Rev(pp) > 0 {
-				ecode = etcdErr.EcodeNotDir
+				ecode = v2error.EcodeNotDir
 				return nil
 			}
 			if stm.Rev(pp+"/") == 0 {
@@ -308,7 +308,7 @@ func (s *v2v3Store) Create(
 		return nil, err
 	}
 	if ecode != 0 {
-		return nil, etcdErr.NewError(ecode, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(ecode, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 
 	var v *string
@@ -337,7 +337,7 @@ func (s *v2v3Store) CompareAndSwap(
 	expireOpts v2store.TTLOptionSet,
 ) (*v2store.Event, error) {
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 	if expireOpts.Refresh || !expireOpts.ExpireTime.IsZero() {
 		return nil, errUnsupported
@@ -377,7 +377,7 @@ func (s *v2v3Store) CompareAndSwap(
 
 func (s *v2v3Store) Delete(nodePath string, dir, recursive bool) (*v2store.Event, error) {
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 	if !dir && !recursive {
 		return s.deleteNode(nodePath)
@@ -403,7 +403,7 @@ func (s *v2v3Store) Delete(nodePath string, dir, recursive bool) (*v2store.Event
 		return nil, err
 	}
 	if !resp.Succeeded {
-		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeNodeExist, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	dresp := resp.Responses[0].GetResponseDeleteRange()
 	return &v2store.Event{
@@ -424,11 +424,11 @@ func (s *v2v3Store) deleteEmptyDir(nodePath string) (*v2store.Event, error) {
 		return nil, err
 	}
 	if !resp.Succeeded {
-		return nil, etcdErr.NewError(etcdErr.EcodeDirNotEmpty, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeDirNotEmpty, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	dresp := resp.Responses[0].GetResponseDeleteRange()
 	if len(dresp.PrevKvs) == 0 {
-		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeNodeExist, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	return &v2store.Event{
 		Action:    v2store.Delete,
@@ -448,11 +448,11 @@ func (s *v2v3Store) deleteNode(nodePath string) (*v2store.Event, error) {
 		return nil, err
 	}
 	if !resp.Succeeded {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	pkvs := resp.Responses[0].GetResponseDeleteRange().PrevKvs
 	if len(pkvs) == 0 {
-		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
+		return nil, v2error.NewError(v2error.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	pkv := pkvs[0]
 	return &v2store.Event{
@@ -469,7 +469,7 @@ func (s *v2v3Store) deleteNode(nodePath string) (*v2store.Event, error) {
 
 func (s *v2v3Store) CompareAndDelete(nodePath, prevValue string, prevIndex uint64) (*v2store.Event, error) {
 	if isRoot(nodePath) {
-		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, nodePath, 0)
+		return nil, v2error.NewError(v2error.EcodeRootROnly, nodePath, 0)
 	}
 
 	key := s.mkPath(nodePath)
@@ -506,11 +506,11 @@ func (s *v2v3Store) CompareAndDelete(nodePath, prevValue string, prevIndex uint6
 
 func compareFail(nodePath, prevValue string, prevIndex uint64, resp *clientv3.TxnResponse) error {
 	if dkvs := resp.Responses[1].GetResponseRange().Kvs; len(dkvs) > 0 {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
+		return v2error.NewError(v2error.EcodeNotFile, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	kvs := resp.Responses[0].GetResponseRange().Kvs
 	if len(kvs) == 0 {
-		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
+		return v2error.NewError(v2error.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	kv := kvs[0]
 	indexMatch := (prevIndex == 0 || kv.ModRevision == int64(prevIndex))
@@ -524,7 +524,7 @@ func compareFail(nodePath, prevValue string, prevIndex uint64, resp *clientv3.Tx
 	default:
 		cause = fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, string(kv.Value), prevIndex, kv.ModRevision)
 	}
-	return etcdErr.NewError(etcdErr.EcodeTestFailed, cause, mkV2Rev(resp.Header.Revision))
+	return v2error.NewError(v2error.EcodeTestFailed, cause, mkV2Rev(resp.Header.Revision))
 }
 
 func (s *v2v3Store) mkCompare(nodePath, prevValue string, prevIndex uint64) []clientv3.Cmp {

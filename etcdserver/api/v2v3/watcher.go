@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/clientv3"
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
 )
 
@@ -36,7 +36,7 @@ func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint
 	resp, ok := <-wch
 	if err := resp.Err(); err != nil || !ok {
 		cancel()
-		return nil, etcdErr.NewError(etcdErr.EcodeRaftInternal, prefix, 0)
+		return nil, v2error.NewError(v2error.EcodeRaftInternal, prefix, 0)
 	}
 
 	evc, donec := make(chan *v2store.Event), make(chan struct{})

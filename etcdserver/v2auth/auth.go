@@ -26,9 +26,9 @@ import (
 	"strings"
 	"time"
 
-	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/pkg/capnslog"
 
@@ -170,8 +170,8 @@ func (_ passwordStore) HashPassword(password string) (string, error) {
 func (s *store) AllUsers() ([]string, error) {
 	resp, err := s.requestResource("/users/", false, false)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return []string{}, nil
 			}
 		}
@@ -225,8 +225,8 @@ func (s *store) createUserInternal(user User) (User, error) {
 
 	_, err = s.createResource("/users/"+user.User, user)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeNodeExist {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeNodeExist {
 				return user, authErr(http.StatusConflict, "User %s already exists.", user.User)
 			}
 		}
@@ -240,8 +240,8 @@ func (s *store) DeleteUser(name string) error {
 	}
 	_, err := s.deleteResource("/users/" + name)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return authErr(http.StatusNotFound, "User %s does not exist", name)
 			}
 		}
@@ -254,8 +254,8 @@ func (s *store) DeleteUser(name string) error {
 func (s *store) UpdateUser(user User) (User, error) {
 	old, err := s.getUser(user.User, true)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return user, authErr(http.StatusNotFound, "User %s doesn't exist.", user.User)
 			}
 		}
@@ -280,8 +280,8 @@ func (s *store) AllRoles() ([]string, error) {
 	nodes := []string{RootRoleName}
 	resp, err := s.requestResource("/roles/", false, false)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return nodes, nil
 			}
 		}
@@ -303,8 +303,8 @@ func (s *store) CreateRole(role Role) error {
 	}
 	_, err := s.createResource("/roles/"+role.Role, role)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeNodeExist {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeNodeExist {
 				return authErr(http.StatusConflict, "Role %s already exists.", role.Role)
 			}
 		}
@@ -321,8 +321,8 @@ func (s *store) DeleteRole(name string) error {
 	}
 	_, err := s.deleteResource("/roles/" + name)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return authErr(http.StatusNotFound, "Role %s doesn't exist.", name)
 			}
 		}
@@ -339,8 +339,8 @@ func (s *store) UpdateRole(role Role) (Role, error) {
 	}
 	old, err := s.getRole(role.Role, true)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return role, authErr(http.StatusNotFound, "Role %s doesn't exist.", role.Role)
 			}
 		}
@@ -610,8 +610,8 @@ func attachRootRole(u User) User {
 func (s *store) getUser(name string, quorum bool) (User, error) {
 	resp, err := s.requestResource("/users/"+name, false, quorum)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return User{}, authErr(http.StatusNotFound, "User %s does not exist.", name)
 			}
 		}
@@ -635,8 +635,8 @@ func (s *store) getRole(name string, quorum bool) (Role, error) {
 	}
 	resp, err := s.requestResource("/roles/"+name, false, quorum)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return Role{}, authErr(http.StatusNotFound, "Role %s does not exist.", name)
 			}
 		}

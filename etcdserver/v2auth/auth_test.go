@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
 )
 
@@ -177,8 +177,8 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		res := td.get[td.getindex]
 		if res.Event == nil {
 			td.getindex++
-			return etcdserver.Response{}, &etcderr.Error{
-				ErrorCode: etcderr.EcodeKeyNotFound,
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeKeyNotFound,
 			}
 		}
 		td.getindex++
@@ -188,8 +188,8 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		res := td.put[td.putindex]
 		if res.Event == nil {
 			td.putindex++
-			return etcdserver.Response{}, &etcderr.Error{
-				ErrorCode: etcderr.EcodeNodeExist,
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeNodeExist,
 			}
 		}
 		td.putindex++

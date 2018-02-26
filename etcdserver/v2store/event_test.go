@@ -17,7 +17,7 @@ package v2store
 import (
 	"testing"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 )
 
 // TestEventQueue tests a queue with capacity = 100
@@ -105,8 +105,8 @@ func TestEventIndexHistoryCleared(t *testing.T) {
 
 	// test for the event which has been replaced.
 	_, err := eh.scan("/foo", false, 1)
-	if err == nil || err.ErrorCode != etcdErr.EcodeEventIndexCleared {
-		t.Fatalf("scan error cleared index should return err with %d got (%v)", etcdErr.EcodeEventIndexCleared, err)
+	if err == nil || err.ErrorCode != v2error.EcodeEventIndexCleared {
+		t.Fatalf("scan error cleared index should return err with %d got (%v)", v2error.EcodeEventIndexCleared, err)
 	}
 }
 

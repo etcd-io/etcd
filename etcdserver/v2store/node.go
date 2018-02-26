@@ -19,7 +19,7 @@ import (
 	"sort"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -107,9 +107,9 @@ func (n *node) IsDir() bool {
 
 // Read function gets the value of the node.
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
-func (n *node) Read() (string, *etcdErr.Error) {
+func (n *node) Read() (string, *v2error.Error) {
 	if n.IsDir() {
-		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.CurrentIndex)
+		return "", v2error.NewError(v2error.EcodeNotFile, "", n.store.CurrentIndex)
 	}
 
 	return n.Value, nil
@@ -117,9 +117,9 @@ func (n *node) Read() (string, *etcdErr.Error) {
 
 // Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *node) Write(value string, index uint64) *etcdErr.Error {
+func (n *node) Write(value string, index uint64) *v2error.Error {
 	if n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.CurrentIndex)
+		return v2error.NewError(v2error.EcodeNotFile, "", n.store.CurrentIndex)
 	}
 
 	n.Value = value
@@ -150,9 +150,9 @@ func (n *node) expirationAndTTL(clock clockwork.Clock) (*time.Time, int64) {
 
 // List function return a slice of nodes under the receiver node.
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
-func (n *node) List() ([]*node, *etcdErr.Error) {
+func (n *node) List() ([]*node, *v2error.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.CurrentIndex)
+		return nil, v2error.NewError(v2error.EcodeNotDir, "", n.store.CurrentIndex)
 	}
 
 	nodes := make([]*node, len(n.Children))
@@ -168,9 +168,9 @@ func (n *node) List() ([]*node, *etcdErr.Error) {
 
 // GetChild function returns the child node under the directory node.
 // On success, it returns the file node
-func (n *node) GetChild(name string) (*node, *etcdErr.Error) {
+func (n *node) GetChild(name string) (*node, *v2error.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, n.store.CurrentIndex)
+		return nil, v2error.NewError(v2error.EcodeNotDir, n.Path, n.store.CurrentIndex)
 	}
 
 	child, ok := n.Children[name]
@@ -186,15 +186,15 @@ func (n *node) GetChild(name string) (*node, *etcdErr.Error) {
 // If the receiver is not a directory, a "Not A Directory" error will be returned.
 // If there is an existing node with the same name under the directory, a "Already Exist"
 // error will be returned
-func (n *node) Add(child *node) *etcdErr.Error {
+func (n *node) Add(child *node) *v2error.Error {
 	if !n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.CurrentIndex)
+		return v2error.NewError(v2error.EcodeNotDir, "", n.store.CurrentIndex)
 	}
 
 	_, name := path.Split(child.Path)
 
 	if _, ok := n.Children[name]; ok {
-		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", n.store.CurrentIndex)
+		return v2error.NewError(v2error.EcodeNodeExist, "", n.store.CurrentIndex)
 	}
 
 	n.Children[name] = child
@@ -203,7 +203,7 @@ func (n *node) Add(child *node) *etcdErr.Error {
 }
 
 // Remove function remove the node.
-func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.Error {
+func (n *node) Remove(dir, recursive bool, callback func(path string)) *v2error.Error {
 	if !n.IsDir() { // key-value pair
 		_, name := path.Split(n.Path)
 
@@ -225,13 +225,13 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 
 	if !dir {
 		// cannot delete a directory without dir set to true
-		return etcdErr.NewError(etcdErr.EcodeNotFile, n.Path, n.store.CurrentIndex)
+		return v2error.NewError(v2error.EcodeNotFile, n.Path, n.store.CurrentIndex)
 	}
 
 	if len(n.Children) != 0 && !recursive {
 		// cannot delete a directory if it is not empty and the operation
 		// is not recursive
-		return etcdErr.NewError(etcdErr.EcodeDirNotEmpty, n.Path, n.store.CurrentIndex)
+		return v2error.NewError(v2error.EcodeDirNotEmpty, n.Path, n.store.CurrentIndex)
 	}
 
 	for _, child := range n.Children { // delete all children

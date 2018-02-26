@@ -22,10 +22,10 @@ import (
 	"sort"
 	"testing"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 
@@ -94,12 +94,12 @@ func TestWriteError(t *testing.T) {
 		wi    string
 	}{
 		{
-			etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/foo/bar", 123),
+			v2error.NewError(v2error.EcodeKeyNotFound, "/foo/bar", 123),
 			http.StatusNotFound,
 			"123",
 		},
 		{
-			etcdErr.NewError(etcdErr.EcodeTestFailed, "/foo/bar", 456),
+			v2error.NewError(v2error.EcodeTestFailed, "/foo/bar", 456),
 			http.StatusPreconditionFailed,
 			"456",
 		},

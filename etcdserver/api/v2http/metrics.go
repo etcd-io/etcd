@@ -20,10 +20,10 @@ import (
 
 	"net/http"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -86,8 +86,8 @@ func codeFromError(err error) int {
 		return http.StatusInternalServerError
 	}
 	switch e := err.(type) {
-	case *etcdErr.Error:
-		return (*etcdErr.Error)(e).StatusCode()
+	case *v2error.Error:
+		return (*v2error.Error)(e).StatusCode()
 	case *httptypes.HTTPError:
 		return (*httptypes.HTTPError)(e).Code
 	default:

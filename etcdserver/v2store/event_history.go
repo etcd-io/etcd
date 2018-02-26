@@ -20,7 +20,7 @@ import (
 	"strings"
 	"sync"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 )
 
 type EventHistory struct {
@@ -55,14 +55,14 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 // scan enumerates events from the index history and stops at the first point
 // where the key matches.
-func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *etcdErr.Error) {
+func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *v2error.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
 	// index should be after the event history's StartIndex
 	if index < eh.StartIndex {
 		return nil,
-			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
+			v2error.NewError(v2error.EcodeEventIndexCleared,
 				fmt.Sprintf("the requested history has been cleared [%v/%v]",
 					eh.StartIndex, index), 0)
 	}

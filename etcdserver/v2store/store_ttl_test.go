@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"github.com/jonboulle/clockwork"
@@ -110,7 +110,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo", false, false)
 	testutil.AssertNil(t, e)
-	testutil.AssertEqual(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound)
+	testutil.AssertEqual(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
 // Ensure that the store can update the TTL on a directory.
@@ -134,7 +134,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo/bar", false, false)
 	testutil.AssertNil(t, e)
-	testutil.AssertEqual(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound)
+	testutil.AssertEqual(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
 // Ensure that the store can watch for key expiration.
