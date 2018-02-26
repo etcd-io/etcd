@@ -722,7 +722,7 @@ func TestLearnerLogReplication(t *testing.T) {
 
 	match := n1.getProgress(2).Match
 	if match != n2.raftLog.committed {
-		t.Errorf("progresss 2 of leader 1 wants match %d, but got %d", n2.raftLog.committed, match)
+		t.Errorf("progress 2 of leader 1 wants match %d, but got %d", n2.raftLog.committed, match)
 	}
 }
 
