@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 
 	"github.com/bgentry/speakeasy"
@@ -155,6 +156,8 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 	cafile := c.GlobalString("ca-file")
 	certfile := c.GlobalString("cert-file")
 	keyfile := c.GlobalString("key-file")
+	insecureSkipVerify := c.GlobalBool("insecure-skip-tls-verify")
+	ciphers := c.GlobalGeneric("cipher-suites").(*flags.StringSliceFlag)
 
 	// Use an environment variable if nothing was supplied on the
 	// command line
@@ -167,16 +170,24 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 	if keyfile == "" {
 		keyfile = os.Getenv("ETCDCTL_KEY_FILE")
 	}
+	if !insecureSkipVerify {
+		insecureSkipVerify = strings.EqualFold(os.Getenv("ETCDCTL_INSECURE_SKIP_TLS_VERIFY"), "TRUE")
+	}
+	if c := ciphers.Slice(); len(c) == 0 {
+		ciphers.Set(os.Getenv("ETCDCTL_CIPHER_SUITES"))
+	}
 
 	discoveryDomain, insecure := getDiscoveryDomain(c)
 	if insecure {
 		discoveryDomain = ""
 	}
 	tls := transport.TLSInfo{
-		CAFile:     cafile,
-		CertFile:   certfile,
-		KeyFile:    keyfile,
-		ServerName: discoveryDomain,
+		CAFile:             cafile,
+		CertFile:           certfile,
+		KeyFile:            keyfile,
+		CipherSuites:       ciphers.Slice(),
+		ServerName:         discoveryDomain,
+		InsecureSkipVerify: insecureSkipVerify,
 	}
 
 	dialTimeout := defaultDialTimeout
