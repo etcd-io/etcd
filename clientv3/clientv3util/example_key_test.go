@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/etcd/clientv3/clientv3util"
 )
 
-func ExampleKeyExists_put() {
+func ExampleKeyMissing() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{"127.0.0.1:2379"},
 	})
@@ -45,7 +45,7 @@ func ExampleKeyExists_put() {
 	}
 }
 
-func ExampleKeyExists_delete() {
+func ExampleKeyExists() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{"127.0.0.1:2379"},
 	})
