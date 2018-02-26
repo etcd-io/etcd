@@ -16,7 +16,7 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.5.1" ]]; then
 fi
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./internal/raftsnap/snappb ./raft/raftpb ./internal/mvcc/mvccpb ./internal/lease/leasepb ./internal/auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./raftsnap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
 
 # exact version of packages to build
 GOGO_PROTO_SHA="41168f6614b7bb144818ec8967b8c702705df564"
@@ -128,13 +128,13 @@ if [ "$1" != "--skip-protodoc" ]; then
 		echo "protodoc is updated"
 	popd
 
-	protodoc --directories="etcdserver/etcdserverpb=service_message,internal/mvcc/mvccpb=service_message,internal/lease/leasepb=service_message,internal/auth/authpb=service_message" \
+	protodoc --directories="etcdserver/etcdserverpb=service_message,mvcc/mvccpb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
 		--title="etcd API Reference" \
 		--output="Documentation/dev-guide/api_reference_v3.md" \
 		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."
 
-	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,internal/mvcc/mvccpb=service_message" \
+	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,mvcc/mvccpb=service_message" \
 		--title="etcd concurrency API Reference" \
 		--output="Documentation/dev-guide/api_concurrency_reference_v3.md" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."
