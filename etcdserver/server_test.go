@@ -28,6 +28,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/raftsnap"
@@ -59,11 +60,11 @@ func TestDoLocalAction(t *testing.T) {
 	}{
 		{
 			pb.Request{Method: "GET", ID: 1, Wait: true},
-			Response{Watcher: store.NewNopWatcher()}, nil, []testutil.Action{{Name: "Watch"}},
+			Response{Watcher: v2store.NewNopWatcher()}, nil, []testutil.Action{{Name: "Watch"}},
 		},
 		{
 			pb.Request{Method: "GET", ID: 1},
-			Response{Event: &store.Event{}}, nil,
+			Response{Event: &v2store.Event{}}, nil,
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -73,7 +74,7 @@ func TestDoLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "HEAD", ID: 1},
-			Response{Event: &store.Event{}}, nil,
+			Response{Event: &v2store.Event{}}, nil,
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -167,8 +168,8 @@ func TestApplyRepeat(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
-	cl.SetStore(store.New())
+	st := v2store.New()
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
@@ -233,139 +234,139 @@ func TestApplyRequest(t *testing.T) {
 		// POST ==> Create
 		{
 			pb.Request{Method: "POST", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// POST ==> Create, with expiration
 		{
 			pb.Request{Method: "POST", ID: 1, Expiration: 1337},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
+					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
 				},
 			},
 		},
 		// POST ==> Create, with dir
 		{
 			pb.Request{Method: "POST", ID: 1, Dir: true},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", true, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", true, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT ==> Set
 		{
 			pb.Request{Method: "PUT", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", false, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT ==> Set, with dir
 		{
 			pb.Request{Method: "PUT", ID: 1, Dir: true},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", true, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", true, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=true ==> Update
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true)},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Update",
-					Params: []interface{}{"", "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=false ==> Create
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false)},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=true *and* PrevIndex set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true), PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=false *and* PrevIndex set ==> Create
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false), PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevIndex set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevValue set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(0), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "bar", uint64(0), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevIndex and PrevValue set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "bar", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// DELETE ==> Delete
 		{
 			pb.Request{Method: "DELETE", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Delete",
@@ -376,7 +377,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevIndex set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -387,7 +388,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevValue set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -398,7 +399,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevIndex *and* PrevValue set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 5, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -409,7 +410,7 @@ func TestApplyRequest(t *testing.T) {
 		// QGET ==> Get
 		{
 			pb.Request{Method: "QGET", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -485,7 +486,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 
 func TestApplyConfChangeError(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -549,7 +550,7 @@ func TestApplyConfChangeError(t *testing.T) {
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -590,7 +591,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: types.ID(1)})
 	r := newRaftNode(raftNodeConfig{
 		Node:      newNodeNop(),
@@ -633,7 +634,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -702,7 +703,7 @@ func TestDoProposal(t *testing.T) {
 			t.Fatalf("#%d: err = %v, want nil", i, err)
 		}
 		// resp.Index is set in Do() based on the raft state; may either be 0 or 1
-		wresp := Response{Event: &store.Event{}, Index: resp.Index}
+		wresp := Response{Event: &v2store.Event{}, Index: resp.Index}
 		if !reflect.DeepEqual(resp, wresp) {
 			t.Errorf("#%d: resp = %v, want %v", i, resp, wresp)
 		}
@@ -1224,7 +1225,7 @@ func TestRemoveMember(t *testing.T) {
 	}
 	cl := newTestCluster(nil)
 	st := store.New()
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,

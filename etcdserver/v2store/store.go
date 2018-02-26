@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package v2store
 
 import (
 	"encoding/json"
@@ -25,6 +25,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/types"
+
 	"github.com/jonboulle/clockwork"
 )
 

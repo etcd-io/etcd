@@ -14,23 +14,23 @@
 
 // +build !v2v3
 
-package store_test
+package v2store_test
 
 import (
 	"testing"
 
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
 type v2TestStore struct {
-	store.Store
+	v2store.Store
 }
 
 func (s *v2TestStore) Close() {}
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
-	return &v2TestStore{store.New(ns...)}
+	return &v2TestStore{v2store.New(ns...)}
 }
 
 // Ensure that the store can recover from a previously saved state.
@@ -38,10 +38,10 @@ func TestStoreRecover(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 4
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/x", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Update("/foo/x", "barbar", store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/y", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/x", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
+	s.Update("/foo/x", "barbar", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/y", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	b, err := s.Save()
 	testutil.AssertNil(t, err)
 

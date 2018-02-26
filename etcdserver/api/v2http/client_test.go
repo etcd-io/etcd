@@ -35,7 +35,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -44,7 +44,7 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func mustMarshalEvent(t *testing.T, ev *store.Event) string {
+func mustMarshalEvent(t *testing.T, ev *v2store.Event) string {
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(ev); err != nil {
 		t.Fatalf("error marshalling event %#v: %v", ev, err)
@@ -176,11 +176,11 @@ func (drt dummyRaftTimer) Index() uint64 { return uint64(100) }
 func (drt dummyRaftTimer) Term() uint64  { return uint64(5) }
 
 type dummyWatcher struct {
-	echan chan *store.Event
+	echan chan *v2store.Event
 	sidx  uint64
 }
 
-func (w *dummyWatcher) EventChan() chan *store.Event {
+func (w *dummyWatcher) EventChan() chan *v2store.Event {
 	return w.echan
 }
 func (w *dummyWatcher) StartIndex() uint64 { return w.sidx }
@@ -1172,7 +1172,7 @@ func TestWriteEvent(t *testing.T) {
 	}
 
 	tests := []struct {
-		ev      *store.Event
+		ev      *v2store.Event
 		noValue bool
 		idx     string
 		// TODO(jonboulle): check body as well as just status code
@@ -1181,10 +1181,10 @@ func TestWriteEvent(t *testing.T) {
 	}{
 		// standard case, standard 200 response
 		{
-			&store.Event{
-				Action:   store.Get,
-				Node:     &store.NodeExtern{},
-				PrevNode: &store.NodeExtern{},
+			&v2store.Event{
+				Action:   v2store.Get,
+				Node:     &v2store.NodeExtern{},
+				PrevNode: &v2store.NodeExtern{},
 			},
 			false,
 			"0",
@@ -1193,10 +1193,10 @@ func TestWriteEvent(t *testing.T) {
 		},
 		// check new nodes return StatusCreated
 		{
-			&store.Event{
-				Action:   store.Create,
-				Node:     &store.NodeExtern{},
-				PrevNode: &store.NodeExtern{},
+			&v2store.Event{
+				Action:   v2store.Create,
+				Node:     &v2store.NodeExtern{},
+				PrevNode: &v2store.NodeExtern{},
 			},
 			false,
 			"0",
@@ -1539,9 +1539,9 @@ func TestServeKeysGood(t *testing.T) {
 	}
 	server := &resServer{
 		res: etcdserver.Response{
-			Event: &store.Event{
-				Action: store.Get,
-				Node:   &store.NodeExtern{},
+			Event: &v2store.Event{
+				Action: v2store.Get,
+				Node:   &v2store.NodeExtern{},
 			},
 		},
 	}
@@ -1564,20 +1564,20 @@ func TestServeKeysEvent(t *testing.T) {
 		req   *http.Request
 		rsp   etcdserver.Response
 		wcode int
-		event *store.Event
+		event *v2store.Event
 	}{
 		{
 			mustNewRequest(t, "foo"),
 			etcdserver.Response{
-				Event: &store.Event{
-					Action: store.Get,
-					Node:   &store.NodeExtern{},
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node:   &v2store.NodeExtern{},
 				},
 			},
 			http.StatusOK,
-			&store.Event{
-				Action: store.Get,
-				Node:   &store.NodeExtern{},
+			&v2store.Event{
+				Action: v2store.Get,
+				Node:   &v2store.NodeExtern{},
 			},
 		},
 		{
@@ -1587,13 +1587,13 @@ func TestServeKeysEvent(t *testing.T) {
 				url.Values{"noValueOnSuccess": []string{"true"}},
 			),
 			etcdserver.Response{
-				Event: &store.Event{
+				Event: &v2store.Event{
 					Action: store.CompareAndSwap,
-					Node:   &store.NodeExtern{},
+					Node:   &v2store.NodeExtern{},
 				},
 			},
 			http.StatusOK,
-			&store.Event{
+			&v2store.Event{
 				Action: store.CompareAndSwap,
 				Node:   nil,
 			},
@@ -1634,7 +1634,7 @@ func TestServeKeysEvent(t *testing.T) {
 
 func TestServeKeysWatch(t *testing.T) {
 	req := mustNewRequest(t, "/foo/bar")
-	ec := make(chan *store.Event)
+	ec := make(chan *v2store.Event)
 	dw := &dummyWatcher{
 		echan: ec,
 	}
@@ -1649,9 +1649,9 @@ func TestServeKeysWatch(t *testing.T) {
 		cluster: &fakeCluster{id: 1},
 	}
 	go func() {
-		ec <- &store.Event{
-			Action: store.Get,
-			Node:   &store.NodeExtern{},
+		ec <- &v2store.Event{
+			Action: v2store.Get,
+			Node:   &v2store.NodeExtern{},
 		}
 	}()
 	rw := httptest.NewRecorder()
@@ -1661,9 +1661,9 @@ func TestServeKeysWatch(t *testing.T) {
 	wcode := http.StatusOK
 	wbody := mustMarshalEvent(
 		t,
-		&store.Event{
-			Action: store.Get,
-			Node:   &store.NodeExtern{},
+		&v2store.Event{
+			Action: v2store.Get,
+			Node:   &v2store.NodeExtern{},
 		},
 	)
 
@@ -1695,12 +1695,12 @@ func TestHandleWatch(t *testing.T) {
 		r := httptest.NewRecorder()
 		return r, r
 	}
-	noopEv := func(chan *store.Event) {}
+	noopEv := func(chan *v2store.Event) {}
 
 	tests := []struct {
 		getCtx   func() context.Context
 		getRwRr  func() (http.ResponseWriter, *httptest.ResponseRecorder)
-		doToChan func(chan *store.Event)
+		doToChan func(chan *v2store.Event)
 
 		wbody string
 	}{
@@ -1708,18 +1708,18 @@ func TestHandleWatch(t *testing.T) {
 			// Normal case: one event
 			context.Background,
 			defaultRwRr,
-			func(ch chan *store.Event) {
-				ch <- &store.Event{
-					Action: store.Get,
-					Node:   &store.NodeExtern{},
+			func(ch chan *v2store.Event) {
+				ch <- &v2store.Event{
+					Action: v2store.Get,
+					Node:   &v2store.NodeExtern{},
 				}
 			},
 
 			mustMarshalEvent(
 				t,
-				&store.Event{
-					Action: store.Get,
-					Node:   &store.NodeExtern{},
+				&v2store.Event{
+					Action: v2store.Get,
+					Node:   &v2store.NodeExtern{},
 				},
 			),
 		},
@@ -1727,7 +1727,7 @@ func TestHandleWatch(t *testing.T) {
 			// Channel is closed, no event
 			context.Background,
 			defaultRwRr,
-			func(ch chan *store.Event) {
+			func(ch chan *v2store.Event) {
 				close(ch)
 			},
 
@@ -1765,7 +1765,7 @@ func TestHandleWatch(t *testing.T) {
 	for i, tt := range tests {
 		rw, rr := tt.getRwRr()
 		wa := &dummyWatcher{
-			echan: make(chan *store.Event, 1),
+			echan: make(chan *v2store.Event, 1),
 			sidx:  10,
 		}
 		tt.doToChan(wa.echan)
@@ -1808,7 +1808,7 @@ func TestHandleWatchStreaming(t *testing.T) {
 		make(chan struct{}, 1),
 	}
 	wa := &dummyWatcher{
-		echan: make(chan *store.Event),
+		echan: make(chan *v2store.Event),
 	}
 
 	// Launch the streaming handler in the background with a cancellable context
@@ -1846,9 +1846,9 @@ func TestHandleWatchStreaming(t *testing.T) {
 
 	// Now send the first event
 	select {
-	case wa.echan <- &store.Event{
-		Action: store.Get,
-		Node:   &store.NodeExtern{},
+	case wa.echan <- &v2store.Event{
+		Action: v2store.Get,
+		Node:   &v2store.NodeExtern{},
 	}:
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for send")
@@ -1864,9 +1864,9 @@ func TestHandleWatchStreaming(t *testing.T) {
 	// And check the body is as expected
 	wbody = mustMarshalEvent(
 		t,
-		&store.Event{
-			Action: store.Get,
-			Node:   &store.NodeExtern{},
+		&v2store.Event{
+			Action: v2store.Get,
+			Node:   &v2store.NodeExtern{},
 		},
 	)
 	g = rw.Body.String()
@@ -1876,9 +1876,9 @@ func TestHandleWatchStreaming(t *testing.T) {
 
 	// Rinse and repeat
 	select {
-	case wa.echan <- &store.Event{
-		Action: store.Get,
-		Node:   &store.NodeExtern{},
+	case wa.echan <- &v2store.Event{
+		Action: v2store.Get,
+		Node:   &v2store.NodeExtern{},
 	}:
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for send")
@@ -1910,33 +1910,33 @@ func TestHandleWatchStreaming(t *testing.T) {
 func TestTrimEventPrefix(t *testing.T) {
 	pre := "/abc"
 	tests := []struct {
-		ev  *store.Event
-		wev *store.Event
+		ev  *v2store.Event
+		wev *v2store.Event
 	}{
 		{
 			nil,
 			nil,
 		},
 		{
-			&store.Event{},
-			&store.Event{},
+			&v2store.Event{},
+			&v2store.Event{},
 		},
 		{
-			&store.Event{Node: &store.NodeExtern{Key: "/abc/def"}},
-			&store.Event{Node: &store.NodeExtern{Key: "/def"}},
+			&v2store.Event{Node: &v2store.NodeExtern{Key: "/abc/def"}},
+			&v2store.Event{Node: &v2store.NodeExtern{Key: "/def"}},
 		},
 		{
-			&store.Event{PrevNode: &store.NodeExtern{Key: "/abc/ghi"}},
-			&store.Event{PrevNode: &store.NodeExtern{Key: "/ghi"}},
+			&v2store.Event{PrevNode: &v2store.NodeExtern{Key: "/abc/ghi"}},
+			&v2store.Event{PrevNode: &v2store.NodeExtern{Key: "/ghi"}},
 		},
 		{
-			&store.Event{
-				Node:     &store.NodeExtern{Key: "/abc/def"},
-				PrevNode: &store.NodeExtern{Key: "/abc/ghi"},
+			&v2store.Event{
+				Node:     &v2store.NodeExtern{Key: "/abc/def"},
+				PrevNode: &v2store.NodeExtern{Key: "/abc/ghi"},
 			},
-			&store.Event{
-				Node:     &store.NodeExtern{Key: "/def"},
-				PrevNode: &store.NodeExtern{Key: "/ghi"},
+			&v2store.Event{
+				Node:     &v2store.NodeExtern{Key: "/def"},
+				PrevNode: &v2store.NodeExtern{Key: "/ghi"},
 			},
 		},
 	}
@@ -1951,28 +1951,28 @@ func TestTrimEventPrefix(t *testing.T) {
 func TestTrimNodeExternPrefix(t *testing.T) {
 	pre := "/abc"
 	tests := []struct {
-		n  *store.NodeExtern
-		wn *store.NodeExtern
+		n  *v2store.NodeExtern
+		wn *v2store.NodeExtern
 	}{
 		{
 			nil,
 			nil,
 		},
 		{
-			&store.NodeExtern{Key: "/abc/def"},
-			&store.NodeExtern{Key: "/def"},
+			&v2store.NodeExtern{Key: "/abc/def"},
+			&v2store.NodeExtern{Key: "/def"},
 		},
 		{
-			&store.NodeExtern{
+			&v2store.NodeExtern{
 				Key: "/abc/def",
-				Nodes: []*store.NodeExtern{
+				Nodes: []*v2store.NodeExtern{
 					{Key: "/abc/def/1"},
 					{Key: "/abc/def/2"},
 				},
 			},
-			&store.NodeExtern{
+			&v2store.NodeExtern{
 				Key: "/def",
-				Nodes: []*store.NodeExtern{
+				Nodes: []*v2store.NodeExtern{
 					{Key: "/def/1"},
 					{Key: "/def/2"},
 				},

@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/etcdserver/v2auth"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/jonboulle/clockwork"
@@ -518,8 +518,8 @@ func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuc
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 	if noValueOnSuccess &&
-		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
-			ev.Action == store.Create || ev.Action == store.Update) {
+		(ev.Action == v2store.Set || ev.Action == v2store.CompareAndSwap ||
+			ev.Action == v2store.Create || ev.Action == v2store.Update) {
 		ev.Node = nil
 		ev.PrevNode = nil
 	}
@@ -599,7 +599,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	}
 }
 
-func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
+func trimEventPrefix(ev *v2store.Event, prefix string) *v2store.Event {
 	if ev == nil {
 		return nil
 	}
@@ -611,7 +611,7 @@ func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
 	return e
 }
 
-func trimNodeExternPrefix(n *store.NodeExtern, prefix string) {
+func trimNodeExternPrefix(n *v2store.NodeExtern, prefix string) {
 	if n == nil {
 		return
 	}

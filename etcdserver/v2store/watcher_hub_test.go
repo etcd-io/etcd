@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package v2store
 
-import (
-	"testing"
-)
+import "testing"
 
 // TestIsHidden tests isHidden functions.
 func TestIsHidden(t *testing.T) {

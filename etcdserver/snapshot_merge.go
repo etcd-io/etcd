@@ -27,7 +27,7 @@ import (
 // as ReadCloser.
 func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) raftsnap.Message {
 	// get a snapshot of v2 store as []byte
-	clone := s.store.Clone()
+	clone := s.v2store.Clone()
 	d, err := clone.SaveNoCopy()
 	if err != nil {
 		plog.Panicf("store save should never fail: %v", err)

@@ -14,7 +14,7 @@
 
 // +build v2v3
 
-package store_test
+package v2store_test
 
 import (
 	"io/ioutil"
@@ -22,8 +22,8 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v2v3"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/internal/store"
 
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/grpc/grpclog"
@@ -35,7 +35,7 @@ func init() {
 }
 
 type v2v3TestStore struct {
-	store.Store
+	v2store.Store
 	clus *integration.ClusterV3
 	t    *testing.T
 }

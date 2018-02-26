@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package v2store
 
-import (
-	"container/heap"
-)
+import "container/heap"
 
 // An TTLKeyHeap is a min-heap of TTLKeys order by expiration time
 type ttlKeyHeap struct {

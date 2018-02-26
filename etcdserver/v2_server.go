@@ -19,7 +19,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 )
 
 type RequestV2 pb.Request
@@ -39,11 +39,11 @@ type reqV2HandlerEtcdServer struct {
 }
 
 type reqV2HandlerStore struct {
-	store   store.Store
+	store   v2store.Store
 	applier ApplierV2
 }
 
-func NewStoreRequestV2Handler(s store.Store, applier ApplierV2) RequestV2Handler {
+func NewStoreRequestV2Handler(s v2store.Store, applier ApplierV2) RequestV2Handler {
 	return &reqV2HandlerStore{s, applier}
 }
 
@@ -122,7 +122,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	r.ID = s.reqIDGen.Next()
 	h := &reqV2HandlerEtcdServer{
 		reqV2HandlerStore: reqV2HandlerStore{
-			store:   s.store,
+			store:   s.v2store,
 			applier: s.applyV2,
 		},
 		s: s,

@@ -38,10 +38,10 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/raftsnap"
-	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -112,8 +112,8 @@ func init() {
 type Response struct {
 	Term    uint64
 	Index   uint64
-	Event   *store.Event
-	Watcher store.Watcher
+	Event   *v2store.Event
+	Watcher v2store.Watcher
 	Err     error
 }
 
@@ -205,7 +205,7 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	store       store.Store
+	v2store     v2store.Store
 	snapshotter *raftsnap.Snapshotter
 
 	applyV2 ApplierV2
@@ -256,7 +256,7 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
-	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
+	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	var (
 		w  *wal.WAL
@@ -414,7 +414,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		readych:     make(chan struct{}),
 		Cfg:         cfg,
 		errorc:      make(chan error, 1),
-		store:       st,
+		v2store:     st,
 		snapshotter: ss,
 		r: *newRaftNode(
 			raftNodeConfig{
@@ -436,7 +436,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		forceVersionC: make(chan struct{}),
 	}
 
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	srv.be = be
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
@@ -783,7 +783,7 @@ func (s *EtcdServer) run() {
 			plog.Infof("the data-dir used by this member must be removed.")
 			return
 		case <-getSyncC():
-			if s.store.HasTTLKeys() {
+			if s.v2store.HasTTLKeys() {
 				s.sync(s.Cfg.ReqTimeout())
 			}
 		case <-s.stop:
@@ -881,7 +881,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 
 	plog.Info("recovering store v2...")
-	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
+	if err := s.v2store.Recovery(apply.snapshot.Data); err != nil {
 		plog.Panicf("recovery store error: %v", err)
 	}
 	plog.Info("finished recovering store v2")
@@ -1047,7 +1047,7 @@ func (s *EtcdServer) LeaderStats() []byte {
 	return s.lstats.JSON()
 }
 
-func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
+func (s *EtcdServer) StoreStats() []byte { return s.v2store.JsonStats() }
 
 func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) error {
 	if s.authStore == nil {
@@ -1441,7 +1441,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
-	clone := s.store.Clone()
+	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
 	// KV().commit() updates the consistent index in backend.
 	// All operations that update consistent index must be called sequentially

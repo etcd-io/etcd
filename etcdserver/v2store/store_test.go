@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store_test
+package v2store_test
 
 import (
 	"testing"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
 type StoreCloser interface {
-	store.Store
+	v2store.Store
 	Close()
 }
 
@@ -43,7 +43,7 @@ func TestStoreGetValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	var eidx uint64 = 1
 	e, err := s.Get("/foo", false, false)
 	testutil.AssertNil(t, err)
@@ -58,18 +58,18 @@ func TestStoreGetSorted(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/x", false, "0", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/z", false, "0", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/y", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/y/a", false, "0", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	s.Create("/foo/y/b", false, "0", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/x", false, "0", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/z", false, "0", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/y", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	s.Create("/foo/y/a", false, "0", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
+	s.Create("/foo/y/b", false, "0", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	var eidx uint64 = 6
 	e, err := s.Get("/foo", true, true)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 
-	var yNodes store.NodeExterns
+	var yNodes v2store.NodeExterns
 	sortedStrings := []string{"/foo/x", "/foo/y", "/foo/z"}
 	for i := range e.Node.Nodes {
 		node := e.Node.Nodes[i]
@@ -96,7 +96,7 @@ func TestSet(t *testing.T) {
 
 	// Set /foo=""
 	var eidx uint64 = 1
-	e, err := s.Set("/foo", false, "", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err := s.Set("/foo", false, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "set")
@@ -110,7 +110,7 @@ func TestSet(t *testing.T) {
 
 	// Set /foo="bar"
 	eidx = 2
-	e, err = s.Set("/foo", false, "bar", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err = s.Set("/foo", false, "bar", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "set")
@@ -128,7 +128,7 @@ func TestSet(t *testing.T) {
 	testutil.AssertEqual(t, e.PrevNode.ModifiedIndex, uint64(1))
 	// Set /foo="baz" (for testing prevNode)
 	eidx = 3
-	e, err = s.Set("/foo", false, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err = s.Set("/foo", false, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "set")
@@ -147,7 +147,7 @@ func TestSet(t *testing.T) {
 
 	// Set /dir as a directory
 	eidx = 4
-	e, err = s.Set("/dir", true, "", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err = s.Set("/dir", true, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "set")
@@ -167,7 +167,7 @@ func TestStoreCreateValue(t *testing.T) {
 
 	// Create /foo=bar
 	var eidx uint64 = 1
-	e, err := s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err := s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -181,7 +181,7 @@ func TestStoreCreateValue(t *testing.T) {
 
 	// Create /empty=""
 	eidx = 2
-	e, err = s.Create("/empty", false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err = s.Create("/empty", false, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -201,7 +201,7 @@ func TestStoreCreateDirectory(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 1
-	e, err := s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err := s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -215,10 +215,10 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 	defer s.Close()
 
 	// create /foo as dir
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 
 	// create /foo as dir again
-	e, _err := s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, _err := s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeNodeExist)
 	testutil.AssertEqual(t, err.Message, "Key already exists")
@@ -233,10 +233,10 @@ func TestStoreUpdateValue(t *testing.T) {
 	defer s.Close()
 
 	// create /foo=bar
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	// update /foo="bzr"
 	var eidx uint64 = 2
-	e, err := s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err := s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
@@ -257,7 +257,7 @@ func TestStoreUpdateValue(t *testing.T) {
 
 	// update /foo=""
 	eidx = 3
-	e, err = s.Update("/foo", "", store.TTLOptionSet{ExpireTime: store.Permanent})
+	e, err = s.Update("/foo", "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
@@ -282,8 +282,8 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e, _err := s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	e, _err := s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeNotFile)
 	testutil.AssertEqual(t, err.Message, "Not a file")
@@ -297,7 +297,7 @@ func TestStoreDeleteValue(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.Delete("/foo", false, false)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
@@ -315,7 +315,7 @@ func TestStoreDeleteDirectory(t *testing.T) {
 
 	// create directory /foo
 	var eidx uint64 = 2
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	// delete /foo with dir = true and recursive = false
 	// this should succeed, since the directory is empty
 	e, err := s.Delete("/foo", true, false)
@@ -328,7 +328,7 @@ func TestStoreDeleteDirectory(t *testing.T) {
 	testutil.AssertEqual(t, e.PrevNode.Dir, true)
 
 	// create directory /foo and directory /foo/bar
-	_, err = s.Create("/foo/bar", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	_, err = s.Create("/foo/bar", true, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	// delete /foo with dir = true and recursive = false
 	// this should fail, since the directory is not empty
@@ -351,7 +351,7 @@ func TestStoreDeleteDirectoryFailsIfNonRecursiveAndDir(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.Delete("/foo", false, false)
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeNotFile)
@@ -364,19 +364,19 @@ func TestRootRdOnly(t *testing.T) {
 	defer s.Close()
 
 	for _, tt := range []string{"/", "/0"} {
-		_, err := s.Set(tt, true, "", store.TTLOptionSet{ExpireTime: store.Permanent})
+		_, err := s.Set(tt, true, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 		testutil.AssertNotNil(t, err)
 
 		_, err = s.Delete(tt, true, true)
 		testutil.AssertNotNil(t, err)
 
-		_, err = s.Create(tt, true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+		_, err = s.Create(tt, true, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 		testutil.AssertNotNil(t, err)
 
-		_, err = s.Update(tt, "", store.TTLOptionSet{ExpireTime: store.Permanent})
+		_, err = s.Update(tt, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 		testutil.AssertNotNil(t, err)
 
-		_, err = s.CompareAndSwap(tt, "", 0, "", store.TTLOptionSet{ExpireTime: store.Permanent})
+		_, err = s.CompareAndSwap(tt, "", 0, "", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 		testutil.AssertNotNil(t, err)
 	}
 }
@@ -386,7 +386,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndDelete("/foo", "bar", 0)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
@@ -406,7 +406,7 @@ func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndDelete("/foo", "baz", 0)
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeTestFailed)
@@ -422,7 +422,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndDelete("/foo", "", 1)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
@@ -440,7 +440,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndDelete("/foo", "", 100)
 	testutil.AssertNotNil(t, _err)
 	err := _err.(*etcdErr.Error)
@@ -457,7 +457,7 @@ func TestStoreCompareAndDeleteDirectoryFail(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 
-	s.Create("/foo", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	_, _err := s.CompareAndDelete("/foo", "", 0)
 	testutil.AssertNotNil(t, _err)
 	err := _err.(*etcdErr.Error)
@@ -470,8 +470,8 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	defer s.Close()
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
@@ -492,8 +492,8 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeTestFailed)
 	testutil.AssertEqual(t, err.Message, "Compare failed")
@@ -508,8 +508,8 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e, err := s.CompareAndSwap("/foo", "", 1, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	e, err := s.CompareAndSwap("/foo", "", 1, "baz", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
@@ -531,8 +531,8 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	err := _err.(*etcdErr.Error)
 	testutil.AssertEqual(t, err.ErrorCode, etcdErr.EcodeTestFailed)
 	testutil.AssertEqual(t, err.Message, "Compare failed")
@@ -550,7 +550,7 @@ func TestStoreWatchCreate(t *testing.T) {
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	eidx = 1
 	e := timeoutSelect(t, c)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
@@ -572,7 +572,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 1
-	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -584,11 +584,11 @@ func TestStoreWatchUpdate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
-	s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
@@ -600,12 +600,12 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, err := s.Watch("/foo", true, false, 0)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
-	s.Update("/foo/bar", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Update("/foo/bar", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
@@ -617,7 +617,7 @@ func TestStoreWatchDelete(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
@@ -633,7 +633,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, err := s.Watch("/foo", true, false, 0)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
@@ -650,11 +650,11 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
-	s.CompareAndSwap("/foo", "bar", 0, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.CompareAndSwap("/foo", "bar", 0, "baz", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
@@ -666,11 +666,11 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
-	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
@@ -684,7 +684,7 @@ func TestStoreWatchStream(t *testing.T) {
 	var eidx uint64 = 1
 	w, _ := s.Watch("/foo", false, true, 0)
 	// first modification
-	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -697,7 +697,7 @@ func TestStoreWatchStream(t *testing.T) {
 	}
 	// second modification
 	eidx = 2
-	s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e = timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
@@ -716,7 +716,7 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	defer s.Close()
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo", false, false, 0)
-	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/_foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -733,17 +733,17 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	w, _ := s.Watch("/foo", true, false, 0)
-	s.Create("/foo/_bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/_bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	e := nbselect(w.EventChan())
 	testutil.AssertNil(t, e)
 	w, _ = s.Watch("/foo", true, false, 0)
-	s.Create("/foo/_baz", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/_baz", true, "", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	select {
 	case e = <-w.EventChan():
 		testutil.AssertNil(t, e)
 	case <-time.After(100 * time.Millisecond):
 	}
-	s.Create("/foo/_baz/quux", false, "quux", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/_baz/quux", false, "quux", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	select {
 	case e = <-w.EventChan():
 		testutil.AssertNil(t, e)
@@ -755,9 +755,9 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
-	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/_foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
-	s.Update("/_foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Update("/_foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.Action, "update")
 	testutil.AssertEqual(t, e.Node.Key, "/_foo")
@@ -769,9 +769,9 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
-	s.Create("/foo/_bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/_bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
-	s.Update("/foo/_bar", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Update("/foo/_bar", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e := nbselect(w.EventChan())
 	testutil.AssertNil(t, e)
 }
@@ -781,7 +781,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 2
-	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/_foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Delete("/_foo", false, false)
 	e := timeoutSelect(t, w.EventChan())
@@ -796,7 +796,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
-	s.Create("/foo/_bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/foo/_bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	s.Delete("/foo/_bar", false, false)
 	e := nbselect(w.EventChan())
@@ -809,7 +809,7 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	defer s.Close()
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo/bar", true, false, 0)
-	s.Create("/_foo/bar/baz", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
+	s.Create("/_foo/bar/baz", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
 
 	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertNotNil(t, e)
@@ -831,13 +831,13 @@ func TestStoreWatchSlowConsumer(t *testing.T) {
 	s.Watch("/foo", true, true, 0) // stream must be true
 	// Fill watch channel with 100 events
 	for i := 1; i <= 100; i++ {
-		s.Set("/foo", false, string(i), store.TTLOptionSet{ExpireTime: store.Permanent}) // ok
+		s.Set("/foo", false, string(i), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // ok
 	}
 	// testutil.AssertEqual(t, s.WatcherHub.count, int64(1))
-	s.Set("/foo", false, "101", store.TTLOptionSet{ExpireTime: store.Permanent}) // ok
+	s.Set("/foo", false, "101", v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // ok
 	// remove watcher
 	// testutil.AssertEqual(t, s.WatcherHub.count, int64(0))
-	s.Set("/foo", false, "102", store.TTLOptionSet{ExpireTime: store.Permanent}) // must not panic
+	s.Set("/foo", false, "102", v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // must not panic
 }
 
 // Performs a non-blocking select on an event channel.
