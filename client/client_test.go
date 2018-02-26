@@ -483,8 +483,14 @@ func (f fakeCancelContext) Done() <-chan struct{} {
 func (f fakeCancelContext) Err() error                        { return fakeCancelContextError }
 func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
 
-func withTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
-	return parent, func() { parent = nil }
+func withTimeout(parent context.Context, timeout time.Duration) (
+	ctx context.Context,
+	cancel context.CancelFunc) {
+	ctx = parent
+	cancel = func() {
+		ctx = nil
+	}
+	return ctx, cancel
 }
 
 func TestHTTPClusterClientDoCanceledContext(t *testing.T) {

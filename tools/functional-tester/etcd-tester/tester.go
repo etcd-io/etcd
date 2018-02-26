@@ -245,26 +245,26 @@ func (tt *tester) cleanup() error {
 }
 
 func (tt *tester) pauseStresser() {
-	plog.Infof("%s pausing the stressers...", tt.logPrefix())
+	plog.Infof("%s pausing the stressing clients...", tt.logPrefix())
 	tt.stresser.Pause()
-	plog.Infof("%s paused stressers", tt.logPrefix())
+	plog.Infof("%s paused stressing clients", tt.logPrefix())
 }
 
 func (tt *tester) startStresser() (err error) {
-	plog.Infof("%s starting the stressers...", tt.logPrefix())
+	plog.Infof("%s starting the stressing clients...", tt.logPrefix())
 	err = tt.stresser.Stress()
-	plog.Infof("%s started stressers", tt.logPrefix())
+	plog.Infof("%s started stressing clients", tt.logPrefix())
 	return err
 }
 
 func (tt *tester) closeStresser() {
-	plog.Infof("%s closing the stressers...", tt.logPrefix())
+	plog.Infof("%s closing the stressing clients...", tt.logPrefix())
 	tt.stresser.Close()
-	plog.Infof("%s closed stressers", tt.logPrefix())
+	plog.Infof("%s closed stressing clients", tt.logPrefix())
 }
 
 func (tt *tester) resetStressCheck() error {
-	plog.Infof("%s resetting stressers and checkers...", tt.logPrefix())
+	plog.Infof("%s resetting stressing clients and checkers...", tt.logPrefix())
 	cs := &compositeStresser{}
 	for _, m := range tt.cluster.Members {
 		s := NewStresser(tt.stresserType, &tt.scfg, m)

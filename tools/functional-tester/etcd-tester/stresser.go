@@ -51,7 +51,7 @@ func (s *nopStresser) ModifiedKeys() int64 {
 func (s *nopStresser) Checker() Checker { return nil }
 
 // compositeStresser implements a Stresser that runs a slice of
-// stressers concurrently.
+// stressing clients concurrently.
 type compositeStresser struct {
 	stressers []Stresser
 }
@@ -141,7 +141,7 @@ func NewStresser(s string, sc *stressConfig, m *member) Stresser {
 	case "nop":
 		return &nopStresser{start: time.Now(), qps: int(sc.rateLimiter.Limit())}
 	case "keys":
-		// TODO: Too intensive stressers can panic etcd member with
+		// TODO: Too intensive stressing clients can panic etcd member with
 		// 'out of memory' error. Put rate limits in server side.
 		return &keyStresser{
 			Endpoint:          m.grpcAddr(),
