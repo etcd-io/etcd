@@ -56,7 +56,7 @@ func main() {
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
-	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop, election-runner, watch-runner, lock-racer-runner, lease-runner).")
+	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressing clients (keys, lease, v2keys, nop, election-runner, watch-runner, lock-racer-runner, lease-runner).")
 	etcdRunnerPath := flag.String("etcd-runner", "", "specify a path of etcd runner binary")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	failpoints := flag.String("failpoints", `panic("etcd-tester")`, `comma separated list of failpoint terms to inject (e.g. 'panic("etcd-tester"),1*sleep(1000)')`)
