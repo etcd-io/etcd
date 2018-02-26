@@ -74,6 +74,7 @@ tools_build() {
 	for tool in ${tools_path}
 	do
 		echo "Building" "'${tool}'"...
+		# shellcheck disable=SC2086
 		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
 		  -installsuffix cgo \
 		  -ldflags "${GO_LDFLAGS}" \
