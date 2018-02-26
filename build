@@ -41,6 +41,23 @@ etcd_build() {
 	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
 }
 
+etcd_setup_gopath() {
+	echo "Setting GOPATH from vendor directory at 'gopath'"
+	d=$(dirname "$0")
+	CDIR=$(cd "$d" && pwd)
+	cd "$CDIR"
+	etcdGOPATH="${CDIR}/gopath"
+	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
+	if [ -n "$GOPATH" ]; then
+		GOPATH=":$GOPATH"
+	fi
+	export GOPATH=${etcdGOPATH}$GOPATH
+	rm -rf "${etcdGOPATH}/src"
+	mkdir -p "${etcdGOPATH}" "${etcdGOPATH}/src/github.com/coreos/"
+	ln -s "${CDIR}/vendor" "${etcdGOPATH}/src"
+	ln -s "${CDIR}" "${etcdGOPATH}/src/github.com/coreos"
+}
+
 toggle_failpoints_default
 
 # only build when called directly, not sourced
