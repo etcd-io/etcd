@@ -59,6 +59,9 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// wait for membership reconfiguration apply
+	time.Sleep(testutil.ApplyTimeout)
+
 	cfg := embed.NewConfig()
 	cfg.Name = "3"
 	cfg.InitialClusterToken = testClusterTkn
@@ -102,16 +105,21 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	if len(mresp.Members) != 4 {
 		t.Fatalf("expected 4 members, got %+v", mresp)
 	}
-	for i := range kvs {
-		var gresp *clientv3.GetResponse
-		ctx, cancel = context.WithTimeout(context.Background(), testutil.RequestTimeout)
-		gresp, err = cli2.Get(ctx, kvs[i].k)
-		cancel()
-		if err != nil {
-			t.Fatal(err)
+
+	// make sure restored cluster has kept all data on recovery
+	var gresp *clientv3.GetResponse
+	ctx, cancel = context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	gresp, err = cli2.Get(ctx, "foo", clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range gresp.Kvs {
+		if string(gresp.Kvs[i].Key) != kvs[i].k {
+			t.Fatalf("#%d: key expected %s, got %s", i, kvs[i].k, string(gresp.Kvs[i].Key))
 		}
-		if string(gresp.Kvs[0].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[0].Value))
+		if string(gresp.Kvs[i].Value) != kvs[i].v {
+			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[i].Value))
 		}
 	}
 }
