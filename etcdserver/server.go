@@ -29,6 +29,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -36,7 +37,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/internal/alarm"
 	"github.com/coreos/etcd/internal/auth"
-	"github.com/coreos/etcd/internal/compactor"
 	"github.com/coreos/etcd/internal/discovery"
 	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/lease/leasehttp"
