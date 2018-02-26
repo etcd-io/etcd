@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/alarm"
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api"
@@ -37,7 +38,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/internal/auth"
 	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/lease/leasehttp"
 	"github.com/coreos/etcd/internal/mvcc"

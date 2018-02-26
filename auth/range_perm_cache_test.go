@@ -17,7 +17,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/coreos/etcd/internal/auth/authpb"
+	"github.com/coreos/etcd/auth/authpb"
 	"github.com/coreos/etcd/pkg/adt"
 )
 

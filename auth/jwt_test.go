@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	jwtPubKey  = "../../integration/fixtures/server.crt"
-	jwtPrivKey = "../../integration/fixtures/server.key.insecure"
+	jwtPubKey  = "../integration/fixtures/server.crt"
+	jwtPrivKey = "../integration/fixtures/server.key.insecure"
 )
 
 func TestJWTInfo(t *testing.T) {
