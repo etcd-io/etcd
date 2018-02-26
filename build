@@ -64,21 +64,21 @@ etcd_build() {
 tools_build() {
 	out="bin"
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
-	# shellcheck disable=SC2039
-	tools=(
-		benchmark
-		etcd-dump-db
-		etcd-dump-logs
-		functional-tester/etcd-agent
-		functional-tester/etcd-tester
-		functional-tester/etcd-runner
-		local-tester/bridge
-	)
-	# shellcheck disable=SC2039
-	for tool in "${tools[@]}"
+	tools_path="benchmark
+	etcd-dump-db
+	etcd-dump-logs
+	functional-tester/etcd-agent
+	functional-tester/etcd-tester
+	functional-tester/etcd-runner
+	local-tester/bridge"
+	for tool in ${tools_path}
 	do
+		echo "Building" "'${tool}'"...
 		# shellcheck disable=SC2086
-		CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/${tool}" "${REPO_PATH}/tools/${tool}" || return
+		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
+		  -installsuffix cgo \
+		  -ldflags "${GO_LDFLAGS}" \
+		  -o "${out}/${tool}" "${REPO_PATH}/tools/${tool}" || return
 	done
 }
 
