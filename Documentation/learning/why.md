@@ -47,7 +47,7 @@ When considering features, support, and stability, new applications planning to 
 
 ### Consul
 
-Consul bills itself as an end-to-end service discovery framework. To wit, it includes services such as health checking, failure detection, and DNS. Incidentally, Consul also exposes a key value store with mediocre performance and an intricate API. As it stands in Consul 0.7, the storage system does not scales well; systems requiring millions of keys will suffer from high latencies and memory pressure. The key value API is missing, most notably, multi-version keys, conditional transactions, and reliable streaming watches.
+Consul is an end-to-end service discovery framework. It provides built-in health checking, failure detection, and DNS services. In addition, Consul exposes a key value store with RESTful HTTP APIs. [As it stands in Consul 1.0][dbtester-comparison-results], the storage system does not scale as well as other systems like etcd or Zookeeper in key-value operations; systems requiring millions of keys will suffer from high latencies and memory pressure. The key value API is missing, most notably, multi-version keys, conditional transactions, and reliable streaming watches.
 
 etcd and Consul solve different problems. If looking for a distributed consistent key value store, etcd is a better choice over Consul. If looking for end-to-end cluster service discovery, etcd will not have enough features; choose Kubernetes, Consul, or SmartStack.
 
@@ -113,3 +113,4 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [container-linux]: https://coreos.com/why
 [locksmith]: https://github.com/coreos/locksmith
 [kubernetes]: http://kubernetes.io/docs/whatisk8s
+[dbtester-comparison-results]: https://github.com/coreos/dbtester/tree/master/test-results/2018Q1-02-etcd-zookeeper-consul
