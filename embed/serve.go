@@ -48,6 +48,7 @@ import (
 type serveCtx struct {
 	l        net.Listener
 	addr     string
+	network  string
 	secure   bool
 	insecure bool
 
@@ -194,7 +195,14 @@ type registerHandlerFunc func(context.Context, *gw.ServeMux, *grpc.ClientConn) e
 
 func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
-	conn, err := grpc.DialContext(ctx, sctx.addr, opts...)
+
+	addr := sctx.addr
+	// explictly define unix network for gRPC socket support
+	if network := sctx.network; network == "unix" {
+		addr = fmt.Sprintf("%s://%s", network, addr)
+	}
+
+	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		return nil, err
 	}
