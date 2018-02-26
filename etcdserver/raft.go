@@ -500,6 +500,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 		Storage:         s,
 		MaxSizePerMsg:   maxSizePerMsg,
 		MaxInflightMsgs: maxInflightMsgs,
+		CheckQuorum:     true,
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
