@@ -104,6 +104,8 @@ type KV interface {
 	// Read creates a read transaction.
 	Read() TxnRead
 
+	StaleConcurrentRead() TxnRead
+
 	// Write creates a write transaction.
 	Write() TxnWrite
 

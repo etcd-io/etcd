@@ -47,6 +47,12 @@ var (
 )
 
 type Backend interface {
+	// StaleConcurrentReadTx returns a transcation for concurrent read. It does not observe
+	// the uncommitted writes happened in the pending or any future batch transcations.
+	// It does not block batch transcation.
+	StaleConcurrentReadTx() ReadTx
+	// ReadTx returns a transcation for read. It can observe the uncommitted writes
+	// happened in the pending batch transcation. It blocks batch transcation until closed.
 	ReadTx() ReadTx
 	BatchTx() BatchTx
 
@@ -171,6 +177,14 @@ func (b *backend) BatchTx() BatchTx {
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
+
+func (b *backend) StaleConcurrentReadTx() ReadTx {
+	tx, err := b.db.Begin(false)
+	if err != nil {
+		plog.Fatalf("cannot begin tx (%s)", err)
+	}
+	return &staleConcurrentReadTx{tx: tx}
+}
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
