@@ -79,8 +79,9 @@ var (
 	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
 	DefaultAdvertiseClientURLs      = "http://localhost:2379"
 
-	defaultHostname   string
-	defaultHostStatus error
+	defaultHostname      string
+	defaultHostStatus    error
+	defaultHostWhitelist = []string{} // if empty, allow all
 )
 
 var (
@@ -170,6 +171,32 @@ type Config struct {
 	ClientAutoTLS bool
 	PeerTLSInfo   transport.TLSInfo
 	PeerAutoTLS   bool
+
+	// HostWhitelist lists acceptable hostnames from HTTP client requests.
+	// Client origin policy protects against "DNS Rebinding" attacks
+	// to insecure etcd servers. That is, any website can simply create
+	// an authorized DNS name, and direct DNS to "localhost" (or any
+	// other address). Then, all HTTP endpoints of etcd server listening
+	// on "localhost" becomes accessible, thus vulnerable to DNS rebinding
+	// attacks. See "CVE-2018-5702" for more detail.
+	//
+	// 1. If client connection is secure via HTTPS, allow any hostnames.
+	// 2. If client connection is not secure and "HostWhitelist" is not empty,
+	//    only allow HTTP requests whose Host field is listed in whitelist.
+	//
+	// Note that the client origin policy is enforced whether authentication
+	// is enabled or not, for tighter controls.
+	//
+	// By default, "HostWhitelist" is empty, which allows any hostnames.
+	// Note that when specifying hostnames, loopback addresses are not added
+	// automatically. To allow loopback interfaces, leave it empty or add them
+	// to whitelist manually (e.g. "localhost", "127.0.0.1", etc.).
+	//
+	// CVE-2018-5702 reference:
+	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
+	// - https://github.com/transmission/transmission/pull/468
+	// - https://github.com/coreos/etcd/issues/9353
+	HostWhitelist []string `json:"host-whitelist"`
 
 	// debug
 
@@ -264,6 +291,7 @@ func NewConfig() *Config {
 		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              DefaultEnableV2,
+		HostWhitelist:         defaultHostWhitelist,
 		AuthToken:             "simple",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
