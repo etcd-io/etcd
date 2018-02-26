@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/pkg/types"
 )
 

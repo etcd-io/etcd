@@ -31,7 +31,7 @@ import (
 
 	etcdserverpb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
-	mvccpb "github.com/coreos/etcd/internal/mvcc/mvccpb"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 
 	context "golang.org/x/net/context"
 

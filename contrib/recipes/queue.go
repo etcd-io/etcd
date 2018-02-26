@@ -18,7 +18,7 @@ import (
 	"context"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 // Queue implements a multi-reader, multi-writer distributed queue.

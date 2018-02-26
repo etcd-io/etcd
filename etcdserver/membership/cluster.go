@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/v2store"
-	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"

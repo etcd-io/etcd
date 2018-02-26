@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 
 	bolt "github.com/coreos/bbolt"
 )

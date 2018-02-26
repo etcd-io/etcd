@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/mvcc"
 
 	"github.com/jonboulle/clockwork"
 )

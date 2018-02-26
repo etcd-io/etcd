@@ -26,7 +26,7 @@ import (
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"

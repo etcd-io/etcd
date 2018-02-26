@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/mvcc/mvccpb"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,

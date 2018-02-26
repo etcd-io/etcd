@@ -19,7 +19,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 // AutoWatchID is the watcher ID passed in WatchStream.Watch when no

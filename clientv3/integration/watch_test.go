@@ -27,7 +27,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
-	mvccpb "github.com/coreos/etcd/internal/mvcc/mvccpb"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"

@@ -20,7 +20,7 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	mvccpb "github.com/coreos/etcd/internal/mvcc/mvccpb"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 type pbPrinter struct{ printer }
