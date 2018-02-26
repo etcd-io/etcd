@@ -19,11 +19,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	bolt "github.com/coreos/bbolt"
-	"github.com/coreos/etcd/internal/lease/leasepb"
 	"github.com/coreos/etcd/internal/mvcc"
 	"github.com/coreos/etcd/internal/mvcc/backend"
 	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/lease/leasepb"
+
+	bolt "github.com/coreos/bbolt"
 )
 
 func snapDir(dataDir string) string {

@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/mvcc/backend"
+	"github.com/coreos/etcd/lease"
 )
 
 func TestRenewHTTP(t *testing.T) {

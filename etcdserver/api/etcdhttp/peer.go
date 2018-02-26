@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/internal/lease/leasehttp"
+	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/rafthttp"
 )
 

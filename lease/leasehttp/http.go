@@ -24,8 +24,8 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/internal/lease"
-	"github.com/coreos/etcd/internal/lease/leasepb"
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/pkg/httputil"
 )
 

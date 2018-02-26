@@ -22,8 +22,8 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/internal/lease"
 	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/lease"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
