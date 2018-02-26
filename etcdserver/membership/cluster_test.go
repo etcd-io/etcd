@@ -544,7 +544,7 @@ func TestClusterUpdateAttributes(t *testing.T) {
 }
 
 func TestNodeToMember(t *testing.T) {
-	n := &store.NodeExtern{Key: "/1234", Nodes: []*v2store.NodeExtern{
+	n := &v2store.NodeExtern{Key: "/1234", Nodes: []*v2store.NodeExtern{
 		{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}

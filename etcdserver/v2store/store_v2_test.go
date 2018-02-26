@@ -39,9 +39,9 @@ func TestStoreRecover(t *testing.T) {
 	defer s.Close()
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	s.Create("/foo/x", false, "bar", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
+	s.Create("/foo/x", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	s.Update("/foo/x", "barbar", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	s.Create("/foo/y", false, "baz", false, v2store.TTLOptionSet{ExpireTime:v2 store.Permanent})
+	s.Create("/foo/y", false, "baz", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	b, err := s.Save()
 	testutil.AssertNil(t, err)
 

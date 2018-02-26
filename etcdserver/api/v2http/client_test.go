@@ -1588,13 +1588,13 @@ func TestServeKeysEvent(t *testing.T) {
 			),
 			etcdserver.Response{
 				Event: &v2store.Event{
-					Action: store.CompareAndSwap,
+					Action: v2store.CompareAndSwap,
 					Node:   &v2store.NodeExtern{},
 				},
 			},
 			http.StatusOK,
 			&v2store.Event{
-				Action: store.CompareAndSwap,
+				Action: v2store.CompareAndSwap,
 				Node:   nil,
 			},
 		},

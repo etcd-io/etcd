@@ -29,7 +29,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/v2store"
-	"github.com/coreos/etcd/internal/store"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -90,7 +89,7 @@ func TestDoLocalAction(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
 		srv := &EtcdServer{
-			store:    st,
+			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
 		resp, err := srv.Do(context.TODO(), tt.req)
@@ -143,7 +142,7 @@ func TestDoBadLocalAction(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewErrRecorder(storeErr)
 		srv := &EtcdServer{
-			store:    st,
+			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
 		resp, err := srv.Do(context.Background(), tt.req)
@@ -179,12 +178,12 @@ func TestApplyRepeat(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 	s.start()
 	req := &pb.Request{Method: "QGET", ID: uint64(1)}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
@@ -449,8 +448,8 @@ func TestApplyRequest(t *testing.T) {
 
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
-		srv := &EtcdServer{store: st}
-		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+		srv := &EtcdServer{v2store: st}
+		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 		resp := srv.applyV2Request((*RequestV2)(&tt.req))
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -466,10 +465,10 @@ func TestApplyRequest(t *testing.T) {
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	cl := newTestCluster([]*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
-		store:   mockstore.NewRecorder(),
+		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	req := pb.Request{
 		Method: "PUT",
@@ -686,11 +685,11 @@ func TestDoProposal(t *testing.T) {
 		srv := &EtcdServer{
 			Cfg:        ServerConfig{TickMs: 1},
 			r:          *r,
-			store:      st,
+			v2store:    st,
 			reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 			SyncTicker: &time.Ticker{},
 		}
-		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 		srv.start()
 		resp, err := srv.Do(context.Background(), tt)
 		srv.Stop()
@@ -718,7 +717,7 @@ func TestDoProposalCancelled(t *testing.T) {
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -740,7 +739,7 @@ func TestDoProposalTimeout(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 0)
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
@@ -757,7 +756,7 @@ func TestDoProposalStopped(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	srv.stopping = make(chan struct{})
 	close(srv.stopping)
@@ -777,7 +776,7 @@ func TestSync(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -820,7 +819,7 @@ func TestSyncTimeout(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -858,7 +857,7 @@ func TestSyncTrigger(t *testing.T) {
 	srv := &EtcdServer{
 		Cfg:        ServerConfig{TickMs: 1},
 		r:          *r,
-		store:      mockstore.NewNop(),
+		v2store:    mockstore.NewNop(),
 		SyncTicker: tk,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -914,8 +913,8 @@ func TestSnapshot(t *testing.T) {
 		storage:     p,
 	})
 	srv := &EtcdServer{
-		r:     *r,
-		store: st,
+		r:       *r,
+		v2store: st,
 	}
 	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
@@ -958,7 +957,7 @@ func TestSnapshot(t *testing.T) {
 // snapshot db is applied.
 func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
-	st := store.New()
+	st := v2store.New()
 	cl := membership.NewCluster("abc")
 	cl.SetStore(st)
 
@@ -986,12 +985,12 @@ func TestSnapshotOrdering(t *testing.T) {
 	s := &EtcdServer{
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
-		store:       st,
+		v2store:     st,
 		snapshotter: raftsnap.New(snapdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer os.RemoveAll(tmpPath)
@@ -1047,11 +1046,11 @@ func TestTriggerSnap(t *testing.T) {
 	srv := &EtcdServer{
 		Cfg:        ServerConfig{TickMs: 1, SnapCount: uint64(snapc)},
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
@@ -1086,7 +1085,7 @@ func TestTriggerSnap(t *testing.T) {
 // proposals.
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	n := newNopReadyNode()
-	st := store.New()
+	st := v2store.New()
 	cl := membership.NewCluster("abc")
 	cl.SetStore(st)
 
@@ -1111,12 +1110,12 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	s := &EtcdServer{
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
-		store:       st,
+		v2store:     st,
 		snapshotter: raftsnap.New(testdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer func() {
@@ -1184,7 +1183,7 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
+	st := v2store.New()
 	cl.SetStore(st)
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
@@ -1194,7 +1193,7 @@ func TestAddMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
@@ -1224,7 +1223,7 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
+	st := v2store.New()
 	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
@@ -1235,7 +1234,7 @@ func TestRemoveMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
@@ -1264,7 +1263,7 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
+	st := v2store.New()
 	cl.SetStore(st)
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
@@ -1275,7 +1274,7 @@ func TestUpdateMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
