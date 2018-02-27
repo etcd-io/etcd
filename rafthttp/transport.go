@@ -338,8 +338,8 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 }
 
 func (t *Transport) ActiveSince(id types.ID) time.Time {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	if p, ok := t.peers[id]; ok {
 		return p.activeSince()
 	}
