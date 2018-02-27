@@ -277,32 +277,6 @@ function release_pass {
 	mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function gofmt_pass {
-	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
-	if [ -n "${fmtRes}" ]; then
-		echo -e "gofmt checking failed:\n${fmtRes}"
-		exit 255
-	fi
-}
-
-function govet_pass {
-	vetRes=$(go vet "${TEST[@]}")
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking failed:\n${vetRes}"
-		exit 255
-	fi
-}
-
-function govet_shadow_pass {
-	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
-	fmtpkgs=($fmtpkgs)
-	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet -all -shadow checking failed:\n${vetRes}"
-		exit 255
-	fi
-}
-
 function shellcheck_pass {
 	if which shellcheck >/dev/null; then
 		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
@@ -357,6 +331,32 @@ function goword_pass {
 		fi
 	else
 		echo "Skipping goword..."
+	fi
+}
+
+function gofmt_pass {
+	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
+	if [ -n "${fmtRes}" ]; then
+		echo -e "gofmt checking failed:\n${fmtRes}"
+		exit 255
+	fi
+}
+
+function govet_pass {
+	vetRes=$(go vet "${TEST[@]}")
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking failed:\n${vetRes}"
+		exit 255
+	fi
+}
+
+function govet_shadow_pass {
+	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
+	fmtpkgs=($fmtpkgs)
+	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet -all -shadow checking failed:\n${vetRes}"
+		exit 255
 	fi
 }
 
@@ -483,13 +483,13 @@ function commit_title_pass {
 function fmt_pass {
 	toggle_failpoints disable
 
-	for p in gofmt \
-			govet \
-			govet_shadow \
-			shellcheck \
+	for p in shellcheck \
 			markdown_you \
 			markdown_marker \
 			goword \
+			gofmt \
+			govet \
+			govet_shadow \
 			gosimple \
 			unused \
 			staticcheck \
@@ -499,9 +499,9 @@ function fmt_pass {
 			receiver_name \
 			commit_title \
 			; do
-		echo "Starting '$p' pass at $(date)"
+		echo "'$p' started at $(date)"
 		"${p}"_pass "$@"
-		echo "Finished '$p' pass at $(date)"
+		echo "'$p' completed at $(date)"
 	done
 }
 
