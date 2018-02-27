@@ -25,6 +25,10 @@ clean:
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
 
+clean-docker:
+	docker images
+	docker image prune --force
+
 
 
 GO_VERSION ?= 1.10
