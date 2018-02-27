@@ -71,14 +71,23 @@ pull-docker-test:
 # Example:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
+#   make compile-setup-gopath-with-docker-test -f ./hack/scripts-dev/Makefile
 
 compile-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker run \
 	  --rm \
+	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
+	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+
+compile-setup-gopath-with-docker-test:
+	$(info GO_VERSION: $(GO_VERSION))
+	docker run \
+	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
