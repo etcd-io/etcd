@@ -1,5 +1,22 @@
 
 
+## [v3.2.17](https://github.com/coreos/etcd/releases/tag/v3.2.17) (TBD)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Fixed(v2)
+
+- Fix [v2 proxy leaky HTTP requests](https://github.com/coreos/etcd/pull/9336).
+
+### Fixed(v3)
+
+- Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
+
+### Security
+
+- Compile with [Go 1.8.7](https://groups.google.com/forum/#!topic/golang-announce/X7N1mvntnoU).
+
+
 ## [v3.2.16](https://github.com/coreos/etcd/releases/tag/v3.2.16) (2018-02-12)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
