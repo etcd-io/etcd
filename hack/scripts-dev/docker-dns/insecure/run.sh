@@ -24,10 +24,38 @@ ETCDCTL_API=3 ./etcdctl \
   get abc
 
 # TODO: add host header check to enforce same-origin-policy
-curl -L http://127.0.0.1:2379/v2/keys/queue \
-  -XPOST \
-  -d value=Job1
+printf "\nWriting v2 key...\n"
+curl \
+  -L http://127.0.0.1:2379/v2/keys/queue \
+  -X POST \
+  -d value=data
 
-curl -L http://m1.etcd.local:2379/v2/keys/queue \
-  -XPOST \
-  -d value=Job1
+printf "\nWriting v2 key...\n"
+curl \
+  -L http://m1.etcd.local:2379/v2/keys/queue \
+  -X POST \
+  -d value=data
+
+printf "\nWriting v3 key...\n"
+curl \
+  -L http://127.0.0.1:2379/v3/kv/put \
+	-X POST \
+  -d '{"key": "Zm9v", "value": "YmFy"}'
+
+printf "\n\nWriting v3 key...\n"
+curl \
+  -L http://m1.etcd.local:2379/v3/kv/put \
+	-X POST \
+  -d '{"key": "Zm9v", "value": "YmFy"}'
+
+printf "\n\nReading v3 key...\n"
+curl \
+  -L http://m1.etcd.local:2379/v3/kv/range \
+	-X POST \
+  -d '{"key": "Zm9v"}'
+
+printf "\n\nFetching 'curl http://m1.etcd.local:2379/metrics'...\n"
+curl \
+  -L http://m1.etcd.local:2379/metrics | grep Put | tail -3
+
+printf "\n\nDone!!!\n\n"
