@@ -28,11 +28,10 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/internal/lease"
-	"github.com/coreos/etcd/internal/mvcc"
-	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/raftsnap"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/mock/mockstorage"
@@ -45,6 +44,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/raftsnap"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -59,11 +59,11 @@ func TestDoLocalAction(t *testing.T) {
 	}{
 		{
 			pb.Request{Method: "GET", ID: 1, Wait: true},
-			Response{Watcher: store.NewNopWatcher()}, nil, []testutil.Action{{Name: "Watch"}},
+			Response{Watcher: v2store.NewNopWatcher()}, nil, []testutil.Action{{Name: "Watch"}},
 		},
 		{
 			pb.Request{Method: "GET", ID: 1},
-			Response{Event: &store.Event{}}, nil,
+			Response{Event: &v2store.Event{}}, nil,
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -73,7 +73,7 @@ func TestDoLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "HEAD", ID: 1},
-			Response{Event: &store.Event{}}, nil,
+			Response{Event: &v2store.Event{}}, nil,
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -89,7 +89,7 @@ func TestDoLocalAction(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
 		srv := &EtcdServer{
-			store:    st,
+			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
 		resp, err := srv.Do(context.TODO(), tt.req)
@@ -142,7 +142,7 @@ func TestDoBadLocalAction(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewErrRecorder(storeErr)
 		srv := &EtcdServer{
-			store:    st,
+			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
 		resp, err := srv.Do(context.Background(), tt.req)
@@ -167,8 +167,8 @@ func TestApplyRepeat(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
-	cl.SetStore(store.New())
+	st := v2store.New()
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
@@ -178,12 +178,12 @@ func TestApplyRepeat(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 	s.start()
 	req := &pb.Request{Method: "QGET", ID: uint64(1)}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
@@ -233,139 +233,139 @@ func TestApplyRequest(t *testing.T) {
 		// POST ==> Create
 		{
 			pb.Request{Method: "POST", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// POST ==> Create, with expiration
 		{
 			pb.Request{Method: "POST", ID: 1, Expiration: 1337},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
+					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
 				},
 			},
 		},
 		// POST ==> Create, with dir
 		{
 			pb.Request{Method: "POST", ID: 1, Dir: true},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", true, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", true, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT ==> Set
 		{
 			pb.Request{Method: "PUT", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", false, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT ==> Set, with dir
 		{
 			pb.Request{Method: "PUT", ID: 1, Dir: true},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", true, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", true, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=true ==> Update
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true)},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Update",
-					Params: []interface{}{"", "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=false ==> Create
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false)},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=true *and* PrevIndex set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true), PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevExist=false *and* PrevIndex set ==> Create
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false), PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevIndex set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevValue set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(0), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "bar", uint64(0), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// PUT with PrevIndex and PrevValue set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []interface{}{"", "bar", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
 		// DELETE ==> Delete
 		{
 			pb.Request{Method: "DELETE", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Delete",
@@ -376,7 +376,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevIndex set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -387,7 +387,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevValue set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -398,7 +398,7 @@ func TestApplyRequest(t *testing.T) {
 		// DELETE with PrevIndex *and* PrevValue set ==> CompareAndDelete
 		{
 			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 5, PrevValue: "bar"},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
@@ -409,7 +409,7 @@ func TestApplyRequest(t *testing.T) {
 		// QGET ==> Get
 		{
 			pb.Request{Method: "QGET", ID: 1},
-			Response{Event: &store.Event{}},
+			Response{Event: &v2store.Event{}},
 			[]testutil.Action{
 				{
 					Name:   "Get",
@@ -448,8 +448,8 @@ func TestApplyRequest(t *testing.T) {
 
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
-		srv := &EtcdServer{store: st}
-		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+		srv := &EtcdServer{v2store: st}
+		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 		resp := srv.applyV2Request((*RequestV2)(&tt.req))
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -465,10 +465,10 @@ func TestApplyRequest(t *testing.T) {
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	cl := newTestCluster([]*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
-		store:   mockstore.NewRecorder(),
+		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	req := pb.Request{
 		Method: "PUT",
@@ -485,7 +485,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 
 func TestApplyConfChangeError(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -549,7 +549,7 @@ func TestApplyConfChangeError(t *testing.T) {
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -590,7 +590,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: types.ID(1)})
 	r := newRaftNode(raftNodeConfig{
 		Node:      newNodeNop(),
@@ -633,7 +633,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster("")
-	cl.SetStore(store.New())
+	cl.SetStore(v2store.New())
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
@@ -685,11 +685,11 @@ func TestDoProposal(t *testing.T) {
 		srv := &EtcdServer{
 			Cfg:        ServerConfig{TickMs: 1},
 			r:          *r,
-			store:      st,
+			v2store:    st,
 			reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 			SyncTicker: &time.Ticker{},
 		}
-		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 		srv.start()
 		resp, err := srv.Do(context.Background(), tt)
 		srv.Stop()
@@ -702,7 +702,7 @@ func TestDoProposal(t *testing.T) {
 			t.Fatalf("#%d: err = %v, want nil", i, err)
 		}
 		// resp.Index is set in Do() based on the raft state; may either be 0 or 1
-		wresp := Response{Event: &store.Event{}, Index: resp.Index}
+		wresp := Response{Event: &v2store.Event{}, Index: resp.Index}
 		if !reflect.DeepEqual(resp, wresp) {
 			t.Errorf("#%d: resp = %v, want %v", i, resp, wresp)
 		}
@@ -717,7 +717,7 @@ func TestDoProposalCancelled(t *testing.T) {
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -739,7 +739,7 @@ func TestDoProposalTimeout(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 0)
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
@@ -756,7 +756,7 @@ func TestDoProposalStopped(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	srv.stopping = make(chan struct{})
 	close(srv.stopping)
@@ -776,7 +776,7 @@ func TestSync(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -819,7 +819,7 @@ func TestSyncTimeout(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -857,7 +857,7 @@ func TestSyncTrigger(t *testing.T) {
 	srv := &EtcdServer{
 		Cfg:        ServerConfig{TickMs: 1},
 		r:          *r,
-		store:      mockstore.NewNop(),
+		v2store:    mockstore.NewNop(),
 		SyncTicker: tk,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -913,8 +913,8 @@ func TestSnapshot(t *testing.T) {
 		storage:     p,
 	})
 	srv := &EtcdServer{
-		r:     *r,
-		store: st,
+		r:       *r,
+		v2store: st,
 	}
 	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
@@ -957,7 +957,7 @@ func TestSnapshot(t *testing.T) {
 // snapshot db is applied.
 func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
-	st := store.New()
+	st := v2store.New()
 	cl := membership.NewCluster("abc")
 	cl.SetStore(st)
 
@@ -985,12 +985,12 @@ func TestSnapshotOrdering(t *testing.T) {
 	s := &EtcdServer{
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
-		store:       st,
+		v2store:     st,
 		snapshotter: raftsnap.New(snapdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer os.RemoveAll(tmpPath)
@@ -1046,11 +1046,11 @@ func TestTriggerSnap(t *testing.T) {
 	srv := &EtcdServer{
 		Cfg:        ServerConfig{TickMs: 1, SnapCount: uint64(snapc)},
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
 	}
-	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
+	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
@@ -1085,7 +1085,7 @@ func TestTriggerSnap(t *testing.T) {
 // proposals.
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	n := newNopReadyNode()
-	st := store.New()
+	st := v2store.New()
 	cl := membership.NewCluster("abc")
 	cl.SetStore(st)
 
@@ -1110,12 +1110,12 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	s := &EtcdServer{
 		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
-		store:       st,
+		v2store:     st,
 		snapshotter: raftsnap.New(testdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer func() {
@@ -1183,7 +1183,7 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
+	st := v2store.New()
 	cl.SetStore(st)
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
@@ -1193,7 +1193,7 @@ func TestAddMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
@@ -1223,8 +1223,8 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
-	cl.SetStore(store.New())
+	st := v2store.New()
+	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
@@ -1234,7 +1234,7 @@ func TestRemoveMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
@@ -1263,7 +1263,7 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	st := store.New()
+	st := v2store.New()
 	cl.SetStore(st)
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
@@ -1274,7 +1274,7 @@ func TestUpdateMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		store:      st,
+		v2store:    st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},

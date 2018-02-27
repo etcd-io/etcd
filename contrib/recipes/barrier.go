@@ -18,7 +18,7 @@ import (
 	"context"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/internal/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 // Barrier creates a key in etcd to block processes, then deletes the key to

@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/internal/compactor"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/srv"

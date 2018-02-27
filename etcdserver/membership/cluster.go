@@ -27,13 +27,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/internal/mvcc/backend"
-	"github.com/coreos/etcd/internal/store"
-	"github.com/coreos/etcd/internal/version"
+	"github.com/coreos/etcd/etcdserver/v2store"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 )
@@ -43,8 +43,8 @@ type RaftCluster struct {
 	id    types.ID
 	token string
 
-	store store.Store
-	be    backend.Backend
+	v2store v2store.Store
+	be      backend.Backend
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -196,7 +196,7 @@ func (c *RaftCluster) genID() {
 
 func (c *RaftCluster) SetID(id types.ID) { c.id = id }
 
-func (c *RaftCluster) SetStore(st store.Store) { c.store = st }
+func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
 
 func (c *RaftCluster) SetBackend(be backend.Backend) {
 	c.be = be
@@ -207,8 +207,8 @@ func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members, c.removed = membersFromStore(c.store)
-	c.version = clusterVersionFromStore(c.store)
+	c.members, c.removed = membersFromStore(c.v2store)
+	c.version = clusterVersionFromStore(c.v2store)
 	mustDetectDowngrade(c.version)
 	onSet(c.version)
 
@@ -223,7 +223,7 @@ func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	members, removed := membersFromStore(c.store)
+	members, removed := membersFromStore(c.v2store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
 		return ErrIDRemoved
@@ -286,8 +286,8 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 func (c *RaftCluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
-	if c.store != nil {
-		mustSaveMemberToStore(c.store, m)
+	if c.v2store != nil {
+		mustSaveMemberToStore(c.v2store, m)
 	}
 	if c.be != nil {
 		mustSaveMemberToBackend(c.be, m)
@@ -303,8 +303,8 @@ func (c *RaftCluster) AddMember(m *Member) {
 func (c *RaftCluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
-	if c.store != nil {
-		mustDeleteMemberFromStore(c.store, id)
+	if c.v2store != nil {
+		mustDeleteMemberFromStore(c.v2store, id)
 	}
 	if c.be != nil {
 		mustDeleteMemberFromBackend(c.be, id)
@@ -321,8 +321,8 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 	defer c.Unlock()
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
-		if c.store != nil {
-			mustUpdateMemberAttrInStore(c.store, m)
+		if c.v2store != nil {
+			mustUpdateMemberAttrInStore(c.v2store, m)
 		}
 		if c.be != nil {
 			mustSaveMemberToBackend(c.be, m)
@@ -341,8 +341,8 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 	defer c.Unlock()
 
 	c.members[id].RaftAttributes = raftAttr
-	if c.store != nil {
-		mustUpdateMemberInStore(c.store, c.members[id])
+	if c.v2store != nil {
+		mustUpdateMemberInStore(c.v2store, c.members[id])
 	}
 	if c.be != nil {
 		mustSaveMemberToBackend(c.be, c.members[id])
@@ -370,8 +370,8 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	}
 	c.version = ver
 	mustDetectDowngrade(c.version)
-	if c.store != nil {
-		mustSaveClusterVersionToStore(c.store, ver)
+	if c.v2store != nil {
+		mustSaveClusterVersionToStore(c.v2store, ver)
 	}
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
@@ -431,7 +431,7 @@ func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 	return true
 }
 
-func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
+func membersFromStore(st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)
 	e, err := st.Get(StoreMembersPrefix, true, true)
@@ -463,7 +463,7 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 	return members, removed
 }
 
-func clusterVersionFromStore(st store.Store) *semver.Version {
+func clusterVersionFromStore(st v2store.Store) *semver.Version {
 	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {
 		if isKeyNotFound(err) {

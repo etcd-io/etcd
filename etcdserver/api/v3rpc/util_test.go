@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/internal/mvcc"
+	"github.com/coreos/etcd/mvcc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

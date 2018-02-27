@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"path"
 
-	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/v2error"
 )
 
 func (s *store) ensureAuthDirectories() error {
@@ -40,8 +40,8 @@ func (s *store) ensureAuthDirectories() error {
 		}
 		_, err := s.server.Do(ctx, rr)
 		if err != nil {
-			if e, ok := err.(*etcderr.Error); ok {
-				if e.ErrorCode == etcderr.EcodeNodeExist {
+			if e, ok := err.(*v2error.Error); ok {
+				if e.ErrorCode == v2error.EcodeNodeExist {
 					continue
 				}
 			}
@@ -60,8 +60,8 @@ func (s *store) ensureAuthDirectories() error {
 	}
 	_, err := s.server.Do(ctx, rr)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeNodeExist {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeNodeExist {
 				s.ensuredOnce = true
 				return nil
 			}
@@ -87,8 +87,8 @@ func (s *store) detectAuth() bool {
 	}
 	value, err := s.requestResource("/enabled", false, false)
 	if err != nil {
-		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+		if e, ok := err.(*v2error.Error); ok {
+			if e.ErrorCode == v2error.EcodeKeyNotFound {
 				return false
 			}
 		}

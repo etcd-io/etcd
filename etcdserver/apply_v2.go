@@ -21,8 +21,9 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/pbutil"
+
 	"github.com/coreos/go-semver/semver"
 )
 
@@ -35,12 +36,12 @@ type ApplierV2 interface {
 	Sync(r *RequestV2) Response
 }
 
-func NewApplierV2(s store.Store, c *membership.RaftCluster) ApplierV2 {
+func NewApplierV2(s v2store.Store, c *membership.RaftCluster) ApplierV2 {
 	return &applierV2store{store: s, cluster: c}
 }
 
 type applierV2store struct {
-	store   store.Store
+	store   v2store.Store
 	cluster *membership.RaftCluster
 }
 
@@ -104,8 +105,8 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 	return Response{}
 }
 
-// applyV2Request interprets r as a call to store.X and returns a Response interpreted
-// from store.Event
+// applyV2Request interprets r as a call to v2store.X
+// and returns a Response interpreted from v2store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
 	defer warnOfExpensiveRequest(time.Now(), r)
 
@@ -126,15 +127,15 @@ func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
 	}
 }
 
-func (r *RequestV2) TTLOptions() store.TTLOptionSet {
+func (r *RequestV2) TTLOptions() v2store.TTLOptionSet {
 	refresh, _ := pbutil.GetBool(r.Refresh)
-	ttlOptions := store.TTLOptionSet{Refresh: refresh}
+	ttlOptions := v2store.TTLOptionSet{Refresh: refresh}
 	if r.Expiration != 0 {
 		ttlOptions.ExpireTime = time.Unix(0, r.Expiration)
 	}
 	return ttlOptions
 }
 
-func toResponse(ev *store.Event, err error) Response {
+func toResponse(ev *v2store.Event, err error) Response {
 	return Response{Event: ev, Err: err}
 }

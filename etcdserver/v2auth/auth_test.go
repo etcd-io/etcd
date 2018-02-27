@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	etcdstore "github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2error"
+	"github.com/coreos/etcd/etcdserver/v2store"
 )
 
 type fakeDoer struct{}
@@ -164,9 +164,9 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 	if td.explicitlyEnabled && (req.Path == StorePermsPrefix+"/enabled") {
 		t := "true"
 		return etcdserver.Response{
-			Event: &etcdstore.Event{
-				Action: etcdstore.Get,
-				Node: &etcdstore.NodeExtern{
+			Event: &v2store.Event{
+				Action: v2store.Get,
+				Node: &v2store.NodeExtern{
 					Key:   StorePermsPrefix + "/users/cat",
 					Value: &t,
 				},
@@ -177,8 +177,8 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		res := td.get[td.getindex]
 		if res.Event == nil {
 			td.getindex++
-			return etcdserver.Response{}, &etcderr.Error{
-				ErrorCode: etcderr.EcodeKeyNotFound,
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeKeyNotFound,
 			}
 		}
 		td.getindex++
@@ -188,8 +188,8 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		res := td.put[td.putindex]
 		if res.Event == nil {
 			td.putindex++
-			return etcdserver.Response{}, &etcderr.Error{
-				ErrorCode: etcderr.EcodeNodeExist,
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeNodeExist,
 			}
 		}
 		td.putindex++
@@ -202,10 +202,10 @@ func TestAllUsers(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
-						Nodes: etcdstore.NodeExterns([]*etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
+						Nodes: v2store.NodeExterns([]*v2store.NodeExtern{
 							{
 								Key: StorePermsPrefix + "/users/cat",
 							},
@@ -235,9 +235,9 @@ func TestGetAndDeleteUser(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/users/cat",
 						Value: &data,
 					},
@@ -266,10 +266,10 @@ func TestAllRoles(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
-						Nodes: etcdstore.NodeExterns([]*etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
+						Nodes: v2store.NodeExterns([]*v2store.NodeExtern{
 							{
 								Key: StorePermsPrefix + "/roles/animal",
 							},
@@ -300,9 +300,9 @@ func TestGetAndDeleteRole(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/roles/animal",
 						Value: &data,
 					},
@@ -331,27 +331,27 @@ func TestEnsure(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Set,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Set,
+					Node: &v2store.NodeExtern{
 						Key: StorePermsPrefix,
 						Dir: true,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Set,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Set,
+					Node: &v2store.NodeExtern{
 						Key: StorePermsPrefix + "/users/",
 						Dir: true,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Set,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Set,
+					Node: &v2store.NodeExtern{
 						Key: StorePermsPrefix + "/roles/",
 						Dir: true,
 					},
@@ -385,18 +385,18 @@ func TestCreateAndUpdateUser(t *testing.T) {
 				Event: nil,
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/users/cat",
 						Value: &olduser,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/users/cat",
 						Value: &olduser,
 					},
@@ -405,18 +405,18 @@ func TestCreateAndUpdateUser(t *testing.T) {
 		},
 		put: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Update,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Update,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/users/cat",
 						Value: &olduser,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Update,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Update,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/users/cat",
 						Value: &newuser,
 					},
@@ -459,9 +459,9 @@ func TestUpdateRole(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/roles/animal",
 						Value: &oldrole,
 					},
@@ -470,9 +470,9 @@ func TestUpdateRole(t *testing.T) {
 		},
 		put: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Update,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Update,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/roles/animal",
 						Value: &newrole,
 					},
@@ -499,9 +499,9 @@ func TestCreateRole(t *testing.T) {
 	d := &testDoer{
 		put: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Create,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Create,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/roles/animal",
 						Value: &role,
 					},
@@ -538,18 +538,18 @@ func TestEnableAuth(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/enabled",
 						Value: &falseval,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/user/root",
 						Value: &rootUser,
 					},
@@ -561,18 +561,18 @@ func TestEnableAuth(t *testing.T) {
 		},
 		put: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Create,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Create,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/roles/guest",
 						Value: &guestRole,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Update,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Update,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/enabled",
 						Value: &trueval,
 					},
@@ -594,18 +594,18 @@ func TestDisableAuth(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/enabled",
 						Value: &falseval,
 					},
 				},
 			},
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Get,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Get,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/enabled",
 						Value: &trueval,
 					},
@@ -614,9 +614,9 @@ func TestDisableAuth(t *testing.T) {
 		},
 		put: []etcdserver.Response{
 			{
-				Event: &etcdstore.Event{
-					Action: etcdstore.Update,
-					Node: &etcdstore.NodeExtern{
+				Event: &v2store.Event{
+					Action: v2store.Update,
+					Node: &v2store.NodeExtern{
 						Key:   StorePermsPrefix + "/enabled",
 						Value: &falseval,
 					},

@@ -21,12 +21,12 @@ import (
 	"net/http"
 	"strings"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/internal/version"
+	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/pkg/logutil"
+	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
 )
@@ -138,7 +138,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	switch e := err.(type) {
-	case *etcdErr.Error:
+	case *v2error.Error:
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		if et := e.WriteTo(w); et != nil {

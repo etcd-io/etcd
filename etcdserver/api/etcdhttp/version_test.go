@@ -20,7 +20,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/coreos/etcd/internal/version"
+	"github.com/coreos/etcd/version"
 )
 
 func TestServeVersion(t *testing.T) {

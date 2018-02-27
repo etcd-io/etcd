@@ -26,7 +26,7 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/internal/mvcc/mvccpb"
+	pb "github.com/coreos/etcd/mvcc/mvccpb"
 
 	"github.com/spf13/cobra"
 )

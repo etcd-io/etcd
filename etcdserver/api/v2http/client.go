@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
@@ -36,7 +35,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/etcdserver/v2auth"
-	"github.com/coreos/etcd/internal/store"
+	"github.com/coreos/etcd/etcdserver/v2error"
+	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/jonboulle/clockwork"
@@ -322,15 +322,15 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	err := r.ParseForm()
 	if err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidForm,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidForm,
 			err.Error(),
 		)
 	}
 
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidForm,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidForm,
 			"incorrect key prefix",
 		)
 	}
@@ -338,75 +338,75 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeIndexNaN,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeIndexNaN,
 			`invalid value for "prevIndex"`,
 		)
 	}
 	if wIdx, err = getUint64(r.Form, "waitIndex"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeIndexNaN,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeIndexNaN,
 			`invalid value for "waitIndex"`,
 		)
 	}
 
 	var rec, sort, wait, dir, quorum, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "recursive"`,
 		)
 	}
 	if sort, err = getBool(r.Form, "sorted"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "sorted"`,
 		)
 	}
 	if wait, err = getBool(r.Form, "wait"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "wait"`,
 		)
 	}
 	// TODO(jonboulle): define what parameters dir is/isn't compatible with?
 	if dir, err = getBool(r.Form, "dir"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "dir"`,
 		)
 	}
 	if quorum, err = getBool(r.Form, "quorum"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "quorum"`,
 		)
 	}
 	if stream, err = getBool(r.Form, "stream"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "stream"`,
 		)
 	}
 
 	if wait && r.Method != "GET" {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`"wait" can only be used with GET requests`,
 		)
 	}
 
 	pV := r.FormValue("prevValue")
 	if _, ok := r.Form["prevValue"]; ok && pV == "" {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodePrevValueRequired,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodePrevValueRequired,
 			`"prevValue" cannot be empty`,
 		)
 	}
 
 	if noValueOnSuccess, err = getBool(r.Form, "noValueOnSuccess"); err != nil {
-		return emptyReq, false, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+		return emptyReq, false, v2error.NewRequestError(
+			v2error.EcodeInvalidField,
 			`invalid value for "noValueOnSuccess"`,
 		)
 	}
@@ -417,8 +417,8 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if len(r.FormValue("ttl")) > 0 {
 		i, err := getUint64(r.Form, "ttl")
 		if err != nil {
-			return emptyReq, false, etcdErr.NewRequestError(
-				etcdErr.EcodeTTLNaN,
+			return emptyReq, false, v2error.NewRequestError(
+				v2error.EcodeTTLNaN,
 				`invalid value for "ttl"`,
 			)
 		}
@@ -430,8 +430,8 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["prevExist"]; ok {
 		bv, err := getBool(r.Form, "prevExist")
 		if err != nil {
-			return emptyReq, false, etcdErr.NewRequestError(
-				etcdErr.EcodeInvalidField,
+			return emptyReq, false, v2error.NewRequestError(
+				v2error.EcodeInvalidField,
 				"invalid value for prevExist",
 			)
 		}
@@ -443,8 +443,8 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["refresh"]; ok {
 		bv, err := getBool(r.Form, "refresh")
 		if err != nil {
-			return emptyReq, false, etcdErr.NewRequestError(
-				etcdErr.EcodeInvalidField,
+			return emptyReq, false, v2error.NewRequestError(
+				v2error.EcodeInvalidField,
 				"invalid value for refresh",
 			)
 		}
@@ -452,14 +452,14 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		if refresh != nil && *refresh {
 			val := r.FormValue("value")
 			if _, ok := r.Form["value"]; ok && val != "" {
-				return emptyReq, false, etcdErr.NewRequestError(
-					etcdErr.EcodeRefreshValue,
+				return emptyReq, false, v2error.NewRequestError(
+					v2error.EcodeRefreshValue,
 					`A value was provided on a refresh`,
 				)
 			}
 			if ttl == nil {
-				return emptyReq, false, etcdErr.NewRequestError(
-					etcdErr.EcodeRefreshTTLRequired,
+				return emptyReq, false, v2error.NewRequestError(
+					v2error.EcodeRefreshTTLRequired,
 					`No TTL value set`,
 				)
 			}
@@ -518,8 +518,8 @@ func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuc
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 	if noValueOnSuccess &&
-		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
-			ev.Action == store.Create || ev.Action == store.Update) {
+		(ev.Action == v2store.Set || ev.Action == v2store.CompareAndSwap ||
+			ev.Action == v2store.Create || ev.Action == v2store.Update) {
 		ev.Node = nil
 		ev.PrevNode = nil
 	}
@@ -527,7 +527,7 @@ func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuc
 }
 
 func writeKeyNoAuth(w http.ResponseWriter) {
-	e := etcdErr.NewError(etcdErr.EcodeUnauthorized, "Insufficient credentials", 0)
+	e := v2error.NewError(v2error.EcodeUnauthorized, "Insufficient credentials", 0)
 	e.WriteTo(w)
 }
 
@@ -538,7 +538,7 @@ func writeKeyError(w http.ResponseWriter, err error) {
 		return
 	}
 	switch e := err.(type) {
-	case *etcdErr.Error:
+	case *v2error.Error:
 		e.WriteTo(w)
 	default:
 		switch err {
@@ -547,7 +547,7 @@ func writeKeyError(w http.ResponseWriter, err error) {
 		default:
 			mlog.MergeErrorf("got unexpected response error (%v)", err)
 		}
-		ee := etcdErr.NewError(etcdErr.EcodeRaftInternal, err.Error(), 0)
+		ee := v2error.NewError(v2error.EcodeRaftInternal, err.Error(), 0)
 		ee.WriteTo(w)
 	}
 }
@@ -599,7 +599,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	}
 }
 
-func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
+func trimEventPrefix(ev *v2store.Event, prefix string) *v2store.Event {
 	if ev == nil {
 		return nil
 	}
@@ -611,7 +611,7 @@ func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
 	return e
 }
 
-func trimNodeExternPrefix(n *store.NodeExtern, prefix string) {
+func trimNodeExternPrefix(n *v2store.NodeExtern, prefix string) {
 	if n == nil {
 		return
 	}
@@ -622,7 +622,7 @@ func trimNodeExternPrefix(n *store.NodeExtern, prefix string) {
 }
 
 func trimErrorPrefix(err error, prefix string) error {
-	if e, ok := err.(*etcdErr.Error); ok {
+	if e, ok := err.(*v2error.Error); ok {
 		e.Cause = strings.TrimPrefix(e.Cause, prefix)
 	}
 	return err
