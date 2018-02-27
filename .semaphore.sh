@@ -2,7 +2,7 @@
 
 TEST_SUFFIX=$(date +%s | base64 | head -c 15)
 
-TEST_OPTS="RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' MANUAL_VER=v3.3.0"
+TEST_OPTS="RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional' MANUAL_VER=v3.3.1"
 if [ "$TEST_ARCH" == "386" ]; then
 	TEST_OPTS="GOARCH=386 PASSES='build unit integration_e2e'"
 fi
