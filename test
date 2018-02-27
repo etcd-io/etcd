@@ -105,7 +105,7 @@ function integration_extra {
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/client/integration"
 	go test -timeout 20m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
 	go test -timeout 1m -v -cpu 1,2,4 "$@" "${REPO_PATH}/contrib/raftexample"
-	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/internal/store"
+	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/v2store"
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example "$@" "${TEST[@]}"
 }
 
