@@ -16,10 +16,6 @@ set -e
 
 source ./build
 
-if [[ "${ETCD_SETUP_GOPATH}" == "1" ]]; then
-	etcd_setup_gopath
-fi
-
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
 	./tools/functional-tester/build

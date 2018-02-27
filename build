@@ -84,6 +84,10 @@ tools_build() {
 
 toggle_failpoints_default
 
+if [[ "${ETCD_SETUP_GOPATH}" == "1" ]]; then
+	etcd_setup_gopath
+fi
+
 # only build when called directly, not sourced
 if echo "$0" | grep "build$" >/dev/null; then
 	etcd_build
