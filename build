@@ -31,11 +31,11 @@ etcd_setup_gopath() {
 	etcdGOPATH="${CDIR}/gopath"
 	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
 	if [ -n "$GOPATH" ]; then
-		GOPATH="$GOPATH"
+		GOPATH=":$GOPATH"
 	fi
 	rm -rf "${etcdGOPATH:?}/"
 	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/github.com/coreos"
-	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src:$GOPATH
+	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src${GOPATH}
 	ln -s "${CDIR}/vendor" "${etcdGOPATH}/vendor/src"
 	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/github.com/coreos/etcd"
 
