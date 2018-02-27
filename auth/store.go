@@ -94,6 +94,9 @@ type AuthStore interface {
 	// AuthDisable turns off the authentication feature
 	AuthDisable()
 
+	// IsAuthEnabled returns true if the authentication feature is enabled.
+	IsAuthEnabled() bool
+
 	// Authenticate does authentication based on given user name and password
 	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
 
@@ -269,7 +272,7 @@ func (as *authStore) Close() error {
 }
 
 func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
-	if !as.isAuthEnabled() {
+	if !as.IsAuthEnabled() {
 		return nil, ErrAuthNotEnabled
 	}
 
@@ -295,7 +298,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 }
 
 func (as *authStore) CheckPassword(username, password string) (uint64, error) {
-	if !as.isAuthEnabled() {
+	if !as.IsAuthEnabled() {
 		return 0, ErrAuthNotEnabled
 	}
 
@@ -732,7 +735,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 
 func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) error {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
-	if !as.isAuthEnabled() {
+	if !as.IsAuthEnabled() {
 		return nil
 	}
 
@@ -780,7 +783,7 @@ func (as *authStore) IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []
 }
 
 func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
-	if !as.isAuthEnabled() {
+	if !as.IsAuthEnabled() {
 		return nil
 	}
 	if authInfo == nil {
@@ -892,7 +895,7 @@ func delRole(tx backend.BatchTx, rolename string) {
 	tx.UnsafeDelete(authRolesBucketName, []byte(rolename))
 }
 
-func (as *authStore) isAuthEnabled() bool {
+func (as *authStore) IsAuthEnabled() bool {
 	as.enabledMu.RLock()
 	defer as.enabledMu.RUnlock()
 	return as.enabled
@@ -1064,7 +1067,7 @@ func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}
 }
 
 func (as *authStore) WithRoot(ctx context.Context) context.Context {
-	if !as.isAuthEnabled() {
+	if !as.IsAuthEnabled() {
 		return ctx
 	}
 

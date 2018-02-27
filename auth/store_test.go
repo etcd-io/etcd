@@ -588,7 +588,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 		a.Close()
 	}(as2)
 
-	if !as2.isAuthEnabled() {
+	if !as2.IsAuthEnabled() {
 		t.Fatal("recovering authStore from existing backend failed")
 	}
 
