@@ -1055,6 +1055,8 @@ func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}
 		return newTokenProviderSimple(indexWaiter), nil
 	case "jwt":
 		return newTokenProviderJWT(typeSpecificOpts)
+	case "":
+		return newTokenProviderNop()
 	default:
 		plog.Errorf("unknown token type: %s", tokenType)
 		return nil, ErrInvalidAuthOpts
