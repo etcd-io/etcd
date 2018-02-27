@@ -250,13 +250,13 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 
 // wraps HTTP multiplexer to mute requests to /v3beta
 // TODO: deprecate this in 3.5 release
-func wrapMux(mux *http.ServeMux) http.Handler { return &v3alphaMutator{mux: mux} }
+func wrapMux(mux *http.ServeMux) http.Handler { return &v3Mutator{mux: mux} }
 
-type v3alphaMutator struct {
+type v3Mutator struct {
 	mux *http.ServeMux
 }
 
-func (m *v3alphaMutator) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (m *v3Mutator) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req != nil && req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3beta/") {
 		req.URL.Path = strings.Replace(req.URL.Path, "/v3beta/", "/v3/", 1)
 	}
