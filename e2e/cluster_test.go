@@ -78,6 +78,11 @@ var (
 		initialToken:          "new",
 		clientCertAuthEnabled: true,
 	}
+	configJWT = etcdProcessClusterConfig{
+		clusterSize:   1,
+		initialToken:  "new",
+		authTokenOpts: "jwt,pub-key=../integration/fixtures/server.crt,priv-key=../integration/fixtures/server.key.insecure,sign-method=RS256,ttl=1s",
+	}
 )
 
 func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
@@ -117,6 +122,7 @@ type etcdProcessClusterConfig struct {
 	quotaBackendBytes   int64
 	noStrictReconfig    bool
 	initialCorruptCheck bool
+	authTokenOpts       string
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -238,6 +244,11 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		}
 
 		args = append(args, cfg.tlsArgs()...)
+
+		if cfg.authTokenOpts != "" {
+			args = append(args, "--auth-token", cfg.authTokenOpts)
+		}
+
 		etcdCfgs[i] = &etcdServerProcessConfig{
 			execPath:     cfg.execPath,
 			args:         args,

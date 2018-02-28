@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 )
@@ -58,6 +59,7 @@ func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
 func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsername, withCfg(configClientTLSCertAuth))
 }
+func TestCtlV3AuthJWTExpire(t *testing.T) { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -1070,6 +1072,27 @@ func authTestCertCNAndUsername(cx ctlCtx) {
 
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
+		cx.t.Error(err)
+	}
+}
+
+func authTestJWTExpire(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// try a granted key
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
+		cx.t.Error(err)
+	}
+
+	// wait an expiration of my JWT token
+	<-time.After(3 * time.Second)
+
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
 		cx.t.Error(err)
 	}
 }
