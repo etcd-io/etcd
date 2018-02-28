@@ -321,6 +321,19 @@ I | embed: serving client requests on 127.0.0.1:22379
 I | embed: serving client requests on 127.0.0.1:2379
 ```
 
+## Notes for Host Whitelist
+
+`etcd --host-whitelist` flag specifies acceptable hostnames from HTTP client requests. Client origin policy protects against ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attacks to insecure etcd servers. That is, any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to DNS rebinding attacks. See [CVE-2018-5702](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2) for more detail.
+
+Client origin policy works as follows:
+
+1. If client connection is secure via HTTPS, allow any hostnames.
+2. If client connection is not secure and `"HostWhitelist"` is not empty, only allow HTTP requests whose Host field is listed in whitelist.
+
+Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
+
+By default, `etcd --host-whitelist` and `embed.Config.HostWhitelist` are set *empty* to allow all hostnames. Note that when specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
+
 ## Frequently asked questions
 
 ### I'm seeing a SSLv3 alert handshake failure when using TLS client authentication?
