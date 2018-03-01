@@ -57,4 +57,33 @@ printf "\n\nFetching 'curl http://m1.etcd.local:2379/metrics'...\n"
 curl \
   -L http://m1.etcd.local:2379/metrics | grep Put | tail -3
 
+name1=$(base64 <<< "/election-prefix")
+val1=$(base64 <<< "v1")
+data1="{\"name\":\"${name1}\", \"value\":\"${val1}\"}"
+
+printf "\n\nCampaign: ${data1}\n"
+result1=$(curl -L http://m1.etcd.local:2379/v3/election/campaign -X POST -d "${data1}")
+echo ${result1}
+
+# should not panic servers
+val2=$(base64 <<< "v2")
+data2="{\"value\": \"${val2}\"}"
+printf "\n\nProclaim (wrong-format): ${data2}\n"
+curl \
+  -L http://m1.etcd.local:2379/v3/election/proclaim \
+  -X POST \
+  -d "${data2}"
+
+printf "\n\nProclaim (wrong-format)...\n"
+curl \
+  -L http://m1.etcd.local:2379/v3/election/proclaim \
+  -X POST \
+  -d '}'
+
+printf "\n\nProclaim (wrong-format)...\n"
+curl \
+  -L http://m1.etcd.local:2379/v3/election/proclaim \
+  -X POST \
+  -d '{"value": "Zm9v"}'
+
 printf "\n\nDone!!!\n\n"
