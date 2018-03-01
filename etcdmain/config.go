@@ -277,9 +277,12 @@ func (cfg *config) configFromCmdLine() error {
 		cfg.ec.ListenMetricsUrls = []url.URL(u)
 	}
 
-	hosts := strings.Split(cfg.cf.hostWhitelist, ",")
-	for i := range hosts {
-		hosts[i] = strings.TrimSpace(hosts[i])
+	hosts := []string{}
+	for _, h := range strings.Split(cfg.cf.hostWhitelist, ",") {
+		h = strings.TrimSpace(h)
+		if h != "" {
+			hosts = append(hosts, h)
+		}
 	}
 	cfg.ec.HostWhitelist = hosts
 

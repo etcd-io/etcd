@@ -176,7 +176,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	srvcfg.HostWhitelist = make(map[string]struct{}, len(cfg.HostWhitelist))
 	for _, h := range cfg.HostWhitelist {
-		srvcfg.HostWhitelist[h] = struct{}{}
+		if h != "" {
+			srvcfg.HostWhitelist[h] = struct{}{}
+		}
 	}
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
