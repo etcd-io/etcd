@@ -10,6 +10,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and
 
 ### Fixed(v3)
 
+- Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
+  - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
+  - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
 
 ### Security

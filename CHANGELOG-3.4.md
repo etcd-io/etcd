@@ -108,6 +108,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
   - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
   - Which possibly causes missing events from "unsynced" watchers.
+- Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
+  - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
+  - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
 - Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
   - Previously, `--auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
   - Now, `--auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
