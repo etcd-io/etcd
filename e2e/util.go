@@ -42,9 +42,14 @@ func spawnWithExpect(args []string, expected string) error {
 }
 
 func spawnWithExpects(args []string, xs ...string) error {
+	_, err := spawnWithExpectLines(args, xs...)
+	return err
+}
+
+func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
 	proc, err := spawnCmd(args)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// process until either stdout or stderr contains
 	// the expected string
@@ -57,7 +62,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 			l, lerr := proc.ExpectFunc(lineFunc)
 			if lerr != nil {
 				proc.Close()
-				return fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
+				return nil, fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
 			}
 			lines = append(lines, l)
 			if strings.Contains(l, txt) {
@@ -67,9 +72,9 @@ func spawnWithExpects(args []string, xs ...string) error {
 	}
 	perr := proc.Close()
 	if len(xs) == 0 && proc.LineCount() != noOutputLineCount { // expect no output
-		return fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
+		return nil, fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
-	return perr
+	return lines, perr
 }
 
 func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
