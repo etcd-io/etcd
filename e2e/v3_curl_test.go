@@ -15,10 +15,13 @@
 package e2e
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"path"
+	"strconv"
 	"testing"
 
+	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
@@ -244,4 +247,116 @@ func testV3CurlAuth(cx ctlCtx) {
 	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
 		cx.t.Fatalf("failed testV3CurlAuth auth put with curl using prefix (%s) (%v)", p, err)
 	}
+}
+
+func TestV3CurlCampaignNoTLS(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(configNoTLS))
+	}
+}
+
+func testV3CurlCampaign(cx ctlCtx) {
+	cdata, err := json.Marshal(&epb.CampaignRequest{
+		Name:  []byte("/election-prefix"),
+		Value: []byte("v1"),
+	})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	cargs := cURLPrefixArgs(cx.epc, "POST", cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
+		value:    string(cdata),
+	})
+	lines, err := spawnWithExpectLines(cargs, `"leader":{"name":"`)
+	if err != nil {
+		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
+	}
+	if len(lines) != 1 {
+		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
+	}
+
+	var cresp campaignResponse
+	if err = json.Unmarshal([]byte(lines[0]), &cresp); err != nil {
+		cx.t.Fatalf("failed to unmarshal campaign response %v", err)
+	}
+	ndata, err := base64.StdEncoding.DecodeString(cresp.Leader.Name)
+	if err != nil {
+		cx.t.Fatalf("failed to decode leader key %v", err)
+	}
+	kdata, err := base64.StdEncoding.DecodeString(cresp.Leader.Key)
+	if err != nil {
+		cx.t.Fatalf("failed to decode leader key %v", err)
+	}
+
+	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
+	lease, _ := strconv.ParseInt(cresp.Leader.Lease, 10, 64)
+	pdata, err := json.Marshal(&epb.ProclaimRequest{
+		Leader: &epb.LeaderKey{
+			Name:  ndata,
+			Key:   kdata,
+			Rev:   rev,
+			Lease: lease,
+		},
+		Value: []byte("v2"),
+	})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = cURLPost(cx.epc, cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		value:    string(pdata),
+		expected: `"revision":`,
+	}); err != nil {
+		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
+	}
+}
+
+func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
+	pdata, err := json.Marshal(&epb.ProclaimRequest{Value: []byte("v2")})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = cURLPost(cx.epc, cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		value:    string(pdata),
+		expected: `{"error":"\"leader\" field must be provided","code":2}`,
+	}); err != nil {
+		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
+	}
+}
+
+func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/election/resign"),
+		value:    `{}`,
+		expected: `{"error":"\"leader\" field must be provided","code":2}`,
+	}); err != nil {
+		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+// to manually decode; JSON marshals integer fields with
+// string types, so can't unmarshal with epb.CampaignResponse
+type campaignResponse struct {
+	Leader struct {
+		Name  string `json:"name,omitempty"`
+		Key   string `json:"key,omitempty"`
+		Rev   string `json:"rev,omitempty"`
+		Lease string `json:"lease,omitempty"`
+	} `json:"leader,omitempty"`
 }
