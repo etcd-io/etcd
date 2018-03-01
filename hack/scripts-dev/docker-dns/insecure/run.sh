@@ -23,7 +23,6 @@ ETCDCTL_API=3 ./etcdctl \
   --endpoints=http://m1.etcd.local:2379,http://m2.etcd.local:22379,http://m3.etcd.local:32379 \
   get abc
 
-# TODO: add host header check to enforce same-origin-policy
 printf "\nWriting v2 key...\n"
 curl \
   -L http://127.0.0.1:2379/v2/keys/queue \

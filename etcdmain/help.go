@@ -158,6 +158,8 @@ security flags:
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--peer-crl-file ''
 		path to the peer certificate revocation list file.
+	--host-whitelist ''
+		acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).
 
 logging flags
 

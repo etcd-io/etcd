@@ -174,9 +174,17 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		Debug:                   cfg.Debug,
 	}
 
+	srvcfg.HostWhitelist = make(map[string]struct{}, len(cfg.HostWhitelist))
+	for _, h := range cfg.HostWhitelist {
+		if h != "" {
+			srvcfg.HostWhitelist[h] = struct{}{}
+		}
+	}
+
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
 	}
+	plog.Infof("%s starting with host whitelist %q", e.Server.ID(), cfg.HostWhitelist)
 
 	// buffer channel so goroutines on closed connections won't wait forever
 	e.errc = make(chan error, len(e.Peers)+len(e.Clients)+2*len(e.sctxs))
