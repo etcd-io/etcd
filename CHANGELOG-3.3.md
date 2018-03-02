@@ -4,11 +4,11 @@
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
-### Fixed(v2)
+### Fixed: v2
 
 - Fix [v2 proxy leaky HTTP requests](https://github.com/coreos/etcd/pull/9336).
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
@@ -28,7 +28,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [
 - Add [warnings on requests taking too long](https://github.com/coreos/etcd/pull/9288).
   - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
@@ -80,7 +80,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
     - v3.2 error: `--initial-cluster must include s1=https://s1.test:2380 given --initial-advertise-peer-urls=https://s1.test:2380`.
     - v3.3 error: `failed to resolve https://s1.test:2380 to match --initial-cluster=s1=https://s1.test:2380 (failed to resolve "https://s1.test:2380" (error ...))`.
 
-### Changed(Breaking Changes)
+### Breaking Changes
 
 - Require [Go 1.9+](https://github.com/coreos/etcd/issues/6174).
   - Compile with *Go 1.9.3*.
@@ -97,7 +97,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`"lease LEASE_ID already expired"`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `"lease LEASE_ID granted with TTL(0s), remaining(-1s)"`.
 
-### Added(`etcd`)
+### Added: `etcd`
 
 - Add [`--experimental-enable-v2v3`](https://github.com/coreos/etcd/pull/8407) flag to [emulate v2 API with v3](https://github.com/coreos/etcd/issues/6925).
 - Add [`--experimental-corrupt-check-time`](https://github.com/coreos/etcd/pull/8420) flag to [raise corrupt alarm monitoring](https://github.com/coreos/etcd/issues/7125).
@@ -132,7 +132,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
   - etcd `v3.4` will exit on this error.
 
-### Added(API)
+### Added: API
 
 - Support [ranges in transaction comparisons](https://github.com/coreos/etcd/pull/8025) for [disconnected linearized reads](https://github.com/coreos/etcd/issues/7924).
 - Add [nested transactions](https://github.com/coreos/etcd/pull/8102) to extend [proxy use cases](https://github.com/coreos/etcd/issues/7857).
@@ -140,7 +140,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [lease list](https://github.com/coreos/etcd/pull/8358).
 - Add [hash by revision](https://github.com/coreos/etcd/pull/8263) for [better corruption checking against boltdb](https://github.com/coreos/etcd/issues/8016).
 
-### Added(`etcd/clientv3`)
+### Added: `clientv3`
 
 - Add [health balancer](https://github.com/coreos/etcd/pull/8545) to fix [watch API hangs](https://github.com/coreos/etcd/issues/7247), improve [endpoint switch under network faults](https://github.com/coreos/etcd/issues/7941).
 - [Refactor balancer](https://github.com/coreos/etcd/pull/8840) and add [client-side keepalive pings](https://github.com/coreos/etcd/pull/8199) to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
@@ -157,11 +157,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`Leases`](https://github.com/coreos/etcd/pull/8358) to `Lease`.
 - Add [`clientv3/ordering`](https://github.com/coreos/etcd/pull/8092) for enforce [ordering in serialized requests](https://github.com/coreos/etcd/issues/7623).
 
-### Added(v2 `etcdctl`)
+### Added: v2 `etcdctl`
 
 - Add [`backup --with-v3`](https://github.com/coreos/etcd/pull/8479) flag.
 
-### Added(v3 `etcdctl`)
+### Added: v3 `etcdctl`
 
 - Add [`--discovery-srv`](https://github.com/coreos/etcd/pull/8462) flag.
 - Add [`--keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
@@ -183,7 +183,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Print [`"del"` instead of `"delete"`](https://github.com/coreos/etcd/pull/8297) in `txn` interactive mode.
 - Print [`ETCD_INITIAL_ADVERTISE_PEER_URLS` in `member add`](https://github.com/coreos/etcd/pull/8332).
 
-### Added(metrics)
+### Added: metrics
 
 - Add [`etcd --listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` endpoints.
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
@@ -195,7 +195,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Document [Prometheus 2.0 rules](https://github.com/coreos/etcd/pull/8879).
 - Initialize gRPC server [metrics with zero values](https://github.com/coreos/etcd/pull/8878).
 
-### Added(`grpc-proxy`)
+### Added: `grpc-proxy`
 
 - Add [`grpc-proxy start --experimental-leasing-prefix`](https://github.com/coreos/etcd/pull/8341) flag.
   - For disconnected linearized reads.
@@ -210,7 +210,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Add [`grpc-proxy start --max-send-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
 - Add [`grpc-proxy start --max-recv-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
 
-### Added(gRPC gateway)
+### Added: gRPC gateway (HTTP endpoints for v3)
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
   - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in `v3.4`.
@@ -225,7 +225,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
   - To implement [Raft thesis 4.2.1 Catching up new servers](https://github.com/coreos/etcd/issues/8568).
   - `Learner` node does not vote or promote itself.
 
-### Added/Fixed(Security/Auth)
+### Security, Authentication
 
 - Add [CRL based connection rejection](https://github.com/coreos/etcd/pull/8124) to manage [revoked certs](https://github.com/coreos/etcd/issues/4034).
 - Document [TLS authentication changes](https://github.com/coreos/etcd/pull/8895).
@@ -240,12 +240,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0-rc.0) 
 - Fix [auth store panic with disabled token](https://github.com/coreos/etcd/pull/8695).
 - Update `golang.org/x/crypto/bcrypt` (see [golang/crypto@6c586e1](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117)).
 
-### Fixed(v2)
+### Fixed: v2
 
 - [Fail-over v2 client](https://github.com/coreos/etcd/pull/8519) to next endpoint on [oneshot failure](https://github.com/coreos/etcd/issues/8515).
 - [Put back `/v2/machines`](https://github.com/coreos/etcd/pull/8062) endpoint for python-etcd wrapper.
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [range/put/delete operation metrics](https://github.com/coreos/etcd/pull/8054) with transaction.
   - `etcd_debugging_mvcc_range_total`
