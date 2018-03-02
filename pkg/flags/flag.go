@@ -119,9 +119,7 @@ func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 			continue
 		}
 		if alreadySet[kv[0]] {
-			// TODO: exit with error in v3.4
-			plog.Warningf("recognized environment variable %s, but unused: shadowed by corresponding flag", kv[0])
-			continue
+			plog.Fatalf("conflicting environment variable %q is shadowed by corresponding command-line flag (either unset environment variable or disable flag)", kv[0])
 		}
 		if strings.HasPrefix(env, prefix+"_") {
 			plog.Warningf("unrecognized environment variable %s", env)

@@ -34,17 +34,11 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	if err := fs.Set("b", "bar"); err != nil {
 		t.Fatal(err)
 	}
-	// command-line flags take precedence over env vars
-	os.Setenv("ETCD_C", "woof")
-	if err := fs.Set("c", "quack"); err != nil {
-		t.Fatal(err)
-	}
 
 	// first verify that flags are as expected before reading the env
 	for f, want := range map[string]string{
 		"a": "",
 		"b": "bar",
-		"c": "quack",
 	} {
 		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Fatalf("flag %q=%q, want %q", f, got, want)
@@ -59,7 +53,6 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	for f, want := range map[string]string{
 		"a": "foo",
 		"b": "bar",
-		"c": "quack",
 	} {
 		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
