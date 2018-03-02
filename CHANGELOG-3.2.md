@@ -4,11 +4,11 @@
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed(v2)
+### Fixed: v2
 
 - Fix [v2 proxy leaky HTTP requests](https://github.com/coreos/etcd/pull/9336).
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
@@ -24,7 +24,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9297).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
@@ -74,7 +74,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 - Fix [error message of `Revision` compactor](https://github.com/coreos/etcd/pull/8999) in server-side.
 
-### Added(`etcd/clientv3`)
+### Added: `clientv3`
 
 - Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
   - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).

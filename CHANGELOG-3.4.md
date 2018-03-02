@@ -20,7 +20,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
 
-### Changed(Breaking Changes)
+### Breaking Changes
 
 - Drop [ACIs from official release](https://github.com/coreos/etcd/pull/9059).
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
@@ -30,14 +30,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
   - e.g. exit with error on `--advertise-client-urls=http://:2379`.
   - e.g. exit with error on `--initial-advertise-peer-urls=http://:2380`.
-- Exit on [shadowed environment variables](TODO).
+- Exit on [shadowed environment variables](https://github.com/coreos/etcd/pull/9382).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
+  - e.g. exit with error on `ETCD_NAME=abc etcd --name=def`.
   - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
-- Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
-  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/coreos/etcd/issues/4913).
-  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
-  - Remove recursive symlinks in `cmd` directory.
-  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
+  - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 - Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
 - Move `"github.com/coreos/etcd/error"` to [`"github.com/coreos/etcd/etcdserver/v2error"`](https://github.com/coreos/etcd/pull/9274).
@@ -45,13 +42,23 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/coreos/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Require Go 1.10+.
+- Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
+  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/coreos/etcd/issues/4913).
+  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
+  - Remove recursive symlinks in `cmd` directory.
+  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 
-### Added(`etcd`)
+### Added: `etcd`
 
 - Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
+- Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
+- Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
+
+### Security, Authentication
+
 - Add [`--host-whitelist`](https://github.com/coreos/etcd/pull/9372) flag, [`etcdserver.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), and [`embed.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), to prevent ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attack.
   - Any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to [DNS rebinding attacks (CVE-2018-5702)](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2).
   - Client origin enforce policy works as follow:
@@ -61,10 +68,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
-- Define `embed.CompactorModePeriodic` for `compactor.ModePeriodic`.
-- Define `embed.CompactorModeRevision` for `compactor.ModeRevision`.
+- Support `ttl` field for `etcd` Authentication JWT token.
+  - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
+- Allow empty token provider in [`etcdserver.ServerConfig.AuthToken`](https://github.com/coreos/etcd/pull/9369).
 
-### Added(API)
+### Added: API
 
 - Add [`snapshot`](https://github.com/coreos/etcd/pull/9118) package for snapshot restore/save operations.
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
@@ -74,7 +82,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 - Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
 
-### Added(v3 `etcdctl`)
+### Added: v3 `etcdctl`
 
 - Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
 - Add [`check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
@@ -82,11 +90,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 
-### Added(metrics)
+### Added: metrics
 
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
 
-### Added(gRPC gateway)
+### Added: gRPC gateway
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3`](https://github.com/coreos/etcd/pull/9298).
   - To deprecate [`/v3beta`] in `v3.5`.
@@ -101,7 +109,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/coreos/etcd/pull/9116).
 
-### Fixed(v3)
+### Fixed: v3
 
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
@@ -112,6 +120,6 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
   - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
 - Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
-  - Previously, `--auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
-  - Now, `--auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
+  - Previously, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
+  - Now, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
