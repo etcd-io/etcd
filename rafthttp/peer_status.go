@@ -47,6 +47,7 @@ func (s *peerStatus) activate() {
 		plog.Infof("peer %s became active", s.id)
 		s.active = true
 		s.since = time.Now()
+		activePeers.Inc()
 	}
 }
 
@@ -59,6 +60,7 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 		plog.Infof("peer %s became inactive", s.id)
 		s.active = false
 		s.since = time.Time{}
+		activePeers.Dec()
 		return
 	}
 	plog.Debugf(msg)

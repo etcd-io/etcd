@@ -53,6 +53,13 @@ var (
 		[]string{"From"},
 	)
 
+	activePeers = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "peer_active_total",
+		Help:      "The total number of active peer connections.",
+	})
+
 	rtts = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -69,5 +76,6 @@ func init() {
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(sentFailures)
 	prometheus.MustRegister(recvFailures)
+	prometheus.MustRegister(activePeers)
 	prometheus.MustRegister(rtts)
 }
