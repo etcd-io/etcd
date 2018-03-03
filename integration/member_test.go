@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"testing"
 
+	"time"
+
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -69,6 +71,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	size := 3
 	c := NewCluster(t, size)
 	m := c.Members[0].Clone(t)
+	m.BootstrapTimeout = time.Second
 	var err error
 	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
