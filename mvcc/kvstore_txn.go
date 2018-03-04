@@ -21,9 +21,21 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	expensiveReadLimit = 1000
+	readonly           = true
+	readwrite          = false
+)
+
 type storeTxnRead struct {
-	s  *store
-	tx backend.ReadTx
+	s        *store
+	tx       backend.ReadTx
+	txlocked bool
+
+	// for creating concurrent read tx when the read is expensive.
+	b backend.Backend
+	// is the transcation readonly?
+	ro bool
 
 	firstRev int64
 	rev      int64
@@ -33,10 +45,15 @@ func (s *store) Read() TxnRead {
 	s.mu.RLock()
 	tx := s.b.ReadTx()
 	s.revMu.RLock()
-	tx.Lock()
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
+	return newMetricsTxnRead(&storeTxnRead{
+		s:        s,
+		tx:       tx,
+		b:        s.b,
+		ro:       readonly,
+		firstRev: firstRev,
+		rev:      rev})
 }
 
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
@@ -47,7 +64,9 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 }
 
 func (tr *storeTxnRead) End() {
-	tr.tx.Unlock()
+	if tr.txlocked {
+		tr.tx.Unlock()
+	}
 	tr.s.mu.RUnlock()
 }
 
@@ -64,10 +83,15 @@ func (s *store) Write() TxnWrite {
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0},
-		tx:           tx,
-		beginRev:     s.currentRev,
-		changes:      make([]mvccpb.KeyValue, 0, 4),
+		storeTxnRead: storeTxnRead{
+			s:        s,
+			txlocked: true,
+			tx:       tx,
+			ro:       readwrite,
+		},
+		tx:       tx,
+		beginRev: s.currentRev,
+		changes:  make([]mvccpb.KeyValue, 0, 4),
 	}
 	return newMetricsTxnWrite(tw)
 }
@@ -132,6 +156,15 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	limit := int(ro.Limit)
 	if limit <= 0 || limit > len(revpairs) {
 		limit = len(revpairs)
+	}
+
+	if limit > expensiveReadLimit && !tr.txlocked && tr.ro { // first expensive read in a read only transcation
+		// too many keys to range. upgrade the read transcation to concurrent read tx.
+		tr.tx = tr.b.CommittedReadTx()
+	}
+	if !tr.txlocked {
+		tr.tx.Lock()
+		tr.txlocked = true
 	}
 
 	kvs := make([]mvccpb.KeyValue, limit)

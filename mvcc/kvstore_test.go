@@ -640,7 +640,7 @@ func TestTxnBlockBackendForceCommit(t *testing.T) {
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
-	txn := s.Read()
+	txn := s.Write()
 
 	done := make(chan struct{})
 	go func() {
@@ -742,6 +742,7 @@ type fakeBackend struct {
 
 func (b *fakeBackend) BatchTx() backend.BatchTx                                    { return b.tx }
 func (b *fakeBackend) ReadTx() backend.ReadTx                                      { return b.tx }
+func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                            { return b.tx }
 func (b *fakeBackend) Hash(ignores map[backend.IgnoreKey]struct{}) (uint32, error) { return 0, nil }
 func (b *fakeBackend) Size() int64                                                 { return 0 }
 func (b *fakeBackend) SizeInUse() int64                                            { return 0 }

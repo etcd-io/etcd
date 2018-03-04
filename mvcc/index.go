@@ -91,10 +91,11 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex)) {
 	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
 
-	ti.RLock()
-	defer ti.RUnlock()
+	ti.Lock()
+	clone := ti.tree.Clone()
+	ti.Unlock()
 
-	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
+	clone.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
 		if len(endi.key) > 0 && !item.Less(endi) {
 			return false
 		}

@@ -300,6 +300,81 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 }
 
+// TestBackendConcurrentReadTx checks if the concurrent tx is created correctly.
+func TestBackendConcurrentReadTx(t *testing.T) {
+	b, tmpPath := NewTmpBackend(2*time.Second, 10000)
+	defer cleanup(b, tmpPath)
+
+	var rtx0 ReadTx
+	done := make(chan struct{})
+	go func() {
+		rtx0 = b.ConcurrentReadTx()
+		close(done)
+	}()
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket([]byte("key"))
+	for i := 0; i < 5; i++ {
+		k := []byte(fmt.Sprintf("%04d", i))
+		tx.UnsafePut([]byte("key"), k, []byte("bar"))
+	}
+	tx.Unlock()
+
+	select {
+	case <-done:
+		t.Fatal("concurrent read tx should block on the last batch tx!")
+	case <-time.After(time.Second):
+	}
+
+	select {
+	case <-done:
+	case <-time.After(4 * time.Second):
+		t.Fatal("commit the last batched tx should unblock concurrent tx!")
+	}
+
+	rtx0.Lock()
+	defer rtx0.Unlock()
+	ks, _ := rtx0.UnsafeRange([]byte("key"), []byte(fmt.Sprintf("%04d", 0)), []byte(fmt.Sprintf("%04d", 5)), 0)
+	if len(ks) != 5 {
+		t.Errorf("got %d keys, expect %d", len(ks), 5)
+	}
+
+	// test if we can create concurrent read while the previous read tx is still open
+	var rtx1 ReadTx
+	done = make(chan struct{})
+	go func() {
+		rtx1 = b.ConcurrentReadTx()
+		rtx1.Lock()
+		rtx1.UnsafeForEach([]byte(""), nil)
+		rtx1.Unlock()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(4 * time.Second):
+		t.Fatal("cannot create concurrent read")
+	}
+
+	done = make(chan struct{})
+	// test if we can create concurrent write while the previous read tx is still open
+	go func() {
+		tx := b.BatchTx()
+		tx.Lock()
+		for i := 0; i < 5; i++ {
+			k := []byte(fmt.Sprintf("%04d", i))
+			tx.UnsafePut([]byte("key"), k, []byte("bar"))
+		}
+		tx.Unlock()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(4 * time.Second):
+		t.Fatal("cannot create concurrent write")
+	}
+}
+
 func cleanup(b Backend, path string) {
 	b.Close()
 	os.Remove(path)
