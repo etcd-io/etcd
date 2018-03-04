@@ -85,12 +85,12 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+
 	var resp *pb.RangeResponse
 	var err error
 	defer func(start time.Time) {
 		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), start, r, resp, err)
 	}(time.Now())
-
 	if !r.Serializable {
 		err = s.linearizableReadNotify(ctx)
 		if err != nil {

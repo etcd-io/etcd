@@ -49,6 +49,11 @@ var (
 )
 
 type Backend interface {
+	// CommittedReadTx returns a non-blocking read tx that is suitable for large reads.
+	// CommittedReadTx call itself will not return until the current BatchTx gets committed to
+	// ensure consistency.
+	CommittedReadTx() ReadTx
+
 	ReadTx() ReadTx
 	BatchTx() BatchTx
 
@@ -96,6 +101,8 @@ type backend struct {
 	batchTx       *batchTxBuffered
 
 	readTx *readTx
+
+	concurrentReadTxCh chan chan ReadTx
 
 	stopc chan struct{}
 	donec chan struct{}
@@ -165,6 +172,8 @@ func newBackend(bcfg BackendConfig) *backend {
 			buckets: make(map[string]*bolt.Bucket),
 		},
 
+		concurrentReadTxCh: make(chan chan ReadTx),
+
 		stopc: make(chan struct{}),
 		donec: make(chan struct{}),
 
@@ -183,6 +192,12 @@ func (b *backend) BatchTx() BatchTx {
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
+
+func (b *backend) CommittedReadTx() ReadTx {
+	rch := make(chan ReadTx)
+	b.concurrentReadTxCh <- rch
+	return <-rch
+}
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
@@ -301,6 +316,25 @@ func (b *backend) run() {
 			b.batchTx.Commit()
 		}
 		t.Reset(b.batchInterval)
+		b.createConcurrentReadTxs()
+	}
+}
+
+func (b *backend) createConcurrentReadTxs() {
+	// do not allow too many concurrent read txs.
+	// TODO: improve this by having a global pending counter?
+	for i := 0; i < 100; i++ {
+		select {
+		case rch := <-b.concurrentReadTxCh:
+			rtx, err := b.db.Begin(false)
+			if err != nil {
+				plog.Fatalf("cannot begin read tx (%s)", err)
+			}
+			rch <- &concurrentReadTx{tx: rtx}
+		default:
+			// no more to create.
+			return
+		}
 	}
 }
 
