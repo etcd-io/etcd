@@ -47,6 +47,10 @@ $ etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 ```
 
+**Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states**.
+
+**Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag.**
+
 ## Space quota
 
 The space quota in `etcd` ensures the cluster operates in a reliable fashion. Without a space quota, `etcd` may suffer from poor performance if the keyspace grows excessively large, or it may simply run out of storage space, leading to unpredictable cluster behavior. If the keyspace's backend database for any member exceeds the space quota, `etcd` raises a cluster-wide alarm that puts the cluster into a maintenance mode which only accepts key reads and deletes. Only after freeing enough space in the keyspace and defragmenting the backend database, along with clearing the space quota alarm can the cluster resume normal operation.
@@ -74,7 +78,7 @@ $ ETCDCTL_API=3 etcdctl --write-out=table endpoint status
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 # confirm alarm is raised
 $ ETCDCTL_API=3 etcdctl alarm list
-memberID:13803658152347727308 alarm:NOSPACE 
+memberID:13803658152347727308 alarm:NOSPACE
 ```
 
 Removing excessive keyspace data and defragmenting the backend database will put the cluster back within the quota limits:
@@ -90,7 +94,7 @@ $ ETCDCTL_API=3 etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 # disarm alarm
 $ ETCDCTL_API=3 etcdctl alarm disarm
-memberID:13803658152347727308 alarm:NOSPACE 
+memberID:13803658152347727308 alarm:NOSPACE
 # test puts are allowed again
 $ ETCDCTL_API=3 etcdctl put newkey 123
 OK
