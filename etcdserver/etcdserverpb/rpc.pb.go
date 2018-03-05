@@ -296,7 +296,7 @@ type RangeRequest struct {
 	// greater mod revisions will be filtered away.
 	MaxModRevision int64 `protobuf:"varint,11,opt,name=max_mod_revision,json=maxModRevision,proto3" json:"max_mod_revision,omitempty"`
 	// min_create_revision is the lower bound for returned key create revisions; all keys with
-	// lesser create trevisions will be filtered away.
+	// lesser create revisions will be filtered away.
 	MinCreateRevision int64 `protobuf:"varint,12,opt,name=min_create_revision,json=minCreateRevision,proto3" json:"min_create_revision,omitempty"`
 	// max_create_revision is the upper bound for returned key create revisions; all keys with
 	// greater create revisions will be filtered away.
