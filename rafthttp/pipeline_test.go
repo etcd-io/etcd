@@ -301,7 +301,7 @@ func startTestPipeline(tr *Transport, picker *urlPicker) *pipeline {
 		peerID:        types.ID(1),
 		tr:            tr,
 		picker:        picker,
-		status:        newPeerStatus(types.ID(1)),
+		status:        newPeerStatus(types.ID(1), tr.initPeerNotifyOnce, tr.initPeerNotifyCh),
 		raft:          &fakeRaft{},
 		followerStats: &stats.FollowerStats{},
 		errorc:        make(chan error, 1),

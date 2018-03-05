@@ -87,6 +87,10 @@ type Transporter interface {
 	ActiveSince(id types.ID) time.Time
 	// Stop closes the connections and stops the transporter.
 	Stop()
+	// InitialPeerNotify returns a channel that closes when an initial
+	// peer connection has been established. Use this to wait until the
+	// first peer connection becomes active.
+	InitialPeerNotify() <-chan struct{}
 }
 
 // Transport implements Transporter interface. It provides the functionality
@@ -126,6 +130,9 @@ type Transport struct {
 	peers   map[types.ID]Peer    // peers map
 
 	prober probing.Prober
+
+	initPeerNotifyOnce *sync.Once
+	initPeerNotifyCh   chan struct{}
 }
 
 func (t *Transport) Start() error {
@@ -148,6 +155,10 @@ func (t *Transport) Start() error {
 	if t.DialRetryFrequency == 0 {
 		t.DialRetryFrequency = rate.Every(100 * time.Millisecond)
 	}
+
+	t.initPeerNotifyOnce = &sync.Once{}
+	t.initPeerNotifyCh = make(chan struct{})
+
 	return nil
 }
 
@@ -375,6 +386,8 @@ func (t *Transport) Resume() {
 	}
 }
 
+func (t *Transport) InitialPeerNotify() <-chan struct{} { return t.initPeerNotifyCh }
+
 type nopTransporter struct{}
 
 func NewNopTransporter() Transporter {
@@ -394,6 +407,7 @@ func (s *nopTransporter) ActiveSince(id types.ID) time.Time   { return time.Time
 func (s *nopTransporter) Stop()                               {}
 func (s *nopTransporter) Pause()                              {}
 func (s *nopTransporter) Resume()                             {}
+func (s *nopTransporter) InitialPeerNotify() <-chan struct{}  { return nil }
 
 type snapTransporter struct {
 	nopTransporter
