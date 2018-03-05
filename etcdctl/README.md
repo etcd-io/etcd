@@ -1513,7 +1513,7 @@ CHECK provides commands for checking properties of the etcd cluster.
 
 ### CHECK PERF [options]
 
-CHECK PERF checks the performance of the etcd cluster for 60 seconds.
+CHECK PERF checks the performance of the etcd cluster for 60 seconds. Running the `check perf` often can create a large keyspace history which can be auto compacted and defragmented using the `--auto-compact` and `--auto-defrag` options as described below.
 
 RPC: CheckPerf
 
@@ -1522,6 +1522,10 @@ RPC: CheckPerf
 - load -- the performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)
 
 - prefix -- the prefix for writing the performance check's keys.
+
+- auto-compact -- if true, compact storage with last revision after test is finished.
+
+- auto-defrag -- if true, defragment storage after test is finished.
 
 #### Output
 
