@@ -2017,7 +2017,7 @@
           "format": "int64"
         },
         "min_create_revision": {
-          "description": "min_create_revision is the lower bound for returned key create revisions; all keys with\nlesser create trevisions will be filtered away.",
+          "description": "min_create_revision is the lower bound for returned key create revisions; all keys with\nlesser create revisions will be filtered away.",
           "type": "string",
           "format": "int64"
         },

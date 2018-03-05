@@ -415,7 +415,7 @@ message RangeRequest {
   int64 max_mod_revision = 11;
 
   // min_create_revision is the lower bound for returned key create revisions; all keys with
-  // lesser create trevisions will be filtered away.
+  // lesser create revisions will be filtered away.
   int64 min_create_revision = 12;
 
   // max_create_revision is the upper bound for returned key create revisions; all keys with
