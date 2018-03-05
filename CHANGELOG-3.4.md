@@ -98,7 +98,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 ### Added: gRPC gateway
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3`](https://github.com/coreos/etcd/pull/9298).
-  - To deprecate [`/v3beta`] in `v3.5`.
+  - To deprecate [`/v3beta`](https://github.com/coreos/etcd/issues/9189) in `v3.5`.
 
 ### Package `raft`
 
