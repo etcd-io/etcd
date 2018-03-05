@@ -68,7 +68,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
-- Support `ttl` field for `etcd` Authentication JWT token.
+- Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
 - Allow empty token provider in [`etcdserver.ServerConfig.AuthToken`](https://github.com/coreos/etcd/pull/9369).
 
@@ -87,6 +87,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
 - Add [`check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
 - Add [`check perf --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9330) flags.
+- Add [`defrag --cluster`](https://github.com/coreos/etcd/pull/9390) flag.
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 
