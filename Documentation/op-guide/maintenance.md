@@ -47,7 +47,9 @@ $ etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 ```
 
-Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states.
+**Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states**.
+
+**Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag.**
 
 To defragment an etcd data directory directly, while etcd is not running, use the command:
 
