@@ -1546,6 +1546,38 @@ Shows examples of both, pass and fail, status. The failure is due to the fact th
 # FAIL
 ```
 
+### CHECK DATASCALE [options]
+
+CHECK DATASCALE checks the memory usage of holding data for different workloads on a given server endpoint. Running the `check datascale` often can create a large keyspace history which can be auto compacted and defragmented using the `--auto-compact` and `--auto-defrag` options as described below.
+
+RPC: CheckDatascale
+
+#### Options
+
+- load -- the datascale check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge)
+
+- prefix -- the prefix for writing the datascale check's keys.
+
+- auto-compact -- if true, compact storage with last revision after test is finished.
+
+- auto-defrag -- if true, defragment storage after test is finished.
+
+#### Output
+
+Prints the system memory usage for a given workload. Also prints status of compact and defragment if related options are passed.
+
+#### Examples
+
+```bash
+./etcdctl check datascale --load="s" --auto-compact=true --auto-defrag=true
+# Start data scale check for work load [10000 key-value pairs, 1024 bytes per key-value, 50 concurrent clients].
+# Compacting with revision 18346204
+# Compacted with revision 18346204
+# Defragmenting "127.0.0.1:2379"
+# Defragmented "127.0.0.1:2379"
+# PASS: Approximate system memory used : 64.30 MB.
+```
+
 ## Exit codes
 
 For all commands, a successful execution return a zero exit code. All failures will return non-zero exit codes.
