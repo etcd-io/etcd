@@ -539,6 +539,62 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.r.transport = tr
 
+	// fresh start
+	if !haveWAL {
+		ticks := cfg.ElectionTicks - 1
+		plog.Infof("%s started anew; fast-forwarding %d ticks (election ticks %d) with %d found member(s)", srv.ID(), ticks, cfg.ElectionTicks, len(cl.Members()))
+		srv.advanceRaftTicks(ticks)
+		return srv, nil
+	}
+
+	srv.goAttach(func() {
+		select {
+		case <-cl.InitialAddNotify():
+			singleNode := len(cl.Members()) == 1
+			if !singleNode {
+				break // multi-node
+			}
+
+			// more member-add commands may be applied
+			// then not single-node cluster
+			select {
+			case <-time.After(srv.Cfg.electionTimeout()):
+				singleNode = len(cl.Members()) == 1
+			case <-tr.InitialPeerNotify():
+				singleNode = false
+			}
+
+			// restarted single-node
+			if singleNode {
+				if !srv.isLeader() { // and leader has not been elected
+					ticks := cfg.ElectionTicks - 1
+					plog.Infof("%s as 1-node cluster; fast-forwarding %d ticks (election ticks %d)", srv.ID(), ticks, cfg.ElectionTicks)
+					srv.advanceRaftTicks(ticks)
+				} else {
+					plog.Infof("%s started as leader to 1-node cluster", srv.ID())
+				}
+				return
+			}
+
+		case <-time.After(rafthttp.ConnReadTimeout):
+			// slow raft config change apply
+			plog.Infof("%s waited %s for member add apply but timed out", srv.ID(), rafthttp.ConnReadTimeout)
+			return
+		}
+
+		// multi-node, wait for peer connection reports
+		select {
+		case <-tr.InitialPeerNotify():
+			// adjust ticks in case slow leader message receive
+			ticks := cfg.ElectionTicks - 3
+			plog.Infof("%s initialzed peer connection; fast-forwarding %d ticks (election ticks %d) with %d found member(s)", srv.ID(), ticks, cfg.ElectionTicks, len(cl.Members()))
+			srv.advanceRaftTicks(ticks)
+
+		case <-time.After(rafthttp.ConnReadTimeout):
+			// connection failed, or no active peers
+			plog.Infof("%s waited %s but no active peer found (or restarted 1-node cluster)", srv.ID(), rafthttp.ConnReadTimeout)
+		}
+	})
 	return srv, nil
 }
 
