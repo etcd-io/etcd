@@ -1385,7 +1385,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	// make lkv1 connection choppy so Txn fails
 	go func() {
 		defer close(sdonec)
-		for i := 0; i < 10 && cctx.Err() == nil; i++ {
+		for i := 0; i < 3 && cctx.Err() == nil; i++ {
 			clus.Members[0].Stop(t)
 			time.Sleep(10 * time.Millisecond)
 			clus.Members[0].Restart(t)
@@ -1396,6 +1396,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 		if _, err := lkv2.Put(cctx, "k", "v"); err != nil {
 			t.Log(err)
 		}
+		// blocks until lkv1 connection comes back
 		resp, err := lkv1.Get(cctx, "k")
 		if err != nil {
 			t.Fatal(err)
@@ -1408,11 +1409,11 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	case <-pdonec:
 		cancel()
 		<-sdonec
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		cancel()
 		<-sdonec
 		<-pdonec
-		t.Fatal("took to long to revoke and put")
+		t.Fatal("took too long to revoke and put")
 	}
 }
 
