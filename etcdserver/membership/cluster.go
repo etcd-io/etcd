@@ -52,6 +52,9 @@ type RaftCluster struct {
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
+
+	initAddNotifyOnce *sync.Once
+	initAddNotifyCh   chan struct{}
 }
 
 func NewClusterFromURLsMap(token string, urlsmap types.URLsMap) (*RaftCluster, error) {
@@ -81,9 +84,11 @@ func NewClusterFromMembers(token string, id types.ID, membs []*Member) *RaftClus
 
 func NewCluster(token string) *RaftCluster {
 	return &RaftCluster{
-		token:   token,
-		members: make(map[types.ID]*Member),
-		removed: make(map[types.ID]bool),
+		token:             token,
+		members:           make(map[types.ID]*Member),
+		removed:           make(map[types.ID]bool),
+		initAddNotifyOnce: new(sync.Once),
+		initAddNotifyCh:   make(chan struct{}),
 	}
 }
 
@@ -295,8 +300,15 @@ func (c *RaftCluster) AddMember(m *Member) {
 
 	c.members[m.ID] = m
 
+	if c.initAddNotifyOnce != nil {
+		c.initAddNotifyOnce.Do(func() { close(c.initAddNotifyCh) })
+	}
 	plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.id)
 }
+
+// InitialAddNotify returns a channel that closes when
+// the first member is added to the cluster
+func (c *RaftCluster) InitialAddNotify() <-chan struct{} { return c.initAddNotifyCh }
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
