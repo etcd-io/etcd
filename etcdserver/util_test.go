@@ -86,4 +86,5 @@ func (s *nopTransporterWithActiveTime) ActiveSince(id types.ID) time.Time   { re
 func (s *nopTransporterWithActiveTime) Stop()                               {}
 func (s *nopTransporterWithActiveTime) Pause()                              {}
 func (s *nopTransporterWithActiveTime) Resume()                             {}
+func (s *nopTransporterWithActiveTime) InitialPeerNotify() <-chan struct{}  { return nil }
 func (s *nopTransporterWithActiveTime) reset(am map[types.ID]time.Time)     { s.activeMap = am }
