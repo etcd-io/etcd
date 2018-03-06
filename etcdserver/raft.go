@@ -97,6 +97,7 @@ type raftNode struct {
 	term         uint64
 	lead         uint64
 
+	tickMu *sync.Mutex
 	raftNodeConfig
 
 	// a chan to send/receive snapshot
@@ -133,6 +134,7 @@ type raftNodeConfig struct {
 
 func newRaftNode(cfg raftNodeConfig) *raftNode {
 	r := &raftNode{
+		tickMu:         new(sync.Mutex),
 		raftNodeConfig: cfg,
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.
@@ -151,6 +153,14 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 	return r
 }
 
+// package raft does not have locks
+// prevent racey tick operation from advancing election ticks
+func (r *raftNode) tick() {
+	r.tickMu.Lock()
+	r.raftNodeConfig.Node.Tick()
+	r.tickMu.Unlock()
+}
+
 // start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
@@ -163,7 +173,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 		for {
 			select {
 			case <-r.ticker.C:
-				r.Tick()
+				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
 					newLeader := rd.SoftState.Lead != raft.None && atomic.LoadUint64(&r.lead) != rd.SoftState.Lead
