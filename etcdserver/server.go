@@ -179,6 +179,12 @@ type EtcdServer struct {
 	consistIndex consistentIndex // must use atomic operations to access; keep 64-bit aligned.
 	r            raftNode        // uses 64-bit atomics; keep 64-bit aligned.
 
+	// advanceRaftTicks advances ticks of Raft node.
+	// This can be used for fast-forwarding election
+	// ticks in multi data-center deployments, thus
+	// speeding up election process.
+	advanceRaftTicks func(ticks int)
+
 	readych chan struct{}
 	Cfg     ServerConfig
 
@@ -443,6 +449,12 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		hostWhitelist: cfg.HostWhitelist,
+	}
+
+	srv.advanceRaftTicks = func(ticks int) {
+		for i := 0; i < ticks; i++ {
+			srv.r.tick()
+		}
 	}
 
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
