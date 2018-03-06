@@ -513,11 +513,51 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	return srv, nil
 }
 
-// Start prepares and starts server in a new goroutine. It is no longer safe to
-// modify a server's fields after it has been sent to Start.
-// It also starts a goroutine to publish its server information.
+func (s *EtcdServer) adjustTicks() {
+	clusterN := len(s.cluster.Members())
+
+	// single-node fresh start, or single-node recovers from snapshot
+	if clusterN == 1 {
+		ticks := s.Cfg.ElectionTicks - 1
+		plog.Infof("%s as single-node; fast-forwarding %d ticks (election ticks %d)", s.ID(), ticks, s.Cfg.ElectionTicks)
+		s.r.advanceTicks(ticks)
+		return
+	}
+
+	// retry up to "rafthttp.ConnReadTimeout", which is 5-sec
+	// until peer connection reports; otherwise:
+	// 1. all connections failed, or
+	// 2. no active peers, or
+	// 3. restarted single-node with no snapshot
+	// then, do nothing, because advancing ticks would have no effect
+	waitTime := rafthttp.ConnReadTimeout
+	itv := 50 * time.Millisecond
+	for i := int64(0); i < int64(waitTime/itv); i++ {
+		select {
+		case <-time.After(itv):
+		case <-s.stopping:
+			return
+		}
+
+		peerN := s.r.transport.ActivePeers()
+		if peerN > 1 {
+			// multi-node received peer connection reports
+			// adjust ticks, in case slow leader message receive
+			ticks := s.Cfg.ElectionTicks - 2
+			plog.Infof("%s initialzed peer connection; fast-forwarding %d ticks (election ticks %d) with %d active peer(s)", s.ID(), ticks, s.Cfg.ElectionTicks, peerN)
+			s.r.advanceTicks(ticks)
+			return
+		}
+	}
+}
+
+// Start performs any initialization of the Server necessary for it to
+// begin serving requests. It must be called before Do or Process.
+// Start must be non-blocking; any long-running server functionality
+// should be implemented in goroutines.
 func (s *EtcdServer) Start() {
 	s.start()
+	s.goAttach(func() { s.adjustTicks() })
 	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
 	s.goAttach(s.purgeFile)
 	s.goAttach(func() { monitorFileDescriptor(s.stopping) })
