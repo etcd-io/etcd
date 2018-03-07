@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-leader=http://10.240.201.15:2379
+leader=http://localhost:2379
 # assume three servers
-servers=( http://10.240.201.15:2379 http://10.240.212.209:2379 http://10.240.95.3:2379 )
+servers=( http://localhost:2379 http://localhost:22379 http://localhost:32379 )
 
 keyarray=( 64 256 )
 
