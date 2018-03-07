@@ -35,7 +35,7 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/logger"
+	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -97,9 +97,9 @@ type RestoreConfig struct {
 // NewV3 returns a new snapshot Manager for v3.x snapshot.
 // "*clientv3.Client" is only used for "Save" method.
 // Otherwise, pass "nil".
-func NewV3(cli *clientv3.Client, lg logger.Logger) Manager {
+func NewV3(cli *clientv3.Client, lg logutil.Logger) Manager {
 	if lg == nil {
-		lg = logger.NewDiscardLogger()
+		lg = logutil.NewDiscardLogger()
 	}
 	return &v3Manager{cli: cli, logger: lg}
 }
@@ -114,7 +114,7 @@ type v3Manager struct {
 	cl      *membership.RaftCluster
 
 	skipHashCheck bool
-	logger        logger.Logger
+	logger        logutil.Logger
 }
 
 func (s *v3Manager) Save(ctx context.Context, dbPath string) error {
