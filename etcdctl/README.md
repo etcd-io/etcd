@@ -1143,7 +1143,7 @@ RPC: AuthEnable/AuthDisable
 
 ### ROLE \<subcommand\>
 
-ROLE is used to specify differnt roles which can be assigned to etcd user(s).
+ROLE is used to specify different roles which can be assigned to etcd user(s).
 
 ### ROLE ADD \<role name\>
 
