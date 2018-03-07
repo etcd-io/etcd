@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/netutil"
@@ -458,7 +459,7 @@ func (cfg *Config) Validate() error {
 
 	switch cfg.AutoCompactionMode {
 	case "":
-	case CompactorModeRevision, CompactorModePeriodic:
+	case compactor.ModeRevision, compactor.ModePeriodic:
 	default:
 		return fmt.Errorf("unknown auto-compaction-mode %q", cfg.AutoCompactionMode)
 	}

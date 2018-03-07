@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
@@ -558,9 +559,9 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 	h, err := strconv.Atoi(retention)
 	if err == nil {
 		switch mode {
-		case CompactorModeRevision:
+		case compactor.ModeRevision:
 			ret = time.Duration(int64(h))
-		case CompactorModePeriodic:
+		case compactor.ModePeriodic:
 			ret = time.Duration(int64(h)) * time.Hour
 		}
 	} else {
