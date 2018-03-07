@@ -275,43 +275,51 @@ func testV3CurlAuth(t *testing.T, pathPrefix string) {
 	}
 }
 
-func TestV3CurlCampaignNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(configNoTLS))
-	}
-}
+func TestV3CurlCampaignAlpha(t *testing.T) { testV3CurlCampaign(t, "/v3alpha") }
+func TestV3CurlCampaignBeta(t *testing.T)  { testV3CurlCampaign(t, "/v3beta") }
+func testV3CurlCampaign(t *testing.T, pathPrefix string) {
+	defer testutil.AfterTest(t)
 
-func testV3CurlCampaign(cx ctlCtx) {
+	epc, err := newEtcdProcessCluster(&configNoTLS)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if cerr := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", cerr)
+		}
+	}()
+
 	cdata, err := json.Marshal(&epb.CampaignRequest{
 		Name:  []byte("/election-prefix"),
 		Value: []byte("v1"),
 	})
 	if err != nil {
-		cx.t.Fatal(err)
+		t.Fatal(err)
 	}
-	cargs := cURLPrefixArgs(cx.epc, "POST", cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
+	cargs := cURLPrefixArgs(epc, "POST", cURLReq{
+		endpoint: path.Join(pathPrefix, "/election/campaign"),
 		value:    string(cdata),
 	})
 	lines, err := spawnWithExpectLines(cargs, `"leader":{"name":"`)
 	if err != nil {
-		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
+		t.Fatalf("failed post campaign request (%s) (%v)", pathPrefix, err)
 	}
 	if len(lines) != 1 {
-		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
+		t.Fatalf("len(lines) expected 1, got %+v", lines)
 	}
 
 	var cresp campaignResponse
 	if err = json.Unmarshal([]byte(lines[0]), &cresp); err != nil {
-		cx.t.Fatalf("failed to unmarshal campaign response %v", err)
+		t.Fatalf("failed to unmarshal campaign response %v", err)
 	}
 	ndata, err := base64.StdEncoding.DecodeString(cresp.Leader.Name)
 	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
+		t.Fatalf("failed to decode leader key %v", err)
 	}
 	kdata, err := base64.StdEncoding.DecodeString(cresp.Leader.Key)
 	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
+		t.Fatalf("failed to decode leader key %v", err)
 	}
 
 	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
@@ -326,21 +334,19 @@ func testV3CurlCampaign(cx ctlCtx) {
 		Value: []byte("v2"),
 	})
 	if err != nil {
-		cx.t.Fatal(err)
+		t.Fatal(err)
 	}
-	if err = cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+	if err = cURLPost(epc, cURLReq{
+		endpoint: path.Join(pathPrefix, "/election/proclaim"),
 		value:    string(pdata),
 		expected: `"revision":`,
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		t.Fatalf("failed post proclaim request (%s) (%v)", pathPrefix, err)
 	}
 }
 
 func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
-	}
+	testCtl(t, testV3CurlProclaimMissiongLeaderKey, withCfg(configNoTLS))
 }
 
 func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
@@ -352,27 +358,25 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	if err = cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		endpoint: path.Join("/v3beta", "/election/proclaim"),
 		value:    string(pdata),
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post proclaim request (%s) (%v)", "/v3beta", err)
 	}
 }
 
 func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
-	}
+	testCtl(t, testV3CurlResignMissiongLeaderKey, withCfg(configNoTLS))
 }
 
 func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	if err := cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/resign"),
+		endpoint: path.Join("/v3beta", "/election/resign"),
 		value:    `{}`,
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post resign request (%s) (%v)", "/v3beta", err)
 	}
 }
 
