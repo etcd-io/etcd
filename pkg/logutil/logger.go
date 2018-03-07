@@ -34,7 +34,7 @@ var _ Logger = &defaultLogger{}
 //
 //  var defaultLogger Logger
 //  g := grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4)
-//  defaultLogger = New(g)
+//  defaultLogger = NewLogger(g)
 //
 func NewLogger(g grpclog.LoggerV2) Logger { return &defaultLogger{g: g} }
 
