@@ -38,19 +38,19 @@ curl \
 printf "\nWriting v3 key...\n"
 curl \
   -L http://127.0.0.1:2379/v3/kv/put \
-	-X POST \
+  -X POST \
   -d '{"key": "Zm9v", "value": "YmFy"}'
 
 printf "\n\nWriting v3 key...\n"
 curl \
   -L http://m1.etcd.local:2379/v3/kv/put \
-	-X POST \
+  -X POST \
   -d '{"key": "Zm9v", "value": "YmFy"}'
 
 printf "\n\nReading v3 key...\n"
 curl \
   -L http://m1.etcd.local:2379/v3/kv/range \
-	-X POST \
+  -X POST \
   -d '{"key": "Zm9v"}'
 
 printf "\n\nFetching 'curl http://m1.etcd.local:2379/metrics'...\n"
