@@ -6,6 +6,8 @@
 #   make build -f ./hack/scripts-dev/Makefile
 #   make clean -f ./hack/scripts-dev/Makefile
 #   make clean-docker -f ./hack/scripts-dev/Makefile
+#   make restart-docker -f ./hack/scripts-dev/Makefile
+#   make delete-docker-images -f ./hack/scripts-dev/Makefile
 
 .PHONY: build
 build:
@@ -29,6 +31,13 @@ clean:
 clean-docker:
 	docker images
 	docker image prune --force
+
+restart-docker:
+	service docker restart
+
+delete-docker-images:
+	docker rm --force $(docker ps -a -q) || true
+	docker rmi --force $(docker images -q) || true
 
 
 
