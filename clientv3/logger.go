@@ -18,14 +18,14 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/coreos/etcd/pkg/logger"
+	"github.com/coreos/etcd/pkg/logutil"
 
 	"google.golang.org/grpc/grpclog"
 )
 
 var (
 	lgMu sync.RWMutex
-	lg   logger.Logger
+	lg   logutil.Logger
 )
 
 type settableLogger struct {
@@ -42,22 +42,22 @@ func init() {
 // SetLogger sets client-side Logger.
 func SetLogger(l grpclog.LoggerV2) {
 	lgMu.Lock()
-	lg = logger.New(l)
+	lg = logutil.NewLogger(l)
 	// override grpclog so that any changes happen with locking
 	grpclog.SetLoggerV2(lg)
 	lgMu.Unlock()
 }
 
-// GetLogger returns the current logger.Logger.
-func GetLogger() logger.Logger {
+// GetLogger returns the current logutil.Logger.
+func GetLogger() logutil.Logger {
 	lgMu.RLock()
 	l := lg
 	lgMu.RUnlock()
 	return l
 }
 
-// NewLogger returns a new Logger with logger.Logger.
-func NewLogger(gl grpclog.LoggerV2) logger.Logger {
+// NewLogger returns a new Logger with logutil.Logger.
+func NewLogger(gl grpclog.LoggerV2) logutil.Logger {
 	return &settableLogger{l: gl}
 }
 
@@ -97,5 +97,5 @@ func (s *settableLogger) Lvl(lvl int) grpclog.LoggerV2 {
 	if l.V(lvl) {
 		return s
 	}
-	return logger.NewDiscardLogger()
+	return logutil.NewDiscardLogger()
 }
