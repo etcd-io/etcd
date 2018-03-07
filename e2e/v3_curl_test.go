@@ -167,43 +167,136 @@ func TestV3CurlTxn(t *testing.T) {
 	}
 }
 
-func TestV3CurlCampaignNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(configNoTLS))
+func TestV3CurlAuthAlpha(t *testing.T) { testV3CurlAuth(t, "/v3alpha") }
+func TestV3CurlAuthBeta(t *testing.T)  { testV3CurlAuth(t, "/v3beta") }
+func testV3CurlAuth(t *testing.T, pathPrefix string) {
+	defer testutil.AfterTest(t)
+	epc, err := newEtcdProcessCluster(&configNoTLS)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if cerr := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", cerr)
+		}
+	}()
+
+	// create root user
+	userreq, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/auth/user/add"), value: string(userreq), expected: "revision"}); err != nil {
+		t.Fatalf("failed add user with curl (%v)", err)
+	}
+
+	// create root role
+	rolereq, err := json.Marshal(&pb.AuthRoleAddRequest{Name: string("root")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/auth/role/add"), value: string(rolereq), expected: "revision"}); err != nil {
+		t.Fatalf("failed create role with curl (%v)", err)
+	}
+
+	// grant root role
+	grantrolereq, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("root"), Role: string("root")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/auth/user/grant"), value: string(grantrolereq), expected: "revision"}); err != nil {
+		t.Fatalf("failed grant role with curl (%v)", err)
+	}
+
+	// enable auth
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/auth/enable"), value: string("{}"), expected: "revision"}); err != nil {
+		t.Fatalf("failed enable auth with curl (%v)", err)
+	}
+
+	// put "bar" into "foo"
+	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	testutil.AssertNil(t, err)
+
+	// fail put no auth
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/kv/put"), value: string(putreq), expected: "error"}); err != nil {
+		t.Fatalf("failed no auth put with curl (%v)", err)
+	}
+
+	// auth request
+	authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: string("root"), Password: string("toor")})
+	testutil.AssertNil(t, err)
+
+	var (
+		authHeader string
+		cmdArgs    []string
+		lineFunc   = func(txt string) bool { return true }
+	)
+
+	cmdArgs = cURLPrefixArgs(epc, "POST", cURLReq{endpoint: path.Join(pathPrefix, "/auth/authenticate"), value: string(authreq)})
+	proc, err := spawnCmd(cmdArgs)
+	testutil.AssertNil(t, err)
+
+	cURLRes, err := proc.ExpectFunc(lineFunc)
+	testutil.AssertNil(t, err)
+
+	authRes := make(map[string]interface{})
+	testutil.AssertNil(t, json.Unmarshal([]byte(cURLRes), &authRes))
+
+	token, ok := authRes["token"].(string)
+	if !ok {
+		t.Fatalf("failed invalid token in authenticate response with curl")
+	}
+
+	authHeader = "Authorization : " + token
+
+	// put with auth
+	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
+		t.Fatalf("failed auth put with curl (%v)", err)
 	}
 }
 
-func testV3CurlCampaign(cx ctlCtx) {
+func TestV3CurlCampaignAlpha(t *testing.T) { testV3CurlCampaign(t, "/v3alpha") }
+func TestV3CurlCampaignBeta(t *testing.T)  { testV3CurlCampaign(t, "/v3beta") }
+func testV3CurlCampaign(t *testing.T, pathPrefix string) {
+	defer testutil.AfterTest(t)
+
+	epc, err := newEtcdProcessCluster(&configNoTLS)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if cerr := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", cerr)
+		}
+	}()
+
 	cdata, err := json.Marshal(&epb.CampaignRequest{
 		Name:  []byte("/election-prefix"),
 		Value: []byte("v1"),
 	})
 	if err != nil {
-		cx.t.Fatal(err)
+		t.Fatal(err)
 	}
-	cargs := cURLPrefixArgs(cx.epc, "POST", cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
+	cargs := cURLPrefixArgs(epc, "POST", cURLReq{
+		endpoint: path.Join(pathPrefix, "/election/campaign"),
 		value:    string(cdata),
 	})
 	lines, err := spawnWithExpectLines(cargs, `"leader":{"name":"`)
 	if err != nil {
-		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
+		t.Fatalf("failed post campaign request (%s) (%v)", pathPrefix, err)
 	}
 	if len(lines) != 1 {
-		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
+		t.Fatalf("len(lines) expected 1, got %+v", lines)
 	}
 
 	var cresp campaignResponse
 	if err = json.Unmarshal([]byte(lines[0]), &cresp); err != nil {
-		cx.t.Fatalf("failed to unmarshal campaign response %v", err)
+		t.Fatalf("failed to unmarshal campaign response %v", err)
 	}
 	ndata, err := base64.StdEncoding.DecodeString(cresp.Leader.Name)
 	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
+		t.Fatalf("failed to decode leader key %v", err)
 	}
 	kdata, err := base64.StdEncoding.DecodeString(cresp.Leader.Key)
 	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
+		t.Fatalf("failed to decode leader key %v", err)
 	}
 
 	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
@@ -218,21 +311,19 @@ func testV3CurlCampaign(cx ctlCtx) {
 		Value: []byte("v2"),
 	})
 	if err != nil {
-		cx.t.Fatal(err)
+		t.Fatal(err)
 	}
-	if err = cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+	if err = cURLPost(epc, cURLReq{
+		endpoint: path.Join(pathPrefix, "/election/proclaim"),
 		value:    string(pdata),
 		expected: `"revision":`,
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		t.Fatalf("failed post proclaim request (%s) (%v)", pathPrefix, err)
 	}
 }
 
 func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
-	}
+	testCtl(t, testV3CurlProclaimMissiongLeaderKey, withCfg(configNoTLS))
 }
 
 func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
@@ -244,27 +335,25 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	if err = cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		endpoint: path.Join("/v3beta", "/election/proclaim"),
 		value:    string(pdata),
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post proclaim request (%s) (%v)", "/v3beta", err)
 	}
 }
 
 func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
-	}
+	testCtl(t, testV3CurlResignMissiongLeaderKey, withCfg(configNoTLS))
 }
 
 func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	if err := cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join(cx.apiPrefix, "/election/resign"),
+		endpoint: path.Join("/v3beta", "/election/resign"),
 		value:    `{}`,
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post resign request (%s) (%v)", "/v3beta", err)
 	}
 }
 
