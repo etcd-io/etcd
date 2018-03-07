@@ -5,7 +5,7 @@ Defaults generate an ECDSA-384 root and leaf certificates for `localhost`. etcd 
 **Instructions**
 
 1. Install git, go, and make
-2. Amend https://github.com/coreos/etcd/blob/master/hack/tls-setup/config/req-csr.json - IP's currently in the config should be replaced/added to with IP addresses of each node in your cluster, please note 127.0.0.1 is always required for loopback purposes:
+2. Amend https://github.com/coreos/etcd/blob/master/hack/tls-setup/config/req-csr.json - IP's currently in the config should be replaced/added with IP addresses of each cluster node, please note 127.0.0.1 is always required for loopback purposes:
 ```json
 Example:
 {
