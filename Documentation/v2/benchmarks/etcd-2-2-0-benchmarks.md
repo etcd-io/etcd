@@ -31,7 +31,7 @@ Go OS/Arch: linux/amd64
 
 Bootstrap another machine, outside of the etcd cluster, and run the [`boom` HTTP benchmark tool][boom] with a connection reuse patch to send requests to each etcd cluster member. See the [benchmark instructions][hack] for the patch and the steps to reproduce our procedures.
 
-The performance is calulated through results of 100 benchmark rounds.
+The performance is calculated through results of 100 benchmark rounds.
 
 ## Performance
 
