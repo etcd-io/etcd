@@ -218,6 +218,7 @@ func newConfig() *config {
 	// experimental
 	fs.BoolVar(&cfg.ec.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ec.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
 	fs.DurationVar(&cfg.ec.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ec.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes.")
+	fs.BoolVar(&cfg.ec.ExperimentalPreVote, "experimental-pre-vote", cfg.ec.ExperimentalPreVote, "Enable to run an additional Raft election phase.")
 
 	// ignored
 	for _, f := range cfg.ignored {
