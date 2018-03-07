@@ -3,8 +3,9 @@
 
 
 # Example:
-#   make clean -f ./hack/scripts-dev/Makefile
 #   make build -f ./hack/scripts-dev/Makefile
+#   make clean -f ./hack/scripts-dev/Makefile
+#   make clean-docker -f ./hack/scripts-dev/Makefile
 
 .PHONY: build
 build:
@@ -159,11 +160,12 @@ docker-test-coverage:
 
 
 # Example:
-#   ETCD_VERSION=v3.3.0-test.0 make build-docker-release-master -f ./hack/scripts-dev/Makefile
-#   ETCD_VERSION=v3.3.0-test.0 make push-docker-release-master -f ./hack/scripts-dev/Makefile
+#   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
+#   ETCD_VERSION=v3-test make build-docker-release-master -f ./hack/scripts-dev/Makefile
+#   ETCD_VERSION=v3-test make push-docker-release-master -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 
-build-docker-release-master: compile-with-docker-test
+build-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	cp ./Dockerfile-release ./bin/Dockerfile-release
 	docker build \
