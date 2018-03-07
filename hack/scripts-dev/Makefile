@@ -3,8 +3,11 @@
 
 
 # Example:
-#   make clean -f ./hack/scripts-dev/Makefile
 #   make build -f ./hack/scripts-dev/Makefile
+#   make clean -f ./hack/scripts-dev/Makefile
+#   make clean-docker -f ./hack/scripts-dev/Makefile
+#   make restart-docker -f ./hack/scripts-dev/Makefile
+#   make delete-docker-images -f ./hack/scripts-dev/Makefile
 
 .PHONY: build
 build:
@@ -25,9 +28,20 @@ clean:
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
 
+clean-docker:
+	docker images
+	docker image prune --force
+
+restart-docker:
+	service docker restart
+
+delete-docker-images:
+	docker rm --force $(docker ps -a -q) || true
+	docker rmi --force $(docker images -q) || true
 
 
-GO_VERSION ?= 1.9.4
+
+GO_VERSION ?= 1.10
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -71,14 +85,23 @@ pull-docker-test:
 # Example:
 #   make build-docker-test -f ./hack/scripts-dev/Makefile
 #   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
+#   make compile-setup-gopath-with-docker-test -f ./hack/scripts-dev/Makefile
 
 compile-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker run \
 	  --rm \
+	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
+	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+
+compile-setup-gopath-with-docker-test:
+	$(info GO_VERSION: $(GO_VERSION))
+	docker run \
+	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
@@ -146,11 +169,12 @@ docker-test-coverage:
 
 
 # Example:
-#   ETCD_VERSION=v3.3.0-test.0 make build-docker-release-master -f ./hack/scripts-dev/Makefile
-#   ETCD_VERSION=v3.3.0-test.0 make push-docker-release-master -f ./hack/scripts-dev/Makefile
+#   make compile-with-docker-test -f ./hack/scripts-dev/Makefile
+#   ETCD_VERSION=v3-test make build-docker-release-master -f ./hack/scripts-dev/Makefile
+#   ETCD_VERSION=v3-test make push-docker-release-master -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 
-build-docker-release-master: compile-with-docker-test
+build-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	cp ./Dockerfile-release ./bin/Dockerfile-release
 	docker build \
@@ -234,6 +258,7 @@ docker-static-ip-test-certs-metrics-proxy-run:
 #   make push-docker-dns-test -f ./hack/scripts-dev/Makefile
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-test -f ./hack/scripts-dev/Makefile
+#   make docker-dns-test-insecure-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-gateway-run -f ./hack/scripts-dev/Makefile
 #   make docker-dns-test-certs-wildcard-run -f ./hack/scripts-dev/Makefile
@@ -262,6 +287,20 @@ push-docker-dns-test:
 pull-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker pull gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION)
+
+docker-dns-test-insecure-run:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  $(TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/hack/scripts-dev/docker-dns/insecure,destination=/insecure \
+	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /insecure/run.sh && rm -rf m*.etcd"
 
 docker-dns-test-certs-run:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -418,7 +457,7 @@ docker-dns-srv-test-certs-wildcard-run:
 #   make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
 
 build-etcd-test-proxy:
-	go build -v -o ./bin/etcd-test-proxy ./cmd/tools/etcd-test-proxy
+	go build -v -o ./bin/etcd-test-proxy ./tools/etcd-test-proxy
 
 
 
