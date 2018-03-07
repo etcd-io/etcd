@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.9.4
+- "1.9.4"
 - tip
 
 notifications:
@@ -30,7 +30,7 @@ matrix:
   - go: tip
     env: TARGET=amd64-go-tip
   exclude:
-  - go: 1.9.4
+  - go: "1.9.4"
     env: TARGET=amd64-go-tip
   - go: tip
     env: TARGET=amd64
