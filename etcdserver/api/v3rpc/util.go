@@ -72,6 +72,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCLeaseNotFound
 	case lease.ErrLeaseExists:
 		return rpctypes.ErrGRPCLeaseExist
+	case lease.ErrLeaseTTLTooLarge:
+		return rpctypes.ErrGRPCLeaseTTLTooLarge
 
 	case auth.ErrRootUserNotExist:
 		return rpctypes.ErrGRPCRootUserNotExist

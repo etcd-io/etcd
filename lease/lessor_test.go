@@ -436,6 +436,20 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	}
 }
 
+func TestLessorMaxTTL(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(be, minLeaseTTL)
+	defer le.Stop()
+
+	_, err := le.Grant(1, MaxLeaseTTL+1)
+	if err != ErrLeaseTTLTooLarge {
+		t.Fatalf("grant unexpectedly succeeded")
+	}
+}
+
 type fakeDeleter struct {
 	deleted []string
 	tx      backend.BatchTx
