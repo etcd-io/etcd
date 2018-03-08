@@ -55,6 +55,11 @@ func TestLeaseGrant(t *testing.T) {
 
 	kv := clus.RandClient()
 
+	_, merr := lapi.Grant(context.Background(), clientv3.MaxLeaseTTL+1)
+	if merr != rpctypes.ErrLeaseTTLTooLarge {
+		t.Fatalf("err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
+	}
+
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
