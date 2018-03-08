@@ -4,7 +4,16 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.11...v3.1.12) and
 
 ### Fixed
 
-- [#9086](https://github.com/coreos/etcd/issues/9086),[#8806](https://github.com/coreos/etcd/pull/9297) backport "mvcc: fix watch restore from snapshot"
+- Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9297).
+  - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
+  - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
+  - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
+  - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
+
+### Security
+
+- Compile with [Go 1.8.7](https://groups.google.com/forum/#!topic/golang-announce/X7N1mvntnoU).
+
 
 ## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
 
