@@ -29,6 +29,9 @@ import (
 // NoLease is a special LeaseID representing the absence of a lease.
 const NoLease = LeaseID(0)
 
+// MaxLeaseTTL is the maximum lease TTL value
+const MaxLeaseTTL = 9000000000
+
 var (
 	forever = time.Time{}
 
@@ -37,9 +40,10 @@ var (
 	// maximum number of leases to revoke per second; configurable for tests
 	leaseRevokeRate = 1000
 
-	ErrNotPrimary    = errors.New("not a primary lessor")
-	ErrLeaseNotFound = errors.New("lease not found")
-	ErrLeaseExists   = errors.New("lease already exists")
+	ErrNotPrimary       = errors.New("not a primary lessor")
+	ErrLeaseNotFound    = errors.New("lease not found")
+	ErrLeaseExists      = errors.New("lease already exists")
+	ErrLeaseTTLTooLarge = errors.New("too large lease TTL")
 )
 
 // TxnDelete is a TxnWrite that only permits deletes. Defined here
@@ -196,6 +200,10 @@ func (le *lessor) SetRangeDeleter(rd RangeDeleter) {
 func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	if id == NoLease {
 		return nil, ErrLeaseNotFound
+	}
+
+	if ttl > MaxLeaseTTL {
+		return nil, ErrLeaseTTLTooLarge
 	}
 
 	// TODO: when lessor is under high load, it should give out lease

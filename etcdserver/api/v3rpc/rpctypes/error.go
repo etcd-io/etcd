@@ -31,8 +31,9 @@ var (
 	ErrGRPCFutureRev     = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision is a future revision").Err()
 	ErrGRPCNoSpace       = status.New(codes.ResourceExhausted, "etcdserver: mvcc: database space exceeded").Err()
 
-	ErrGRPCLeaseNotFound = status.New(codes.NotFound, "etcdserver: requested lease not found").Err()
-	ErrGRPCLeaseExist    = status.New(codes.FailedPrecondition, "etcdserver: lease already exists").Err()
+	ErrGRPCLeaseNotFound    = status.New(codes.NotFound, "etcdserver: requested lease not found").Err()
+	ErrGRPCLeaseExist       = status.New(codes.FailedPrecondition, "etcdserver: lease already exists").Err()
+	ErrGRPCLeaseTTLTooLarge = status.New(codes.OutOfRange, "etcdserver: too large lease TTL").Err()
 
 	ErrGRPCMemberExist            = status.New(codes.FailedPrecondition, "etcdserver: member ID already exist").Err()
 	ErrGRPCPeerURLExist           = status.New(codes.FailedPrecondition, "etcdserver: Peer URLs already exists").Err()
@@ -80,8 +81,9 @@ var (
 		ErrorDesc(ErrGRPCFutureRev):    ErrGRPCFutureRev,
 		ErrorDesc(ErrGRPCNoSpace):      ErrGRPCNoSpace,
 
-		ErrorDesc(ErrGRPCLeaseNotFound): ErrGRPCLeaseNotFound,
-		ErrorDesc(ErrGRPCLeaseExist):    ErrGRPCLeaseExist,
+		ErrorDesc(ErrGRPCLeaseNotFound):    ErrGRPCLeaseNotFound,
+		ErrorDesc(ErrGRPCLeaseExist):       ErrGRPCLeaseExist,
+		ErrorDesc(ErrGRPCLeaseTTLTooLarge): ErrGRPCLeaseTTLTooLarge,
 
 		ErrorDesc(ErrGRPCMemberExist):            ErrGRPCMemberExist,
 		ErrorDesc(ErrGRPCPeerURLExist):           ErrGRPCPeerURLExist,
@@ -131,8 +133,9 @@ var (
 	ErrFutureRev     = Error(ErrGRPCFutureRev)
 	ErrNoSpace       = Error(ErrGRPCNoSpace)
 
-	ErrLeaseNotFound = Error(ErrGRPCLeaseNotFound)
-	ErrLeaseExist    = Error(ErrGRPCLeaseExist)
+	ErrLeaseNotFound    = Error(ErrGRPCLeaseNotFound)
+	ErrLeaseExist       = Error(ErrGRPCLeaseExist)
+	ErrLeaseTTLTooLarge = Error(ErrGRPCLeaseTTLTooLarge)
 
 	ErrMemberExist            = Error(ErrGRPCMemberExist)
 	ErrPeerURLExist           = Error(ErrGRPCPeerURLExist)
