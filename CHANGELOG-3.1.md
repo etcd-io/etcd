@@ -1,12 +1,18 @@
+## [v3.1.12](https://github.com/coreos/etcd/releases/tag/v3.1.12) (TBD)
 
-
-## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
-
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.11...v3.1.12) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
 ### Fixed
 
-- [#8411](https://github.com/coreos/etcd/issues/8411),[#8806](https://github.com/coreos/etcd/pull/8806) mvcc: fix watch restore from snapshot
+- [#9086](https://github.com/coreos/etcd/issues/9086),[#8806](https://github.com/coreos/etcd/pull/9297) backport "mvcc: fix watch restore from snapshot"
+
+## [v3.1.11](https://github.com/coreos/etcd/releases/tag/v3.1.11) (2017-11-28)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.10...v3.1.11) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
+
+### Fixed
+
+- [#8411](https://github.com/coreos/etcd/issues/8411),[#8806](https://github.com/coreos/etcd/pull/8806) backport "mvcc: sending events after restore"
 - [#8009](https://github.com/coreos/etcd/issues/8009),[#8902](https://github.com/coreos/etcd/pull/8902) backport coreos/bbolt v1.3.1-coreos.5
 
 
