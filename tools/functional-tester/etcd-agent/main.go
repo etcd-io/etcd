@@ -27,7 +27,7 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-agent")
 
 func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
-	etcdLogDir := flag.String("etcd-log-dir", "etcd-log", "directory to store etcd logs")
+	etcdLogDir := flag.String("etcd-log-dir", "etcd-log", "directory to store etcd logs, data directories, failure archive")
 	port := flag.String("port", ":9027", "port to serve agent server")
 	useRoot := flag.Bool("use-root", true, "use root permissions")
 	failpointAddr := flag.String("failpoint-addr", ":2381", "interface for gofail's HTTP server")

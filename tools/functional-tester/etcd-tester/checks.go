@@ -133,7 +133,8 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 	var resp *pb.LeaseTimeToLiveResponse
 	for i := 0; i < retries; i++ {
 		resp, err = lc.getLeaseByID(ctx, leaseID)
-		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
+		// lease not found, for ~v3.1 compatibilities, check ErrLeaseNotFound
+		if (err == nil && resp.TTL == -1) || (err != nil && rpctypes.Error(err) == rpctypes.ErrLeaseNotFound) {
 			return nil
 		}
 		if err != nil {
@@ -195,11 +196,13 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 	// keep retrying until lease's state is known or ctx is being canceled
 	for ctx.Err() == nil {
 		resp, err := lc.getLeaseByID(ctx, leaseID)
-		if err == nil {
-			return false, nil
-		}
-		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
-			return true, nil
+		if err != nil {
+			// for ~v3.1 compatibilities
+			if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
+				return true, nil
+			}
+		} else {
+			return resp.TTL == -1, nil
 		}
 		plog.Warningf("hasLeaseExpired %v resp %v error %v (endpoint %q)", leaseID, resp, err, lc.endpoint)
 	}
@@ -240,6 +243,19 @@ func (cchecker *compositeChecker) Check() error {
 		}
 	}
 	return errsToError(errs)
+}
+
+type runnerChecker struct {
+	errc chan error
+}
+
+func (rc *runnerChecker) Check() error {
+	select {
+	case err := <-rc.errc:
+		return err
+	default:
+		return nil
+	}
 }
 
 type noChecker struct{}

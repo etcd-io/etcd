@@ -93,9 +93,13 @@ func (s *v2Stresser) run(ctx context.Context, kv clientV2.KeysAPI) {
 	}
 }
 
-func (s *v2Stresser) Cancel() {
+func (s *v2Stresser) Pause() {
 	s.cancel()
 	s.wg.Wait()
+}
+
+func (s *v2Stresser) Close() {
+	s.Pause()
 }
 
 func (s *v2Stresser) ModifiedKeys() int64 {

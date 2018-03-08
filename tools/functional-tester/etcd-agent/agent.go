@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -75,6 +74,7 @@ func newAgent(cfg AgentConfig) (*Agent, error) {
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
+	args = append(args, "--data-dir", a.dataDir())
 	a.cmd = exec.Command(a.cmd.Path, args...)
 	a.cmd.Env = []string{"GOFAIL_HTTP=" + a.cfg.FailpointAddr}
 	a.cmd.Stdout = a.logfile
@@ -206,16 +206,7 @@ func (a *Agent) status() client.Status {
 }
 
 func (a *Agent) dataDir() string {
-	datadir := filepath.Join(a.cmd.Path, "*.etcd")
-	args := a.cmd.Args
-	// only parse the simple case like "--data-dir /var/lib/etcd"
-	for i, arg := range args {
-		if arg == "--data-dir" {
-			datadir = args[i+1]
-			break
-		}
-	}
-	return datadir
+	return filepath.Join(a.cfg.LogDir, "etcd.data")
 }
 
 func existDir(fpath string) bool {
@@ -231,14 +222,14 @@ func existDir(fpath string) bool {
 }
 
 func archiveLogAndDataDir(logDir string, datadir string) error {
-	dir := filepath.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	dir := filepath.Join(logDir, "failure_archive", time.Now().Format(time.RFC3339))
 	if existDir(dir) {
-		dir = filepath.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
+		dir = filepath.Join(logDir, "failure_archive", time.Now().Add(time.Second).Format(time.RFC3339))
 	}
 	if err := fileutil.TouchDirAll(dir); err != nil {
 		return err
 	}
-	if err := os.Rename(logDir, filepath.Join(dir, filepath.Base(logDir))); err != nil {
+	if err := os.Rename(filepath.Join(logDir, "etcd.log"), filepath.Join(dir, "etcd.log")); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}

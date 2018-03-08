@@ -32,7 +32,7 @@ type failpointStats struct {
 
 var fpStats failpointStats
 
-func failpointFailures(c *cluster) (ret []failure, err error) {
+func failpointFailures(c *cluster, failpoints []string) (ret []failure, err error) {
 	var fps []string
 	fps, err = failpointPaths(c.Members[0].FailpointURL)
 	if err != nil {
@@ -43,7 +43,7 @@ func failpointFailures(c *cluster) (ret []failure, err error) {
 		if len(fp) == 0 {
 			continue
 		}
-		fpFails := failuresFromFailpoint(fp)
+		fpFails := failuresFromFailpoint(fp, failpoints)
 		// wrap in delays so failpoint has time to trigger
 		for i, fpf := range fpFails {
 			if strings.Contains(fp, "Snap") {
@@ -77,34 +77,39 @@ func failpointPaths(endpoint string) ([]string, error) {
 	return fps, nil
 }
 
-func failuresFromFailpoint(fp string) []failure {
-	inject := makeInjectFailpoint(fp, `panic("etcd-tester")`)
+// failpoints follows FreeBSD KFAIL_POINT syntax.
+// e.g. panic("etcd-tester"),1*sleep(1000)->panic("etcd-tester")
+func failuresFromFailpoint(fp string, failpoints []string) (fs []failure) {
 	recov := makeRecoverFailpoint(fp)
-	return []failure{
-		&failureOne{
-			description:   description("failpoint " + fp + " panic one"),
-			injectMember:  inject,
-			recoverMember: recov,
-		},
-		&failureAll{
-			description:   description("failpoint " + fp + " panic all"),
-			injectMember:  inject,
-			recoverMember: recov,
-		},
-		&failureMajority{
-			description:   description("failpoint " + fp + " panic majority"),
-			injectMember:  inject,
-			recoverMember: recov,
-		},
-		&failureLeader{
-			failureByFunc{
-				description:   description("failpoint " + fp + " panic leader"),
+	for _, failpoint := range failpoints {
+		inject := makeInjectFailpoint(fp, failpoint)
+		fs = append(fs, []failure{
+			&failureOne{
+				description:   description(fmt.Sprintf("failpoint %s (one: %s)", fp, failpoint)),
 				injectMember:  inject,
 				recoverMember: recov,
 			},
-			0,
-		},
+			&failureAll{
+				description:   description(fmt.Sprintf("failpoint %s (all: %s)", fp, failpoint)),
+				injectMember:  inject,
+				recoverMember: recov,
+			},
+			&failureMajority{
+				description:   description(fmt.Sprintf("failpoint %s (majority: %s)", fp, failpoint)),
+				injectMember:  inject,
+				recoverMember: recov,
+			},
+			&failureLeader{
+				failureByFunc{
+					description:   description(fmt.Sprintf("failpoint %s (leader: %s)", fp, failpoint)),
+					injectMember:  inject,
+					recoverMember: recov,
+				},
+				0,
+			},
+		}...)
 	}
+	return fs
 }
 
 func makeInjectFailpoint(fp, val string) injectMemberFunc {
