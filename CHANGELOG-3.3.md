@@ -1,6 +1,16 @@
 
+## [v3.3.3](https://github.com/coreos/etcd/releases/tag/v3.3.3) (TBD)
 
-## [v3.3.2](https://github.com/coreos/etcd/releases/tag/v3.3.2) (TBD)
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Improved
+
+- Adjust [election timeout on server restart](https://github.com/coreos/etcd/pull/9364) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
+  - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
+  - Now, when etcd restarts, it does not fast-forward election ticks.
+
+
+## [v3.3.2](https://github.com/coreos/etcd/releases/tag/v3.3.2) (2018-03-08)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
