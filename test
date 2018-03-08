@@ -15,13 +15,13 @@ set -e
 
 source ./build
 
-# build tests with vendored dependencies
-etcd_setup_gopath
-
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
 	./tools/functional-tester/build
 fi
+
+# build tests with vendored dependencies
+etcd_setup_gopath
 
 if [ -z "$PASSES" ]; then
 	PASSES="fmt dep compile build unit"
