@@ -110,7 +110,7 @@ compile-setup-gopath-with-docker-test:
 # Local machine:
 #   TEST_OPTS="PASSES='fmt'" make test -f ./hack/scripts-dev/Makefile
 #   TEST_OPTS="PASSES='fmt bom dep compile build unit'" make test -f ./hack/scripts-dev/Makefile
-#   TEST_OPTS="RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional'" make test -f ./hack/scripts-dev/Makefile
+#   TEST_OPTS="PASSES='build unit release integration_e2e functional'" make test -f ./hack/scripts-dev/Makefile
 #   TEST_OPTS="PASSES='build grpcproxy'" make test -f ./hack/scripts-dev/Makefile
 #
 # Example (test with docker):
@@ -122,8 +122,8 @@ compile-setup-gopath-with-docker-test:
 #   TEST_OPTS="PASSES='fmt bom dep compile build unit'" make docker-test -f ./hack/scripts-dev/Makefile
 #
 # Semaphore CI (test with docker):
-#   TEST_OPTS="RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional'" make docker-test -f ./hack/scripts-dev/Makefile
-#   HOST_TMP_DIR=/tmp TEST_OPTS="RELEASE_TEST=y INTEGRATION=y PASSES='build unit release integration_e2e functional'" make docker-test -f ./hack/scripts-dev/Makefile
+#   TEST_OPTS="PASSES='build unit release integration_e2e functional'" make docker-test -f ./hack/scripts-dev/Makefile
+#   HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build unit release integration_e2e functional'" make docker-test -f ./hack/scripts-dev/Makefile
 #   TEST_OPTS="GOARCH=386 PASSES='build unit integration_e2e'" make docker-test -f ./hack/scripts-dev/Makefile
 #
 # grpc-proxy tests (test with docker):
