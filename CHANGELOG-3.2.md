@@ -294,6 +294,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 
 ### Changed
 
+- Increased [`--snapshot-count` default value from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
 - v3 client
   - `LeaseTimeToLive` returns TTL=-1 resp on lease not found.
   - `clientv3.NewFromConfigFile` is moved to `clientv3/yaml.NewConfig`.
