@@ -516,7 +516,7 @@ message Compare {
     VERSION = 0;
     CREATE = 1;
     MOD = 2;
-    VALUE= 3;
+    VALUE = 3;
     LEASE = 4;
   }
   // result is logical comparison operation for this comparison.
@@ -705,7 +705,7 @@ message WatchResponse {
   //
   // The client should treat the watcher as canceled and should not try to create any
   // watcher with the same start_revision again.
-  int64 compact_revision  = 5;
+  int64 compact_revision = 5;
 
   // cancel_reason indicates the reason for canceling the watcher.
   string cancel_reason = 6;
