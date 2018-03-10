@@ -15,8 +15,11 @@
 package rafthttp
 
 import (
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -83,5 +86,26 @@ func TestPeerPick(t *testing.T) {
 		if picked != tt.wpicked {
 			t.Errorf("#%d: picked = %v, want %v", i, picked, tt.wpicked)
 		}
+	}
+}
+
+func TestInitialPeerNotify(t *testing.T) {
+	tr := &roundTripperRecorder{rec: testutil.NewRecorderStream()}
+	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
+	tp := &Transport{
+		pipelineRt:         tr,
+		initPeerNotifyOnce: &sync.Once{},
+		initPeerNotifyCh:   make(chan struct{}),
+	}
+	p := startTestPipeline(tp, picker)
+	defer p.stop()
+
+	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+	tr.rec.Wait(1)
+
+	select {
+	case <-tp.InitialPeerNotify():
+	case <-time.After(3 * time.Second):
+		t.Fatal("took too long to receive initial peer notify")
 	}
 }

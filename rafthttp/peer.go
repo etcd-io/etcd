@@ -122,7 +122,7 @@ func startPeer(transport *Transport, urls types.URLs, peerID types.ID, fs *stats
 	plog.Infof("starting peer %s...", peerID)
 	defer plog.Infof("started peer %s", peerID)
 
-	status := newPeerStatus(peerID)
+	status := newPeerStatus(peerID, transport.initPeerNotifyOnce, transport.initPeerNotifyCh)
 	picker := newURLPicker(urls)
 	errorc := transport.ErrorC
 	r := transport.Raft

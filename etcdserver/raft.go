@@ -97,6 +97,7 @@ type raftNode struct {
 	term         uint64
 	lead         uint64
 
+	tickMu *sync.Mutex
 	raftNodeConfig
 
 	// a chan to send/receive snapshot
@@ -133,6 +134,7 @@ type raftNodeConfig struct {
 
 func newRaftNode(cfg raftNodeConfig) *raftNode {
 	r := &raftNode{
+		tickMu:         new(sync.Mutex),
 		raftNodeConfig: cfg,
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.
@@ -151,6 +153,14 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 	return r
 }
 
+// package raft does not have locks
+// prevent racey tick operation from advancing election ticks
+func (r *raftNode) tick() {
+	r.tickMu.Lock()
+	r.raftNodeConfig.Node.Tick()
+	r.tickMu.Unlock()
+}
+
 // start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
@@ -163,7 +173,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 		for {
 			select {
 			case <-r.ticker.C:
-				r.Tick()
+				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
 					newLeader := rd.SoftState.Lead != raft.None && atomic.LoadUint64(&r.lead) != rd.SoftState.Lead
@@ -370,16 +380,6 @@ func (r *raftNode) resumeSending() {
 	p.Resume()
 }
 
-// advanceTicksForElection advances ticks to the node for fast election.
-// This reduces the time to wait for first leader election if bootstrapping the whole
-// cluster, while leaving at least 1 heartbeat for possible existing leader
-// to contact it.
-func advanceTicksForElection(n raft.Node, electionTicks int) {
-	for i := 0; i < electionTicks-1; i++ {
-		n.Tick()
-	}
-}
-
 func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cl.MemberByName(cfg.Name)
@@ -418,7 +418,6 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
-	advanceTicksForElection(n, c.ElectionTick)
 	return id, n, s, w
 }
 
@@ -453,7 +452,6 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
-	advanceTicksForElection(n, c.ElectionTick)
 	return id, cl, n, s, w
 }
 

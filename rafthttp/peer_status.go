@@ -32,11 +32,16 @@ type peerStatus struct {
 	mu     sync.Mutex // protect variables below
 	active bool
 	since  time.Time
+
+	once   *sync.Once
+	notify chan struct{}
 }
 
-func newPeerStatus(id types.ID) *peerStatus {
+func newPeerStatus(id types.ID, once *sync.Once, notify chan struct{}) *peerStatus {
 	return &peerStatus{
-		id: id,
+		id:     id,
+		once:   once,
+		notify: notify,
 	}
 }
 
@@ -47,6 +52,13 @@ func (s *peerStatus) activate() {
 		plog.Infof("peer %s became active", s.id)
 		s.active = true
 		s.since = time.Now()
+
+		if s.once != nil {
+			s.once.Do(func() {
+				plog.Infof("notifying of active peer %q", s.id)
+				close(s.notify)
+			})
+		}
 	}
 }
 

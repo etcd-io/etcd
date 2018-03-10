@@ -27,7 +27,7 @@ type remote struct {
 
 func startRemote(tr *Transport, urls types.URLs, id types.ID) *remote {
 	picker := newURLPicker(urls)
-	status := newPeerStatus(id)
+	status := newPeerStatus(id, tr.initPeerNotifyOnce, tr.initPeerNotifyCh)
 	pipeline := &pipeline{
 		peerID: id,
 		tr:     tr,
