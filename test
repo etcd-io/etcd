@@ -4,14 +4,33 @@
 # ./test
 # ./test -v
 #
-# Run tests for one package
 #
-# PKG=./wal ./test
-# PKG=snap ./test
+# Run specified test pass
+#
+# $ PASSES=unit ./test
+# $ PASSES=integration ./test
+#
+#
+# Run tests for one package
+# Each pass has different default timeout, if you just run tests in one package or 1 test case then you can set TIMEOUT
+# flag for different expectation
+#
+# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test
+# $ PASSES=integration PKG=client/integration TIMEOUT=1m ./test
+#
+#
+# Run specified unit tests in one package
+# To run all the tests with prefix of "TestNew", set "TESTCASE=TestNew ";
+# to run only "TestNew", set "TESTCASE="\bTestNew\b""
+#
+# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test
+# $ PASSES=integration PKG=client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test
+#
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# COVERDIR=coverage PASSES="build_cov cov" ./test
+# $ COVERDIR=coverage PASSES="build_cov cov" ./test
 set -e
 
 source ./build
@@ -77,6 +96,11 @@ if [ "$GOARCH" == "amd64" ]; then
 	RACE="--race"
 fi
 
+RUN_ARG=""
+if [ ! -z "${TESTCASE}" ]; then
+	RUN_ARG="-run=${TESTCASE}"
+fi
+
 function unit_pass {
 	echo "Running unit tests..."
 	GO_TEST_FLAG=""
@@ -87,14 +111,53 @@ function unit_pass {
 		GO_TEST_FLAG="-v"
 		export CLIENT_DEBUG=1
 	fi
-	# only -run=Test so examples can run in integration tests
-	go test ${GO_TEST_FLAG} -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
+
+	if [ "${RUN_ARG}" == "" ]; then
+	    RUN_ARG="-run=Test"
+	fi
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="3m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu 1,2,4 ${RUN_ARG} "$@" "${TEST[@]}"
 }
 
 function integration_pass {
 	echo "Running integration tests..."
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
-	integration_extra "$@"
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="15m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+
+	# if TESTCASE and PKG set, run specified test case in specified PKG
+	# if TESTCASE set, PKG not set, run specified test case in all integration and integration_extra packages
+	# if TESTCASE not set, PKG set, run all test cases in specified package
+	# if TESTCASE not set, PKG not set, run all tests in all integration and integration_extra packages
+	if [ -z "${TESTCASE}" ] && [ -z "${USERPKG}" ]; then
+		go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
+		integration_extra "$@"
+	else
+		if [ -z "${USERPKG}" ]; then
+			INTEGTESTPKG=("${REPO_PATH}/integration"
+						  "${REPO_PATH}/client/integration"
+						  "${REPO_PATH}/clientv3/integration"
+						  "${REPO_PATH}/contrib/raftexample"
+						  "${REPO_PATH}/store")
+		else
+			INTEGTESTPKG=("${TEST[@]}")
+		fi
+		go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${INTEGTESTPKG[@]}"
+	fi
 }
 
 function integration_extra {
@@ -224,7 +287,17 @@ function cov_pass {
 
 function e2e_pass {
 	echo "Running e2e tests..."
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e"
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="15m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+
+	go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${REPO_PATH}/e2e"
 }
 
 function integration_e2e_pass {
