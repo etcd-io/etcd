@@ -1286,10 +1286,12 @@
       "type": "object",
       "properties": {
         "key": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "range_end": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "role": {
           "type": "string"

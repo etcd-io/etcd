@@ -364,8 +364,8 @@ func TestRoleRevokePermission(t *testing.T) {
 
 	_, err = as.RoleRevokePermission(&pb.AuthRoleRevokePermissionRequest{
 		Role:     "role-test-1",
-		Key:      "Keys",
-		RangeEnd: "RangeEnd",
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
 	})
 	if err != nil {
 		t.Fatal(err)
