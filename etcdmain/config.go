@@ -20,12 +20,14 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
 
 	"github.com/ghodss/yaml"
@@ -302,12 +304,22 @@ func (cfg *config) configFromFile(path string) error {
 	if yerr := yaml.Unmarshal(b, &cfg.cp); yerr != nil {
 		return yerr
 	}
+
+	if cfg.ec.ListenMetricsUrlsJSON != "" {
+		us, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
+		if err != nil {
+			plog.Panicf("unexpected error setting up listen-metrics-urls: %v", err)
+		}
+		cfg.ec.ListenMetricsUrls = []url.URL(us)
+	}
+
 	if cfg.cp.FallbackJSON != "" {
 		if err := cfg.cf.fallback.Set(cfg.cp.FallbackJSON); err != nil {
 			plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
 		}
 		cfg.cp.Fallback = cfg.cf.fallback.String()
 	}
+
 	if cfg.cp.ProxyJSON != "" {
 		if err := cfg.cf.proxy.Set(cfg.cp.ProxyJSON); err != nil {
 			plog.Panicf("unexpected error setting up proxyFlag: %v", err)
