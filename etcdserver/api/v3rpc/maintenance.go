@@ -155,8 +155,8 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		DbSize:           ms.bg.Backend().Size(),
 		Leader:           uint64(ms.rg.Leader()),
 		RaftIndex:        ms.rg.CommittedIndex(),
-		RaftTerm:         ms.rg.Term(),
 		RaftAppliedIndex: ms.rg.AppliedIndex(),
+		RaftTerm:         ms.rg.Term(),
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
 	}
 	if uint64(ms.rg.Leader()) == raft.None {
