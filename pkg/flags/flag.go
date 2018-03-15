@@ -153,6 +153,11 @@ func URLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
 	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue))
 }
 
+// StringSliceFromFlag returns a string slice from the flag.
+func StringSliceFromFlag(fs *flag.FlagSet, flagName string) []string {
+	return []string(*fs.Lookup(flagName).Value.(*StringSlice))
+}
+
 func IsSet(fs *flag.FlagSet, name string) bool {
 	set := false
 	fs.Visit(func(f *flag.Flag) {
