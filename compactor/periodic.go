@@ -86,8 +86,11 @@ func (t *Periodic) Run() {
 			}
 			plog.Noticef("Starting auto-compaction at revision %d (retention: %v)", rev, t.period)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
+
 			if err == nil || err == mvcc.ErrCompacted {
 				t.revs = remaining
+				// update the last compaction time
+				last = clock.Now()
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
 				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
