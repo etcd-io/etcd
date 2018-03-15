@@ -32,7 +32,7 @@ import (
 type watchServer struct {
 	clusterID int64
 	memberID  int64
-	raftTimer etcdserver.RaftTimer
+	sg        etcdserver.RaftStatusGetter
 	watchable mvcc.WatchableKV
 
 	ag AuthGetter
@@ -42,7 +42,7 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 	return &watchServer{
 		clusterID: int64(s.Cluster().ID()),
 		memberID:  int64(s.ID()),
-		raftTimer: s,
+		sg:        s,
 		watchable: s.Watchable(),
 		ag:        s,
 	}
@@ -91,7 +91,7 @@ const (
 type serverWatchStream struct {
 	clusterID int64
 	memberID  int64
-	raftTimer etcdserver.RaftTimer
+	sg        etcdserver.RaftStatusGetter
 
 	watchable mvcc.WatchableKV
 
@@ -120,7 +120,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	sws := serverWatchStream{
 		clusterID: ws.clusterID,
 		memberID:  ws.memberID,
-		raftTimer: ws.raftTimer,
+		sg:        ws.sg,
 
 		watchable: ws.watchable,
 
@@ -431,7 +431,7 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 		ClusterId: uint64(sws.clusterID),
 		MemberId:  uint64(sws.memberID),
 		Revision:  rev,
-		RaftTerm:  sws.raftTimer.Term(),
+		RaftTerm:  sws.sg.Term(),
 	}
 }
 

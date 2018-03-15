@@ -22,7 +22,7 @@ import (
 type header struct {
 	clusterID int64
 	memberID  int64
-	raftTimer etcdserver.RaftTimer
+	sg        etcdserver.RaftStatusGetter
 	rev       func() int64
 }
 
@@ -30,7 +30,7 @@ func newHeader(s *etcdserver.EtcdServer) header {
 	return header{
 		clusterID: int64(s.Cluster().ID()),
 		memberID:  int64(s.ID()),
-		raftTimer: s,
+		sg:        s,
 		rev:       func() int64 { return s.KV().Rev() },
 	}
 }
@@ -42,7 +42,7 @@ func (h *header) fill(rh *pb.ResponseHeader) {
 	}
 	rh.ClusterId = uint64(h.clusterID)
 	rh.MemberId = uint64(h.memberID)
-	rh.RaftTerm = h.raftTimer.Term()
+	rh.RaftTerm = h.sg.Term()
 	if rh.Revision == 0 {
 		rh.Revision = h.rev()
 	}

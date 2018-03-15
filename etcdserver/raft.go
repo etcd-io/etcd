@@ -19,7 +19,6 @@ import (
 	"expvar"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -32,6 +31,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+
 	"github.com/coreos/pkg/capnslog"
 )
 
@@ -71,12 +71,6 @@ func init() {
 	}))
 }
 
-type RaftTimer interface {
-	Index() uint64
-	AppliedIndex() uint64
-	Term() uint64
-}
-
 // apply contains entries, snapshot to be applied. Once
 // an apply is consumed, the entries will be persisted to
 // to raft storage concurrently; the application must read
@@ -89,14 +83,6 @@ type apply struct {
 }
 
 type raftNode struct {
-	// Cache of the latest raft index and raft term the server has seen.
-	// These three unit64 fields must be the first elements to keep 64-bit
-	// alignment for atomic access to the fields.
-	index        uint64
-	appliedindex uint64
-	term         uint64
-	lead         uint64
-
 	tickMu *sync.Mutex
 	raftNodeConfig
 
@@ -175,7 +161,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
-					newLeader := rd.SoftState.Lead != raft.None && atomic.LoadUint64(&r.lead) != rd.SoftState.Lead
+					newLeader := rd.SoftState.Lead != raft.None && rh.getLead() != rd.SoftState.Lead
 					if newLeader {
 						leaderChanges.Inc()
 					}
@@ -186,7 +172,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						hasLeader.Set(1)
 					}
 
-					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
+					rh.updateLead(rd.SoftState.Lead)
 					islead = rd.RaftState == raft.StateLeader
 					rh.updateLeadership(newLeader)
 					r.td.Reset()

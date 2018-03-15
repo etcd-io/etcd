@@ -25,7 +25,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/version"
 )
@@ -49,19 +48,13 @@ type LeaderTransferrer interface {
 	MoveLeader(ctx context.Context, lead, target uint64) error
 }
 
-type RaftStatusGetter interface {
-	etcdserver.RaftTimer
-	ID() types.ID
-	Leader() types.ID
-}
-
 type AuthGetter interface {
 	AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error)
 	AuthStore() auth.AuthStore
 }
 
 type maintenanceServer struct {
-	rg  RaftStatusGetter
+	rg  etcdserver.RaftStatusGetter
 	kg  KVGetter
 	bg  BackendGetter
 	a   Alarmer
@@ -161,7 +154,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		Version:          version.Version,
 		DbSize:           ms.bg.Backend().Size(),
 		Leader:           uint64(ms.rg.Leader()),
-		RaftIndex:        ms.rg.Index(),
+		RaftIndex:        ms.rg.CommittedIndex(),
 		RaftTerm:         ms.rg.Term(),
 		RaftAppliedIndex: ms.rg.AppliedIndex(),
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),

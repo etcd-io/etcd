@@ -188,7 +188,11 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	})
 	srv := &EtcdServer{r: *r}
 
-	srv.r.start(&raftReadyHandler{updateLeadership: func(bool) {}})
+	srv.r.start(&raftReadyHandler{
+		getLead:          func() uint64 { return 0 },
+		updateLead:       func(uint64) {},
+		updateLeadership: func(bool) {},
+	})
 	defer srv.r.Stop()
 
 	n.readyc <- raft.Ready{
