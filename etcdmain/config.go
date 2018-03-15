@@ -133,7 +133,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ec.WalDir, "wal-dir", cfg.ec.WalDir, "Path to the dedicated wal directory.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenPeerURLs), "listen-peer-urls", "List of URLs to listen on for peer traffic.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenClientURLs), "listen-client-urls", "List of URLs to listen on for client traffic.")
-	fs.StringVar(&cfg.ec.ListenMetricsUrlsJSON, "listen-metrics-urls", "", "List of URLs to listen on for metrics.")
+	fs.Var(flags.NewURLsValue(""), "listen-metrics-urls", "List of URLs to listen on for metrics.")
 	fs.UintVar(&cfg.ec.MaxSnapFiles, "max-snapshots", cfg.ec.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited).")
 	fs.UintVar(&cfg.ec.MaxWalFiles, "max-wals", cfg.ec.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.ec.Name, "name", cfg.ec.Name, "Human-readable name for this member.")
@@ -269,14 +269,7 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.LCUrls = flags.URLsFromFlag(cfg.cf.flagSet, "listen-client-urls")
 	cfg.ec.ACUrls = flags.URLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
 	cfg.ec.HostWhitelist = flags.StringSliceFromFlag(cfg.cf.flagSet, "host-whitelist")
-
-	if len(cfg.ec.ListenMetricsUrlsJSON) > 0 {
-		u, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
-		if err != nil {
-			plog.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
-		}
-		cfg.ec.ListenMetricsUrls = []url.URL(u)
-	}
+	cfg.ec.ListenMetricsUrls = flags.URLsFromFlag(cfg.cf.flagSet, "listen-metrics-urls")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
@@ -311,12 +304,22 @@ func (cfg *config) configFromFile(path string) error {
 	if yerr := yaml.Unmarshal(b, &cfg.cp); yerr != nil {
 		return yerr
 	}
+
+	if cfg.ec.ListenMetricsUrlsJSON != "" {
+		us, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
+		if err != nil {
+			plog.Panicf("unexpected error setting up listen-metrics-urls: %v", err)
+		}
+		cfg.ec.ListenMetricsUrls = []url.URL(us)
+	}
+
 	if cfg.cp.FallbackJSON != "" {
 		if err := cfg.cf.fallback.Set(cfg.cp.FallbackJSON); err != nil {
 			plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
 		}
 		cfg.cp.Fallback = cfg.cf.fallback.String()
 	}
+
 	if cfg.cp.ProxyJSON != "" {
 		if err := cfg.cf.proxy.Set(cfg.cp.ProxyJSON); err != nil {
 			plog.Panicf("unexpected error setting up proxyFlag: %v", err)
