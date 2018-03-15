@@ -903,7 +903,7 @@ message StatusResponse {
   int64 dbSize = 3;
   // leader is the member ID which the responding member believes is the current leader.
   uint64 leader = 4;
-  // raftIndex is the current raft index of the responding member.
+  // raftIndex is the current raft committed index of the responding member.
   uint64 raftIndex = 5;
   // raftTerm is the current raft term of the responding member.
   uint64 raftTerm = 6;
