@@ -226,8 +226,8 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | role |  | string |
-| key |  | string |
-| range_end |  | string |
+| key |  | bytes |
+| range_end |  | bytes |
 
 
 
