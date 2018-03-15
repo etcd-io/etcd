@@ -85,11 +85,10 @@ type config struct {
 
 // configFlags has the set of flags used for command line parsing a Config
 type configFlags struct {
-	flagSet       *flag.FlagSet
-	hostWhitelist string
-	clusterState  *flags.StringsFlag
-	fallback      *flags.StringsFlag
-	proxy         *flags.StringsFlag
+	flagSet      *flag.FlagSet
+	clusterState *flags.StringsFlag
+	fallback     *flags.StringsFlag
+	proxy        *flags.StringsFlag
 }
 
 func newConfig() *config {
@@ -190,7 +189,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
-	fs.StringVar(&cfg.cf.hostWhitelist, "host-whitelist", "", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
+	fs.Var(flags.NewStringSlice(""), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
 
 	// logging
 	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
@@ -269,6 +268,7 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.APUrls = flags.URLsFromFlag(cfg.cf.flagSet, "initial-advertise-peer-urls")
 	cfg.ec.LCUrls = flags.URLsFromFlag(cfg.cf.flagSet, "listen-client-urls")
 	cfg.ec.ACUrls = flags.URLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
+	cfg.ec.HostWhitelist = flags.StringSliceFromFlag(cfg.cf.flagSet, "host-whitelist")
 
 	if len(cfg.ec.ListenMetricsUrlsJSON) > 0 {
 		u, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
@@ -277,15 +277,6 @@ func (cfg *config) configFromCmdLine() error {
 		}
 		cfg.ec.ListenMetricsUrls = []url.URL(u)
 	}
-
-	hosts := []string{}
-	for _, h := range strings.Split(cfg.cf.hostWhitelist, ",") {
-		h = strings.TrimSpace(h)
-		if h != "" {
-			hosts = append(hosts, h)
-		}
-	}
-	cfg.ec.HostWhitelist = hosts
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
