@@ -304,7 +304,12 @@ func (b *backend) defrag() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.batchTx.commit(true)
+	// block concurrent read requests while resetting tx
+	b.readTx.mu.Lock()
+	defer b.readTx.mu.Unlock()
+
+	b.batchTx.unsafeCommit(true)
+
 	b.batchTx.tx = nil
 
 	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)
