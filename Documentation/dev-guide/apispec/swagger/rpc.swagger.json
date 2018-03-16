@@ -2196,7 +2196,7 @@
           "format": "uint64"
         },
         "raftIndex": {
-          "description": "raftIndex is the current raft index of the responding member.",
+          "description": "raftIndex is the current raft committed index of the responding member.",
           "type": "string",
           "format": "uint64"
         },

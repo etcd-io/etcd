@@ -2440,7 +2440,7 @@ type StatusResponse struct {
 	DbSize int64 `protobuf:"varint,3,opt,name=dbSize,proto3" json:"dbSize,omitempty"`
 	// leader is the member ID which the responding member believes is the current leader.
 	Leader uint64 `protobuf:"varint,4,opt,name=leader,proto3" json:"leader,omitempty"`
-	// raftIndex is the current raft index of the responding member.
+	// raftIndex is the current raft committed index of the responding member.
 	RaftIndex uint64 `protobuf:"varint,5,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
 	// raftTerm is the current raft term of the responding member.
 	RaftTerm uint64 `protobuf:"varint,6,opt,name=raftTerm,proto3" json:"raftTerm,omitempty"`

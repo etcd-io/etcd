@@ -129,7 +129,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 	rp := &r
 	resp, err := ((*RequestV2)(rp)).Handle(ctx, h)
-	resp.Term, resp.Index = s.Term(), s.Index()
+	resp.Term, resp.Index = s.Term(), s.CommittedIndex()
 	return resp, err
 }
 
