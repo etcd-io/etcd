@@ -1,4 +1,5 @@
 
+
 ## [v3.2.18](https://github.com/coreos/etcd/releases/tag/v3.2.18) (TBD)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.17...v3.2.18) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
@@ -9,9 +10,13 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.17...v3.2.18) and
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 
-### Fixed: metrics
+### Metrics, Monitoring
 
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
+
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.17](https://github.com/coreos/etcd/releases/tag/v3.2.17) (2018-03-08)
@@ -34,9 +39,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
 
-### Security
+### Go
 
-- Compile with [Go 1.8.7](https://groups.google.com/forum/#!topic/golang-announce/X7N1mvntnoU).
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.16](https://github.com/coreos/etcd/releases/tag/v3.2.16) (2018-02-12)
@@ -51,45 +56,66 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and
   - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
   - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
 
+### Go
+
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
+
 
 ## [v3.2.15](https://github.com/coreos/etcd/releases/tag/v3.2.15) (2018-01-22)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.14...v3.2.15) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Fixed: v3
 
 - Prevent [server panic from member update/add](https://github.com/coreos/etcd/pull/9174) with [wrong scheme URLs](https://github.com/coreos/etcd/issues/9173).
 - Log [user context cancel errors on stream APIs in debug level with TLS](https://github.com/coreos/etcd/pull/9178).
+
+### Go
+
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.14](https://github.com/coreos/etcd/releases/tag/v3.2.14) (2018-01-11)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.13...v3.2.14) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
-
-- Fix [`mvcc/backend.defragdb` nil-pointer dereference on create bucket failure](https://github.com/coreos/etcd/pull/9119).
-
 ### Improved
 
 - Log [user context cancel errors on stream APIs in debug level](https://github.com/coreos/etcd/pull/9105).
+
+### Fixed: v3
+
+- Fix [`mvcc/backend.defragdb` nil-pointer dereference on create bucket failure](https://github.com/coreos/etcd/pull/9119).
+
+### Go
+
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.13](https://github.com/coreos/etcd/releases/tag/v3.2.13) (2018-01-02)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.12...v3.2.13) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Fixed: v3
 
 - Remove [verbose error messages on stream cancel and gRPC info-level logs](https://github.com/coreos/etcd/pull/9080) in server-side.
 - Fix [gRPC server panic on `GracefulStop` TLS-enabled server](https://github.com/coreos/etcd/pull/8987).
+
+### Go
+
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.12](https://github.com/coreos/etcd/releases/tag/v3.2.12) (2017-12-20)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases/tag) from [**`v1.7.4`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.4) to [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5).
+- Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [**`v1.3`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3) to [**`v1.3.0`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3.0).
+
+### Fixed: v3
 
 - Fix [error message of `Revision` compactor](https://github.com/coreos/etcd/pull/8999) in server-side.
 
@@ -102,104 +128,168 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
   - `MaxCallSendMsgSize` default value is 2 MiB, if not configured.
   - `MaxCallRecvMsgSize` default value is `math.MaxInt32`, if not configured.
 
-### Other
+### Go
 
-- Pin [grpc v1.7.5](https://github.com/grpc/grpc-go/releases/tag/v1.7.5), [grpc-gateway v1.3.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3.0).
-  - No code change, just to be explicit about recommended versions.
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.11](https://github.com/coreos/etcd/releases/tag/v3.2.11) (2017-12-05)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases/tag) from [**`v1.7.3`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.3) to [**`v1.7.4`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.4).
+
+### Security, Authentication
+
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
+- Log [more details on TLS handshake failures](https://github.com/coreos/etcd/pull/8952/files).
+
+### Fixed: `clientv3`
 
 - Fix racey grpc-go's server handler transport `WriteStatus` call to prevent [TLS-enabled etcd server crash](https://github.com/coreos/etcd/issues/8904).
-  - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) `v1.7.3` to `v1.7.4`.
-  - Add [gRPC RPC failure warnings](https://github.com/coreos/etcd/pull/8939) to help debug such issues in the future.
+- Add [gRPC RPC failure warnings](https://github.com/coreos/etcd/pull/8939) to help debug such issues in the future.
+
+### Documentation
+
 - Remove `--listen-metrics-urls` flag in monitoring document (non-released in `v3.2.x`, planned for `v3.3.x`).
 
-### Added
+### Go
 
-- Provide [more cert details](https://github.com/coreos/etcd/pull/8952/files) on TLS handshake failures.
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-16)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Dependency
 
-- Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009).
-- Fix `clientv3` balancer to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
-  - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) `v1.2.1` to `v1.7.3`.
-  - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) `v1.2` to `v1.3`.
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases/tag) from [**`v1.2.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.2.1) to [**`v1.7.3`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.3).
+- Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [**`v1.2.0`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.2.0) to [**`v1.3`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3).
+
+### Security, Authentication
+
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
 - Revert [discovery SRV auth `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651) to support non-wildcard subject alternative names in the certs (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts).
   - For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `etcd.local` (**not `*.etcd.local`**) as an entry in Subject Alternative Name (SAN) field.
+
+### Fixed: v3
+
+- Replace backend key-value database `boltdb/bolt` with [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) to address [backend database size issue](https://github.com/coreos/etcd/issues/8009).
+
+### Fixed: `clientv3`
+
+- Rewrite balancer to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
+
+### Go
+
+- Compile with [*Go 1.8.5*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.9](https://github.com/coreos/etcd/releases/tag/v3.2.9) (2017-10-06)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed(Security)
+### Security, Authentication
 
-- Compile with [Go 1.8.4](https://groups.google.com/d/msg/golang-nuts/sHfMg4gZNps/a-HDgDDDAAAJ).
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
 - Update `golang.org/x/crypto/bcrypt` (see [golang/crypto@6c586e1](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117)).
 - Fix discovery SRV bootstrapping to [authenticate `ServerName` with `*.{ROOT_DOMAIN}`](https://github.com/coreos/etcd/pull/8651), in order to support sub-domain wildcard matching (see [issue #8445](https://github.com/coreos/etcd/issues/8445) for more contexts).
   - For instance, `etcd --discovery-srv=etcd.local` will only authenticate peers/clients when the provided certs have root domain `*.etcd.local` as an entry in Subject Alternative Name (SAN) field.
+
+### Go
+
+- Compile with [*Go 1.8.4*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.8](https://github.com/coreos/etcd/releases/tag/v3.2.8) (2017-09-29)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Fixed: v2 `client`
 
 - Fix v2 client failover to next endpoint on mutable operation.
-- Fix grpc-proxy to respect `KeysOnly` flag.
+
+### Fixed: `grpc-proxy`
+
+- Handle [`KeysOnly` flag](https://github.com/coreos/etcd/pull/8552).
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.7](https://github.com/coreos/etcd/releases/tag/v3.2.7) (2017-09-01)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.6...v3.2.7) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Security, Authentication
 
-- Fix server-side auth so concurrent auth operations do not return old revision error.
-- Fix concurrency/stm Put with serializable snapshot
+- Fix [server-side auth so concurrent auth operations do not return old revision error](https://github.com/coreos/etcd/pull/8306).
+
+### Fixed: `clientv3`
+
+- Fix [`concurrency/stm` Put with serializable snapshot](https://github.com/coreos/etcd/pull/8439).
   - Use store revision from first fetch to resolve write conflicts instead of modified revision.
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.6](https://github.com/coreos/etcd/releases/tag/v3.2.6) (2017-08-21)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6).
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Fixed: v3
 
 - Fix watch restore from snapshot.
-- Fix `etcd_debugging_mvcc_keys_total` inconsistency.
 - Fix multiple URLs for `--listen-peer-urls` flag.
 - Add `--enable-pprof` flag to etcd configuration file format.
+
+### Metrics, Monitoring
+
+- Fix `etcd_debugging_mvcc_keys_total` inconsistency.
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.5](https://github.com/coreos/etcd/releases/tag/v3.2.5) (2017-08-04)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Changed
+### Added: v3 `etcdctl`
 
-- Use reverse lookup to match wildcard DNS SAN.
 - Return non-zero exit code on unhealthy `endpoint health`.
 
-### Fixed
+### Security, Authentication
 
-- Fix unreachable /metrics endpoint when `--enable-v2=false`.
-- Fix grpc-proxy to respect `PrevKv` flag.
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
 
-### Added
+- [Server supports reverse-lookup on wildcard DNS `SAN`](https://github.com/coreos/etcd/pull/8281). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server first reverse-lookups the remote IP address to get a list of names mapping to that address (e.g. `nslookup IPADDR`). Then accepts the connection if those names have a matching name with peer cert's DNS names (either by exact or wildcard match). If none is matched, server forward-lookups each DNS entry in peer cert (e.g. look up `example.default.svc` when the entry is `*.example.default.svc`), and accepts connection only when the host's resolved addresses have the matching IP address with the peer's remote IP address. For example, peer B's CSR (with `cfssl`) SAN field is `["*.example.default.svc", "*.example.default.svc.cluster.local"]` when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A reverse-lookup the IP `10.138.0.2` to get the list of host names. And either exact or wildcard match the host names with peer B's cert DNS names in Subject Alternative Name (SAN) field. If none of reverse/forward lookups worked, it returns an error `"tls: "10.138.0.2" does not match any of DNSNames ["*.example.default.svc","*.example.default.svc.cluster.local"]`. See [issue#8268](https://github.com/coreos/etcd/issues/8268) for more detail.
+
+### Metrics, Monitoring
+
+- Fix unreachable `/metrics` endpoint when `--enable-v2=false`.
+
+### Fixed: `grpc-proxy`
+
+- Handle [`PrevKv` flag](https://github.com/coreos/etcd/pull/8366).
+
+### Other
 
 - Add container registry `gcr.io/etcd-development/etcd`.
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.4](https://github.com/coreos/etcd/releases/tag/v3.2.4) (2017-07-19)
@@ -210,6 +300,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4) and [
 
 - Do not block on active client stream when stopping server
 - Fix gRPC proxy Snapshot RPC error handling
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.3](https://github.com/coreos/etcd/releases/tag/v3.2.3) (2017-07-14)
@@ -225,6 +319,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3) and [
 - Tag docker images with minor versions
   - e.g. `docker pull quay.io/coreos/etcd:v3.2` to fetch latest v3.2 versions
 
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
+
 
 ## [v3.2.2](https://github.com/coreos/etcd/releases/tag/v3.2.2) (2017-07-07)
 
@@ -235,25 +333,47 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2) and [
 - Rate-limit lease revoke on expiration.
 - Extend leases on promote to avoid queueing effect on lease expiration.
 
-### Fixed
+### Security, Authentication
+
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
+- [Server accepts connections if IP matches, without checking DNS entries](https://github.com/coreos/etcd/pull/8223). For instance, if peer cert contains IP addresses and DNS names in Subject Alternative Name (SAN) field, and the remote IP address matches one of those IP addresses, server just accepts connection without further checking the DNS names. For example, peer B's CSR (with `cfssl`) SAN field is `["invalid.domain", "10.138.0.2"]` when peer B's remote IP address is `10.138.0.2` and `invalid.domain` is a invalid host. When peer B tries to join the cluster, peer A successfully authenticates B, since Subject Alternative Name (SAN) field has a valid matching IP address. See [issue#8206](https://github.com/coreos/etcd/issues/8206) for more detail.
+
+### Fixed: v3
+
+- Accept connection with matched IP SAN but no DNS match.
+  - Don't check DNS entries in certs if there's a matching IP.
+
+### Fixed: gRPC gateway
 
 - Use user-provided listen address to connect to gRPC gateway.
   - `net.Listener` rewrites IPv4 0.0.0.0 to IPv6 [::], breaking IPv6 disabled hosts.
   - Only v3.2.0, v3.2.1 are affected.
-- Accept connection with matched IP SAN but no DNS match.
-  - Don't check DNS entries in certs if there's a matching IP.
-- Fix 'tools/benchmark' watch command.
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.1](https://github.com/coreos/etcd/releases/tag/v3.2.1) (2017-06-23)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Fixed
+### Fixed: v3
 
 - Fix backend database in-memory index corruption issue on restore (only 3.2.0 is affected).
-- Fix gRPC gateway Txn marshaling issue.
+
+### Fixed: gRPC gateway
+
+- Fix Txn marshaling.
+
+### Metrics, Monitoring
+
 - Fix backend database size debugging metrics.
+
+### Go
+
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.2.0](https://github.com/coreos/etcd/releases/tag/v3.2.0) (2017-06-09)
@@ -264,62 +384,87 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 
 - Improve backend read concurrency.
 
+### Breaking Changes
+
+- Increased [`--snapshot-count` default value from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
+  - Higher snapshot count means it holds Raft entries in memory for longer before discarding old entries.
+  - It is a trade-off between less frequent snapshotting and [higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156).
+- `clientv3.Lease.TimeToLive` returns `LeaseTimeToLiveResponse.TTL == -1` on lease not found.
+- `clientv3.NewFromConfigFile` is moved to `clientv3/yaml.NewConfig`.
+- `embed.Etcd.Peers` field is now `[]*peerListener`.
+- Rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since [domain name is invalid for network interface binding](https://github.com/coreos/etcd/issues/6336).
+
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.0.4`**](https://github.com/grpc/grpc-go/releases/tag/v1.0.4) to [**`v1.2.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.2.1).
+- Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) to [**`v1.2.0`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.2.0).
+
+### Metrics, Monitoring
+
+- Add `etcd_debugging_server_lease_expired_total` metrics.
+
+### Security, Authentication
+
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
+- [TLS certificates get reloaded on every client connection](https://github.com/coreos/etcd/pull/7829). This is useful when replacing expiry certs without stopping etcd servers; it can be done by overwriting old certs with new ones. Refreshing certs for every connection should not have too much overhead, but can be improved in the future, with caching layer. Example tests can be found [here](https://github.com/coreos/etcd/blob/b041ce5d514a4b4aaeefbffb008f0c7570a18986/integration/v3_grpc_test.go#L1601-L1757).
+- [Server denies incoming peer certs with wrong IP `SAN`](https://github.com/coreos/etcd/pull/7687). For instance, if peer cert contains any IP addresses in Subject Alternative Name (SAN) field, server authenticates a peer only when the remote IP address matches one of those IP addresses. This is to prevent unauthorized endpoints from joining the cluster.  For example, peer B's CSR (with `cfssl`) SAN field is `["*.example.default.svc", "*.example.default.svc.cluster.local", "10.138.0.27"]` when peer B's actual IP address is `10.138.0.2`, not `10.138.0.27`. When peer B tries to join the cluster, peer A will reject B with the error `x509: certificate is valid for 10.138.0.27, not 10.138.0.2`, because B's remote IP address does not match the one in Subject Alternative Name (SAN) field.
+- [Server resolves TLS `DNSNames` when checking `SAN`](https://github.com/coreos/etcd/pull/7767). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server authenticates a peer only when forward-lookups (`dig b.com`) on those DNS names have matching IP with the remote IP address.  For example, peer B's CSR (with `cfssl`) SAN field is `["b.com"]` when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A looks up the incoming host `b.com` to get the list of IP addresses (e.g. `dig b.com`). And rejects B if the list does not contain the IP `10.138.0.2`, with the error `tls: 10.138.0.2 does not match any of DNSNames ["b.com"]`.
+- Auth support JWT token.
+
 ### Added
 
-- Embedded etcd
-  - `Etcd.Peers` field is now `[]*peerListener`.
 - RPCs
   - Add Election, Lock service.
 - Native client etcdserver/api/v3client
   - client "embedded" in the server.
-- gRPC proxy
-  - Proxy endpoint discovery.
-  - Namespaces.
-  - Coalesce lease requests.
-- v3 client
-  - STM prefetching.
-  - Add namespace feature.
-  - Add `ErrOldCluster` with server version checking.
-  - Translate `WithPrefix()` into `WithFromKey()` for empty key.
-- v3 etcdctl
-  - Add `check perf` command.
-  - Add `--from-key` flag to role grant-permission command.
-  - `lock` command takes an optional command to execute.
-- etcd flags
-  - Add `--enable-v2` flag to configure v2 backend (enabled by default).
-  - Add `--auth-token` flag.
-- `etcd gateway`
-  - Support DNS SRV priority.
-- Auth
-  - Support Watch API.
-  - JWT tokens.
 - Logging, monitoring
   - Server warns large snapshot operations.
-  - Add `etcd_debugging_server_lease_expired_total` metrics.
-- Security
-  - Deny incoming peer certs with wrong IP SAN.
-  - Resolve TLS `DNSNames` when SAN checking.
-  - Reload TLS certificates on every client connection.
+
+### Added: `etcd`
+
+- Add `--enable-v2` flag to enable v2 API server.
+  - `--enable-v2=true` by default.
+- Add `--auth-token` flag.
+
+### Added: `clientv3`
+
+- STM prefetching.
+- Add namespace feature.
+- Add `ErrOldCluster` with server version checking.
+- Translate `WithPrefix()` into `WithFromKey()` for empty key.
+
+### Added: v3 `etcdctl`
+
+- Add `check perf` command.
+- Add `--from-key` flag to role grant-permission command.
+- `lock` command takes an optional command to execute.
+
+### Fixed: v2
+
+- Allow snapshot over 512MB.
+
+### Added: `grpc-proxy`
+
+- Proxy endpoint discovery.
+- Namespaces.
+- Coalesce lease requests.
+
+### Added: `gateway`
+
+- Support [DNS SRV priority](https://github.com/coreos/etcd/pull/7882) for [smart proxy routing](https://github.com/coreos/etcd/issues/4378).
+
+### Other
+
+- v3 client
+  - concurrency package's elections updated to match RPC interfaces.
+  - let client dial endpoints not in the balancer.
 - Release
   - Annotate acbuild with supports-systemd-notify.
   - Add `nsswitch.conf` to Docker container image.
   - Add ppc64le, arm64(experimental) builds.
-  - Compile with `Go 1.8.3`.
 
-### Changed
+### Go
 
-- Increased [`--snapshot-count` default value from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
-- v3 client
-  - `LeaseTimeToLive` returns TTL=-1 resp on lease not found.
-  - `clientv3.NewFromConfigFile` is moved to `clientv3/yaml.NewConfig`.
-  - concurrency package's elections updated to match RPC interfaces.
-  - let client dial endpoints not in the balancer.
-- Dependencies
-  - Update [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) to `v1.2.1`.
-  - Update [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) to `v1.2.0`.
-- Rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since [domain name is invalid for network interface binding](https://github.com/coreos/etcd/issues/6336).
-
-### Fixed
-
-- Allow v2 snapshot over 512MB.
+- Compile with [*Go 1.8.3*](https://golang.org/doc/devel/release.html#go1.8).
 

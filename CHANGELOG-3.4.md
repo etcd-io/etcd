@@ -6,7 +6,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Improved
 
-- Compile with [Go 1.10+](https://groups.google.com/forum/#!topic/golang-announce/IQeqMp44Qok).
+- TODO: Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
 - Add [warnings on requests taking too long](https://github.com/coreos/etcd/pull/9288).
   - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
@@ -42,25 +42,26 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Move `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/etcdserver/v2store"`](https://github.com/coreos/etcd/pull/9274).
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/coreos/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
-- Require Go 1.10+.
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
   - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/coreos/etcd/issues/4913).
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 
-### Added: `etcd`
+### Dependency
 
-- Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
-  - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
-  - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
-  - Useful for operating multiple etcd clusters under the same domain.
-- Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
-- Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
+- TODO: Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.11.0).
+
+### Metrics, Monitoring
+
+- Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
+- Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
 
 ### Security, Authentication
 
-- Add [`--host-whitelist`](https://github.com/coreos/etcd/pull/9372) flag, [`etcdserver.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), and [`embed.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), to prevent ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attack.
+See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+
+- Add [`etcd --host-whitelist`](https://github.com/coreos/etcd/pull/9372) flag, [`etcdserver.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), and [`embed.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), to prevent ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attack.
   - Any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to [DNS rebinding attacks (CVE-2018-5702)](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2).
   - Client origin enforce policy works as follow:
     - If client connection is secure via HTTPS, allow any hostnames..
@@ -69,9 +70,36 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
+- TODO: Support [TLS cipher suite lists](TODO).
 - Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
 - Allow empty token provider in [`etcdserver.ServerConfig.AuthToken`](https://github.com/coreos/etcd/pull/9369).
+
+### Added: `etcd`
+
+- Add [`--pre-vote`](https://github.com/coreos/etcd/pull/9352) flag to enable to run an additional Raft election phase.
+  - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
+  - `--pre-vote=false` by default.
+  - v3.5 will enable `--pre-vote=true` by default.
+- TODO: [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check` is deprecated).
+  - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
+- TODO: [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
+  - `--corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
+- TODO: [`--enable-v2v3`](TODO) flag is now stable (`--experimental-enable-v2v3` is deprecated).
+  - `--enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
+  - `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+  - `--enable-v2=false --enable-v2v3=''` to disable v2 API server.
+  - `--enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - v4.0 will configure `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+- Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
+  - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
+  - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
+  - Useful for operating multiple etcd clusters under the same domain.
+
+### Added: `embed`
+
+- Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
+- Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 
 ### Added: API
 
@@ -92,17 +120,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 
-### Added: metrics
-
-- Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
-
-### Fixed: metrics
-
-- Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
-
 ### Added: gRPC gateway
 
-- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint with [`/v3`](https://github.com/coreos/etcd/pull/9298).
+- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) `/v3beta` with [`/v3`](https://github.com/coreos/etcd/pull/9298).
+  - Deprecated [`/v3alpha`](https://github.com/coreos/etcd/pull/9298).
   - To deprecate [`/v3beta`](https://github.com/coreos/etcd/issues/9189) in `v3.5`.
 
 ### Package `raft`
@@ -128,9 +149,21 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
   - Previously, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
   - Now, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
+- TODO: Fix [compaction interval calculation](TODO).
+  - Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=10h` automatically `Compact` on latest revision at first 10-hour and every 1-hour, whether it succeeds or not.
+  - Now, it correctly reset its interval when `Compact` operation succeeds.
+  - The failed `Compact` operation will still be retried in 1/10 of interval.
+  - e.g. `10h` compact interval will be retried in 1-hour on failure.
+  - Document...
 - Prevent [overflow by large `TTL` values for `Lease` `Grant`](https://github.com/coreos/etcd/pull/9399).
   - `TTL` parameter to `Grant` request is unit of second.
   - Leases with too large `TTL` values exceeding `math.MaxInt64` [expire in unexpected ways](https://github.com/coreos/etcd/issues/9374).
   - Server now returns `rpctypes.ErrLeaseTTLTooLarge` to client, when the requested `TTL` is larger than *9,000,000,000 seconds* (which is >285 years).
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
+
+### Go
+
+- Require *Go 1.10+*.
+- Compile with [*Go 1.10*](https://golang.org/doc/devel/release.html#go1.10).
+
