@@ -10,13 +10,13 @@ if [[ ! -z "$FAILPOINTS" ]]; then
 fi
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
-GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/internal/version.GitSHA=${GIT_SHA}"
+GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 
 # enable/disable failpoints
 toggle_failpoints() {
 	mode="$1"
 	if which gofail >/dev/null 2>&1; then
-		gofail "$mode" etcdserver/ internal/mvcc/backend/
+		gofail "$mode" etcdserver/ mvcc/backend/
 	elif [[ "$mode" != "disable" ]]; then
 		echo "FAILPOINTS set but gofail not found"
 		exit 1
