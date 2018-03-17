@@ -149,26 +149,24 @@ func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*p
 }
 
 func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
+	hdr := &pb.ResponseHeader{}
+	ms.hdr.fill(hdr)
 	resp := &pb.StatusResponse{
-		Header:           &pb.ResponseHeader{Revision: ms.hdr.rev()},
+		Header:           hdr,
 		Version:          version.Version,
-		DbSize:           ms.bg.Backend().Size(),
 		Leader:           uint64(ms.rg.Leader()),
 		RaftIndex:        ms.rg.CommittedIndex(),
 		RaftAppliedIndex: ms.rg.AppliedIndex(),
 		RaftTerm:         ms.rg.Term(),
+		DbSize:           ms.bg.Backend().Size(),
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
 	}
-	if uint64(ms.rg.Leader()) == raft.None {
+	if resp.Leader == raft.None {
 		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())
 	}
-	alarms := ms.a.Alarms()
-	if len(alarms) > 0 {
-		for _, alarm := range alarms {
-			resp.Errors = append(resp.Errors, alarm.String())
-		}
+	for _, a := range ms.a.Alarms() {
+		resp.Errors = append(resp.Errors, a.String())
 	}
-	ms.hdr.fill(resp.Header)
 	return resp, nil
 }
 
