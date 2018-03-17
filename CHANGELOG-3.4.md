@@ -128,6 +128,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) `/v3beta` with [`/v3`](https://github.com/coreos/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/coreos/etcd/pull/9298).
   - To deprecate [`/v3beta`](https://github.com/coreos/etcd/issues/9189) in `v3.5`.
+- Add API endpoints [`/{v3,v3beta}/lease/leases, /{v3,v3beta}/lease/revoke /{v3,v3beta}/lease/timetolive`](https://github.com/coreos/etcd/pull/9450).
+  - To deprecate [`/{v3,v3beta}/kv/lease/leases, /{v3,v3beta}/kv/lease/revoke, /{v3,v3beta}/kv/lease/timetolive`](https://github.com/coreos/etcd/issues/9430) in `v3.5`.
 
 ### Package `raft`
 

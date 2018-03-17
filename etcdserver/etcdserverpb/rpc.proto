@@ -90,8 +90,12 @@ service Lease {
   // LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
   rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {
       option (google.api.http) = {
-        post: "/v3/kv/lease/revoke"
+        post: "/v3/lease/revoke"
         body: "*"
+        additional_bindings {
+            post: "/v3/kv/lease/revoke"
+            body: "*"
+        }
     };
   }
 
@@ -107,16 +111,24 @@ service Lease {
   // LeaseTimeToLive retrieves lease information.
   rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {
       option (google.api.http) = {
-        post: "/v3/kv/lease/timetolive"
+        post: "/v3/lease/timetolive"
         body: "*"
+        additional_bindings {
+            post: "/v3/kv/lease/timetolive"
+            body: "*"
+        }
     };
   }
 
   // LeaseLeases lists all existing leases.
   rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {
       option (google.api.http) = {
-        post: "/v3/kv/lease/leases"
+        post: "/v3/lease/leases"
         body: "*"
+        additional_bindings {
+            post: "/v3/kv/lease/leases"
+            body: "*"
+        }
     };
   }
 }
