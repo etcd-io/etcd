@@ -49,6 +49,8 @@ func (m *member) Flags() []string {
 		"--listen-peer-urls", m.PeerURL,
 		"--initial-advertise-peer-urls", m.AdvertisePeerURL,
 		"--initial-cluster-state", "new",
+		"--snapshot-count", "10000",
+		"--pre-vote",
 		"--experimental-initial-corrupt-check",
 	}
 }
@@ -76,7 +78,7 @@ func (m *member) CheckCompact(rev int64) error {
 }
 
 func (m *member) Defrag() error {
-	plog.Printf("defragmenting %s\n", m.AdvertiseClientURL)
+	plog.Printf("defragmenting %s", m.AdvertiseClientURL)
 	cli, err := m.newClientV3()
 	if err != nil {
 		return err
@@ -88,7 +90,7 @@ func (m *member) Defrag() error {
 	if err != nil {
 		return err
 	}
-	plog.Printf("defragmented %s\n", m.AdvertiseClientURL)
+	plog.Printf("defragmented %s", m.AdvertiseClientURL)
 	return nil
 }
 
