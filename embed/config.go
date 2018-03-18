@@ -107,8 +107,6 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	// member
-
 	CorsInfo       *cors.CORSInfo
 	LPUrls, LCUrls []url.URL
 	Dir            string `json:"data-dir"`
@@ -135,8 +133,6 @@ type Config struct {
 	MaxTxnOps         uint  `json:"max-txn-ops"`
 	MaxRequestBytes   uint  `json:"max-request-bytes"`
 
-	// gRPC server options
-
 	// GRPCKeepAliveMinTime is the minimum interval that a client should
 	// wait before pinging server. When client pings "too fast", server
 	// sends goaway and closes the connection (errors: too_many_pings,
@@ -152,8 +148,6 @@ type Config struct {
 	// before closing a non-responsive connection. 0 to disable.
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
-	// clustering
-
 	APUrls, ACUrls        []url.URL
 	ClusterState          string `json:"initial-cluster-state"`
 	DNSCluster            string `json:"discovery-srv"`
@@ -165,7 +159,12 @@ type Config struct {
 	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
 	EnableV2              bool   `json:"enable-v2"`
 
-	// security
+	// PreVote is true to enable Raft Pre-Vote.
+	// If enabled, Raft runs an additional election phase
+	// to check whether it would get enough votes to win
+	// an election, thus minimizing disruptions.
+	// TODO: enable by default in 3.5.
+	PreVote bool `json:"pre-vote"`
 
 	ClientTLSInfo transport.TLSInfo
 	ClientAutoTLS bool
@@ -198,8 +197,6 @@ type Config struct {
 	// - https://github.com/coreos/etcd/issues/9353
 	HostWhitelist []string `json:"host-whitelist"`
 
-	// debug
-
 	Debug                 bool   `json:"debug"`
 	LogPkgLevels          string `json:"log-package-levels"`
 	LogOutput             string `json:"log-output"`
@@ -225,22 +222,11 @@ type Config struct {
 	//	embed.StartEtcd(cfg)
 	ServiceRegister func(*grpc.Server) `json:"-"`
 
-	// auth
-
 	AuthToken string `json:"auth-token"`
-
-	// Experimental flags
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
-
-	// ExperimentalPreVote is true to enable Raft Pre-Vote.
-	// If enabled, Raft runs an additional election phase
-	// to check whether it would get enough votes to win
-	// an election, thus minimizing disruptions.
-	// TODO: change to "pre-vote" and enable by default in 3.5.
-	ExperimentalPreVote bool `json:"experimental-pre-vote"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -300,7 +286,7 @@ func NewConfig() *Config {
 		EnableV2:              DefaultEnableV2,
 		HostWhitelist:         defaultHostWhitelist,
 		AuthToken:             "simple",
-		ExperimentalPreVote:   false, // TODO: enable by default in v3.5
+		PreVote:               false, // TODO: enable by default in v3.5
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

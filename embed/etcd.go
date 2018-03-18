@@ -171,7 +171,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AuthToken:               cfg.AuthToken,
 		InitialCorruptCheck:     cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
-		PreVote:                 cfg.ExperimentalPreVote,
+		PreVote:                 cfg.PreVote,
 		Debug:                   cfg.Debug,
 	}
 
