@@ -15,6 +15,8 @@
 package flags
 
 import (
+	"flag"
+	"net/url"
 	"strings"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -25,6 +27,7 @@ type URLsValue types.URLs
 
 // Set parses a command line set of URLs formatted like:
 // http://127.0.0.1:2380,http://10.1.1.2:80
+// Implements "flag.Value" interface.
 func (us *URLsValue) Set(s string) error {
 	ss, err := types.NewURLs(strings.Split(s, ","))
 	if err != nil {
@@ -34,6 +37,7 @@ func (us *URLsValue) Set(s string) error {
 	return nil
 }
 
+// String implements "flag.Value" interface.
 func (us *URLsValue) String() string {
 	all := make([]string, len(*us))
 	for i, u := range *us {
@@ -53,4 +57,9 @@ func NewURLsValue(s string) *URLsValue {
 		plog.Panicf("new URLsValue should never fail: %v", err)
 	}
 	return v
+}
+
+// URLsFromFlag returns a slices from url got from the flag.
+func URLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue))
 }

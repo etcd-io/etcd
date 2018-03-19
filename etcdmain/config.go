@@ -86,9 +86,9 @@ type config struct {
 // configFlags has the set of flags used for command line parsing a Config
 type configFlags struct {
 	flagSet      *flag.FlagSet
-	clusterState *flags.StringsFlag
-	fallback     *flags.StringsFlag
-	proxy        *flags.StringsFlag
+	clusterState *flags.SelectiveStringValue
+	fallback     *flags.SelectiveStringValue
+	proxy        *flags.SelectiveStringValue
 }
 
 func newConfig() *config {
@@ -105,15 +105,15 @@ func newConfig() *config {
 	}
 	cfg.cf = configFlags{
 		flagSet: flag.NewFlagSet("etcd", flag.ContinueOnError),
-		clusterState: flags.NewStringsFlag(
+		clusterState: flags.NewSelectiveStringValue(
 			embed.ClusterStateFlagNew,
 			embed.ClusterStateFlagExisting,
 		),
-		fallback: flags.NewStringsFlag(
+		fallback: flags.NewSelectiveStringValue(
 			fallbackFlagProxy,
 			fallbackFlagExit,
 		),
-		proxy: flags.NewStringsFlag(
+		proxy: flags.NewSelectiveStringValue(
 			proxyFlagOff,
 			proxyFlagReadonly,
 			proxyFlagOn,
@@ -151,7 +151,7 @@ func newConfig() *config {
 	fs.Var(flags.NewURLsValue(embed.DefaultInitialAdvertisePeerURLs), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster.")
 	fs.Var(flags.NewURLsValue(embed.DefaultAdvertiseClientURLs), "advertise-client-urls", "List of this member's client URLs to advertise to the public.")
 	fs.StringVar(&cfg.ec.Durl, "discovery", cfg.ec.Durl, "Discovery URL used to bootstrap the cluster.")
-	fs.Var(cfg.cf.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(cfg.cf.fallback.Values, ", ")))
+	fs.Var(cfg.cf.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %q", cfg.cf.fallback.Valids()))
 
 	fs.StringVar(&cfg.ec.Dproxy, "discovery-proxy", cfg.ec.Dproxy, "HTTP proxy to use for traffic to discovery service.")
 	fs.StringVar(&cfg.ec.DNSCluster, "discovery-srv", cfg.ec.DNSCluster, "DNS domain used to bootstrap initial cluster.")
@@ -165,7 +165,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ec.ExperimentalEnableV2V3, "experimental-enable-v2v3", cfg.ec.ExperimentalEnableV2V3, "v3 prefix for serving emulated v2 state.")
 
 	// proxy
-	fs.Var(cfg.cf.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.cf.proxy.Values, ", ")))
+	fs.Var(cfg.cf.proxy, "proxy", fmt.Sprintf("Valid values include %q", cfg.cf.proxy.Valids()))
 
 	fs.UintVar(&cfg.cp.ProxyFailureWaitMs, "proxy-failure-wait", cfg.cp.ProxyFailureWaitMs, "Time (in milliseconds) an endpoint will be held in a failed state.")
 	fs.UintVar(&cfg.cp.ProxyRefreshIntervalMs, "proxy-refresh-interval", cfg.cp.ProxyRefreshIntervalMs, "Time (in milliseconds) of the endpoints refresh interval.")
@@ -189,7 +189,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
-	fs.Var(flags.NewStringSlice(""), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
+	fs.Var(flags.NewStringsValue(""), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
 
 	// logging
 	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
@@ -268,7 +268,7 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.APUrls = flags.URLsFromFlag(cfg.cf.flagSet, "initial-advertise-peer-urls")
 	cfg.ec.LCUrls = flags.URLsFromFlag(cfg.cf.flagSet, "listen-client-urls")
 	cfg.ec.ACUrls = flags.URLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
-	cfg.ec.HostWhitelist = flags.StringSliceFromFlag(cfg.cf.flagSet, "host-whitelist")
+	cfg.ec.HostWhitelist = flags.StringsFromFlag(cfg.cf.flagSet, "host-whitelist")
 	cfg.ec.ListenMetricsUrls = flags.URLsFromFlag(cfg.cf.flagSet, "listen-metrics-urls")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()

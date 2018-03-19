@@ -14,24 +14,23 @@
 
 package flags
 
-import (
-	"reflect"
-	"testing"
-)
+// IgnoredFlag encapsulates a flag that may have been previously valid but is
+// now ignored. If an IgnoredFlag is set, a warning is printed and
+// operation continues.
+type IgnoredFlag struct {
+	Name string
+}
 
-func TestStringSlice(t *testing.T) {
-	tests := []struct {
-		s   string
-		exp []string
-	}{
-		{s: "a,b,c", exp: []string{"a", "b", "c"}},
-		{s: "a, b,c", exp: []string{"a", " b", "c"}},
-		{s: "", exp: []string{}},
-	}
-	for i := range tests {
-		ss := []string(*NewStringSlice(tests[i].s))
-		if !reflect.DeepEqual(tests[i].exp, ss) {
-			t.Fatalf("#%d: expected %q, got %q", i, tests[i].exp, ss)
-		}
-	}
+// IsBoolFlag is defined to allow the flag to be defined without an argument
+func (f *IgnoredFlag) IsBoolFlag() bool {
+	return true
+}
+
+func (f *IgnoredFlag) Set(s string) error {
+	plog.Warningf(`flag "-%s" is no longer supported - ignoring.`, f.Name)
+	return nil
+}
+
+func (f *IgnoredFlag) String() string {
+	return ""
 }
