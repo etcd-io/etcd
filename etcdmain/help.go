@@ -104,6 +104,8 @@ clustering flags:
 		suffix to the dns srv name queried when bootstrapping.
 	--strict-reconfig-check '` + strconv.FormatBool(embed.DefaultStrictReconfigCheck) + `'
 		reject reconfiguration requests that would cause quorum loss.
+	--pre-vote 'false'
+		enable to run an additional Raft election phase.
 	--auto-compaction-retention '0'
 		auto compaction retention length. 0 means disable auto compaction.
 	--auto-compaction-mode 'periodic'
@@ -111,8 +113,7 @@ clustering flags:
 	--enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
 		Accept etcd V2 client requests.
 
-proxy flags:
-	"proxy" supports v2 API only.
+proxy flags (v2 API only):
 
 	--proxy 'off'
 		proxy mode setting ('off', 'readonly' or 'on').
@@ -126,7 +127,6 @@ proxy flags:
 		time (in milliseconds) for a write to timeout.
 	--proxy-read-timeout 0
 		time (in milliseconds) for a read to timeout.
-
 
 security flags:
 
@@ -197,7 +197,5 @@ experimental flags:
 		duration of time between cluster corruption check passes.
 	--experimental-enable-v2v3 ''
 		serve v2 requests through the v3 backend under a given prefix.
-	--experimental-pre-vote 'false'
-		enable to run an additional Raft election phase.
 `
 )

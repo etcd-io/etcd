@@ -82,7 +82,7 @@ func (c *cluster) bootstrap() error {
 			m.Flags(),
 			"--initial-cluster-token", token,
 			"--initial-cluster", clusterStr,
-			"--snapshot-count", "10000")
+		)
 
 		if _, err := m.Agent.Start(flags...); err != nil {
 			// cleanup
