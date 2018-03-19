@@ -335,9 +335,13 @@
   packages = [
     ".",
     "balancer",
+    "balancer/base",
+    "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
+    "encoding",
+    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "health",
@@ -348,13 +352,15 @@
     "naming",
     "peer",
     "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
     "stats",
     "status",
     "tap",
     "transport"
   ]
-  revision = "5b3c4e850e90a4cf6a20ebd46c8b32a0a3afcb9e"
-  version = "v1.7.5"
+  revision = "1e2570b1b19ade82d8dbb31bba4e65e9f9ef5b34"
+  version = "v1.11.1"
 
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
@@ -371,6 +377,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "943bf7648c0129f59546321f569622e933f24a103b5d68525b82d5e47d52733f"
+  inputs-digest = "b747b3fd3120687183829e5d2d5b2d10bba1719402c9bcc7c955d27ab5f884a0"
   solver-name = "gps-cdcl"
   solver-version = 1
