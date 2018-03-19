@@ -322,9 +322,6 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatal(err)
 	}
-	if err != nil {
-		cx.t.Fatal(err)
-	}
 	if err = cURLPost(cx.epc, cURLReq{
 		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
 		value:    string(pdata),
