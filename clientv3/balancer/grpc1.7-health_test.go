@@ -30,7 +30,7 @@ import (
 
 var endpoints = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 
-func TestBalancerGetUnblocking(t *testing.T) {
+func TestOldHealthBalancerGetUnblocking(t *testing.T) {
 	hb := NewGRPC17Health(endpoints, minHealthRetryDuration, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
@@ -74,7 +74,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	}
 }
 
-func TestBalancerGetBlocking(t *testing.T) {
+func TestOldHealthBalancerGetBlocking(t *testing.T) {
 	hb := NewGRPC17Health(endpoints, minHealthRetryDuration, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
@@ -131,9 +131,9 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 }
 
-// TestHealthBalancerGraylist checks one endpoint is tried after the other
+// TestOldHealthBalancerGraylist checks one endpoint is tried after the other
 // due to gray listing.
-func TestHealthBalancerGraylist(t *testing.T) {
+func TestOldHealthBalancerGraylist(t *testing.T) {
 	var wg sync.WaitGroup
 	// Use 3 endpoints so gray list doesn't fallback to all connections
 	// after failing on 2 endpoints.
@@ -192,7 +192,7 @@ func TestHealthBalancerGraylist(t *testing.T) {
 // TestBalancerDoNotBlockOnClose ensures that balancer and grpc don't deadlock each other
 // due to rapid open/close conn. The deadlock causes balancer.Close() to block forever.
 // See issue: https://github.com/coreos/etcd/issues/7283 for more detail.
-func TestBalancerDoNotBlockOnClose(t *testing.T) {
+func TestOldHealthBalancerDoNotBlockOnClose(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	kcl := newKillConnListener(t, 3)
