@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+package balancer
 
 import (
 	"context"
@@ -31,10 +31,10 @@ import (
 var endpoints = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 
 func TestBalancerGetUnblocking(t *testing.T) {
-	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	hb := NewGRPC17Health(endpoints, minHealthRetryDuration, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
+		t.Errorf("Initialize NewGRPC17Health should have triggered Notify() chan, but it didn't")
 	}
 	unblockingOpts := grpc.BalancerGetOptions{BlockingWait: false}
 
@@ -75,10 +75,10 @@ func TestBalancerGetUnblocking(t *testing.T) {
 }
 
 func TestBalancerGetBlocking(t *testing.T) {
-	hb := newHealthBalancer(endpoints, minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+	hb := NewGRPC17Health(endpoints, minHealthRetryDuration, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 	defer hb.Close()
 	if addrs := <-hb.Notify(); len(addrs) != len(endpoints) {
-		t.Errorf("Initialize newHealthBalancer should have triggered Notify() chan, but it didn't")
+		t.Errorf("Initialize NewGRPC17Health should have triggered Notify() chan, but it didn't")
 	}
 	blockingOpts := grpc.BalancerGetOptions{BlockingWait: true}
 
@@ -166,15 +166,14 @@ func TestHealthBalancerGraylist(t *testing.T) {
 		}()
 	}
 
-	tf := func(s string) (bool, error) { return false, nil }
-	hb := newHealthBalancer(eps, 5*time.Second, tf)
+	hb := NewGRPC17Health(eps, 5*time.Second, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 
 	conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 	testutil.AssertNil(t, err)
 	defer conn.Close()
 
 	kvc := pb.NewKVClient(conn)
-	<-hb.ready()
+	<-hb.Ready()
 
 	kvc.Range(context.TODO(), &pb.RangeRequest{})
 	ep1 := <-connc
@@ -200,7 +199,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 	defer kcl.close()
 
 	for i := 0; i < 5; i++ {
-		hb := newHealthBalancer(kcl.endpoints(), minHealthRetryDuration, func(string) (bool, error) { return true, nil })
+		hb := NewGRPC17Health(kcl.endpoints(), minHealthRetryDuration, func(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) { return nil, nil })
 		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
 		if err != nil {
 			t.Fatal(err)
