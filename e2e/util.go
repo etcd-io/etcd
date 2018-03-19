@@ -15,7 +15,9 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -75,6 +77,18 @@ func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
 		return nil, fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
 	return lines, perr
+}
+
+func randomLeaseID() int64 {
+	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
+}
+
+func dataMarshal(data interface{}) (d string, e error) {
+	m, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	return string(m), nil
 }
 
 func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
