@@ -19,12 +19,31 @@ The keyspace can be compacted automatically with `etcd`'s time windowed history 
 $ etcd --auto-compaction-retention=1
 ```
 
+[v3.0.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.0.md) and [v3.1.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.1.md) with `--auto-compaction-retention=10` run periodic compaction on v3 key-value store for every 10-hour. Compactor only supports periodic compaction. Compactor records latest revisions every 5-minute, until it reaches the first compaction period (e.g. 10-hour). In order to retain key-value history of last compaction period, it uses the last revision that was fetched before compaction period, from the revision records that were collected every 5-minute. When `--auto-compaction-retention=10`, compactor uses revision 100 for compact revision where revision 100 is the latest revision fetched from 10 hours ago. If compaction succeeds or requested revision has already been compacted, it resets period timer and starts over with new historical revision records (e.g. restart revision collect and compact for the next 10-hour period). If compaction fails, it retries in 5 minutes.
+
+[v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md) compactor runs [every hour](https://github.com/coreos/etcd/pull/7875). Compactor only supports periodic compaction. Compactor continues to record latest revisions every 5-minute. For every hour, it uses the last revision that was fetched before compaction period, from the revision records that were collected every 5-minute. That is, for every hour, compactor discards historical data created before compaction period. The retention window of compaction period moves to next hour. For instance, when hourly writes are about 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2 compacts revision 1000, 1100, and 1200 for every 1-hour. If compaction succeeds or requested revision has already been compacted, it resets period timer and removes used compacted revision from historical revision records (e.g. start next revision collect and compaction from previously collected revisions). If compaction fails, it retries in 5 minutes.
+
+[v3.3.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.3.md) periodic compactor keeps recording latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=10h`). For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data. The retention window of compaction period moves for every 1/10 of given compaction period. For instance, when hourly writes are about 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2 and v3.3 compacts revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are about 1000, v3.3 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` can compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity. When `--auto-compaction-retention=10h`, etcd first waits 10-hour for the first compaction, and then does compaction every hour (1/10 of 10-hour) afterwards like this:
+
+```
+0Hr  (rev = 1)
+1hr  (rev = 10)
+...
+8hr  (rev = 80)
+9hr  (rev = 90)
+10hr (rev = 100, Compact(1))
+11hr (rev = 110, Compact(10))
+...
+
+```
+
+Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
+
 An `etcdctl` initiated compaction works as follows:
 
 ```sh
 # compact up to revision 3
 $ etcdctl compact 3
-
 ```
 
 Revisions prior to the compaction revision become inaccessible:
