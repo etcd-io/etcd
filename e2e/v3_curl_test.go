@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
@@ -236,7 +237,7 @@ func testV3CurlAuth(cx ctlCtx) {
 	authRes := make(map[string]interface{})
 	testutil.AssertNil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
 
-	token, ok := authRes["token"].(string)
+	token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
 	if !ok {
 		cx.t.Fatalf("failed invalid token in authenticate response with curl")
 	}

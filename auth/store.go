@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 
 	"github.com/coreos/etcd/auth/authpb"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
 
@@ -999,9 +1000,9 @@ func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
 	}
 
 	//TODO(mitake|hexfusion) review unifying key names
-	ts, ok := md["token"]
+	ts, ok := md[rpctypes.TokenFieldNameGRPC]
 	if !ok {
-		ts, ok = md["authorization"]
+		ts, ok = md[rpctypes.TokenFieldNameSwagger]
 	}
 	if !ok {
 		return nil, nil
@@ -1092,7 +1093,7 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 	}
 
 	mdMap := map[string]string{
-		"token": token,
+		rpctypes.TokenFieldNameGRPC: token,
 	}
 	tokenMD := metadata.New(mdMap)
 
