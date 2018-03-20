@@ -280,7 +280,7 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 			tlsClientArgs := []string{
 				"--cert-file", certPath,
 				"--key-file", privateKeyPath,
-				"--ca-file", caPath,
+				"--trusted-ca-file", caPath,
 			}
 			args = append(args, tlsClientArgs...)
 
@@ -297,7 +297,7 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 			tlsPeerArgs := []string{
 				"--peer-cert-file", certPath,
 				"--peer-key-file", privateKeyPath,
-				"--peer-ca-file", caPath,
+				"--peer-trusted-ca-file", caPath,
 			}
 			args = append(args, tlsPeerArgs...)
 		}
