@@ -389,6 +389,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 - Increased [`--snapshot-count` default value from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
   - Higher snapshot count means it holds Raft entries in memory for longer before discarding old entries.
   - It is a trade-off between less frequent snapshotting and [higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156).
+  - User lower `--snapshot-count` value for lower memory usage.
+  - User higher `--snapshot-count` value for better availabilities of slow followers (less frequent snapshots from leader).
 - `clientv3.Lease.TimeToLive` returns `LeaseTimeToLiveResponse.TTL == -1` on lease not found.
 - `clientv3.NewFromConfigFile` is moved to `clientv3/yaml.NewConfig`.
 - `embed.Etcd.Peers` field is now `[]*peerListener`.
