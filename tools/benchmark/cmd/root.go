@@ -29,7 +29,7 @@ var RootCmd = &cobra.Command{
 	Use:   "benchmark",
 	Short: "A low-level benchmark tool for etcd3",
 	Long: `benchmark is a low-level benchmark tool for etcd3.
-It uses gRPC client directly and does not depend on 
+It uses gRPC client directly and does not depend on
 etcd client library.
 	`,
 }
@@ -65,7 +65,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 	RootCmd.PersistentFlags().StringVar(&tls.CertFile, "cert", "", "identify HTTPS client using this SSL certificate file")
 	RootCmd.PersistentFlags().StringVar(&tls.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
-	RootCmd.PersistentFlags().StringVar(&tls.CAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	RootCmd.PersistentFlags().StringVar(&tls.TrustedCAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	RootCmd.PersistentFlags().StringVar(&user, "user", "", "provide username[:password] and prompt if password is not supplied.")
 	RootCmd.PersistentFlags().DurationVar(&dialTimeout, "dial-timeout", 0, "dial timeout for client connections")
