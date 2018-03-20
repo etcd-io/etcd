@@ -180,7 +180,7 @@ func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeo
 	}
 
 	if scfg.cacert != "" {
-		tlsinfo.CAFile = scfg.cacert
+		tlsinfo.TrustedCAFile = scfg.cacert
 		cfgtls = &tlsinfo
 	}
 

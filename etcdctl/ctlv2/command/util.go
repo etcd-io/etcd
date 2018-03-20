@@ -173,10 +173,10 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		discoveryDomain = ""
 	}
 	tls := transport.TLSInfo{
-		CAFile:     cafile,
-		CertFile:   certfile,
-		KeyFile:    keyfile,
-		ServerName: discoveryDomain,
+		CertFile:      certfile,
+		KeyFile:       keyfile,
+		ServerName:    discoveryDomain,
+		TrustedCAFile: cafile,
 	}
 
 	dialTimeout := defaultDialTimeout
