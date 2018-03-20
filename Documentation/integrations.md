@@ -99,6 +99,7 @@
 
 - [linkorb/etcd-php](https://github.com/linkorb/etcd-php)
 - [activecollab/etcd](https://github.com/activecollab/etcd)
+- [ouqiang/etcd-php](https://github.com/ouqiang/etcd-php) - Client for v3 gRPC gateway
 
 **Haskell libraries**
 
