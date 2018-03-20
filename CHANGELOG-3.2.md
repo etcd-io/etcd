@@ -428,6 +428,15 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add `--enable-v2` flag to enable v2 API server.
   - `--enable-v2=true` by default.
 - Add `--auth-token` flag.
+- v3.2 compactor runs [every hour](https://github.com/coreos/etcd/pull/7875).
+  - Compactor only supports periodic compaction.
+  - Compactor continues to record latest revisions every 5-minute.
+  - For every hour, it uses the last revision that was fetched before compaction period, from the revision records that were collected every 5-minute.
+  - That is, for every hour, compactor discards historical data created before compaction period.
+  - The retention window of compaction period moves to next hour.
+  - For instance, when hourly writes are about 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2 compacts revision 1000, 1100, and 1200 for every 1-hour.
+  - If compaction succeeds or requested revision has already been compacted, it resets period timer and removes used compacted revision from historical revision records (e.g. start next revision collect and compaction from previously collected revisions).
+  - If compaction fails, it retries in 5 minutes.
 
 ### Added: `clientv3`
 
