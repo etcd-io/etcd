@@ -10,9 +10,38 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.4.
 
-#### Change in TODO
+#### Change in `etcd` flags
 
-TODO
+`--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
+
+```diff
+-etcd --ca-file ca-client.crt
++etcd --trusted-ca-file ca-client.crt
+```
+
+```diff
+-etcd --peer-ca-file ca-peer.crt
++etcd --peer-trusted-ca-file ca-peer.crt
+```
+
+#### Change in ``pkg/transport`
+
+Deprecated `pkg/transport.TLSInfo.CAFile` field.
+
+```diff
+import "github.com/coreos/etcd/pkg/transport"
+
+tlsInfo := transport.TLSInfo{
+    CertFile: "/tmp/test-certs/test.pem",
+    KeyFile: "/tmp/test-certs/test-key.pem",
+-   CAFile: "/tmp/test-certs/trusted-ca.pem",
++   TrustedCAFile: "/tmp/test-certs/trusted-ca.pem",
+}
+tlsConfig, err := tlsInfo.ClientConfig()
+if err != nil {
+    panic(err)
+}
+```
 
 ### Server upgrade checklists
 
