@@ -22,6 +22,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Breaking Changes
 
+- **Deprecated `etcd --ca-file` flag**, instead [use `--trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--ca-file` has been deprecated since v2.1).
+- **Deprecated `etcd --peer-ca-file` flag**, instead [use `--peer-trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--peer-ca-file` has been deprecated since v2.1).
+- **Deprecated `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/coreos/etcd/pull/9470) (`CAFile` has been deprecated since v2.1).
 - Drop [ACIs from official release](https://github.com/coreos/etcd/pull/9059).
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
