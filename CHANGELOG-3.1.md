@@ -236,6 +236,13 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Cluster rejects removing members if quorum will be lost.
 - Discovery now has upper limit for waiting on retries.
 - Warn on binding listeners through domain names; to be deprecated.
+- v3.0 and v3.1 with `--auto-compaction-retention=10` run periodic compaction on v3 key-value store for every 10-hour.
+  - Compactor only supports periodic compaction.
+  - Compactor records latest revisions every 5-minute, until it reaches the first compaction period (e.g. 10-hour).
+  - In order to retain key-value history of last compaction period, it uses the last revision that was fetched before compaction period, from the revision records that were collected every 5-minute.
+  - When `--auto-compaction-retention=10`, compactor uses revision 100 for compact revision where revision 100 is the latest revision fetched from 10 hours ago.
+  - If compaction succeeds or requested revision has already been compacted, it resets period timer and starts over with new historical revision records (e.g. restart revision collect and compact for the next 10-hour period).
+  - If compaction fails, it retries in 5 minutes.
 
 ### Go
 

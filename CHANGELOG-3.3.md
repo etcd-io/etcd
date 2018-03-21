@@ -181,6 +181,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
   - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` on latest revision every 30-minute.
   - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=10h`).
+  - For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data.
+  - The retention window of compaction period moves for every 1/10 of given compaction period.
+  - For instance, when hourly writes are about 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2 and v3.3 compacts revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are about 1000, v3.3 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` can compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
+  - Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
 - Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm (e.g. `NOSPACE`) is raised or there's no leader](https://github.com/coreos/etcd/issues/8207).
   - Define [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct with JSON encoder.
