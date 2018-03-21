@@ -9,6 +9,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.12...v3.1.13) and
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 
+### Metrics, Monitoring
+
+- Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
+
 ### Go
 
 - Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
