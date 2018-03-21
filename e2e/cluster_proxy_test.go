@@ -250,12 +250,12 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		case "--key-file":
 			tlsArgs = append(tlsArgs, "--key", cfg.tlsArgs[i+1], "--key-file", cfg.tlsArgs[i+1])
 			i++
-		case "--ca-file":
+		case "--trusted-ca-file":
 			tlsArgs = append(tlsArgs, "--cacert", cfg.tlsArgs[i+1], "--trusted-ca-file", cfg.tlsArgs[i+1])
 			i++
 		case "--auto-tls":
 			tlsArgs = append(tlsArgs, "--auto-tls", "--insecure-skip-tls-verify")
-		case "--peer-ca-file", "--peer-cert-file", "--peer-key-file":
+		case "--peer-trusted-ca-file", "--peer-cert-file", "--peer-key-file":
 			i++ // skip arg
 		case "--client-cert-auth", "--peer-auto-tls":
 		default:

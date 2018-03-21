@@ -247,7 +247,6 @@ type configJSON struct {
 }
 
 type securityConfig struct {
-	CAFile        string `json:"ca-file"`
 	CertFile      string `json:"cert-file"`
 	KeyFile       string `json:"key-file"`
 	CertAuth      bool   `json:"client-cert-auth"`
@@ -421,7 +420,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 	}
 
 	copySecurityDetails := func(tls *transport.TLSInfo, ysc *securityConfig) {
-		tls.CAFile = ysc.CAFile
 		tls.CertFile = ysc.CertFile
 		tls.KeyFile = ysc.KeyFile
 		tls.ClientCertAuth = ysc.CertAuth
@@ -525,7 +523,7 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 			plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
-		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.CAFile == "" {
+		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.TrustedCAFile == "" {
 			cfg.PeerTLSInfo.ServerName = cfg.DNSCluster
 		}
 		urlsmap, err = types.NewURLsMap(clusterStr)

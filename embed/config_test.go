@@ -27,8 +27,8 @@ import (
 )
 
 func TestConfigFileOtherFields(t *testing.T) {
-	ctls := securityConfig{CAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
-	ptls := securityConfig{CAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
+	ctls := securityConfig{TrustedCAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
+	ptls := securityConfig{TrustedCAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
 	yc := struct {
 		ClientSecurityCfgFile securityConfig `json:"client-transport-security"`
 		PeerSecurityCfgFile   securityConfig `json:"peer-transport-security"`
@@ -129,8 +129,7 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 }
 
 func (s *securityConfig) equals(t *transport.TLSInfo) bool {
-	return s.CAFile == t.CAFile &&
-		s.CertFile == t.CertFile &&
+	return s.CertFile == t.CertFile &&
 		s.CertAuth == t.ClientCertAuth &&
 		s.TrustedCAFile == t.TrustedCAFile
 }

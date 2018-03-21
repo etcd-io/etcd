@@ -130,8 +130,6 @@ proxy flags (v2 API only):
 
 security flags:
 
-	--ca-file '' [DEPRECATED]
-		path to the client server TLS CA file. '-ca-file ca.crt' could be replaced by '-trusted-ca-file ca.crt -client-cert-auth' and etcd will perform the same.
 	--cert-file ''
 		path to the client server TLS cert file.
 	--key-file ''
@@ -144,8 +142,6 @@ security flags:
 		path to the client server TLS trusted CA cert file.
 	--auto-tls 'false'
 		client TLS using generated certificates.
-	--peer-ca-file '' [DEPRECATED]
-		path to the peer server TLS CA file. '-peer-ca-file ca.crt' could be replaced by '-peer-trusted-ca-file ca.crt -peer-client-cert-auth' and etcd will perform the same.
 	--peer-cert-file ''
 		path to the peer server TLS cert file.
 	--peer-key-file ''

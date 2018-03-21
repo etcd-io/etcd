@@ -70,9 +70,6 @@ func NewConfig(fpath string) (*clientv3.Config, error) {
 		}
 	}
 
-	if yc.CAfile != "" && yc.TrustedCAfile == "" {
-		yc.TrustedCAfile = yc.CAfile
-	}
 	if yc.TrustedCAfile != "" {
 		cp, err = tlsutil.NewCertPool([]string{yc.TrustedCAfile})
 		if err != nil {

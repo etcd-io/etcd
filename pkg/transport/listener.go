@@ -59,7 +59,6 @@ func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listene
 type TLSInfo struct {
 	CertFile           string
 	KeyFile            string
-	CAFile             string // TODO: deprecate this in v4
 	TrustedCAFile      string
 	ClientCertAuth     bool
 	CRLFile            string
@@ -83,7 +82,7 @@ type TLSInfo struct {
 }
 
 func (info TLSInfo) String() string {
-	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
+	return fmt.Sprintf("cert = %s, key = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
 }
 
 func (info TLSInfo) Empty() bool {
@@ -206,9 +205,6 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 // cafiles returns a list of CA file paths.
 func (info TLSInfo) cafiles() []string {
 	cs := make([]string, 0)
-	if info.CAFile != "" {
-		cs = append(cs, info.CAFile)
-	}
 	if info.TrustedCAFile != "" {
 		cs = append(cs, info.TrustedCAFile)
 	}
@@ -223,13 +219,13 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	}
 
 	cfg.ClientAuth = tls.NoClientCert
-	if info.CAFile != "" || info.ClientCertAuth {
+	if info.TrustedCAFile != "" || info.ClientCertAuth {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	CAFiles := info.cafiles()
-	if len(CAFiles) > 0 {
-		cp, err := tlsutil.NewCertPool(CAFiles)
+	cs := info.cafiles()
+	if len(cs) > 0 {
+		cp, err := tlsutil.NewCertPool(cs)
 		if err != nil {
 			return nil, err
 		}
@@ -257,9 +253,9 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	}
 	cfg.InsecureSkipVerify = info.InsecureSkipVerify
 
-	CAFiles := info.cafiles()
-	if len(CAFiles) > 0 {
-		cfg.RootCAs, err = tlsutil.NewCertPool(CAFiles)
+	cs := info.cafiles()
+	if len(cs) > 0 {
+		cfg.RootCAs, err = tlsutil.NewCertPool(cs)
 		if err != nil {
 			return nil, err
 		}

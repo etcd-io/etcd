@@ -275,7 +275,7 @@ func newTLS(ca, cert, key string) *transport.TLSInfo {
 	if ca == "" && cert == "" && key == "" {
 		return nil
 	}
-	return &transport.TLSInfo{CAFile: ca, CertFile: cert, KeyFile: key}
+	return &transport.TLSInfo{TrustedCAFile: ca, CertFile: cert, KeyFile: key}
 }
 
 func mustListenCMux(tlsinfo *transport.TLSInfo) cmux.CMux {
