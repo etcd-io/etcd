@@ -73,7 +73,7 @@ func recoverSnapshotBackend(cfg *ServerConfig, oldbe backend.Backend, snapshot r
 	var cIndex consistentIndex
 	kv := mvcc.New(oldbe, &lease.FakeLessor{}, &cIndex)
 	defer kv.Close()
-	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
+	if kv.ConsistentIndex() == 0 || snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil
 	}
 	oldbe.Close()
