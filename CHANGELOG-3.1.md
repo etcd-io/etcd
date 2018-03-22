@@ -189,7 +189,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.0.0...v3.1.0) and [
 
 ### Improved
 
-- Faster linearizable reads (implements Raft read-index).
+- Faster linearizable reads (implements Raft [read-index](https://github.com/coreos/etcd/pull/6212)).
 - v3 authentication API is now stable.
 
 ### Breaking Changes
