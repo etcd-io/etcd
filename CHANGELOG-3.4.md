@@ -18,6 +18,15 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 - Add [Raft Pre-Vote feature](https://github.com/coreos/etcd/pull/9352) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
+- Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9474).
+  - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=24h` automatically `Compact` with 24-hour retention windown for every 2.4-hour. Now, `Compact` happens for every 1-hour.
+  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. Now, `Compact` happens for every 30-minute.
+  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=24h`).
+  - For every compaction period or 1-hour, compactor uses the last revision that was fetched before compaction period, to discard historical data.
+  - The retention window of compaction period moves for every given compaction period or hour.
+  - For instance, when hourly writes are 100 and `--auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
+  - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
 
 ### Breaking Changes
@@ -152,12 +161,6 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
   - Previously, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
   - Now, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
-- TODO: Fix [compaction interval calculation](TODO).
-  - Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=10h` automatically `Compact` on latest revision at first 10-hour and every 1-hour, whether it succeeds or not.
-  - Now, it correctly reset its interval when `Compact` operation succeeds.
-  - The failed `Compact` operation will still be retried in 1/10 of interval.
-  - e.g. `10h` compact interval will be retried in 1-hour on failure.
-  - Document...
 - Prevent [overflow by large `TTL` values for `Lease` `Grant`](https://github.com/coreos/etcd/pull/9399).
   - `TTL` parameter to `Grant` request is unit of second.
   - Leases with too large `TTL` values exceeding `math.MaxInt64` [expire in unexpected ways](https://github.com/coreos/etcd/issues/9374).

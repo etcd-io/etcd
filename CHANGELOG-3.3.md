@@ -9,15 +9,15 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [
 - Adjust [election timeout on server restart](https://github.com/coreos/etcd/pull/9415) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
-
-### Fixed: v3
-
-- TODO: Fix [compaction interval calculation](TODO).
-  - Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=10h` automatically `Compact` on latest revision at first 10-hour and every 1-hour, whether it succeeds or not.
-  - Now, it correctly reset its interval when `Compact` operation succeeds.
-  - The failed `Compact` operation will still be retried in 1/10 of interval.
-  - e.g. `10h` compact interval will be retried in 1-hour on failure.
-  - Document...
+- Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9474).
+  - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown for every 7.2-hour. **Now, `Compact` happens, for every 1-hour but still with 72-hour retention window.**
+  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. **Now, `Compact` happens, for every 30-minute but still with 30-minute retention window.**
+  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=24h`).
+  - For every compaction period or 1-hour, compactor uses the last revision that was fetched before compaction period, to discard historical data.
+  - The retention window of compaction period moves for every given compaction period or hour.
+  - For instance, when hourly writes are 100 and `--auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
+  - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 
 ### Metrics, Monitoring
 
@@ -179,12 +179,13 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
 - Add [`--auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
 - Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
-  - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` on latest revision every 30-minute.
   - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown, for every 7.2-hour.
+  - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown, for every 3-minute.
   - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=10h`).
   - For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every 1/10 of given compaction period.
-  - For instance, when hourly writes are about 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2 and v3.3 compacts revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are about 1000, v3.3 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` can compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
+  - For instance, when hourly writes are 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2.x, v3.3.0, v3.3.1, and v3.3.2 compact revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are 1000, v3.3.0, v3.3.1, and v3.3.2 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
   - Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
 - Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm (e.g. `NOSPACE`) is raised or there's no leader](https://github.com/coreos/etcd/issues/8207).
