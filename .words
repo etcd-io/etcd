@@ -19,6 +19,7 @@ cancelation
 cluster_proxy
 defragment
 defragmenting
+deleter
 errClientDisconnected
 etcd
 gRPC
@@ -31,6 +32,8 @@ keepalive
 keepalives
 keyspace
 linearization
+liveness
+linearized
 localhost
 mutex
 prefetching
@@ -43,6 +46,18 @@ serializable
 statusError
 teardown
 too_many_pings
+transactional
 uncontended
 unprefixed
 unlisting
+nondeterministically
+atomics
+transferee
+Balancer
+lexicographically
+lexically
+accessors
+unbuffered
+nils
+reconnection
+mutators

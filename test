@@ -54,12 +54,17 @@ IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
+# shellcheck disable=SC1117
 PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
 # pkg1,pkg2,pkg3
 PKGS_COMMA=${PKGS// /,}
 
+# shellcheck disable=SC1117
 TEST_PKGS=$(find . -name \*_test.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+
+# shellcheck disable=SC1117
 FORMATTABLE=$(find . -name \*.go | while read -r a; do echo "$(dirname "$a")/*.go"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+
 TESTABLE_AND_FORMATTABLE=$(echo "$TEST_PKGS" | grep -vE "$INTEGRATION_PKGS")
 
 # check if user provided PKG override
@@ -74,17 +79,22 @@ else
 	# only run gofmt on packages provided by user
 	FMT="$TEST"
 fi
+
+# shellcheck disable=SC2206
 FMT=($FMT)
 
 # prepend REPO_PATH to each local package
 split=$TEST
 TEST=""
 for a in $split; do TEST="$TEST ${REPO_PATH}/${a}"; done
+
+# shellcheck disable=SC2206
 TEST=($TEST)
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
 STATIC_ANALYSIS_PATHS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+# shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
 
 if [ -z "$GOARCH" ]; then
@@ -203,6 +213,7 @@ function functional_pass {
 	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
 
 	echo "Waiting for processes to exit"
+	# shellcheck disable=SC2206
 	agent_pids=($agent_pids)
 	kill -s TERM "${agent_pids[@]}"
 	for a in "${agent_pids[@]}"; do wait "$a" || true; done
@@ -236,6 +247,7 @@ function cov_pass {
 
 	# run code coverage for unit and integration tests
 	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 15m"
+	# shellcheck disable=SC2206
 	GOCOVFLAGS=($GOCOVFLAGS)
 	failed=""
 	for t in $(echo "${TEST_PKGS}" | grep -vE "(e2e|functional-tester)"); do
@@ -354,7 +366,7 @@ function shellcheck_pass {
 	if which shellcheck >/dev/null; then
 		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
-			echo -e "shellcheck checking failed:\n${shellcheckResult}"
+			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
 	fi
@@ -364,7 +376,7 @@ function markdown_you_pass {
 	# eschew you
 	yous=$(find . -name \*.md -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true)
 	if [ ! -z "$yous" ]; then
-		echo -e "found 'you' in documentation:\n${yous}"
+		echo -e "found 'you' in documentation:\\n${yous}"
 		exit 255
 	fi
 }
@@ -374,7 +386,7 @@ function markdown_marker_pass {
 	if which marker >/dev/null; then
 		markerResult=$(marker --skip-http --root ./Documentation 2>&1 || true)
 		if [ -n "${markerResult}" ]; then
-			echo -e "marker checking failed:\n${markerResult}"
+			echo -e "marker checking failed:\\n${markerResult}"
 			exit 255
 		fi
 	else
@@ -386,20 +398,23 @@ function goword_pass {
 	if which goword >/dev/null; then
 		# get all go files to process
 		gofiles=$(find "${FMT[@]}" -iname '*.go' 2>/dev/null)
+		# shellcheck disable=SC2206
 		gofiles_all=($gofiles)
 		# ignore tests and protobuf files
+		# shellcheck disable=SC1117
 		gofiles=$(echo "${gofiles_all[@]}" | sort | uniq | sed "s/ /\n/g" | grep -vE "(\\_test.go|\\.pb\\.go)")
+		# shellcheck disable=SC2206
 		gofiles=($gofiles)
 		# only check for broken exported godocs
 		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
 		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
+			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 		# check some spelling
 		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
 		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
+			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 	else
@@ -410,7 +425,7 @@ function goword_pass {
 function gofmt_pass {
 	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
 	if [ -n "${fmtRes}" ]; then
-		echo -e "gofmt checking failed:\n${fmtRes}"
+		echo -e "gofmt checking failed:\\n${fmtRes}"
 		exit 255
 	fi
 }
@@ -418,17 +433,18 @@ function gofmt_pass {
 function govet_pass {
 	vetRes=$(go vet "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking failed:\n${vetRes}"
+		echo -e "govet checking failed:\\n${vetRes}"
 		exit 255
 	fi
 }
 
 function govet_shadow_pass {
 	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
+	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
 	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
 	if [ -n "${vetRes}" ]; then
-		echo -e "govet -all -shadow checking failed:\n${vetRes}"
+		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
 		exit 255
 	fi
 }
@@ -437,7 +453,7 @@ function gosimple_pass {
 	if which gosimple >/dev/null; then
 		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${gosimpleResult}" ]; then
-			echo -e "gosimple checking failed:\n${gosimpleResult}"
+			echo -e "gosimple checking failed:\\n${gosimpleResult}"
 			exit 255
 		fi
 	else
@@ -449,7 +465,7 @@ function unused_pass {
 	if which unused >/dev/null; then
 		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unusedResult}" ]; then
-			echo -e "unused checking failed:\n${unusedResult}"
+			echo -e "unused checking failed:\\n${unusedResult}"
 			exit 255
 		fi
 	else
@@ -465,11 +481,11 @@ function staticcheck_pass {
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
 			STATIC_CHECK_MASK="SA(1012|1019|2002)"
 			if echo "${staticcheckResult}" | grep -vE "$STATIC_CHECK_MASK"; then
-				echo -e "staticcheck checking failed:\n${staticcheckResult}"
+				echo -e "staticcheck checking failed:\\n${staticcheckResult}"
 				exit 255
 			else
 				suppressed=$(echo "${staticcheckResult}" | sed 's/ /\n/g' | grep "(SA" | sort | uniq -c)
-				echo -e "staticcheck suppressed warnings:\n${suppressed}"
+				echo -e "staticcheck suppressed warnings:\\n${suppressed}"
 			fi
 		fi
 	else
@@ -481,7 +497,7 @@ function ineffassign_pass {
 	if which ineffassign >/dev/null; then
 		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${ineffassignResult}" ]; then
-			echo -e "ineffassign checking failed:\n${ineffassignResult}"
+			echo -e "ineffassign checking failed:\\n${ineffassignResult}"
 			exit 255
 		fi
 	else
@@ -493,7 +509,7 @@ function nakedret_pass {
 	if which nakedret >/dev/null; then
 		nakedretResult=$(nakedret "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${nakedretResult}" ]; then
-			echo -e "nakedret checking failed:\n${nakedretResult}"
+			echo -e "nakedret checking failed:\\n${nakedretResult}"
 			exit 255
 		fi
 	else
@@ -510,16 +526,18 @@ function license_header_pass {
 		fi
 	done
 	if [ -n "${licRes}" ]; then
-		echo -e "license header checking failed:\n${licRes}"
+		echo -e "license header checking failed:\\n${licRes}"
 		exit 255
 	fi
 }
 
 function receiver_name_pass {
+	# shellcheck disable=SC1117
 	recvs=$(grep 'func ([^*]' {*,*/*,*/*/*}.go  | grep -Ev "(generated|pb/)" | tr  ':' ' ' |  \
 		awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
 		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
 	if [ -n "${recvs}" ]; then
+		# shellcheck disable=SC2206
 		recvs=($recvs)
 		for recv in "${recvs[@]}"; do
 			echo "Mismatched receiver for $recv..."
@@ -601,7 +619,7 @@ function dep_pass {
 	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
 	popd >/dev/null
 	if [ ! -z "$deps" ]; then
-		echo -e "clientv3 has masked dependencies:\n${deps}"
+		echo -e "clientv3 has masked dependencies:\\n${deps}"
 		exit 255
 	fi
 }

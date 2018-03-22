@@ -36,8 +36,8 @@ restart-docker:
 	service docker restart
 
 delete-docker-images:
-	docker rm --force $(docker ps -a -q) || true
-	docker rmi --force $(docker images -q) || true
+	docker rm --force `docker ps -a -q` || true
+	docker rmi --force `docker images -q` || true
 
 
 
