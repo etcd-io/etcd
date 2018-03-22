@@ -17,6 +17,7 @@ package e2e
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"path"
 	"strconv"
 	"testing"
@@ -357,4 +358,15 @@ type campaignResponse struct {
 		Rev   string `json:"rev,omitempty"`
 		Lease string `json:"lease,omitempty"`
 	} `json:"leader,omitempty"`
+}
+
+func cURLWithExpected(cx ctlCtx, tests []v3cURLTest) error {
+	p := cx.apiPrefix
+	for _, t := range tests {
+		value := fmt.Sprintf("%v", t.value)
+		if err := cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, t.endpoint), value: value, expected: t.expected}); err != nil {
+			return fmt.Errorf("prefix (%s) endpoint (%s): error (%v), wanted %v", p, t.endpoint, err, t.expected)
+		}
+	}
+	return nil
 }
