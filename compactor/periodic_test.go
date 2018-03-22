@@ -21,6 +21,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+
 	"github.com/jonboulle/clockwork"
 )
 
@@ -31,12 +32,7 @@ func TestPeriodic(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := &Periodic{
-		clock:  fc,
-		period: retentionDuration,
-		rg:     rg,
-		c:      compactable,
-	}
+	tb := newPeriodic(fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -70,15 +66,10 @@ func TestPeriodic(t *testing.T) {
 
 func TestPeriodicPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	retentionDuration := time.Hour
-	tb := &Periodic{
-		clock:  fc,
-		period: retentionDuration,
-		rg:     rg,
-		c:      compactable,
-	}
+	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
+	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	tb := newPeriodic(fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	tb.Pause()
