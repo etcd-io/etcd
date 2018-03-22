@@ -17,6 +17,7 @@ package compactor
 import (
 	"context"
 	"sync"
+	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
@@ -43,25 +44,31 @@ type Revision struct {
 // NewRevision creates a new instance of Revisonal compactor that purges
 // the log older than retention revisions from the current revision.
 func NewRevision(retention int64, rg RevGetter, c Compactable) *Revision {
-	return &Revision{
-		clock:     clockwork.NewRealClock(),
+	return newRevision(clockwork.NewRealClock(), retention, rg, c)
+}
+
+func newRevision(clock clockwork.Clock, retention int64, rg RevGetter, c Compactable) *Revision {
+	t := &Revision{
+		clock:     clock,
 		retention: retention,
 		rg:        rg,
 		c:         c,
 	}
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+	return t
 }
 
-func (t *Revision) Run() {
-	t.ctx, t.cancel = context.WithCancel(context.Background())
-	clock := t.clock
-	previous := int64(0)
+const revInterval = 5 * time.Minute
 
+// Run runs revision-based compactor.
+func (t *Revision) Run() {
+	prev := int64(0)
 	go func() {
 		for {
 			select {
 			case <-t.ctx.Done():
 				return
-			case <-clock.After(checkCompactionInterval):
+			case <-t.clock.After(revInterval):
 				t.mu.Lock()
 				p := t.paused
 				t.mu.Unlock()
@@ -71,34 +78,36 @@ func (t *Revision) Run() {
 			}
 
 			rev := t.rg.Rev() - t.retention
-
-			if rev <= 0 || rev == previous {
+			if rev <= 0 || rev == prev {
 				continue
 			}
 
 			plog.Noticef("Starting auto-compaction at revision %d (retention: %d revisions)", rev, t.retention)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
-				previous = rev
+				prev = rev
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
 				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
-				plog.Noticef("Retry after %v", checkCompactionInterval)
+				plog.Noticef("Retry after %v", revInterval)
 			}
 		}
 	}()
 }
 
+// Stop stops revision-based compactor.
 func (t *Revision) Stop() {
 	t.cancel()
 }
 
+// Pause pauses revision-based compactor.
 func (t *Revision) Pause() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.paused = true
 }
 
+// Resume resumes revision-based compactor.
 func (t *Revision) Resume() {
 	t.mu.Lock()
 	defer t.mu.Unlock()

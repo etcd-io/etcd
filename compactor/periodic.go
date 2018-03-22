@@ -46,30 +46,35 @@ type Periodic struct {
 // NewPeriodic creates a new instance of Periodic compactor that purges
 // the log older than h Duration.
 func NewPeriodic(h time.Duration, rg RevGetter, c Compactable) *Periodic {
-	return &Periodic{
-		clock:  clockwork.NewRealClock(),
+	return newPeriodic(clockwork.NewRealClock(), h, rg, c)
+}
+
+func newPeriodic(clock clockwork.Clock, h time.Duration, rg RevGetter, c Compactable) *Periodic {
+	t := &Periodic{
+		clock:  clock,
 		period: h,
 		rg:     rg,
 		c:      c,
+		revs:   make([]int64, 0),
 	}
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+	return t
 }
 
 // periodDivisor divides Periodic.period in into checkCompactInterval duration
 const periodDivisor = 10
 
+// Run runs periodic compactor.
 func (t *Periodic) Run() {
-	t.ctx, t.cancel = context.WithCancel(context.Background())
-	t.revs = make([]int64, 0)
-	clock := t.clock
-	checkCompactInterval := t.period / time.Duration(periodDivisor)
+	interval := t.period / time.Duration(periodDivisor)
 	go func() {
-		last := clock.Now()
+		initialWait := t.clock.Now()
 		for {
 			t.revs = append(t.revs, t.rg.Rev())
 			select {
 			case <-t.ctx.Done():
 				return
-			case <-clock.After(checkCompactInterval):
+			case <-t.clock.After(interval):
 				t.mu.Lock()
 				p := t.paused
 				t.mu.Unlock()
@@ -77,36 +82,44 @@ func (t *Periodic) Run() {
 					continue
 				}
 			}
-			if clock.Now().Sub(last) < t.period {
+
+			// wait up to initial given period
+			if t.clock.Now().Sub(initialWait) < t.period {
 				continue
 			}
+
 			rev, remaining := t.getRev()
 			if rev < 0 {
 				continue
 			}
+
 			plog.Noticef("Starting auto-compaction at revision %d (retention: %v)", rev, t.period)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
+				// move to next sliding window
 				t.revs = remaining
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
 				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
-				plog.Noticef("Retry after %v", checkCompactInterval)
+				plog.Noticef("Retry after %v", interval)
 			}
 		}
 	}()
 }
 
+// Stop stops periodic compactor.
 func (t *Periodic) Stop() {
 	t.cancel()
 }
 
+// Pause pauses periodic compactor.
 func (t *Periodic) Pause() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.paused = true
 }
 
+// Resume resumes periodic compactor.
 func (t *Periodic) Resume() {
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -29,8 +29,6 @@ var (
 )
 
 const (
-	checkCompactionInterval = 5 * time.Minute
-
 	ModePeriodic = "periodic"
 	ModeRevision = "revision"
 )
