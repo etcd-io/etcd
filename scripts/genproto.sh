@@ -59,11 +59,17 @@ popd
 for dir in ${DIRS}; do
 	pushd "${dir}"
 		protoc --gofast_out=plugins=grpc,import_prefix=github.com/coreos/:. -I=".:${GOGOPROTO_PATH}:${COREOS_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
-		sed -i.bak -E "s/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g" ./*.pb.go
+		# shellcheck disable=SC1117
+		sed -i.bak -E 's/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
+		# shellcheck disable=SC1117
 		sed -i.bak -E 's/github\.com\/coreos\/(errors|fmt|io)/\1/g' ./*.pb.go
+		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"gogoproto\"//g' ./*.pb.go
+		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import fmt \"fmt\"//g' ./*.pb.go
+		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"github\.com\/coreos\/google\/api\"//g' ./*.pb.go
+		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
 		rm -f ./*.bak
 		goimports -w ./*.pb.go
@@ -86,12 +92,14 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	pkg=$(basename "${pkgpath}")
 	gwfile="${protobase}.pb.gw.go"
 	sed -i.bak -E "s/package $pkg/package gw/g" ${gwfile}
+	# shellcheck disable=SC1117
 	sed -i.bak -E "s/protoReq /&$pkg\./g" ${gwfile}
 	sed -i.bak -E "s/, client /, client $pkg./g" ${gwfile}
 	sed -i.bak -E "s/Client /, client $pkg./g" ${gwfile}
 	sed -i.bak -E "s/[^(]*Client, runtime/${pkg}.&/" ${gwfile}
 	sed -i.bak -E "s/New[A-Za-z]*Client/${pkg}.&/" ${gwfile}
 	# darwin doesn't like newlines in sed...
+	# shellcheck disable=SC1117
 	sed -i.bak -E "s|import \(|& \"github.com/coreos/etcd/${pkgpath}\"|" ${gwfile}
 	mkdir -p  "${pkgpath}"/gw/
 	go fmt ${gwfile}
