@@ -1,27 +1,14 @@
-FROM ubuntu:17.10
+FROM fedora:28
 
-RUN rm /bin/sh && ln -s /bin/bash /bin/sh
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-
-RUN apt-get -y update \
-  && apt-get -y install \
-  build-essential \
-  gcc \
-  apt-utils \
-  pkg-config \
-  software-properties-common \
-  apt-transport-https \
-  libssl-dev \
-  sudo \
-  bash \
-  curl \
-  wget \
-  tar \
-  git \
-  && apt-get -y update \
-  && apt-get -y upgrade \
-  && apt-get -y autoremove \
-  && apt-get -y autoclean
+RUN dnf check-update || true \
+  && dnf install --assumeyes \
+  git curl wget mercurial meld gcc gcc-c++ which \
+  gcc automake autoconf dh-autoreconf libtool libtool-ltdl \
+  tar unzip gzip \
+  && dnf check-update || true \
+  && dnf upgrade --assumeyes || true \
+  && dnf autoremove --assumeyes || true \
+  && dnf clean all || true
 
 ENV GOROOT /usr/local/go
 ENV GOPATH /go
