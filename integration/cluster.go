@@ -100,6 +100,7 @@ type ClusterConfig struct {
 	DiscoveryURL          string
 	UseGRPC               bool
 	QuotaBackendBytes     int64
+	SnapshotCount         uint64
 	MaxTxnOps             uint
 	MaxRequestBytes       uint
 	GRPCKeepAliveMinTime  time.Duration
@@ -241,6 +242,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			peerTLS:                  c.cfg.PeerTLS,
 			clientTLS:                c.cfg.ClientTLS,
 			quotaBackendBytes:        c.cfg.QuotaBackendBytes,
+			snapshotCount:            c.cfg.SnapshotCount,
 			maxTxnOps:                c.cfg.MaxTxnOps,
 			maxRequestBytes:          c.cfg.MaxRequestBytes,
 			grpcKeepAliveMinTime:     c.cfg.GRPCKeepAliveMinTime,
@@ -382,6 +384,7 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
+		fmt.Println("waitLeader:", m.s == nil)
 		possibleLead[uint64(m.s.ID())] = true
 	}
 	cc := MustNewHTTPClient(t, getMembersURLs(membs), nil)
@@ -520,6 +523,7 @@ type memberConfig struct {
 	peerTLS                  *transport.TLSInfo
 	clientTLS                *transport.TLSInfo
 	quotaBackendBytes        int64
+	snapshotCount            uint64
 	maxTxnOps                uint
 	maxRequestBytes          uint
 	grpcKeepAliveMinTime     time.Duration
@@ -574,6 +578,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	m.QuotaBackendBytes = mcfg.quotaBackendBytes
+	m.SnapCount = mcfg.snapshotCount
 	m.MaxTxnOps = mcfg.maxTxnOps
 	if m.MaxTxnOps == 0 {
 		m.MaxTxnOps = embed.DefaultMaxTxnOps
