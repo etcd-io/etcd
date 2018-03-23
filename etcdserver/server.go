@@ -385,15 +385,41 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err != nil && err != raftsnap.ErrNoSnapshot {
 			return nil, err
 		}
+		unsafeOverwrite := false
 		if snapshot != nil {
+			if !beExist {
+				// snapshot exists but had no "db" file before!
+				// "db" file was created anew or overwritten
+				plog.Warningf("started with snapshot but %q had not existed", bepath)
+
+				// 1. had upgraded from v2 to v3.2, with existing v2 snapshot
+				//  - but no previous v3 data
+				//  - nothing to recover (consistent index = 0)
+				//  - use the newly created "db" file for future v3 API use
+				//  - only allow when explicitly configured
+				if cfg.UnsafeOverwriteDB {
+					unsafeOverwrite = true
+					plog.Warningf("%q has been created anew from existing snapshots (e.g. migrated v2 server)", bepath)
+					plog.Warning("'--unsafe-overwrite-db' is set, so starting from fresh db file")
+				} else {
+					// 2. accidental "db" file deletion with existing v3 snapshot
+					//  - original "db" file has been overwritten by a new "db" file!
+					//  - panic!
+					plog.Warningf("%q had been accidentally deleted (now overwritten)", bepath)
+					plog.Panic("consider '--unsafe-overwrite-db' flag to override and start with fresh data")
+				}
+			}
+
 			if err = st.Recovery(snapshot.Data); err != nil {
 				plog.Panicf("recovered store from snapshot error: %v", err)
 			}
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
+
 			if be, err = recoverSnapshotBackend(cfg, be, *snapshot); err != nil {
 				plog.Panicf("recovering backend from snapshot error: %v", err)
 			}
 		}
+
 		cfg.Print()
 		if !cfg.ForceNewCluster {
 			id, cl, n, s, w = restartNode(cfg, snapshot)
@@ -403,7 +429,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cl.Recover(api.UpdateCapability)
-		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist && !unsafeOverwrite {
 			os.RemoveAll(bepath)
 			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}

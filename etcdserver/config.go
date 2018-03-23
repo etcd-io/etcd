@@ -81,6 +81,10 @@ type ServerConfig struct {
 	Debug bool
 
 	ForceNewCluster bool
+
+	// UnsafeOverwriteDB is set to allow unsafe "db" file overwrites
+	// from existing snapshots.
+	UnsafeOverwriteDB bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

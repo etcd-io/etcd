@@ -69,11 +69,12 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
+// if "UnsafeOverwriteDB == true", it will overwrite existing "db" file, if any
 func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	var cIndex consistentIndex
 	kv := mvcc.New(oldbe, &lease.FakeLessor{}, &cIndex)
 	defer kv.Close()
-	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
+	if (cfg.UnsafeOverwriteDB && kv.ConsistentIndex() == 0) || snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil
 	}
 	oldbe.Close()
