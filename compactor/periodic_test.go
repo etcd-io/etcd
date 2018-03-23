@@ -36,22 +36,40 @@ func TestPeriodicHourly(t *testing.T) {
 
 	tb.Run()
 	defer tb.Stop()
-	// simulate 5 hours
 
-	for i := 0; i < 5; i++ {
+	initialIntervals, intervalsPerPeriod := tb.getRetentions(), 10
+
+	// compaction doesn't happen til 2 hours elapse
+	for i := 0; i < initialIntervals; i++ {
 		rg.Wait(1)
-		fc.Advance(time.Hour)
-		// compaction doesn't happen til 2 hours elapses.
-		if i < retentionHours {
-			continue
+		fc.Advance(tb.getRetryInterval())
+	}
+
+	// very first compaction
+	a, err := compactable.Wait(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedRevision := int64(1)
+	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
+		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
+	}
+
+	// simulate 3 hours
+	// now compactor kicks in, every hour
+	for i := 0; i < 3; i++ {
+		// advance one hour, one revision for each interval
+		for j := 0; j < intervalsPerPeriod; j++ {
+			rg.Wait(1)
+			fc.Advance(tb.getRetryInterval())
 		}
-		// after 2 hours, compaction happens at every interval.
-		// at i = 3, t.revs = [1(2h-ago,T=0h), 2(1h-ago,T=1h), 3(now,T=2h)] (len=3) (rev starts from 1)
-		a, err := compactable.Wait(1)
+
+		a, err = compactable.Wait(1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectedRevision := int64(i - 1)
+
+		expectedRevision = int64((i + 1) * 10)
 		if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
 			t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 		}
@@ -59,7 +77,7 @@ func TestPeriodicHourly(t *testing.T) {
 }
 
 func TestPeriodicMinutes(t *testing.T) {
-	retentionMinutes := 23
+	retentionMinutes := 5
 	retentionDuration := time.Duration(retentionMinutes) * time.Minute
 
 	fc := clockwork.NewFakeClock()
@@ -70,25 +88,41 @@ func TestPeriodicMinutes(t *testing.T) {
 	tb.Run()
 	defer tb.Stop()
 
-	// simulate 115 (23 * 5) minutes
-	for i := 0; i < 5; i++ {
-		rg.Wait(1)
-		fc.Advance(retentionDuration)
+	initialIntervals, intervalsPerPeriod := tb.getRetentions(), 10
 
-		// notting happens at T=0
-		if i == 0 {
-			continue
+	// compaction doesn't happen til 5 minutes elapse
+	for i := 0; i < initialIntervals; i++ {
+		rg.Wait(1)
+		fc.Advance(tb.getRetryInterval())
+	}
+
+	// very first compaction
+	a, err := compactable.Wait(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedRevision := int64(1)
+	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
+		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
+	}
+
+	// compaction happens at every interval
+	for i := 0; i < 5; i++ {
+		// advance 5-minute, one revision for each interval
+		for j := 0; j < intervalsPerPeriod; j++ {
+			rg.Wait(1)
+			fc.Advance(tb.getRetryInterval())
 		}
-		// from T=23m (i=1), compaction happens at every interval
+
 		a, err := compactable.Wait(1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectedRevision := int64(i)
+
+		expectedRevision = int64((i + 1) * 10)
 		if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
 			t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 		}
-
 	}
 }
 
@@ -102,18 +136,14 @@ func TestPeriodicPause(t *testing.T) {
 	tb.Run()
 	tb.Pause()
 
+	n := tb.getRetentions()
+
 	// tb will collect 3 hours of revisions but not compact since paused
-	// T=0
-	rg.Wait(1) // t.revs = [1]
-	fc.Advance(time.Hour)
-	// T=1h
-	rg.Wait(1) // t.revs = [1, 2]
-	fc.Advance(time.Hour)
-	// T=2h
-	rg.Wait(1) // t.revs = [2, 3]
-	fc.Advance(time.Hour)
-	// T=3h
-	rg.Wait(1) // t.revs = [3, 4]
+	for i := 0; i < n*3; i++ {
+		rg.Wait(1)
+		fc.Advance(tb.getRetryInterval())
+	}
+	// t.revs = [21 22 23 24 25 26 27 28 29 30]
 
 	select {
 	case a := <-compactable.Chan():
@@ -123,16 +153,19 @@ func TestPeriodicPause(t *testing.T) {
 
 	// tb resumes to being blocked on the clock
 	tb.Resume()
+	rg.Wait(1)
 
 	// unblock clock, will kick off a compaction at T=3h6m by retry
-	fc.Advance(time.Minute * 6)
+	fc.Advance(tb.getRetryInterval())
+
 	// T=3h6m
 	a, err := compactable.Wait(1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// compact the revision from T=3h
-	wreq := &pb.CompactionRequest{Revision: int64(3)}
+
+	// compact the revision from hour 2:06
+	wreq := &pb.CompactionRequest{Revision: int64(1 + 2*n + 1)}
 	if !reflect.DeepEqual(a[0].Params[0], wreq) {
 		t.Errorf("compact request = %v, want %v", a[0].Params[0], wreq.Revision)
 	}
