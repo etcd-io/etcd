@@ -166,14 +166,6 @@ logging flags
 	--log-output 'default'
 		specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
 
-unsafe flags:
-
-Please be CAUTIOUS when using unsafe flags because it will break the guarantees
-given by the consensus protocol.
-
-	--force-new-cluster 'false'
-		force to create a new one-member cluster.
-
 profiling flags:
 	--enable-pprof 'false'
 		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
@@ -193,5 +185,13 @@ experimental flags:
 		duration of time between cluster corruption check passes.
 	--experimental-enable-v2v3 ''
 		serve v2 requests through the v3 backend under a given prefix.
+
+
+Please be CAUTIOUS when using unsafe flags because it will break the guarantees
+given by the consensus protocol.
+
+unsafe flags:
+	--force-new-cluster 'false'
+		force to create a new one-member cluster.
 `
 )
