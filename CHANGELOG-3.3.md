@@ -19,6 +19,17 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [
   - For instance, when hourly writes are 100 and `--auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
   - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 
+### Fixed: v3
+
+- Add [`etcd --unsafe-overwrite-db`](https://github.com/coreos/etcd/pull/9484) flag, to support [migration from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480).
+  - etcd server panics if it tries to restore from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file.
+  - This happens when the server had migrated from v2 with no previous v3 data.
+  - This is to prevent accidental v3 data loss (e.g. `db` file might have been moved).
+  - With `--unsafe-overwrite-db` enabled, etcd allows to create a fresh `db` file on reboot, when there are existing snapshots.
+  - To continue to use etcd without v3 data, keep `--unsafe-overwrite-db` enabled. Or write some test v3 keys (e.g. `ETCDCTL_API=3 etcdctl put foo bar`), and then restart etcd with `--unsafe-overwrite-db` disabled.
+  - Use this flag only for v2 migration. Otherwise, previous v3 data could be overwritten with existing snapshots.
+  - v4 will deprecate this flag.
+
 ### Metrics, Monitoring
 
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).

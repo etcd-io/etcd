@@ -93,6 +93,14 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `--pre-vote=false` by default.
   - v3.5 will enable `--pre-vote=true` by default.
+- Add [`--unsafe-overwrite-db`](https://github.com/coreos/etcd/pull/9484) flag, to support [migration from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480).
+  - etcd server panics if it tries to restore from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file.
+  - This happens when the server had migrated from v2 with no previous v3 data.
+  - This is to prevent accidental v3 data loss (e.g. `db` file might have been moved).
+  - With `--unsafe-overwrite-db` enabled, etcd allows to create a fresh `db` file on reboot, when there are existing snapshots.
+  - To continue to use etcd without v3 data, keep `--unsafe-overwrite-db` enabled. Or write some test v3 keys (e.g. `ETCDCTL_API=3 etcdctl put foo bar`), and then restart etcd with `--unsafe-overwrite-db` disabled.
+  - Use this flag only for v2 migration. Otherwise, previous v3 data could be overwritten with existing snapshots.
+  - v4 will deprecate this flag.
 - TODO: [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check` is deprecated).
   - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
 - TODO: [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
