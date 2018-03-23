@@ -157,7 +157,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DiscoveryURL:            cfg.Durl,
 		DiscoveryProxy:          cfg.Dproxy,
 		NewCluster:              cfg.IsNewCluster(),
-		ForceNewCluster:         cfg.ForceNewCluster,
 		PeerTLSInfo:             cfg.PeerTLSInfo,
 		TickMs:                  cfg.TickMs,
 		ElectionTicks:           cfg.ElectionTicks(),
@@ -173,6 +172,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
 		PreVote:                 cfg.PreVote,
 		Debug:                   cfg.Debug,
+		ForceNewCluster:         cfg.ForceNewCluster,
 	}
 
 	srvcfg.HostWhitelist = make(map[string]struct{}, len(cfg.HostWhitelist))
