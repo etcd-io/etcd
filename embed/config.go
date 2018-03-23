@@ -205,9 +205,6 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// ForceNewCluster starts a new cluster even if previously started; unsafe.
-	ForceNewCluster bool `json:"force-new-cluster"`
-
 	// UserHandlers is for registering users handlers and only used for
 	// embedding etcd into other applications.
 	// The map key is the route path for the handler, and
@@ -227,6 +224,25 @@ type Config struct {
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+
+	// ForceNewCluster starts a new cluster even if previously started; unsafe.
+	ForceNewCluster bool `json:"force-new-cluster"`
+
+	// UnsafeOverwriteDB is set to allow unsafe "db" file overwrites
+	// from existing snapshots.
+	//
+	// "db" file overwrite can happen:
+	// 1. upgrade from v2 to v3.2, with snapshot but no v3 data
+	// 2. previous "db" file deletion
+	//
+	// In both cases, "db" gets created anew, thus previous data, if any,
+	// gets overwritten. In case 2, server will panic to prevent accidental
+	// data loss (e.g. "db" file may have been moved).
+	//
+	// Enable this only for v2 to v3.2 migration.
+	//
+	// TODO: remove this once v2 migration support is dropped.
+	UnsafeOverwriteDB bool `json:"unsafe-overwrite-db"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -286,6 +302,7 @@ func NewConfig() *Config {
 		HostWhitelist:         defaultHostWhitelist,
 		AuthToken:             "simple",
 		PreVote:               false, // TODO: enable by default in v3.5
+		UnsafeOverwriteDB:     false,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

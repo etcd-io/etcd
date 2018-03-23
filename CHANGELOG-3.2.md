@@ -38,6 +38,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and
   - Server now returns `rpctypes.ErrLeaseTTLTooLarge` to client, when the requested `TTL` is larger than *9,000,000,000 seconds* (which is >285 years).
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
+- Add [`etcd --unsafe-overwrite-db`](https://github.com/coreos/etcd/pull/9484) flag, to support [migration from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480).
+  - etcd server panics if it tries to restore from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file.
+  - This happens when the server had migrated from v2 with no previous v3 data.
+  - This is to prevent accidental v3 data loss (e.g. `db` file might have been moved).
+  - With `--unsafe-overwrite-db` enabled, etcd allows to create a fresh `db` file on reboot, when there are existing snapshots.
+  - To continue to use etcd without v3 data, keep `--unsafe-overwrite-db` enabled. Or write some test v3 keys (e.g. `ETCDCTL_API=3 etcdctl put foo bar`), and then restart etcd with `--unsafe-overwrite-db` disabled.
+  - Use this flag only for v2 migration. Otherwise, previous v3 data could be overwritten with existing snapshots.
+  - v4 will deprecate this flag.
 
 ### Go
 

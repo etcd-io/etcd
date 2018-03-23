@@ -44,7 +44,6 @@ type ServerConfig struct {
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
 	NewCluster          bool
-	ForceNewCluster     bool
 	PeerTLSInfo         transport.TLSInfo
 
 	// HostWhitelist lists acceptable hostnames from client requests.
@@ -80,6 +79,12 @@ type ServerConfig struct {
 	PreVote bool
 
 	Debug bool
+
+	ForceNewCluster bool
+
+	// UnsafeOverwriteDB is set to allow unsafe "db" file overwrites
+	// from existing snapshots.
+	UnsafeOverwriteDB bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
