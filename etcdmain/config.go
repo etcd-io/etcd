@@ -215,6 +215,7 @@ func newConfig() *config {
 
 	// unsafe
 	fs.BoolVar(&cfg.ec.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
+	fs.BoolVar(&cfg.ec.UnsafeOverwriteDB, "unsafe-overwrite-db", false, "Allow unsafe 'db' file overwrites (only use for v2 migration to v3).")
 
 	// ignored
 	for _, f := range cfg.ignored {

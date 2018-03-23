@@ -193,5 +193,7 @@ given by the consensus protocol.
 unsafe flags:
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
+	--unsafe-overwrite-db 'false'
+		allow unsafe 'db' file overwrites (only use for v2 migration to v3).
 `
 )
