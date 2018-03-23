@@ -173,6 +173,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PreVote:                 cfg.PreVote,
 		Debug:                   cfg.Debug,
 		ForceNewCluster:         cfg.ForceNewCluster,
+		UnsafeOverwriteDB:       cfg.UnsafeOverwriteDB,
 	}
 
 	srvcfg.HostWhitelist = make(map[string]struct{}, len(cfg.HostWhitelist))
