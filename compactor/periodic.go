@@ -61,20 +61,59 @@ func newPeriodic(clock clockwork.Clock, h time.Duration, rg RevGetter, c Compact
 	return t
 }
 
-// periodDivisor divides Periodic.period in into checkCompactInterval duration
-const periodDivisor = 10
+/*
+Compaction period 1-hour:
+  1. compute compaction period, which is 1-hour
+  2. record revisions for every 1/10 of 1-hour (6-minute)
+  3. keep recording revisions with no compaction for first 1-hour
+  4. do compact with revs[0]
+	- success? contiue on for-loop and move sliding window; revs = revs[1:]
+	- failure? update revs, and retry after 1/10 of 1-hour (6-minute)
+
+Compaction period 24-hour:
+  1. compute compaction period, which is 1-hour
+  2. record revisions for every 1/10 of 1-hour (6-minute)
+  3. keep recording revisions with no compaction for first 24-hour
+  4. do compact with revs[0]
+	- success? contiue on for-loop and move sliding window; revs = revs[1:]
+	- failure? update revs, and retry after 1/10 of 1-hour (6-minute)
+
+Compaction period 59-min:
+  1. compute compaction period, which is 59-min
+  2. record revisions for every 1/10 of 59-min (5.9-min)
+  3. keep recording revisions with no compaction for first 59-min
+  4. do compact with revs[0]
+	- success? contiue on for-loop and move sliding window; revs = revs[1:]
+	- failure? update revs, and retry after 1/10 of 59-min (5.9-min)
+
+Compaction period 5-sec:
+  1. compute compaction period, which is 5-sec
+  2. record revisions for every 1/10 of 5-sec (0.5-sec)
+  3. keep recording revisions with no compaction for first 5-sec
+  4. do compact with revs[0]
+	- success? contiue on for-loop and move sliding window; revs = revs[1:]
+	- failure? update revs, and retry after 1/10 of 5-sec (0.5-sec)
+*/
 
 // Run runs periodic compactor.
 func (t *Periodic) Run() {
-	interval := t.period / time.Duration(periodDivisor)
+	compactInterval := t.getCompactInterval()
+	retryInterval := t.getRetryInterval()
+	retentions := t.getRetentions()
+
 	go func() {
-		initialWait := t.clock.Now()
+		lastSuccess := t.clock.Now()
+		baseInterval := t.period
 		for {
 			t.revs = append(t.revs, t.rg.Rev())
+			if len(t.revs) > retentions {
+				t.revs = t.revs[1:] // t.revs[0] is always the rev at t.period ago
+			}
+
 			select {
 			case <-t.ctx.Done():
 				return
-			case <-t.clock.After(interval):
+			case <-t.clock.After(retryInterval):
 				t.mu.Lock()
 				p := t.paused
 				t.mu.Unlock()
@@ -83,28 +122,53 @@ func (t *Periodic) Run() {
 				}
 			}
 
-			// wait up to initial given period
-			if t.clock.Now().Sub(initialWait) < t.period {
+			if t.clock.Now().Sub(lastSuccess) < baseInterval {
 				continue
 			}
 
-			rev, remaining := t.getRev()
-			if rev < 0 {
-				continue
+			// wait up to initial given period
+			if baseInterval == t.period {
+				baseInterval = compactInterval
 			}
+			rev := t.revs[0]
 
 			plog.Noticef("Starting auto-compaction at revision %d (retention: %v)", rev, t.period)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
-				// move to next sliding window
-				t.revs = remaining
+				lastSuccess = t.clock.Now()
 				plog.Noticef("Finished auto-compaction at revision %d", rev)
 			} else {
 				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
-				plog.Noticef("Retry after %v", interval)
+				plog.Noticef("Retry after %v", retryInterval)
 			}
 		}
 	}()
+}
+
+// if given compaction period x is <1-hour, compact every x duration.
+// (e.g. --auto-compaction-mode 'periodic' --auto-compaction-retention='10m', then compact every 10-minute)
+// if given compaction period x is >1-hour, compact every hour.
+// (e.g. --auto-compaction-mode 'periodic' --auto-compaction-retention='2h', then compact every 1-hour)
+func (t *Periodic) getCompactInterval() time.Duration {
+	itv := t.period
+	if itv > time.Hour {
+		itv = time.Hour
+	}
+	return itv
+}
+
+func (t *Periodic) getRetentions() int {
+	return int(t.period/t.getRetryInterval()) + 1
+}
+
+const retryDivisor = 10
+
+func (t *Periodic) getRetryInterval() time.Duration {
+	itv := t.period
+	if itv > time.Hour {
+		itv = time.Hour
+	}
+	return itv / retryDivisor
 }
 
 // Stop stops periodic compactor.
@@ -124,12 +188,4 @@ func (t *Periodic) Resume() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.paused = false
-}
-
-func (t *Periodic) getRev() (int64, []int64) {
-	i := len(t.revs) - periodDivisor
-	if i < 0 {
-		return -1, t.revs
-	}
-	return t.revs[i], t.revs[i+1:]
 }
