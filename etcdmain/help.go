@@ -41,7 +41,6 @@ var (
 	`
 	flagsline = `
 member flags:
-
 	--name 'default'
 		human-readable name for this member.
 	--data-dir '${name}.etcd'
@@ -62,8 +61,6 @@ member flags:
 		maximum number of snapshot files to retain (0 is unlimited).
 	--max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
 		maximum number of wal files to retain (0 is unlimited).
-	--cors ''
-		comma-separated whitelist of origins for CORS (cross-origin resource sharing).
 	--quota-backend-bytes '0'
 		raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
 	--max-txn-ops '128'
@@ -78,7 +75,6 @@ member flags:
 		additional duration of wait before closing a non-responsive connection (0 to disable).
 
 clustering flags:
-
 	--initial-advertise-peer-urls 'http://localhost:2380'
 		list of this member's peer URLs to advertise to the rest of the cluster.
 	--initial-cluster 'default=http://localhost:2380'
@@ -114,7 +110,6 @@ clustering flags:
 		Accept etcd V2 client requests.
 
 proxy flags (v2 API only):
-
 	--proxy 'off'
 		proxy mode setting ('off', 'readonly' or 'on').
 	--proxy-failure-wait 5000
@@ -129,7 +124,6 @@ proxy flags (v2 API only):
 		time (in milliseconds) for a read to timeout.
 
 security flags:
-
 	--cert-file ''
 		path to the client server TLS cert file.
 	--key-file ''
@@ -154,11 +148,12 @@ security flags:
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--peer-crl-file ''
 		path to the peer certificate revocation list file.
+	--cors '*'
+		comma-separated whitelist of origins for CORS, or cross-origin resource sharing, (empty or * means allow all).
 	--host-whitelist ''
-		acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).
+		acceptable hostnames from HTTP client requests, if server is not secure (empty or * means allow all).
 
 logging flags
-
 	--debug 'false'
 		enable debug-level logging for etcd.
 	--log-package-levels ''
