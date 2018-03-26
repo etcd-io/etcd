@@ -18,7 +18,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 - Add [Raft Pre-Vote feature](https://github.com/coreos/etcd/pull/9352) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
-- Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9474).
+- Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9485).
   - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
   - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=24h` automatically `Compact` with 24-hour retention windown for every 2.4-hour. Now, `Compact` happens for every 1-hour.
   - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. Now, `Compact` happens for every 30-minute.
@@ -82,6 +82,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
+- TODO: Support `CORS`.
 - TODO: Support [TLS cipher suite lists](TODO).
 - Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
@@ -137,8 +138,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) `/v3beta` with [`/v3`](https://github.com/coreos/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/coreos/etcd/pull/9298).
   - To deprecate [`/v3beta`](https://github.com/coreos/etcd/issues/9189) in `v3.5`.
-- Add API endpoints [`/{v3,v3beta}/lease/leases, /{v3,v3beta}/lease/revoke /{v3,v3beta}/lease/timetolive`](https://github.com/coreos/etcd/pull/9450).
-  - To deprecate [`/{v3,v3beta}/kv/lease/leases, /{v3,v3beta}/kv/lease/revoke, /{v3,v3beta}/kv/lease/timetolive`](https://github.com/coreos/etcd/issues/9430) in `v3.5`.
+- Add API endpoints [`/{v3beta,v3}/lease/leases, /{v3beta,v3}/lease/revoke, /{v3beta,v3}/lease/timetolive`](https://github.com/coreos/etcd/pull/9450).
+  - To deprecate [`/{v3beta,v3}/kv/lease/leases, /{v3beta,v3}/kv/lease/revoke, /{v3beta,v3}/kv/lease/timetolive`](https://github.com/coreos/etcd/issues/9430) in `v3.5`.
 
 ### Package `raft`
 
