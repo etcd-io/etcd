@@ -28,7 +28,7 @@ import (
 
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
@@ -79,9 +79,8 @@ var (
 	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
 	DefaultAdvertiseClientURLs      = "http://localhost:2379"
 
-	defaultHostname      string
-	defaultHostStatus    error
-	defaultHostWhitelist = []string{} // if empty, allow all
+	defaultHostname   string
+	defaultHostStatus error
 )
 
 var (
@@ -107,7 +106,6 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	CorsInfo       *cors.CORSInfo
 	LPUrls, LCUrls []url.URL
 	Dir            string `json:"data-dir"`
 	WalDir         string `json:"wal-dir"`
@@ -171,6 +169,8 @@ type Config struct {
 	PeerTLSInfo   transport.TLSInfo
 	PeerAutoTLS   bool
 
+	CorsInfo map[string]struct{}
+
 	// HostWhitelist lists acceptable hostnames from HTTP client requests.
 	// Client origin policy protects against "DNS Rebinding" attacks
 	// to insecure etcd servers. That is, any website can simply create
@@ -186,7 +186,7 @@ type Config struct {
 	// Note that the client origin policy is enforced whether authentication
 	// is enabled or not, for tighter controls.
 	//
-	// By default, "HostWhitelist" is empty, which allows any hostnames.
+	// By default, "HostWhitelist" is empty or "*", which allows any hostnames.
 	// Note that when specifying hostnames, loopback addresses are not added
 	// automatically. To allow loopback interfaces, leave it empty or add them
 	// to whitelist manually (e.g. "localhost", "127.0.0.1", etc.).
@@ -195,7 +195,7 @@ type Config struct {
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
 	// - https://github.com/transmission/transmission/pull/468
 	// - https://github.com/coreos/etcd/issues/9353
-	HostWhitelist []string `json:"host-whitelist"`
+	HostWhitelist map[string]struct{}
 
 	Debug                 bool   `json:"debug"`
 	LogPkgLevels          string `json:"log-package-levels"`
@@ -237,11 +237,14 @@ type configYAML struct {
 
 // configJSON has file options that are translated into Config options
 type configJSON struct {
-	LPUrlsJSON         string         `json:"listen-peer-urls"`
-	LCUrlsJSON         string         `json:"listen-client-urls"`
-	CorsJSON           string         `json:"cors"`
-	APUrlsJSON         string         `json:"initial-advertise-peer-urls"`
-	ACUrlsJSON         string         `json:"advertise-client-urls"`
+	LPUrlsJSON string `json:"listen-peer-urls"`
+	LCUrlsJSON string `json:"listen-client-urls"`
+	APUrlsJSON string `json:"initial-advertise-peer-urls"`
+	ACUrlsJSON string `json:"advertise-client-urls"`
+
+	CorsJSON          string `json:"cors"`
+	HostWhitelistJSON string `json:"host-whitelist"`
+
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
 	PeerSecurityJSON   securityConfig `json:"peer-transport-security"`
 }
@@ -261,7 +264,6 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		CorsInfo:              &cors.CORSInfo{},
 		MaxSnapFiles:          DefaultMaxSnapshots,
 		MaxWalFiles:           DefaultMaxWALs,
 		Name:                  DefaultName,
@@ -283,7 +285,8 @@ func NewConfig() *Config {
 		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              DefaultEnableV2,
-		HostWhitelist:         defaultHostWhitelist,
+		CorsInfo:              make(map[string]struct{}),
+		HostWhitelist:         make(map[string]struct{}),
 		AuthToken:             "simple",
 		PreVote:               false, // TODO: enable by default in v3.5
 	}
@@ -381,12 +384,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.LCUrls = []url.URL(u)
 	}
 
-	if cfg.CorsJSON != "" {
-		if err := cfg.CorsInfo.Set(cfg.CorsJSON); err != nil {
-			plog.Panicf("unexpected error setting up cors: %v", err)
-		}
-	}
-
 	if cfg.APUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.APUrlsJSON, ","))
 		if err != nil {
@@ -409,6 +406,16 @@ func (cfg *configYAML) configFromFile(path string) error {
 			plog.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
 		}
 		cfg.ListenMetricsUrls = []url.URL(u)
+	}
+
+	if cfg.CorsJSON != "" {
+		uv := flags.NewUniqueURLsWithExceptions(cfg.HostWhitelistJSON, "*")
+		cfg.CorsInfo = uv.Values
+	}
+
+	if cfg.HostWhitelistJSON != "" {
+		uv := flags.NewUniqueStringsValue(cfg.HostWhitelistJSON)
+		cfg.HostWhitelist = uv.Values
 	}
 
 	// If a discovery flag is set, clear default initial cluster set by InitialClusterFromName
