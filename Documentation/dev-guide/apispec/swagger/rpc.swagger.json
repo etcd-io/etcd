@@ -615,7 +615,7 @@
           "Lease"
         ],
         "summary": "LeaseLeases lists all existing leases.",
-        "operationId": "LeaseLeases",
+        "operationId": "LeaseLeases2",
         "parameters": [
           {
             "name": "body",
@@ -642,7 +642,7 @@
           "Lease"
         ],
         "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
-        "operationId": "LeaseRevoke",
+        "operationId": "LeaseRevoke2",
         "parameters": [
           {
             "name": "body",
@@ -669,7 +669,7 @@
           "Lease"
         ],
         "summary": "LeaseTimeToLive retrieves lease information.",
-        "operationId": "LeaseTimeToLive",
+        "operationId": "LeaseTimeToLive2",
         "parameters": [
           {
             "name": "body",
@@ -821,6 +821,87 @@
             "description": "(streaming responses)",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v3/lease/leases": {
+      "post": {
+        "tags": [
+          "Lease"
+        ],
+        "summary": "LeaseLeases lists all existing leases.",
+        "operationId": "LeaseLeases",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "(empty)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v3/lease/revoke": {
+      "post": {
+        "tags": [
+          "Lease"
+        ],
+        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "operationId": "LeaseRevoke",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "(empty)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v3/lease/timetolive": {
+      "post": {
+        "tags": [
+          "Lease"
+        ],
+        "summary": "LeaseTimeToLive retrieves lease information.",
+        "operationId": "LeaseTimeToLive",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "(empty)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
             }
           }
         }
