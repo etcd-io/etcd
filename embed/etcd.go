@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -33,7 +34,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2v3"
 	"github.com/coreos/etcd/etcdserver/api/v3client"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/debugutil"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
@@ -168,6 +168,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
 		AuthToken:               cfg.AuthToken,
+		CORS:                    cfg.CORS,
 		HostWhitelist:           cfg.HostWhitelist,
 		InitialCorruptCheck:     cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
@@ -473,8 +474,13 @@ func (e *Etcd) serveClients() (err error) {
 		plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
 	}
 
-	if e.cfg.CorsInfo.String() != "" {
-		plog.Infof("cors = %s", e.cfg.CorsInfo)
+	if len(e.cfg.CORS) > 0 {
+		ss := make([]string, 0, len(e.cfg.CORS))
+		for v := range e.cfg.CORS {
+			ss = append(ss, v)
+		}
+		sort.Strings(ss)
+		plog.Infof("cors = %q", ss)
 	}
 
 	// Start a client server goroutine for each listen address
@@ -491,7 +497,6 @@ func (e *Etcd) serveClients() (err error) {
 		etcdhttp.HandleBasic(mux, e.Server)
 		h = mux
 	}
-	h = http.Handler(&cors.CORSHandler{Handler: h, Info: e.cfg.CorsInfo})
 
 	gopts := []grpc.ServerOption{}
 	if e.cfg.GRPCKeepAliveMinTime > time.Duration(0) {
