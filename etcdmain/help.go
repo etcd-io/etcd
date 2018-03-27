@@ -150,7 +150,7 @@ security flags:
 		path to the peer certificate revocation list file.
 	--cors '*'
 		comma-separated whitelist of origins for CORS, or cross-origin resource sharing, (empty or * means allow all).
-	--host-whitelist ''
+	--host-whitelist '*'
 		acceptable hostnames from HTTP client requests, if server is not secure (empty or * means allow all).
 
 logging flags
