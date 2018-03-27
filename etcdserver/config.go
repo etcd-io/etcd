@@ -46,6 +46,8 @@ type ServerConfig struct {
 	NewCluster          bool
 	PeerTLSInfo         transport.TLSInfo
 
+	CORS map[string]struct{}
+
 	// HostWhitelist lists acceptable hostnames from client requests.
 	// If server is insecure (no TLS), server only accepts requests
 	// whose Host header value exists in this white list.

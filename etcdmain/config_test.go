@@ -567,10 +567,10 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 		t.Errorf("initialClusterToken = %v, want %v", cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken)
 	}
 	if !reflect.DeepEqual(cfg.ec.APUrls, wcfg.ec.APUrls) {
-		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.ec.LPUrls)
+		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.APUrls, wcfg.ec.APUrls)
 	}
 	if !reflect.DeepEqual(cfg.ec.ACUrls, wcfg.ec.ACUrls) {
-		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.LCUrls, wcfg.ec.LCUrls)
+		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.ACUrls, wcfg.ec.ACUrls)
 	}
 }
 
