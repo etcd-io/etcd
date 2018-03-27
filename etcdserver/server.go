@@ -253,7 +253,7 @@ type EtcdServer struct {
 	leadTimeMu      sync.RWMutex
 	leadElectedTime time.Time
 
-	hostWhitelist map[string]struct{}
+	*AccessController
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -434,16 +434,16 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				storage:     NewStorage(w, ss),
 			},
 		),
-		id:            id,
-		attributes:    membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:       cl,
-		stats:         sstats,
-		lstats:        lstats,
-		SyncTicker:    time.NewTicker(500 * time.Millisecond),
-		peerRt:        prt,
-		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
-		forceVersionC: make(chan struct{}),
-		hostWhitelist: cfg.HostWhitelist,
+		id:               id,
+		attributes:       membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		cluster:          cl,
+		stats:            sstats,
+		lstats:           lstats,
+		SyncTicker:       time.NewTicker(500 * time.Millisecond),
+		peerRt:           prt,
+		reqIDGen:         idutil.NewGenerator(uint16(id), time.Now()),
+		forceVersionC:    make(chan struct{}),
+		AccessController: &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 	}
 
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
@@ -671,16 +671,6 @@ func (s *EtcdServer) ReportUnreachable(id uint64) { s.r.ReportUnreachable(id) }
 // and clears the used snapshot from the snapshot store.
 func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	s.r.ReportSnapshot(id, status)
-}
-
-// IsHostWhitelisted returns true if the host is whitelisted.
-// If whitelist is empty, allow all.
-func (s *EtcdServer) IsHostWhitelisted(host string) bool {
-	if len(s.hostWhitelist) == 0 { // allow all
-		return true
-	}
-	_, ok := s.hostWhitelist[host]
-	return ok
 }
 
 type etcdProgress struct {
