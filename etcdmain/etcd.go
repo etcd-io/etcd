@@ -30,7 +30,6 @@ import (
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/osutil"
@@ -301,10 +300,7 @@ func startProxy(cfg *config) error {
 		return clientURLs
 	}
 	ph := httpproxy.NewHandler(pt, uf, time.Duration(cfg.cp.ProxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.cp.ProxyRefreshIntervalMs)*time.Millisecond)
-	ph = &cors.CORSHandler{
-		Handler: ph,
-		Info:    cfg.ec.CorsInfo,
-	}
+	ph = embed.WrapCORS(cfg.ec.CORS, ph)
 
 	if cfg.isReadonlyProxy() {
 		ph = httpproxy.NewReadonlyHandler(ph)

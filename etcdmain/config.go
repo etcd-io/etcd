@@ -291,9 +291,8 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.ACUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
 	cfg.ec.ListenMetricsUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-metrics-urls")
 
-	cv := flags.UniqueURLsMapFromFlag(cfg.cf.flagSet, "cors")
-	cfg.ec.CorsInfo = &cv
-	cfg.ec.HostWhitelist = flags.UniqueStringsFromFlag(cfg.cf.flagSet, "host-whitelist")
+	cfg.ec.CORS = flags.UniqueURLsMapFromFlag(cfg.cf.flagSet, "cors")
+	cfg.ec.HostWhitelist = flags.UniqueStringsMapFromFlag(cfg.cf.flagSet, "host-whitelist")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
