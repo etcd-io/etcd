@@ -169,7 +169,7 @@ type Config struct {
 	PeerTLSInfo   transport.TLSInfo
 	PeerAutoTLS   bool
 
-	CorsInfo map[string]struct{}
+	CORS map[string]struct{}
 
 	// HostWhitelist lists acceptable hostnames from HTTP client requests.
 	// Client origin policy protects against "DNS Rebinding" attacks
@@ -242,7 +242,7 @@ type configJSON struct {
 	APUrlsJSON string `json:"initial-advertise-peer-urls"`
 	ACUrlsJSON string `json:"advertise-client-urls"`
 
-	CorsJSON          string `json:"cors"`
+	CORSJSON          string `json:"cors"`
 	HostWhitelistJSON string `json:"host-whitelist"`
 
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
@@ -285,8 +285,8 @@ func NewConfig() *Config {
 		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              DefaultEnableV2,
-		CorsInfo:              make(map[string]struct{}),
-		HostWhitelist:         make(map[string]struct{}),
+		CORS:                  map[string]struct{}{"*": {}},
+		HostWhitelist:         map[string]struct{}{"*": {}},
 		AuthToken:             "simple",
 		PreVote:               false, // TODO: enable by default in v3.5
 	}
@@ -408,9 +408,9 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.ListenMetricsUrls = []url.URL(u)
 	}
 
-	if cfg.CorsJSON != "" {
-		uv := flags.NewUniqueURLsWithExceptions(cfg.HostWhitelistJSON, "*")
-		cfg.CorsInfo = uv.Values
+	if cfg.CORSJSON != "" {
+		uv := flags.NewUniqueURLsWithExceptions(cfg.CORSJSON, "*")
+		cfg.CORS = uv.Values
 	}
 
 	if cfg.HostWhitelistJSON != "" {
