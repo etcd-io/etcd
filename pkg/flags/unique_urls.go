@@ -46,6 +46,8 @@ func (us *UniqueURLs) Set(s string) error {
 	if err != nil {
 		return err
 	}
+	us.Values = make(map[string]struct{})
+	us.uss = make([]url.URL, 0)
 	for _, v := range ss {
 		us.Values[v.String()] = struct{}{}
 		us.uss = append(us.uss, v)
