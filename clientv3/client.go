@@ -90,8 +90,8 @@ func NewCtxClient(ctx context.Context) *Client {
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
-func NewFromURL(url string) (*Client, error) {
-	return New(Config{Endpoints: []string{url}})
+func NewFromURL(urls []string) (*Client, error) {
+	return New(Config{Endpoints: urls})
 }
 
 // Close shuts down the client's etcd connections.
