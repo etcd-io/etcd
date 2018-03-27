@@ -94,6 +94,11 @@ func NewFromURL(url string) (*Client, error) {
 	return New(Config{Endpoints: []string{url}})
 }
 
+// NewFromURLs creates a new etcdv3 client from URLs.
+func NewFromURLs(urls []string) (*Client, error) {
+	return New(Config{Endpoints: urls})
+}
+
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
 	c.cancel()
