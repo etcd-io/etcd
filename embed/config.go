@@ -186,10 +186,10 @@ type Config struct {
 	// Note that the client origin policy is enforced whether authentication
 	// is enabled or not, for tighter controls.
 	//
-	// By default, "HostWhitelist" is empty or "*", which allows any hostnames.
+	// By default, "HostWhitelist" is "*", which allows any hostnames.
 	// Note that when specifying hostnames, loopback addresses are not added
-	// automatically. To allow loopback interfaces, leave it empty or add them
-	// to whitelist manually (e.g. "localhost", "127.0.0.1", etc.).
+	// automatically. To allow loopback interfaces, leave it empty or set it "*",
+	// or add them to whitelist manually (e.g. "localhost", "127.0.0.1", etc.).
 	//
 	// CVE-2018-5702 reference:
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
