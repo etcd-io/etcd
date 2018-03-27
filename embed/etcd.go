@@ -180,7 +180,23 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
 	}
-	plog.Infof("%s starting with host whitelist %q", e.Server.ID(), cfg.HostWhitelist)
+
+	if len(e.cfg.CORS) > 0 {
+		ss := make([]string, 0, len(e.cfg.CORS))
+		for v := range e.cfg.CORS {
+			ss = append(ss, v)
+		}
+		sort.Strings(ss)
+		plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
+	}
+	if len(e.cfg.HostWhitelist) > 0 {
+		ss := make([]string, 0, len(e.cfg.HostWhitelist))
+		for v := range e.cfg.HostWhitelist {
+			ss = append(ss, v)
+		}
+		sort.Strings(ss)
+		plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
+	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
 	e.errc = make(chan error, len(e.Peers)+len(e.Clients)+2*len(e.sctxs))
@@ -472,15 +488,6 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 func (e *Etcd) serveClients() (err error) {
 	if !e.cfg.ClientTLSInfo.Empty() {
 		plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
-	}
-
-	if len(e.cfg.CORS) > 0 {
-		ss := make([]string, 0, len(e.cfg.CORS))
-		for v := range e.cfg.CORS {
-			ss = append(ss, v)
-		}
-		sort.Strings(ss)
-		plog.Infof("cors = %q", ss)
 	}
 
 	// Start a client server goroutine for each listen address
