@@ -90,7 +90,12 @@ func NewCtxClient(ctx context.Context) *Client {
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
-func NewFromURL(urls []string) (*Client, error) {
+func NewFromURL(url string) (*Client, error) {
+	return New(Config{Endpoints: []string{url}})
+}
+
+// NewFromURLs creates a new etcdv3 client from URLs.
+func NewFromURLs(urls []string) (*Client, error) {
 	return New(Config{Endpoints: urls})
 }
 
