@@ -48,6 +48,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/coreos/etcd/pull/9433).
+- Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
+- Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
 - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 - Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
 - Move `"github.com/coreos/etcd/error"` to [`"github.com/coreos/etcd/etcdserver/v2error"`](https://github.com/coreos/etcd/pull/9274).
@@ -78,11 +80,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Client origin enforce policy works as follow:
     - If client connection is secure via HTTPS, allow any hostnames..
     - If client connection is not secure and `"HostWhitelist"` is not empty, only allow HTTP requests whose Host field is listed in whitelist.
-  - By default, `"HostWhitelist"` is empty, which means insecure server allows all client HTTP requests.
+  - By default, `"HostWhitelist"` is `"*"`, which means insecure server allows all client HTTP requests.
   - Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
-- TODO: Support `CORS`.
+- Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 - TODO: Support [TLS cipher suite lists](TODO).
 - Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
@@ -108,6 +110,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
+- Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 
 ### Added: `embed`
 
@@ -140,6 +143,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - To deprecate [`/v3beta`](https://github.com/coreos/etcd/issues/9189) in `v3.5`.
 - Add API endpoints [`/{v3beta,v3}/lease/leases, /{v3beta,v3}/lease/revoke, /{v3beta,v3}/lease/timetolive`](https://github.com/coreos/etcd/pull/9450).
   - To deprecate [`/{v3beta,v3}/kv/lease/leases, /{v3beta,v3}/kv/lease/revoke, /{v3beta,v3}/kv/lease/timetolive`](https://github.com/coreos/etcd/issues/9430) in `v3.5`.
+- Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 
 ### Package `raft`
 
