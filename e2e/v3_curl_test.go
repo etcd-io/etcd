@@ -166,7 +166,6 @@ func TestV3CurlTxn(t *testing.T) {
 }
 
 func TestV3CurlAuthAlpha(t *testing.T) { testV3CurlAuth(t, "/v3alpha") }
-func TestV3CurlAuthBeta(t *testing.T)  { testV3CurlAuth(t, "/v3beta") }
 func testV3CurlAuth(t *testing.T, pathPrefix string) {
 	defer testutil.AfterTest(t)
 	epc, err := newEtcdProcessCluster(&configNoTLS)
@@ -250,11 +249,11 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	if err = cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join("/v3beta", "/election/proclaim"),
+		endpoint: path.Join("/v3alpha", "/election/proclaim"),
 		value:    string(pdata),
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", "/v3beta", err)
+		cx.t.Fatalf("failed post proclaim request (%s) (%v)", "/v3alpha", err)
 	}
 }
 
@@ -264,11 +263,11 @@ func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
 
 func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	if err := cURLPost(cx.epc, cURLReq{
-		endpoint: path.Join("/v3beta", "/election/resign"),
+		endpoint: path.Join("/v3alpha", "/election/resign"),
 		value:    `{}`,
 		expected: `{"error":"\"leader\" field must be provided","code":2}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post resign request (%s) (%v)", "/v3beta", err)
+		cx.t.Fatalf("failed post resign request (%s) (%v)", "/v3alpha", err)
 	}
 }
 
