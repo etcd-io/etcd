@@ -79,6 +79,8 @@ func TestDialCancel(t *testing.T) {
 }
 
 func TestDialTimeout(t *testing.T) {
+	t.Skip()
+
 	defer testutil.AfterTest(t)
 
 	testCfgs := []Config{
