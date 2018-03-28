@@ -15,10 +15,8 @@
 package e2e
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"path"
-	"strconv"
 	"testing"
 
 	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
@@ -238,88 +236,6 @@ func testV3CurlAuth(t *testing.T, pathPrefix string) {
 
 	authRes := make(map[string]interface{})
 	testutil.AssertNil(t, json.Unmarshal([]byte(cURLRes), &authRes))
-
-	token, ok := authRes["token"].(string)
-	if !ok {
-		t.Fatalf("failed invalid token in authenticate response with curl")
-	}
-
-	authHeader = "Authorization : " + token
-
-	// put with auth
-	if err = cURLPost(epc, cURLReq{endpoint: path.Join(pathPrefix, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
-		t.Fatalf("failed auth put with curl (%v)", err)
-	}
-}
-
-func TestV3CurlCampaignAlpha(t *testing.T) { testV3CurlCampaign(t, "/v3alpha") }
-func TestV3CurlCampaignBeta(t *testing.T)  { testV3CurlCampaign(t, "/v3beta") }
-func testV3CurlCampaign(t *testing.T, pathPrefix string) {
-	defer testutil.AfterTest(t)
-
-	epc, err := newEtcdProcessCluster(&configNoTLS)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
-	defer func() {
-		if cerr := epc.Close(); err != nil {
-			t.Fatalf("error closing etcd processes (%v)", cerr)
-		}
-	}()
-
-	cdata, err := json.Marshal(&epb.CampaignRequest{
-		Name:  []byte("/election-prefix"),
-		Value: []byte("v1"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cargs := cURLPrefixArgs(epc, "POST", cURLReq{
-		endpoint: path.Join(pathPrefix, "/election/campaign"),
-		value:    string(cdata),
-	})
-	lines, err := spawnWithExpectLines(cargs, `"leader":{"name":"`)
-	if err != nil {
-		t.Fatalf("failed post campaign request (%s) (%v)", pathPrefix, err)
-	}
-	if len(lines) != 1 {
-		t.Fatalf("len(lines) expected 1, got %+v", lines)
-	}
-
-	var cresp campaignResponse
-	if err = json.Unmarshal([]byte(lines[0]), &cresp); err != nil {
-		t.Fatalf("failed to unmarshal campaign response %v", err)
-	}
-	ndata, err := base64.StdEncoding.DecodeString(cresp.Leader.Name)
-	if err != nil {
-		t.Fatalf("failed to decode leader key %v", err)
-	}
-	kdata, err := base64.StdEncoding.DecodeString(cresp.Leader.Key)
-	if err != nil {
-		t.Fatalf("failed to decode leader key %v", err)
-	}
-
-	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
-	lease, _ := strconv.ParseInt(cresp.Leader.Lease, 10, 64)
-	pdata, err := json.Marshal(&epb.ProclaimRequest{
-		Leader: &epb.LeaderKey{
-			Name:  ndata,
-			Key:   kdata,
-			Rev:   rev,
-			Lease: lease,
-		},
-		Value: []byte("v2"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = cURLPost(epc, cURLReq{
-		endpoint: path.Join(pathPrefix, "/election/proclaim"),
-		value:    string(pdata),
-		expected: `"revision":`,
-	}); err != nil {
-		t.Fatalf("failed post proclaim request (%s) (%v)", pathPrefix, err)
-	}
 }
 
 func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
