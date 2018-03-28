@@ -203,8 +203,8 @@
 [[projects]]
   name = "github.com/soheilhy/cmux"
   packages = ["."]
-  revision = "bb79a83465015a27a175925ebd155e660f55e9f1"
-  version = "v0.1.3"
+  revision = "e09e9389d85d8492d313d73d1469c029e710623f"
+  version = "v0.1.4"
 
 [[projects]]
   name = "github.com/spf13/cobra"
