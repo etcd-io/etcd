@@ -222,9 +222,8 @@ func testV3CurlAuth(t *testing.T, pathPrefix string) {
 	testutil.AssertNil(t, err)
 
 	var (
-		authHeader string
-		cmdArgs    []string
-		lineFunc   = func(txt string) bool { return true }
+		cmdArgs  []string
+		lineFunc = func(txt string) bool { return true }
 	)
 
 	cmdArgs = cURLPrefixArgs(epc, "POST", cURLReq{endpoint: path.Join(pathPrefix, "/auth/authenticate"), value: string(authreq)})
