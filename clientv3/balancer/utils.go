@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"sync/atomic"
+	"time"
 
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/resolver"
@@ -42,4 +44,11 @@ func epsToAddrs(eps ...string) (addrs []resolver.Address) {
 		addrs = append(addrs, resolver.Address{Addr: u.Host, Type: resolver.Backend})
 	}
 	return addrs
+}
+
+var genN = new(uint32)
+
+func genName() string {
+	now := time.Now().UnixNano()
+	return fmt.Sprintf("%X%X", now, atomic.AddUint32(genN, 1))
 }
