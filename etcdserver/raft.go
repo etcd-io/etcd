@@ -95,6 +95,8 @@ type raftNode struct {
 	lead  uint64
 
 	mu sync.Mutex
+
+	tickMu sync.Mutex
 	// last lead elected time
 	lt time.Time
 
@@ -129,6 +131,13 @@ type raftNode struct {
 	done    chan struct{}
 }
 
+// raft.Node does not have locks in Raft package
+func (r *raftNode) tick() {
+	r.tickMu.Lock()
+	r.Tick()
+	r.tickMu.Unlock()
+}
+
 // start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
@@ -144,7 +153,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 		for {
 			select {
 			case <-r.ticker:
-				r.Tick()
+				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
 					if lead := atomic.LoadUint64(&r.lead); rd.SoftState.Lead != raft.None && lead != rd.SoftState.Lead {
@@ -327,7 +336,7 @@ func (r *raftNode) resumeSending() {
 // speeding up election process.
 func (r *raftNode) advanceTicks(ticks int) {
 	for i := 0; i < ticks; i++ {
-		r.Tick()
+		r.tick()
 	}
 }
 
