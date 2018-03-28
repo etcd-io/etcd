@@ -1,0 +1,126 @@
+agent-configs:
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:19027
+  failpoint-http-addr: http://127.0.0.1:7381
+  base-dir: /tmp/etcd-agent-data-1
+  etcd-log-path: /tmp/etcd-agent-data-1/current-etcd.log
+  etcd-client-tls: false
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:1379
+  etcd-config:
+    name: s1
+    data-dir: /tmp/etcd-agent-data-1/etcd.data
+    wal-dir: /tmp/etcd-agent-data-1/etcd.data/member/wal
+    listen-client-urls: ["http://127.0.0.1:1379"]
+    advertise-client-urls: ["http://127.0.0.1:1379"]
+    listen-peer-urls: ["http://127.0.0.1:1380"]
+    initial-advertise-peer-urls: ["http://127.0.0.1:13800"]
+    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:29027
+  failpoint-http-addr: http://127.0.0.1:7382
+  base-dir: /tmp/etcd-agent-data-2
+  etcd-log-path: /tmp/etcd-agent-data-2/current-etcd.log
+  etcd-client-tls: false
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:2379
+  etcd-config:
+    name: s2
+    data-dir: /tmp/etcd-agent-data-2/etcd.data
+    wal-dir: /tmp/etcd-agent-data-2/etcd.data/member/wal
+    listen-client-urls: ["http://127.0.0.1:2379"]
+    advertise-client-urls: ["http://127.0.0.1:2379"]
+    listen-peer-urls: ["http://127.0.0.1:2380"]
+    initial-advertise-peer-urls: ["http://127.0.0.1:23800"]
+    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:39027
+  failpoint-http-addr: http://127.0.0.1:7383
+  base-dir: /tmp/etcd-agent-data-3
+  etcd-log-path: /tmp/etcd-agent-data-3/current-etcd.log
+  etcd-client-tls: false
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:3379
+  etcd-config:
+    name: s3
+    data-dir: /tmp/etcd-agent-data-3/etcd.data
+    wal-dir: /tmp/etcd-agent-data-3/etcd.data/member/wal
+    listen-client-urls: ["http://127.0.0.1:3379"]
+    advertise-client-urls: ["http://127.0.0.1:3379"]
+    listen-peer-urls: ["http://127.0.0.1:3380"]
+    initial-advertise-peer-urls: ["http://127.0.0.1:33800"]
+    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+
+tester-config:
+  tester-network: tcp
+  tester-addr: 127.0.0.1:9028
+
+  delay-latency-ms: 500
+  delay-latency-ms-rv: 50
+
+  round-limit: 1
+  exit-on-failure: true
+  consistency-check: true
+  enable-pprof: true
+
+  failure-cases:
+  - KILL_ONE_FOLLOWER
+  - KILL_LEADER
+  - KILL_ONE_FOLLOWER_FOR_LONG
+  - KILL_LEADER_FOR_LONG
+  - KILL_QUORUM
+  - KILL_ALL
+  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER_ONE
+  - BLACKHOLE_PEER_PORT_TX_RX_ALL
+  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - DELAY_PEER_PORT_TX_RX_LEADER
+  - DELAY_PEER_PORT_TX_RX_ALL
+
+  # TODO: shuffle
+  # fail-shuffle: true
+
+  failpoint-commands:
+  - panic("etcd-tester")
+  # failpoint-commands:
+  # - panic("etcd-tester"),1*sleep(1000)
+
+  runner-exec-path: /etcd-runner
+  external-exec-path: ""
+
+  stress-types:
+  - KV
+  - LEASE
+  # - NO_STRESS
+  # - ELECTION_RUNNER
+  # - WATCH_RUNNER
+  # - LOCK_RACER_RUNNER
+  # - LEASE_RUNNER
+
+  stress-key-size: 100
+  stress-key-size-large: 32769
+  stress-key-suffix-range: 250000
+  stress-key-suffix-range-txn: 100
+  stress-key-txn-ops: 10
+  stress-qps: 1000
