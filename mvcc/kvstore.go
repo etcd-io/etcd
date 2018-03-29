@@ -217,17 +217,18 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 
 func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.revMu.Lock()
-	defer s.revMu.Unlock()
-
 	if rev <= s.compactMainRev {
 		ch := make(chan struct{})
 		f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
 		s.fifoSched.Schedule(f)
+		s.mu.Unlock()
+		s.revMu.Unlock()
 		return ch, ErrCompacted
 	}
 	if rev > s.currentRev {
+		s.mu.Unlock()
+		s.revMu.Unlock()
 		return nil, ErrFutureRev
 	}
 
@@ -245,6 +246,8 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
 
+	s.mu.Unlock()
+	s.revMu.Unlock()
 	keep := s.kvindex.Compact(rev)
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
