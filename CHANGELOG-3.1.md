@@ -1,5 +1,5 @@
 
-## [v3.1.13](https://github.com/coreos/etcd/releases/tag/v3.1.13) (TBD)
+## [v3.1.13](https://github.com/coreos/etcd/releases/tag/v3.1.13) (2018-03-29)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.12...v3.1.13) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 
