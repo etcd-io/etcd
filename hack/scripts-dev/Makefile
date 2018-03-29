@@ -41,7 +41,7 @@ delete-docker-images:
 
 
 
-GO_VERSION ?= 1.10
+GO_VERSION ?= 1.10.1
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
