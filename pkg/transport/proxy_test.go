@@ -28,8 +28,11 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc/grpclog"
+	"go.uber.org/zap"
 )
+
+// enable DebugLevel
+var testLogger = zap.NewExample()
 
 var testTLSInfo = TLSInfo{
 	KeyFile:        "./fixtures/server.key.insecure",
@@ -67,9 +70,9 @@ func testProxy(t *testing.T, scheme string, secure bool, delayTx bool) {
 	defer ln.Close()
 
 	cfg := ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
@@ -176,9 +179,9 @@ func testProxyDelayAccept(t *testing.T, secure bool) {
 	defer ln.Close()
 
 	cfg := ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
@@ -229,9 +232,9 @@ func TestProxy_PauseTx(t *testing.T) {
 	defer ln.Close()
 
 	p := NewProxy(ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -275,9 +278,9 @@ func TestProxy_BlackholeTx(t *testing.T) {
 	defer ln.Close()
 
 	p := NewProxy(ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -325,9 +328,9 @@ func TestProxy_CorruptTx(t *testing.T) {
 	defer ln.Close()
 
 	p := NewProxy(ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -360,9 +363,9 @@ func TestProxy_Shutdown(t *testing.T) {
 	defer ln.Close()
 
 	p := NewProxy(ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -390,9 +393,9 @@ func TestProxy_ShutdownListener(t *testing.T) {
 	defer ln.Close()
 
 	p := NewProxy(ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -462,9 +465,9 @@ func testProxyHTTP(t *testing.T, secure, delayTx bool) {
 	time.Sleep(200 * time.Millisecond)
 
 	cfg := ProxyConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
