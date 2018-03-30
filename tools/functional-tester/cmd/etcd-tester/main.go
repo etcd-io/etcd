@@ -45,6 +45,9 @@ func main() {
 	}
 
 	err = clus.Bootstrap()
+	if err != nil {
+		logger.Fatal("Bootstrap failed", zap.Error(err))
+	}
 	defer clus.DestroyEtcdAgents()
 
 	err = clus.WaitHealth()
