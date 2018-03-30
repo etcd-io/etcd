@@ -26,15 +26,17 @@ ADD . ${GOPATH}/src/github.com/coreos/etcd
 RUN go get -v github.com/coreos/gofail \
   && pushd ${GOPATH}/src/github.com/coreos/etcd \
   && GO_BUILD_FLAGS="-v" ./build \
-  && cp ./bin/etcd /etcd \
-  && cp ./bin/etcdctl /etcdctl \
+  && mkdir -p /bin \
+  && cp ./bin/etcd /bin/etcd \
+  && cp ./bin/etcdctl /bin/etcdctl \
   && GO_BUILD_FLAGS="-v" FAILPOINTS=1 ./build \
-  && cp ./bin/etcd /etcd-failpoints \
+  && cp ./bin/etcd /bin/etcd-failpoints \
   && ./tools/functional-tester/build \
-  && cp ./bin/etcd-agent /etcd-agent \
-  && cp ./bin/etcd-tester /etcd-tester \
-  && cp ./bin/etcd-runner /etcd-runner \
-  && go build -v -o /benchmark ./tools/benchmark \
-  && go build -v -o /etcd-test-proxy ./tools/etcd-test-proxy \
+  && cp ./bin/etcd-agent /bin/etcd-agent \
+  && cp ./bin/etcd-tester /bin/etcd-tester \
+  && cp ./bin/etcd-runner /bin/etcd-runner \
+  && go build -v -o /bin/benchmark ./tools/benchmark \
+  && go build -v -o /bin/etcd-test-proxy ./tools/etcd-test-proxy \
   && popd \
-  && rm -rf ${GOPATH}/src/github.com/coreos/etcd
+  && rm -rf ${GOPATH}/src/github.com/coreos/etcd \
+  && pwd
