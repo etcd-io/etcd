@@ -35,8 +35,7 @@ import (
 type keyStresser struct {
 	logger *zap.Logger
 
-	// TODO: use Member
-	Endpoint string
+	Endpoint string // TODO: use Member
 
 	keySize           int
 	keyLargeSize      int

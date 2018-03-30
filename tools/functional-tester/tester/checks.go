@@ -99,8 +99,7 @@ func (hc *hashChecker) Check() error {
 type leaseChecker struct {
 	logger *zap.Logger
 
-	// TODO: use Member
-	endpoint string
+	endpoint string // TODO: use Member
 
 	ls          *leaseStresser
 	leaseClient pb.LeaseClient
