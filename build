@@ -70,9 +70,9 @@ tools_build() {
 	tools_path="benchmark
 	etcd-dump-db
 	etcd-dump-logs
-	functional-tester/etcd-agent
-	functional-tester/etcd-tester
-	functional-tester/etcd-runner
+	functional-tester/cmd/etcd-agent
+	functional-tester/cmd/etcd-tester
+	functional-tester/cmd/etcd-runner
 	local-tester/bridge"
 	for tool in ${tools_path}
 	do
