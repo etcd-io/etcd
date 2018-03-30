@@ -312,9 +312,13 @@ func (clus *Cluster) updateStresserChecker() {
 	}
 	clus.stresser = cs
 
-	clus.checker = newHashChecker(clus.logger, hashAndRevGetter(clus))
-	if schk := cs.Checker(); schk != nil {
-		clus.checker = newCompositeChecker([]Checker{clus.checker, schk})
+	if clus.Tester.ConsistencyCheck {
+		clus.checker = newHashChecker(clus.logger, hashAndRevGetter(clus))
+		if schk := cs.Checker(); schk != nil {
+			clus.checker = newCompositeChecker([]Checker{clus.checker, schk})
+		}
+	} else {
+		clus.checker = newNoChecker()
 	}
 
 	clus.logger.Info(
