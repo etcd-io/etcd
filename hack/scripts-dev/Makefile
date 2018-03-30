@@ -479,14 +479,14 @@ build-docker-functional-tester:
 	docker run \
 	  --rm \
 	  gcr.io/etcd-development/etcd-functional-tester:go$(GO_VERSION) \
-	  /bin/bash -c "/etcd --version && \
-	   /etcd-failpoints --version && \
-	   ETCDCTL_API=3 /etcdctl version && \
-	   /etcd-agent -help || true && \
-	   /etcd-tester -help || true && \
-	   /etcd-runner --help || true && \
-	   /benchmark --help || true && \
-	   /etcd-test-proxy -help || true"
+	  /bin/bash -c "./bin/etcd --version && \
+	   ./bin/etcd-failpoints --version && \
+	   ETCDCTL_API=3 ./bin/etcdctl version && \
+	   ./bin/etcd-agent -help || true && \
+	   ./bin/etcd-tester -help || true && \
+	   ./bin/etcd-runner --help || true && \
+	   ./bin/benchmark --help || true && \
+	   ./bin/etcd-test-proxy -help || true"
 
 push-docker-functional-tester:
 	$(info GO_VERSION: $(GO_VERSION))
