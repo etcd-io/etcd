@@ -28,7 +28,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/transport"
 
-	"google.golang.org/grpc/grpclog"
+	"go.uber.org/zap"
 )
 
 var from string
@@ -74,7 +74,7 @@ $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 		To:   url.URL{Scheme: "tcp", Host: to},
 	}
 	if verbose {
-		cfg.Logger = grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5)
+		cfg.Logger = zap.NewExample()
 	}
 	p := transport.NewProxy(cfg)
 	<-p.Ready()
