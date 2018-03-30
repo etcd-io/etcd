@@ -141,7 +141,8 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error)
 				srv.Tester = req.Tester
 			}
 
-			resp, err := srv.handleTesterRequest(req)
+			var resp *rpcpb.Response
+			resp, err = srv.handleTesterRequest(req)
 			if err != nil {
 				errc <- err
 				// TODO: handle error and retry
