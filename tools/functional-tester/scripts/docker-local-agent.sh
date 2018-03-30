@@ -13,7 +13,7 @@ if ! [[ "${0}" =~ "scripts/docker-local-agent.sh" ]]; then
 fi
 
 if [[ -z "${GO_VERSION}" ]]; then
-  GO_VERSION=1.10
+  GO_VERSION=1.10.1
 fi
 echo "Running with GO_VERSION:" ${GO_VERSION}
 
@@ -29,30 +29,14 @@ else
        exit 255 ;;
   esac
   AGENT_NAME="agent-${1}"
-  AGENT_PORT_FLAG="--port :${1}9027"
-  FAILPOINT_ADDR_FLAG="--failpoint-addr :738${1}"
+  AGENT_ADDR_FLAG="--network tcp --address 127.0.0.1:${1}9027"
 fi
 echo "AGENT_NAME:" ${AGENT_NAME}
-echo "AGENT_PORT_FLAG:" ${AGENT_PORT_FLAG}
-echo "FAILPOINT_ADDR_FLAG:" ${FAILPOINT_ADDR_FLAG}
+echo "AGENT_ADDR_FLAG:" ${AGENT_ADDR_FLAG}
 
-if [[ -z "${ETCD_EXEC_PATH}" ]]; then
-  ETCD_EXEC_PATH=/etcd
-elif [[ "${ETCD_EXEC_PATH}" != "/etcd-failpoints" ]]; then
-  echo "Cannot find etcd executable:" ${ETCD_EXEC_PATH}
-  exit 255
-fi
-echo "ETCD_EXEC_PATH:" ${ETCD_EXEC_PATH}
-
-rm -rf `pwd`/${AGENT_NAME} && mkdir -p `pwd`/${AGENT_NAME}
 docker run \
   --rm \
   --net=host \
   --name ${AGENT_NAME} \
-  --mount type=bind,source=`pwd`/${AGENT_NAME},destination=/${AGENT_NAME} \
   gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
-  /bin/bash -c "/etcd-agent \
-    --etcd-path ${ETCD_EXEC_PATH} \
-    --etcd-log-dir /${AGENT_NAME} \
-    ${AGENT_PORT_FLAG} \
-    ${FAILPOINT_ADDR_FLAG}"
+  /bin/bash -c "./bin/etcd-agent ${AGENT_ADDR_FLAG}"
