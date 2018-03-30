@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// etcd-runner is a command line application that performs tests on etcd.
+// etcd-runner is a program for testing etcd clientv3 features against a fault injected cluster.
 package main
 
-import "github.com/coreos/etcd/tools/functional-tester/etcd-runner/command"
+import "github.com/coreos/etcd/tools/functional-tester/runner"
 
 func main() {
-	command.Start()
+	runner.Start()
 }
