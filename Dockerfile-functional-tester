@@ -22,6 +22,7 @@ RUN rm -rf ${GOROOT} \
 
 RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
 ADD . ${GOPATH}/src/github.com/coreos/etcd
+ADD ./tools/functional-tester/tester/local-test.yaml /local-test.yaml
 
 RUN go get -v github.com/coreos/gofail \
   && pushd ${GOPATH}/src/github.com/coreos/etcd \
@@ -38,5 +39,4 @@ RUN go get -v github.com/coreos/gofail \
   && go build -v -o /bin/benchmark ./tools/benchmark \
   && go build -v -o /bin/etcd-test-proxy ./tools/etcd-test-proxy \
   && popd \
-  && rm -rf ${GOPATH}/src/github.com/coreos/etcd \
-  && pwd
+  && rm -rf ${GOPATH}/src/github.com/coreos/etcd
