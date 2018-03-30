@@ -44,14 +44,5 @@ And run [example scripts](./scripts).
 ./scripts/docker-local-agent.sh 3
 
 # to run only 1 tester round
-LIMIT=1 ./scripts/docker-local-tester.sh
-
-# to run long-running tests with no limit
-LIMIT=1 ./scripts/docker-local-tester.sh
-
-# to run only 1 tester round with election runner and others
-# default is STRESSER="keys,lease"
-LIMIT=1 \
-  STRESSER="keys,lease,election-runner,watch-runner,lock-racer-runner,lease-runner" \
-  ./scripts/docker-local-tester.sh
+./scripts/docker-local-tester.sh
 ```
