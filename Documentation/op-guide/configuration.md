@@ -181,7 +181,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + env variable: ETCD_AUTO_COMPACTION_RETENTION
 
 ### --auto-compaction-mode
-+ Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
++ Interpret 'auto-compaction-retention' one of: 'periodic', 'revision'. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
 + default: periodic
 + env variable: ETCD_AUTO_COMPACTION_MODE
 
