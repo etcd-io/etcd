@@ -16,7 +16,6 @@ package tester
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -33,82 +32,6 @@ type Stresser interface {
 	ModifiedKeys() int64
 	// Checker returns an invariant checker for after the stresser is canceled.
 	Checker() Checker
-}
-
-// nopStresser implements Stresser that does nothing
-type nopStresser struct {
-	start time.Time
-	qps   int
-}
-
-func (s *nopStresser) Stress() error { return nil }
-func (s *nopStresser) Pause()        {}
-func (s *nopStresser) Close()        {}
-func (s *nopStresser) ModifiedKeys() int64 {
-	return 0
-}
-func (s *nopStresser) Checker() Checker { return nil }
-
-// compositeStresser implements a Stresser that runs a slice of
-// stressing clients concurrently.
-type compositeStresser struct {
-	stressers []Stresser
-}
-
-func (cs *compositeStresser) Stress() error {
-	for i, s := range cs.stressers {
-		if err := s.Stress(); err != nil {
-			for j := 0; j < i; j++ {
-				cs.stressers[i].Close()
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-func (cs *compositeStresser) Pause() {
-	var wg sync.WaitGroup
-	wg.Add(len(cs.stressers))
-	for i := range cs.stressers {
-		go func(s Stresser) {
-			defer wg.Done()
-			s.Pause()
-		}(cs.stressers[i])
-	}
-	wg.Wait()
-}
-
-func (cs *compositeStresser) Close() {
-	var wg sync.WaitGroup
-	wg.Add(len(cs.stressers))
-	for i := range cs.stressers {
-		go func(s Stresser) {
-			defer wg.Done()
-			s.Close()
-		}(cs.stressers[i])
-	}
-	wg.Wait()
-}
-
-func (cs *compositeStresser) ModifiedKeys() (modifiedKey int64) {
-	for _, stress := range cs.stressers {
-		modifiedKey += stress.ModifiedKeys()
-	}
-	return modifiedKey
-}
-
-func (cs *compositeStresser) Checker() Checker {
-	var chks []Checker
-	for _, s := range cs.stressers {
-		if chk := s.Checker(); chk != nil {
-			chks = append(chks, chk)
-		}
-	}
-	if len(chks) == 0 {
-		return nil
-	}
-	return newCompositeChecker(chks)
 }
 
 // newStresser creates stresser from a comma separated list of stresser types.
