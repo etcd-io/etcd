@@ -269,13 +269,6 @@ func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
-	if srv.last != rpcpb.Operation_InitialStartEtcd && srv.last != rpcpb.Operation_RestartEtcd {
-		return &rpcpb.Response{
-			Success: false,
-			Status:  fmt.Sprintf("%q is not valid; last server operation was %q", rpcpb.Operation_KillEtcd.String(), srv.last.String()),
-		}, nil
-	}
-
 	srv.stopProxy()
 
 	srv.logger.Info("killing etcd process", zap.String("signal", syscall.SIGTERM.String()))
