@@ -98,9 +98,7 @@ tester-config:
   - DELAY_PEER_PORT_TX_RX_LEADER
   - DELAY_PEER_PORT_TX_RX_ALL
 
-  # TODO: shuffle
-  # fail-shuffle: true
-
+  failure-shuffle: true
   failpoint-commands:
   - panic("etcd-tester")
   # failpoint-commands:
