@@ -16,6 +16,7 @@ package tester
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
@@ -185,5 +186,17 @@ func Test_newCluster(t *testing.T) {
 	}
 	if reflect.DeepEqual(fs2, fs3) {
 		t.Fatalf("expected reshuffled failure cases from %q, got %q", fs2, fs3)
+	}
+
+	// shuffle ensures visit all exactly once
+	// so when sorted, failure cases must be equal
+	sort.Strings(fs1)
+	sort.Strings(fs2)
+	sort.Strings(fs3)
+	if !reflect.DeepEqual(fs1, fs2) {
+		t.Fatalf("expected %q, got %q", fs1, fs2)
+	}
+	if !reflect.DeepEqual(fs2, fs3) {
+		t.Fatalf("expected %q, got %q", fs2, fs3)
 	}
 }
