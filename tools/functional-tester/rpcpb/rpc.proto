@@ -143,8 +143,7 @@ message Tester {
   // TODO: support no-op
   repeated string FailureCases = 31 [(gogoproto.moretags) = "yaml:\"failure-cases\""];
   // FailureShuffle is true to randomize failure injecting order.
-  // TODO: support shuffle
-  // bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
+  bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
   // FailpointCommands is the list of "gofail" commands (e.g. panic("etcd-tester"),1*sleep(1000)).
   repeated string FailpointCommands = 33 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
 
