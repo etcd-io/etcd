@@ -568,8 +568,6 @@ func (clus *Cluster) DestroyEtcdAgents() {
 		clus.logger.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
 	}
 
-	// TODO: closing stresser connections to etcd
-
 	if clus.testerHTTPServer != nil {
 		clus.logger.Info("closing tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr))
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -604,7 +602,7 @@ func (clus *Cluster) WaitHealth() error {
 				break
 			}
 			clus.logger.Info(
-				"successfully wrote health key",
+				"wrote health key",
 				zap.Int("retries", i),
 				zap.String("endpoint", m.EtcdClientEndpoint),
 			)
@@ -688,9 +686,9 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		kvc := pb.NewKVClient(conn)
 
 		clus.logger.Info(
-			"starting compaction",
+			"compacting",
 			zap.String("endpoint", m.EtcdClientEndpoint),
-			zap.Int64("revision", rev),
+			zap.Int64("compact-revision", rev),
 			zap.Duration("timeout", timeout),
 		)
 
@@ -706,14 +704,14 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 				clus.logger.Info(
 					"compact error is ignored",
 					zap.String("endpoint", m.EtcdClientEndpoint),
-					zap.Int64("revision", rev),
+					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
 				)
 			} else {
 				clus.logger.Warn(
 					"compact failed",
 					zap.String("endpoint", m.EtcdClientEndpoint),
-					zap.Int64("revision", rev),
+					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
 				)
 				err = cerr
@@ -723,9 +721,9 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 
 		if succeed {
 			clus.logger.Info(
-				"finished compaction",
+				"compacted",
 				zap.String("endpoint", m.EtcdClientEndpoint),
-				zap.Int64("revision", rev),
+				zap.Int64("compact-revision", rev),
 				zap.Duration("timeout", timeout),
 				zap.Duration("took", time.Since(now)),
 			)

@@ -107,6 +107,7 @@ func (f *failureOne) Recover(clus *Cluster, round int) error {
 	if err := f.recoverMember(clus, round%len(clus.Members)); err != nil {
 		return err
 	}
+	clus.logger.Info("wait health after recovering failureOne")
 	return clus.WaitHealth()
 }
 
@@ -125,6 +126,7 @@ func (f *failureAll) Recover(clus *Cluster, round int) error {
 			return err
 		}
 	}
+	clus.logger.Info("wait health after recovering failureAll")
 	return clus.WaitHealth()
 }
 
@@ -159,6 +161,7 @@ func (f *failureLeader) Recover(clus *Cluster, round int) error {
 	if err := f.recoverMember(clus, f.idx); err != nil {
 		return err
 	}
+	clus.logger.Info("wait health after recovering failureLeader")
 	return clus.WaitHealth()
 }
 

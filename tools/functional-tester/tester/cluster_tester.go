@@ -99,7 +99,7 @@ func (clus *Cluster) StartTester() {
 	}
 
 	clus.logger.Info(
-		"functional-tester is finished",
+		"functional-tester passed",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
@@ -114,6 +114,7 @@ func (clus *Cluster) doRound(round int) error {
 
 		caseTotalCounter.WithLabelValues(f.Desc()).Inc()
 
+		clus.logger.Info("wait health before injecting failures")
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
@@ -134,6 +135,9 @@ func (clus *Cluster) doRound(round int) error {
 			zap.String("desc", f.Desc()),
 		)
 
+		// if run local, recovering server may conflict
+		// with stressing client ports
+		// TODO: use unix for local tests
 		clus.logger.Info(
 			"recovering failure",
 			zap.Int("round", clus.rd),
@@ -150,17 +154,20 @@ func (clus *Cluster) doRound(round int) error {
 			zap.String("desc", f.Desc()),
 		)
 
+		clus.logger.Info("pausing stresser after failure recovery, before wait health")
 		clus.pauseStresser()
 
+		clus.logger.Info("wait health after recovering failures")
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
+		clus.logger.Info("check consistency after recovering failures")
 		if err := clus.checkConsistency(); err != nil {
 			return fmt.Errorf("tt.checkConsistency error (%v)", err)
 		}
 
 		clus.logger.Info(
-			"success",
+			"failure case passed",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", f.Desc()),
@@ -184,6 +191,7 @@ func (clus *Cluster) updateRevision() error {
 }
 
 func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
+	clus.logger.Info("pausing stresser before compact")
 	clus.pauseStresser()
 	defer func() {
 		if err == nil {
@@ -255,7 +263,7 @@ func (clus *Cluster) cleanup() error {
 	clus.closeStresser()
 	if err := clus.FailArchive(); err != nil {
 		clus.logger.Warn(
-			"Cleanup failed",
+			"cleanup failed",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Error(err),
@@ -264,7 +272,7 @@ func (clus *Cluster) cleanup() error {
 	}
 	if err := clus.Restart(); err != nil {
 		clus.logger.Warn(
-			"Restart failed",
+			"restart failed",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Error(err),
