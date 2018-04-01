@@ -292,9 +292,7 @@ func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
-	// TODO: stop/restart proxy?
-	// for now, just keep using the old ones
-	// if len(srv.advertisePortToProxy) > 0
+	srv.stopProxy()
 
 	// exit with stackstrace
 	srv.logger.Info("killing etcd process", zap.String("signal", syscall.SIGQUIT.String()))
