@@ -222,6 +222,8 @@ type Config struct {
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
 
+	PersistExpiry                   bool          `json:"persist-expiry"`
+
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
 
@@ -326,6 +328,8 @@ func NewConfig() *Config {
 		AuthToken: "simple",
 
 		PreVote: false, // TODO: enable by default in v3.5
+
+		PersistExpiry:         false,
 
 		loggerMu:     new(sync.RWMutex),
 		logger:       nil,

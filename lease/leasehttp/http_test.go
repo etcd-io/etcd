@@ -32,7 +32,7 @@ func TestRenewHTTP(t *testing.T) {
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(be, int64(5), false)
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -56,7 +56,7 @@ func TestTimeToLiveHTTP(t *testing.T) {
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(be, int64(5), false)
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -97,7 +97,7 @@ func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(be, int64(5), false)
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {

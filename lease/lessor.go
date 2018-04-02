@@ -150,13 +150,15 @@ type lessor struct {
 	stopC chan struct{}
 	// doneC is a channel whose closure indicates that the lessor is stopped.
 	doneC chan struct{}
+
+	persistExpiry bool
 }
 
-func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
-	return newLessor(b, minLeaseTTL)
+func NewLessor(b backend.Backend, minLeaseTTL int64, persistExpiry bool) Lessor {
+	return newLessor(b, minLeaseTTL, persistExpiry)
 }
 
-func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
+func newLessor(b backend.Backend, minLeaseTTL int64, persistExpiry bool) *lessor {
 	l := &lessor{
 		leaseMap:    make(map[LeaseID]*Lease),
 		itemMap:     make(map[LeaseItem]LeaseID),
@@ -167,7 +169,9 @@ func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 		expiredC: make(chan []*Lease, 16),
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),
+		persistExpiry: persistExpiry,
 	}
+
 	l.initAndRecover()
 
 	go l.runLoop()
@@ -228,7 +232,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 		l.ttl = le.minLeaseTTL
 	}
 
-	if le.isPrimary() {
+	if le.isPrimary() || le.persistExpiry {
 		l.refresh(0)
 	} else {
 		l.forever()
@@ -237,7 +241,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	le.leaseMap[id] = l
 	item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 	heap.Push(&le.leaseHeap, item)
-	l.persistTo(le.b)
+	l.persistTo(le.b, le.persistExpiry)
 
 	return l, nil
 }
@@ -321,6 +325,9 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	l.refresh(0)
 	item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 	heap.Push(&le.leaseHeap, item)
+	if le.persistExpiry {
+		l.persistTo(le.b, le.persistExpiry)
+	}
 	return l.ttl, nil
 }
 
@@ -351,7 +358,9 @@ func (le *lessor) Promote(extend time.Duration) {
 	defer le.mu.Unlock()
 
 	le.demotec = make(chan struct{})
-
+	if le.persistExpiry {
+		return
+	}
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
 		l.refresh(extend)
@@ -407,9 +416,11 @@ func (le *lessor) Demote() {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
-	// set the expiries of all leases to forever
-	for _, l := range le.leaseMap {
-		l.forever()
+	if !le.persistExpiry {
+		// set the expiries of all leases to forever
+		for _, l := range le.leaseMap {
+			l.forever()
+		}
 	}
 
 	if le.demotec != nil {
@@ -597,13 +608,19 @@ func (le *lessor) initAndRecover() {
 		if lpb.TTL < le.minLeaseTTL {
 			lpb.TTL = le.minLeaseTTL
 		}
+		var expiry time.Time
+		if le.persistExpiry && lpb.Expiry != 0{
+			expiry = time.Unix(0, lpb.Expiry)
+		}else{
+			expiry = forever
+		}
 		le.leaseMap[ID] = &Lease{
 			ID:  ID,
 			ttl: lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
 			itemSet: make(map[LeaseItem]struct{}),
-			expiry:  forever,
+			expiry:  expiry,
 			revokec: make(chan struct{}),
 		}
 	}
@@ -631,10 +648,14 @@ func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
 
-func (l *Lease) persistTo(b backend.Backend) {
+func (l *Lease) persistTo(b backend.Backend, expiry bool) {
 	key := int64ToBytes(int64(l.ID))
-
-	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl)}
+	var lpb leasepb.Lease
+	if expiry{
+		lpb = leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl), Expiry: l.expiry.UnixNano()}
+	}else{
+		lpb = leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl)}
+	}
 	val, err := lpb.Marshal()
 	if err != nil {
 		panic("failed to marshal lease proto item")

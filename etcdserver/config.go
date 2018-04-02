@@ -91,6 +91,8 @@ type ServerConfig struct {
 	Debug bool
 
 	ForceNewCluster bool
+
+	PersistExpiry bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

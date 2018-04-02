@@ -41,7 +41,7 @@ func TestLessorGrant(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	le.Promote(0)
 
@@ -95,6 +95,29 @@ func TestLessorGrant(t *testing.T) {
 	be.BatchTx().Unlock()
 }
 
+// TestLessorGrantPresistExpiry ensures Lessor can grant an existing lease persisting expiry.
+func TestLessorGrantPersistExpiry(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer be.Close()
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL, true)
+	defer le.Stop()
+	le.Promote(0)
+
+	l, err := le.Grant(1, minLeaseTTL)
+	if err != nil {
+		t.Fatalf("failed to grant lease (%v)", err)
+	}
+
+	nle := newLessor(be, minLeaseTTL, true)
+
+	nl := nle.Lookup(l.ID)
+	if !l.expiry.Equal(nl.expiry) {
+		t.Errorf("Time remaining was not persisted. Original: %v, New: %v", l.expiry.Round(0), nl.expiry.Round(0))
+	}
+}
+
 // TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
 // from concurrent map writes on 'itemSet'.
 func TestLeaseConcurrentKeys(t *testing.T) {
@@ -102,7 +125,7 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -150,7 +173,7 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	var fd *fakeDeleter
 	le.SetRangeDeleter(func() TxnDelete {
@@ -202,7 +225,7 @@ func TestLessorRenew(t *testing.T) {
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	le.Promote(0)
 
@@ -229,6 +252,37 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
+// TestLessorRenewPersistExpiry ensures Lessor can renew an existing lease and persists the new expiration
+func TestLessorRenewPersistExpiry(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer be.Close()
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL, true)
+	defer le.Stop()
+	le.Promote(0)
+
+	l, err := le.Grant(1, minLeaseTTL)
+	if err != nil {
+		t.Fatalf("failed to grant lease (%v)", err)
+	}
+
+	ttl, err := le.Renew(l.ID)
+	if err != nil {
+		t.Fatalf("failed to renew lease (%v)", err)
+	}
+	if ttl != l.ttl {
+		t.Errorf("ttl = %d, want %d", ttl, l.ttl)
+	}
+
+	nle := newLessor(be, minLeaseTTL, true)
+
+	nl := nle.Lookup(l.ID)
+	if !l.expiry.Equal(nl.expiry) {
+		t.Errorf("Time remaining was not persisted. Original: %v, New: %v", l.expiry.Round(0), nl.expiry.Round(0))
+	}
+}
+
 // TestLessorRenewExtendPileup ensures Lessor extends leases on promotion if too many
 // expire at the same time.
 func TestLessorRenewExtendPileup(t *testing.T) {
@@ -239,7 +293,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	ttl := int64(10)
 	for i := 1; i <= leaseRevokeRate*10; i++ {
 		if _, err := le.Grant(LeaseID(2*i), ttl); err != nil {
@@ -258,7 +312,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	bcfg.Path = filepath.Join(dir, "be")
 	be = backend.New(bcfg)
 	defer be.Close()
-	le = newLessor(be, minLeaseTTL)
+	le = newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 
 	// extend after recovery should extend expiration on lease pile-up
@@ -282,12 +336,53 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	}
 }
 
+
+//TestLessorPersistExpiryPromote ensures that on promotion, lease expirations are not redistributed
+//regardless of revoke rate
+func TestLessorPersistExpiryPromote(t *testing.T) {
+	oldRevokeRate := leaseRevokeRate
+	defer func() { leaseRevokeRate = oldRevokeRate }()
+	leaseRevokeRate = 10
+
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL, true)
+	ttl := int64(10)
+	expiryMap := make(map[LeaseID]time.Time)
+	for i := 1; i <= leaseRevokeRate*10; i++ {
+		l, err := le.Grant(LeaseID(2*i), ttl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expiryMap[l.ID] = l.expiry
+	}
+
+	// simulate stop and recovery
+	le.Stop()
+	be.Close()
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(dir, "be")
+	be = backend.New(bcfg)
+	defer be.Close()
+	le = newLessor(be, minLeaseTTL, true)
+	defer le.Stop()
+
+	le.Promote(0)
+
+	for _, l := range le.leaseMap {
+		if !expiryMap[l.ID].Equal(l.expiry) {
+			t.Errorf("expected expiry to not change for %v, got %v, want %v", l.ID, l.expiry, expiryMap[l.ID])
+		}
+	}
+}
+
 func TestLessorDetach(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -327,7 +422,7 @@ func TestLessorRecover(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 	l1, err1 := le.Grant(1, 10)
 	l2, err2 := le.Grant(2, 20)
@@ -336,7 +431,7 @@ func TestLessorRecover(t *testing.T) {
 	}
 
 	// Create a new lessor with the same backend
-	nle := newLessor(be, minLeaseTTL)
+	nle := newLessor(be, minLeaseTTL, false)
 	defer nle.Stop()
 	nl1 := nle.Lookup(l1.ID)
 	if nl1 == nil || nl1.ttl != l1.ttl {
@@ -349,6 +444,63 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
+// TestLessorRecoverWithExpiry ensures Lessor recovers leases
+// including persisted expiry from backend.
+func TestLessorRecoverWithExpiry(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(be, minLeaseTTL, true)
+	defer le.Stop()
+	l1, err1 := le.Grant(1, 10)
+	if err1 != nil {
+		t.Fatalf("could not grant initial lease (%v)", err1)
+	}
+
+	// Create a new lessor with the same backend
+	nle := newLessor(be, minLeaseTTL, true)
+	defer nle.Stop()
+	nl1 := nle.Lookup(l1.ID)
+	if nl1 == nil || nl1.ttl != l1.ttl {
+		t.Errorf("nl1 = %v, want nl1.ttl= %d", nl1.ttl, l1.ttl)
+	}
+
+	if nl1 == nil || !nl1.expiry.Equal(l1.expiry) {
+		t.Errorf("nl1.expiry = %v, want nl1.expiry= %v", nl1.expiry, l1.expiry)
+	}
+
+	if nl1 == nil || nl1.expiry == forever {
+		t.Errorf("nl1.expiry = %v (forever)", nl1.expiry)
+	}
+}
+
+func TestLessorRecoverWithExpiryPersistChanging(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(be, minLeaseTTL, false)
+	defer le.Stop()
+	l1, err1 := le.Grant(1, 10)
+	if err1 != nil {
+		t.Fatalf("could not grant initial lease (%v)", err1)
+	}
+
+	// Create a new lessor with the same backend, but persist set to true
+	nle := newLessor(be, minLeaseTTL, true)
+	defer nle.Stop()
+	nl1 := nle.Lookup(l1.ID)
+
+	if nl1 == nil || !nl1.expiry.Equal(l1.expiry) {
+		t.Errorf("nl1.expiry = %v, want nl1.expiry= %v", nl1.expiry, l1.expiry)
+	}
+
+	if nl1 == nil || !nl1.expiry.Equal(forever) {
+		t.Errorf("nl1.expiry is not forever (%v), expected pre-persist leases to not have an expiry", nl1.expiry)
+	}
+}
+
 func TestLessorExpire(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
@@ -356,7 +508,7 @@ func TestLessorExpire(t *testing.T) {
 
 	testMinTTL := int64(1)
 
-	le := newLessor(be, testMinTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -408,7 +560,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 
 	testMinTTL := int64(1)
 
-	le := newLessor(be, testMinTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -456,7 +608,7 @@ func TestLessorMaxTTL(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(be, minLeaseTTL, false)
 	defer le.Stop()
 
 	_, err := le.Grant(1, MaxLeaseTTL+1)
