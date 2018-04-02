@@ -81,7 +81,7 @@ message Member {
   string EtcdClientEndpoint = 204 [(gogoproto.moretags) = "yaml:\"etcd-client-endpoint\""];
 
   // Etcd defines etcd binary configuration flags.
-  Etcd Etcd = 301 [(gogoproto.moretags) = "yaml:\"etcd-config\""];
+  Etcd Etcd = 301 [(gogoproto.moretags) = "yaml:\"etcd\""];
 }
 
 enum FailureCase {
