@@ -15,42 +15,43 @@
 package lease
 
 import (
-	"testing"
 	"os"
+	"testing"
+
 	"github.com/coreos/etcd/mvcc/backend"
 )
 
-func BenchmarkLessorFindExpired1(b *testing.B) { benchmarkLessorFindExpired(1, b) }
-func BenchmarkLessorFindExpired10(b *testing.B) { benchmarkLessorFindExpired(10, b) }
-func BenchmarkLessorFindExpired100(b *testing.B)  { benchmarkLessorFindExpired(100, b) }
-func BenchmarkLessorFindExpired1000(b *testing.B)  { benchmarkLessorFindExpired(1000, b) }
-func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
+func BenchmarkLessorFindExpired1(b *testing.B)       { benchmarkLessorFindExpired(1, b) }
+func BenchmarkLessorFindExpired10(b *testing.B)      { benchmarkLessorFindExpired(10, b) }
+func BenchmarkLessorFindExpired100(b *testing.B)     { benchmarkLessorFindExpired(100, b) }
+func BenchmarkLessorFindExpired1000(b *testing.B)    { benchmarkLessorFindExpired(1000, b) }
+func BenchmarkLessorFindExpired10000(b *testing.B)   { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B)  { benchmarkLessorFindExpired(100000, b) }
-func BenchmarkLessorFindExpired1000000(b *testing.B)  { benchmarkLessorFindExpired(1000000, b) }
+func BenchmarkLessorFindExpired1000000(b *testing.B) { benchmarkLessorFindExpired(1000000, b) }
 
-func BenchmarkLessorGrant1(b *testing.B) { benchmarkLessorGrant(1, b) }
-func BenchmarkLessorGrant10(b *testing.B) { benchmarkLessorGrant(10, b) }
-func BenchmarkLessorGrant100(b *testing.B)  { benchmarkLessorGrant(100, b) }
-func BenchmarkLessorGrant1000(b *testing.B)  { benchmarkLessorGrant(1000, b) }
-func BenchmarkLessorGrant10000(b *testing.B)  { benchmarkLessorGrant(10000, b) }
+func BenchmarkLessorGrant1(b *testing.B)       { benchmarkLessorGrant(1, b) }
+func BenchmarkLessorGrant10(b *testing.B)      { benchmarkLessorGrant(10, b) }
+func BenchmarkLessorGrant100(b *testing.B)     { benchmarkLessorGrant(100, b) }
+func BenchmarkLessorGrant1000(b *testing.B)    { benchmarkLessorGrant(1000, b) }
+func BenchmarkLessorGrant10000(b *testing.B)   { benchmarkLessorGrant(10000, b) }
 func BenchmarkLessorGrant100000(b *testing.B)  { benchmarkLessorGrant(100000, b) }
-func BenchmarkLessorGrant1000000(b *testing.B)  { benchmarkLessorGrant(1000000, b) }
+func BenchmarkLessorGrant1000000(b *testing.B) { benchmarkLessorGrant(1000000, b) }
 
-func BenchmarkLessorRenew1(b *testing.B) { benchmarkLessorRenew(1, b) }
-func BenchmarkLessorRenew10(b *testing.B) { benchmarkLessorRenew(10, b) }
-func BenchmarkLessorRenew100(b *testing.B)  { benchmarkLessorRenew(100, b) }
-func BenchmarkLessorRenew1000(b *testing.B)  { benchmarkLessorRenew(1000, b) }
-func BenchmarkLessorRenew10000(b *testing.B)  { benchmarkLessorRenew(10000, b) }
+func BenchmarkLessorRenew1(b *testing.B)       { benchmarkLessorRenew(1, b) }
+func BenchmarkLessorRenew10(b *testing.B)      { benchmarkLessorRenew(10, b) }
+func BenchmarkLessorRenew100(b *testing.B)     { benchmarkLessorRenew(100, b) }
+func BenchmarkLessorRenew1000(b *testing.B)    { benchmarkLessorRenew(1000, b) }
+func BenchmarkLessorRenew10000(b *testing.B)   { benchmarkLessorRenew(10000, b) }
 func BenchmarkLessorRenew100000(b *testing.B)  { benchmarkLessorRenew(100000, b) }
-func BenchmarkLessorRenew1000000(b *testing.B)  { benchmarkLessorRenew(1000000, b) }
+func BenchmarkLessorRenew1000000(b *testing.B) { benchmarkLessorRenew(1000000, b) }
 
-func BenchmarkLessorRevoke1(b *testing.B) { benchmarkLessorRevoke(1, b) }
-func BenchmarkLessorRevoke10(b *testing.B) { benchmarkLessorRevoke(10, b) }
-func BenchmarkLessorRevoke100(b *testing.B)  { benchmarkLessorRevoke(100, b) }
-func BenchmarkLessorRevoke1000(b *testing.B)  { benchmarkLessorRevoke(1000, b) }
-func BenchmarkLessorRevoke10000(b *testing.B)  { benchmarkLessorRevoke(10000, b) }
+func BenchmarkLessorRevoke1(b *testing.B)       { benchmarkLessorRevoke(1, b) }
+func BenchmarkLessorRevoke10(b *testing.B)      { benchmarkLessorRevoke(10, b) }
+func BenchmarkLessorRevoke100(b *testing.B)     { benchmarkLessorRevoke(100, b) }
+func BenchmarkLessorRevoke1000(b *testing.B)    { benchmarkLessorRevoke(1000, b) }
+func BenchmarkLessorRevoke10000(b *testing.B)   { benchmarkLessorRevoke(10000, b) }
 func BenchmarkLessorRevoke100000(b *testing.B)  { benchmarkLessorRevoke(100000, b) }
-func BenchmarkLessorRevoke1000000(b *testing.B)  { benchmarkLessorRevoke(1000000, b) }
+func BenchmarkLessorRevoke1000000(b *testing.B) { benchmarkLessorRevoke(1000000, b) }
 
 func benchmarkLessorFindExpired(size int, b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
@@ -96,7 +97,7 @@ func benchmarkLessorRevoke(size int, b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		le.Revoke(LeaseID(i+size))
+		le.Revoke(LeaseID(i + size))
 	}
 }
 
