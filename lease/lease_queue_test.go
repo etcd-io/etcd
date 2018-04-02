@@ -41,4 +41,15 @@ func TestLeaseQueue(t *testing.T) {
 	if le.leaseHeap[0].id != LeaseID(1) {
 		t.Fatalf("first item expected lease ID %d, got %d", LeaseID(1), le.leaseHeap[0].id)
 	}
+
+	l, ok, more := le.expireExists()
+	if l.ID != 1 {
+		t.Fatalf("first item expected lease ID %d, got %d", 1, l.ID)
+	}
+	if !ok {
+		t.Fatal("expect expiry lease exists")
+	}
+	if more {
+		t.Fatal("expect no more expiry lease")
+	}
 }

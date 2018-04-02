@@ -521,28 +521,50 @@ func (le *lessor) runLoop() {
 	}
 }
 
+// expireExists returns true if expiry items exist.
+// It pops "first" expired item from heap.
+// If it's not expired yet, add it back.
+// "next" is true, to indicate that it may exist in next attempt.
+func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
+	if le.leaseHeap.Len() == 0 {
+		return nil, false, false
+	}
+
+	item := heap.Pop(&le.leaseHeap).(*LeaseWithTime) // O(log N)
+	l = le.leaseMap[item.id]
+	if l == nil {
+		// lease has expired or been revoked
+		// no need to revoke (nothing is expiry)
+		return nil, false, true
+	}
+
+	if time.Now().UnixNano() < item.expiration {
+		// Candidate expirations are caught up, reinsert this item
+		// and no need to revoke (nothing is expiry)
+		heap.Push(&le.leaseHeap, item) // O(log N)
+		return l, false, false
+	}
+	// if the lease is actually expired, add to the removal list. If it is not expired, we can ignore it because another entry will have been inserted into the heap
+
+	return l, true, false
+}
+
 // findExpiredLeases loops leases in the leaseMap until reaching expired limit
 // and returns the expired leases that needed to be revoked.
 func (le *lessor) findExpiredLeases(limit int) []*Lease {
 	leases := make([]*Lease, 0, 16)
 
 	for {
-		if le.leaseHeap.Len() == 0 {
+		l, ok, next := le.expireExists()
+		if !ok && !next {
 			break
 		}
-
-		item := heap.Pop(&le.leaseHeap).(*LeaseWithTime)
-		l := le.leaseMap[item.id]
-		if l == nil {
-			// lease has expired or been revoked, continue
+		if !ok {
 			continue
 		}
-		if time.Now().UnixNano() < item.expiration {
-			// Candidate expirations are caught up, reinsert this item
-			heap.Push(&le.leaseHeap, item)
-			break
+		if next {
+			continue
 		}
-		// if the lease is actually expired, add to the removal list. If it is not expired, we can ignore it because another entry will have been inserted into the heap
 
 		if l.expired() {
 			leases = append(leases, l)
