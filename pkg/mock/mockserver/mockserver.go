@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
@@ -26,45 +27,86 @@ import (
 
 // MockServer provides a mocked out grpc server of the etcdserver interface.
 type MockServer struct {
-	GrpcServer *grpc.Server
+	ln         net.Listener
 	Address    string
+	GrpcServer *grpc.Server
 }
 
 // MockServers provides a cluster of mocket out gprc servers of the etcdserver interface.
-type MockServers []*MockServer
+type MockServers struct {
+	mu      sync.RWMutex
+	Servers []*MockServer
+	wg      sync.WaitGroup
+}
 
 // StartMockServers creates the desired count of mock servers
 // and starts them.
-func StartMockServers(count int) (svrs MockServers, err error) {
-	svrs = make(MockServers, count)
+func StartMockServers(count int) (ms *MockServers, err error) {
+	ms = &MockServers{
+		Servers: make([]*MockServer, count),
+		wg:      sync.WaitGroup{},
+	}
 	defer func() {
 		if err != nil {
-			svrs.Stop()
+			ms.Stop()
 		}
 	}()
-
-	for i := 0; i < count; i++ {
-		listener, err := net.Listen("tcp", "localhost:0")
+	for idx := 0; idx < count; idx++ {
+		ln, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
 			return nil, fmt.Errorf("failed to listen %v", err)
 		}
+		ms.Servers[idx] = &MockServer{ln: ln, Address: ln.Addr().String()}
+		ms.StartAt(idx)
+	}
+	return ms, nil
+}
 
-		svr := grpc.NewServer()
-		pb.RegisterKVServer(svr, &mockKVServer{})
-		svrs[i] = &MockServer{GrpcServer: svr, Address: listener.Addr().String()}
-		go func(svr *grpc.Server, l net.Listener) {
-			svr.Serve(l)
-		}(svr, listener)
+// StartAt restarts mock server at given index.
+func (ms *MockServers) StartAt(idx int) (err error) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if ms.Servers[idx].ln == nil {
+		ms.Servers[idx].ln, err = net.Listen("tcp", ms.Servers[idx].Address)
+		if err != nil {
+			return fmt.Errorf("failed to listen %v", err)
+		}
 	}
 
-	return svrs, nil
+	svr := grpc.NewServer()
+	pb.RegisterKVServer(svr, &mockKVServer{})
+	ms.Servers[idx].GrpcServer = svr
+
+	go func(svr *grpc.Server, l net.Listener) {
+		ms.wg.Add(1)
+		svr.Serve(l)
+	}(ms.Servers[idx].GrpcServer, ms.Servers[idx].ln)
+
+	return nil
+}
+
+// StopAt stops mock server at given index.
+func (ms *MockServers) StopAt(idx int) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if ms.Servers[idx].ln == nil {
+		return
+	}
+
+	ms.Servers[idx].GrpcServer.Stop()
+	ms.Servers[idx].GrpcServer = nil
+	ms.Servers[idx].ln = nil
+	ms.wg.Done()
 }
 
 // Stop stops the mock server, immediately closing all open connections and listeners.
-func (svrs MockServers) Stop() {
-	for _, svr := range svrs {
-		svr.GrpcServer.Stop()
+func (ms *MockServers) Stop() {
+	for idx := range ms.Servers {
+		ms.StopAt(idx)
 	}
+	ms.wg.Wait()
 }
 
 type mockKVServer struct{}
