@@ -25,9 +25,8 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	humanize "github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 )
 
 // Proxy defines proxy layer that simulates common network faults,

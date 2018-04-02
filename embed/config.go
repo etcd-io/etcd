@@ -36,6 +36,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -197,9 +198,16 @@ type Config struct {
 	// - https://github.com/coreos/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
-	Debug                 bool   `json:"debug"`
-	LogPkgLevels          string `json:"log-package-levels"`
-	LogOutput             string `json:"log-output"`
+	// Logger logs server-side operations.
+	// If nil, all logs are discarded.
+	// TODO: make it configurable with existing logger.
+	// Currently, only logs TLS transport.
+	Logger *zap.Logger
+
+	Debug        bool   `json:"debug"`
+	LogPkgLevels string `json:"log-package-levels"`
+	LogOutput    string `json:"log-output"`
+
 	EnablePprof           bool   `json:"enable-pprof"`
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
@@ -263,6 +271,7 @@ func NewConfig() *Config {
 	apurl, _ := url.Parse(DefaultInitialAdvertisePeerURLs)
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
+	lg, _ := zap.NewProduction()
 	cfg := &Config{
 		MaxSnapFiles:          DefaultMaxSnapshots,
 		MaxWalFiles:           DefaultMaxWALs,
@@ -282,6 +291,7 @@ func NewConfig() *Config {
 		ClusterState:          ClusterStateFlagNew,
 		InitialClusterToken:   "etcd-cluster",
 		StrictReconfigCheck:   DefaultStrictReconfigCheck,
+		Logger:                lg,
 		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              DefaultEnableV2,
@@ -315,6 +325,7 @@ func (cfg *Config) SetupLogging() {
 
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
 	if cfg.Debug {
+		cfg.Logger = zap.NewExample()
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
 		grpc.EnableTracing = true
 		// enable info, warning, error
@@ -601,7 +612,7 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		for i, u := range cfg.LCUrls {
 			chosts[i] = u.Host
 		}
-		cfg.ClientTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
+		cfg.ClientTLSInfo, err = transport.SelfCert(cfg.Logger, filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
 		return err
 	} else if cfg.ClientAutoTLS {
 		plog.Warningf("ignoring client auto TLS since certs given")
@@ -615,7 +626,7 @@ func (cfg *Config) PeerSelfCert() (err error) {
 		for i, u := range cfg.LPUrls {
 			phosts[i] = u.Host
 		}
-		cfg.PeerTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
+		cfg.PeerTLSInfo, err = transport.SelfCert(cfg.Logger, filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
 		return err
 	} else if cfg.PeerAutoTLS {
 		plog.Warningf("ignoring peer auto TLS since certs given")

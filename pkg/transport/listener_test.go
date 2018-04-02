@@ -22,6 +22,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func createSelfCert() (*TLSInfo, func(), error) {
@@ -29,7 +31,7 @@ func createSelfCert() (*TLSInfo, func(), error) {
 	if terr != nil {
 		return nil, nil, terr
 	}
-	info, err := SelfCert(d, []string{"127.0.0.1"})
+	info, err := SelfCert(zap.NewExample(), d, []string{"127.0.0.1"})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -259,7 +261,7 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpdir)
-	tlsinfo, err := SelfCert(tmpdir, []string{"127.0.0.1"})
+	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"})
 	if err != nil {
 		t.Fatal(err)
 	}
