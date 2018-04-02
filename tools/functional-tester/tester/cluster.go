@@ -302,6 +302,14 @@ func (clus *Cluster) updateFailures() {
 	}
 }
 
+func (clus *Cluster) failureStrings() (fs []string) {
+	fs = make([]string, len(clus.failures))
+	for i := range clus.failures {
+		fs[i] = clus.failures[i].Desc()
+	}
+	return fs
+}
+
 func (clus *Cluster) shuffleFailures() {
 	rand.Seed(time.Now().UnixNano())
 	offset := rand.Intn(1000)

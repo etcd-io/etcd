@@ -165,25 +165,16 @@ func Test_newCluster(t *testing.T) {
 	cfg.logger = logger
 
 	cfg.updateFailures()
-	fs1 := make([]string, len(cfg.failures))
-	for i := range cfg.failures {
-		fs1[i] = cfg.failures[i].Desc()
-	}
+	fs1 := cfg.failureStrings()
 
 	cfg.shuffleFailures()
-	fs2 := make([]string, len(cfg.failures))
-	for i := range cfg.failures {
-		fs2[i] = cfg.failures[i].Desc()
-	}
+	fs2 := cfg.failureStrings()
 	if reflect.DeepEqual(fs1, fs2) {
 		t.Fatalf("expected shuffled failure cases, got %q", fs2)
 	}
 
 	cfg.shuffleFailures()
-	fs3 := make([]string, len(cfg.failures))
-	for i := range cfg.failures {
-		fs3[i] = cfg.failures[i].Desc()
-	}
+	fs3 := cfg.failureStrings()
 	if reflect.DeepEqual(fs2, fs3) {
 		t.Fatalf("expected reshuffled failure cases from %q, got %q", fs2, fs3)
 	}

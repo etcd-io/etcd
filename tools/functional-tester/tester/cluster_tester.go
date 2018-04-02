@@ -109,6 +109,7 @@ func (clus *Cluster) doRound(round int) error {
 	if clus.Tester.FailureShuffle {
 		clus.shuffleFailures()
 	}
+
 	for i, f := range clus.failures {
 		clus.cs = i
 
