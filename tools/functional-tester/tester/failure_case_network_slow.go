@@ -45,13 +45,14 @@ func recoverDelayPeerPortTxRx(clus *Cluster, idx int) error {
 	return err
 }
 
-func newFailureDelayPeerPortTxRxOneMember() Failure {
-	desc := fmt.Sprintf("delay one member's network by adding %d ms latency", slowNetworkLatency)
-	f := &failureOne{
+func newFailureDelayPeerPortTxRxOneFollower() Failure {
+	desc := fmt.Sprintf("delay follower peer port by adding %d ms latency", slowNetworkLatency)
+	ff := failureByFunc{
 		description:   description(desc),
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
+	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: triggerElectionDur,
@@ -59,13 +60,13 @@ func newFailureDelayPeerPortTxRxOneMember() Failure {
 }
 
 func newFailureDelayPeerPortTxRxLeader() Failure {
-	desc := fmt.Sprintf("delay leader's network by adding %d ms latency", slowNetworkLatency)
+	desc := fmt.Sprintf("delay leader peer port by adding %d ms latency", slowNetworkLatency)
 	ff := failureByFunc{
 		description:   description(desc),
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-	f := &failureLeader{ff, 0}
+	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: triggerElectionDur,
@@ -74,7 +75,7 @@ func newFailureDelayPeerPortTxRxLeader() Failure {
 
 func newFailureDelayPeerPortTxRxAll() Failure {
 	f := &failureAll{
-		description:   "delay all members' network",
+		description:   "delay all peer port",
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}

@@ -83,8 +83,26 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 	for _, fcmd := range failpointCommands {
 		inject := makeInjectFailpoint(fp, fcmd)
 		fs = append(fs, []Failure{
-			&failureOne{
-				description:   description(fmt.Sprintf("failpoint %s (one: %s)", fp, fcmd)),
+			&failureFollower{
+				failureByFunc: failureByFunc{
+					description:   description(fmt.Sprintf("failpoint %s (one: %s)", fp, fcmd)),
+					injectMember:  inject,
+					recoverMember: recov,
+				},
+				last: -1,
+				lead: -1,
+			},
+			&failureLeader{
+				failureByFunc: failureByFunc{
+					description:   description(fmt.Sprintf("failpoint %s (leader: %s)", fp, fcmd)),
+					injectMember:  inject,
+					recoverMember: recov,
+				},
+				last: -1,
+				lead: -1,
+			},
+			&failureQuorum{
+				description:   description(fmt.Sprintf("failpoint %s (quorum: %s)", fp, fcmd)),
 				injectMember:  inject,
 				recoverMember: recov,
 			},
@@ -92,19 +110,6 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 				description:   description(fmt.Sprintf("failpoint %s (all: %s)", fp, fcmd)),
 				injectMember:  inject,
 				recoverMember: recov,
-			},
-			&failureQuorum{
-				description:   description(fmt.Sprintf("failpoint %s (majority: %s)", fp, fcmd)),
-				injectMember:  inject,
-				recoverMember: recov,
-			},
-			&failureLeader{
-				failureByFunc{
-					description:   description(fmt.Sprintf("failpoint %s (leader: %s)", fp, fcmd)),
-					injectMember:  inject,
-					recoverMember: recov,
-				},
-				0,
 			},
 		}...)
 	}

@@ -24,12 +24,26 @@ func recoverBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_UnblackholePeerPortTxRx)
 }
 
-func newFailureBlackholePeerPortTxRxOne() Failure {
-	f := &failureOne{
-		description:   "blackhole peer port on one member",
+func newFailureBlackholePeerPortTxRxOneFollower() Failure {
+	ff := failureByFunc{
+		description:   "blackhole peer port on one follower",
 		injectMember:  injectBlackholePeerPortTxRx,
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
+	f := &failureFollower{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: triggerElectionDur,
+	}
+}
+
+func newFailureBlackholePeerPortTxRxLeader() Failure {
+	ff := failureByFunc{
+		description:   "blackhole peer port on leader",
+		injectMember:  injectBlackholePeerPortTxRx,
+		recoverMember: recoverBlackholePeerPortTxRx,
+	}
+	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: triggerElectionDur,
@@ -38,7 +52,7 @@ func newFailureBlackholePeerPortTxRxOne() Failure {
 
 func newFailureBlackholePeerPortTxRxAll() Failure {
 	f := &failureAll{
-		description:   "blackhole peer port on all members",
+		description:   "blackhole peer port on all",
 		injectMember:  injectBlackholePeerPortTxRx,
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
