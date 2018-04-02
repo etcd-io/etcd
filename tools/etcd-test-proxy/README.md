@@ -8,7 +8,7 @@ Test locally
 $ ./build
 $ ./bin/etcd
 
-$ make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
+$ make build-etcd-test-proxy
 
 $ ./bin/etcd-test-proxy --help
 $ ./bin/etcd-test-proxy --from localhost:23790 --to localhost:2379 --http-port 2378 --verbose
@@ -168,7 +168,7 @@ Trigger leader election
 
 ```bash
 $ ./build
-$ make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
+$ make build-etcd-test-proxy
 
 $ rm -rf /tmp/etcd-test-proxy-data.s*
 $ goreman -f ./tools/etcd-test-proxy/Procfile start

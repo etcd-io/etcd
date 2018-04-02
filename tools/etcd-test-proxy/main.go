@@ -56,7 +56,7 @@ $ ./build
 $ ./bin/etcd
 
 # build etcd-test-proxy
-$ make build-etcd-test-proxy -f ./hack/scripts-dev/Makefile
+$ make build-etcd-test-proxy
 
 # to test etcd with proxy layer
 $ ./bin/etcd-test-proxy --help
