@@ -352,7 +352,7 @@ function release_pass {
 
 function shellcheck_pass {
 	if which shellcheck >/dev/null; then
-		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
+		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
