@@ -14,8 +14,9 @@
 
 package lease
 
+// LeaseWithTime contains lease object with expire information.
 type LeaseWithTime struct {
-	leaseId    LeaseID
+	id         LeaseID
 	expiration int64
 	index      int
 }

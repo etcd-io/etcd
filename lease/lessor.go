@@ -235,7 +235,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	le.leaseMap[id] = l
-	item := &LeaseWithTime{leaseId: l.ID, expiration: l.expiry.UnixNano()}
+	item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 	heap.Push(&le.leaseHeap, item)
 	l.persistTo(le.b)
 
@@ -319,7 +319,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	}
 
 	l.refresh(0)
-	item := &LeaseWithTime{leaseId: l.ID, expiration: l.expiry.UnixNano()}
+	item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 	heap.Push(&le.leaseHeap, item)
 	return l.ttl, nil
 }
@@ -355,7 +355,7 @@ func (le *lessor) Promote(extend time.Duration) {
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
 		l.refresh(extend)
-		item := &LeaseWithTime{leaseId: l.ID, expiration: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 		heap.Push(&le.leaseHeap, item)
 	}
 
@@ -392,7 +392,7 @@ func (le *lessor) Promote(extend time.Duration) {
 		delay := time.Duration(rateDelay)
 		nextWindow = baseWindow + delay
 		l.refresh(delay + extend)
-		item := &LeaseWithTime{leaseId: l.ID, expiration: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 		heap.Push(&le.leaseHeap, item)
 	}
 }
@@ -532,7 +532,7 @@ func (le *lessor) findExpiredLeases(limit int) []*Lease {
 		}
 
 		item := heap.Pop(&le.leaseHeap).(*LeaseWithTime)
-		l := le.leaseMap[item.leaseId]
+		l := le.leaseMap[item.id]
 		if l == nil {
 			// lease has expired or been revoked, continue
 			continue
