@@ -293,3 +293,62 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 		t.Fatalf("expected balanced loads for %d requests, got switches %d", reqN, switches)
 	}
 }
+
+// TestRoundRobinBalancedPassthrough ensures that requests with
+// passthrough resolver be balanced with roundrobin picker.
+// TODO: this is not working right now...
+// Maintain multiple client connections?
+func TestRoundRobinBalancedPassthrough(t *testing.T) {
+	ms, err := mockserver.StartMockServers(3)
+	if err != nil {
+		t.Fatalf("failed to start mock servers: %s", err)
+	}
+	defer ms.Stop()
+	eps := make([]string, len(ms.Servers))
+	for i, svr := range ms.Servers {
+		eps[i] = fmt.Sprintf("passthrough:///%s", svr.Address)
+	}
+
+	cfg := Config{
+		Policy:    picker.RoundrobinBalanced,
+		Name:      genName(),
+		Logger:    zap.NewExample(),
+		Endpoints: eps,
+	}
+	rrb := New(cfg)
+	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+	if err != nil {
+		t.Fatalf("Failed to dial mock server: %s", err)
+	}
+	defer conn.Close()
+	cli := pb.NewKVClient(conn)
+
+	reqFunc := func(ctx context.Context) (picked string, err error) {
+		var p peer.Peer
+		_, err = cli.Range(ctx, &pb.RangeRequest{Key: []byte("/x")}, grpc.Peer(&p))
+		if p.Addr != nil {
+			picked = p.Addr.String()
+		}
+		return picked, err
+	}
+
+	reqN := 20
+	prev, switches := "", 0
+	for i := 0; i < reqN; i++ {
+		picked, err := reqFunc(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if prev == "" && picked != "" {
+			prev = picked
+			continue
+		}
+		if prev != picked {
+			switches++
+		}
+		prev = picked
+	}
+	if switches < reqN/2-3 { // -3 for initial resolutions + failover
+		t.Logf("expected balanced loads for %d requests, got switches %d", reqN, switches)
+	}
+}
