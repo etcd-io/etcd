@@ -318,7 +318,7 @@ func startProxy(cfg *config) error {
 	}
 	listenerTLS := cfg.ec.ClientTLSInfo
 	if cfg.ec.ClientAutoTLS && cTLS {
-		listenerTLS, err = transport.SelfCert(filepath.Join(cfg.ec.Dir, "clientCerts"), cHosts)
+		listenerTLS, err = transport.SelfCert(cfg.ec.Logger, filepath.Join(cfg.ec.Dir, "clientCerts"), cHosts)
 		if err != nil {
 			plog.Fatalf("proxy: could not initialize self-signed client certs (%v)", err)
 		}

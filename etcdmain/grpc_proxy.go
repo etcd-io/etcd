@@ -42,6 +42,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -162,7 +163,11 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if tlsinfo == nil && grpcProxyListenAutoTLS {
 		host := []string{"https://" + grpcProxyListenAddr}
 		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
-		autoTLS, err := transport.SelfCert(dir, host)
+		lg, _ := zap.NewProduction()
+		if grpcProxyDebug {
+			lg = zap.NewExample()
+		}
+		autoTLS, err := transport.SelfCert(lg, dir, host)
 		if err != nil {
 			plog.Fatal(err)
 		}
