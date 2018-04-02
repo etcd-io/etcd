@@ -52,4 +52,8 @@ func TestLeaseQueue(t *testing.T) {
 	if more {
 		t.Fatal("expect no more expiry lease")
 	}
+
+	if le.leaseHeap.Len() != 49 {
+		t.Fatalf("expected lease heap pop, got %d", le.leaseHeap.Len())
+	}
 }
