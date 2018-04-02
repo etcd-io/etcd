@@ -8,7 +8,7 @@ agent-configs:
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:1379
-  etcd-config:
+  etcd:
     name: s1
     data-dir: /tmp/etcd-agent-data-1/etcd.data
     wal-dir: /tmp/etcd-agent-data-1/etcd.data/member/wal
@@ -32,7 +32,7 @@ agent-configs:
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:2379
-  etcd-config:
+  etcd:
     name: s2
     data-dir: /tmp/etcd-agent-data-2/etcd.data
     wal-dir: /tmp/etcd-agent-data-2/etcd.data/member/wal
@@ -56,7 +56,7 @@ agent-configs:
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:3379
-  etcd-config:
+  etcd:
     name: s3
     data-dir: /tmp/etcd-agent-data-3/etcd.data
     wal-dir: /tmp/etcd-agent-data-3/etcd.data/member/wal
@@ -98,9 +98,7 @@ tester-config:
   - DELAY_PEER_PORT_TX_RX_LEADER
   - DELAY_PEER_PORT_TX_RX_ALL
 
-  # TODO: shuffle
-  # fail-shuffle: true
-
+  failure-shuffle: true
   failpoint-commands:
   - panic("etcd-tester")
   # failpoint-commands:

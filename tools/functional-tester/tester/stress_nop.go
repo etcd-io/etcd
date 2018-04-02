@@ -14,17 +14,18 @@
 
 package tester
 
-// Failure defines failure injection interface.
-// To add a fail case:
-//  1. implement "Failure" interface
-//  2. define fail case name in "rpcpb.FailureCase"
-type Failure interface {
-	// Inject injeccts the failure into the testing cluster at the given
-	// round. When calling the function, the cluster should be in health.
-	Inject(clus *Cluster) error
-	// Recover recovers the injected failure caused by the injection of the
-	// given round and wait for the recovery of the testing cluster.
-	Recover(clus *Cluster) error
-	// Desc returns a description of the failure
-	Desc() string
+import "time"
+
+// nopStresser implements Stresser that does nothing
+type nopStresser struct {
+	start time.Time
+	qps   int
 }
+
+func (s *nopStresser) Stress() error { return nil }
+func (s *nopStresser) Pause()        {}
+func (s *nopStresser) Close()        {}
+func (s *nopStresser) ModifiedKeys() int64 {
+	return 0
+}
+func (s *nopStresser) Checker() Checker { return nil }

@@ -16,8 +16,8 @@ package tester
 
 type failureNoOp failureByFunc
 
-func (f *failureNoOp) Inject(clus *Cluster, round int) error  { return nil }
-func (f *failureNoOp) Recover(clus *Cluster, round int) error { return nil }
+func (f *failureNoOp) Inject(clus *Cluster) error  { return nil }
+func (f *failureNoOp) Recover(clus *Cluster) error { return nil }
 
 func newFailureNoOp() Failure {
 	return &failureNoOp{

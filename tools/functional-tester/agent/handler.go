@@ -90,12 +90,12 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 	}
 	srv.creatEtcdCmd()
 
-	srv.logger.Info("starting etcd process")
+	srv.logger.Info("starting etcd")
 	err = srv.startEtcdCmd()
 	if err != nil {
 		return nil, err
 	}
-	srv.logger.Info("started etcd process", zap.String("command-path", srv.etcdCmd.Path))
+	srv.logger.Info("started etcd", zap.String("command-path", srv.etcdCmd.Path))
 
 	// wait some time for etcd listener start
 	// before setting up proxy
@@ -248,15 +248,17 @@ func (srv *Server) startEtcdCmd() error {
 func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 	srv.creatEtcdCmd()
 
-	srv.logger.Info("restarting etcd process")
+	srv.logger.Info("restarting etcd")
 	err := srv.startEtcdCmd()
 	if err != nil {
 		return nil, err
 	}
-	srv.logger.Info("restarted etcd process", zap.String("command-path", srv.etcdCmd.Path))
+	srv.logger.Info("restarted etcd", zap.String("command-path", srv.etcdCmd.Path))
 
 	// wait some time for etcd listener start
 	// before setting up proxy
+	// TODO: local tests should handle port conflicts
+	// with clients on restart
 	time.Sleep(time.Second)
 	if err = srv.startProxy(); err != nil {
 		return nil, err
@@ -269,21 +271,14 @@ func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
-	if srv.last != rpcpb.Operation_InitialStartEtcd && srv.last != rpcpb.Operation_RestartEtcd {
-		return &rpcpb.Response{
-			Success: false,
-			Status:  fmt.Sprintf("%q is not valid; last server operation was %q", rpcpb.Operation_KillEtcd.String(), srv.last.String()),
-		}, nil
-	}
-
 	srv.stopProxy()
 
-	srv.logger.Info("killing etcd process", zap.String("signal", syscall.SIGTERM.String()))
+	srv.logger.Info("killing etcd", zap.String("signal", syscall.SIGTERM.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
 	if err != nil {
 		return nil, err
 	}
-	srv.logger.Info("killed etcd process", zap.String("signal", syscall.SIGTERM.String()))
+	srv.logger.Info("killed etcd", zap.String("signal", syscall.SIGTERM.String()))
 
 	return &rpcpb.Response{
 		Success: true,
@@ -292,17 +287,15 @@ func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
-	// TODO: stop/restart proxy?
-	// for now, just keep using the old ones
-	// if len(srv.advertisePortToProxy) > 0
+	srv.stopProxy()
 
 	// exit with stackstrace
-	srv.logger.Info("killing etcd process", zap.String("signal", syscall.SIGQUIT.String()))
+	srv.logger.Info("killing etcd", zap.String("signal", syscall.SIGQUIT.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGQUIT)
 	if err != nil {
 		return nil, err
 	}
-	srv.logger.Info("killed etcd process", zap.String("signal", syscall.SIGQUIT.String()))
+	srv.logger.Info("killed etcd", zap.String("signal", syscall.SIGQUIT.String()))
 
 	srv.etcdLogFile.Sync()
 	srv.etcdLogFile.Close()
@@ -336,12 +329,12 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 
 // stop proxy, etcd, delete data directory
 func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
-	srv.logger.Info("killing etcd process", zap.String("signal", syscall.SIGTERM.String()))
+	srv.logger.Info("killing etcd", zap.String("signal", syscall.SIGTERM.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
 	if err != nil {
 		return nil, err
 	}
-	srv.logger.Info("killed etcd process", zap.String("signal", syscall.SIGTERM.String()))
+	srv.logger.Info("killed etcd", zap.String("signal", syscall.SIGTERM.String()))
 
 	srv.logger.Info("removing base directory", zap.String("dir", srv.Member.BaseDir))
 	err = os.RemoveAll(srv.Member.BaseDir)

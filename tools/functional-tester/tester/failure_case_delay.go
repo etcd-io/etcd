@@ -25,8 +25,8 @@ type failureDelay struct {
 	delayDuration time.Duration
 }
 
-func (f *failureDelay) Inject(clus *Cluster, round int) error {
-	if err := f.Failure.Inject(clus, round); err != nil {
+func (f *failureDelay) Inject(clus *Cluster) error {
+	if err := f.Failure.Inject(clus); err != nil {
 		return err
 	}
 	if f.delayDuration > 0 {

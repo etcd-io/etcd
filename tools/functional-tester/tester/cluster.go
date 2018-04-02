@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -27,10 +28,10 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
-	"golang.org/x/time/rate"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -234,6 +235,33 @@ func NewCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
 	}
 	go clus.serveTesterServer()
 
+	clus.updateFailures()
+
+	clus.rateLimiter = rate.NewLimiter(
+		rate.Limit(int(clus.Tester.StressQPS)),
+		int(clus.Tester.StressQPS),
+	)
+	clus.updateStresserChecker()
+	return clus, nil
+}
+
+func (clus *Cluster) serveTesterServer() {
+	clus.logger.Info(
+		"started tester HTTP server",
+		zap.String("tester-address", clus.Tester.TesterAddr),
+	)
+	err := clus.testerHTTPServer.ListenAndServe()
+	clus.logger.Info(
+		"tester HTTP server returned",
+		zap.String("tester-address", clus.Tester.TesterAddr),
+		zap.Error(err),
+	)
+	if err != nil && err != http.ErrServerClosed {
+		clus.logger.Fatal("tester HTTP errored", zap.Error(err))
+	}
+}
+
+func (clus *Cluster) updateFailures() {
 	for _, cs := range clus.Tester.FailureCases {
 		switch cs {
 		case "KILL_ONE_FOLLOWER":
@@ -270,33 +298,59 @@ func NewCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
 			clus.failures = append(clus.failures, newFailureNoOp())
 		case "EXTERNAL":
 			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
-		default:
-			return nil, fmt.Errorf("unknown failure %q", cs)
 		}
 	}
-
-	clus.rateLimiter = rate.NewLimiter(
-		rate.Limit(int(clus.Tester.StressQPS)),
-		int(clus.Tester.StressQPS),
-	)
-	clus.updateStresserChecker()
-	return clus, nil
 }
 
-func (clus *Cluster) serveTesterServer() {
-	clus.logger.Info(
-		"started tester HTTP server",
-		zap.String("tester-address", clus.Tester.TesterAddr),
-	)
-	err := clus.testerHTTPServer.ListenAndServe()
-	clus.logger.Info(
-		"tester HTTP server returned",
-		zap.String("tester-address", clus.Tester.TesterAddr),
-		zap.Error(err),
-	)
-	if err != nil && err != http.ErrServerClosed {
-		clus.logger.Fatal("tester HTTP errored", zap.Error(err))
+func (clus *Cluster) failureStrings() (fs []string) {
+	fs = make([]string, len(clus.failures))
+	for i := range clus.failures {
+		fs[i] = clus.failures[i].Desc()
 	}
+	return fs
+}
+
+func (clus *Cluster) shuffleFailures() {
+	rand.Seed(time.Now().UnixNano())
+	offset := rand.Intn(1000)
+	n := len(clus.failures)
+	cp := coprime(n)
+
+	clus.logger.Info("shuffling test failure cases", zap.Int("total", n))
+	fs := make([]Failure, n)
+	for i := 0; i < n; i++ {
+		fs[i] = clus.failures[(cp*i+offset)%n]
+	}
+	clus.failures = fs
+	clus.logger.Info("shuffled test failure cases", zap.Int("total", n))
+}
+
+/*
+x and y of GCD 1 are coprime to each other
+
+x1 = ( coprime of n * idx1 + offset ) % n
+x2 = ( coprime of n * idx2 + offset ) % n
+(x2 - x1) = coprime of n * (idx2 - idx1) % n
+          = (idx2 - idx1) = 1
+
+Consecutive x's are guaranteed to be distinct
+*/
+func coprime(n int) int {
+	coprime := 1
+	for i := n / 2; i < n; i++ {
+		if gcd(i, n) == 1 {
+			coprime = i
+			break
+		}
+	}
+	return coprime
+}
+
+func gcd(x, y int) int {
+	if y == 0 {
+		return x
+	}
+	return gcd(y, x%y)
 }
 
 func (clus *Cluster) updateStresserChecker() {
@@ -522,8 +576,6 @@ func (clus *Cluster) DestroyEtcdAgents() {
 		clus.logger.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
 	}
 
-	// TODO: closing stresser connections to etcd
-
 	if clus.testerHTTPServer != nil {
 		clus.logger.Info("closing tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr))
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -558,7 +610,7 @@ func (clus *Cluster) WaitHealth() error {
 				break
 			}
 			clus.logger.Info(
-				"successfully wrote health key",
+				"wrote health key",
 				zap.Int("retries", i),
 				zap.String("endpoint", m.EtcdClientEndpoint),
 			)
@@ -642,9 +694,9 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		kvc := pb.NewKVClient(conn)
 
 		clus.logger.Info(
-			"starting compaction",
+			"compacting",
 			zap.String("endpoint", m.EtcdClientEndpoint),
-			zap.Int64("revision", rev),
+			zap.Int64("compact-revision", rev),
 			zap.Duration("timeout", timeout),
 		)
 
@@ -660,14 +712,14 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 				clus.logger.Info(
 					"compact error is ignored",
 					zap.String("endpoint", m.EtcdClientEndpoint),
-					zap.Int64("revision", rev),
+					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
 				)
 			} else {
 				clus.logger.Warn(
 					"compact failed",
 					zap.String("endpoint", m.EtcdClientEndpoint),
-					zap.Int64("revision", rev),
+					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
 				)
 				err = cerr
@@ -677,9 +729,9 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 
 		if succeed {
 			clus.logger.Info(
-				"finished compaction",
+				"compacted",
 				zap.String("endpoint", m.EtcdClientEndpoint),
-				zap.Int64("revision", rev),
+				zap.Int64("compact-revision", rev),
 				zap.Duration("timeout", timeout),
 				zap.Duration("took", time.Since(now)),
 			)

@@ -26,12 +26,12 @@ type failureExternal struct {
 	scriptPath  string
 }
 
-func (f *failureExternal) Inject(clus *Cluster, round int) error {
-	return exec.Command(f.scriptPath, "enable", fmt.Sprintf("%d", round)).Run()
+func (f *failureExternal) Inject(clus *Cluster) error {
+	return exec.Command(f.scriptPath, "enable", fmt.Sprintf("%d", clus.rd)).Run()
 }
 
-func (f *failureExternal) Recover(clus *Cluster, round int) error {
-	return exec.Command(f.scriptPath, "disable", fmt.Sprintf("%d", round)).Run()
+func (f *failureExternal) Recover(clus *Cluster) error {
+	return exec.Command(f.scriptPath, "disable", fmt.Sprintf("%d", clus.rd)).Run()
 }
 
 func (f *failureExternal) Desc() string { return f.description }

@@ -50,6 +50,7 @@ func main() {
 	}
 	defer clus.DestroyEtcdAgents()
 
+	logger.Info("wait health after bootstrap")
 	err = clus.WaitHealth()
 	if err != nil {
 		logger.Fatal("WaitHealth failed", zap.Error(err))
