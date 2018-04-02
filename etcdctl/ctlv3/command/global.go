@@ -29,8 +29,10 @@ import (
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -169,6 +171,7 @@ func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeo
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tlsinfo := transport.TLSInfo{}
+	tlsinfo.Logger, _ = zap.NewProduction()
 	if scfg.cert != "" {
 		tlsinfo.CertFile = scfg.cert
 		cfgtls = &tlsinfo
