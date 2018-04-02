@@ -52,7 +52,7 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 			}
 			defer ms.Stop()
 			var resolvedAddrs []resolver.Address
-			for _, svr := range ms {
+			for _, svr := range ms.Servers {
 				resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
 			}
 
