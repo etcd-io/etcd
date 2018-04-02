@@ -34,9 +34,9 @@ func (clus *Cluster) StartTester() {
 	var preModifiedKey int64
 	for round := 0; round < int(clus.Tester.RoundLimit) || clus.Tester.RoundLimit == -1; round++ {
 		roundTotalCounter.Inc()
-
 		clus.rd = round
-		if err := clus.doRound(round); err != nil {
+
+		if err := clus.doRound(); err != nil {
 			clus.logger.Warn(
 				"doRound failed; returning",
 				zap.Int("round", clus.rd),
@@ -50,6 +50,7 @@ func (clus *Cluster) StartTester() {
 			preModifiedKey = 0
 			continue
 		}
+
 		// -1 so that logPrefix doesn't print out 'case'
 		clus.cs = -1
 
@@ -105,11 +106,16 @@ func (clus *Cluster) StartTester() {
 	)
 }
 
-func (clus *Cluster) doRound(round int) error {
+func (clus *Cluster) doRound() error {
 	if clus.Tester.FailureShuffle {
 		clus.shuffleFailures()
 	}
 
+	clus.logger.Info(
+		"starting round",
+		zap.Int("round", clus.rd),
+		zap.Strings("failures", clus.failureStrings()),
+	)
 	for i, f := range clus.failures {
 		clus.cs = i
 
@@ -126,7 +132,7 @@ func (clus *Cluster) doRound(round int) error {
 			zap.Int("case", clus.cs),
 			zap.String("desc", f.Desc()),
 		)
-		if err := f.Inject(clus, round); err != nil {
+		if err := f.Inject(clus); err != nil {
 			return fmt.Errorf("injection error: %v", err)
 		}
 		clus.logger.Info(
@@ -145,7 +151,7 @@ func (clus *Cluster) doRound(round int) error {
 			zap.Int("case", clus.cs),
 			zap.String("desc", f.Desc()),
 		)
-		if err := f.Recover(clus, round); err != nil {
+		if err := f.Recover(clus); err != nil {
 			return fmt.Errorf("recovery error: %v", err)
 		}
 		clus.logger.Info(
@@ -174,6 +180,12 @@ func (clus *Cluster) doRound(round int) error {
 			zap.String("desc", f.Desc()),
 		)
 	}
+
+	clus.logger.Info(
+		"finished round",
+		zap.Int("round", clus.rd),
+		zap.Strings("failures", clus.failureStrings()),
+	)
 	return nil
 }
 

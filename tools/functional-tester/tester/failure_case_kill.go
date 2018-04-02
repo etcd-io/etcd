@@ -99,19 +99,19 @@ type failureLeader struct {
 // failureUntilSnapshot injects a failure and waits for a snapshot event
 type failureUntilSnapshot struct{ Failure }
 
-func (f *failureOne) Inject(clus *Cluster, round int) error {
-	return f.injectMember(clus, round%len(clus.Members))
+func (f *failureOne) Inject(clus *Cluster) error {
+	return f.injectMember(clus, clus.rd%len(clus.Members))
 }
 
-func (f *failureOne) Recover(clus *Cluster, round int) error {
-	if err := f.recoverMember(clus, round%len(clus.Members)); err != nil {
+func (f *failureOne) Recover(clus *Cluster) error {
+	if err := f.recoverMember(clus, clus.rd%len(clus.Members)); err != nil {
 		return err
 	}
 	clus.logger.Info("wait health after recovering failureOne")
 	return clus.WaitHealth()
 }
 
-func (f *failureAll) Inject(clus *Cluster, round int) error {
+func (f *failureAll) Inject(clus *Cluster) error {
 	for i := range clus.Members {
 		if err := f.injectMember(clus, i); err != nil {
 			return err
@@ -120,7 +120,7 @@ func (f *failureAll) Inject(clus *Cluster, round int) error {
 	return nil
 }
 
-func (f *failureAll) Recover(clus *Cluster, round int) error {
+func (f *failureAll) Recover(clus *Cluster) error {
 	for i := range clus.Members {
 		if err := f.recoverMember(clus, i); err != nil {
 			return err
@@ -130,8 +130,8 @@ func (f *failureAll) Recover(clus *Cluster, round int) error {
 	return clus.WaitHealth()
 }
 
-func (f *failureQuorum) Inject(clus *Cluster, round int) error {
-	for i := range killMap(len(clus.Members), round) {
+func (f *failureQuorum) Inject(clus *Cluster) error {
+	for i := range killMap(len(clus.Members), clus.rd) {
 		if err := f.injectMember(clus, i); err != nil {
 			return err
 		}
@@ -139,8 +139,8 @@ func (f *failureQuorum) Inject(clus *Cluster, round int) error {
 	return nil
 }
 
-func (f *failureQuorum) Recover(clus *Cluster, round int) error {
-	for i := range killMap(len(clus.Members), round) {
+func (f *failureQuorum) Recover(clus *Cluster) error {
+	for i := range killMap(len(clus.Members), clus.rd) {
 		if err := f.recoverMember(clus, i); err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func (f *failureQuorum) Recover(clus *Cluster, round int) error {
 	return nil
 }
 
-func (f *failureLeader) Inject(clus *Cluster, round int) error {
+func (f *failureLeader) Inject(clus *Cluster) error {
 	idx, err := clus.GetLeader()
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (f *failureLeader) Inject(clus *Cluster, round int) error {
 	return f.injectMember(clus, idx)
 }
 
-func (f *failureLeader) Recover(clus *Cluster, round int) error {
+func (f *failureLeader) Recover(clus *Cluster) error {
 	if err := f.recoverMember(clus, f.idx); err != nil {
 		return err
 	}
@@ -165,8 +165,8 @@ func (f *failureLeader) Recover(clus *Cluster, round int) error {
 	return clus.WaitHealth()
 }
 
-func (f *failureUntilSnapshot) Inject(clus *Cluster, round int) error {
-	if err := f.Failure.Inject(clus, round); err != nil {
+func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
+	if err := f.Failure.Inject(clus); err != nil {
 		return err
 	}
 	if len(clus.Members) < 3 {

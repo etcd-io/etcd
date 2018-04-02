@@ -21,10 +21,10 @@ package tester
 type Failure interface {
 	// Inject injeccts the failure into the testing cluster at the given
 	// round. When calling the function, the cluster should be in health.
-	Inject(clus *Cluster, round int) error
+	Inject(clus *Cluster) error
 	// Recover recovers the injected failure caused by the injection of the
 	// given round and wait for the recovery of the testing cluster.
-	Recover(clus *Cluster, round int) error
+	Recover(clus *Cluster) error
 	// Desc returns a description of the failure
 	Desc() string
 }
