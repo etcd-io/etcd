@@ -265,11 +265,11 @@ func (clus *Cluster) updateFailures() {
 	for _, cs := range clus.Tester.FailureCases {
 		switch cs {
 		case "KILL_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureKillOne()) // TODO
+			clus.failures = append(clus.failures, newFailureKillOneFollower())
 		case "KILL_LEADER":
 			clus.failures = append(clus.failures, newFailureKillLeader())
 		case "KILL_ONE_FOLLOWER_FOR_LONG":
-			clus.failures = append(clus.failures, newFailureKillOneForLongTime()) // TODO
+			clus.failures = append(clus.failures, newFailureKillOneFollowerForLongTime())
 		case "KILL_LEADER_FOR_LONG":
 			clus.failures = append(clus.failures, newFailureKillLeaderForLongTime())
 		case "KILL_QUORUM":
@@ -277,17 +277,17 @@ func (clus *Cluster) updateFailures() {
 		case "KILL_ALL":
 			clus.failures = append(clus.failures, newFailureKillAll())
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOne()) // TODO
-		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_ONE":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOne()) // TODO
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower())
+		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader())
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll())
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneMember()) // TODO
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower())
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader()) // TODO
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader())
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll()) // TODO
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll())
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
