@@ -28,10 +28,7 @@ To run locally, first build tester image:
 
 ```bash
 pushd ../..
-
-make build-docker-functional-tester \
-  -f ./hack/scripts-dev/Makefile
-
+make build-docker-functional-tester
 popd
 ```
 
