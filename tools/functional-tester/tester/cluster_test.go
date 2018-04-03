@@ -156,13 +156,13 @@ func Test_newCluster(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.logger = nil
+	cfg.lg = nil
 
 	if !reflect.DeepEqual(exp, cfg) {
 		t.Fatalf("expected %+v, got %+v", exp, cfg)
 	}
 
-	cfg.logger = logger
+	cfg.lg = logger
 
 	cfg.updateFailures()
 	fs1 := cfg.failureStrings()
