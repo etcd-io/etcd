@@ -32,12 +32,12 @@ var dialOpts = []grpc.DialOption{
 }
 
 // DialEtcdGRPCServer creates a raw gRPC connection to an etcd member.
-func (m *Member) DialEtcdGRPCServer() (*grpc.ClientConn, error) {
+func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	if m.EtcdClientTLS {
 		// TODO: support TLS
 		panic("client TLS not supported yet")
 	}
-	return grpc.Dial(m.EtcdClientEndpoint, dialOpts...)
+	return grpc.Dial(m.EtcdClientEndpoint, append(dialOpts, opts...)...)
 }
 
 // CreateEtcdClient creates a client from member.
