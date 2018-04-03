@@ -34,7 +34,7 @@ import (
 // serialized in tester-side
 type Server struct {
 	grpcServer *grpc.Server
-	logger     *zap.Logger
+	lg         *zap.Logger
 
 	network string
 	address string
@@ -56,12 +56,12 @@ type Server struct {
 
 // NewServer returns a new agent server.
 func NewServer(
-	logger *zap.Logger,
+	lg *zap.Logger,
 	network string,
 	address string,
 ) *Server {
 	return &Server{
-		logger:  logger,
+		lg:      lg,
 		network: network,
 		address: address,
 		last:    rpcpb.Operation_NotStarted,
@@ -93,34 +93,33 @@ func (srv *Server) StartServe() error {
 
 	rpcpb.RegisterTransportServer(srv.grpcServer, srv)
 
-	srv.logger.Info(
+	srv.lg.Info(
 		"gRPC server started",
 		zap.String("address", srv.address),
 		zap.String("listener-address", srv.ln.Addr().String()),
 	)
 	err = srv.grpcServer.Serve(srv.ln)
 	if err != nil && strings.Contains(err.Error(), "use of closed network connection") {
-		srv.logger.Info(
+		srv.lg.Info(
 			"gRPC server is shut down",
 			zap.String("address", srv.address),
 			zap.Error(err),
 		)
 	} else {
-		srv.logger.Warn(
+		srv.lg.Warn(
 			"gRPC server returned with error",
 			zap.String("address", srv.address),
 			zap.Error(err),
 		)
 	}
-
 	return err
 }
 
 // Stop stops serving gRPC server.
 func (srv *Server) Stop() {
-	srv.logger.Info("gRPC server stopping", zap.String("address", srv.address))
+	srv.lg.Info("gRPC server stopping", zap.String("address", srv.address))
 	srv.grpcServer.Stop()
-	srv.logger.Info("gRPC server stopped", zap.String("address", srv.address))
+	srv.lg.Info("gRPC server stopped", zap.String("address", srv.address))
 }
 
 // Transport communicates with etcd tester.
