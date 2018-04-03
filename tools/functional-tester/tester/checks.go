@@ -113,6 +113,7 @@ func (lc *leaseChecker) Check() error {
 			cli.Close()
 		}
 	}()
+	lc.cli = cli
 	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}

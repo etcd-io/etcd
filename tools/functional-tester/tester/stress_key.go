@@ -259,8 +259,8 @@ func writeTxn(cli *clientv3.Client, keys []string, txnOps int) stressFunc {
 		}
 		_, err := cli.Txn(ctx).
 			If(com).
-			Else(elseOps...).
 			Then(thenOps...).
+			Else(elseOps...).
 			Commit()
 		return err, int64(txnOps)
 	}

@@ -347,14 +347,6 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 			cancel()
 			continue
 		}
-
-		ls.lg.Debug(
-			"keepLeaseAlive waiting on lease stream",
-			zap.String("endpoint", ls.m.EtcdClientEndpoint),
-			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
-		)
-		leaseRenewTime := time.Now()
-		respRC := <-stream
 		if err != nil {
 			ls.lg.Debug(
 				"keepLeaseAlive failed to receive lease keepalive response",
@@ -364,6 +356,23 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 			)
 			continue
 		}
+
+		ls.lg.Debug(
+			"keepLeaseAlive waiting on lease stream",
+			zap.String("endpoint", ls.m.EtcdClientEndpoint),
+			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
+		)
+		leaseRenewTime := time.Now()
+		respRC := <-stream
+		if respRC == nil {
+			ls.lg.Debug(
+				"keepLeaseAlive received nil lease keepalive response",
+				zap.String("endpoint", ls.m.EtcdClientEndpoint),
+				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
+			)
+			continue
+		}
+
 		// lease expires after TTL become 0
 		// don't send keepalive if the lease has expired
 		if respRC.TTL <= 0 {
