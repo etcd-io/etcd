@@ -128,7 +128,8 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error)
 	errc := make(chan error)
 	go func() {
 		for {
-			req, err := stream.Recv()
+			var req *rpcpb.Request
+			req, err = stream.Recv()
 			if err != nil {
 				errc <- err
 				// TODO: handle error and retry
