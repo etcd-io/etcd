@@ -22,9 +22,6 @@ import (
 )
 
 const (
-	// TODO
-	slowNetworkLatency = 500 // 500 millisecond
-
 	// delay duration to trigger leader election (default election timeout 1s)
 	triggerElectionDur = 5 * time.Second
 
@@ -45,8 +42,8 @@ func recoverDelayPeerPortTxRx(clus *Cluster, idx int) error {
 	return err
 }
 
-func newFailureDelayPeerPortTxRxOneFollower() Failure {
-	desc := fmt.Sprintf("delay follower peer port by adding %d ms latency", slowNetworkLatency)
+func newFailureDelayPeerPortTxRxOneFollower(clus *Cluster) Failure {
+	desc := fmt.Sprintf("delay follower peer port by %d ms", clus.Tester.DelayLatencyMs)
 	ff := failureByFunc{
 		description:   description(desc),
 		injectMember:  injectDelayPeerPortTxRx,
@@ -59,8 +56,8 @@ func newFailureDelayPeerPortTxRxOneFollower() Failure {
 	}
 }
 
-func newFailureDelayPeerPortTxRxLeader() Failure {
-	desc := fmt.Sprintf("delay leader peer port by adding %d ms latency", slowNetworkLatency)
+func newFailureDelayPeerPortTxRxLeader(clus *Cluster) Failure {
+	desc := fmt.Sprintf("delay leader peer port by %d ms", clus.Tester.DelayLatencyMs)
 	ff := failureByFunc{
 		description:   description(desc),
 		injectMember:  injectDelayPeerPortTxRx,
@@ -73,9 +70,10 @@ func newFailureDelayPeerPortTxRxLeader() Failure {
 	}
 }
 
-func newFailureDelayPeerPortTxRxAll() Failure {
+func newFailureDelayPeerPortTxRxAll(clus *Cluster) Failure {
+	desc := fmt.Sprintf("delay all peer port by %d ms", clus.Tester.DelayLatencyMs)
 	f := &failureAll{
-		description:   "delay all peer port",
+		description:   description(desc),
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
