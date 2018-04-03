@@ -41,15 +41,17 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 }
 
 // CreateEtcdClient creates a client from member.
-func (m *Member) CreateEtcdClient() (*clientv3.Client, error) {
+func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, error) {
+	cfg := clientv3.Config{
+		Endpoints:   []string{m.EtcdClientEndpoint},
+		DialTimeout: 5 * time.Second,
+		DialOptions: opts,
+	}
 	if m.EtcdClientTLS {
 		// TODO: support TLS
 		panic("client TLS not supported yet")
 	}
-	return clientv3.New(clientv3.Config{
-		Endpoints:   []string{m.EtcdClientEndpoint},
-		DialTimeout: 5 * time.Second,
-	})
+	return clientv3.New(cfg)
 }
 
 // CheckCompact ensures that historical data before given revision has been compacted.
