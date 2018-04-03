@@ -3983,11 +3983,15 @@ type MaintenanceClient interface {
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// Defragment defragments a member's backend database to recover storage space.
 	Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error)
-	// Hash computes the hash of the KV's backend.
-	// This is designed for testing; do not use this in production when there
-	// are ongoing transactions.
+	// Hash computes the hash of whole backend keyspace,
+	// including key, lease, and other buckets in storage.
+	// This is designed for testing ONLY!
+	// Do not rely on this in production with ongoing transactions,
+	// since Hash operation does not hold MVCC locks.
+	// Use "HashKV" API instead for "key" bucket consistency checks.
 	Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error)
 	// HashKV computes the hash of all MVCC keys up to a given revision.
+	// It only iterates "key" bucket in backend storage.
 	HashKV(ctx context.Context, in *HashKVRequest, opts ...grpc.CallOption) (*HashKVResponse, error)
 	// Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
 	Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (Maintenance_SnapshotClient, error)
@@ -4098,11 +4102,15 @@ type MaintenanceServer interface {
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// Defragment defragments a member's backend database to recover storage space.
 	Defragment(context.Context, *DefragmentRequest) (*DefragmentResponse, error)
-	// Hash computes the hash of the KV's backend.
-	// This is designed for testing; do not use this in production when there
-	// are ongoing transactions.
+	// Hash computes the hash of whole backend keyspace,
+	// including key, lease, and other buckets in storage.
+	// This is designed for testing ONLY!
+	// Do not rely on this in production with ongoing transactions,
+	// since Hash operation does not hold MVCC locks.
+	// Use "HashKV" API instead for "key" bucket consistency checks.
 	Hash(context.Context, *HashRequest) (*HashResponse, error)
 	// HashKV computes the hash of all MVCC keys up to a given revision.
+	// It only iterates "key" bucket in backend storage.
 	HashKV(context.Context, *HashKVRequest) (*HashKVResponse, error)
 	// Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
 	Snapshot(*SnapshotRequest, Maintenance_SnapshotServer) error

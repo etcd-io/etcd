@@ -69,8 +69,8 @@ This is a generated documentation. Please read the proto files for more.
 | Alarm | AlarmRequest | AlarmResponse | Alarm activates, deactivates, and queries alarms regarding cluster health. |
 | Status | StatusRequest | StatusResponse | Status gets the status of the member. |
 | Defragment | DefragmentRequest | DefragmentResponse | Defragment defragments a member's backend database to recover storage space. |
-| Hash | HashRequest | HashResponse | Hash computes the hash of the KV's backend. This is designed for testing; do not use this in production when there are ongoing transactions. |
-| HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. |
+| Hash | HashRequest | HashResponse | Hash computes the hash of whole backend keyspace, including key, lease, and other buckets in storage. This is designed for testing ONLY! Do not rely on this in production with ongoing transactions, since Hash operation does not hold MVCC locks. Use "HashKV" API instead for "key" bucket consistency checks. |
+| HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. It only iterates "key" bucket in backend storage. |
 | Snapshot | SnapshotRequest | SnapshotResponse | Snapshot sends a snapshot of the entire backend from a member over a stream to a client. |
 | MoveLeader | MoveLeaderRequest | MoveLeaderResponse | MoveLeader requests current leader node to transfer its leadership to transferee. |
 
