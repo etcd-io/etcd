@@ -50,7 +50,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 			// 'out of memory' error. Put rate limits in server side.
 			stressers[i] = &keyStresser{
 				lg:                clus.lg,
-				Endpoint:          clus.Members[idx].EtcdClientEndpoint,
+				m:                 clus.Members[idx],
 				keySize:           int(clus.Tester.StressKeySize),
 				keyLargeSize:      int(clus.Tester.StressKeySizeLarge),
 				keySuffixRange:    int(clus.Tester.StressKeySuffixRange),
@@ -63,7 +63,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 		case "LEASE":
 			stressers[i] = &leaseStresser{
 				lg:           clus.lg,
-				endpoint:     clus.Members[idx].EtcdClientEndpoint,
+				m:            clus.Members[idx],
 				numLeases:    10, // TODO: configurable
 				keysPerLease: 10, // TODO: configurable
 				rateLimiter:  clus.rateLimiter,
