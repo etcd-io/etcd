@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -33,9 +34,9 @@ import (
 )
 
 type keyStresser struct {
-	logger *zap.Logger
+	lg *zap.Logger
 
-	Endpoint string // TODO: use Member
+	m *rpcpb.Member
 
 	keySize           int
 	keyLargeSize      int
@@ -59,9 +60,9 @@ type keyStresser struct {
 
 func (s *keyStresser) Stress() error {
 	// TODO: add backoff option
-	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
+	conn, err := s.m.DialEtcdGRPCServer()
 	if err != nil {
-		return fmt.Errorf("%v (%s)", err, s.Endpoint)
+		return fmt.Errorf("%v (%q)", err, s.m.EtcdClientEndpoint)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -96,9 +97,9 @@ func (s *keyStresser) Stress() error {
 		go s.run(ctx)
 	}
 
-	s.logger.Info(
+	s.lg.Info(
 		"key stresser started in background",
-		zap.String("endpoint", s.Endpoint),
+		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return nil
 }
@@ -150,9 +151,9 @@ func (s *keyStresser) run(ctx context.Context) {
 			// from stresser.Cancel method:
 			return
 		default:
-			s.logger.Warn(
+			s.lg.Warn(
 				"key stresser exited with error",
-				zap.String("endpoint", s.Endpoint),
+				zap.String("endpoint", s.m.EtcdClientEndpoint),
 				zap.Error(err),
 			)
 			return
@@ -169,9 +170,9 @@ func (s *keyStresser) Close() {
 	s.conn.Close()
 	s.wg.Wait()
 
-	s.logger.Info(
+	s.lg.Info(
 		"key stresser is closed",
-		zap.String("endpoint", s.Endpoint),
+		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 }
 

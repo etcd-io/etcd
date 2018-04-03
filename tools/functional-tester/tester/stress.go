@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Stresser defines stressing client operations.
 type Stresser interface {
 	// Stress starts to stress the etcd cluster
 	Stress() error
@@ -38,7 +39,7 @@ type Stresser interface {
 func newStresser(clus *Cluster, idx int) Stresser {
 	stressers := make([]Stresser, len(clus.Tester.StressTypes))
 	for i, stype := range clus.Tester.StressTypes {
-		clus.logger.Info("creating stresser", zap.String("type", stype))
+		clus.lg.Info("creating stresser", zap.String("type", stype))
 
 		switch stype {
 		case "NO_STRESS":
@@ -48,8 +49,8 @@ func newStresser(clus *Cluster, idx int) Stresser {
 			// TODO: Too intensive stressing clients can panic etcd member with
 			// 'out of memory' error. Put rate limits in server side.
 			stressers[i] = &keyStresser{
-				logger:            clus.logger,
-				Endpoint:          clus.Members[idx].EtcdClientEndpoint,
+				lg:                clus.lg,
+				m:                 clus.Members[idx],
 				keySize:           int(clus.Tester.StressKeySize),
 				keyLargeSize:      int(clus.Tester.StressKeySizeLarge),
 				keySuffixRange:    int(clus.Tester.StressKeySuffixRange),
@@ -61,8 +62,8 @@ func newStresser(clus *Cluster, idx int) Stresser {
 
 		case "LEASE":
 			stressers[i] = &leaseStresser{
-				logger:       clus.logger,
-				endpoint:     clus.Members[idx].EtcdClientEndpoint,
+				lg:           clus.lg,
+				m:            clus.Members[idx],
 				numLeases:    10, // TODO: configurable
 				keysPerLease: 10, // TODO: configurable
 				rateLimiter:  clus.rateLimiter,

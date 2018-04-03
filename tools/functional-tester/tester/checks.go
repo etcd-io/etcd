@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ import (
 
 const retries = 7
 
+// Checker checks cluster consistency.
 type Checker interface {
 	// Check returns an error if the system fails a consistency check.
 	Check() error
@@ -39,14 +41,14 @@ type hashAndRevGetter interface {
 }
 
 type hashChecker struct {
-	logger *zap.Logger
-	hrg    hashAndRevGetter
+	lg  *zap.Logger
+	hrg hashAndRevGetter
 }
 
-func newHashChecker(logger *zap.Logger, hrg hashAndRevGetter) Checker {
+func newHashChecker(lg *zap.Logger, hrg hashAndRevGetter) Checker {
 	return &hashChecker{
-		logger: logger,
-		hrg:    hrg,
+		lg:  lg,
+		hrg: hrg,
 	}
 }
 
@@ -57,12 +59,11 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 		revs   map[string]int64
 		hashes map[string]int64
 	)
-
 	// retries in case of transient failure or etcd cluster has not stablized yet.
 	for i := 0; i < retries; i++ {
 		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
-			hc.logger.Warn(
+			hc.lg.Warn(
 				"failed to get revision and hash",
 				zap.Int("retries", i),
 				zap.Error(err),
@@ -73,7 +74,7 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 			if sameRev && sameHashes {
 				return nil
 			}
-			hc.logger.Warn(
+			hc.lg.Warn(
 				"retrying; etcd cluster is not stable",
 				zap.Int("retries", i),
 				zap.Bool("same-revisions", sameRev),
@@ -97,19 +98,17 @@ func (hc *hashChecker) Check() error {
 }
 
 type leaseChecker struct {
-	logger *zap.Logger
-
-	endpoint string // TODO: use Member
-
-	ls          *leaseStresser
-	leaseClient pb.LeaseClient
-	kvc         pb.KVClient
+	lg  *zap.Logger
+	m   *rpcpb.Member
+	ls  *leaseStresser
+	lsc pb.LeaseClient
+	kvc pb.KVClient
 }
 
 func (lc *leaseChecker) Check() error {
-	conn, err := grpc.Dial(lc.ls.endpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(1))
+	conn, err := lc.m.DialEtcdGRPCServer(grpc.WithBackoffMaxDelay(time.Second))
 	if err != nil {
-		return fmt.Errorf("%v (%s)", err, lc.ls.endpoint)
+		return fmt.Errorf("%v (%q)", err, lc.m.EtcdClientEndpoint)
 	}
 	defer func() {
 		if conn != nil {
@@ -117,7 +116,7 @@ func (lc *leaseChecker) Check() error {
 		}
 	}()
 	lc.kvc = pb.NewKVClient(conn)
-	lc.leaseClient = pb.NewLeaseClient(conn)
+	lc.lsc = pb.NewLeaseClient(conn)
 	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}
@@ -157,7 +156,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 			return nil
 		}
 		if err != nil {
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"retrying; Lease TimeToLive failed",
 				zap.Int("retries", i),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
@@ -167,7 +166,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 		}
 		if resp.TTL > 0 {
 			dur := time.Duration(resp.TTL) * time.Second
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"lease has not been expired, wait until expire",
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Int64("ttl", resp.TTL),
@@ -175,7 +174,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 			)
 			time.Sleep(dur)
 		} else {
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"lease expired but not yet revoked",
 				zap.Int("retries", i),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
@@ -195,18 +194,18 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
 	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
-			zap.String("endpoint", lc.endpoint),
+			zap.String("endpoint", lc.m.EtcdClientEndpoint),
 			zap.Error(err),
 		)
 		return err
 	}
 	leaseExpired, err := lc.hasLeaseExpired(ctx, leaseID)
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasLeaseExpired failed",
-			zap.String("endpoint", lc.endpoint),
+			zap.String("endpoint", lc.m.EtcdClientEndpoint),
 			zap.Error(err),
 		)
 		return err
@@ -233,7 +232,7 @@ func (lc *leaseChecker) check(expired bool, leases map[int64]time.Time) error {
 
 func (lc *leaseChecker) getLeaseByID(ctx context.Context, leaseID int64) (*pb.LeaseTimeToLiveResponse, error) {
 	ltl := &pb.LeaseTimeToLiveRequest{ID: leaseID, Keys: true}
-	return lc.leaseClient.LeaseTimeToLive(ctx, ltl, grpc.FailFast(false))
+	return lc.lsc.LeaseTimeToLive(ctx, ltl, grpc.FailFast(false))
 }
 
 func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
@@ -248,9 +247,9 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 		} else {
 			return resp.TTL == -1, nil
 		}
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasLeaseExpired getLeaseByID failed",
-			zap.String("endpoint", lc.endpoint),
+			zap.String("endpoint", lc.m.EtcdClientEndpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			zap.Error(err),
 		)
@@ -267,9 +266,9 @@ func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, lease
 		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
 	}, grpc.FailFast(false))
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
-			zap.String("endpoint", lc.endpoint),
+			zap.String("endpoint", lc.m.EtcdClientEndpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			zap.Error(err),
 		)
