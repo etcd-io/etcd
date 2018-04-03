@@ -30,7 +30,7 @@ func (f *failureDelay) Inject(clus *Cluster) error {
 		return err
 	}
 	if f.delayDuration > 0 {
-		clus.logger.Info(
+		clus.lg.Info(
 			"sleeping in failureDelay",
 			zap.Duration("delay", f.delayDuration),
 			zap.String("case", f.Failure.Desc()),

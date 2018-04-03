@@ -33,7 +33,7 @@ import (
 )
 
 type keyStresser struct {
-	logger *zap.Logger
+	lg *zap.Logger
 
 	Endpoint string // TODO: use Member
 
@@ -96,7 +96,7 @@ func (s *keyStresser) Stress() error {
 		go s.run(ctx)
 	}
 
-	s.logger.Info(
+	s.lg.Info(
 		"key stresser started in background",
 		zap.String("endpoint", s.Endpoint),
 	)
@@ -150,7 +150,7 @@ func (s *keyStresser) run(ctx context.Context) {
 			// from stresser.Cancel method:
 			return
 		default:
-			s.logger.Warn(
+			s.lg.Warn(
 				"key stresser exited with error",
 				zap.String("endpoint", s.Endpoint),
 				zap.Error(err),
@@ -169,7 +169,7 @@ func (s *keyStresser) Close() {
 	s.conn.Close()
 	s.wg.Wait()
 
-	s.logger.Info(
+	s.lg.Info(
 		"key stresser is closed",
 		zap.String("endpoint", s.Endpoint),
 	)

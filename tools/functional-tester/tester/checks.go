@@ -39,14 +39,14 @@ type hashAndRevGetter interface {
 }
 
 type hashChecker struct {
-	logger *zap.Logger
-	hrg    hashAndRevGetter
+	lg  *zap.Logger
+	hrg hashAndRevGetter
 }
 
-func newHashChecker(logger *zap.Logger, hrg hashAndRevGetter) Checker {
+func newHashChecker(lg *zap.Logger, hrg hashAndRevGetter) Checker {
 	return &hashChecker{
-		logger: logger,
-		hrg:    hrg,
+		lg:  lg,
+		hrg: hrg,
 	}
 }
 
@@ -62,7 +62,7 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 	for i := 0; i < retries; i++ {
 		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
-			hc.logger.Warn(
+			hc.lg.Warn(
 				"failed to get revision and hash",
 				zap.Int("retries", i),
 				zap.Error(err),
@@ -73,7 +73,7 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 			if sameRev && sameHashes {
 				return nil
 			}
-			hc.logger.Warn(
+			hc.lg.Warn(
 				"retrying; etcd cluster is not stable",
 				zap.Int("retries", i),
 				zap.Bool("same-revisions", sameRev),
@@ -97,7 +97,7 @@ func (hc *hashChecker) Check() error {
 }
 
 type leaseChecker struct {
-	logger *zap.Logger
+	lg *zap.Logger
 
 	endpoint string // TODO: use Member
 
@@ -157,7 +157,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 			return nil
 		}
 		if err != nil {
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"retrying; Lease TimeToLive failed",
 				zap.Int("retries", i),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
@@ -167,7 +167,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 		}
 		if resp.TTL > 0 {
 			dur := time.Duration(resp.TTL) * time.Second
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"lease has not been expired, wait until expire",
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Int64("ttl", resp.TTL),
@@ -175,7 +175,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 			)
 			time.Sleep(dur)
 		} else {
-			lc.logger.Debug(
+			lc.lg.Debug(
 				"lease expired but not yet revoked",
 				zap.Int("retries", i),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
@@ -195,7 +195,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
 	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
 			zap.String("endpoint", lc.endpoint),
 			zap.Error(err),
@@ -204,7 +204,7 @@ func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID in
 	}
 	leaseExpired, err := lc.hasLeaseExpired(ctx, leaseID)
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasLeaseExpired failed",
 			zap.String("endpoint", lc.endpoint),
 			zap.Error(err),
@@ -248,7 +248,7 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 		} else {
 			return resp.TTL == -1, nil
 		}
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasLeaseExpired getLeaseByID failed",
 			zap.String("endpoint", lc.endpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
@@ -267,7 +267,7 @@ func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, lease
 		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
 	}, grpc.FailFast(false))
 	if err != nil {
-		lc.logger.Warn(
+		lc.lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
 			zap.String("endpoint", lc.endpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),

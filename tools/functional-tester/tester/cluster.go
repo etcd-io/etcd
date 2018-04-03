@@ -38,7 +38,7 @@ import (
 
 // Cluster defines tester cluster.
 type Cluster struct {
-	logger *zap.Logger
+	lg *zap.Logger
 
 	agentConns    []*grpc.ClientConn
 	agentClients  []rpcpb.TransportClient
@@ -61,15 +61,15 @@ type Cluster struct {
 	cs              int
 }
 
-func newCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
-	logger.Info("reading configuration file", zap.String("path", fpath))
+func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
+	lg.Info("reading configuration file", zap.String("path", fpath))
 	bts, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("opened configuration file", zap.String("path", fpath))
+	lg.Info("opened configuration file", zap.String("path", fpath))
 
-	clus := &Cluster{logger: logger}
+	clus := &Cluster{lg: lg}
 	if err = yaml.Unmarshal(bts, clus); err != nil {
 		return nil, err
 	}
@@ -192,8 +192,8 @@ var dialOpts = []grpc.DialOption{
 }
 
 // NewCluster creates a client from a tester configuration.
-func NewCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
-	clus, err := newCluster(logger, fpath)
+func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
+	clus, err := newCluster(lg, fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -205,21 +205,21 @@ func NewCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
 	clus.failures = make([]Failure, 0)
 
 	for i, ap := range clus.Members {
-		logger.Info("connecting", zap.String("agent-address", ap.AgentAddr))
+		clus.lg.Info("connecting", zap.String("agent-address", ap.AgentAddr))
 		var err error
 		clus.agentConns[i], err = grpc.Dial(ap.AgentAddr, dialOpts...)
 		if err != nil {
 			return nil, err
 		}
 		clus.agentClients[i] = rpcpb.NewTransportClient(clus.agentConns[i])
-		logger.Info("connected", zap.String("agent-address", ap.AgentAddr))
+		clus.lg.Info("connected", zap.String("agent-address", ap.AgentAddr))
 
-		logger.Info("creating stream", zap.String("agent-address", ap.AgentAddr))
+		clus.lg.Info("creating stream", zap.String("agent-address", ap.AgentAddr))
 		clus.agentStreams[i], err = clus.agentClients[i].Transport(context.Background())
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("created stream", zap.String("agent-address", ap.AgentAddr))
+		clus.lg.Info("created stream", zap.String("agent-address", ap.AgentAddr))
 	}
 
 	mux := http.NewServeMux()
@@ -246,18 +246,18 @@ func NewCluster(logger *zap.Logger, fpath string) (*Cluster, error) {
 }
 
 func (clus *Cluster) serveTesterServer() {
-	clus.logger.Info(
+	clus.lg.Info(
 		"started tester HTTP server",
 		zap.String("tester-address", clus.Tester.TesterAddr),
 	)
 	err := clus.testerHTTPServer.ListenAndServe()
-	clus.logger.Info(
+	clus.lg.Info(
 		"tester HTTP server returned",
 		zap.String("tester-address", clus.Tester.TesterAddr),
 		zap.Error(err),
 	)
 	if err != nil && err != http.ErrServerClosed {
-		clus.logger.Fatal("tester HTTP errored", zap.Error(err))
+		clus.lg.Fatal("tester HTTP errored", zap.Error(err))
 	}
 }
 
@@ -291,7 +291,7 @@ func (clus *Cluster) updateFailures() {
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
-				clus.logger.Info("no failpoints found!", zap.Error(fperr))
+				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
 			clus.failures = append(clus.failures, fpFailures...)
 		case "NO_FAIL":
@@ -316,13 +316,13 @@ func (clus *Cluster) shuffleFailures() {
 	n := len(clus.failures)
 	cp := coprime(n)
 
-	clus.logger.Info("shuffling test failure cases", zap.Int("total", n))
+	clus.lg.Info("shuffling test failure cases", zap.Int("total", n))
 	fs := make([]Failure, n)
 	for i := 0; i < n; i++ {
 		fs[i] = clus.failures[(cp*i+offset)%n]
 	}
 	clus.failures = fs
-	clus.logger.Info("shuffled test failure cases", zap.Int("total", n))
+	clus.lg.Info("shuffled test failure cases", zap.Int("total", n))
 }
 
 /*
@@ -354,7 +354,7 @@ func gcd(x, y int) int {
 }
 
 func (clus *Cluster) updateStresserChecker() {
-	clus.logger.Info(
+	clus.lg.Info(
 		"updating stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -367,7 +367,7 @@ func (clus *Cluster) updateStresserChecker() {
 	clus.stresser = cs
 
 	if clus.Tester.ConsistencyCheck {
-		clus.checker = newHashChecker(clus.logger, hashAndRevGetter(clus))
+		clus.checker = newHashChecker(clus.lg, hashAndRevGetter(clus))
 		if schk := cs.Checker(); schk != nil {
 			clus.checker = newCompositeChecker([]Checker{clus.checker, schk})
 		}
@@ -375,7 +375,7 @@ func (clus *Cluster) updateStresserChecker() {
 		clus.checker = newNoChecker()
 	}
 
-	clus.logger.Info(
+	clus.lg.Info(
 		"updated stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -383,13 +383,13 @@ func (clus *Cluster) updateStresserChecker() {
 }
 
 func (clus *Cluster) startStresser() (err error) {
-	clus.logger.Info(
+	clus.lg.Info(
 		"starting stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
 	err = clus.stresser.Stress()
-	clus.logger.Info(
+	clus.lg.Info(
 		"started stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -398,13 +398,13 @@ func (clus *Cluster) startStresser() (err error) {
 }
 
 func (clus *Cluster) closeStresser() {
-	clus.logger.Info(
+	clus.lg.Info(
 		"closing stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
 	clus.stresser.Close()
-	clus.logger.Info(
+	clus.lg.Info(
 		"closed stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -412,13 +412,13 @@ func (clus *Cluster) closeStresser() {
 }
 
 func (clus *Cluster) pauseStresser() {
-	clus.logger.Info(
+	clus.lg.Info(
 		"pausing stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
 	clus.stresser.Pause()
-	clus.logger.Info(
+	clus.lg.Info(
 		"paused stressers",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -431,7 +431,7 @@ func (clus *Cluster) checkConsistency() (err error) {
 			return
 		}
 		if err = clus.updateRevision(); err != nil {
-			clus.logger.Warn(
+			clus.lg.Warn(
 				"updateRevision failed",
 				zap.Error(err),
 			)
@@ -440,20 +440,20 @@ func (clus *Cluster) checkConsistency() (err error) {
 		err = clus.startStresser()
 	}()
 
-	clus.logger.Info(
+	clus.lg.Info(
 		"checking consistency and invariant of cluster",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 		zap.String("desc", clus.failures[clus.cs].Desc()),
 	)
 	if err = clus.checker.Check(); err != nil {
-		clus.logger.Warn(
+		clus.lg.Warn(
 			"checker.Check failed",
 			zap.Error(err),
 		)
 		return err
 	}
-	clus.logger.Info(
+	clus.lg.Info(
 		"checked consistency and invariant of cluster",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
@@ -488,7 +488,7 @@ func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
 				strings.Contains(err.Error(), "rpc error: code = Unavailable desc = transport is closing") {
 				// agent server has already closed;
 				// so this error is expected
-				clus.logger.Info(
+				clus.lg.Info(
 					"successfully destroyed",
 					zap.String("member", clus.Members[i].EtcdClientEndpoint),
 				)
@@ -511,13 +511,13 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 		clus.agentRequests[idx].Operation = op
 	}
 
-	clus.logger.Info(
+	clus.lg.Info(
 		"sending request",
 		zap.String("operation", op.String()),
 		zap.String("to", clus.Members[idx].EtcdClientEndpoint),
 	)
 	err := clus.agentStreams[idx].Send(clus.agentRequests[idx])
-	clus.logger.Info(
+	clus.lg.Info(
 		"sent request",
 		zap.String("operation", op.String()),
 		zap.String("to", clus.Members[idx].EtcdClientEndpoint),
@@ -527,14 +527,14 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 		return err
 	}
 
-	clus.logger.Info(
+	clus.lg.Info(
 		"receiving response",
 		zap.String("operation", op.String()),
 		zap.String("from", clus.Members[idx].EtcdClientEndpoint),
 	)
 	resp, err := clus.agentStreams[idx].Recv()
 	if resp != nil {
-		clus.logger.Info(
+		clus.lg.Info(
 			"received response",
 			zap.String("operation", op.String()),
 			zap.String("from", clus.Members[idx].EtcdClientEndpoint),
@@ -543,7 +543,7 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 			zap.Error(err),
 		)
 	} else {
-		clus.logger.Info(
+		clus.lg.Info(
 			"received empty response",
 			zap.String("operation", op.String()),
 			zap.String("from", clus.Members[idx].EtcdClientEndpoint),
@@ -562,26 +562,26 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 
 // DestroyEtcdAgents terminates all tester connections to agents and etcd servers.
 func (clus *Cluster) DestroyEtcdAgents() {
-	clus.logger.Info("destroying etcd servers and agents")
+	clus.lg.Info("destroying etcd servers and agents")
 	err := clus.broadcastOperation(rpcpb.Operation_DestroyEtcdAgent)
 	if err != nil {
-		clus.logger.Warn("failed to destroy etcd servers and agents", zap.Error(err))
+		clus.lg.Warn("failed to destroy etcd servers and agents", zap.Error(err))
 	} else {
-		clus.logger.Info("destroyed etcd servers and agents")
+		clus.lg.Info("destroyed etcd servers and agents")
 	}
 
 	for i, conn := range clus.agentConns {
-		clus.logger.Info("closing connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr))
+		clus.lg.Info("closing connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr))
 		err := conn.Close()
-		clus.logger.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
+		clus.lg.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
 	}
 
 	if clus.testerHTTPServer != nil {
-		clus.logger.Info("closing tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr))
+		clus.lg.Info("closing tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr))
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		err := clus.testerHTTPServer.Shutdown(ctx)
 		cancel()
-		clus.logger.Info("closed tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr), zap.Error(err))
+		clus.lg.Info("closed tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr), zap.Error(err))
 	}
 }
 
@@ -595,13 +595,13 @@ func (clus *Cluster) WaitHealth() error {
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
 	for i := 0; i < 60; i++ {
 		for _, m := range clus.Members {
-			clus.logger.Info(
+			clus.lg.Info(
 				"writing health key",
 				zap.Int("retries", i),
 				zap.String("endpoint", m.EtcdClientEndpoint),
 			)
 			if err = m.WriteHealthKey(); err != nil {
-				clus.logger.Warn(
+				clus.lg.Warn(
 					"writing health key failed",
 					zap.Int("retries", i),
 					zap.String("endpoint", m.EtcdClientEndpoint),
@@ -609,14 +609,14 @@ func (clus *Cluster) WaitHealth() error {
 				)
 				break
 			}
-			clus.logger.Info(
+			clus.lg.Info(
 				"wrote health key",
 				zap.Int("retries", i),
 				zap.String("endpoint", m.EtcdClientEndpoint),
 			)
 		}
 		if err == nil {
-			clus.logger.Info(
+			clus.lg.Info(
 				"writing health key success on all members",
 				zap.Int("retries", i),
 			)
@@ -683,7 +683,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 	for i, m := range clus.Members {
 		conn, derr := m.DialEtcdGRPCServer()
 		if derr != nil {
-			clus.logger.Warn(
+			clus.lg.Warn(
 				"compactKV dial failed",
 				zap.String("endpoint", m.EtcdClientEndpoint),
 				zap.Error(derr),
@@ -693,7 +693,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		}
 		kvc := pb.NewKVClient(conn)
 
-		clus.logger.Info(
+		clus.lg.Info(
 			"compacting",
 			zap.String("endpoint", m.EtcdClientEndpoint),
 			zap.Int64("compact-revision", rev),
@@ -709,14 +709,14 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		succeed := true
 		if cerr != nil {
 			if strings.Contains(cerr.Error(), "required revision has been compacted") && i > 0 {
-				clus.logger.Info(
+				clus.lg.Info(
 					"compact error is ignored",
 					zap.String("endpoint", m.EtcdClientEndpoint),
 					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
 				)
 			} else {
-				clus.logger.Warn(
+				clus.lg.Warn(
 					"compact failed",
 					zap.String("endpoint", m.EtcdClientEndpoint),
 					zap.Int64("compact-revision", rev),
@@ -728,7 +728,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		}
 
 		if succeed {
-			clus.logger.Info(
+			clus.lg.Info(
 				"compacted",
 				zap.String("endpoint", m.EtcdClientEndpoint),
 				zap.Int64("compact-revision", rev),
@@ -753,14 +753,14 @@ func (clus *Cluster) checkCompact(rev int64) error {
 }
 
 func (clus *Cluster) defrag() error {
-	clus.logger.Info(
+	clus.lg.Info(
 		"defragmenting",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
 	for _, m := range clus.Members {
 		if err := m.Defrag(); err != nil {
-			clus.logger.Warn(
+			clus.lg.Warn(
 				"defrag failed",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
@@ -769,7 +769,7 @@ func (clus *Cluster) defrag() error {
 			return err
 		}
 	}
-	clus.logger.Info(
+	clus.lg.Info(
 		"defragmented",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
