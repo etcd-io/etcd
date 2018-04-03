@@ -126,6 +126,21 @@ func (m *Member) Rev(ctx context.Context) (int64, error) {
 	return resp.Header.Revision, nil
 }
 
+// Compact compacts member storage with given revision.
+// It blocks until it's physically done.
+func (m *Member) Compact(rev int64, timeout time.Duration) error {
+	cli, err := m.CreateEtcdClient()
+	if err != nil {
+		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
+	}
+	defer cli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	_, err = cli.Compact(ctx, rev, clientv3.WithCompactPhysical())
+	cancel()
+	return err
+}
+
 // IsLeader returns true if this member is the current cluster leader.
 func (m *Member) IsLeader() (bool, error) {
 	cli, err := m.CreateEtcdClient()
