@@ -16,6 +16,7 @@ package balancer
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/coreos/etcd/clientv3/balancer/picker"
@@ -69,7 +70,13 @@ type baseBalancer struct {
 }
 
 // New returns a new balancer from specified picker policy.
-func New(cfg Config) Balancer {
+func New(cfg Config) (Balancer, error) {
+	for _, ep := range cfg.Endpoints {
+		if !strings.HasPrefix(ep, "etcd://") {
+			return nil, fmt.Errorf("'etcd' target schema required for etcd load balancer endpoints but got '%s'", ep)
+		}
+	}
+
 	bb := &baseBalancer{
 		policy: cfg.Policy,
 		name:   cfg.Policy.String(),
@@ -100,7 +107,7 @@ func New(cfg Config) Balancer {
 		zap.String("policy", bb.policy.String()),
 		zap.String("name", bb.name),
 	)
-	return bb
+	return bb, nil
 }
 
 // Name implements "grpc/balancer.Builder" interface.

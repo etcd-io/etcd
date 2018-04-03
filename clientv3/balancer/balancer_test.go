@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3/balancer/picker"
+	"github.com/coreos/etcd/clientv3/balancer/resolver/endpoint"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/mock/mockserver"
 
@@ -30,7 +31,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/grpc/status"
 )
 
@@ -60,21 +60,25 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 				resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
 			}
 
-			rsv, closeResolver := manual.GenerateAndRegisterManualResolver()
-			defer closeResolver()
+			rsv := endpoint.EndpointResolver("nofailover")
+			defer rsv.Close()
+			rsv.InitialAddrs(resolvedAddrs)
+
 			cfg := Config{
 				Policy:    picker.RoundrobinBalanced,
 				Name:      genName(),
 				Logger:    zap.NewExample(),
-				Endpoints: []string{fmt.Sprintf("%s:///mock.server", rsv.Scheme())},
+				Endpoints: []string{fmt.Sprintf("etcd://nofailover/mock.server")},
 			}
-			rrb := New(cfg)
+			rrb, err := New(cfg)
+			if err != nil {
+				t.Fatalf("failed to create builder: %v", err)
+			}
 			conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 			if err != nil {
-				t.Fatalf("failed to dial mock server: %s", err)
+				t.Fatalf("failed to dial mock server: %v", err)
 			}
 			defer conn.Close()
-			rsv.NewAddress(resolvedAddrs)
 			cli := pb.NewKVClient(conn)
 
 			reqFunc := func(ctx context.Context) (picked string, err error) {
@@ -122,21 +126,25 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 		resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
 	}
 
-	rsv, closeResolver := manual.GenerateAndRegisterManualResolver()
-	defer closeResolver()
+	rsv := endpoint.EndpointResolver("serverfail")
+	defer rsv.Close()
+	rsv.InitialAddrs(resolvedAddrs)
+
 	cfg := Config{
 		Policy:    picker.RoundrobinBalanced,
 		Name:      genName(),
 		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("%s:///mock.server", rsv.Scheme())},
+		Endpoints: []string{fmt.Sprintf("etcd://serverfail/mock.server")},
 	}
-	rrb := New(cfg)
+	rrb, err := New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create builder: %v", err)
+	}
 	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}
 	defer conn.Close()
-	rsv.NewAddress(resolvedAddrs)
 	cli := pb.NewKVClient(conn)
 
 	reqFunc := func(ctx context.Context) (picked string, err error) {
@@ -235,22 +243,25 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 		resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
 		available[svr.Address] = struct{}{}
 	}
+	rsv := endpoint.EndpointResolver("requestfail")
+	defer rsv.Close()
+	rsv.InitialAddrs(resolvedAddrs)
 
-	rsv, closeResolver := manual.GenerateAndRegisterManualResolver()
-	defer closeResolver()
 	cfg := Config{
 		Policy:    picker.RoundrobinBalanced,
 		Name:      genName(),
 		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("%s:///mock.server", rsv.Scheme())},
+		Endpoints: []string{fmt.Sprintf("etcd://requestfail/mock.server")},
 	}
-	rrb := New(cfg)
+	rrb, err := New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create builder: %v", err)
+	}
 	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}
 	defer conn.Close()
-	rsv.NewAddress(resolvedAddrs)
 	cli := pb.NewKVClient(conn)
 
 	reqFunc := func(ctx context.Context) (picked string, err error) {
@@ -291,64 +302,5 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 	}
 	if switches < reqN/2-3 { // -3 for initial resolutions + failover
 		t.Fatalf("expected balanced loads for %d requests, got switches %d", reqN, switches)
-	}
-}
-
-// TestRoundRobinBalancedPassthrough ensures that requests with
-// passthrough resolver be balanced with roundrobin picker.
-// TODO: this is not working right now...
-// Maintain multiple client connections?
-func TestRoundRobinBalancedPassthrough(t *testing.T) {
-	ms, err := mockserver.StartMockServers(3)
-	if err != nil {
-		t.Fatalf("failed to start mock servers: %s", err)
-	}
-	defer ms.Stop()
-	eps := make([]string, len(ms.Servers))
-	for i, svr := range ms.Servers {
-		eps[i] = fmt.Sprintf("passthrough:///%s", svr.Address)
-	}
-
-	cfg := Config{
-		Policy:    picker.RoundrobinBalanced,
-		Name:      genName(),
-		Logger:    zap.NewExample(),
-		Endpoints: eps,
-	}
-	rrb := New(cfg)
-	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
-	if err != nil {
-		t.Fatalf("Failed to dial mock server: %s", err)
-	}
-	defer conn.Close()
-	cli := pb.NewKVClient(conn)
-
-	reqFunc := func(ctx context.Context) (picked string, err error) {
-		var p peer.Peer
-		_, err = cli.Range(ctx, &pb.RangeRequest{Key: []byte("/x")}, grpc.Peer(&p))
-		if p.Addr != nil {
-			picked = p.Addr.String()
-		}
-		return picked, err
-	}
-
-	reqN := 20
-	prev, switches := "", 0
-	for i := 0; i < reqN; i++ {
-		picked, err := reqFunc(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if prev == "" && picked != "" {
-			prev = picked
-			continue
-		}
-		if prev != picked {
-			switches++
-		}
-		prev = picked
-	}
-	if switches < reqN/2-3 { // -3 for initial resolutions + failover
-		t.Logf("expected balanced loads for %d requests, got switches %d", reqN, switches)
 	}
 }
