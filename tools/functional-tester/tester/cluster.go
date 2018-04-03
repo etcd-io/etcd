@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
@@ -681,31 +680,14 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 	}
 
 	for i, m := range clus.Members {
-		conn, derr := m.DialEtcdGRPCServer()
-		if derr != nil {
-			clus.lg.Warn(
-				"compactKV dial failed",
-				zap.String("endpoint", m.EtcdClientEndpoint),
-				zap.Error(derr),
-			)
-			err = derr
-			continue
-		}
-		kvc := pb.NewKVClient(conn)
-
 		clus.lg.Info(
 			"compacting",
 			zap.String("endpoint", m.EtcdClientEndpoint),
 			zap.Int64("compact-revision", rev),
 			zap.Duration("timeout", timeout),
 		)
-
 		now := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		_, cerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true}, grpc.FailFast(false))
-		cancel()
-
-		conn.Close()
+		cerr := m.Compact(rev, timeout)
 		succeed := true
 		if cerr != nil {
 			if strings.Contains(cerr.Error(), "required revision has been compacted") && i > 0 {

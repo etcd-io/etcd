@@ -41,15 +41,17 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 }
 
 // CreateEtcdClient creates a client from member.
-func (m *Member) CreateEtcdClient() (*clientv3.Client, error) {
+func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, error) {
+	cfg := clientv3.Config{
+		Endpoints:   []string{m.EtcdClientEndpoint},
+		DialTimeout: 5 * time.Second,
+		DialOptions: opts,
+	}
 	if m.EtcdClientTLS {
 		// TODO: support TLS
 		panic("client TLS not supported yet")
 	}
-	return clientv3.New(clientv3.Config{
-		Endpoints:   []string{m.EtcdClientEndpoint},
-		DialTimeout: 5 * time.Second,
-	})
+	return clientv3.New(cfg)
 }
 
 // CheckCompact ensures that historical data before given revision has been compacted.
@@ -122,6 +124,21 @@ func (m *Member) Rev(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return resp.Header.Revision, nil
+}
+
+// Compact compacts member storage with given revision.
+// It blocks until it's physically done.
+func (m *Member) Compact(rev int64, timeout time.Duration) error {
+	cli, err := m.CreateEtcdClient()
+	if err != nil {
+		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
+	}
+	defer cli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	_, err = cli.Compact(ctx, rev, clientv3.WithCompactPhysical())
+	cancel()
+	return err
 }
 
 // IsLeader returns true if this member is the current cluster leader.
