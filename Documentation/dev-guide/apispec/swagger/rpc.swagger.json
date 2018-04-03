@@ -966,7 +966,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "HashKV computes the hash of all MVCC keys up to a given revision.",
+        "summary": "HashKV computes the hash of all MVCC keys up to a given revision.\nIt only iterates \"key\" bucket in backend storage.",
         "operationId": "HashKV",
         "parameters": [
           {
