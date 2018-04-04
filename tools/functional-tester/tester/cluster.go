@@ -383,49 +383,6 @@ func (clus *Cluster) updateStresserChecker() {
 	)
 }
 
-func (clus *Cluster) startStresser() (err error) {
-	clus.lg.Info(
-		"starting stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	err = clus.stresser.Stress()
-	clus.lg.Info(
-		"started stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	return err
-}
-
-func (clus *Cluster) closeStresser() {
-	clus.lg.Info(
-		"closing stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	clus.stresser.Close()
-	clus.lg.Info(
-		"closed stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-}
-
-func (clus *Cluster) pauseStresser() {
-	clus.lg.Info(
-		"pausing stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	clus.stresser.Pause()
-	clus.lg.Info(
-		"paused stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-}
-
 func (clus *Cluster) checkConsistency() (err error) {
 	defer func() {
 		if err != nil {
@@ -438,7 +395,6 @@ func (clus *Cluster) checkConsistency() (err error) {
 			)
 			return
 		}
-		err = clus.startStresser()
 	}()
 
 	clus.lg.Info(
