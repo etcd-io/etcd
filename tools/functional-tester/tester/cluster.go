@@ -360,8 +360,8 @@ func (clus *Cluster) updateStresserChecker() {
 	)
 
 	cs := &compositeStresser{}
-	for idx := range clus.Members {
-		cs.stressers = append(cs.stressers, newStresser(clus, idx))
+	for _, m := range clus.Members {
+		cs.stressers = append(cs.stressers, newStresser(clus, m))
 	}
 	clus.stresser = cs
 
