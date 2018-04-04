@@ -276,27 +276,29 @@ func (clus *Cluster) updateFailures() {
 		case "KILL_ALL":
 			clus.failures = append(clus.failures, newFailureKillAll())
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll(clus))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus))
+		case "NO_FAIL_WITH_STRESS":
+			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
+		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
+			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness(clus))
+		case "EXTERNAL":
+			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
 			clus.failures = append(clus.failures, fpFailures...)
-		case "NO_FAIL":
-			clus.failures = append(clus.failures, newFailureNoOp())
-		case "EXTERNAL":
-			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
 		}
 	}
 }
@@ -360,8 +362,8 @@ func (clus *Cluster) updateStresserChecker() {
 	)
 
 	cs := &compositeStresser{}
-	for idx := range clus.Members {
-		cs.stressers = append(cs.stressers, newStresser(clus, idx))
+	for _, m := range clus.Members {
+		cs.stressers = append(cs.stressers, newStresser(clus, m))
 	}
 	clus.stresser = cs
 
@@ -381,49 +383,6 @@ func (clus *Cluster) updateStresserChecker() {
 	)
 }
 
-func (clus *Cluster) startStresser() (err error) {
-	clus.lg.Info(
-		"starting stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	err = clus.stresser.Stress()
-	clus.lg.Info(
-		"started stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	return err
-}
-
-func (clus *Cluster) closeStresser() {
-	clus.lg.Info(
-		"closing stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	clus.stresser.Close()
-	clus.lg.Info(
-		"closed stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-}
-
-func (clus *Cluster) pauseStresser() {
-	clus.lg.Info(
-		"pausing stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-	clus.stresser.Pause()
-	clus.lg.Info(
-		"paused stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-}
-
 func (clus *Cluster) checkConsistency() (err error) {
 	defer func() {
 		if err != nil {
@@ -436,7 +395,6 @@ func (clus *Cluster) checkConsistency() (err error) {
 			)
 			return
 		}
-		err = clus.startStresser()
 	}()
 
 	clus.lg.Info(
@@ -759,4 +717,12 @@ func (clus *Cluster) defrag() error {
 	return nil
 }
 
-func (clus *Cluster) Report() int64 { return clus.stresser.ModifiedKeys() }
+// GetFailureDelayDuration computes failure delay duration.
+func (clus *Cluster) GetFailureDelayDuration() time.Duration {
+	return time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond
+}
+
+// Report reports the number of modified keys.
+func (clus *Cluster) Report() int64 {
+	return clus.stresser.ModifiedKeys()
+}

@@ -26,7 +26,7 @@ func recoverKill(clus *Cluster, idx int) error {
 
 func newFailureKillOneFollower() Failure {
 	ff := failureByFunc{
-		description:   "kill one follower",
+		failureCase:   rpcpb.FailureCase_KILL_ONE_FOLLOWER,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
@@ -35,7 +35,7 @@ func newFailureKillOneFollower() Failure {
 
 func newFailureKillLeader() Failure {
 	ff := failureByFunc{
-		description:   "kill leader",
+		failureCase:   rpcpb.FailureCase_KILL_LEADER,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
@@ -44,7 +44,7 @@ func newFailureKillLeader() Failure {
 
 func newFailureKillQuorum() Failure {
 	return &failureQuorum{
-		description:   "kill quorum",
+		failureCase:   rpcpb.FailureCase_KILL_QUORUM,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
@@ -52,16 +52,22 @@ func newFailureKillQuorum() Failure {
 
 func newFailureKillAll() Failure {
 	return &failureAll{
-		description:   "kill all",
+		failureCase:   rpcpb.FailureCase_KILL_ALL,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
 }
 
 func newFailureKillOneFollowerForLongTime() Failure {
-	return &failureUntilSnapshot{newFailureKillOneFollower()}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_KILL_ONE_FOLLOWER_FOR_LONG,
+		Failure:     newFailureKillOneFollower(),
+	}
 }
 
 func newFailureKillLeaderForLongTime() Failure {
-	return &failureUntilSnapshot{newFailureKillLeader()}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_KILL_LEADER_FOR_LONG,
+		Failure:     newFailureKillLeader(),
+	}
 }

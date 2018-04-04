@@ -100,23 +100,24 @@ enum FailureCase {
   DELAY_PEER_PORT_TX_RX_LEADER = 10;
   DELAY_PEER_PORT_TX_RX_ALL = 11;
 
-  FAILPOINTS = 100;
+  // NO_FAIL_WITH_STRESS runs no-op failure injection for specified period
+  // while stressers are still sending requests.
+  NO_FAIL_WITH_STRESS = 100;
+  // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS runs no-op failure injection
+  // with all stressers stopped.
+  NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 101;
 
-  NO_FAIL = 200;
-  // TODO: support no-op of liveness duration
-  // NO_FAIL_LIVENESS = 201;
-
+  FAILPOINTS = 200;
   EXTERNAL = 300;
 }
 
 enum StressType {
   KV = 0;
   LEASE = 1;
-  NO_STRESS = 2;
-  ELECTION_RUNNER = 3;
-  WATCH_RUNNER = 4;
-  LOCK_RACER_RUNNER = 5;
-  LEASE_RUNNER = 6;
+  ELECTION_RUNNER = 2;
+  WATCH_RUNNER = 3;
+  LOCK_RACER_RUNNER = 4;
+  LEASE_RUNNER = 5;
 }
 
 message Tester {
@@ -140,12 +141,14 @@ message Tester {
 
   // FailureCases is the selected test cases to schedule.
   // If empty, run all failure cases.
-  // TODO: support no-op
   repeated string FailureCases = 31 [(gogoproto.moretags) = "yaml:\"failure-cases\""];
+  // FailureDelayMs is the delay duration after failure is injected.
+  // Useful when triggering snapshot or no-op failure cases.
+  uint32 FailureDelayMs = 32 [(gogoproto.moretags) = "yaml:\"failure-delay-ms\""];
   // FailureShuffle is true to randomize failure injecting order.
-  bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
+  bool FailureShuffle = 33 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
   // FailpointCommands is the list of "gofail" commands (e.g. panic("etcd-tester"),1*sleep(1000)).
-  repeated string FailpointCommands = 33 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
+  repeated string FailpointCommands = 34 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
 
   // RunnerExecPath is a path of etcd-runner binary.
   string RunnerExecPath = 41 [(gogoproto.moretags) = "yaml:\"runner-exec-path\""];
@@ -167,8 +170,12 @@ message Tester {
   int32 StressKeySuffixRangeTxn = 105 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
   // StressKeyTxnOps is the number of operations per a transaction (max 64).
   int32 StressKeyTxnOps = 106 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
+
+  // StressClients is the number of concurrent stressing clients
+  // with "one" shared TCP connection.
+  int32 StressClients = 201 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
   // StressQPS is the maximum number of stresser requests per second.
-  int32 StressQPS = 107 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
+  int32 StressQPS = 202 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
 }
 
 message Request {

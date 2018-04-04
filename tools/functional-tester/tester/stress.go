@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+
 	"go.uber.org/zap"
 )
 
@@ -36,34 +38,31 @@ type Stresser interface {
 }
 
 // newStresser creates stresser from a comma separated list of stresser types.
-func newStresser(clus *Cluster, idx int) Stresser {
+func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 	stressers := make([]Stresser, len(clus.Tester.StressTypes))
 	for i, stype := range clus.Tester.StressTypes {
 		clus.lg.Info("creating stresser", zap.String("type", stype))
 
 		switch stype {
-		case "NO_STRESS":
-			stressers[i] = &nopStresser{start: time.Now(), qps: int(clus.rateLimiter.Limit())}
-
 		case "KV":
 			// TODO: Too intensive stressing clients can panic etcd member with
 			// 'out of memory' error. Put rate limits in server side.
 			stressers[i] = &keyStresser{
 				lg:                clus.lg,
-				m:                 clus.Members[idx],
+				m:                 m,
 				keySize:           int(clus.Tester.StressKeySize),
 				keyLargeSize:      int(clus.Tester.StressKeySizeLarge),
 				keySuffixRange:    int(clus.Tester.StressKeySuffixRange),
 				keyTxnSuffixRange: int(clus.Tester.StressKeySuffixRangeTxn),
 				keyTxnOps:         int(clus.Tester.StressKeyTxnOps),
-				N:                 100,
+				clientsN:          int(clus.Tester.StressClients),
 				rateLimiter:       clus.rateLimiter,
 			}
 
 		case "LEASE":
 			stressers[i] = &leaseStresser{
 				lg:           clus.lg,
-				m:            clus.Members[idx],
+				m:            m,
 				numLeases:    10, // TODO: configurable
 				keysPerLease: 10, // TODO: configurable
 				rateLimiter:  clus.rateLimiter,
@@ -75,7 +74,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 				"election",
 				fmt.Sprintf("%v", time.Now().UnixNano()), // election name as current nano time
 				"--dial-timeout=10s",
-				"--endpoints", clus.Members[idx].EtcdClientEndpoint,
+				"--endpoints", m.EtcdClientEndpoint,
 				"--total-client-connections=10",
 				"--rounds=0", // runs forever
 				"--req-rate", fmt.Sprintf("%v", reqRate),
@@ -95,7 +94,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 				"--total-keys=1",
 				"--total-prefixes=1",
 				"--watch-per-prefix=1",
-				"--endpoints", clus.Members[idx].EtcdClientEndpoint,
+				"--endpoints", m.EtcdClientEndpoint,
 				"--rounds=0", // runs forever
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
@@ -106,7 +105,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 			args := []string{
 				"lock-racer",
 				fmt.Sprintf("%v", time.Now().UnixNano()), // locker name as current nano time
-				"--endpoints", clus.Members[idx].EtcdClientEndpoint,
+				"--endpoints", m.EtcdClientEndpoint,
 				"--total-client-connections=10",
 				"--rounds=0", // runs forever
 				"--req-rate", fmt.Sprintf("%v", reqRate),
@@ -117,7 +116,7 @@ func newStresser(clus *Cluster, idx int) Stresser {
 			args := []string{
 				"lease-renewer",
 				"--ttl=30",
-				"--endpoints", clus.Members[idx].EtcdClientEndpoint,
+				"--endpoints", m.EtcdClientEndpoint,
 			}
 			stressers[i] = newRunnerStresser(clus.Tester.RunnerExecPath, args, clus.rateLimiter, 0)
 		}

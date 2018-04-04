@@ -131,7 +131,10 @@ func Test_newCluster(t *testing.T) {
 				"DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER",
 				"DELAY_PEER_PORT_TX_RX_LEADER",
 				"DELAY_PEER_PORT_TX_RX_ALL",
+				"NO_FAIL_WITH_STRESS",
+				"NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS",
 			},
+			FailureDelayMs:          7000,
 			FailureShuffle:          true,
 			FailpointCommands:       []string{`panic("etcd-tester")`},
 			RunnerExecPath:          "/etcd-runner",
@@ -142,6 +145,7 @@ func Test_newCluster(t *testing.T) {
 			StressKeySuffixRange:    250000,
 			StressKeySuffixRangeTxn: 100,
 			StressKeyTxnOps:         10,
+			StressClients:           100,
 			StressQPS:               1000,
 		},
 	}

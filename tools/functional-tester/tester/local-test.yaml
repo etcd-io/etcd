@@ -97,7 +97,10 @@ tester-config:
   - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
   - DELAY_PEER_PORT_TX_RX_LEADER
   - DELAY_PEER_PORT_TX_RX_ALL
+  - NO_FAIL_WITH_STRESS
+  - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
 
+  failure-delay-ms: 7000
   failure-shuffle: true
   failpoint-commands:
   - panic("etcd-tester")
@@ -110,7 +113,6 @@ tester-config:
   stress-types:
   - KV
   - LEASE
-  # - NO_STRESS
   # - ELECTION_RUNNER
   # - WATCH_RUNNER
   # - LOCK_RACER_RUNNER
@@ -121,4 +123,6 @@ tester-config:
   stress-key-suffix-range: 250000
   stress-key-suffix-range-txn: 100
   stress-key-txn-ops: 10
+
+  stress-clients: 100
   stress-qps: 1000

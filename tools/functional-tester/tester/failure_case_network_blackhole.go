@@ -14,7 +14,9 @@
 
 package tester
 
-import "github.com/coreos/etcd/tools/functional-tester/rpcpb"
+import (
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+)
 
 func injectBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_BlackholePeerPortTxRx)
@@ -24,40 +26,40 @@ func recoverBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_UnblackholePeerPortTxRx)
 }
 
-func newFailureBlackholePeerPortTxRxOneFollower() Failure {
+func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
 	ff := failureByFunc{
-		description:   "blackhole peer port on one follower",
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER,
 		injectMember:  injectBlackholePeerPortTxRx,
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
-func newFailureBlackholePeerPortTxRxLeader() Failure {
+func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 	ff := failureByFunc{
-		description:   "blackhole peer port on leader",
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER,
 		injectMember:  injectBlackholePeerPortTxRx,
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
-func newFailureBlackholePeerPortTxRxAll() Failure {
+func newFailureBlackholePeerPortTxRxAll(clus *Cluster) Failure {
 	f := &failureAll{
-		description:   "blackhole peer port on all",
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL,
 		injectMember:  injectBlackholePeerPortTxRx,
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }

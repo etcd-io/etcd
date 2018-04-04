@@ -17,13 +17,17 @@ package tester
 import (
 	"fmt"
 	"os/exec"
+
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
 
 type failureExternal struct {
 	Failure
 
-	description string
-	scriptPath  string
+	desc        string
+	failureCase rpcpb.FailureCase
+
+	scriptPath string
 }
 
 func (f *failureExternal) Inject(clus *Cluster) error {
@@ -34,11 +38,18 @@ func (f *failureExternal) Recover(clus *Cluster) error {
 	return exec.Command(f.scriptPath, "disable", fmt.Sprintf("%d", clus.rd)).Run()
 }
 
-func (f *failureExternal) Desc() string { return f.description }
+func (f *failureExternal) Desc() string {
+	return f.desc
+}
+
+func (f *failureExternal) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
 
 func newFailureExternal(scriptPath string) Failure {
 	return &failureExternal{
-		description: fmt.Sprintf("external fault injector (script: %q)", scriptPath),
+		desc:        fmt.Sprintf("external fault injector (script: %q)", scriptPath),
+		failureCase: rpcpb.FailureCase_EXTERNAL,
 		scriptPath:  scriptPath,
 	}
 }
