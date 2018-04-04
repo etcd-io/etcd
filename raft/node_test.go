@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +31,7 @@ import (
 func TestNodeStep(t *testing.T) {
 	for i, msgn := range raftpb.MessageType_name {
 		n := &node{
-			propc: make(chan raftpb.Message, 1),
+			propc: make(chan msgWithResult, 1),
 			recvc: make(chan raftpb.Message, 1),
 		}
 		msgt := raftpb.MessageType(i)
@@ -64,7 +65,7 @@ func TestNodeStep(t *testing.T) {
 func TestNodeStepUnblock(t *testing.T) {
 	// a node without buffer to block step
 	n := &node{
-		propc: make(chan raftpb.Message),
+		propc: make(chan msgWithResult),
 		done:  make(chan struct{}),
 	}
 
@@ -430,6 +431,49 @@ func TestBlockProposal(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Errorf("blocking proposal, want unblocking")
+	}
+}
+
+func TestNodeProposeWaitDropped(t *testing.T) {
+	msgs := []raftpb.Message{}
+	droppingMsg := []byte("test_dropping")
+	dropStep := func(r *raft, m raftpb.Message) error {
+		if m.Type == raftpb.MsgProp && strings.Contains(m.String(), string(droppingMsg)) {
+			t.Logf("dropping message: %v", m.String())
+			return ErrProposalDropped
+		}
+		msgs = append(msgs, m)
+		return nil
+	}
+
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		s.Append(rd.Entries)
+		// change the step function to dropStep until this raft becomes leader
+		if rd.SoftState.Lead == r.id {
+			r.step = dropStep
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+	proposalTimeout := time.Millisecond * 100
+	ctx, cancel := context.WithTimeout(context.Background(), proposalTimeout)
+	// propose with cancel should be cancelled earyly if dropped
+	err := n.Propose(ctx, droppingMsg)
+	if err != ErrProposalDropped {
+		t.Errorf("should drop proposal : %v", err)
+	}
+	cancel()
+
+	n.Stop()
+	if len(msgs) != 0 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
 	}
 }
 
