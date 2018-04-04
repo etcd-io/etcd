@@ -24,6 +24,7 @@ clean:
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/*.etcd
 	rm -rf ./gopath
+	rm -rf ./gopath.proto
 	rm -rf ./release
 	rm -f ./integration/127.0.0.1:* ./integration/localhost:*
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
