@@ -10,7 +10,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
 - Improve [slow requests warning logging](https://github.com/coreos/etcd/pull/9288).
   - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
-- Improve [TLS setup error logging](https://github.com/coreos/etcd/pull/9518) for [better debugging experience](https://github.com/coreos/etcd/issues/9400).
+- Improve [TLS setup error logging](https://github.com/coreos/etcd/pull/9518) to help debug [TLS-enabled cluster configuring issues](https://github.com/coreos/etcd/issues/9400).
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/coreos/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
   - Now, periodic commit operation does not block concurrent read transactions, thus improves long-running read transaction performance.
@@ -30,6 +30,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 - Improve [lease expire/revoke operation performance](https://github.com/coreos/etcd/pull/9418), address [lease scalability issue](https://github.com/coreos/etcd/issues/9496).
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
+- Improve functional tester coverage: enable [TLS](https://github.com/coreos/etcd/issues/8943) and add [liveness mode](https://github.com/coreos/etcd/issues/8977).
 
 ### Breaking Changes
 
@@ -66,7 +67,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Dependency
 
-- TODO: Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.11.0).
+- TODO: Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.11.1).
 - Upgrade [`github.com/soheilhy/cmux`](https://github.com/soheilhy/cmux/releases) from [**`v0.1.3`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.3) to [**`v0.1.4`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.4).
 
 ### Metrics, Monitoring
@@ -117,6 +118,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### Added: `embed`
 
+- Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to use [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
+  - TODO: make this configurable...
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
 - Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 
@@ -152,7 +155,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 - Fix [deadlock during PreVote migration process](https://github.com/coreos/etcd/pull/8525).
 - Add [`raft.ErrProposalDropped`](https://github.com/coreos/etcd/pull/9067).
-  - Now `(r *raft) Step` returns `raft.ErrProposalDropped` if a proposal has been ignored.
+  - Now [`(r *raft) Step` returns `raft.ErrProposalDropped`](https://github.com/coreos/etcd/pull/9137) if a proposal has been ignored.
   - e.g. a node is removed from cluster, [ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975), etc.
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
