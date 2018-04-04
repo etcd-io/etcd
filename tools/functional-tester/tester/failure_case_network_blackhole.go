@@ -14,7 +14,11 @@
 
 package tester
 
-import "github.com/coreos/etcd/tools/functional-tester/rpcpb"
+import (
+	"time"
+
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+)
 
 func injectBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_BlackholePeerPortTxRx)
@@ -24,7 +28,7 @@ func recoverBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_UnblackholePeerPortTxRx)
 }
 
-func newFailureBlackholePeerPortTxRxOneFollower() Failure {
+func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER,
 		injectMember:  injectBlackholePeerPortTxRx,
@@ -33,11 +37,11 @@ func newFailureBlackholePeerPortTxRxOneFollower() Failure {
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }
 
-func newFailureBlackholePeerPortTxRxLeader() Failure {
+func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER,
 		injectMember:  injectBlackholePeerPortTxRx,
@@ -46,11 +50,11 @@ func newFailureBlackholePeerPortTxRxLeader() Failure {
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }
 
-func newFailureBlackholePeerPortTxRxAll() Failure {
+func newFailureBlackholePeerPortTxRxAll(clus *Cluster) Failure {
 	f := &failureAll{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL,
 		injectMember:  injectBlackholePeerPortTxRx,
@@ -58,6 +62,6 @@ func newFailureBlackholePeerPortTxRxAll() Failure {
 	}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }

@@ -59,7 +59,7 @@ func failpointFailures(clus *Cluster) (ret []Failure, err error) {
 			} else {
 				fpFails[i] = &failureDelay{
 					Failure:       fpf,
-					delayDuration: 3 * time.Second,
+					delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 				}
 			}
 		}

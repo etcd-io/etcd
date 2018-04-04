@@ -134,6 +134,7 @@ func Test_newCluster(t *testing.T) {
 				"NO_FAIL_WITH_STRESS",
 				"NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS",
 			},
+			FailureDelayMs:          7000,
 			FailureShuffle:          true,
 			FailpointCommands:       []string{`panic("etcd-tester")`},
 			RunnerExecPath:          "/etcd-runner",

@@ -100,6 +100,7 @@ tester-config:
   - NO_FAIL_WITH_STRESS
   - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
 
+  failure-delay-ms: 7000
   failure-shuffle: true
   failpoint-commands:
   - panic("etcd-tester")

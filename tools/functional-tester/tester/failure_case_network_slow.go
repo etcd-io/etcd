@@ -21,9 +21,6 @@ import (
 )
 
 const (
-	// delay duration to trigger leader election (default election timeout 1s)
-	triggerElectionDur = 5 * time.Second
-
 	// Wait more when it recovers from slow network, because network layer
 	// needs extra time to propagate traffic control (tc command) change.
 	// Otherwise, we get different hash values from the previous revision.
@@ -50,7 +47,7 @@ func newFailureDelayPeerPortTxRxOneFollower(clus *Cluster) Failure {
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }
 
@@ -63,7 +60,7 @@ func newFailureDelayPeerPortTxRxLeader(clus *Cluster) Failure {
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }
 
@@ -75,6 +72,6 @@ func newFailureDelayPeerPortTxRxAll(clus *Cluster) Failure {
 	}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: triggerElectionDur,
+		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
 	}
 }

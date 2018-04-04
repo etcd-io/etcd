@@ -276,11 +276,11 @@ func (clus *Cluster) updateFailures() {
 		case "KILL_ALL":
 			clus.failures = append(clus.failures, newFailureKillAll())
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll())
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll(clus))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
