@@ -77,15 +77,17 @@ func (rs *runnerStresser) Stress() (err error) {
 	return syscall.Kill(rs.cmd.Process.Pid, syscall.SIGCONT)
 }
 
-func (rs *runnerStresser) Pause() {
+func (rs *runnerStresser) Pause() map[string]int {
 	syscall.Kill(rs.cmd.Process.Pid, syscall.SIGSTOP)
+	return nil
 }
 
-func (rs *runnerStresser) Close() {
+func (rs *runnerStresser) Close() map[string]int {
 	syscall.Kill(rs.cmd.Process.Pid, syscall.SIGINT)
 	rs.cmd.Wait()
 	<-rs.donec
 	rs.rl.SetLimit(rs.rl.Limit() + rate.Limit(rs.reqRate))
+	return nil
 }
 
 func (rs *runnerStresser) ModifiedKeys() int64 {

@@ -34,28 +34,38 @@ func (cs *compositeStresser) Stress() error {
 	return nil
 }
 
-func (cs *compositeStresser) Pause() {
+func (cs *compositeStresser) Pause() (ems map[string]int) {
+	ems = make(map[string]int)
 	var wg sync.WaitGroup
 	wg.Add(len(cs.stressers))
 	for i := range cs.stressers {
 		go func(s Stresser) {
 			defer wg.Done()
-			s.Pause()
+			errs := s.Pause()
+			for k, v := range errs {
+				ems[k] += v
+			}
 		}(cs.stressers[i])
 	}
 	wg.Wait()
+	return ems
 }
 
-func (cs *compositeStresser) Close() {
+func (cs *compositeStresser) Close() (ems map[string]int) {
+	ems = make(map[string]int)
 	var wg sync.WaitGroup
 	wg.Add(len(cs.stressers))
 	for i := range cs.stressers {
 		go func(s Stresser) {
 			defer wg.Done()
-			s.Close()
+			errs := s.Close()
+			for k, v := range errs {
+				ems[k] += v
+			}
 		}(cs.stressers[i])
 	}
 	wg.Wait()
+	return ems
 }
 
 func (cs *compositeStresser) ModifiedKeys() (modifiedKey int64) {
