@@ -14,13 +14,24 @@
 
 package tester
 
+import (
+	"time"
+
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+)
+
 type failureNoOp failureByFunc
 
-func (f *failureNoOp) Inject(clus *Cluster) error  { return nil }
-func (f *failureNoOp) Recover(clus *Cluster) error { return nil }
+func (f *failureNoOp) Inject(clus *Cluster) error     { return nil }
+func (f *failureNoOp) Recover(clus *Cluster) error    { return nil }
+func (f *failureNoOp) FailureCase() rpcpb.FailureCase { return f.failureCase }
 
 func newFailureNoOp() Failure {
-	return &failureNoOp{
-		description: "no failure",
+	f := &failureNoOp{
+		failureCase: rpcpb.FailureCase_NO_FAIL_WITH_STRESS,
+	}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: 5 * time.Second,
 	}
 }

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
 
 // Failure defines failure injection interface.
@@ -33,28 +35,32 @@ type Failure interface {
 	Recover(clus *Cluster) error
 	// Desc returns a description of the failure
 	Desc() string
+	// FailureCase returns "rpcpb.FailureCase" enum type.
+	FailureCase() rpcpb.FailureCase
 }
-
-type description string
-
-func (d description) Desc() string { return string(d) }
 
 type injectMemberFunc func(*Cluster, int) error
 type recoverMemberFunc func(*Cluster, int) error
 
 type failureByFunc struct {
-	description
+	desc
+	failureCase   rpcpb.FailureCase
 	injectMember  injectMemberFunc
 	recoverMember recoverMemberFunc
 }
 
-type failureFollower struct {
-	failureByFunc
-	last int
-	lead int
+func (f *failureByFunc) Desc() string {
+	if string(f.desc) != "" {
+		return string(f.desc)
+	}
+	return f.failureCase.String()
 }
 
-type failureLeader struct {
+func (f *failureByFunc) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
+
+type failureFollower struct {
 	failureByFunc
 	last int
 	lead int
@@ -82,22 +88,6 @@ func (f *failureFollower) updateIndex(clus *Cluster) error {
 	return nil
 }
 
-func (f *failureLeader) updateIndex(clus *Cluster) error {
-	idx, err := clus.GetLeader()
-	if err != nil {
-		return err
-	}
-	f.lead = idx
-	f.last = idx
-	return nil
-}
-
-type failureQuorum failureByFunc
-type failureAll failureByFunc
-
-// failureUntilSnapshot injects a failure and waits for a snapshot event
-type failureUntilSnapshot struct{ Failure }
-
 func (f *failureFollower) Inject(clus *Cluster) error {
 	if err := f.updateIndex(clus); err != nil {
 		return err
@@ -107,6 +97,24 @@ func (f *failureFollower) Inject(clus *Cluster) error {
 
 func (f *failureFollower) Recover(clus *Cluster) error {
 	return f.recoverMember(clus, f.last)
+}
+
+func (f *failureFollower) FailureCase() rpcpb.FailureCase { return f.failureCase }
+
+type failureLeader struct {
+	failureByFunc
+	last int
+	lead int
+}
+
+func (f *failureLeader) updateIndex(clus *Cluster) error {
+	idx, err := clus.GetLeader()
+	if err != nil {
+		return err
+	}
+	f.lead = idx
+	f.last = idx
+	return nil
 }
 
 func (f *failureLeader) Inject(clus *Cluster) error {
@@ -119,6 +127,12 @@ func (f *failureLeader) Inject(clus *Cluster) error {
 func (f *failureLeader) Recover(clus *Cluster) error {
 	return f.recoverMember(clus, f.last)
 }
+
+func (f *failureLeader) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
+
+type failureQuorum failureByFunc
 
 func (f *failureQuorum) Inject(clus *Cluster) error {
 	for i := range killMap(len(clus.Members), clus.rd) {
@@ -138,6 +152,10 @@ func (f *failureQuorum) Recover(clus *Cluster) error {
 	return nil
 }
 
+func (f *failureQuorum) FailureCase() rpcpb.FailureCase { return f.failureCase }
+
+type failureAll failureByFunc
+
 func (f *failureAll) Inject(clus *Cluster) error {
 	for i := range clus.Members {
 		if err := f.injectMember(clus, i); err != nil {
@@ -154,6 +172,18 @@ func (f *failureAll) Recover(clus *Cluster) error {
 		}
 	}
 	return nil
+}
+
+func (f *failureAll) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
+
+// failureUntilSnapshot injects a failure and waits for a snapshot event
+type failureUntilSnapshot struct {
+	desc        desc
+	failureCase rpcpb.FailureCase
+
+	Failure
 }
 
 const snapshotCount = 10000
@@ -190,7 +220,14 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 }
 
 func (f *failureUntilSnapshot) Desc() string {
-	return f.Failure.Desc() + " for a long time and expect it to recover from an incoming snapshot"
+	if f.desc.Desc() != "" {
+		return f.desc.Desc()
+	}
+	return f.failureCase.String() + " (to trigger snapshot)"
+}
+
+func (f *failureUntilSnapshot) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
 }
 
 func killMap(size int, seed int) map[int]bool {
@@ -204,3 +241,7 @@ func killMap(size int, seed int) map[int]bool {
 		}
 	}
 }
+
+type desc string
+
+func (d desc) Desc() string { return string(d) }

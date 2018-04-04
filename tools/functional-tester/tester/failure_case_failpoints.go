@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
 
 type failpointStats struct {
@@ -42,14 +44,23 @@ func failpointFailures(clus *Cluster) (ret []Failure, err error) {
 		if len(fp) == 0 {
 			continue
 		}
+
 		fpFails := failuresFromFailpoint(fp, clus.Tester.FailpointCommands)
+
 		// wrap in delays so failpoint has time to trigger
 		for i, fpf := range fpFails {
 			if strings.Contains(fp, "Snap") {
 				// hack to trigger snapshot failpoints
-				fpFails[i] = &failureUntilSnapshot{fpf}
+				fpFails[i] = &failureUntilSnapshot{
+					desc:        desc(fpf.Desc()),
+					failureCase: rpcpb.FailureCase_FAILPOINTS,
+					Failure:     fpf,
+				}
 			} else {
-				fpFails[i] = &failureDelay{fpf, 3 * time.Second}
+				fpFails[i] = &failureDelay{
+					Failure:       fpf,
+					delayDuration: 3 * time.Second,
+				}
 			}
 		}
 		ret = append(ret, fpFails...)
@@ -85,7 +96,8 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 		fs = append(fs, []Failure{
 			&failureFollower{
 				failureByFunc: failureByFunc{
-					description:   description(fmt.Sprintf("failpoint %s (one: %s)", fp, fcmd)),
+					desc:          desc(fmt.Sprintf("failpoint %q (one: %q)", fp, fcmd)),
+					failureCase:   rpcpb.FailureCase_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
 				},
@@ -94,7 +106,8 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 			},
 			&failureLeader{
 				failureByFunc: failureByFunc{
-					description:   description(fmt.Sprintf("failpoint %s (leader: %s)", fp, fcmd)),
+					desc:          desc(fmt.Sprintf("failpoint %q (leader: %q)", fp, fcmd)),
+					failureCase:   rpcpb.FailureCase_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
 				},
@@ -102,12 +115,14 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 				lead: -1,
 			},
 			&failureQuorum{
-				description:   description(fmt.Sprintf("failpoint %s (quorum: %s)", fp, fcmd)),
+				desc:          desc(fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd)),
+				failureCase:   rpcpb.FailureCase_FAILPOINTS,
 				injectMember:  inject,
 				recoverMember: recov,
 			},
 			&failureAll{
-				description:   description(fmt.Sprintf("failpoint %s (all: %s)", fp, fcmd)),
+				desc:          desc(fmt.Sprintf("failpoint %q (all: %q)", fp, fcmd)),
+				failureCase:   rpcpb.FailureCase_FAILPOINTS,
 				injectMember:  inject,
 				recoverMember: recov,
 			},
