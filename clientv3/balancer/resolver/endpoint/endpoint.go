@@ -103,6 +103,19 @@ func (r *Resolver) InitialAddrs(addrs []resolver.Address) {
 	r.bootstrapAddrs = addrs
 }
 
+func (r *Resolver) InitialEndpoints(eps []string) {
+	r.InitialAddrs(epsToAddrs(eps...))
+}
+
+// TODO: use balancer.epsToAddrs
+func epsToAddrs(eps ...string) (addrs []resolver.Address) {
+	addrs = make([]resolver.Address, 0, len(eps))
+	for _, ep := range eps {
+		addrs = append(addrs, resolver.Address{Addr: ep})
+	}
+	return addrs
+}
+
 // NewAddress updates the addresses of the resolver.
 func (r *Resolver) NewAddress(addrs []resolver.Address) error {
 	if r.cc == nil {

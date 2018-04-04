@@ -42,22 +42,25 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 		name        string
 		serverCount int
 		reqN        int
+		network     string
 	}{
-		{name: "rrBalanced_1", serverCount: 1, reqN: 5},
-		{name: "rrBalanced_3", serverCount: 3, reqN: 7},
-		{name: "rrBalanced_5", serverCount: 5, reqN: 10},
+		{name: "rrBalanced_1", serverCount: 1, reqN: 5, network: "tcp"},
+		{name: "rrBalanced_1_unix_sockets", serverCount: 1, reqN: 5, network: "unix"},
+		{name: "rrBalanced_3", serverCount: 3, reqN: 7, network: "tcp"},
+		{name: "rrBalanced_5", serverCount: 5, reqN: 10, network: "tcp"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms, err := mockserver.StartMockServers(tc.serverCount)
+			ms, err := mockserver.StartMockServersOnNetwork(tc.serverCount, tc.network)
 			if err != nil {
 				t.Fatalf("failed to start mock servers: %v", err)
 			}
 			defer ms.Stop()
+
 			var resolvedAddrs []resolver.Address
 			for _, svr := range ms.Servers {
-				resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
+				resolvedAddrs = append(resolvedAddrs, svr.ResolverAddress())
 			}
 
 			rsv := endpoint.EndpointResolver("nofailover")
@@ -68,7 +71,7 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 				Policy:    picker.RoundrobinBalanced,
 				Name:      genName(),
 				Logger:    zap.NewExample(),
-				Endpoints: []string{fmt.Sprintf("etcd://nofailover/mock.server")},
+				Endpoints: []string{fmt.Sprintf("etcd://nofailover/*")},
 			}
 			rrb, err := New(cfg)
 			if err != nil {

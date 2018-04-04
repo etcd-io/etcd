@@ -17,19 +17,34 @@ package mockserver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
 	"sync"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/resolver"
 )
 
 // MockServer provides a mocked out grpc server of the etcdserver interface.
 type MockServer struct {
 	ln         net.Listener
+	Network    string
 	Address    string
 	GrpcServer *grpc.Server
+}
+
+func (ms *MockServer) ResolverAddress() resolver.Address {
+	switch ms.Network {
+	case "unix":
+		return resolver.Address{Addr: fmt.Sprintf("unix://%s", ms.Address)}
+	case "tcp":
+		return resolver.Address{Addr: ms.Address}
+	default:
+		panic("illegal network type: " + ms.Network)
+	}
 }
 
 // MockServers provides a cluster of mocket out gprc servers of the etcdserver interface.
@@ -42,8 +57,50 @@ type MockServers struct {
 // StartMockServers creates the desired count of mock servers
 // and starts them.
 func StartMockServers(count int) (ms *MockServers, err error) {
+	return StartMockServersOnNetwork(count, "tcp")
+}
+
+// StartMockServersOnNetwork creates mock servers on either 'tcp' or 'unix' sockets.
+func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err error) {
+	switch network {
+	case "tcp":
+		return startMockServersTcp(count)
+	case "unix":
+		return startMockServersUnix(count)
+	default:
+		return nil, fmt.Errorf("unsupported network type: %s", network)
+	}
+}
+
+func startMockServersTcp(count int) (ms *MockServers, err error) {
+	addrs := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		addrs = append(addrs, "localhost:0")
+	}
+	return startMockServers("tcp", addrs)
+}
+
+func startMockServersUnix(count int) (ms *MockServers, err error) {
+	dir := os.TempDir()
+	addrs := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		f, err := ioutil.TempFile(dir, "etcd-unix-so-")
+		if err != nil {
+			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %v", err)
+		}
+		fn := f.Name()
+		err = os.Remove(fn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to remove temp file before creating unix socket: %v", err)
+		}
+		addrs = append(addrs, fn)
+	}
+	return startMockServers("unix", addrs)
+}
+
+func startMockServers(network string, addrs []string) (ms *MockServers, err error) {
 	ms = &MockServers{
-		Servers: make([]*MockServer, count),
+		Servers: make([]*MockServer, len(addrs)),
 		wg:      sync.WaitGroup{},
 	}
 	defer func() {
@@ -51,12 +108,12 @@ func StartMockServers(count int) (ms *MockServers, err error) {
 			ms.Stop()
 		}
 	}()
-	for idx := 0; idx < count; idx++ {
-		ln, err := net.Listen("tcp", "localhost:0")
+	for idx, addr := range addrs {
+		ln, err := net.Listen(network, addr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to listen %v", err)
 		}
-		ms.Servers[idx] = &MockServer{ln: ln, Address: ln.Addr().String()}
+		ms.Servers[idx] = &MockServer{ln: ln, Network: network, Address: ln.Addr().String()}
 		ms.StartAt(idx)
 	}
 	return ms, nil
@@ -68,7 +125,7 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	defer ms.mu.Unlock()
 
 	if ms.Servers[idx].ln == nil {
-		ms.Servers[idx].ln, err = net.Listen("tcp", ms.Servers[idx].Address)
+		ms.Servers[idx].ln, err = net.Listen(ms.Servers[idx].Network, ms.Servers[idx].Address)
 		if err != nil {
 			return fmt.Errorf("failed to listen %v", err)
 		}
