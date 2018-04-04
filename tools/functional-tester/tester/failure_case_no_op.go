@@ -20,18 +20,34 @@ import (
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
 
-type failureNoOp failureByFunc
+type failureNoFailWithStress failureByFunc
 
-func (f *failureNoOp) Inject(clus *Cluster) error     { return nil }
-func (f *failureNoOp) Recover(clus *Cluster) error    { return nil }
-func (f *failureNoOp) FailureCase() rpcpb.FailureCase { return f.failureCase }
+func (f *failureNoFailWithStress) Inject(clus *Cluster) error     { return nil }
+func (f *failureNoFailWithStress) Recover(clus *Cluster) error    { return nil }
+func (f *failureNoFailWithStress) FailureCase() rpcpb.FailureCase { return f.failureCase }
 
-func newFailureNoOp() Failure {
-	f := &failureNoOp{
+func newFailureNoFailWithStress() Failure {
+	f := &failureNoFailWithStress{
 		failureCase: rpcpb.FailureCase_NO_FAIL_WITH_STRESS,
 	}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: 5 * time.Second,
+	}
+}
+
+type failureNoFailWithNoStressForLiveness failureByFunc
+
+func (f *failureNoFailWithNoStressForLiveness) Inject(clus *Cluster) error     { return nil }
+func (f *failureNoFailWithNoStressForLiveness) Recover(clus *Cluster) error    { return nil }
+func (f *failureNoFailWithNoStressForLiveness) FailureCase() rpcpb.FailureCase { return f.failureCase }
+
+func newFailureNoFailWithNoStressForLiveness() Failure {
+	f := &failureNoFailWithNoStressForLiveness{
+		failureCase: rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS,
+	}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: 7 * time.Second,
 	}
 }
