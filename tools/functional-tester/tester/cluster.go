@@ -293,7 +293,10 @@ func (clus *Cluster) updateFailures() {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
 			clus.failures = append(clus.failures, fpFailures...)
-		case "NO_FAIL":
+		case "NO_FAIL_WITH_STRESS":
+			clus.failures = append(clus.failures, newFailureNoOp())
+		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
+			// TODO
 			clus.failures = append(clus.failures, newFailureNoOp())
 		case "EXTERNAL":
 			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))

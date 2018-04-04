@@ -44,14 +44,15 @@ type keyStresser struct {
 	keyTxnSuffixRange int
 	keyTxnOps         int
 
-	N int
-
 	rateLimiter *rate.Limiter
 
-	wg sync.WaitGroup
+	wg       sync.WaitGroup
+	clientsN int
 
+	ctx    context.Context
 	cancel func()
 	cli    *clientv3.Client
+
 	// atomicModifiedKeys records the number of keys created and deleted by the stresser.
 	atomicModifiedKeys int64
 
@@ -59,40 +60,37 @@ type keyStresser struct {
 }
 
 func (s *keyStresser) Stress() error {
-	// TODO: add backoff option
-	cli, err := s.m.CreateEtcdClient()
+	var err error
+	s.cli, err = s.m.CreateEtcdClient(grpc.WithBackoffMaxDelay(1 * time.Second))
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, s.m.EtcdClientEndpoint)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
-	s.wg.Add(s.N)
-	s.cli = cli
-	s.cancel = cancel
-
+	s.wg.Add(s.clientsN)
 	var stressEntries = []stressEntry{
-		{weight: 0.7, f: newStressPut(cli, s.keySuffixRange, s.keySize)},
+		{weight: 0.7, f: newStressPut(s.cli, s.keySuffixRange, s.keySize)},
 		{
 			weight: 0.7 * float32(s.keySize) / float32(s.keyLargeSize),
-			f:      newStressPut(cli, s.keySuffixRange, s.keyLargeSize),
+			f:      newStressPut(s.cli, s.keySuffixRange, s.keyLargeSize),
 		},
-		{weight: 0.07, f: newStressRange(cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressRangeInterval(cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressDelete(cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressDeleteInterval(cli, s.keySuffixRange)},
+		{weight: 0.07, f: newStressRange(s.cli, s.keySuffixRange)},
+		{weight: 0.07, f: newStressRangeInterval(s.cli, s.keySuffixRange)},
+		{weight: 0.07, f: newStressDelete(s.cli, s.keySuffixRange)},
+		{weight: 0.07, f: newStressDeleteInterval(s.cli, s.keySuffixRange)},
 	}
 	if s.keyTxnSuffixRange > 0 {
 		// adjust to make up ±70% of workloads with writes
 		stressEntries[0].weight = 0.35
 		stressEntries = append(stressEntries, stressEntry{
 			weight: 0.35,
-			f:      newStressTxn(cli, s.keyTxnSuffixRange, s.keyTxnOps),
+			f:      newStressTxn(s.cli, s.keyTxnSuffixRange, s.keyTxnOps),
 		})
 	}
 	s.stressTable = createStressTable(stressEntries)
 
-	for i := 0; i < s.N; i++ {
-		go s.run(ctx)
+	for i := 0; i < s.clientsN; i++ {
+		go s.run()
 	}
 
 	s.lg.Info(
@@ -102,18 +100,18 @@ func (s *keyStresser) Stress() error {
 	return nil
 }
 
-func (s *keyStresser) run(ctx context.Context) {
+func (s *keyStresser) run() {
 	defer s.wg.Done()
 
 	for {
-		if err := s.rateLimiter.Wait(ctx); err == context.Canceled {
+		if err := s.rateLimiter.Wait(s.ctx); err == context.Canceled {
 			return
 		}
 
 		// TODO: 10-second is enough timeout to cover leader failure
 		// and immediate leader election. Find out what other cases this
 		// could be timed out.
-		sctx, scancel := context.WithTimeout(ctx, 10*time.Second)
+		sctx, scancel := context.WithTimeout(s.ctx, 10*time.Second)
 		err, modifiedKeys := s.stressTable.choose()(sctx)
 		scancel()
 		if err == nil {

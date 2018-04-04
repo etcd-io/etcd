@@ -116,30 +116,34 @@ func (clus *Cluster) doRound() error {
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
 	)
-	for i, f := range clus.failures {
+
+	for i, fa := range clus.failures {
 		clus.cs = i
 
-		caseTotalCounter.WithLabelValues(f.Desc()).Inc()
+		caseTotalCounter.WithLabelValues(fa.Desc()).Inc()
 
 		clus.lg.Info("wait health before injecting failures")
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
 
+		// TODO: "NO_FAIL_WITH_STRESS"
+		// TODO: "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS"
+
 		clus.lg.Info(
 			"injecting failure",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.String("desc", f.Desc()),
+			zap.String("desc", fa.Desc()),
 		)
-		if err := f.Inject(clus); err != nil {
+		if err := fa.Inject(clus); err != nil {
 			return fmt.Errorf("injection error: %v", err)
 		}
 		clus.lg.Info(
 			"injected failure",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.String("desc", f.Desc()),
+			zap.String("desc", fa.Desc()),
 		)
 
 		// if run local, recovering server may conflict
@@ -149,16 +153,16 @@ func (clus *Cluster) doRound() error {
 			"recovering failure",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.String("desc", f.Desc()),
+			zap.String("desc", fa.Desc()),
 		)
-		if err := f.Recover(clus); err != nil {
+		if err := fa.Recover(clus); err != nil {
 			return fmt.Errorf("recovery error: %v", err)
 		}
 		clus.lg.Info(
 			"recovered failure",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.String("desc", f.Desc()),
+			zap.String("desc", fa.Desc()),
 		)
 
 		clus.lg.Info("pausing stresser after failure recovery, before wait health")
@@ -168,6 +172,7 @@ func (clus *Cluster) doRound() error {
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
+
 		clus.lg.Info("check consistency after recovering failures")
 		if err := clus.checkConsistency(); err != nil {
 			return fmt.Errorf("tt.checkConsistency error (%v)", err)
@@ -177,7 +182,7 @@ func (clus *Cluster) doRound() error {
 			"failure case passed",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.String("desc", f.Desc()),
+			zap.String("desc", fa.Desc()),
 		)
 	}
 
@@ -186,6 +191,7 @@ func (clus *Cluster) doRound() error {
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
 	)
+
 	return nil
 }
 

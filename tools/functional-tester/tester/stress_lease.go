@@ -33,8 +33,8 @@ import (
 
 const (
 	// time to live for lease
-	TTL      = 120
-	TTLShort = 2
+	defaultTTL      = 120
+	defaultTTLShort = 2
 )
 
 type leaseStresser struct {
@@ -201,7 +201,7 @@ func (ls *leaseStresser) createAliveLeases() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			leaseID, err := ls.createLeaseWithKeys(TTL)
+			leaseID, err := ls.createLeaseWithKeys(defaultTTL)
 			if err != nil {
 				ls.lg.Debug(
 					"createLeaseWithKeys failed",
@@ -228,7 +228,7 @@ func (ls *leaseStresser) createShortLivedLeases() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			leaseID, err := ls.createLeaseWithKeys(TTLShort)
+			leaseID, err := ls.createLeaseWithKeys(defaultTTLShort)
 			if err != nil {
 				return
 			}
@@ -323,7 +323,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 			// if it is renewed, this means that invariant checking have at least ttl/2 time before lease exipres which is long enough for the checking to finish.
 			// if it is not renewed, we remove the lease from the alive map so that the lease doesn't exipre during invariant checking
 			renewTime, ok := ls.aliveLeases.read(leaseID)
-			if ok && renewTime.Add(TTL/2*time.Second).Before(time.Now()) {
+			if ok && renewTime.Add(defaultTTL/2*time.Second).Before(time.Now()) {
 				ls.aliveLeases.remove(leaseID)
 				ls.lg.Debug(
 					"keepLeaseAlive lease has not been renewed, dropped it",
