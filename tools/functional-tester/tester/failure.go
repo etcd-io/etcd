@@ -223,7 +223,7 @@ func (f *failureUntilSnapshot) Desc() string {
 	if f.desc.Desc() != "" {
 		return f.desc.Desc()
 	}
-	return f.failureCase.String() + " (to trigger snapshot)"
+	return f.failureCase.String()
 }
 
 func (f *failureUntilSnapshot) FailureCase() rpcpb.FailureCase {

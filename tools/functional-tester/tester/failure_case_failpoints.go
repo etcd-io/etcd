@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
@@ -59,7 +58,7 @@ func failpointFailures(clus *Cluster) (ret []Failure, err error) {
 			} else {
 				fpFails[i] = &failureDelay{
 					Failure:       fpf,
-					delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+					delayDuration: clus.GetFailureDelayDuration(),
 				}
 			}
 		}

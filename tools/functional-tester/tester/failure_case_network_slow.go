@@ -47,7 +47,7 @@ func newFailureDelayPeerPortTxRxOneFollower(clus *Cluster) Failure {
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
@@ -60,7 +60,7 @@ func newFailureDelayPeerPortTxRxLeader(clus *Cluster) Failure {
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
@@ -72,6 +72,6 @@ func newFailureDelayPeerPortTxRxAll(clus *Cluster) Failure {
 	}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }

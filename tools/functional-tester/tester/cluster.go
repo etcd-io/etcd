@@ -294,10 +294,9 @@ func (clus *Cluster) updateFailures() {
 			}
 			clus.failures = append(clus.failures, fpFailures...)
 		case "NO_FAIL_WITH_STRESS":
-			clus.failures = append(clus.failures, newFailureNoFailWithStress())
+			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
-			// TODO
-			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness())
+			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness(clus))
 		case "EXTERNAL":
 			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
 		}
@@ -762,4 +761,12 @@ func (clus *Cluster) defrag() error {
 	return nil
 }
 
-func (clus *Cluster) Report() int64 { return clus.stresser.ModifiedKeys() }
+// GetFailureDelayDuration computes failure delay duration.
+func (clus *Cluster) GetFailureDelayDuration() time.Duration {
+	return time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond
+}
+
+// Report reports the number of modified keys.
+func (clus *Cluster) Report() int64 {
+	return clus.stresser.ModifiedKeys()
+}

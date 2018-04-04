@@ -15,8 +15,6 @@
 package tester
 
 import (
-	"time"
-
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 )
 
@@ -37,7 +35,7 @@ func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
@@ -50,7 +48,7 @@ func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
@@ -62,6 +60,6 @@ func newFailureBlackholePeerPortTxRxAll(clus *Cluster) Failure {
 	}
 	return &failureDelay{
 		Failure:       f,
-		delayDuration: time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }

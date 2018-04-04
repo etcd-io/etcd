@@ -19,6 +19,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+
 	"go.uber.org/zap"
 )
 
@@ -127,8 +129,10 @@ func (clus *Cluster) doRound() error {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
 
-		// TODO: "NO_FAIL_WITH_STRESS"
-		// TODO: "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS"
+		if fa.FailureCase() == rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
+			clus.lg.Info("pausing stresser after before injecting failures")
+			clus.pauseStresser()
+		}
 
 		clus.lg.Info(
 			"injecting failure",
@@ -165,8 +169,10 @@ func (clus *Cluster) doRound() error {
 			zap.String("desc", fa.Desc()),
 		)
 
-		clus.lg.Info("pausing stresser after failure recovery, before wait health")
-		clus.pauseStresser()
+		if fa.FailureCase() != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
+			clus.lg.Info("pausing stresser after failure recovery, before wait health")
+			clus.pauseStresser()
+		}
 
 		clus.lg.Info("wait health after recovering failures")
 		if err := clus.WaitHealth(); err != nil {
