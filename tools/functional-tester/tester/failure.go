@@ -99,7 +99,16 @@ func (f *failureFollower) Recover(clus *Cluster) error {
 	return f.recoverMember(clus, f.last)
 }
 
-func (f *failureFollower) FailureCase() rpcpb.FailureCase { return f.failureCase }
+func (f *failureFollower) Desc() string {
+	if string(f.desc) != "" {
+		return string(f.desc)
+	}
+	return f.failureCase.String()
+}
+
+func (f *failureFollower) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
 
 type failureLeader struct {
 	failureByFunc
@@ -152,7 +161,16 @@ func (f *failureQuorum) Recover(clus *Cluster) error {
 	return nil
 }
 
-func (f *failureQuorum) FailureCase() rpcpb.FailureCase { return f.failureCase }
+func (f *failureQuorum) Desc() string {
+	if string(f.desc) != "" {
+		return string(f.desc)
+	}
+	return f.failureCase.String()
+}
+
+func (f *failureQuorum) FailureCase() rpcpb.FailureCase {
+	return f.failureCase
+}
 
 type failureAll failureByFunc
 
@@ -172,6 +190,13 @@ func (f *failureAll) Recover(clus *Cluster) error {
 		}
 	}
 	return nil
+}
+
+func (f *failureAll) Desc() string {
+	if string(f.desc) != "" {
+		return string(f.desc)
+	}
+	return f.failureCase.String()
 }
 
 func (f *failureAll) FailureCase() rpcpb.FailureCase {

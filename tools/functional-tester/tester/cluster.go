@@ -287,18 +287,18 @@ func (clus *Cluster) updateFailures() {
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus))
-		case "FAILPOINTS":
-			fpFailures, fperr := failpointFailures(clus)
-			if len(fpFailures) == 0 {
-				clus.lg.Info("no failpoints found!", zap.Error(fperr))
-			}
-			clus.failures = append(clus.failures, fpFailures...)
 		case "NO_FAIL_WITH_STRESS":
 			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
 			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness(clus))
 		case "EXTERNAL":
 			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
+		case "FAILPOINTS":
+			fpFailures, fperr := failpointFailures(clus)
+			if len(fpFailures) == 0 {
+				clus.lg.Info("no failpoints found!", zap.Error(fperr))
+			}
+			clus.failures = append(clus.failures, fpFailures...)
 		}
 	}
 }

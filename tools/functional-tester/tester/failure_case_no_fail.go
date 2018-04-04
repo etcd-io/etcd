@@ -32,6 +32,13 @@ func (f *failureNoFailWithStress) Recover(clus *Cluster) error {
 	return nil
 }
 
+func (f *failureNoFailWithStress) Desc() string {
+	if f.desc.Desc() != "" {
+		return f.desc.Desc()
+	}
+	return f.failureCase.String()
+}
+
 func (f *failureNoFailWithStress) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
@@ -68,6 +75,13 @@ func (f *failureNoFailWithNoStressForLiveness) Inject(clus *Cluster) error {
 
 func (f *failureNoFailWithNoStressForLiveness) Recover(clus *Cluster) error {
 	return nil
+}
+
+func (f *failureNoFailWithNoStressForLiveness) Desc() string {
+	if f.desc.Desc() != "" {
+		return f.desc.Desc()
+	}
+	return f.failureCase.String()
 }
 
 func (f *failureNoFailWithNoStressForLiveness) FailureCase() rpcpb.FailureCase {
