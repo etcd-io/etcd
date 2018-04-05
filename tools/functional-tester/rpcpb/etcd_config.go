@@ -37,7 +37,7 @@ var etcdFields = []string{
 	"ClientTrustedCAFile",
 
 	"ListenPeerURLs",
-	"InitialAdvertisePeerURLs",
+	"AdvertisePeerURLs",
 	"PeerAutoTLS",
 	"PeerClientCertAuth",
 	"PeerCertFile",
