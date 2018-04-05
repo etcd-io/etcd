@@ -96,6 +96,16 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 			clus.Members[i].Etcd.WALDir = filepath.Join(clus.Members[i].Etcd.DataDir, "member", "wal")
 		}
 
+		if clus.Members[i].Etcd.HeartbeatIntervalMs == 0 {
+			return nil, fmt.Errorf("'--heartbeat-interval' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		}
+		if clus.Members[i].Etcd.ElectionTimeoutMs == 0 {
+			return nil, fmt.Errorf("'--election-timeout' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		}
+		if int64(clus.Tester.DelayLatencyMs) <= clus.Members[i].Etcd.ElectionTimeoutMs {
+			return nil, fmt.Errorf("delay latency %d ms must be greater than election timeout %d ms", clus.Tester.DelayLatencyMs, clus.Members[i].Etcd.ElectionTimeoutMs)
+		}
+
 		port := ""
 		listenClientPorts := make([]string, len(clus.Members))
 		for i, u := range clus.Members[i].Etcd.ListenClientURLs {
@@ -158,6 +168,10 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		if len(clus.Tester.FailureCases) == 0 {
 			return nil, errors.New("FailureCases not found")
 		}
+	}
+
+	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv {
+		return nil, fmt.Errorf("delay latency %d ms must be greater than delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
 	}
 
 	for _, v := range clus.Tester.FailureCases {
