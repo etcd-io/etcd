@@ -14,9 +14,7 @@
 
 package tester
 
-import (
-	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
-)
+import "github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 func injectBlackholePeerPortTxRx(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_BlackholePeerPortTxRx)
@@ -39,6 +37,19 @@ func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
 	}
 }
 
+func newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot() Failure {
+	ff := failureByFunc{
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		injectMember:  injectBlackholePeerPortTxRx,
+		recoverMember: recoverBlackholePeerPortTxRx,
+	}
+	f := &failureFollower{ff, -1, -1}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     f,
+	}
+}
+
 func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER,
@@ -46,6 +57,31 @@ func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 		recoverMember: recoverBlackholePeerPortTxRx,
 	}
 	f := &failureLeader{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
+}
+
+func newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot() Failure {
+	ff := failureByFunc{
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		injectMember:  injectBlackholePeerPortTxRx,
+		recoverMember: recoverBlackholePeerPortTxRx,
+	}
+	f := &failureLeader{ff, -1, -1}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     f,
+	}
+}
+
+func newFailureBlackholePeerPortTxRxQuorum(clus *Cluster) Failure {
+	f := &failureQuorum{
+		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM,
+		injectMember:  injectBlackholePeerPortTxRx,
+		recoverMember: recoverBlackholePeerPortTxRx,
+	}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),

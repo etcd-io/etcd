@@ -38,17 +38,28 @@ message Etcd {
   string Name = 1 [(gogoproto.moretags) = "yaml:\"name\""];
   string DataDir = 2 [(gogoproto.moretags) = "yaml:\"data-dir\""];
   string WALDir = 3 [(gogoproto.moretags) = "yaml:\"wal-dir\""];
-  repeated string ListenClientURLs = 4 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
-  repeated string AdvertiseClientURLs = 5 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
-  repeated string ListenPeerURLs = 6 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
-  repeated string InitialAdvertisePeerURLs = 7 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
-  string InitialCluster = 8 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
-  string InitialClusterState = 9 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
-  string InitialClusterToken = 10 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
-  int64 SnapshotCount = 11 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
-  int64 QuotaBackendBytes = 12 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
-  bool PreVote = 13 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
-  bool InitialCorruptCheck = 14 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+
+  // HeartbeatIntervalMs is the time (in milliseconds) of a heartbeat interval.
+  // Default value is 100, which is 100ms.
+  int64 HeartbeatIntervalMs = 11 [(gogoproto.moretags) = "yaml:\"heartbeat-interval\""];
+  // ElectionTimeoutMs is the time (in milliseconds) for an election to timeout.
+  // Default value is 1000, which is 1s.
+  int64 ElectionTimeoutMs = 12 [(gogoproto.moretags) = "yaml:\"election-timeout\""];
+
+  repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
+  repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
+  repeated string ListenPeerURLs = 23 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string InitialAdvertisePeerURLs = 24 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+
+  string InitialCluster = 31 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 32 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 33 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+
+  int64 SnapshotCount = 41 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 42 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+
+  bool PreVote = 43 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 44 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
 
   // TODO: support TLS
 }
@@ -86,29 +97,41 @@ message Member {
 
 enum FailureCase {
   KILL_ONE_FOLLOWER = 0;
-  KILL_LEADER = 1;
-  KILL_ONE_FOLLOWER_FOR_LONG = 2;
-  KILL_LEADER_FOR_LONG = 3;
+  KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
+  KILL_LEADER = 2;
+  KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT = 3;
   KILL_QUORUM = 4;
   KILL_ALL = 5;
 
-  BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER = 6;
-  BLACKHOLE_PEER_PORT_TX_RX_LEADER = 7;
-  BLACKHOLE_PEER_PORT_TX_RX_ALL = 8;
+  BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER = 100;
+  BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 101;
+  BLACKHOLE_PEER_PORT_TX_RX_LEADER = 102;
+  BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 103;
+  BLACKHOLE_PEER_PORT_TX_RX_QUORUM = 104;
+  BLACKHOLE_PEER_PORT_TX_RX_ALL = 105;
 
-  DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 9;
-  DELAY_PEER_PORT_TX_RX_LEADER = 10;
-  DELAY_PEER_PORT_TX_RX_ALL = 11;
+  DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 200;
+  RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 201;
+  DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 202;
+  RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 203;
+  DELAY_PEER_PORT_TX_RX_LEADER = 204;
+  RANDOM_DELAY_PEER_PORT_TX_RX_LEADER = 205;
+  DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 206;
+  RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 207;
+  DELAY_PEER_PORT_TX_RX_QUORUM = 208;
+  RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM = 209;
+  DELAY_PEER_PORT_TX_RX_ALL = 210;
+  RANDOM_DELAY_PEER_PORT_TX_RX_ALL = 211;
 
   // NO_FAIL_WITH_STRESS runs no-op failure injection for specified period
   // while stressers are still sending requests.
-  NO_FAIL_WITH_STRESS = 100;
+  NO_FAIL_WITH_STRESS = 300;
   // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS runs no-op failure injection
   // with all stressers stopped.
-  NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 101;
+  NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 301;
 
-  FAILPOINTS = 200;
-  EXTERNAL = 300;
+  FAILPOINTS = 400;
+  EXTERNAL = 500;
 }
 
 enum StressType {
@@ -129,6 +152,10 @@ message Tester {
   uint32 DelayLatencyMs = 11 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
   // DelayLatencyMsRv is the delay latency random variable in milliseconds.
   uint32 DelayLatencyMsRv = 12 [(gogoproto.moretags) = "yaml:\"delay-latency-ms-rv\""];
+  // UpdatedDelayLatencyMs is the update delay latency in milliseconds,
+  // to inject to simulated slow network. It's the final latency to apply,
+  // in case the latency numbers are randomly generated from given delay latency field.
+  uint32 UpdatedDelayLatencyMs = 13 [(gogoproto.moretags) = "yaml:\"updated-delay-latency-ms\""];
 
   // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
   int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];

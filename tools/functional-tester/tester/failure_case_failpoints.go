@@ -51,7 +51,7 @@ func failpointFailures(clus *Cluster) (ret []Failure, err error) {
 			if strings.Contains(fp, "Snap") {
 				// hack to trigger snapshot failpoints
 				fpFails[i] = &failureUntilSnapshot{
-					desc:        desc(fpf.Desc()),
+					desc:        fpf.Desc(),
 					failureCase: rpcpb.FailureCase_FAILPOINTS,
 					Failure:     fpf,
 				}
@@ -95,7 +95,7 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 		fs = append(fs, []Failure{
 			&failureFollower{
 				failureByFunc: failureByFunc{
-					desc:          desc(fmt.Sprintf("failpoint %q (one: %q)", fp, fcmd)),
+					desc:          fmt.Sprintf("failpoint %q (one: %q)", fp, fcmd),
 					failureCase:   rpcpb.FailureCase_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
@@ -105,7 +105,7 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 			},
 			&failureLeader{
 				failureByFunc: failureByFunc{
-					desc:          desc(fmt.Sprintf("failpoint %q (leader: %q)", fp, fcmd)),
+					desc:          fmt.Sprintf("failpoint %q (leader: %q)", fp, fcmd),
 					failureCase:   rpcpb.FailureCase_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
@@ -114,13 +114,13 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 				lead: -1,
 			},
 			&failureQuorum{
-				desc:          desc(fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd)),
+				desc:          fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd),
 				failureCase:   rpcpb.FailureCase_FAILPOINTS,
 				injectMember:  inject,
 				recoverMember: recov,
 			},
 			&failureAll{
-				desc:          desc(fmt.Sprintf("failpoint %q (all: %q)", fp, fcmd)),
+				desc:          fmt.Sprintf("failpoint %q (all: %q)", fp, fcmd),
 				failureCase:   rpcpb.FailureCase_FAILPOINTS,
 				injectMember:  inject,
 				recoverMember: recov,

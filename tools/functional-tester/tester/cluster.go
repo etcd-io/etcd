@@ -61,7 +61,6 @@ type Cluster struct {
 }
 
 func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
-	lg.Info("reading configuration file", zap.String("path", fpath))
 	bts, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err
@@ -95,6 +94,16 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 		if clus.Members[i].Etcd.WALDir == "" {
 			clus.Members[i].Etcd.WALDir = filepath.Join(clus.Members[i].Etcd.DataDir, "member", "wal")
+		}
+
+		if clus.Members[i].Etcd.HeartbeatIntervalMs == 0 {
+			return nil, fmt.Errorf("'--heartbeat-interval' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		}
+		if clus.Members[i].Etcd.ElectionTimeoutMs == 0 {
+			return nil, fmt.Errorf("'--election-timeout' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		}
+		if int64(clus.Tester.DelayLatencyMs) <= clus.Members[i].Etcd.ElectionTimeoutMs {
+			return nil, fmt.Errorf("delay latency %d ms must be greater than election timeout %d ms", clus.Tester.DelayLatencyMs, clus.Members[i].Etcd.ElectionTimeoutMs)
 		}
 
 		port := ""
@@ -161,6 +170,13 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 
+	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
+		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
+	}
+	if clus.Tester.UpdatedDelayLatencyMs == 0 {
+		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
+	}
+
 	for _, v := range clus.Tester.FailureCases {
 		if _, ok := rpcpb.FailureCase_value[v]; !ok {
 			return nil, fmt.Errorf("%q is not defined in 'rpcpb.FailureCase_value'", v)
@@ -204,7 +220,6 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus.failures = make([]Failure, 0)
 
 	for i, ap := range clus.Members {
-		clus.lg.Info("connecting", zap.String("agent-address", ap.AgentAddr))
 		var err error
 		clus.agentConns[i], err = grpc.Dial(ap.AgentAddr, dialOpts...)
 		if err != nil {
@@ -213,7 +228,6 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		clus.agentClients[i] = rpcpb.NewTransportClient(clus.agentConns[i])
 		clus.lg.Info("connected", zap.String("agent-address", ap.AgentAddr))
 
-		clus.lg.Info("creating stream", zap.String("agent-address", ap.AgentAddr))
 		clus.agentStreams[i], err = clus.agentClients[i].Transport(context.Background())
 		if err != nil {
 			return nil, err
@@ -240,7 +254,9 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		rate.Limit(int(clus.Tester.StressQPS)),
 		int(clus.Tester.StressQPS),
 	)
+
 	clus.updateStresserChecker()
+
 	return clus, nil
 }
 
@@ -265,32 +281,60 @@ func (clus *Cluster) updateFailures() {
 		switch cs {
 		case "KILL_ONE_FOLLOWER":
 			clus.failures = append(clus.failures, newFailureKillOneFollower())
+		case "KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureKillOneFollowerUntilTriggerSnapshot())
 		case "KILL_LEADER":
 			clus.failures = append(clus.failures, newFailureKillLeader())
-		case "KILL_ONE_FOLLOWER_FOR_LONG":
-			clus.failures = append(clus.failures, newFailureKillOneFollowerForLongTime())
-		case "KILL_LEADER_FOR_LONG":
-			clus.failures = append(clus.failures, newFailureKillLeaderForLongTime())
+		case "KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureKillLeaderUntilTriggerSnapshot())
 		case "KILL_QUORUM":
 			clus.failures = append(clus.failures, newFailureKillQuorum())
 		case "KILL_ALL":
 			clus.failures = append(clus.failures, newFailureKillAll())
+
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower(clus))
+		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot())
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
 			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader(clus))
+		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot())
+		case "BLACKHOLE_PEER_PORT_TX_RX_QUORUM":
+			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxQuorum(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll(clus))
+
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, true))
+		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, true))
+		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, true))
+		case "DELAY_PEER_PORT_TX_RX_QUORUM":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, true))
+
 		case "NO_FAIL_WITH_STRESS":
 			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
 			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness(clus))
+
 		case "EXTERNAL":
 			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
@@ -311,13 +355,24 @@ func (clus *Cluster) failureStrings() (fs []string) {
 	return fs
 }
 
+// UpdateDelayLatencyMs updates delay latency with random value
+// within election timeout.
+func (clus *Cluster) UpdateDelayLatencyMs() {
+	rand.Seed(time.Now().UnixNano())
+	clus.Tester.UpdatedDelayLatencyMs = uint32(rand.Int63n(clus.Members[0].Etcd.ElectionTimeoutMs))
+
+	minLatRv := clus.Tester.DelayLatencyMsRv + clus.Tester.DelayLatencyMsRv/5
+	if clus.Tester.UpdatedDelayLatencyMs <= minLatRv {
+		clus.Tester.UpdatedDelayLatencyMs += minLatRv
+	}
+}
+
 func (clus *Cluster) shuffleFailures() {
 	rand.Seed(time.Now().UnixNano())
 	offset := rand.Intn(1000)
 	n := len(clus.failures)
 	cp := coprime(n)
 
-	clus.lg.Info("shuffling test failure cases", zap.Int("total", n))
 	fs := make([]Failure, n)
 	for i := 0; i < n; i++ {
 		fs[i] = clus.failures[(cp*i+offset)%n]
@@ -355,12 +410,6 @@ func gcd(x, y int) int {
 }
 
 func (clus *Cluster) updateStresserChecker() {
-	clus.lg.Info(
-		"updating stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
-
 	cs := &compositeStresser{}
 	for _, m := range clus.Members {
 		cs.stressers = append(cs.stressers, newStresser(clus, m))
@@ -397,21 +446,17 @@ func (clus *Cluster) checkConsistency() (err error) {
 		}
 	}()
 
-	clus.lg.Info(
-		"checking consistency and invariant of cluster",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.String("desc", clus.failures[clus.cs].Desc()),
-	)
 	if err = clus.checker.Check(); err != nil {
 		clus.lg.Warn(
-			"checker.Check failed",
+			"consistency check FAIL",
+			zap.Int("round", clus.rd),
+			zap.Int("case", clus.cs),
 			zap.Error(err),
 		)
 		return err
 	}
 	clus.lg.Info(
-		"checked consistency and invariant of cluster",
+		"consistency check ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 		zap.String("desc", clus.failures[clus.cs].Desc()),
@@ -468,11 +513,6 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 		clus.agentRequests[idx].Operation = op
 	}
 
-	clus.lg.Info(
-		"sending request",
-		zap.String("operation", op.String()),
-		zap.String("to", clus.Members[idx].EtcdClientEndpoint),
-	)
 	err := clus.agentStreams[idx].Send(clus.agentRequests[idx])
 	clus.lg.Info(
 		"sent request",
@@ -484,11 +524,6 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 		return err
 	}
 
-	clus.lg.Info(
-		"receiving response",
-		zap.String("operation", op.String()),
-		zap.String("from", clus.Members[idx].EtcdClientEndpoint),
-	)
 	resp, err := clus.agentStreams[idx].Recv()
 	if resp != nil {
 		clus.lg.Info(
@@ -519,22 +554,19 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 
 // DestroyEtcdAgents terminates all tester connections to agents and etcd servers.
 func (clus *Cluster) DestroyEtcdAgents() {
-	clus.lg.Info("destroying etcd servers and agents")
 	err := clus.broadcastOperation(rpcpb.Operation_DestroyEtcdAgent)
 	if err != nil {
-		clus.lg.Warn("failed to destroy etcd servers and agents", zap.Error(err))
+		clus.lg.Warn("destroying etcd/agents FAIL", zap.Error(err))
 	} else {
-		clus.lg.Info("destroyed etcd servers and agents")
+		clus.lg.Info("destroying etcd/agents PASS")
 	}
 
 	for i, conn := range clus.agentConns {
-		clus.lg.Info("closing connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr))
 		err := conn.Close()
 		clus.lg.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
 	}
 
 	if clus.testerHTTPServer != nil {
-		clus.lg.Info("closing tester HTTP server", zap.String("tester-address", clus.Tester.TesterAddr))
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		err := clus.testerHTTPServer.Shutdown(ctx)
 		cancel()
@@ -552,14 +584,9 @@ func (clus *Cluster) WaitHealth() error {
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
 	for i := 0; i < 60; i++ {
 		for _, m := range clus.Members {
-			clus.lg.Info(
-				"writing health key",
-				zap.Int("retries", i),
-				zap.String("endpoint", m.EtcdClientEndpoint),
-			)
 			if err = m.WriteHealthKey(); err != nil {
 				clus.lg.Warn(
-					"writing health key failed",
+					"health check FAIL",
 					zap.Int("retries", i),
 					zap.String("endpoint", m.EtcdClientEndpoint),
 					zap.Error(err),
@@ -567,15 +594,16 @@ func (clus *Cluster) WaitHealth() error {
 				break
 			}
 			clus.lg.Info(
-				"wrote health key",
+				"health check PASS",
 				zap.Int("retries", i),
 				zap.String("endpoint", m.EtcdClientEndpoint),
 			)
 		}
 		if err == nil {
 			clus.lg.Info(
-				"writing health key success on all members",
-				zap.Int("retries", i),
+				"health check ALL PASS",
+				zap.Int("round", clus.rd),
+				zap.Int("case", clus.cs),
 			)
 			return nil
 		}
@@ -639,7 +667,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 
 	for i, m := range clus.Members {
 		clus.lg.Info(
-			"compacting",
+			"compact START",
 			zap.String("endpoint", m.EtcdClientEndpoint),
 			zap.Int64("compact-revision", rev),
 			zap.Duration("timeout", timeout),
@@ -657,7 +685,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 				)
 			} else {
 				clus.lg.Warn(
-					"compact failed",
+					"compact FAIL",
 					zap.String("endpoint", m.EtcdClientEndpoint),
 					zap.Int64("compact-revision", rev),
 					zap.Error(cerr),
@@ -669,7 +697,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 
 		if succeed {
 			clus.lg.Info(
-				"compacted",
+				"compact PASS",
 				zap.String("endpoint", m.EtcdClientEndpoint),
 				zap.Int64("compact-revision", rev),
 				zap.Duration("timeout", timeout),
@@ -693,24 +721,22 @@ func (clus *Cluster) checkCompact(rev int64) error {
 }
 
 func (clus *Cluster) defrag() error {
-	clus.lg.Info(
-		"defragmenting",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
 	for _, m := range clus.Members {
 		if err := m.Defrag(); err != nil {
 			clus.lg.Warn(
-				"defrag failed",
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
+				"defrag FAIL",
+				zap.String("endpoint", m.EtcdClientEndpoint),
 				zap.Error(err),
 			)
 			return err
 		}
+		clus.lg.Info(
+			"defrag PASS",
+			zap.String("endpoint", m.EtcdClientEndpoint),
+		)
 	}
 	clus.lg.Info(
-		"defragmented",
+		"defrag ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)

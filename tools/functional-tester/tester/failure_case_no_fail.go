@@ -33,8 +33,8 @@ func (f *failureNoFailWithStress) Recover(clus *Cluster) error {
 }
 
 func (f *failureNoFailWithStress) Desc() string {
-	if f.desc.Desc() != "" {
-		return f.desc.Desc()
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }
@@ -78,8 +78,8 @@ func (f *failureNoFailWithNoStressForLiveness) Recover(clus *Cluster) error {
 }
 
 func (f *failureNoFailWithNoStressForLiveness) Desc() string {
-	if f.desc.Desc() != "" {
-		return f.desc.Desc()
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }

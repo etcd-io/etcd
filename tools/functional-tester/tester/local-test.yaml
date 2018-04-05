@@ -12,6 +12,8 @@ agent-configs:
     name: s1
     data-dir: /tmp/etcd-agent-data-1/etcd.data
     wal-dir: /tmp/etcd-agent-data-1/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:1379"]
     advertise-client-urls: ["http://127.0.0.1:1379"]
     listen-peer-urls: ["http://127.0.0.1:1380"]
@@ -36,6 +38,8 @@ agent-configs:
     name: s2
     data-dir: /tmp/etcd-agent-data-2/etcd.data
     wal-dir: /tmp/etcd-agent-data-2/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:2379"]
     advertise-client-urls: ["http://127.0.0.1:2379"]
     listen-peer-urls: ["http://127.0.0.1:2380"]
@@ -60,6 +64,8 @@ agent-configs:
     name: s3
     data-dir: /tmp/etcd-agent-data-3/etcd.data
     wal-dir: /tmp/etcd-agent-data-3/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:3379"]
     advertise-client-urls: ["http://127.0.0.1:3379"]
     listen-peer-urls: ["http://127.0.0.1:3380"]
@@ -76,8 +82,9 @@ tester-config:
   tester-network: tcp
   tester-addr: 127.0.0.1:9028
 
-  delay-latency-ms: 500
-  delay-latency-ms-rv: 50
+  # slow enough to trigger election
+  delay-latency-ms: 5000
+  delay-latency-ms-rv: 500
 
   round-limit: 1
   exit-on-failure: true
@@ -86,17 +93,29 @@ tester-config:
 
   failure-cases:
   - KILL_ONE_FOLLOWER
+  - KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - KILL_LEADER
-  - KILL_ONE_FOLLOWER_FOR_LONG
-  - KILL_LEADER_FOR_LONG
+  - KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT
   - KILL_QUORUM
   - KILL_ALL
   - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_QUORUM
   - BLACKHOLE_PEER_PORT_TX_RX_ALL
   - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - DELAY_PEER_PORT_TX_RX_LEADER
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER
+  - DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - DELAY_PEER_PORT_TX_RX_QUORUM
+  - RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM
   - DELAY_PEER_PORT_TX_RX_ALL
+  - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
   - NO_FAIL_WITH_STRESS
   - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
 
@@ -125,4 +144,4 @@ tester-config:
   stress-key-txn-ops: 10
 
   stress-clients: 100
-  stress-qps: 1000
+  stress-qps: 2000

@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
+
+	"go.uber.org/zap"
 )
 
 // Failure defines failure injection interface.
@@ -43,15 +45,15 @@ type injectMemberFunc func(*Cluster, int) error
 type recoverMemberFunc func(*Cluster, int) error
 
 type failureByFunc struct {
-	desc
+	desc          string
 	failureCase   rpcpb.FailureCase
 	injectMember  injectMemberFunc
 	recoverMember recoverMemberFunc
 }
 
 func (f *failureByFunc) Desc() string {
-	if string(f.desc) != "" {
-		return string(f.desc)
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }
@@ -100,8 +102,8 @@ func (f *failureFollower) Recover(clus *Cluster) error {
 }
 
 func (f *failureFollower) Desc() string {
-	if string(f.desc) != "" {
-		return string(f.desc)
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }
@@ -162,14 +164,26 @@ func (f *failureQuorum) Recover(clus *Cluster) error {
 }
 
 func (f *failureQuorum) Desc() string {
-	if string(f.desc) != "" {
-		return string(f.desc)
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }
 
 func (f *failureQuorum) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
+}
+
+func killMap(size int, seed int) map[int]bool {
+	m := make(map[int]bool)
+	r := rand.New(rand.NewSource(int64(seed)))
+	majority := size/2 + 1
+	for {
+		m[r.Intn(size)] = true
+		if len(m) >= majority {
+			return m
+		}
+	}
 }
 
 type failureAll failureByFunc
@@ -193,8 +207,8 @@ func (f *failureAll) Recover(clus *Cluster) error {
 }
 
 func (f *failureAll) Desc() string {
-	if string(f.desc) != "" {
-		return string(f.desc)
+	if f.desc != "" {
+		return f.desc
 	}
 	return f.failureCase.String()
 }
@@ -205,13 +219,24 @@ func (f *failureAll) FailureCase() rpcpb.FailureCase {
 
 // failureUntilSnapshot injects a failure and waits for a snapshot event
 type failureUntilSnapshot struct {
-	desc        desc
+	desc        string
 	failureCase rpcpb.FailureCase
-
 	Failure
 }
 
-const snapshotCount = 10000
+// all delay failure cases except the ones failing with latency
+// greater than election timeout (trigger leader election and
+// cluster keeps operating anyways)
+var slowCases = map[rpcpb.FailureCase]bool{
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER:                        true,
+	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT:        true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT: true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER:                              true,
+	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:              true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:       true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM:                              true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ALL:                                 true,
+}
 
 func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	if err := f.Failure.Inject(clus); err != nil {
@@ -220,6 +245,18 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	if len(clus.Members) < 3 {
 		return nil
 	}
+
+	snapshotCount := clus.Members[0].Etcd.SnapshotCount
+
+	now := time.Now()
+	clus.lg.Info(
+		"trigger snapshot START",
+		zap.Int("round", clus.rd),
+		zap.Int("case", clus.cs),
+		zap.String("desc", f.Desc()),
+		zap.Int64("etcd-snapshot-count", snapshotCount),
+	)
+
 	// maxRev may fail since failure just injected, retry if failed.
 	startRev, err := clus.maxRev()
 	for i := 0; i < 10 && startRev == 0; i++ {
@@ -229,44 +266,59 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 		return err
 	}
 	lastRev := startRev
-	// Normal healthy cluster could accept 1000req/s at least.
-	// Give it 3-times time to create a new snapshot.
-	retry := snapshotCount / 1000 * 3
-	for j := 0; j < retry; j++ {
+
+	// healthy cluster could accept 1000 req/sec at least.
+	// 3x time to trigger snapshot.
+	retries := int(snapshotCount) / 1000 * 3
+	if v, ok := slowCases[f.FailureCase()]; v && ok {
+		// slow network takes more retries
+		retries *= 5
+	}
+
+	for i := 0; i < retries; i++ {
 		lastRev, _ = clus.maxRev()
 		// If the number of proposals committed is bigger than snapshot count,
 		// a new snapshot should have been created.
-		if lastRev-startRev > snapshotCount {
+		diff := lastRev - startRev
+		if diff > snapshotCount {
+			clus.lg.Info(
+				"trigger snapshot PASS",
+				zap.Int("round", clus.rd),
+				zap.Int("case", clus.cs),
+				zap.Int("retries", i),
+				zap.String("desc", f.Desc()),
+				zap.Int64("committed-entries", diff),
+				zap.Int64("etcd-snapshot-count", snapshotCount),
+				zap.Int64("last-revision", lastRev),
+				zap.Duration("took", time.Since(now)),
+			)
 			return nil
 		}
+
+		clus.lg.Info(
+			"trigger snapshot PROGRESS",
+			zap.Int("retries", i),
+			zap.Int64("committed-entries", diff),
+			zap.Int64("etcd-snapshot-count", snapshotCount),
+			zap.Int64("last-revision", lastRev),
+			zap.Duration("took", time.Since(now)),
+		)
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("cluster too slow: only commit %d requests in %ds", lastRev-startRev, retry)
+
+	return fmt.Errorf("cluster too slow: only %d commits in %d retries", lastRev-startRev, retries)
 }
 
 func (f *failureUntilSnapshot) Desc() string {
-	if f.desc.Desc() != "" {
-		return f.desc.Desc()
+	if f.desc != "" {
+		return f.desc
 	}
-	return f.failureCase.String()
+	if f.failureCase.String() != "" {
+		return f.failureCase.String()
+	}
+	return f.Failure.Desc()
 }
 
 func (f *failureUntilSnapshot) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
-
-func killMap(size int, seed int) map[int]bool {
-	m := make(map[int]bool)
-	r := rand.New(rand.NewSource(int64(seed)))
-	majority := size/2 + 1
-	for {
-		m[r.Intn(size)] = true
-		if len(m) >= majority {
-			return m
-		}
-	}
-}
-
-type desc string
-
-func (d desc) Desc() string { return string(d) }

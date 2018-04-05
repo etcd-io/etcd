@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/proxy"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
@@ -78,7 +78,6 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 	srv.Member = req.Member
 	srv.Tester = req.Tester
 
-	srv.lg.Info("creating base directory", zap.String("path", srv.Member.BaseDir))
 	err := fileutil.TouchDirAll(srv.Member.BaseDir)
 	if err != nil {
 		return nil, err
@@ -90,7 +89,6 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 	}
 	srv.creatEtcdCmd()
 
-	srv.lg.Info("starting etcd")
 	err = srv.startEtcdCmd()
 	if err != nil {
 		return nil, err
@@ -121,8 +119,7 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
-		srv.lg.Info("starting proxy on client traffic", zap.String("url", advertiseClientURL.String()))
-		srv.advertiseClientPortToProxy[advertiseClientURLPort] = transport.NewProxy(transport.ProxyConfig{
+		srv.advertiseClientPortToProxy[advertiseClientURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
 			From:   *advertiseClientURL,
 			To:     *listenClientURL,
@@ -145,8 +142,7 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
-		srv.lg.Info("starting proxy on peer traffic", zap.String("url", advertisePeerURL.String()))
-		srv.advertisePeerPortToProxy[advertisePeerURLPort] = transport.NewProxy(transport.ProxyConfig{
+		srv.advertisePeerPortToProxy[advertisePeerURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
 			From:   *advertisePeerURL,
 			To:     *listenPeerURL,
@@ -164,11 +160,6 @@ func (srv *Server) startProxy() error {
 func (srv *Server) stopProxy() {
 	if srv.Member.EtcdClientProxy && len(srv.advertiseClientPortToProxy) > 0 {
 		for port, px := range srv.advertiseClientPortToProxy {
-			srv.lg.Info("closing proxy",
-				zap.Int("port", port),
-				zap.String("from", px.From()),
-				zap.String("to", px.To()),
-			)
 			if err := px.Close(); err != nil {
 				srv.lg.Warn("failed to close proxy", zap.Int("port", port))
 				continue
@@ -185,15 +176,10 @@ func (srv *Server) stopProxy() {
 				zap.String("to", px.To()),
 			)
 		}
-		srv.advertiseClientPortToProxy = make(map[int]transport.Proxy)
+		srv.advertiseClientPortToProxy = make(map[int]proxy.Server)
 	}
 	if srv.Member.EtcdPeerProxy && len(srv.advertisePeerPortToProxy) > 0 {
 		for port, px := range srv.advertisePeerPortToProxy {
-			srv.lg.Info("closing proxy",
-				zap.Int("port", port),
-				zap.String("from", px.From()),
-				zap.String("to", px.To()),
-			)
 			if err := px.Close(); err != nil {
 				srv.lg.Warn("failed to close proxy", zap.Int("port", port))
 				continue
@@ -210,12 +196,11 @@ func (srv *Server) stopProxy() {
 				zap.String("to", px.To()),
 			)
 		}
-		srv.advertisePeerPortToProxy = make(map[int]transport.Proxy)
+		srv.advertisePeerPortToProxy = make(map[int]proxy.Server)
 	}
 }
 
 func (srv *Server) createEtcdFile() error {
-	srv.lg.Info("creating etcd log file", zap.String("path", srv.Member.EtcdLogPath))
 	var err error
 	srv.etcdLogFile, err = os.Create(srv.Member.EtcdLogPath)
 	if err != nil {
@@ -273,7 +258,6 @@ func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
 	srv.stopProxy()
 
-	srv.lg.Info("killing etcd", zap.String("signal", syscall.SIGTERM.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
 	if err != nil {
 		return nil, err
@@ -290,7 +274,6 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 	srv.stopProxy()
 
 	// exit with stackstrace
-	srv.lg.Info("killing etcd", zap.String("signal", syscall.SIGQUIT.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGQUIT)
 	if err != nil {
 		return nil, err
@@ -301,7 +284,6 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 	srv.etcdLogFile.Close()
 
 	// TODO: support separate WAL directory
-	srv.lg.Info("archiving data", zap.String("base-dir", srv.Member.BaseDir))
 	if err = archive(
 		srv.Member.BaseDir,
 		srv.Member.EtcdLogPath,
@@ -329,14 +311,12 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 
 // stop proxy, etcd, delete data directory
 func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
-	srv.lg.Info("killing etcd", zap.String("signal", syscall.SIGTERM.String()))
 	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
 	if err != nil {
 		return nil, err
 	}
 	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGTERM.String()))
 
-	srv.lg.Info("removing base directory", zap.String("dir", srv.Member.BaseDir))
 	err = os.RemoveAll(srv.Member.BaseDir)
 	if err != nil {
 		return nil, err
@@ -347,12 +327,10 @@ func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
 	srv.Stop()
 
 	for port, px := range srv.advertiseClientPortToProxy {
-		srv.lg.Info("closing proxy", zap.Int("client-port", port))
 		err := px.Close()
 		srv.lg.Info("closed proxy", zap.Int("client-port", port), zap.Error(err))
 	}
 	for port, px := range srv.advertisePeerPortToProxy {
-		srv.lg.Info("closing proxy", zap.Int("peer-port", port))
 		err := px.Close()
 		srv.lg.Info("closed proxy", zap.Int("peer-port", port), zap.Error(err))
 	}
@@ -390,7 +368,7 @@ func (srv *Server) handleUnblackholePeerPortTxRx() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleDelayPeerPortTxRx() (*rpcpb.Response, error) {
-	lat := time.Duration(srv.Tester.DelayLatencyMs) * time.Millisecond
+	lat := time.Duration(srv.Tester.UpdatedDelayLatencyMs) * time.Millisecond
 	rv := time.Duration(srv.Tester.DelayLatencyMsRv) * time.Millisecond
 
 	for port, px := range srv.advertisePeerPortToProxy {

@@ -104,6 +104,16 @@ type leaseChecker struct {
 }
 
 func (lc *leaseChecker) Check() error {
+	if lc.ls == nil {
+		return nil
+	}
+	if lc.ls != nil &&
+		(lc.ls.revokedLeases == nil ||
+			lc.ls.aliveLeases == nil ||
+			lc.ls.shortLivedLeases == nil) {
+		return nil
+	}
+
 	cli, err := lc.m.CreateEtcdClient(grpc.WithBackoffMaxDelay(time.Second))
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, lc.m.EtcdClientEndpoint)
@@ -114,6 +124,7 @@ func (lc *leaseChecker) Check() error {
 		}
 	}()
 	lc.cli = cli
+
 	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}

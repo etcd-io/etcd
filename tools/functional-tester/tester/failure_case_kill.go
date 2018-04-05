@@ -58,16 +58,16 @@ func newFailureKillAll() Failure {
 	}
 }
 
-func newFailureKillOneFollowerForLongTime() Failure {
+func newFailureKillOneFollowerUntilTriggerSnapshot() Failure {
 	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_KILL_ONE_FOLLOWER_FOR_LONG,
+		failureCase: rpcpb.FailureCase_KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
 		Failure:     newFailureKillOneFollower(),
 	}
 }
 
-func newFailureKillLeaderForLongTime() Failure {
+func newFailureKillLeaderUntilTriggerSnapshot() Failure {
 	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_KILL_LEADER_FOR_LONG,
+		failureCase: rpcpb.FailureCase_KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT,
 		Failure:     newFailureKillLeader(),
 	}
 }
