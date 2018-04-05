@@ -38,17 +38,28 @@ message Etcd {
   string Name = 1 [(gogoproto.moretags) = "yaml:\"name\""];
   string DataDir = 2 [(gogoproto.moretags) = "yaml:\"data-dir\""];
   string WALDir = 3 [(gogoproto.moretags) = "yaml:\"wal-dir\""];
-  repeated string ListenClientURLs = 4 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
-  repeated string AdvertiseClientURLs = 5 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
-  repeated string ListenPeerURLs = 6 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
-  repeated string InitialAdvertisePeerURLs = 7 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
-  string InitialCluster = 8 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
-  string InitialClusterState = 9 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
-  string InitialClusterToken = 10 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
-  int64 SnapshotCount = 11 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
-  int64 QuotaBackendBytes = 12 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
-  bool PreVote = 13 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
-  bool InitialCorruptCheck = 14 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+
+  // HeartbeatIntervalMs is the time (in milliseconds) of a heartbeat interval.
+  // Default value is 100, which is 100ms.
+  int64 HeartbeatIntervalMs = 11 [(gogoproto.moretags) = "yaml:\"heartbeat-interval\""];
+  // ElectionTimeoutMs is the time (in milliseconds) for an election to timeout.
+  // Default value is 1000, which is 1s.
+  int64 ElectionTimeoutMs = 12 [(gogoproto.moretags) = "yaml:\"election-timeout\""];
+
+  repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
+  repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
+  repeated string ListenPeerURLs = 23 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string InitialAdvertisePeerURLs = 24 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+
+  string InitialCluster = 31 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 32 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 33 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+
+  int64 SnapshotCount = 41 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 42 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+
+  bool PreVote = 43 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 44 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
 
   // TODO: support TLS
 }

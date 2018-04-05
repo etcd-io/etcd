@@ -24,15 +24,22 @@ var etcdFields = []string{
 	"Name",
 	"DataDir",
 	"WALDir",
+
+	"HeartbeatIntervalMs",
+	"ElectionTimeoutMs",
+
 	"ListenClientURLs",
 	"AdvertiseClientURLs",
 	"ListenPeerURLs",
 	"InitialAdvertisePeerURLs",
+
 	"InitialCluster",
 	"InitialClusterState",
 	"InitialClusterToken",
+
 	"SnapshotCount",
 	"QuotaBackendBytes",
+
 	"PreVote",
 	"InitialCorruptCheck",
 }
