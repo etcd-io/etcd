@@ -118,6 +118,7 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 	}, nil
 }
 
+// TODO: support TLS
 func (srv *Server) startProxy() error {
 	if srv.Member.EtcdClientProxy {
 		advertiseClientURL, advertiseClientURLPort, err := getURLAndPort(srv.Member.Etcd.AdvertiseClientURLs[0])
