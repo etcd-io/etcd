@@ -102,7 +102,7 @@ func (s *keyStresser) Stress() error {
 	}
 
 	s.lg.Info(
-		"key stresser started in background",
+		"key stresser START",
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return nil
@@ -181,16 +181,16 @@ func (s *keyStresser) Close() map[string]int {
 	s.cli.Close()
 	s.wg.Wait()
 
-	s.lg.Info(
-		"key stresser is closed",
-		zap.String("endpoint", s.m.EtcdClientEndpoint),
-	)
-
 	s.emu.Lock()
 	s.paused = true
 	ess := s.ems
 	s.ems = make(map[string]int, 100)
 	s.emu.Unlock()
+
+	s.lg.Info(
+		"key stresser STOP",
+		zap.String("endpoint", s.m.EtcdClientEndpoint),
+	)
 	return ess
 }
 

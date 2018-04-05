@@ -51,6 +51,19 @@ func newFailureDelayPeerPortTxRxOneFollower(clus *Cluster) Failure {
 	}
 }
 
+func newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot() Failure {
+	ff := failureByFunc{
+		failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		injectMember:  injectDelayPeerPortTxRx,
+		recoverMember: recoverDelayPeerPortTxRx,
+	}
+	f := &failureFollower{ff, -1, -1}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     f,
+	}
+}
+
 func newFailureDelayPeerPortTxRxLeader(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER,
@@ -58,6 +71,31 @@ func newFailureDelayPeerPortTxRxLeader(clus *Cluster) Failure {
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
 	f := &failureLeader{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
+}
+
+func newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot() Failure {
+	ff := failureByFunc{
+		failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		injectMember:  injectDelayPeerPortTxRx,
+		recoverMember: recoverDelayPeerPortTxRx,
+	}
+	f := &failureLeader{ff, -1, -1}
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     f,
+	}
+}
+
+func newFailureDelayPeerPortTxRxQuorum(clus *Cluster) Failure {
+	f := &failureQuorum{
+		failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM,
+		injectMember:  injectDelayPeerPortTxRx,
+		recoverMember: recoverDelayPeerPortTxRx,
+	}
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),

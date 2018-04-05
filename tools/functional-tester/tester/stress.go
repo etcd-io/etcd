@@ -41,7 +41,11 @@ type Stresser interface {
 func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 	stressers := make([]Stresser, len(clus.Tester.StressTypes))
 	for i, stype := range clus.Tester.StressTypes {
-		clus.lg.Info("creating stresser", zap.String("type", stype))
+		clus.lg.Info(
+			"creating stresser",
+			zap.String("type", stype),
+			zap.String("endpoint", m.EtcdClientEndpoint),
+		)
 
 		switch stype {
 		case "KV":

@@ -121,7 +121,7 @@ func (ls *leaseStresser) setupOnce() error {
 
 func (ls *leaseStresser) Stress() error {
 	ls.lg.Info(
-		"lease stresser is started",
+		"lease stresser START",
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 	)
 
@@ -452,16 +452,12 @@ func (ls *leaseStresser) Pause() map[string]int {
 }
 
 func (ls *leaseStresser) Close() map[string]int {
-	ls.lg.Info(
-		"lease stresser is closing",
-		zap.String("endpoint", ls.m.EtcdClientEndpoint),
-	)
 	ls.cancel()
 	ls.runWg.Wait()
 	ls.aliveWg.Wait()
 	ls.cli.Close()
 	ls.lg.Info(
-		"lease stresser is closed",
+		"lease stresser STOP",
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 	)
 	return nil

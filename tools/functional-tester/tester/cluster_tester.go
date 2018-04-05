@@ -39,7 +39,7 @@ func (clus *Cluster) StartTester() {
 
 		if err := clus.doRound(); err != nil {
 			clus.lg.Warn(
-				"doRound failed; returning",
+				"round FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.Error(err),
@@ -62,21 +62,21 @@ func (clus *Cluster) StartTester() {
 		timeout := 10 * time.Second
 		timeout += time.Duration(modifiedKey/compactQPS) * time.Second
 		clus.lg.Info(
-			"compacting",
+			"compact START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Duration("timeout", timeout),
 		)
 		if err := clus.compact(revToCompact, timeout); err != nil {
 			clus.lg.Warn(
-				"compact failed",
+				"compact FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.Error(err),
 			)
 			if err = clus.cleanup(); err != nil {
 				clus.lg.Warn(
-					"cleanup failed",
+					"cleanup FAIL",
 					zap.Int("round", clus.rd),
 					zap.Int("case", clus.cs),
 					zap.Error(err),
@@ -88,12 +88,6 @@ func (clus *Cluster) StartTester() {
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := clus.defrag(); err != nil {
-				clus.lg.Warn(
-					"defrag failed; returning",
-					zap.Int("round", clus.rd),
-					zap.Int("case", clus.cs),
-					zap.Error(err),
-				)
 				clus.failed()
 				return
 			}
@@ -101,7 +95,7 @@ func (clus *Cluster) StartTester() {
 	}
 
 	clus.lg.Info(
-		"functional-tester passed",
+		"functional-tester PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
@@ -112,18 +106,20 @@ func (clus *Cluster) doRound() error {
 		clus.shuffleFailures()
 	}
 
+	roundNow := time.Now()
 	clus.lg.Info(
-		"starting round",
+		"round START",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
 	)
-
 	for i, fa := range clus.failures {
 		clus.cs = i
 
 		caseTotalCounter.WithLabelValues(fa.Desc()).Inc()
+
+		caseNow := time.Now()
 		clus.lg.Info(
-			"failure case START",
+			"case START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
@@ -138,7 +134,7 @@ func (clus *Cluster) doRound() error {
 		fcase := fa.FailureCase()
 		if fcase != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
 			clus.lg.Info(
-				"starting stressers before injecting failures",
+				"stresser START",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.String("desc", fa.Desc()),
@@ -150,7 +146,7 @@ func (clus *Cluster) doRound() error {
 		}
 
 		clus.lg.Info(
-			"injecting",
+			"inject START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
@@ -163,7 +159,7 @@ func (clus *Cluster) doRound() error {
 		// with stressing client ports
 		// TODO: use unix for local tests
 		clus.lg.Info(
-			"recovering",
+			"recover START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
@@ -173,13 +169,13 @@ func (clus *Cluster) doRound() error {
 		}
 
 		if stressStarted {
-			clus.lg.Info("pausing stresser after failure recovery, before wait health")
+			clus.lg.Info("stresser PAUSE")
 			ems := clus.stresser.Pause()
 			if fcase == rpcpb.FailureCase_NO_FAIL_WITH_STRESS && len(ems) > 0 {
 				ess := make([]string, 0, len(ems))
 				cnt := 0
 				for k, v := range ems {
-					ess = append(ess, fmt.Sprintf("%s (count %d)", k, v))
+					ess = append(ess, fmt.Sprintf("%s (count: %d)", k, v))
 					cnt += v
 				}
 				clus.lg.Warn(
@@ -187,34 +183,40 @@ func (clus *Cluster) doRound() error {
 					zap.String("desc", fa.Desc()),
 					zap.Strings("errors", ess),
 				)
-				return fmt.Errorf("expected no error in %q, got %q", fcase.String(), ess)
+
+				// with network delay, some ongoing requests may fail
+				// only return error, if more than 10% of QPS requests fail
+				if cnt > int(clus.Tester.StressQPS)/10 {
+					return fmt.Errorf("expected no error in %q, got %q", fcase.String(), ess)
+				}
 			}
 		}
 
-		clus.lg.Info("wait health after recover")
+		clus.lg.Info("health check START")
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
 
-		clus.lg.Info("check consistency after recover")
+		clus.lg.Info("consistency check START")
 		if err := clus.checkConsistency(); err != nil {
-			return fmt.Errorf("tt.checkConsistency error (%v)", err)
+			return fmt.Errorf("consistency check error (%v)", err)
 		}
 
 		clus.lg.Info(
-			"failure case PASS",
+			"case PASS",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
+			zap.Duration("took", time.Since(caseNow)),
 		)
 	}
 
 	clus.lg.Info(
-		"finished round",
+		"round ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
+		zap.Duration("took", time.Since(roundNow)),
 	)
-
 	return nil
 }
 
@@ -233,28 +235,9 @@ func (clus *Cluster) updateRevision() error {
 }
 
 func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
-	clus.lg.Info(
-		"compacting storage",
-		zap.Int64("current-revision", clus.currentRevision),
-		zap.Int64("compact-revision", rev),
-	)
 	if err = clus.compactKV(rev, timeout); err != nil {
-		return err
-	}
-	clus.lg.Info(
-		"compacted storage",
-		zap.Int64("current-revision", clus.currentRevision),
-		zap.Int64("compact-revision", rev),
-	)
-
-	clus.lg.Info(
-		"checking compaction",
-		zap.Int64("current-revision", clus.currentRevision),
-		zap.Int64("compact-revision", rev),
-	)
-	if err = clus.checkCompact(rev); err != nil {
 		clus.lg.Warn(
-			"checkCompact failed",
+			"compact FAIL",
 			zap.Int64("current-revision", clus.currentRevision),
 			zap.Int64("compact-revision", rev),
 			zap.Error(err),
@@ -262,7 +245,22 @@ func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
 		return err
 	}
 	clus.lg.Info(
-		"confirmed compaction",
+		"compact DONE",
+		zap.Int64("current-revision", clus.currentRevision),
+		zap.Int64("compact-revision", rev),
+	)
+
+	if err = clus.checkCompact(rev); err != nil {
+		clus.lg.Warn(
+			"check compact FAIL",
+			zap.Int64("current-revision", clus.currentRevision),
+			zap.Int64("compact-revision", rev),
+			zap.Error(err),
+		)
+		return err
+	}
+	clus.lg.Info(
+		"check compact DONE",
 		zap.Int64("current-revision", clus.currentRevision),
 		zap.Int64("compact-revision", rev),
 	)
@@ -276,7 +274,7 @@ func (clus *Cluster) failed() {
 	}
 
 	clus.lg.Info(
-		"exiting on failure",
+		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 	)
@@ -303,7 +301,7 @@ func (clus *Cluster) cleanup() error {
 
 	if err := clus.FailArchive(); err != nil {
 		clus.lg.Warn(
-			"cleanup failed",
+			"cleanup FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Error(err),
@@ -312,7 +310,7 @@ func (clus *Cluster) cleanup() error {
 	}
 	if err := clus.Restart(); err != nil {
 		clus.lg.Warn(
-			"restart failed",
+			"restart FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Error(err),
