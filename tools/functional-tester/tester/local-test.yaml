@@ -4,7 +4,6 @@ agent-configs:
   failpoint-http-addr: http://127.0.0.1:7381
   base-dir: /tmp/etcd-agent-data-1
   etcd-log-path: /tmp/etcd-agent-data-1/current-etcd.log
-  etcd-client-tls: false
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:1379
@@ -40,7 +39,6 @@ agent-configs:
   failpoint-http-addr: http://127.0.0.1:7382
   base-dir: /tmp/etcd-agent-data-2
   etcd-log-path: /tmp/etcd-agent-data-2/current-etcd.log
-  etcd-client-tls: false
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:2379
@@ -76,7 +74,6 @@ agent-configs:
   failpoint-http-addr: http://127.0.0.1:7383
   base-dir: /tmp/etcd-agent-data-3
   etcd-log-path: /tmp/etcd-agent-data-3/current-etcd.log
-  etcd-client-tls: false
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:3379
@@ -109,6 +106,7 @@ agent-configs:
     initial-corrupt-check: true
 
 tester-config:
+  tester-data-dir: /tmp/etcd-tester-data
   tester-network: tcp
   tester-addr: 127.0.0.1:9028
 

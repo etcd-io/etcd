@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/debugutil"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -201,7 +202,8 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 
 		if mem.Etcd.ClientAutoTLS || mem.Etcd.ClientCertFile != "" {
 			for _, cu := range mem.Etcd.ListenClientURLs {
-				u, err := url.Parse(cu)
+				var u *url.URL
+				u, err = url.Parse(cu)
 				if err != nil {
 					return nil, err
 				}
@@ -210,7 +212,8 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 				}
 			}
 			for _, cu := range mem.Etcd.AdvertiseClientURLs {
-				u, err := url.Parse(cu)
+				var u *url.URL
+				u, err = url.Parse(cu)
 				if err != nil {
 					return nil, err
 				}
@@ -221,7 +224,8 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 		if mem.Etcd.PeerAutoTLS || mem.Etcd.PeerCertFile != "" {
 			for _, cu := range mem.Etcd.ListenPeerURLs {
-				u, err := url.Parse(cu)
+				var u *url.URL
+				u, err = url.Parse(cu)
 				if err != nil {
 					return nil, err
 				}
@@ -230,7 +234,8 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 				}
 			}
 			for _, cu := range mem.Etcd.AdvertisePeerURLs {
-				u, err := url.Parse(cu)
+				var u *url.URL
+				u, err = url.Parse(cu)
 				if err != nil {
 					return nil, err
 				}
@@ -619,9 +624,79 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 	}
 
 	if !resp.Success {
-		err = errors.New(resp.Status)
+		return errors.New(resp.Status)
 	}
-	return err
+
+	m, secure := clus.Members[idx], false
+	for _, cu := range m.Etcd.AdvertiseClientURLs {
+		u, err := url.Parse(cu)
+		if err != nil {
+			return err
+		}
+		if u.Scheme == "https" { // TODO: handle unix
+			secure = true
+		}
+	}
+
+	// store TLS assets from agents/servers onto disk
+	if secure && (op == rpcpb.Operation_InitialStartEtcd || op == rpcpb.Operation_RestartEtcd) {
+		dirClient := filepath.Join(
+			clus.Tester.TesterDataDir,
+			clus.Members[idx].Etcd.Name,
+			"fixtures",
+			"client",
+		)
+		if err = fileutil.TouchDirAll(dirClient); err != nil {
+			return err
+		}
+
+		clientCertData := []byte(resp.Member.ClientCertData)
+		if len(clientCertData) == 0 {
+			return fmt.Errorf("got empty client cert from %q", m.EtcdClientEndpoint)
+		}
+		clientCertPath := filepath.Join(dirClient, "cert.pem")
+		if err = ioutil.WriteFile(clientCertPath, clientCertData, 0644); err != nil { // overwrite if exists
+			return err
+		}
+		resp.Member.ClientCertPath = clientCertPath
+		clus.lg.Info(
+			"saved client cert file",
+			zap.String("path", clientCertPath),
+		)
+
+		clientKeyData := []byte(resp.Member.ClientKeyData)
+		if len(clientKeyData) == 0 {
+			return fmt.Errorf("got empty client key from %q", m.EtcdClientEndpoint)
+		}
+		clientKeyPath := filepath.Join(dirClient, "key.pem")
+		if err = ioutil.WriteFile(clientKeyPath, clientKeyData, 0644); err != nil { // overwrite if exists
+			return err
+		}
+		resp.Member.ClientKeyPath = clientKeyPath
+		clus.lg.Info(
+			"saved client key file",
+			zap.String("path", clientKeyPath),
+		)
+
+		clientTrustedCAData := []byte(resp.Member.ClientTrustedCAData)
+		if len(clientTrustedCAData) != 0 {
+			// TODO: disable this when auto TLS is deprecated
+			clientTrustedCAPath := filepath.Join(dirClient, "ca.pem")
+			if err = ioutil.WriteFile(clientTrustedCAPath, clientTrustedCAData, 0644); err != nil { // overwrite if exists
+				return err
+			}
+			resp.Member.ClientTrustedCAPath = clientTrustedCAPath
+			clus.lg.Info(
+				"saved client trusted CA file",
+				zap.String("path", clientTrustedCAPath),
+			)
+		}
+
+		// no need to store peer certs for tester clients
+
+		clus.Members[idx] = resp.Member
+	}
+	return nil
 }
 
 // DestroyEtcdAgents terminates all tester connections to agents and etcd servers.
