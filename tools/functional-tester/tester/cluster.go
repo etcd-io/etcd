@@ -170,8 +170,11 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 
-	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv {
-		return nil, fmt.Errorf("delay latency %d ms must be greater than delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
+	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
+		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
+	}
+	if clus.Tester.UpdatedDelayLatencyMs == 0 {
+		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	}
 
 	for _, v := range clus.Tester.FailureCases {
@@ -303,17 +306,29 @@ func (clus *Cluster) updateFailures() {
 			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll(clus))
 
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot())
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot())
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus))
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, false))
+		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
+			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, true))
 
 		case "NO_FAIL_WITH_STRESS":
 			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
@@ -338,6 +353,18 @@ func (clus *Cluster) failureStrings() (fs []string) {
 		fs[i] = clus.failures[i].Desc()
 	}
 	return fs
+}
+
+// UpdateDelayLatencyMs updates delay latency with random value
+// within election timeout.
+func (clus *Cluster) UpdateDelayLatencyMs() {
+	rand.Seed(time.Now().UnixNano())
+	clus.Tester.UpdatedDelayLatencyMs = uint32(rand.Int63n(clus.Members[0].Etcd.ElectionTimeoutMs))
+
+	minLatRv := clus.Tester.DelayLatencyMsRv + clus.Tester.DelayLatencyMsRv/5
+	if clus.Tester.UpdatedDelayLatencyMs <= minLatRv {
+		clus.Tester.UpdatedDelayLatencyMs += minLatRv
+	}
 }
 
 func (clus *Cluster) shuffleFailures() {

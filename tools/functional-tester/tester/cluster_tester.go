@@ -111,6 +111,7 @@ func (clus *Cluster) doRound() error {
 		"round START",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
+		zap.Int("total-failures", len(clus.failures)),
 	)
 	for i, fa := range clus.failures {
 		clus.cs = i

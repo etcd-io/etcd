@@ -224,9 +224,18 @@ type failureUntilSnapshot struct {
 	Failure
 }
 
+// all delay failure cases except the ones failing with latency
+// greater than election timeout (trigger leader election and
+// cluster keeps operating anyways)
 var slowCases = map[rpcpb.FailureCase]bool{
-	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT: true,
-	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:       true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER:                        true,
+	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT:        true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT: true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER:                              true,
+	rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:              true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:       true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM:                              true,
+	rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ALL:                                 true,
 }
 
 func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
@@ -263,7 +272,7 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	retries := int(snapshotCount) / 1000 * 3
 	if v, ok := slowCases[f.FailureCase()]; v && ok {
 		// slow network takes more retries
-		retries *= 2
+		retries *= 5
 	}
 
 	for i := 0; i < retries; i++ {

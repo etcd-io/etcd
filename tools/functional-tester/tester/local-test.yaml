@@ -84,7 +84,7 @@ tester-config:
 
   # slow enough to trigger election
   delay-latency-ms: 5000
-  delay-latency-ms-rv: 150
+  delay-latency-ms-rv: 500
 
   round-limit: 1
   exit-on-failure: true
