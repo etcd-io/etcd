@@ -275,7 +275,16 @@ func (srv *Server) saveTLSAssets() error {
 func (srv *Server) loadAutoTLSAssets() error {
 	// if started with auto TLS, sends back TLS assets to tester/client
 	if srv.Member.Etcd.ClientAutoTLS {
+		// in case of slow disk
+		time.Sleep(time.Second)
+
 		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "client")
+
+		srv.lg.Info(
+			"loading client TLS assets",
+			zap.String("dir", fdir),
+			zap.String("endpoint", srv.EtcdClientEndpoint),
+		)
 
 		certPath := filepath.Join(fdir, "cert.pem")
 		if !fileutil.Exist(certPath) {
@@ -306,7 +315,16 @@ func (srv *Server) loadAutoTLSAssets() error {
 		)
 	}
 	if srv.Member.Etcd.ClientAutoTLS {
+		// in case of slow disk
+		time.Sleep(time.Second)
+
 		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
+
+		srv.lg.Info(
+			"loading client TLS assets",
+			zap.String("dir", fdir),
+			zap.String("endpoint", srv.EtcdClientEndpoint),
+		)
 
 		certPath := filepath.Join(fdir, "cert.pem")
 		if !fileutil.Exist(certPath) {
