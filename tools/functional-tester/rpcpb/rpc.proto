@@ -48,20 +48,29 @@ message Etcd {
 
   repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
   repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
-  repeated string ListenPeerURLs = 23 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
-  repeated string InitialAdvertisePeerURLs = 24 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool ClientAutoTLS = 23 [(gogoproto.moretags) = "yaml:\"auto-tls\""];
+  bool ClientCertAuth = 24 [(gogoproto.moretags) = "yaml:\"client-cert-auth\""];
+  string ClientCertFile = 25 [(gogoproto.moretags) = "yaml:\"cert-file\""];
+  string ClientKeyFile = 26 [(gogoproto.moretags) = "yaml:\"key-file\""];
+  string ClientTrustedCAFile = 27 [(gogoproto.moretags) = "yaml:\"trusted-ca-file\""];
 
-  string InitialCluster = 31 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
-  string InitialClusterState = 32 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
-  string InitialClusterToken = 33 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+  repeated string ListenPeerURLs = 31 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string InitialAdvertisePeerURLs = 32 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool PeerAutoTLS = 33 [(gogoproto.moretags) = "yaml:\"peer-auto-tls\""];
+  bool PeerClientCertAuth = 34 [(gogoproto.moretags) = "yaml:\"peer-client-cert-auth\""];
+  string PeerCertFile = 35 [(gogoproto.moretags) = "yaml:\"peer-cert-file\""];
+  string PeerKeyFile = 36 [(gogoproto.moretags) = "yaml:\"peer-key-file\""];
+  string PeerTrustedCAFile = 37 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-file\""];
 
-  int64 SnapshotCount = 41 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
-  int64 QuotaBackendBytes = 42 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+  string InitialCluster = 41 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 42 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 43 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
 
-  bool PreVote = 43 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
-  bool InitialCorruptCheck = 44 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+  int64 SnapshotCount = 51 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 52 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
 
-  // TODO: support TLS
+  bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
 }
 
 message Member {

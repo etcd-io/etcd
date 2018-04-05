@@ -21,23 +21,40 @@ import (
 
 func TestEtcdFlags(t *testing.T) {
 	cfg := &Etcd{
-		Name:                     "s1",
-		DataDir:                  "/tmp/etcd-agent-data-1/etcd.data",
-		WALDir:                   "/tmp/etcd-agent-data-1/etcd.data/member/wal",
-		HeartbeatIntervalMs:      100,
-		ElectionTimeoutMs:        1000,
-		ListenClientURLs:         []string{"127.0.0.1:1379"},
-		AdvertiseClientURLs:      []string{"127.0.0.1:13790"},
+		Name:    "s1",
+		DataDir: "/tmp/etcd-agent-data-1/etcd.data",
+		WALDir:  "/tmp/etcd-agent-data-1/etcd.data/member/wal",
+
+		HeartbeatIntervalMs: 100,
+		ElectionTimeoutMs:   1000,
+
+		ListenClientURLs:    []string{"127.0.0.1:1379"},
+		AdvertiseClientURLs: []string{"127.0.0.1:13790"},
+		ClientAutoTLS:       true,
+		ClientCertAuth:      false,
+		ClientCertFile:      "",
+		ClientKeyFile:       "",
+		ClientTrustedCAFile: "",
+
 		ListenPeerURLs:           []string{"127.0.0.1:1380"},
 		InitialAdvertisePeerURLs: []string{"127.0.0.1:13800"},
-		InitialCluster:           "s1=127.0.0.1:13800,s2=127.0.0.1:23800,s3=127.0.0.1:33800",
-		InitialClusterState:      "new",
-		InitialClusterToken:      "tkn",
-		SnapshotCount:            10000,
-		QuotaBackendBytes:        10740000000,
-		PreVote:                  true,
-		InitialCorruptCheck:      true,
+		PeerAutoTLS:              true,
+		PeerClientCertAuth:       false,
+		PeerCertFile:             "",
+		PeerKeyFile:              "",
+		PeerTrustedCAFile:        "",
+
+		InitialCluster:      "s1=127.0.0.1:13800,s2=127.0.0.1:23800,s3=127.0.0.1:33800",
+		InitialClusterState: "new",
+		InitialClusterToken: "tkn",
+
+		SnapshotCount:     10000,
+		QuotaBackendBytes: 10740000000,
+
+		PreVote:             true,
+		InitialCorruptCheck: true,
 	}
+
 	exp := []string{
 		"--name=s1",
 		"--data-dir=/tmp/etcd-agent-data-1/etcd.data",
@@ -46,8 +63,12 @@ func TestEtcdFlags(t *testing.T) {
 		"--election-timeout=1000",
 		"--listen-client-urls=127.0.0.1:1379",
 		"--advertise-client-urls=127.0.0.1:13790",
+		"--auto-tls=true",
+		"--client-cert-auth=false",
 		"--listen-peer-urls=127.0.0.1:1380",
 		"--initial-advertise-peer-urls=127.0.0.1:13800",
+		"--peer-auto-tls=true",
+		"--peer-client-cert-auth=false",
 		"--initial-cluster=s1=127.0.0.1:13800,s2=127.0.0.1:23800,s3=127.0.0.1:33800",
 		"--initial-cluster-state=new",
 		"--initial-cluster-token=tkn",
