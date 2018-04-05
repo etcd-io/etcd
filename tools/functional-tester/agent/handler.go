@@ -17,9 +17,11 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -72,6 +74,7 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 		return &rpcpb.Response{
 			Success: false,
 			Status:  fmt.Sprintf("%q is not valid; last server operation was %q", rpcpb.Operation_InitialStartEtcd.String(), srv.last.String()),
+			Member:  req.Member,
 		}, nil
 	}
 
@@ -84,16 +87,22 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 	}
 	srv.lg.Info("created base directory", zap.String("path", srv.Member.BaseDir))
 
-	if err = srv.createEtcdFile(); err != nil {
+	if err = srv.saveEtcdLogFile(); err != nil {
 		return nil, err
 	}
+
 	srv.creatEtcdCmd()
 
-	err = srv.startEtcdCmd()
-	if err != nil {
+	if err = srv.saveTLSAssets(); err != nil {
+		return nil, err
+	}
+	if err = srv.startEtcdCmd(); err != nil {
 		return nil, err
 	}
 	srv.lg.Info("started etcd", zap.String("command-path", srv.etcdCmd.Path))
+	if err = srv.loadAutoTLSAssets(); err != nil {
+		return nil, err
+	}
 
 	// wait some time for etcd listener start
 	// before setting up proxy
@@ -104,7 +113,8 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully started etcd!",
+		Status:  "start etcd PASS",
+		Member:  srv.Member,
 	}, nil
 }
 
@@ -200,7 +210,7 @@ func (srv *Server) stopProxy() {
 	}
 }
 
-func (srv *Server) createEtcdFile() error {
+func (srv *Server) saveEtcdLogFile() error {
 	var err error
 	srv.etcdLogFile, err = os.Create(srv.Member.EtcdLogPath)
 	if err != nil {
@@ -225,6 +235,110 @@ func (srv *Server) creatEtcdCmd() {
 	srv.etcdCmd.Stderr = srv.etcdLogFile
 }
 
+func (srv *Server) saveTLSAssets() error {
+	// if started with manual TLS, stores TLS assets
+	// from tester/client to disk before starting etcd process
+	// TODO: not implemented yet
+	if !srv.Member.Etcd.ClientAutoTLS {
+		if srv.Member.Etcd.ClientCertAuth {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientCertAuth is %v", srv.Member.Etcd.ClientCertAuth)
+		}
+		if srv.Member.Etcd.ClientCertFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientCertFile is %q", srv.Member.Etcd.ClientCertFile)
+		}
+		if srv.Member.Etcd.ClientKeyFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientKeyFile is %q", srv.Member.Etcd.ClientKeyFile)
+		}
+		if srv.Member.Etcd.ClientTrustedCAFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientTrustedCAFile is %q", srv.Member.Etcd.ClientTrustedCAFile)
+		}
+	}
+	if !srv.Member.Etcd.PeerAutoTLS {
+		if srv.Member.Etcd.PeerClientCertAuth {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerClientCertAuth is %v", srv.Member.Etcd.PeerClientCertAuth)
+		}
+		if srv.Member.Etcd.PeerCertFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerCertFile is %q", srv.Member.Etcd.PeerCertFile)
+		}
+		if srv.Member.Etcd.PeerKeyFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerKeyFile is %q", srv.Member.Etcd.PeerKeyFile)
+		}
+		if srv.Member.Etcd.PeerTrustedCAFile != "" {
+			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerTrustedCAFile is %q", srv.Member.Etcd.PeerTrustedCAFile)
+		}
+	}
+
+	// TODO
+	return nil
+}
+
+func (srv *Server) loadAutoTLSAssets() error {
+	// if started with auto TLS, sends back TLS assets to tester/client
+	if srv.Member.Etcd.ClientAutoTLS {
+		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "client")
+
+		certPath := filepath.Join(fdir, "cert.pem")
+		if !fileutil.Exist(certPath) {
+			return fmt.Errorf("cannot find %q", certPath)
+		}
+		certData, err := ioutil.ReadFile(certPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", certPath, err)
+		}
+		srv.Member.ClientCertData = string(certData)
+
+		keyPath := filepath.Join(fdir, "key.pem")
+		if !fileutil.Exist(keyPath) {
+			return fmt.Errorf("cannot find %q", keyPath)
+		}
+		keyData, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
+		}
+		srv.Member.ClientKeyData = string(keyData)
+
+		srv.lg.Info(
+			"loaded client TLS assets",
+			zap.String("peer-cert-path", certPath),
+			zap.Int("peer-cert-length", len(certData)),
+			zap.String("peer-key-path", keyPath),
+			zap.Int("peer-key-length", len(keyData)),
+		)
+	}
+	if srv.Member.Etcd.ClientAutoTLS {
+		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
+
+		certPath := filepath.Join(fdir, "cert.pem")
+		if !fileutil.Exist(certPath) {
+			return fmt.Errorf("cannot find %q", certPath)
+		}
+		certData, err := ioutil.ReadFile(certPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", certPath, err)
+		}
+		srv.Member.PeerCertData = string(certData)
+
+		keyPath := filepath.Join(fdir, "key.pem")
+		if !fileutil.Exist(keyPath) {
+			return fmt.Errorf("cannot find %q", keyPath)
+		}
+		keyData, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
+		}
+		srv.Member.PeerKeyData = string(keyData)
+
+		srv.lg.Info(
+			"loaded peer TLS assets",
+			zap.String("peer-cert-path", certPath),
+			zap.Int("peer-cert-length", len(certData)),
+			zap.String("peer-key-path", keyPath),
+			zap.Int("peer-key-length", len(keyData)),
+		)
+	}
+	return nil
+}
+
 // start but do not wait for it to complete
 func (srv *Server) startEtcdCmd() error {
 	return srv.etcdCmd.Start()
@@ -233,12 +347,17 @@ func (srv *Server) startEtcdCmd() error {
 func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 	srv.creatEtcdCmd()
 
-	srv.lg.Info("restarting etcd")
-	err := srv.startEtcdCmd()
-	if err != nil {
+	var err error
+	if err = srv.saveTLSAssets(); err != nil {
+		return nil, err
+	}
+	if err = srv.startEtcdCmd(); err != nil {
 		return nil, err
 	}
 	srv.lg.Info("restarted etcd", zap.String("command-path", srv.etcdCmd.Path))
+	if err = srv.loadAutoTLSAssets(); err != nil {
+		return nil, err
+	}
 
 	// wait some time for etcd listener start
 	// before setting up proxy
@@ -251,7 +370,8 @@ func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully restarted etcd!",
+		Status:  "restart etcd PASS",
+		Member:  srv.Member,
 	}, nil
 }
 
@@ -293,7 +413,7 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 	}
 	srv.lg.Info("archived data", zap.String("base-dir", srv.Member.BaseDir))
 
-	if err = srv.createEtcdFile(); err != nil {
+	if err = srv.saveEtcdLogFile(); err != nil {
 		return nil, err
 	}
 
