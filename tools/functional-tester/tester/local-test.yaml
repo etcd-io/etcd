@@ -12,6 +12,8 @@ agent-configs:
     name: s1
     data-dir: /tmp/etcd-agent-data-1/etcd.data
     wal-dir: /tmp/etcd-agent-data-1/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:1379"]
     advertise-client-urls: ["http://127.0.0.1:1379"]
     listen-peer-urls: ["http://127.0.0.1:1380"]
@@ -36,6 +38,8 @@ agent-configs:
     name: s2
     data-dir: /tmp/etcd-agent-data-2/etcd.data
     wal-dir: /tmp/etcd-agent-data-2/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:2379"]
     advertise-client-urls: ["http://127.0.0.1:2379"]
     listen-peer-urls: ["http://127.0.0.1:2380"]
@@ -60,6 +64,8 @@ agent-configs:
     name: s3
     data-dir: /tmp/etcd-agent-data-3/etcd.data
     wal-dir: /tmp/etcd-agent-data-3/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:3379"]
     advertise-client-urls: ["http://127.0.0.1:3379"]
     listen-peer-urls: ["http://127.0.0.1:3380"]
