@@ -102,6 +102,20 @@ message Member {
 
   // Etcd defines etcd binary configuration flags.
   Etcd Etcd = 301 [(gogoproto.moretags) = "yaml:\"etcd\""];
+
+  // ClientCertData contains cert file contents from this member's etcd server.
+  string ClientCertData = 401 [(gogoproto.moretags) = "yaml:\"client-cert-data\""];
+  // ClientKeyData contains key file contents from this member's etcd server.
+  string ClientKeyData = 402 [(gogoproto.moretags) = "yaml:\"client-key-data\""];
+  // ClientTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string ClientTrustedCAData = 403 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-data\""];
+
+  // PeerCertData contains cert file contents from this member's etcd server.
+  string PeerCertData = 501 [(gogoproto.moretags) = "yaml:\"peer-cert-data\""];
+  // PeerKeyData contains key file contents from this member's etcd server.
+  string PeerKeyData = 502 [(gogoproto.moretags) = "yaml:\"peer-key-data\""];
+  // PeerTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string PeerTrustedCAData = 503 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
 }
 
 enum FailureCase {
@@ -216,14 +230,15 @@ message Tester {
 
 message Request {
   Operation Operation = 1;
-
+  // Member contains the same Member object from tester configuration.
   Member Member = 2;
+  // Tester contains tester configuration.
   Tester Tester = 3;
 }
 
 message Response {
   bool Success = 1;
   string Status = 2;
-
-  // TODO: support TLS
+  // Member contains the same Member object from tester request.
+  Member Member = 3;
 }
