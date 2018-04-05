@@ -103,17 +103,23 @@ message Member {
 
   // ClientCertData contains cert file contents from this member's etcd server.
   string ClientCertData = 401 [(gogoproto.moretags) = "yaml:\"client-cert-data\""];
+  string ClientCertPath = 402 [(gogoproto.moretags) = "yaml:\"client-cert-path\""];
   // ClientKeyData contains key file contents from this member's etcd server.
-  string ClientKeyData = 402 [(gogoproto.moretags) = "yaml:\"client-key-data\""];
+  string ClientKeyData = 403 [(gogoproto.moretags) = "yaml:\"client-key-data\""];
+  string ClientKeyPath = 404 [(gogoproto.moretags) = "yaml:\"client-key-path\""];
   // ClientTrustedCAData contains trusted CA file contents from this member's etcd server.
-  string ClientTrustedCAData = 403 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-data\""];
+  string ClientTrustedCAData = 405 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-data\""];
+  string ClientTrustedCAPath = 406 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-path\""];
 
   // PeerCertData contains cert file contents from this member's etcd server.
   string PeerCertData = 501 [(gogoproto.moretags) = "yaml:\"peer-cert-data\""];
+  string PeerCertPath = 502 [(gogoproto.moretags) = "yaml:\"peer-cert-path\""];
   // PeerKeyData contains key file contents from this member's etcd server.
-  string PeerKeyData = 502 [(gogoproto.moretags) = "yaml:\"peer-key-data\""];
+  string PeerKeyData = 503 [(gogoproto.moretags) = "yaml:\"peer-key-data\""];
+  string PeerKeyPath = 504 [(gogoproto.moretags) = "yaml:\"peer-key-path\""];
   // PeerTrustedCAData contains trusted CA file contents from this member's etcd server.
-  string PeerTrustedCAData = 503 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
+  string PeerTrustedCAData = 505 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
+  string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
 }
 
 enum FailureCase {
@@ -165,8 +171,9 @@ enum StressType {
 }
 
 message Tester {
-  string TesterNetwork = 1 [(gogoproto.moretags) = "yaml:\"tester-network\""];
-  string TesterAddr = 2 [(gogoproto.moretags) = "yaml:\"tester-addr\""];
+  string TesterDataDir = 1 [(gogoproto.moretags) = "yaml:\"tester-data-dir\""];
+  string TesterNetwork = 2 [(gogoproto.moretags) = "yaml:\"tester-network\""];
+  string TesterAddr = 3 [(gogoproto.moretags) = "yaml:\"tester-addr\""];
 
   // DelayLatencyMsRv is the delay latency in milliseconds,
   // to inject to simulated slow network.
