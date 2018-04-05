@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/proxy"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
@@ -119,7 +119,7 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
-		srv.advertiseClientPortToProxy[advertiseClientURLPort] = transport.NewProxy(transport.ProxyConfig{
+		srv.advertiseClientPortToProxy[advertiseClientURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
 			From:   *advertiseClientURL,
 			To:     *listenClientURL,
@@ -142,7 +142,7 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
-		srv.advertisePeerPortToProxy[advertisePeerURLPort] = transport.NewProxy(transport.ProxyConfig{
+		srv.advertisePeerPortToProxy[advertisePeerURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
 			From:   *advertisePeerURL,
 			To:     *listenPeerURL,
@@ -176,7 +176,7 @@ func (srv *Server) stopProxy() {
 				zap.String("to", px.To()),
 			)
 		}
-		srv.advertiseClientPortToProxy = make(map[int]transport.Proxy)
+		srv.advertiseClientPortToProxy = make(map[int]proxy.Server)
 	}
 	if srv.Member.EtcdPeerProxy && len(srv.advertisePeerPortToProxy) > 0 {
 		for port, px := range srv.advertisePeerPortToProxy {
@@ -196,7 +196,7 @@ func (srv *Server) stopProxy() {
 				zap.String("to", px.To()),
 			)
 		}
-		srv.advertisePeerPortToProxy = make(map[int]transport.Proxy)
+		srv.advertisePeerPortToProxy = make(map[int]proxy.Server)
 	}
 }
 

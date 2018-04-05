@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/proxy"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
@@ -50,8 +50,8 @@ type Server struct {
 	etcdLogFile *os.File
 
 	// forward incoming advertise URLs traffic to listen URLs
-	advertiseClientPortToProxy map[int]transport.Proxy
-	advertisePeerPortToProxy   map[int]transport.Proxy
+	advertiseClientPortToProxy map[int]proxy.Server
+	advertisePeerPortToProxy   map[int]proxy.Server
 }
 
 // NewServer returns a new agent server.
@@ -65,8 +65,8 @@ func NewServer(
 		network: network,
 		address: address,
 		last:    rpcpb.Operation_NotStarted,
-		advertiseClientPortToProxy: make(map[int]transport.Proxy),
-		advertisePeerPortToProxy:   make(map[int]transport.Proxy),
+		advertiseClientPortToProxy: make(map[int]proxy.Server),
+		advertisePeerPortToProxy:   make(map[int]proxy.Server),
 	}
 }
 
