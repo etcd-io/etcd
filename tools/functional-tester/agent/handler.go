@@ -133,7 +133,7 @@ func (srv *Server) startProxy() error {
 	}
 
 	if srv.Member.EtcdPeerProxy {
-		advertisePeerURL, advertisePeerURLPort, err := getURLAndPort(srv.Member.Etcd.InitialAdvertisePeerURLs[0])
+		advertisePeerURL, advertisePeerURLPort, err := getURLAndPort(srv.Member.Etcd.AdvertisePeerURLs[0])
 		if err != nil {
 			return err
 		}
