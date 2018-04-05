@@ -14,11 +14,21 @@ agent-configs:
     wal-dir: /tmp/etcd-agent-data-1/etcd.data/member/wal
     heartbeat-interval: 100
     election-timeout: 1000
-    listen-client-urls: ["http://127.0.0.1:1379"]
-    advertise-client-urls: ["http://127.0.0.1:1379"]
-    listen-peer-urls: ["http://127.0.0.1:1380"]
-    initial-advertise-peer-urls: ["http://127.0.0.1:13800"]
-    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    listen-client-urls: ["https://127.0.0.1:1379"]
+    advertise-client-urls: ["https://127.0.0.1:1379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:1380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:13800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -40,11 +50,21 @@ agent-configs:
     wal-dir: /tmp/etcd-agent-data-2/etcd.data/member/wal
     heartbeat-interval: 100
     election-timeout: 1000
-    listen-client-urls: ["http://127.0.0.1:2379"]
-    advertise-client-urls: ["http://127.0.0.1:2379"]
-    listen-peer-urls: ["http://127.0.0.1:2380"]
-    initial-advertise-peer-urls: ["http://127.0.0.1:23800"]
-    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    listen-client-urls: ["https://127.0.0.1:2379"]
+    advertise-client-urls: ["https://127.0.0.1:2379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:2380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:23800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -66,11 +86,21 @@ agent-configs:
     wal-dir: /tmp/etcd-agent-data-3/etcd.data/member/wal
     heartbeat-interval: 100
     election-timeout: 1000
-    listen-client-urls: ["http://127.0.0.1:3379"]
-    advertise-client-urls: ["http://127.0.0.1:3379"]
-    listen-peer-urls: ["http://127.0.0.1:3380"]
-    initial-advertise-peer-urls: ["http://127.0.0.1:33800"]
-    initial-cluster: s1=http://127.0.0.1:13800,s2=http://127.0.0.1:23800,s3=http://127.0.0.1:33800
+    listen-client-urls: ["https://127.0.0.1:3379"]
+    advertise-client-urls: ["https://127.0.0.1:3379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:3380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:33800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
