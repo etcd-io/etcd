@@ -368,7 +368,7 @@ func (srv *Server) handleUnblackholePeerPortTxRx() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handleDelayPeerPortTxRx() (*rpcpb.Response, error) {
-	lat := time.Duration(srv.Tester.DelayLatencyMs) * time.Millisecond
+	lat := time.Duration(srv.Tester.UpdatedDelayLatencyMs) * time.Millisecond
 	rv := time.Duration(srv.Tester.DelayLatencyMsRv) * time.Millisecond
 
 	for port, px := range srv.advertisePeerPortToProxy {

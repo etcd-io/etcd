@@ -152,6 +152,10 @@ message Tester {
   uint32 DelayLatencyMs = 11 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
   // DelayLatencyMsRv is the delay latency random variable in milliseconds.
   uint32 DelayLatencyMsRv = 12 [(gogoproto.moretags) = "yaml:\"delay-latency-ms-rv\""];
+  // UpdatedDelayLatencyMs is the update delay latency in milliseconds,
+  // to inject to simulated slow network. It's the final latency to apply,
+  // in case the latency numbers are randomly generated from given delay latency field.
+  uint32 UpdatedDelayLatencyMs = 13 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
 
   // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
   int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
