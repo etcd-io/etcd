@@ -52,6 +52,10 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 			CertFile:      m.ClientCertPath,
 			KeyFile:       m.ClientKeyPath,
 			TrustedCAFile: m.ClientTrustedCAPath,
+
+			// TODO: remove this with generated certs
+			// only need it for auto TLS
+			InsecureSkipVerify: true,
 		}
 		tlsConfig, err := tlsInfo.ClientConfig()
 		if err != nil {
@@ -90,6 +94,10 @@ func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, er
 			CertFile:      m.ClientCertPath,
 			KeyFile:       m.ClientKeyPath,
 			TrustedCAFile: m.ClientTrustedCAPath,
+
+			// TODO: remove this with generated certs
+			// only need it for auto TLS
+			InsecureSkipVerify: true,
 		}
 		tlsConfig, err := tlsInfo.ClientConfig()
 		if err != nil {
