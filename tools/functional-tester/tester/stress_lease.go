@@ -447,11 +447,11 @@ func (ls *leaseStresser) randomlyDropLease(leaseID int64) (bool, error) {
 	return false, ls.ctx.Err()
 }
 
-func (ls *leaseStresser) Pause() {
-	ls.Close()
+func (ls *leaseStresser) Pause() map[string]int {
+	return ls.Close()
 }
 
-func (ls *leaseStresser) Close() {
+func (ls *leaseStresser) Close() map[string]int {
 	ls.lg.Info(
 		"lease stresser is closing",
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
@@ -464,6 +464,7 @@ func (ls *leaseStresser) Close() {
 		"lease stresser is closed",
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 	)
+	return nil
 }
 
 func (ls *leaseStresser) ModifiedKeys() int64 {

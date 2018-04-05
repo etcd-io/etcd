@@ -135,7 +135,8 @@ func (clus *Cluster) doRound() error {
 		}
 
 		stressStarted := false
-		if fa.FailureCase() != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
+		fcase := fa.FailureCase()
+		if fcase != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
 			clus.lg.Info(
 				"starting stressers before injecting failures",
 				zap.Int("round", clus.rd),
@@ -173,7 +174,21 @@ func (clus *Cluster) doRound() error {
 
 		if stressStarted {
 			clus.lg.Info("pausing stresser after failure recovery, before wait health")
-			clus.stresser.Pause()
+			ems := clus.stresser.Pause()
+			if fcase == rpcpb.FailureCase_NO_FAIL_WITH_STRESS && len(ems) > 0 {
+				ess := make([]string, 0, len(ems))
+				cnt := 0
+				for k, v := range ems {
+					ess = append(ess, fmt.Sprintf("%s (count %d)", k, v))
+					cnt += v
+				}
+				clus.lg.Warn(
+					"expected no errors",
+					zap.String("desc", fa.Desc()),
+					zap.Strings("errors", ess),
+				)
+				return fmt.Errorf("expected no error in %q, got %q", fcase.String(), ess)
+			}
 		}
 
 		clus.lg.Info("wait health after recover")

@@ -53,6 +53,10 @@ type keyStresser struct {
 	cancel func()
 	cli    *clientv3.Client
 
+	emu    sync.RWMutex
+	ems    map[string]int
+	paused bool
+
 	// atomicModifiedKeys records the number of keys created and deleted by the stresser.
 	atomicModifiedKeys int64
 
@@ -89,6 +93,10 @@ func (s *keyStresser) Stress() error {
 	}
 	s.stressTable = createStressTable(stressEntries)
 
+	s.emu.Lock()
+	s.paused = false
+	s.ems = make(map[string]int, 100)
+	s.emu.Unlock()
 	for i := 0; i < s.clientsN; i++ {
 		go s.run()
 	}
@@ -154,14 +162,21 @@ func (s *keyStresser) run() {
 			)
 			return
 		}
+
+		// only record errors before pausing stressers
+		s.emu.Lock()
+		if !s.paused {
+			s.ems[err.Error()]++
+		}
+		s.emu.Unlock()
 	}
 }
 
-func (s *keyStresser) Pause() {
-	s.Close()
+func (s *keyStresser) Pause() map[string]int {
+	return s.Close()
 }
 
-func (s *keyStresser) Close() {
+func (s *keyStresser) Close() map[string]int {
 	s.cancel()
 	s.cli.Close()
 	s.wg.Wait()
@@ -170,6 +185,13 @@ func (s *keyStresser) Close() {
 		"key stresser is closed",
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
+
+	s.emu.Lock()
+	s.paused = true
+	ess := s.ems
+	s.ems = make(map[string]int, 100)
+	s.emu.Unlock()
+	return ess
 }
 
 func (s *keyStresser) ModifiedKeys() int64 {

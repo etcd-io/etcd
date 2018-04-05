@@ -28,9 +28,9 @@ type Stresser interface {
 	// Stress starts to stress the etcd cluster
 	Stress() error
 	// Pause stops the stresser from sending requests to etcd. Resume by calling Stress.
-	Pause()
+	Pause() map[string]int
 	// Close releases all of the Stresser's resources.
-	Close()
+	Close() map[string]int
 	// ModifiedKeys reports the number of keys created and deleted by stresser
 	ModifiedKeys() int64
 	// Checker returns an invariant checker for after the stresser is canceled.
