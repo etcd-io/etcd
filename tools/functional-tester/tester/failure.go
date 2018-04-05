@@ -263,7 +263,7 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	retries := int(snapshotCount) / 1000 * 3
 	if v, ok := slowCases[f.FailureCase()]; v && ok {
 		// slow network takes more retries
-		retries *= 4
+		retries *= 2
 	}
 
 	for i := 0; i < retries; i++ {
