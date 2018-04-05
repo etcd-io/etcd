@@ -26,7 +26,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/proxy"
 
 	"go.uber.org/zap"
 )
@@ -69,14 +69,14 @@ $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 
 	flag.Parse()
 
-	cfg := transport.ProxyConfig{
+	cfg := proxy.ServerConfig{
 		From: url.URL{Scheme: "tcp", Host: from},
 		To:   url.URL{Scheme: "tcp", Host: to},
 	}
 	if verbose {
 		cfg.Logger = zap.NewExample()
 	}
-	p := transport.NewProxy(cfg)
+	p := proxy.NewServer(cfg)
 	<-p.Ready()
 	defer p.Close()
 
