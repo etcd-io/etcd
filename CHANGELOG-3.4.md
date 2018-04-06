@@ -141,6 +141,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`defrag --cluster`](https://github.com/coreos/etcd/pull/9390) flag.
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
+- Add [`endpoint health --write-out` support](https://github.com/coreos/etcd/pull/9540).
+  - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
 
 ### Added: gRPC gateway
 
