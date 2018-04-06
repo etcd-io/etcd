@@ -202,15 +202,14 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		info.Logger = zap.NewNop()
 	}
 
-	tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	_, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := &tls.Config{
-		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS12,
-		ServerName:   info.ServerName,
+		MinVersion: tls.VersionTLS12,
+		ServerName: info.ServerName,
 	}
 
 	if info.AllowedCN != "" {
