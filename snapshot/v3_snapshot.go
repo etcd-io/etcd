@@ -35,7 +35,6 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -44,6 +43,7 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 
 	bolt "github.com/coreos/bbolt"
+	"go.uber.org/zap"
 )
 
 // Manager defines snapshot methods.
@@ -97,15 +97,16 @@ type RestoreConfig struct {
 // NewV3 returns a new snapshot Manager for v3.x snapshot.
 // "*clientv3.Client" is only used for "Save" method.
 // Otherwise, pass "nil".
-func NewV3(cli *clientv3.Client, lg logutil.Logger) Manager {
+func NewV3(cli *clientv3.Client, lg *zap.Logger) Manager {
 	if lg == nil {
-		lg = logutil.NewDiscardLogger()
+		lg = zap.NewExample()
 	}
-	return &v3Manager{cli: cli, logger: lg}
+	return &v3Manager{cli: cli, lg: lg}
 }
 
 type v3Manager struct {
 	cli *clientv3.Client
+	lg  *zap.Logger
 
 	name    string
 	dbPath  string
@@ -114,7 +115,6 @@ type v3Manager struct {
 	cl      *membership.RaftCluster
 
 	skipHashCheck bool
-	logger        logutil.Logger
 }
 
 func (s *v3Manager) Save(ctx context.Context, dbPath string) error {
@@ -124,7 +124,10 @@ func (s *v3Manager) Save(ctx context.Context, dbPath string) error {
 		os.RemoveAll(partpath)
 		return fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
-	s.logger.Infof("created temporary db file %q", partpath)
+	s.lg.Info(
+		"created temporary db file",
+		zap.String("path", partpath),
+	)
 
 	var rd io.ReadCloser
 	rd, err = s.cli.Snapshot(ctx)
@@ -132,7 +135,7 @@ func (s *v3Manager) Save(ctx context.Context, dbPath string) error {
 		os.RemoveAll(partpath)
 		return err
 	}
-	s.logger.Infof("copying from snapshot stream")
+	s.lg.Info("copying from snapshot stream")
 	if _, err = io.Copy(f, rd); err != nil {
 		os.RemoveAll(partpath)
 		return err
@@ -146,7 +149,7 @@ func (s *v3Manager) Save(ctx context.Context, dbPath string) error {
 		return err
 	}
 
-	s.logger.Infof("renaming from %q to %q", partpath, dbPath)
+	s.lg.Info("rename", zap.String("from", partpath), zap.String("to", dbPath))
 	if err = os.Rename(partpath, dbPath); err != nil {
 		os.RemoveAll(partpath)
 		return fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
@@ -227,7 +230,14 @@ func (s *v3Manager) Restore(dbPath string, cfg RestoreConfig) error {
 	} else if _, err = os.Stat(walDir); err == nil {
 		return fmt.Errorf("wal-dir %q exists", walDir)
 	}
-	s.logger.Infof("restoring snapshot file %q to data-dir %q, wal-dir %q", dbPath, dataDir, walDir)
+
+	s.lg.Info(
+		"restoring snapshot file",
+		zap.String("path", dbPath),
+		zap.String("wal-dir", walDir),
+		zap.String("data-dir", dataDir),
+		zap.String("snap-dir", s.snapDir),
+	)
 
 	s.name = cfg.Name
 	s.dbPath = dbPath
@@ -235,16 +245,21 @@ func (s *v3Manager) Restore(dbPath string, cfg RestoreConfig) error {
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
 
-	s.logger.Infof("writing snapshot directory %q", s.snapDir)
 	if err = s.saveDB(); err != nil {
 		return err
 	}
-	s.logger.Infof("writing WAL directory %q and raft snapshot to %q", s.walDir, s.snapDir)
-	err = s.saveWALAndSnap()
-	if err == nil {
-		s.logger.Infof("finished restore %q to data directory %q, wal directory %q", dbPath, dataDir, walDir)
+	if err = s.saveWALAndSnap(); err != nil {
+		return err
 	}
-	return err
+
+	s.lg.Info(
+		"finished restoring snapshot file",
+		zap.String("path", dbPath),
+		zap.String("wal-dir", walDir),
+		zap.String("data-dir", dataDir),
+		zap.String("snap-dir", s.snapDir),
+	)
+	return nil
 }
 
 // saveDB copies the database snapshot to the snapshot directory
@@ -430,9 +445,5 @@ func (s *v3Manager) saveWALAndSnap() error {
 		return err
 	}
 
-	err := w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term})
-	if err == nil {
-		s.logger.Infof("wrote WAL snapshot to %q", s.walDir)
-	}
-	return err
+	return w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term})
 }
