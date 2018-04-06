@@ -140,6 +140,16 @@ func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
 	}
 }
 
+func (p *fieldsPrinter) EndpointHealth(hs []epHealth) {
+	for _, h := range hs {
+		fmt.Printf("\"Endpoint\" : %q\n", h.Ep)
+		fmt.Println(`"Health" :`, h.Health)
+		fmt.Println(`"Took" :`, h.Took)
+		fmt.Println(`"Error" :`, h.Error)
+		fmt.Println()
+	}
+}
+
 func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 	for _, ep := range eps {
 		p.hdr(ep.Resp.Header)
