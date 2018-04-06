@@ -62,7 +62,7 @@ type baseBalancer struct {
 	scToAddr map[balancer.SubConn]resolver.Address
 	scToSt   map[balancer.SubConn]connectivity.State
 
-	currrentConn balancer.ClientConn
+	currentConn  balancer.ClientConn
 	currentState connectivity.State
 	csEvltr      *connectivityStateEvaluator
 
@@ -72,8 +72,8 @@ type baseBalancer struct {
 // New returns a new balancer from specified picker policy.
 func New(cfg Config) (Balancer, error) {
 	for _, ep := range cfg.Endpoints {
-		if !strings.HasPrefix(ep, "etcd://") {
-			return nil, fmt.Errorf("'etcd' target schema required for etcd load balancer endpoints but got '%s'", ep)
+		if !strings.HasPrefix(ep, "endpoint://") {
+			return nil, fmt.Errorf("'endpoint' target schema required for etcd load balancer endpoints but got '%s'", ep)
 		}
 	}
 
@@ -88,8 +88,8 @@ func New(cfg Config) (Balancer, error) {
 		scToAddr: make(map[balancer.SubConn]resolver.Address),
 		scToSt:   make(map[balancer.SubConn]connectivity.State),
 
-		currrentConn: nil,
-		csEvltr:      &connectivityStateEvaluator{},
+		currentConn: nil,
+		csEvltr:     &connectivityStateEvaluator{},
 
 		// initialize picker always returns "ErrNoSubConnAvailable"
 		Picker: picker.NewErr(balancer.ErrNoSubConnAvailable),
@@ -120,7 +120,7 @@ func (bb *baseBalancer) Name() string { return bb.name }
 func (bb *baseBalancer) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balancer.Balancer {
 	// TODO: support multiple connections
 	bb.mu.Lock()
-	bb.currrentConn = cc
+	bb.currentConn = cc
 	bb.mu.Unlock()
 
 	bb.lg.Info(
@@ -147,7 +147,7 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 	for _, addr := range addrs {
 		resolved[addr] = struct{}{}
 		if _, ok := bb.addrToSc[addr]; !ok {
-			sc, err := bb.currrentConn.NewSubConn([]resolver.Address{addr}, balancer.NewSubConnOptions{})
+			sc, err := bb.currentConn.NewSubConn([]resolver.Address{addr}, balancer.NewSubConnOptions{})
 			if err != nil {
 				bb.lg.Warn("NewSubConn failed", zap.Error(err), zap.String("address", addr.Addr))
 				continue
@@ -162,7 +162,7 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 	for addr, sc := range bb.addrToSc {
 		if _, ok := resolved[addr]; !ok {
 			// was removed by resolver or failed to create subconn
-			bb.currrentConn.RemoveSubConn(sc)
+			bb.currentConn.RemoveSubConn(sc)
 			delete(bb.addrToSc, addr)
 
 			bb.lg.Info(
@@ -227,7 +227,7 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connecti
 		bb.regeneratePicker()
 	}
 
-	bb.currrentConn.UpdateBalancerState(bb.currentState, bb.Picker)
+	bb.currentConn.UpdateBalancerState(bb.currentState, bb.Picker)
 	return
 }
 

@@ -71,7 +71,7 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 				Policy:    picker.RoundrobinBalanced,
 				Name:      genName(),
 				Logger:    zap.NewExample(),
-				Endpoints: []string{fmt.Sprintf("etcd://nofailover/*")},
+				Endpoints: []string{fmt.Sprintf("endpoint://nofailover/*")},
 			}
 			rrb, err := New(cfg)
 			if err != nil {
@@ -137,7 +137,7 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 		Policy:    picker.RoundrobinBalanced,
 		Name:      genName(),
 		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("etcd://serverfail/mock.server")},
+		Endpoints: []string{fmt.Sprintf("endpoint://serverfail/mock.server")},
 	}
 	rrb, err := New(cfg)
 	if err != nil {
@@ -254,7 +254,7 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 		Policy:    picker.RoundrobinBalanced,
 		Name:      genName(),
 		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("etcd://requestfail/mock.server")},
+		Endpoints: []string{fmt.Sprintf("endpoint://requestfail/mock.server")},
 	}
 	rrb, err := New(cfg)
 	if err != nil {

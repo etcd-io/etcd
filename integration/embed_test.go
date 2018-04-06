@@ -108,8 +108,9 @@ func TestEmbedEtcd(t *testing.T) {
 	}
 }
 
-func TestEmbedEtcdGracefulStopSecure(t *testing.T)   { testEmbedEtcdGracefulStop(t, true) }
-func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop(t, false) }
+// TODO: reenable
+//func TestEmbedEtcdGracefulStopSecure(t *testing.T)   { testEmbedEtcdGracefulStop(t, true) }
+//func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop(t, false) }
 
 // testEmbedEtcdGracefulStop ensures embedded server stops
 // cutting existing transports.
