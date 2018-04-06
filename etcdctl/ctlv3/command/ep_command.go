@@ -15,6 +15,7 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -76,6 +77,21 @@ func newEpHashKVCommand() *cobra.Command {
 	return hc
 }
 
+type Cluster struct {
+	ClusterHealth bool   `json:"clusterhealth"`
+	Peers         []Peer `json:"peers"`
+}
+
+type Peer struct {
+	Endpoint   string `json:"endpoint"`
+	PeerHealth Health `json:"health"`
+}
+
+type Health struct {
+	Healthy bool   `json:"healthy"`
+	Reason  string `json:"reason"`
+}
+
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
@@ -85,6 +101,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	ka := keepAliveTimeFromCmd(cmd)
 	kat := keepAliveTimeoutFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
+	format := outputFormatFromCmd(cmd)
 	cfgs := []*v3.Config{}
 	for _, ep := range endpointsFromCluster(cmd) {
 		cfg, err := newClientCfg([]string{ep}, dt, ka, kat, sec, auth)
@@ -94,45 +111,117 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 		cfgs = append(cfgs, cfg)
 	}
 
-	var wg sync.WaitGroup
-	errc := make(chan error, len(cfgs))
-	for _, cfg := range cfgs {
-		wg.Add(1)
-		go func(cfg *v3.Config) {
-			defer wg.Done()
-			ep := cfg.Endpoints[0]
-			cli, err := v3.New(*cfg)
-			if err != nil {
-				errc <- fmt.Errorf("%s is unhealthy: failed to connect: %v", ep, err)
-				return
-			}
-			st := time.Now()
-			// get a random key. As long as we can get the response without an error, the
-			// endpoint is health.
-			ctx, cancel := commandCtx(cmd)
-			_, err = cli.Get(ctx, "health")
-			cancel()
-			// permission denied is OK since proposal goes through consensus to get it
-			if err == nil || err == rpctypes.ErrPermissionDenied {
-				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
-			} else {
-				errc <- fmt.Errorf("%s is unhealthy: failed to commit proposal: %v", ep, err)
-			}
-		}(cfg)
-	}
-
-	wg.Wait()
-	close(errc)
-
-	errs := false
-	for err := range errc {
-		if err != nil {
-			errs = true
-			fmt.Fprintln(os.Stderr, err)
+	switch format {
+	case "simple":
+		var wg sync.WaitGroup
+		errc := make(chan error, len(cfgs))
+		for _, cfg := range cfgs {
+			wg.Add(1)
+			go func(cfg *v3.Config) {
+				defer wg.Done()
+				ep := cfg.Endpoints[0]
+				cli, err := v3.New(*cfg)
+				if err != nil {
+					errc <- fmt.Errorf("%s is unhealthy: failed to connect: %v", ep, err)
+					return
+				}
+				st := time.Now()
+				// get a random key. As long as we can get the response without an error, the
+				// endpoint is health.
+				ctx, cancel := commandCtx(cmd)
+				_, err = cli.Get(ctx, "health")
+				cancel()
+				// permission denied is OK since proposal goes through consensus to get it
+				if err == nil || err == rpctypes.ErrPermissionDenied {
+					fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
+				} else {
+					errc <- fmt.Errorf("%s is unhealthy: failed to commit proposal: %v", ep, err)
+				}
+			}(cfg)
 		}
-	}
-	if errs {
-		ExitWithError(ExitError, fmt.Errorf("unhealthy cluster"))
+
+		wg.Wait()
+		close(errc)
+
+		errs := false
+		for err := range errc {
+			if err != nil {
+				errs = true
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
+		if errs {
+			ExitWithError(ExitError, fmt.Errorf("unhealthy cluster"))
+		}
+	case "json":
+		var peers []Peer
+		var wg sync.WaitGroup
+
+		clusterHealth := true
+		errc := make(chan error, len(cfgs))
+
+		for _, cfg := range cfgs {
+			wg.Add(1)
+			go func(cfg *v3.Config) {
+				defer wg.Done()
+				var peerHealth Health
+				ep := cfg.Endpoints[0]
+				cli, err := v3.New(*cfg)
+				if err != nil {
+					reason := fmt.Sprintf("failed to connect: %v", err)
+					peerHealth = Health{false, reason}
+					errc <- fmt.Errorf("%s is unhealthy: %s", ep, reason)
+					return
+				}
+				st := time.Now()
+				// get a random key. As long as we can get the response without an error, the
+				// endpoint is health.
+				ctx, cancel := commandCtx(cmd)
+				_, err = cli.Get(ctx, "health")
+				cancel()
+				// permission denied is OK since proposal goes through consensus to get it
+				if err == nil || err == rpctypes.ErrPermissionDenied {
+					peerHealth = Health{true, fmt.Sprintf("successfully committed proposal: took = %v", time.Since(st))}
+				} else {
+					reason := fmt.Sprintf("failed to commit proposal: %v", err)
+					peerHealth = Health{false, reason}
+					errc <- fmt.Errorf("%s is unhealthy: %s", ep, reason)
+				}
+				peer := Peer{ep, peerHealth}
+				peers = append(peers, peer)
+				if peerHealth.Healthy == false {
+					clusterHealth = false
+				}
+			}(cfg)
+		}
+
+		wg.Wait()
+		close(errc)
+
+		for err := range errc {
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
+
+		if epClusterEndpoints {
+			cluster := Cluster{clusterHealth, peers}
+			if output, err := json.Marshal(cluster); err == nil {
+				fmt.Printf("%s\n", output)
+			}
+		} else {
+			for _, p := range peers {
+				if output, err := json.Marshal(p); err == nil {
+					fmt.Printf("%s\n", output)
+				}
+			}
+		}
+
+		if clusterHealth == false {
+			ExitWithError(ExitError, fmt.Errorf("unhealthy cluster"))
+		}
+	default:
+		fmt.Fprintln(os.Stderr, "Unsupported output format:", format)
 	}
 }
 

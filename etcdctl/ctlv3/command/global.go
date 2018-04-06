@@ -412,3 +412,11 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 	}
 	return ret, err
 }
+
+func outputFormatFromCmd(cmd *cobra.Command) string {
+	formatStr, err := cmd.Flags().GetString("write-out")
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+	return formatStr
+}
