@@ -44,6 +44,7 @@ type printer interface {
 	MemberUpdate(id uint64, r v3.MemberUpdateResponse)
 	MemberList(v3.MemberListResponse)
 
+	EndpointHealth([]epHealth)
 	EndpointStatus([]epStatus)
 	EndpointHashKV([]epHashKV)
 	MoveLeader(leader, target uint64, r v3.MoveLeaderResponse)
@@ -149,6 +150,7 @@ func newPrinterUnsupported(n string) printer {
 	return &printerUnsupported{printerRPC{nil, f}}
 }
 
+func (p *printerUnsupported) EndpointHealth([]epHealth) { p.p(nil) }
 func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
 func (p *printerUnsupported) EndpointHashKV([]epHashKV) { p.p(nil) }
 func (p *printerUnsupported) DBStatus(snapshot.Status)  { p.p(nil) }
@@ -168,6 +170,19 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 			m.Name,
 			strings.Join(m.PeerURLs, ","),
 			strings.Join(m.ClientURLs, ","),
+		})
+	}
+	return hdr, rows
+}
+
+func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]string) {
+	hdr = []string{"endpoint", "health", "took", "error"}
+	for _, h := range healthList {
+		rows = append(rows, []string{
+			h.Ep,
+			fmt.Sprintf("%v", h.Health),
+			h.Took,
+			h.Error,
 		})
 	}
 	return hdr, rows
