@@ -48,8 +48,6 @@ type rrBalanced struct {
 
 	addrToSc map[resolver.Address]balancer.SubConn
 	scToAddr map[balancer.SubConn]resolver.Address
-
-	updateAddrs func(addrs []resolver.Address)
 }
 
 // Pick is called for every client request.
@@ -91,15 +89,4 @@ func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickOptions) (bala
 		}
 	}
 	return sc, doneFunc, nil
-}
-
-// UpdateAddrs
-// TODO: implement this
-func (rb *rrBalanced) UpdateAddrs(addrs []resolver.Address) {
-	rb.mu.Lock()
-	// close all resolved sub-connections first
-	for _, sc := range rb.scs {
-		sc.UpdateAddresses([]resolver.Address{})
-	}
-	rb.mu.Unlock()
 }

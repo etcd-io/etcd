@@ -44,7 +44,17 @@ import (
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
+
+	defaultBalancer balancer.Balancer
 )
+
+func init() {
+	defaultBalancer = balancer.New(balancer.Config{
+		Policy: picker.RoundrobinBalanced,
+		Name:   fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String()),
+		Logger: zap.NewNop(), // zap.NewExample(),
+	})
+}
 
 // Client provides and manages an etcd v3 client session.
 type Client struct {
@@ -111,6 +121,9 @@ func (c *Client) Close() error {
 	c.Lease.Close()
 	if c.conn != nil {
 		return toErr(c.ctx, c.conn.Close())
+	}
+	if c.resolver != nil {
+		c.resolver.Close()
 	}
 	return c.ctx.Err()
 }
@@ -281,8 +294,8 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 }
 
 // Dial connects to a single endpoint using the client's config.
-func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
-	return c.dial(ep)
+func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
+	return c.dial(endpoint)
 }
 
 func (c *Client) getToken(ctx context.Context) error {
@@ -294,7 +307,7 @@ func (c *Client) getToken(ctx context.Context) error {
 		host := getHost(endpoint)
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		dOpts, err = c.dialSetupOpts(endpoint)
+		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint))
 		if err != nil {
 			continue
 		}
@@ -420,28 +433,23 @@ func newClient(cfg *Config) (*Client, error) {
 		client.callOpts = callOpts
 	}
 
-	rsv := endpoint.EndpointResolver("default")
+	clientId := fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36))
+	rsv := endpoint.EndpointResolver(clientId)
 	rsv.InitialEndpoints(cfg.Endpoints)
-	bCfg := balancer.Config{
-		Policy: picker.RoundrobinBalanced,
-		Name:   "rrbalancer",
-		Logger: zap.NewExample(), // zap.NewNop(),
-		// TODO: these are really "targets", not "endpoints"
-		Endpoints: []string{fmt.Sprintf("endpoint://default/%s", cfg.Endpoints[0])},
+
+	targets := []string{}
+	for _, ep := range cfg.Endpoints {
+		targets = append(targets, fmt.Sprintf("endpoint://%s/%s", clientId, ep))
 	}
-	rrb, err := balancer.New(bCfg)
-	if err != nil {
-		return nil, err
-	}
+
 	client.resolver = rsv
-	client.balancer = rrb
+	client.balancer = defaultBalancer // TODO: allow alternate balancers to be passed in via config?
 
 	// use Endpoints[0] so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dial(bCfg.Endpoints[0], grpc.WithBalancerName(rrb.Name()))
+	conn, err := client.dial(targets[0], grpc.WithBalancerName(client.balancer.Name()))
 	if err != nil {
 		client.cancel()
-		client.balancer.Close()
 		rsv.Close()
 		return nil, err
 	}

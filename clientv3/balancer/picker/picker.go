@@ -16,16 +16,9 @@ package picker
 
 import (
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/resolver"
 )
 
 // Picker defines balancer Picker methods.
 type Picker interface {
 	balancer.Picker
-
-	// UpdateAddrs updates current endpoints in picker.
-	// Used when endpoints are updated manually.
-	// TODO: handle resolver target change
-	// TODO: handle resolved addresses change
-	UpdateAddrs(addrs []resolver.Address)
 }

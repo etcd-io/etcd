@@ -16,7 +16,6 @@ package balancer
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/coreos/etcd/clientv3/balancer/picker"
@@ -44,9 +43,6 @@ type Balancer interface {
 
 	// Picker calls "Pick" for every client request.
 	picker.Picker
-
-	// SetEndpoints updates client's endpoints.
-	SetEndpoints(eps ...string)
 }
 
 type baseBalancer struct {
@@ -55,8 +51,6 @@ type baseBalancer struct {
 	lg     *zap.Logger
 
 	mu sync.RWMutex
-
-	eps []string
 
 	addrToSc map[resolver.Address]balancer.SubConn
 	scToAddr map[balancer.SubConn]resolver.Address
@@ -70,19 +64,11 @@ type baseBalancer struct {
 }
 
 // New returns a new balancer from specified picker policy.
-func New(cfg Config) (Balancer, error) {
-	for _, ep := range cfg.Endpoints {
-		if !strings.HasPrefix(ep, "endpoint://") {
-			return nil, fmt.Errorf("'endpoint' target schema required for etcd load balancer endpoints but got '%s'", ep)
-		}
-	}
-
+func New(cfg Config) Balancer {
 	bb := &baseBalancer{
 		policy: cfg.Policy,
 		name:   cfg.Policy.String(),
 		lg:     cfg.Logger,
-
-		eps: cfg.Endpoints,
 
 		addrToSc: make(map[resolver.Address]balancer.SubConn),
 		scToAddr: make(map[balancer.SubConn]resolver.Address),
@@ -107,7 +93,7 @@ func New(cfg Config) (Balancer, error) {
 		zap.String("policy", bb.policy.String()),
 		zap.String("name", bb.name),
 	)
-	return bb, nil
+	return bb
 }
 
 // Name implements "grpc/balancer.Builder" interface.
@@ -263,15 +249,6 @@ func (bb *baseBalancer) regeneratePicker() {
 		zap.Strings("subconn-ready", scsToStrings(addrToSc)),
 		zap.Int("subconn-size", len(addrToSc)),
 	)
-}
-
-// SetEndpoints updates client's endpoints.
-// TODO: implement this
-func (bb *baseBalancer) SetEndpoints(eps ...string) {
-	addrs := epsToAddrs(eps...)
-	bb.mu.Lock()
-	bb.Picker.UpdateAddrs(addrs)
-	bb.mu.Unlock()
 }
 
 // Close implements "grpc/balancer.Balancer" interface.

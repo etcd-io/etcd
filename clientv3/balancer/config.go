@@ -33,7 +33,4 @@ type Config struct {
 	// Logger configures balancer logging.
 	// If nil, logs are discarded.
 	Logger *zap.Logger
-
-	// Endpoints is a list of server endpoints.
-	Endpoints []string
 }

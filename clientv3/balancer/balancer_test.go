@@ -68,16 +68,12 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 			rsv.InitialAddrs(resolvedAddrs)
 
 			cfg := Config{
-				Policy:    picker.RoundrobinBalanced,
-				Name:      genName(),
-				Logger:    zap.NewExample(),
-				Endpoints: []string{fmt.Sprintf("endpoint://nofailover/*")},
+				Policy: picker.RoundrobinBalanced,
+				Name:   genName(),
+				Logger: zap.NewExample(),
 			}
-			rrb, err := New(cfg)
-			if err != nil {
-				t.Fatalf("failed to create builder: %v", err)
-			}
-			conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+			rrb := New(cfg)
+			conn, err := grpc.Dial(fmt.Sprintf("endpoint://nofailover/*"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 			if err != nil {
 				t.Fatalf("failed to dial mock server: %v", err)
 			}
@@ -134,16 +130,12 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	rsv.InitialAddrs(resolvedAddrs)
 
 	cfg := Config{
-		Policy:    picker.RoundrobinBalanced,
-		Name:      genName(),
-		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("endpoint://serverfail/mock.server")},
+		Policy: picker.RoundrobinBalanced,
+		Name:   genName(),
+		Logger: zap.NewExample(),
 	}
-	rrb, err := New(cfg)
-	if err != nil {
-		t.Fatalf("failed to create builder: %v", err)
-	}
-	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+	rrb := New(cfg)
+	conn, err := grpc.Dial(fmt.Sprintf("endpoint://serverfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}
@@ -251,16 +243,12 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 	rsv.InitialAddrs(resolvedAddrs)
 
 	cfg := Config{
-		Policy:    picker.RoundrobinBalanced,
-		Name:      genName(),
-		Logger:    zap.NewExample(),
-		Endpoints: []string{fmt.Sprintf("endpoint://requestfail/mock.server")},
+		Policy: picker.RoundrobinBalanced,
+		Name:   genName(),
+		Logger: zap.NewExample(),
 	}
-	rrb, err := New(cfg)
-	if err != nil {
-		t.Fatalf("failed to create builder: %v", err)
-	}
-	conn, err := grpc.Dial(cfg.Endpoints[0], grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+	rrb := New(cfg)
+	conn, err := grpc.Dial(fmt.Sprintf("endpoint://requestfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}

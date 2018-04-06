@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/resolver"
 )
 
 // NewErr returns a picker that always returns err on "Pick".
@@ -32,8 +31,4 @@ type errPicker struct {
 
 func (p *errPicker) Pick(context.Context, balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
 	return nil, nil, p.err
-}
-
-func (p *errPicker) UpdateAddrs(addrs []resolver.Address) {
-	return
 }

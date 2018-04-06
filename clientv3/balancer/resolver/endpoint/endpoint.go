@@ -165,6 +165,10 @@ func (r *Resolver) Close() {
 	bldr.removeResolver(r)
 }
 
+func (r *Resolver) Target(endpoint string) string {
+	return fmt.Sprintf("%s://%s/%s", scheme, r.clusterName, endpoint)
+}
+
 // Parse endpoint parses a endpoint of the form (http|https)://<host>*|(unix|unixs)://<path>) and returns a
 // protocol ('tcp' or 'unix'), host (or filepath if a unix socket) and scheme (http, https, unix, unixs).
 func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
