@@ -30,7 +30,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 - Improve [lease expire/revoke operation performance](https://github.com/coreos/etcd/pull/9418), address [lease scalability issue](https://github.com/coreos/etcd/issues/9496).
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
-- Improve functional tester coverage: use [proxy layer to run network fault tests in CIs](https://github.com/coreos/etcd/pull/9081), enable [TLS](https://github.com/coreos/etcd/issues/8943), add [liveness mode](https://github.com/coreos/etcd/issues/9230), [shuffle test sequence](https://github.com/coreos/etcd/issues/9381).
+- Improve [functional tester](https://github.com/coreos/etcd/tree/master/tools/functional-tester) coverage: use [proxy layer to run network fault tests in CI](https://github.com/coreos/etcd/pull/9081), enable [TLS both for server and client](https://github.com/coreos/etcd/pull/9534), add [liveness mode](https://github.com/coreos/etcd/issues/9230), and [shuffle test sequence](https://github.com/coreos/etcd/issues/9381).
 
 ### Breaking Changes
 

@@ -48,20 +48,29 @@ message Etcd {
 
   repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
   repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
-  repeated string ListenPeerURLs = 23 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
-  repeated string InitialAdvertisePeerURLs = 24 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool ClientAutoTLS = 23 [(gogoproto.moretags) = "yaml:\"auto-tls\""];
+  bool ClientCertAuth = 24 [(gogoproto.moretags) = "yaml:\"client-cert-auth\""];
+  string ClientCertFile = 25 [(gogoproto.moretags) = "yaml:\"cert-file\""];
+  string ClientKeyFile = 26 [(gogoproto.moretags) = "yaml:\"key-file\""];
+  string ClientTrustedCAFile = 27 [(gogoproto.moretags) = "yaml:\"trusted-ca-file\""];
 
-  string InitialCluster = 31 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
-  string InitialClusterState = 32 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
-  string InitialClusterToken = 33 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+  repeated string ListenPeerURLs = 31 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string AdvertisePeerURLs = 32 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool PeerAutoTLS = 33 [(gogoproto.moretags) = "yaml:\"peer-auto-tls\""];
+  bool PeerClientCertAuth = 34 [(gogoproto.moretags) = "yaml:\"peer-client-cert-auth\""];
+  string PeerCertFile = 35 [(gogoproto.moretags) = "yaml:\"peer-cert-file\""];
+  string PeerKeyFile = 36 [(gogoproto.moretags) = "yaml:\"peer-key-file\""];
+  string PeerTrustedCAFile = 37 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-file\""];
 
-  int64 SnapshotCount = 41 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
-  int64 QuotaBackendBytes = 42 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+  string InitialCluster = 41 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 42 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 43 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
 
-  bool PreVote = 43 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
-  bool InitialCorruptCheck = 44 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+  int64 SnapshotCount = 51 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 52 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
 
-  // TODO: support TLS
+  bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
 }
 
 message Member {
@@ -80,19 +89,37 @@ message Member {
   // EtcdLogPath is the log file to store current etcd server logs.
   string EtcdLogPath = 102 [(gogoproto.moretags) = "yaml:\"etcd-log-path\""];
 
-  // EtcdClientTLS is true when client traffic needs to be encrypted.
-  bool EtcdClientTLS = 201 [(gogoproto.moretags) = "yaml:\"etcd-client-tls\""];
   // EtcdClientProxy is true when client traffic needs to be proxied.
   // If true, listen client URL port must be different than advertise client URL port.
-  bool EtcdClientProxy = 202 [(gogoproto.moretags) = "yaml:\"etcd-client-proxy\""];
+  bool EtcdClientProxy = 201 [(gogoproto.moretags) = "yaml:\"etcd-client-proxy\""];
   // EtcdPeerProxy is true when peer traffic needs to be proxied.
   // If true, listen peer URL port must be different than advertise peer URL port.
-  bool EtcdPeerProxy = 203 [(gogoproto.moretags) = "yaml:\"etcd-peer-proxy\""];
-  // EtcdClientEndpoint is the etcd client endpoint.
-  string EtcdClientEndpoint = 204 [(gogoproto.moretags) = "yaml:\"etcd-client-endpoint\""];
+  bool EtcdPeerProxy = 202 [(gogoproto.moretags) = "yaml:\"etcd-peer-proxy\""];
 
+  // EtcdClientEndpoint is the etcd client endpoint.
+  string EtcdClientEndpoint = 301 [(gogoproto.moretags) = "yaml:\"etcd-client-endpoint\""];
   // Etcd defines etcd binary configuration flags.
-  Etcd Etcd = 301 [(gogoproto.moretags) = "yaml:\"etcd\""];
+  Etcd Etcd = 302 [(gogoproto.moretags) = "yaml:\"etcd\""];
+
+  // ClientCertData contains cert file contents from this member's etcd server.
+  string ClientCertData = 401 [(gogoproto.moretags) = "yaml:\"client-cert-data\""];
+  string ClientCertPath = 402 [(gogoproto.moretags) = "yaml:\"client-cert-path\""];
+  // ClientKeyData contains key file contents from this member's etcd server.
+  string ClientKeyData = 403 [(gogoproto.moretags) = "yaml:\"client-key-data\""];
+  string ClientKeyPath = 404 [(gogoproto.moretags) = "yaml:\"client-key-path\""];
+  // ClientTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string ClientTrustedCAData = 405 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-data\""];
+  string ClientTrustedCAPath = 406 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-path\""];
+
+  // PeerCertData contains cert file contents from this member's etcd server.
+  string PeerCertData = 501 [(gogoproto.moretags) = "yaml:\"peer-cert-data\""];
+  string PeerCertPath = 502 [(gogoproto.moretags) = "yaml:\"peer-cert-path\""];
+  // PeerKeyData contains key file contents from this member's etcd server.
+  string PeerKeyData = 503 [(gogoproto.moretags) = "yaml:\"peer-key-data\""];
+  string PeerKeyPath = 504 [(gogoproto.moretags) = "yaml:\"peer-key-path\""];
+  // PeerTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string PeerTrustedCAData = 505 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
+  string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
 }
 
 enum FailureCase {
@@ -144,8 +171,9 @@ enum StressType {
 }
 
 message Tester {
-  string TesterNetwork = 1 [(gogoproto.moretags) = "yaml:\"tester-network\""];
-  string TesterAddr = 2 [(gogoproto.moretags) = "yaml:\"tester-addr\""];
+  string TesterDataDir = 1 [(gogoproto.moretags) = "yaml:\"tester-data-dir\""];
+  string TesterNetwork = 2 [(gogoproto.moretags) = "yaml:\"tester-network\""];
+  string TesterAddr = 3 [(gogoproto.moretags) = "yaml:\"tester-addr\""];
 
   // DelayLatencyMsRv is the delay latency in milliseconds,
   // to inject to simulated slow network.
@@ -207,14 +235,15 @@ message Tester {
 
 message Request {
   Operation Operation = 1;
-
+  // Member contains the same Member object from tester configuration.
   Member Member = 2;
+  // Tester contains tester configuration.
   Tester Tester = 3;
 }
 
 message Response {
   bool Success = 1;
   string Status = 2;
-
-  // TODO: support TLS
+  // Member contains the same Member object from tester request.
+  Member Member = 3;
 }

@@ -17,39 +17,93 @@ package rpcpb
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/transport"
 
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
-
-var dialOpts = []grpc.DialOption{
-	grpc.WithInsecure(),
-	grpc.WithTimeout(5 * time.Second),
-	grpc.WithBlock(),
-}
 
 // DialEtcdGRPCServer creates a raw gRPC connection to an etcd member.
 func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	if m.EtcdClientTLS {
-		// TODO: support TLS
-		panic("client TLS not supported yet")
+	dialOpts := []grpc.DialOption{
+		grpc.WithTimeout(5 * time.Second),
+		grpc.WithBlock(),
 	}
-	return grpc.Dial(m.EtcdClientEndpoint, append(dialOpts, opts...)...)
+
+	secure := false
+	for _, cu := range m.Etcd.AdvertiseClientURLs {
+		u, err := url.Parse(cu)
+		if err != nil {
+			return nil, err
+		}
+		if u.Scheme == "https" { // TODO: handle unix
+			secure = true
+		}
+	}
+
+	if secure {
+		// assume save TLS assets are already stord on disk
+		tlsInfo := transport.TLSInfo{
+			CertFile:      m.ClientCertPath,
+			KeyFile:       m.ClientKeyPath,
+			TrustedCAFile: m.ClientTrustedCAPath,
+
+			// TODO: remove this with generated certs
+			// only need it for auto TLS
+			InsecureSkipVerify: true,
+		}
+		tlsConfig, err := tlsInfo.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		creds := credentials.NewTLS(tlsConfig)
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithInsecure())
+	}
+	dialOpts = append(dialOpts, opts...)
+	return grpc.Dial(m.EtcdClientEndpoint, dialOpts...)
 }
 
 // CreateEtcdClient creates a client from member.
 func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, error) {
+	secure := false
+	for _, cu := range m.Etcd.AdvertiseClientURLs {
+		u, err := url.Parse(cu)
+		if err != nil {
+			return nil, err
+		}
+		if u.Scheme == "https" { // TODO: handle unix
+			secure = true
+		}
+	}
+
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.EtcdClientEndpoint},
 		DialTimeout: 5 * time.Second,
 		DialOptions: opts,
 	}
-	if m.EtcdClientTLS {
-		// TODO: support TLS
-		panic("client TLS not supported yet")
+	if secure {
+		// assume save TLS assets are already stord on disk
+		tlsInfo := transport.TLSInfo{
+			CertFile:      m.ClientCertPath,
+			KeyFile:       m.ClientKeyPath,
+			TrustedCAFile: m.ClientTrustedCAPath,
+
+			// TODO: remove this with generated certs
+			// only need it for auto TLS
+			InsecureSkipVerify: true,
+		}
+		tlsConfig, err := tlsInfo.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		cfg.TLS = tlsConfig
 	}
 	return clientv3.New(cfg)
 }

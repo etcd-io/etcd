@@ -21,11 +21,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/coreos/etcd/pkg/debugutil"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -72,43 +74,43 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		return nil, err
 	}
 
-	for i := range clus.Members {
-		if clus.Members[i].BaseDir == "" {
-			return nil, fmt.Errorf("Members[i].BaseDir cannot be empty (got %q)", clus.Members[i].BaseDir)
+	for i, mem := range clus.Members {
+		if mem.BaseDir == "" {
+			return nil, fmt.Errorf("Members[i].BaseDir cannot be empty (got %q)", mem.BaseDir)
 		}
-		if clus.Members[i].EtcdLogPath == "" {
-			return nil, fmt.Errorf("Members[i].EtcdLogPath cannot be empty (got %q)", clus.Members[i].EtcdLogPath)
-		}
-
-		if clus.Members[i].Etcd.Name == "" {
-			return nil, fmt.Errorf("'--name' cannot be empty (got %+v)", clus.Members[i])
-		}
-		if clus.Members[i].Etcd.DataDir == "" {
-			return nil, fmt.Errorf("'--data-dir' cannot be empty (got %+v)", clus.Members[i])
-		}
-		if clus.Members[i].Etcd.SnapshotCount == 0 {
-			return nil, fmt.Errorf("'--snapshot-count' cannot be 0 (got %+v)", clus.Members[i].Etcd.SnapshotCount)
-		}
-		if clus.Members[i].Etcd.DataDir == "" {
-			return nil, fmt.Errorf("'--data-dir' cannot be empty (got %q)", clus.Members[i].Etcd.DataDir)
-		}
-		if clus.Members[i].Etcd.WALDir == "" {
-			clus.Members[i].Etcd.WALDir = filepath.Join(clus.Members[i].Etcd.DataDir, "member", "wal")
+		if mem.EtcdLogPath == "" {
+			return nil, fmt.Errorf("Members[i].EtcdLogPath cannot be empty (got %q)", mem.EtcdLogPath)
 		}
 
-		if clus.Members[i].Etcd.HeartbeatIntervalMs == 0 {
-			return nil, fmt.Errorf("'--heartbeat-interval' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		if mem.Etcd.Name == "" {
+			return nil, fmt.Errorf("'--name' cannot be empty (got %+v)", mem)
 		}
-		if clus.Members[i].Etcd.ElectionTimeoutMs == 0 {
-			return nil, fmt.Errorf("'--election-timeout' cannot be 0 (got %+v)", clus.Members[i].Etcd)
+		if mem.Etcd.DataDir == "" {
+			return nil, fmt.Errorf("'--data-dir' cannot be empty (got %+v)", mem)
 		}
-		if int64(clus.Tester.DelayLatencyMs) <= clus.Members[i].Etcd.ElectionTimeoutMs {
-			return nil, fmt.Errorf("delay latency %d ms must be greater than election timeout %d ms", clus.Tester.DelayLatencyMs, clus.Members[i].Etcd.ElectionTimeoutMs)
+		if mem.Etcd.SnapshotCount == 0 {
+			return nil, fmt.Errorf("'--snapshot-count' cannot be 0 (got %+v)", mem.Etcd.SnapshotCount)
+		}
+		if mem.Etcd.DataDir == "" {
+			return nil, fmt.Errorf("'--data-dir' cannot be empty (got %q)", mem.Etcd.DataDir)
+		}
+		if mem.Etcd.WALDir == "" {
+			clus.Members[i].Etcd.WALDir = filepath.Join(mem.Etcd.DataDir, "member", "wal")
+		}
+
+		if mem.Etcd.HeartbeatIntervalMs == 0 {
+			return nil, fmt.Errorf("'--heartbeat-interval' cannot be 0 (got %+v)", mem.Etcd)
+		}
+		if mem.Etcd.ElectionTimeoutMs == 0 {
+			return nil, fmt.Errorf("'--election-timeout' cannot be 0 (got %+v)", mem.Etcd)
+		}
+		if int64(clus.Tester.DelayLatencyMs) <= mem.Etcd.ElectionTimeoutMs {
+			return nil, fmt.Errorf("delay latency %d ms must be greater than election timeout %d ms", clus.Tester.DelayLatencyMs, mem.Etcd.ElectionTimeoutMs)
 		}
 
 		port := ""
 		listenClientPorts := make([]string, len(clus.Members))
-		for i, u := range clus.Members[i].Etcd.ListenClientURLs {
+		for i, u := range mem.Etcd.ListenClientURLs {
 			if !isValidURL(u) {
 				return nil, fmt.Errorf("'--listen-client-urls' has valid URL %q", u)
 			}
@@ -117,7 +119,7 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 				return nil, fmt.Errorf("'--listen-client-urls' has no port %q", u)
 			}
 		}
-		for i, u := range clus.Members[i].Etcd.AdvertiseClientURLs {
+		for i, u := range mem.Etcd.AdvertiseClientURLs {
 			if !isValidURL(u) {
 				return nil, fmt.Errorf("'--advertise-client-urls' has valid URL %q", u)
 			}
@@ -125,13 +127,13 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 			if err != nil {
 				return nil, fmt.Errorf("'--advertise-client-urls' has no port %q", u)
 			}
-			if clus.Members[i].EtcdClientProxy && listenClientPorts[i] == port {
+			if mem.EtcdClientProxy && listenClientPorts[i] == port {
 				return nil, fmt.Errorf("clus.Members[%d] requires client port proxy, but advertise port %q conflicts with listener port %q", i, port, listenClientPorts[i])
 			}
 		}
 
 		listenPeerPorts := make([]string, len(clus.Members))
-		for i, u := range clus.Members[i].Etcd.ListenPeerURLs {
+		for i, u := range mem.Etcd.ListenPeerURLs {
 			if !isValidURL(u) {
 				return nil, fmt.Errorf("'--listen-peer-urls' has valid URL %q", u)
 			}
@@ -140,7 +142,7 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 				return nil, fmt.Errorf("'--listen-peer-urls' has no port %q", u)
 			}
 		}
-		for i, u := range clus.Members[i].Etcd.InitialAdvertisePeerURLs {
+		for j, u := range mem.Etcd.AdvertisePeerURLs {
 			if !isValidURL(u) {
 				return nil, fmt.Errorf("'--initial-advertise-peer-urls' has valid URL %q", u)
 			}
@@ -148,28 +150,105 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 			if err != nil {
 				return nil, fmt.Errorf("'--initial-advertise-peer-urls' has no port %q", u)
 			}
-			if clus.Members[i].EtcdPeerProxy && listenPeerPorts[i] == port {
-				return nil, fmt.Errorf("clus.Members[%d] requires peer port proxy, but advertise port %q conflicts with listener port %q", i, port, listenPeerPorts[i])
+			if mem.EtcdPeerProxy && listenPeerPorts[j] == port {
+				return nil, fmt.Errorf("clus.Members[%d] requires peer port proxy, but advertise port %q conflicts with listener port %q", i, port, listenPeerPorts[j])
 			}
 		}
 
-		if !strings.HasPrefix(clus.Members[i].EtcdLogPath, clus.Members[i].BaseDir) {
-			return nil, fmt.Errorf("EtcdLogPath must be prefixed with BaseDir (got %q)", clus.Members[i].EtcdLogPath)
+		if !strings.HasPrefix(mem.EtcdLogPath, mem.BaseDir) {
+			return nil, fmt.Errorf("EtcdLogPath must be prefixed with BaseDir (got %q)", mem.EtcdLogPath)
 		}
-		if !strings.HasPrefix(clus.Members[i].Etcd.DataDir, clus.Members[i].BaseDir) {
-			return nil, fmt.Errorf("Etcd.DataDir must be prefixed with BaseDir (got %q)", clus.Members[i].Etcd.DataDir)
+		if !strings.HasPrefix(mem.Etcd.DataDir, mem.BaseDir) {
+			return nil, fmt.Errorf("Etcd.DataDir must be prefixed with BaseDir (got %q)", mem.Etcd.DataDir)
 		}
 
 		// TODO: support separate WALDir that can be handled via failure-archive
-		if !strings.HasPrefix(clus.Members[i].Etcd.WALDir, clus.Members[i].BaseDir) {
-			return nil, fmt.Errorf("Etcd.WALDir must be prefixed with BaseDir (got %q)", clus.Members[i].Etcd.WALDir)
+		if !strings.HasPrefix(mem.Etcd.WALDir, mem.BaseDir) {
+			return nil, fmt.Errorf("Etcd.WALDir must be prefixed with BaseDir (got %q)", mem.Etcd.WALDir)
 		}
 
-		if len(clus.Tester.FailureCases) == 0 {
-			return nil, errors.New("FailureCases not found")
+		// TODO: only support generated certs with TLS generator
+		// deprecate auto TLS
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertAuth {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS and Etcd.ClientCertAuth are both 'true'")
+		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientCertFile is %q", mem.Etcd.ClientCertFile)
+		}
+		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile == "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientKeyFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.ClientKeyFile)
+		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientTrustedCAFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
+		}
+		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerClientCertAuth {
+			return nil, fmt.Errorf("Etcd.PeerAutoTLS and Etcd.PeerClientCertAuth are both 'true'")
+		}
+		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerCertFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile == "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerKeyFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerKeyFile)
+		}
+		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerTrustedCAFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
+		}
+
+		if mem.Etcd.ClientAutoTLS || mem.Etcd.ClientCertFile != "" {
+			for _, cu := range mem.Etcd.ListenClientURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("client TLS is enabled with wrong scheme %q", cu)
+				}
+			}
+			for _, cu := range mem.Etcd.AdvertiseClientURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("client TLS is enabled with wrong scheme %q", cu)
+				}
+			}
+		}
+		if mem.Etcd.PeerAutoTLS || mem.Etcd.PeerCertFile != "" {
+			for _, cu := range mem.Etcd.ListenPeerURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
+				}
+			}
+			for _, cu := range mem.Etcd.AdvertisePeerURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
+				}
+			}
 		}
 	}
 
+	if len(clus.Tester.FailureCases) == 0 {
+		return nil, errors.New("FailureCases not found")
+	}
 	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
 		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
 	}
@@ -197,8 +276,6 @@ func newCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 
 	return clus, err
 }
-
-// TODO: status handler
 
 var dialOpts = []grpc.DialOption{
 	grpc.WithInsecure(),
@@ -547,9 +624,79 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 	}
 
 	if !resp.Success {
-		err = errors.New(resp.Status)
+		return errors.New(resp.Status)
 	}
-	return err
+
+	m, secure := clus.Members[idx], false
+	for _, cu := range m.Etcd.AdvertiseClientURLs {
+		u, err := url.Parse(cu)
+		if err != nil {
+			return err
+		}
+		if u.Scheme == "https" { // TODO: handle unix
+			secure = true
+		}
+	}
+
+	// store TLS assets from agents/servers onto disk
+	if secure && (op == rpcpb.Operation_InitialStartEtcd || op == rpcpb.Operation_RestartEtcd) {
+		dirClient := filepath.Join(
+			clus.Tester.TesterDataDir,
+			clus.Members[idx].Etcd.Name,
+			"fixtures",
+			"client",
+		)
+		if err = fileutil.TouchDirAll(dirClient); err != nil {
+			return err
+		}
+
+		clientCertData := []byte(resp.Member.ClientCertData)
+		if len(clientCertData) == 0 {
+			return fmt.Errorf("got empty client cert from %q", m.EtcdClientEndpoint)
+		}
+		clientCertPath := filepath.Join(dirClient, "cert.pem")
+		if err = ioutil.WriteFile(clientCertPath, clientCertData, 0644); err != nil { // overwrite if exists
+			return err
+		}
+		resp.Member.ClientCertPath = clientCertPath
+		clus.lg.Info(
+			"saved client cert file",
+			zap.String("path", clientCertPath),
+		)
+
+		clientKeyData := []byte(resp.Member.ClientKeyData)
+		if len(clientKeyData) == 0 {
+			return fmt.Errorf("got empty client key from %q", m.EtcdClientEndpoint)
+		}
+		clientKeyPath := filepath.Join(dirClient, "key.pem")
+		if err = ioutil.WriteFile(clientKeyPath, clientKeyData, 0644); err != nil { // overwrite if exists
+			return err
+		}
+		resp.Member.ClientKeyPath = clientKeyPath
+		clus.lg.Info(
+			"saved client key file",
+			zap.String("path", clientKeyPath),
+		)
+
+		clientTrustedCAData := []byte(resp.Member.ClientTrustedCAData)
+		if len(clientTrustedCAData) != 0 {
+			// TODO: disable this when auto TLS is deprecated
+			clientTrustedCAPath := filepath.Join(dirClient, "ca.pem")
+			if err = ioutil.WriteFile(clientTrustedCAPath, clientTrustedCAData, 0644); err != nil { // overwrite if exists
+				return err
+			}
+			resp.Member.ClientTrustedCAPath = clientTrustedCAPath
+			clus.lg.Info(
+				"saved client trusted CA file",
+				zap.String("path", clientTrustedCAPath),
+			)
+		}
+
+		// no need to store peer certs for tester clients
+
+		clus.Members[idx] = resp.Member
+	}
+	return nil
 }
 
 // DestroyEtcdAgents terminates all tester connections to agents and etcd servers.

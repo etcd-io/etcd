@@ -30,8 +30,19 @@ var etcdFields = []string{
 
 	"ListenClientURLs",
 	"AdvertiseClientURLs",
+	"ClientAutoTLS",
+	"ClientCertAuth",
+	"ClientCertFile",
+	"ClientKeyFile",
+	"ClientTrustedCAFile",
+
 	"ListenPeerURLs",
-	"InitialAdvertisePeerURLs",
+	"AdvertisePeerURLs",
+	"PeerAutoTLS",
+	"PeerClientCertAuth",
+	"PeerCertFile",
+	"PeerKeyFile",
+	"PeerTrustedCAFile",
 
 	"InitialCluster",
 	"InitialClusterState",
@@ -72,12 +83,17 @@ func (cfg *Etcd) Flags() (fs []string) {
 		default:
 			panic(fmt.Errorf("field %q (%v) cannot be parsed", name, fv.Type().Kind()))
 		}
+
 		fname := field.Tag.Get("yaml")
+
 		// TODO: remove this
 		if fname == "initial-corrupt-check" {
 			fname = "experimental-" + fname
 		}
-		fs = append(fs, fmt.Sprintf("--%s=%s", fname, sv))
+
+		if sv != "" {
+			fs = append(fs, fmt.Sprintf("--%s=%s", fname, sv))
+		}
 	}
 	return fs
 }

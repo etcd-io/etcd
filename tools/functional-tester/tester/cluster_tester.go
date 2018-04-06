@@ -19,6 +19,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/tools/functional-tester/rpcpb"
 
 	"go.uber.org/zap"
@@ -30,7 +31,13 @@ const compactQPS = 50000
 
 // StartTester starts tester.
 func (clus *Cluster) StartTester() {
-	// TODO: upate status
+	if err := fileutil.TouchDirAll(clus.Tester.TesterDataDir); err != nil {
+		clus.lg.Panic(
+			"failed to create test data directory",
+			zap.String("dir", clus.Tester.TesterDataDir),
+			zap.Error(err),
+		)
+	}
 
 	var preModifiedKey int64
 	for round := 0; round < int(clus.Tester.RoundLimit) || clus.Tester.RoundLimit == -1; round++ {
@@ -124,6 +131,7 @@ func (clus *Cluster) doRound() error {
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
+			zap.Int("total-failures", len(clus.failures)),
 		)
 
 		clus.lg.Info("wait health before injecting failures")
@@ -208,6 +216,7 @@ func (clus *Cluster) doRound() error {
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.String("desc", fa.Desc()),
+			zap.Int("total-failures", len(clus.failures)),
 			zap.Duration("took", time.Since(caseNow)),
 		)
 	}
@@ -216,6 +225,7 @@ func (clus *Cluster) doRound() error {
 		"round ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
+		zap.Int("total-failures", len(clus.failures)),
 		zap.Duration("took", time.Since(roundNow)),
 	)
 	return nil
