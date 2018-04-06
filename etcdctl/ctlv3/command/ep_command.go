@@ -17,11 +17,13 @@ package command
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	v3 "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/flags"
 
 	"github.com/spf13/cobra"
@@ -94,12 +96,14 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	kat := keepAliveTimeoutFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
 	cfgs := []*v3.Config{}
-	for _, ep := range endpointsFromCluster(cmd) {
-		cfg, err := newClientCfg([]string{ep}, dt, ka, kat, sec, auth)
-		if err != nil {
-			ExitWithError(ExitBadArgs, err)
+	for _, mi := range endpointsFromCluster(cmd) {
+		for _, ep := range mi.ClientURLs {
+			cfg, err := newClientCfg([]string{ep}, dt, ka, kat, sec, auth)
+			if err != nil {
+				ExitWithError(ExitBadArgs, err)
+			}
+			cfgs = append(cfgs, cfg)
 		}
-		cfgs = append(cfgs, cfg)
 	}
 
 	var wg sync.WaitGroup
@@ -149,8 +153,10 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 type epStatus struct {
-	Ep   string             `json:"Endpoint"`
-	Resp *v3.StatusResponse `json:"Status"`
+	Ep     string             `json:"Endpoint"`
+	Resp   *v3.StatusResponse `json:"Status"`
+	Health bool               `json:"Health"`
+	Error  string             `json:"Error,omitempty"`
 }
 
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
@@ -158,16 +164,20 @@ func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 
 	statusList := []epStatus{}
 	var err error
-	for _, ep := range endpointsFromCluster(cmd) {
-		ctx, cancel := commandCtx(cmd)
-		resp, serr := c.Status(ctx, ep)
-		cancel()
-		if serr != nil {
-			err = serr
-			fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", ep, serr)
-			continue
+	for _, mi := range endpointsFromCluster(cmd) {
+		for _, ep := range mi.ClientURLs {
+			ctx, cancel := commandCtx(cmd)
+			resp, serr := c.Status(ctx, ep)
+			cancel()
+			if serr != nil {
+				err = serr
+				header := pb.ResponseHeader{MemberId: mi.ID}
+				resp = &v3.StatusResponse{Header: &header}
+				statusList = append(statusList, epStatus{Ep: ep, Resp: resp, Health: false, Error: serr.Error()})
+				continue
+			}
+			statusList = append(statusList, epStatus{Ep: ep, Resp: resp, Health: true})
 		}
-		statusList = append(statusList, epStatus{Ep: ep, Resp: resp})
 	}
 
 	display.EndpointStatus(statusList)
@@ -187,16 +197,18 @@ func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
 
 	hashList := []epHashKV{}
 	var err error
-	for _, ep := range endpointsFromCluster(cmd) {
-		ctx, cancel := commandCtx(cmd)
-		resp, serr := c.HashKV(ctx, ep, epHashKVRev)
-		cancel()
-		if serr != nil {
-			err = serr
-			fmt.Fprintf(os.Stderr, "Failed to get the hash of endpoint %s (%v)\n", ep, serr)
-			continue
+	for _, mi := range endpointsFromCluster(cmd) {
+		for _, ep := range mi.ClientURLs {
+			ctx, cancel := commandCtx(cmd)
+			resp, serr := c.HashKV(ctx, ep, epHashKVRev)
+			cancel()
+			if serr != nil {
+				err = serr
+				fmt.Fprintf(os.Stderr, "Failed to get the hash of endpoint %s (%v)\n", ep, serr)
+				continue
+			}
+			hashList = append(hashList, epHashKV{Ep: ep, Resp: resp})
 		}
-		hashList = append(hashList, epHashKV{Ep: ep, Resp: resp})
 	}
 
 	display.EndpointHashKV(hashList)
@@ -206,13 +218,23 @@ func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
 	}
 }
 
-func endpointsFromCluster(cmd *cobra.Command) []string {
+type memberInfo struct {
+	ID         uint64
+	ClientURLs []string
+}
+
+func endpointsFromCluster(cmd *cobra.Command) []memberInfo {
+	var memberInfos []memberInfo
 	if !epClusterEndpoints {
 		endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 		if err != nil {
 			ExitWithError(ExitError, err)
 		}
-		return endpoints
+		for i, ip := range endpoints {
+			endpoints[i] = strings.TrimSpace(ip)
+		}
+		memberInfos = append(memberInfos, memberInfo{ClientURLs: endpoints})
+		return memberInfos
 	}
 
 	sec := secureCfgFromCmd(cmd)
@@ -245,9 +267,8 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		ExitWithError(ExitError, err)
 	}
 
-	ret := []string{}
 	for _, m := range membs.Members {
-		ret = append(ret, m.ClientURLs...)
+		memberInfos = append(memberInfos, memberInfo{ID: m.ID, ClientURLs: m.ClientURLs})
 	}
-	return ret
+	return memberInfos
 }

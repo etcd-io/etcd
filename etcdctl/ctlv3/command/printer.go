@@ -189,19 +189,29 @@ func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]stri
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
-	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index", "raft applied index", "errors"}
+	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index", "raft applied index", "resp errors", "error"}
 	for _, status := range statusList {
-		rows = append(rows, []string{
+		stat := []string{
 			status.Ep,
 			fmt.Sprintf("%x", status.Resp.Header.MemberId),
-			status.Resp.Version,
-			humanize.Bytes(uint64(status.Resp.DbSize)),
-			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
-			fmt.Sprint(status.Resp.RaftTerm),
-			fmt.Sprint(status.Resp.RaftIndex),
-			fmt.Sprint(status.Resp.RaftAppliedIndex),
-			fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
-		})
+		}
+		if status.Health {
+			stat = append(stat, []string{
+				status.Resp.Version,
+				humanize.Bytes(uint64(status.Resp.DbSize)),
+				fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
+				fmt.Sprint(status.Resp.RaftTerm),
+				fmt.Sprint(status.Resp.RaftIndex),
+				fmt.Sprint(status.Resp.RaftAppliedIndex),
+				fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
+			}...)
+		} else {
+			stat = append(stat, []string{
+				"", "", "", "", "", "", "",
+				fmt.Sprint(status.Error),
+			}...)
+		}
+		rows = append(rows, stat)
 	}
 	return hdr, rows
 }

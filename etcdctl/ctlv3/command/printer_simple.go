@@ -156,7 +156,13 @@ func (s *simplePrinter) EndpointHealth(hs []epHealth) {
 func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
 	_, rows := makeEndpointStatusTable(statusList)
 	for _, row := range rows {
-		fmt.Println(strings.Join(row, ", "))
+		strs := []string{}
+		for _, str := range row {
+			if str != "" {
+				strs = append(strs, str)
+			}
+		}
+		fmt.Println(strings.Join(strs, ", "))
 	}
 }
 

@@ -153,15 +153,21 @@ func (p *fieldsPrinter) EndpointHealth(hs []epHealth) {
 
 func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 	for _, ep := range eps {
-		p.hdr(ep.Resp.Header)
-		fmt.Printf("\"Version\" : %q\n", ep.Resp.Version)
-		fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
-		fmt.Println(`"Leader" :`, ep.Resp.Leader)
-		fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)
-		fmt.Println(`"RaftTerm" :`, ep.Resp.RaftTerm)
-		fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)
-		fmt.Println(`"Errors" :`, ep.Resp.Errors)
 		fmt.Printf("\"Endpoint\" : %q\n", ep.Ep)
+		fmt.Println(`"Health" :`, ep.Health)
+		if ep.Health {
+			p.hdr(ep.Resp.Header)
+			fmt.Printf("\"Version\" : %q\n", ep.Resp.Version)
+			fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
+			fmt.Println(`"Leader" :`, ep.Resp.Leader)
+			fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)
+			fmt.Println(`"RaftTerm" :`, ep.Resp.RaftTerm)
+			fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)
+			fmt.Println(`"RespErrors" :`, ep.Resp.Errors)
+		} else {
+			fmt.Println(`"MemberID" :`, ep.Resp.Header.MemberId)
+			fmt.Println(`"Error" :`, ep.Error)
+		}
 		fmt.Println()
 	}
 }

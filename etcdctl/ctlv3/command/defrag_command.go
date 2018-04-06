@@ -52,15 +52,17 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 
 	failures := 0
 	c := mustClientFromCmd(cmd)
-	for _, ep := range endpointsFromCluster(cmd) {
-		ctx, cancel := commandCtx(cmd)
-		_, err := c.Defragment(ctx, ep)
-		cancel()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s] (%v)\n", ep, err)
-			failures++
-		} else {
-			fmt.Printf("Finished defragmenting etcd member[%s]\n", ep)
+	for _, mi := range endpointsFromCluster(cmd) {
+		for _, ep := range mi.ClientURLs {
+			ctx, cancel := commandCtx(cmd)
+			_, err := c.Defragment(ctx, ep)
+			cancel()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s] (%v)\n", ep, err)
+				failures++
+			} else {
+				fmt.Printf("Finished defragmenting etcd member[%s]\n", ep)
+			}
 		}
 	}
 
