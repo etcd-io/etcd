@@ -20,11 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/snapshot"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 const (
@@ -96,13 +96,13 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, err)
 	}
 
-	lg := logutil.NewDiscardLogger()
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	lg := zap.NewNop()
 	if debug {
-		lg = logutil.NewPackageLogger("github.com/coreos/etcd", "snapshot")
+		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(mustClientFromCmd(cmd), lg)
 
@@ -120,13 +120,13 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 	}
 	initDisplayFromCmd(cmd)
 
-	lg := logutil.NewDiscardLogger()
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	lg := zap.NewNop()
 	if debug {
-		lg = logutil.NewPackageLogger("github.com/coreos/etcd", "snapshot")
+		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(nil, lg)
 
@@ -158,13 +158,13 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		walDir = filepath.Join(dataDir, "member", "wal")
 	}
 
-	lg := logutil.NewDiscardLogger()
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	lg := zap.NewNop()
 	if debug {
-		lg = logutil.NewPackageLogger("github.com/coreos/etcd", "snapshot")
+		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(nil, lg)
 
