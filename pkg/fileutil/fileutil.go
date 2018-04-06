@@ -95,6 +95,9 @@ func CreateDirAll(dir string) error {
 
 func Exist(name string) bool {
 	_, err := os.Stat(name)
+	if err != nil && !os.IsNotExist(err) {
+		plog.Warningf("stat file %s, Error: %v", name, err)
+	}
 	return err == nil
 }
 
