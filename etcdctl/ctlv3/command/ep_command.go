@@ -61,9 +61,17 @@ The items in the lists are endpoint, ID, version, db size, is leader, raft term,
 	}
 }
 
+type epHealth struct {
+	Ep     string `json:"endpoint"`
+	Health bool   `json:"health"`
+	Took   string `json:"took"`
+	Error  string `json:"error,omitempty"`
+}
+
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+	initDisplayFromCmd(cmd)
 	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		ExitWithError(ExitError, err)
@@ -82,7 +90,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	var wg sync.WaitGroup
-
+	hch := make(chan epHealth, len(cfgs))
 	for _, cfg := range cfgs {
 		wg.Add(1)
 		go func(cfg *v3.Config) {
@@ -90,7 +98,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			ep := cfg.Endpoints[0]
 			cli, err := v3.New(*cfg)
 			if err != nil {
-				fmt.Printf("%s is unhealthy: failed to connect: %v\n", ep, err)
+				hch <- epHealth{Ep: ep, Health: false, Error: err.Error()}
 				return
 			}
 			st := time.Now()
@@ -99,16 +107,25 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			ctx, cancel := commandCtx(cmd)
 			_, err = cli.Get(ctx, "health")
 			cancel()
+			eh := epHealth{Ep: ep, Health: false, Took: time.Since(st).String()}
 			// permission denied is OK since proposal goes through consensus to get it
 			if err == nil || err == rpctypes.ErrPermissionDenied {
-				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
+				eh.Health = true
 			} else {
-				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
+				eh.Error = err.Error()
 			}
+			hch <- eh
 		}(cfg)
 	}
 
 	wg.Wait()
+	close(hch)
+
+	healthList := []epHealth{}
+	for h := range hch {
+		healthList = append(healthList, h)
+	}
+	display.EndpointHealth(healthList)
 }
 
 type epStatus struct {
