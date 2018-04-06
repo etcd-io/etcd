@@ -3,10 +3,7 @@
 // Copyright (c) 2012-2015 Ugorji Nwoke. All rights reserved.
 // Use of this source code is governed by a MIT license found in the LICENSE file.
 
-// ************************************************************
-// DO NOT EDIT.
-// THIS FILE IS AUTO-GENERATED from gen-helper.go.tmpl
-// ************************************************************
+// Code generated from gen-helper.go.tmpl - DO NOT EDIT.
 
 package codec
 
@@ -31,30 +28,73 @@ const GenVersion = 8
 // GenHelperEncoder is exported so that it can be used externally by codecgen.
 //
 // Library users: DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.
-func GenHelperEncoder(e *Encoder) (genHelperEncoder, encDriver) {
-	return genHelperEncoder{e: e}, e.e
+func GenHelperEncoder(e *Encoder) (ge genHelperEncoder, ee genHelperEncDriver) {
+	ge = genHelperEncoder{e: e}
+	ee = genHelperEncDriver{encDriver: e.e}
+	return
 }
 
 // GenHelperDecoder is exported so that it can be used externally by codecgen.
 //
 // Library users: DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.
-func GenHelperDecoder(d *Decoder) (genHelperDecoder, decDriver) {
-	return genHelperDecoder{d: d}, d.d
+func GenHelperDecoder(d *Decoder) (gd genHelperDecoder, dd genHelperDecDriver) {
+	gd = genHelperDecoder{d: d}
+	dd = genHelperDecDriver{decDriver: d.d}
+	return
 }
 
-// Library users: DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.
-func BasicHandleDoNotUse(h Handle) *BasicHandle {
-	return h.getBasicHandle()
+type genHelperEncDriver struct {
+	encDriver
+}
+
+func (x genHelperEncDriver) EncodeBuiltin(rt uintptr, v interface{}) {}
+func (x genHelperEncDriver) EncStructFieldKey(keyType valueType, s string) {
+	encStructFieldKey(x.encDriver, keyType, s)
+}
+func (x genHelperEncDriver) EncodeSymbol(s string) {
+	x.encDriver.EncodeString(cUTF8, s)
+}
+
+type genHelperDecDriver struct {
+	decDriver
+	C checkOverflow
+}
+
+func (x genHelperDecDriver) DecodeBuiltin(rt uintptr, v interface{}) {}
+func (x genHelperDecDriver) DecStructFieldKey(keyType valueType, buf *[decScratchByteArrayLen]byte) []byte {
+	return decStructFieldKey(x.decDriver, keyType, buf)
+}
+func (x genHelperDecDriver) DecodeInt(bitsize uint8) (i int64) {
+	return x.C.IntV(x.decDriver.DecodeInt64(), bitsize)
+}
+func (x genHelperDecDriver) DecodeUint(bitsize uint8) (ui uint64) {
+	return x.C.UintV(x.decDriver.DecodeUint64(), bitsize)
+}
+func (x genHelperDecDriver) DecodeFloat(chkOverflow32 bool) (f float64) {
+	f = x.DecodeFloat64()
+	if chkOverflow32 && chkOvf.Float32(f) {
+		panicv.errorf("float32 overflow: %v", f)
+	}
+	return
+}
+func (x genHelperDecDriver) DecodeFloat32As64() (f float64) {
+	f = x.DecodeFloat64()
+	if chkOvf.Float32(f) {
+		panicv.errorf("float32 overflow: %v", f)
+	}
+	return
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 type genHelperEncoder struct {
+	M must
 	e *Encoder
 	F fastpathT
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 type genHelperDecoder struct {
+	C checkOverflow
 	d *Decoder
 	F fastpathT
 }
@@ -66,7 +106,12 @@ func (f genHelperEncoder) EncBasicHandle() *BasicHandle {
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncBinary() bool {
-	return f.e.cf.be // f.e.hh.isBinaryEncoding()
+	return f.e.be // f.e.hh.isBinaryEncoding()
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperEncoder) IsJSONHandle() bool {
+	return f.e.js
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
@@ -79,52 +124,65 @@ func (f genHelperEncoder) EncFallback(iv interface{}) {
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncTextMarshal(iv encoding.TextMarshaler) {
 	bs, fnerr := iv.MarshalText()
-	f.e.marshal(bs, fnerr, false, c_UTF8)
+	f.e.marshal(bs, fnerr, false, cUTF8)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncJSONMarshal(iv jsonMarshaler) {
 	bs, fnerr := iv.MarshalJSON()
-	f.e.marshal(bs, fnerr, true, c_UTF8)
+	f.e.marshal(bs, fnerr, true, cUTF8)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncBinaryMarshal(iv encoding.BinaryMarshaler) {
 	bs, fnerr := iv.MarshalBinary()
-	f.e.marshal(bs, fnerr, false, c_RAW)
+	f.e.marshal(bs, fnerr, false, cRAW)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperEncoder) EncRaw(iv Raw) {
-	f.e.rawBytes(iv)
+func (f genHelperEncoder) EncRaw(iv Raw) { f.e.rawBytes(iv) }
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+//
+// Deprecated: builtin no longer supported - so we make this method a no-op,
+// but leave in-place so that old generated files continue to work without regeneration.
+func (f genHelperEncoder) TimeRtidIfBinc() (v uintptr) { return }
+
+// func (f genHelperEncoder) TimeRtidIfBinc() uintptr {
+// 	if _, ok := f.e.hh.(*BincHandle); ok {
+// 		return timeTypId
+// 	}
+// }
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperEncoder) I2Rtid(v interface{}) uintptr {
+	return i2rtid(v)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperEncoder) TimeRtidIfBinc() uintptr {
-	if _, ok := f.e.hh.(*BincHandle); ok {
-		return timeTypId
-	}
-	return 0
+func (f genHelperEncoder) Extension(rtid uintptr) (xfn *extTypeTagFn) {
+	return f.e.h.getExt(rtid)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperEncoder) IsJSONHandle() bool {
-	return f.e.cf.js
+func (f genHelperEncoder) EncExtension(v interface{}, xfFn *extTypeTagFn) {
+	f.e.e.EncodeExt(v, xfFn.tag, xfFn.ext, f.e)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+//
+// Deprecated: No longer used,
+// but leave in-place so that old generated files continue to work without regeneration.
 func (f genHelperEncoder) HasExtensions() bool {
 	return len(f.e.h.extHandle) != 0
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+//
+// Deprecated: No longer used,
+// but leave in-place so that old generated files continue to work without regeneration.
 func (f genHelperEncoder) EncExt(v interface{}) (r bool) {
-	rt := reflect.TypeOf(v)
-	if rt.Kind() == reflect.Ptr {
-		rt = rt.Elem()
-	}
-	rtid := rt2id(rt)
-	if xfFn := f.e.h.getExt(rtid); xfFn != nil {
+	if xfFn := f.e.h.getExt(i2rtid(v)); xfFn != nil {
 		f.e.e.EncodeExt(v, xfFn.tag, xfFn.ext, f.e)
 		return true
 	}
@@ -144,13 +202,16 @@ func (f genHelperDecoder) DecBinary() bool {
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperDecoder) DecSwallow() {
-	f.d.swallow()
-}
+func (f genHelperDecoder) DecSwallow() { f.d.swallow() }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) DecScratchBuffer() []byte {
 	return f.d.b[:]
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperDecoder) DecScratchArrayBuffer() *[decScratchByteArrayLen]byte {
+	return &f.d.b
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
@@ -160,7 +221,7 @@ func (f genHelperDecoder) DecFallback(iv interface{}, chkPtr bool) {
 	if chkPtr {
 		rv = f.d.ensureDecodeable(rv)
 	}
-	f.d.decodeValue(rv, nil, false, false)
+	f.d.decodeValue(rv, nil, false)
 	// f.d.decodeValueFallback(rv)
 }
 
@@ -206,17 +267,21 @@ func (f genHelperDecoder) DecBinaryUnmarshal(bm encoding.BinaryUnmarshaler) {
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperDecoder) DecRaw() []byte {
-	return f.d.rawBytes()
-}
+func (f genHelperDecoder) DecRaw() []byte { return f.d.rawBytes() }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperDecoder) TimeRtidIfBinc() uintptr {
-	if _, ok := f.d.hh.(*BincHandle); ok {
-		return timeTypId
-	}
-	return 0
-}
+//
+// Deprecated: builtin no longer supported - so we make this method a no-op,
+// but leave in-place so that old generated files continue to work without regeneration.
+func (f genHelperDecoder) TimeRtidIfBinc() (v uintptr) { return }
+
+// func (f genHelperDecoder) TimeRtidIfBinc() uintptr {
+// 	// Note: builtin is no longer supported - so make this a no-op
+// 	if _, ok := f.d.hh.(*BincHandle); ok {
+// 		return timeTypId
+// 	}
+// 	return 0
+// }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperDecoder) IsJSONHandle() bool {
@@ -224,15 +289,34 @@ func (f genHelperDecoder) IsJSONHandle() bool {
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperDecoder) I2Rtid(v interface{}) uintptr {
+	return i2rtid(v)
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperDecoder) Extension(rtid uintptr) (xfn *extTypeTagFn) {
+	return f.d.h.getExt(rtid)
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperDecoder) DecExtension(v interface{}, xfFn *extTypeTagFn) {
+	f.d.d.DecodeExt(v, xfFn.tag, xfFn.ext)
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+//
+// Deprecated: No longer used,
+// but leave in-place so that old generated files continue to work without regeneration.
 func (f genHelperDecoder) HasExtensions() bool {
 	return len(f.d.h.extHandle) != 0
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+//
+// Deprecated: No longer used,
+// but leave in-place so that old generated files continue to work without regeneration.
 func (f genHelperDecoder) DecExt(v interface{}) (r bool) {
-	rt := reflect.TypeOf(v).Elem()
-	rtid := rt2id(rt)
-	if xfFn := f.d.h.getExt(rtid); xfFn != nil {
+	if xfFn := f.d.h.getExt(i2rtid(v)); xfFn != nil {
 		f.d.d.DecodeExt(v, xfFn.tag, xfFn.ext)
 		return true
 	}
@@ -245,6 +329,7 @@ func (f genHelperDecoder) DecInferLen(clen, maxlen, unit int) (rvlen int) {
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
-func (f genHelperDecoder) StringView(v []byte) string {
-	return stringView(v)
-}
+//
+// Deprecated: no longer used,
+// but leave in-place so that old generated files continue to work without regeneration.
+func (f genHelperDecoder) StringView(v []byte) string { return stringView(v) }
