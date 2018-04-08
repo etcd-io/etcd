@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,41 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package stringutil exports string utility functions.
 package stringutil
 
-import "math/rand"
-
-const (
-	chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+import (
+	"math/rand"
+	"time"
 )
 
 // UniqueStrings returns a slice of randomly generated unique strings.
-func UniqueStrings(maxlen uint, n int) []string {
-	exist := make(map[string]bool)
-	ss := make([]string, 0)
-
+func UniqueStrings(slen uint, n int) (ss []string) {
+	exist := make(map[string]struct{})
+	ss = make([]string, 0, n)
 	for len(ss) < n {
-		s := randomString(maxlen)
-		if !exist[s] {
-			exist[s] = true
+		s := randString(slen)
+		if _, ok := exist[s]; !ok {
 			ss = append(ss, s)
+			exist[s] = struct{}{}
 		}
 	}
-
 	return ss
 }
 
 // RandomStrings returns a slice of randomly generated strings.
-func RandomStrings(maxlen uint, n int) []string {
-	ss := make([]string, 0)
+func RandomStrings(slen uint, n int) (ss []string) {
+	ss = make([]string, 0, n)
 	for i := 0; i < n; i++ {
-		ss = append(ss, randomString(maxlen))
+		ss = append(ss, randString(slen))
 	}
 	return ss
 }
 
-func randomString(l uint) string {
+const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func randString(l uint) string {
+	rand.Seed(time.Now().UnixNano())
 	s := make([]byte, l)
 	for i := 0; i < int(l); i++ {
 		s[i] = chars[rand.Intn(len(chars))]
