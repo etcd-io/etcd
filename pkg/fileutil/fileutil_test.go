@@ -15,8 +15,10 @@
 package fileutil
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -24,6 +26,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestIsDirWriteable(t *testing.T) {
@@ -104,6 +107,16 @@ func TestCreateDirAll(t *testing.T) {
 }
 
 func TestExist(t *testing.T) {
+	fdir := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()+rand.Int63n(1000)))
+	os.RemoveAll(fdir)
+	if err := os.Mkdir(fdir, 0666); err != nil {
+		t.Skip(err)
+	}
+	defer os.RemoveAll(fdir)
+	if !Exist(fdir) {
+		t.Fatalf("expected Exist true, got %v", Exist(fdir))
+	}
+
 	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
 	if err != nil {
 		t.Fatal(err)
