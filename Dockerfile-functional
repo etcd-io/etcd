@@ -34,9 +34,9 @@ RUN go get -v github.com/coreos/gofail \
   && cp ./bin/etcd /bin/etcd-failpoints \
   && ./functional/build \
   && cp ./bin/etcd-agent /bin/etcd-agent \
-  && cp ./bin/etcd-tester /bin/etcd-tester \
+  && cp ./bin/etcd-proxy /bin/etcd-proxy \
   && cp ./bin/etcd-runner /bin/etcd-runner \
+  && cp ./bin/etcd-tester /bin/etcd-tester \
   && go build -v -o /bin/benchmark ./tools/benchmark \
-  && go build -v -o /bin/etcd-test-proxy ./tools/etcd-test-proxy \
   && popd \
   && rm -rf ${GOPATH}/src/github.com/coreos/etcd

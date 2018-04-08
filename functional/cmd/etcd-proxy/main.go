@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// etcd-test-proxy is a proxy layer that simulates various network conditions.
+// etcd-proxy is a proxy layer that simulates various network conditions.
 package main
 
 import (
@@ -40,13 +40,13 @@ func main() {
 	// TODO: support TLS
 	flag.StringVar(&from, "from", "localhost:23790", "Address URL to proxy from.")
 	flag.StringVar(&to, "to", "localhost:2379", "Address URL to forward.")
-	flag.IntVar(&httpPort, "http-port", 2378, "Port to serve etcd-test-proxy API.")
+	flag.IntVar(&httpPort, "http-port", 2378, "Port to serve etcd-proxy API.")
 	flag.BoolVar(&verbose, "verbose", false, "'true' to run proxy in verbose mode.")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %q:\n", os.Args[0])
 		fmt.Fprintln(os.Stderr, `
-etcd-test-proxy simulates various network conditions for etcd testing purposes.
+etcd-proxy simulates various network conditions for etcd testing purposes.
 See README.md for more examples.
 
 Example:
@@ -55,12 +55,12 @@ Example:
 $ ./build
 $ ./bin/etcd
 
-# build etcd-test-proxy
-$ make build-etcd-test-proxy
+# build etcd-proxy
+$ make build-etcd-proxy
 
 # to test etcd with proxy layer
-$ ./bin/etcd-test-proxy --help
-$ ./bin/etcd-test-proxy --from localhost:23790 --to localhost:2379 --http-port 2378 --verbose
+$ ./bin/etcd-proxy --help
+$ ./bin/etcd-proxy --from localhost:23790 --to localhost:2379 --http-port 2378 --verbose
 
 $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:2379 put foo bar
 $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar`)

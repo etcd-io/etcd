@@ -469,17 +469,19 @@ docker-dns-srv-test-certs-wildcard-run:
 
 
 # Example:
-#   make build-etcd-test-proxy
-
-build-etcd-test-proxy:
-	go build -v -o ./bin/etcd-test-proxy ./tools/etcd-test-proxy
-
-
-
-# Example:
+#   make build-functional
 #   make build-docker-functional
 #   make push-docker-functional
 #   make pull-docker-functional
+
+build-functional:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info ETCD_VERSION: $(ETCD_VERSION))
+	./functional/build
+	./bin/etcd-agent -help || true && \
+	  ./bin/etcd-proxy -help || true && \
+	  ./bin/etcd-runner --help || true && \
+	  ./bin/etcd-tester -help || true
 
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -498,10 +500,10 @@ build-docker-functional:
 	   ./bin/etcd-failpoints --version && \
 	   ETCDCTL_API=3 ./bin/etcdctl version && \
 	   ./bin/etcd-agent -help || true && \
-	   ./bin/etcd-tester -help || true && \
+	   ./bin/etcd-proxy -help || true && \
 	   ./bin/etcd-runner --help || true && \
-	   ./bin/benchmark --help || true && \
-	   ./bin/etcd-test-proxy -help || true"
+	   ./bin/etcd-tester -help || true && \
+	   ./bin/benchmark --help || true"
 
 push-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
