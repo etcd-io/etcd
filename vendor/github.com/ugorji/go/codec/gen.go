@@ -542,7 +542,6 @@ func (x *genRunner) selfer(encode bool) {
 	if encode {
 		x.line(") CodecEncodeSelf(e *" + x.cpfx + "Encoder) {")
 		x.genRequiredMethodVars(true)
-		// x.enc(genTopLevelVarName, t)
 		x.encVar(genTopLevelVarName, t)
 	} else {
 		x.line(") CodecDecodeSelf(d *" + x.cpfx + "Decoder) {")
@@ -649,7 +648,7 @@ func (x *genRunner) encVar(varname string, t reflect.Type) {
 	case reflect.Ptr:
 		telem := t.Elem()
 		tek := telem.Kind()
-		if tek == reflect.Array || (tek == reflect.Struct && t != timeTyp) {
+		if tek == reflect.Array || (tek == reflect.Struct && telem != timeTyp) {
 			x.enc(varname, genNonPtr(t))
 			break
 		}

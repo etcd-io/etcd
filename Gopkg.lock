@@ -225,7 +225,7 @@
 [[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
-  revision = "6a0f936d9527cafa42a8acfa0bf2d6cc94bb6024"
+  revision = "f3cacc17c85ecb7f1b6a9e373ee85d1480919868"
 
 [[projects]]
   name = "github.com/urfave/cli"

@@ -2382,6 +2382,10 @@ func (d *Decoder) wrapErrstr(v interface{}, err *error) {
 	*err = fmt.Errorf("%s decode error [pos %d]: %v", d.hh.Name(), d.r.numread(), v)
 }
 
+func (d *Decoder) NumBytesRead() int {
+	return d.r.numread()
+}
+
 // --------------------------------------------------
 
 // decSliceHelper assists when decoding into a slice, from a map or an array in the stream.
