@@ -118,10 +118,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 
 - Upgrade [`boltdb/bolt`](https://github.com/boltdb/bolt#project-status) from [**`v1.3.0`**](https://github.com/boltdb/bolt/releases/tag/v1.3.0) to [`coreos/bbolt`](https://github.com/coreos/bbolt/releases) [**`v1.3.1-coreos.6`**](https://github.com/coreos/bbolt/releases/tag/v1.3.1-coreos.6).
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.2.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.2.1) to [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5).
-- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1`**](https://github.com/ugorji/go/commit/bdcc60b419d136a85cdf2e7cbcac34b3f1cd6e57), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/8721).
-- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`ugorji/go@54210f4`**](https://github.com/ugorji/go/commit/54210f4e076c57f351166f0ed60e67d3fca57a36), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/8574).
+- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1`**](https://github.com/ugorji/go/releases/tag/v1.1), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/8721).
+- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`ugorji/go@54210f4e0`**](https://github.com/ugorji/go/commit/54210f4e076c57f351166f0ed60e67d3fca57a36), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/8574).
 - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [**`v1.2.2`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.2.2) to [**`v1.3.0`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3.0).
-- Upgrade [`golang.org/x/crypto/bcrypt`](https://github.com/golang/crypto) to [**`golang/crypto@6c586e1`**](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117).
+- Upgrade [`golang.org/x/crypto/bcrypt`](https://github.com/golang/crypto) to [**`golang/crypto@6c586e17d`**](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117).
 
 ### Metrics, Monitoring
 
