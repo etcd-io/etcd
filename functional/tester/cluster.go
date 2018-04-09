@@ -544,11 +544,7 @@ func (clus *Cluster) WaitHealth() error {
 			)
 		}
 		if err == nil {
-			clus.lg.Info(
-				"health check ALL PASS",
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
-			)
+			clus.lg.Info("health check ALL PASS")
 			return nil
 		}
 		time.Sleep(time.Second)
