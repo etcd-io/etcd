@@ -68,7 +68,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 ### Dependency
 
 - TODO: Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.11.1).
-- TODO: Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1.1`**](https://github.com/ugorji/go/commit/6a0f936d9527cafa42a8acfa0bf2d6cc94bb6024), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
+- TODO: Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1.1`**](https://github.com/ugorji/go/commit/f3cacc17c85ecb7f1b6a9e373ee85d1480919868), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
 - Upgrade [`github.com/soheilhy/cmux`](https://github.com/soheilhy/cmux/releases) from [**`v0.1.3`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.3) to [**`v0.1.4`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.4).
 
 ### Metrics, Monitoring
