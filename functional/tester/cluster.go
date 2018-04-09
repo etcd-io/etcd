@@ -143,69 +143,97 @@ func (clus *Cluster) updateFailures() {
 	for _, cs := range clus.Tester.FailureCases {
 		switch cs {
 		case "KILL_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureKillOneFollower())
+			clus.failures = append(clus.failures,
+				newFailureKillOneFollower(clus))
 		case "KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureKillOneFollowerUntilTriggerSnapshot())
+			clus.failures = append(clus.failures,
+				newFailureKillOneFollowerUntilTriggerSnapshot(clus))
 		case "KILL_LEADER":
-			clus.failures = append(clus.failures, newFailureKillLeader())
+			clus.failures = append(clus.failures,
+				newFailureKillLeader(clus))
 		case "KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureKillLeaderUntilTriggerSnapshot())
+			clus.failures = append(clus.failures,
+				newFailureKillLeaderUntilTriggerSnapshot(clus))
 		case "KILL_QUORUM":
-			clus.failures = append(clus.failures, newFailureKillQuorum())
+			clus.failures = append(clus.failures,
+				newFailureKillQuorum(clus))
 		case "KILL_ALL":
-			clus.failures = append(clus.failures, newFailureKillAll())
+			clus.failures = append(clus.failures,
+				newFailureKillAll(clus))
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollower(clus))
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxOneFollower(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot())
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot())
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeader(clus))
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxLeader(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot())
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot())
 		case "BLACKHOLE_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxQuorum(clus))
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxQuorum(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureBlackholePeerPortTxRxAll(clus))
+			clus.failures = append(clus.failures,
+				newFailureBlackholePeerPortTxRxAll(clus))
 
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxOneFollower(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollower(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxOneFollower(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxLeader(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeader(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxLeader(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxQuorum(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxQuorum(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxQuorum(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, false))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxAll(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures, newFailureDelayPeerPortTxRxAll(clus, true))
+			clus.failures = append(clus.failures,
+				newFailureDelayPeerPortTxRxAll(clus, true))
 
 		case "NO_FAIL_WITH_STRESS":
-			clus.failures = append(clus.failures, newFailureNoFailWithStress(clus))
+			clus.failures = append(clus.failures,
+				newFailureNoFailWithStress(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
-			clus.failures = append(clus.failures, newFailureNoFailWithNoStressForLiveness(clus))
+			clus.failures = append(clus.failures,
+				newFailureNoFailWithNoStressForLiveness(clus))
 
 		case "EXTERNAL":
-			clus.failures = append(clus.failures, newFailureExternal(clus.Tester.ExternalExecPath))
+			clus.failures = append(clus.failures,
+				newFailureExternal(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
-			clus.failures = append(clus.failures, fpFailures...)
+			clus.failures = append(clus.failures,
+				fpFailures...)
 		}
 	}
 }

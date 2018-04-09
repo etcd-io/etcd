@@ -52,13 +52,11 @@ func newFailureDelayPeerPortTxRxOneFollower(clus *Cluster, random bool) Failure 
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		ff.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
 	}
-
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
@@ -72,13 +70,11 @@ func newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus *Cluster, r
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		ff.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
 	}
-
 	f := &failureFollower{ff, -1, -1}
 	return &failureUntilSnapshot{
 		failureCase: ff.failureCase,
@@ -92,13 +88,11 @@ func newFailureDelayPeerPortTxRxLeader(clus *Cluster, random bool) Failure {
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		ff.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER
 	}
-
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
 		Failure:       f,
@@ -112,13 +106,11 @@ func newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus *Cluster, random
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		ff.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
 	}
-
 	f := &failureLeader{ff, -1, -1}
 	return &failureUntilSnapshot{
 		failureCase: ff.failureCase,
@@ -132,13 +124,11 @@ func newFailureDelayPeerPortTxRxQuorum(clus *Cluster, random bool) Failure {
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		f.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM
 	}
-
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),
@@ -151,13 +141,11 @@ func newFailureDelayPeerPortTxRxAll(clus *Cluster, random bool) Failure {
 		injectMember:  injectDelayPeerPortTxRx,
 		recoverMember: recoverDelayPeerPortTxRx,
 	}
-
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {
 		clus.UpdateDelayLatencyMs()
 		f.failureCase = rpcpb.FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ALL
 	}
-
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),

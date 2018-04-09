@@ -242,9 +242,6 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	if err := f.Failure.Inject(clus); err != nil {
 		return err
 	}
-	if len(clus.Members) < 3 {
-		return nil
-	}
 
 	snapshotCount := clus.Members[0].Etcd.SnapshotCount
 

@@ -31,9 +31,9 @@ func (f *failureDelay) Inject(clus *Cluster) error {
 	}
 	if f.delayDuration > 0 {
 		clus.lg.Info(
-			"sleeping in failureDelay",
+			"wait after inject",
 			zap.Duration("delay", f.delayDuration),
-			zap.String("case", f.Failure.Desc()),
+			zap.String("desc", f.Failure.Desc()),
 		)
 		time.Sleep(f.delayDuration)
 	}

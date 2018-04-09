@@ -40,6 +40,10 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		return nil, err
 	}
 
+	if len(clus.Members) < 3 {
+		return nil, fmt.Errorf("len(clus.Members) expects at least 3, got %d", len(clus.Members))
+	}
+
 	for i, mem := range clus.Members {
 		if mem.BaseDir == "" {
 			return nil, fmt.Errorf("BaseDir cannot be empty (got %q)", mem.BaseDir)

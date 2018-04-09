@@ -24,50 +24,66 @@ func recoverKill(clus *Cluster, idx int) error {
 	return clus.sendOperation(idx, rpcpb.Operation_RestartEtcd)
 }
 
-func newFailureKillOneFollower() Failure {
+func newFailureKillOneFollower(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_KILL_ONE_FOLLOWER,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
-	return &failureFollower{ff, -1, -1}
+	f := &failureFollower{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
 }
 
-func newFailureKillLeader() Failure {
+func newFailureKillLeader(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_KILL_LEADER,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
-	return &failureLeader{ff, -1, -1}
+	f := &failureLeader{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
 }
 
-func newFailureKillQuorum() Failure {
-	return &failureQuorum{
+func newFailureKillQuorum(clus *Cluster) Failure {
+	f := &failureQuorum{
 		failureCase:   rpcpb.FailureCase_KILL_QUORUM,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
 }
 
-func newFailureKillAll() Failure {
-	return &failureAll{
+func newFailureKillAll(clus *Cluster) Failure {
+	f := &failureAll{
 		failureCase:   rpcpb.FailureCase_KILL_ALL,
 		injectMember:  injectKill,
 		recoverMember: recoverKill,
 	}
-}
-
-func newFailureKillOneFollowerUntilTriggerSnapshot() Failure {
-	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     newFailureKillOneFollower(),
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
 	}
 }
 
-func newFailureKillLeaderUntilTriggerSnapshot() Failure {
+func newFailureKillOneFollowerUntilTriggerSnapshot(clus *Cluster) Failure {
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     newFailureKillOneFollower(clus),
+	}
+}
+
+func newFailureKillLeaderUntilTriggerSnapshot(clus *Cluster) Failure {
 	return &failureUntilSnapshot{
 		failureCase: rpcpb.FailureCase_KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     newFailureKillLeader(),
+		Failure:     newFailureKillLeader(clus),
 	}
 }
