@@ -152,7 +152,7 @@ func (clus *Cluster) doRound() error {
 		fcase := fa.FailureCase()
 		if fcase != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
 			clus.lg.Info(
-				"stresser START",
+				"stress START",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.Int("case-total", len(clus.failures)),
@@ -190,7 +190,13 @@ func (clus *Cluster) doRound() error {
 		}
 
 		if stressStarted {
-			clus.lg.Info("stresser PAUSE")
+			clus.lg.Info(
+				"stress PAUSE",
+				zap.Int("round", clus.rd),
+				zap.Int("case", clus.cs),
+				zap.Int("case-total", len(clus.failures)),
+				zap.String("desc", fa.Desc()),
+			)
 			ems := clus.stresser.Pause()
 			if fcase == rpcpb.FailureCase_NO_FAIL_WITH_STRESS && len(ems) > 0 {
 				ess := make([]string, 0, len(ems))
@@ -213,12 +219,24 @@ func (clus *Cluster) doRound() error {
 			}
 		}
 
-		clus.lg.Info("health check START")
+		clus.lg.Info(
+			"health check START",
+			zap.Int("round", clus.rd),
+			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
+			zap.String("desc", fa.Desc()),
+		)
 		if err := clus.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
 
-		clus.lg.Info("consistency check START")
+		clus.lg.Info(
+			"consistency check START",
+			zap.Int("round", clus.rd),
+			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
+			zap.String("desc", fa.Desc()),
+		)
 		if err := clus.checkConsistency(); err != nil {
 			return fmt.Errorf("consistency check error (%v)", err)
 		}

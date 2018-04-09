@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -158,9 +159,10 @@ func (s *keyStresser) run() {
 			return
 		default:
 			s.lg.Warn(
-				"stress stopped",
+				"stress run exiting",
 				zap.String("stress-type", s.stype.String()),
 				zap.String("endpoint", s.m.EtcdClientEndpoint),
+				zap.String("error-type", reflect.TypeOf(err).String()),
 				zap.Error(err),
 			)
 			return

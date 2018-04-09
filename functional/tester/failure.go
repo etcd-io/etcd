@@ -251,8 +251,6 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 	now := time.Now()
 	clus.lg.Info(
 		"trigger snapshot START",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
 		zap.String("desc", f.Desc()),
 		zap.Int64("etcd-snapshot-count", snapshotCount),
 	)
@@ -283,8 +281,6 @@ func (f *failureUntilSnapshot) Inject(clus *Cluster) error {
 		if diff > snapshotCount {
 			clus.lg.Info(
 				"trigger snapshot PASS",
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
 				zap.Int("retries", i),
 				zap.String("desc", f.Desc()),
 				zap.Int64("committed-entries", diff),
