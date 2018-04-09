@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/pkg/expect"
 )
 
-const exampleConfigFile = "../etcd.conf.yml.sample"
+const exampleConfigFile = "../../etcd.conf.yml.sample"
 
 func TestEtcdExampleConfig(t *testing.T) {
 	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile})
