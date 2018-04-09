@@ -67,13 +67,14 @@ etcd_build() {
 tools_build() {
 	out="bin"
 	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
-	tools_path="benchmark
-	etcd-dump-db
-	etcd-dump-logs
-	functional-tester/cmd/etcd-agent
-	functional-tester/cmd/etcd-tester
-	functional-tester/cmd/etcd-runner
-	local-tester/bridge"
+	tools_path="tools/benchmark
+	tools/etcd-dump-db
+	tools/etcd-dump-logs
+	tools/local-tester/bridge
+	functional/cmd/etcd-agent
+	functional/cmd/etcd-proxy
+	functional/cmd/etcd-runner
+	functional/cmd/etcd-tester"
 	for tool in ${tools_path}
 	do
 		echo "Building" "'${tool}'"...
@@ -81,7 +82,7 @@ tools_build() {
 		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
 		  -installsuffix cgo \
 		  -ldflags "${GO_LDFLAGS}" \
-		  -o "${out}/${tool}" "${REPO_PATH}/tools/${tool}" || return
+		  -o "${out}/${tool}" "${REPO_PATH}/${tool}" || return
 	done
 }
 
