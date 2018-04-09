@@ -52,11 +52,17 @@ const (
 	// thus need to archive etcd data directories.
 	Operation_FailArchive Operation = 4
 	// DestroyEtcdAgent destroys etcd process, etcd data, and agent server.
-	Operation_DestroyEtcdAgent        Operation = 5
-	Operation_BlackholePeerPortTxRx   Operation = 100
+	Operation_DestroyEtcdAgent Operation = 5
+	// BlackholePeerPortTxRx drops all outgoing/incoming packets from/to the
+	// peer port on target member's peer port.
+	Operation_BlackholePeerPortTxRx Operation = 100
+	// UnblackholePeerPortTxRx removes outgoing/incoming packet dropping.
 	Operation_UnblackholePeerPortTxRx Operation = 101
-	Operation_DelayPeerPortTxRx       Operation = 102
-	Operation_UndelayPeerPortTxRx     Operation = 103
+	// DelayPeerPortTxRx delays all outgoing/incoming packets from/to the
+	// peer port on target member's peer port.
+	Operation_DelayPeerPortTxRx Operation = 102
+	// UndelayPeerPortTxRx removes all outgoing/incoming delays.
+	Operation_UndelayPeerPortTxRx Operation = 103
 )
 
 var Operation_name = map[int32]string{
@@ -89,41 +95,235 @@ func (x Operation) String() string {
 }
 func (Operation) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
 
+// FailureCase defines various system faults in distributed systems,
+// in order to verify correct behavior of etcd servers and clients.
 type FailureCase int32
 
 const (
-	FailureCase_KILL_ONE_FOLLOWER                                                FailureCase = 0
-	FailureCase_KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT                         FailureCase = 1
-	FailureCase_KILL_LEADER                                                      FailureCase = 2
-	FailureCase_KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT                               FailureCase = 3
-	FailureCase_KILL_QUORUM                                                      FailureCase = 4
-	FailureCase_KILL_ALL                                                         FailureCase = 5
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER                           FailureCase = 100
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT    FailureCase = 101
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER                                 FailureCase = 102
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT          FailureCase = 103
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM                                 FailureCase = 104
-	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL                                    FailureCase = 105
-	FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER                               FailureCase = 200
-	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER                        FailureCase = 201
-	FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT        FailureCase = 202
+	// KILL_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
+	// but does not delete its data directories on disk for next restart.
+	// It waits "failure-delay-ms" before recovering this failure.
+	// The expected behavior is that the follower comes back online
+	// and rejoins the cluster, and then each member continues to process
+	// client requests ('Put' request that requires Raft consensus).
+	FailureCase_KILL_ONE_FOLLOWER FailureCase = 0
+	// KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly chosen
+	// follower but does not delete its data directories on disk for next
+	// restart. And waits until most up-to-date node (leader) applies the
+	// snapshot count of entries since the stop operation.
+	// The expected behavior is that the follower comes back online and
+	// rejoins the cluster, and then active leader sends snapshot
+	// to the follower to force it to follow the leader's log.
+	// As always, after recovery, each member must be able to process
+	// client requests.
+	FailureCase_KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 1
+	// KILL_LEADER stops the active leader node but does not delete its
+	// data directories on disk for next restart. Then it waits
+	// "failure-delay-ms" before recovering this failure, in order to
+	// trigger election timeouts.
+	// The expected behavior is that a new leader gets elected, and the
+	// old leader comes back online and rejoins the cluster as a follower.
+	// As always, after recovery, each member must be able to process
+	// client requests.
+	FailureCase_KILL_LEADER FailureCase = 2
+	// KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader node
+	// but does not delete its data directories on disk for next restart.
+	// And waits until most up-to-date node ("new" leader) applies the
+	// snapshot count of entries since the stop operation.
+	// The expected behavior is that cluster elects a new leader, and the
+	// old leader comes back online and rejoins the cluster as a follower.
+	// And it receives the snapshot from the new leader to overwrite its
+	// store. As always, after recovery, each member must be able to
+	// process client requests.
+	FailureCase_KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 3
+	// KILL_QUORUM stops majority number of nodes to make the whole cluster
+	// inoperable but does not delete data directories on stopped nodes
+	// for next restart. And it waits "failure-delay-ms" before recovering
+	// this failure.
+	// The expected behavior is that nodes come back online, thus cluster
+	// comes back operative as well. As always, after recovery, each member
+	// must be able to process client requests.
+	FailureCase_KILL_QUORUM FailureCase = 4
+	// KILL_ALL stops the whole cluster but does not delete data directories
+	// on disk for next restart. And it waits "failure-delay-ms" before
+	// recovering this failure.
+	// The expected behavior is that nodes come back online, thus cluster
+	// comes back operative as well. As always, after recovery, each member
+	// must be able to process client requests.
+	FailureCase_KILL_ALL FailureCase = 5
+	// BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
+	// packets from/to the peer port on a randomly chosen follower
+	// (non-leader), and waits for "failure-delay-ms" until recovery.
+	// The expected behavior is that once dropping operation is undone,
+	// each member must be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER FailureCase = 100
+	// BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT drops
+	// all outgoing/incoming packets from/to the peer port on a randomly
+	// chosen follower (non-leader), and waits for most up-to-date node
+	// (leader) applies the snapshot count of entries since the blackhole
+	// operation.
+	// The expected behavior is that once packet drop operation is undone,
+	// the slow follower tries to catch up, possibly receiving the snapshot
+	// from the active leader. As always, after recovery, each member must
+	// be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 101
+	// BLACKHOLE_PEER_PORT_TX_RX_LEADER drops all outgoing/incoming packets
+	// from/to the peer port on the active leader (isolated), and waits for
+	// "failure-delay-ms" until recovery, in order to trigger election timeout.
+	// The expected behavior is that after election timeout, a new leader gets
+	// elected, and once dropping operation is undone, the old leader comes
+	// back and rejoins the cluster as a follower. As always, after recovery,
+	// each member must be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER FailureCase = 102
+	// BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT drops all
+	// outgoing/incoming packets from/to the peer port on the active leader,
+	// and waits for most up-to-date node (leader) applies the snapshot
+	// count of entries since the blackhole operation.
+	// The expected behavior is that cluster elects a new leader, and once
+	// dropping operation is undone, the old leader comes back and rejoins
+	// the cluster as a follower. The slow follower tries to catch up, likely
+	// receiving the snapshot from the new active leader. As always, after
+	// recovery, each member must be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 103
+	// BLACKHOLE_PEER_PORT_TX_RX_QUORUM drops all outgoing/incoming packets
+	// from/to the peer ports on majority nodes of cluster, thus losing its
+	// leader and cluster being inoperable. And it waits for "failure-delay-ms"
+	// until recovery.
+	// The expected behavior is that once packet drop operation is undone,
+	// nodes come back online, thus cluster comes back operative. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM FailureCase = 104
+	// BLACKHOLE_PEER_PORT_TX_RX_ALL drops all outgoing/incoming packets
+	// from/to the peer ports on all nodes, thus making cluster totally
+	// inoperable. It waits for "failure-delay-ms" until recovery.
+	// The expected behavior is that once packet drop operation is undone,
+	// nodes come back online, thus cluster comes back operative. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL FailureCase = 105
+	// DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming packets
+	// from/to the peer port on a randomly chosen follower (non-leader).
+	// It waits for "failure-delay-ms" until recovery.
+	// The expected behavior is that once packet delay operation is undone,
+	// the follower comes back and tries to catch up with latest changes from
+	// cluster. And as always, after recovery, each member must be able to
+	// process client requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER FailureCase = 200
+	// RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming
+	// packets from/to the peer port on a randomly chosen follower
+	// (non-leader) with a randomized time duration (thus isolated). It waits
+	// for "failure-delay-ms" until recovery.
+	// The expected behavior is that once packet delay operation is undone,
+	// each member must be able to process client requests.
+	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER FailureCase = 201
+	// DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+	// outgoing/incoming packets from/to the peer port on a randomly chosen
+	// follower (non-leader), and waits for most up-to-date node (leader)
+	// applies the snapshot count of entries since the delay operation.
+	// The expected behavior is that the delayed follower gets isolated
+	// and behind the current active leader, and once delay operation is undone,
+	// the slow follower comes back and catches up possibly receiving snapshot
+	// from the active leader. As always, after recovery, each member must be
+	// able to process client requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 202
+	// RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+	// outgoing/incoming packets from/to the peer port on a randomly chosen
+	// follower (non-leader) with a randomized time duration, and waits for
+	// most up-to-date node (leader) applies the snapshot count of entries
+	// since the delay operation.
+	// The expected behavior is that the delayed follower gets isolated
+	// and behind the current active leader, and once delay operation is undone,
+	// the slow follower comes back and catches up, possibly receiving a
+	// snapshot from the active leader. As always, after recovery, each member
+	// must be able to process client requests.
 	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 203
-	FailureCase_DELAY_PEER_PORT_TX_RX_LEADER                                     FailureCase = 204
-	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER                              FailureCase = 205
-	FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT              FailureCase = 206
-	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT       FailureCase = 207
-	FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM                                     FailureCase = 208
-	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM                              FailureCase = 209
-	FailureCase_DELAY_PEER_PORT_TX_RX_ALL                                        FailureCase = 210
-	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ALL                                 FailureCase = 211
-	// NO_FAIL_WITH_STRESS runs no-op failure injection for specified period
-	// while stressers are still sending requests.
+	// DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets from/to
+	// the peer port on the active leader. And waits for "failure-delay-ms"
+	// until recovery.
+	// The expected behavior is that cluster may elect a new leader, and
+	// once packet delay operation is undone, the (old) leader comes back
+	// and tries to catch up with latest changes from cluster. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_LEADER FailureCase = 204
+	// RANDOM_DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets
+	// from/to the peer port on the active leader with a randomized time
+	// duration. And waits for "failure-delay-ms" until recovery.
+	// The expected behavior is that cluster may elect a new leader, and
+	// once packet delay operation is undone, the (old) leader comes back
+	// and tries to catch up with latest changes from cluster. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER FailureCase = 205
+	// DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+	// outgoing/incoming packets from/to the peer port on the active leader,
+	// and waits for most up-to-date node (current or new leader) applies the
+	// snapshot count of entries since the delay operation.
+	// The expected behavior is that cluster may elect a new leader, and
+	// the old leader gets isolated and behind the current active leader,
+	// and once delay operation is undone, the slow follower comes back
+	// and catches up, likely receiving a snapshot from the active leader.
+	// As always, after recovery, each member must be able to process client
+	// requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 206
+	// RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+	// outgoing/incoming packets from/to the peer port on the active leader,
+	// with a randomized time duration. And it waits for most up-to-date node
+	// (current or new leader) applies the snapshot count of entries since the
+	// delay operation.
+	// The expected behavior is that cluster may elect a new leader, and
+	// the old leader gets isolated and behind the current active leader,
+	// and once delay operation is undone, the slow follower comes back
+	// and catches up, likely receiving a snapshot from the active leader.
+	// As always, after recovery, each member must be able to process client
+	// requests.
+	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT FailureCase = 207
+	// DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets from/to
+	// the peer ports on majority nodes of cluster. And it waits for
+	// "failure-delay-ms" until recovery, likely to trigger election timeouts.
+	// The expected behavior is that cluster may elect a new leader, while
+	// quorum of nodes struggle with slow networks, and once delay operation
+	// is undone, nodes come back and cluster comes back operative. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM FailureCase = 208
+	// RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets
+	// from/to the peer ports on majority nodes of cluster, with randomized
+	// time durations. And it waits for "failure-delay-ms" until recovery,
+	// likely to trigger election timeouts.
+	// The expected behavior is that cluster may elect a new leader, while
+	// quorum of nodes struggle with slow networks, and once delay operation
+	// is undone, nodes come back and cluster comes back operative. As always,
+	// after recovery, each member must be able to process client requests.
+	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM FailureCase = 209
+	// DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets from/to the
+	// peer ports on all nodes. And it waits for "failure-delay-ms" until
+	// recovery, likely to trigger election timeouts.
+	// The expected behavior is that cluster may become totally inoperable,
+	// struggling with slow networks across the whole cluster. Once delay
+	// operation is undone, nodes come back and cluster comes back operative.
+	// As always, after recovery, each member must be able to process client
+	// requests.
+	FailureCase_DELAY_PEER_PORT_TX_RX_ALL FailureCase = 210
+	// RANDOM_DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets
+	// from/to the peer ports on all nodes, with randomized time durations.
+	// And it waits for "failure-delay-ms" until recovery, likely to trigger
+	// election timeouts.
+	// The expected behavior is that cluster may become totally inoperable,
+	// struggling with slow networks across the whole cluster. Once delay
+	// operation is undone, nodes come back and cluster comes back operative.
+	// As always, after recovery, each member must be able to process client
+	// requests.
+	FailureCase_RANDOM_DELAY_PEER_PORT_TX_RX_ALL FailureCase = 211
+	// NO_FAIL_WITH_STRESS runs no-op failure injection that does not do
+	// anything against cluster for "failure-delay-ms" duration, while
+	// stressers are still sending requests.
 	FailureCase_NO_FAIL_WITH_STRESS FailureCase = 300
 	// NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS runs no-op failure injection
-	// with all stressers stopped.
+	// that does not do anything against cluster for "failure-delay-ms"
+	// duration, while all stressers are stopped.
 	FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS FailureCase = 301
-	FailureCase_FAILPOINTS                          FailureCase = 400
-	FailureCase_EXTERNAL                            FailureCase = 500
+	// FAILPOINTS injects failpoints to etcd server runtime, triggering panics
+	// in critical code paths.
+	FailureCase_FAILPOINTS FailureCase = 400
+	// EXTERNAL runs external failure injection scripts.
+	FailureCase_EXTERNAL FailureCase = 500
 )
 
 var FailureCase_name = map[int32]string{

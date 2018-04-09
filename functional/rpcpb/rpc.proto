@@ -28,9 +28,15 @@ enum Operation {
   // DestroyEtcdAgent destroys etcd process, etcd data, and agent server.
   DestroyEtcdAgent = 5;
 
+  // BlackholePeerPortTxRx drops all outgoing/incoming packets from/to the
+  // peer port on target member's peer port.
   BlackholePeerPortTxRx = 100;
+  // UnblackholePeerPortTxRx removes outgoing/incoming packet dropping.
   UnblackholePeerPortTxRx = 101;
+  // DelayPeerPortTxRx delays all outgoing/incoming packets from/to the
+  // peer port on target member's peer port.
   DelayPeerPortTxRx = 102;
+  // UndelayPeerPortTxRx removes all outgoing/incoming delays.
   UndelayPeerPortTxRx = 103;
 }
 
@@ -122,42 +128,259 @@ message Member {
   string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
 }
 
+// FailureCase defines various system faults in distributed systems,
+// in order to verify correct behavior of etcd servers and clients.
 enum FailureCase {
+  // KILL_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
+  // but does not delete its data directories on disk for next restart.
+  // It waits "failure-delay-ms" before recovering this failure.
+  // The expected behavior is that the follower comes back online
+  // and rejoins the cluster, and then each member continues to process
+  // client requests ('Put' request that requires Raft consensus).
   KILL_ONE_FOLLOWER = 0;
+
+  // KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly chosen
+  // follower but does not delete its data directories on disk for next
+  // restart. And waits until most up-to-date node (leader) applies the
+  // snapshot count of entries since the stop operation.
+  // The expected behavior is that the follower comes back online and
+  // rejoins the cluster, and then active leader sends snapshot
+  // to the follower to force it to follow the leader's log.
+  // As always, after recovery, each member must be able to process
+  // client requests.
   KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
+
+  // KILL_LEADER stops the active leader node but does not delete its
+  // data directories on disk for next restart. Then it waits
+  // "failure-delay-ms" before recovering this failure, in order to
+  // trigger election timeouts.
+  // The expected behavior is that a new leader gets elected, and the
+  // old leader comes back online and rejoins the cluster as a follower.
+  // As always, after recovery, each member must be able to process
+  // client requests.
   KILL_LEADER = 2;
+
+  // KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader node
+  // but does not delete its data directories on disk for next restart.
+  // And waits until most up-to-date node ("new" leader) applies the
+  // snapshot count of entries since the stop operation.
+  // The expected behavior is that cluster elects a new leader, and the
+  // old leader comes back online and rejoins the cluster as a follower.
+  // And it receives the snapshot from the new leader to overwrite its
+  // store. As always, after recovery, each member must be able to
+  // process client requests.
   KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT = 3;
+
+  // KILL_QUORUM stops majority number of nodes to make the whole cluster
+  // inoperable but does not delete data directories on stopped nodes
+  // for next restart. And it waits "failure-delay-ms" before recovering
+  // this failure.
+  // The expected behavior is that nodes come back online, thus cluster
+  // comes back operative as well. As always, after recovery, each member
+  // must be able to process client requests.
   KILL_QUORUM = 4;
+
+  // KILL_ALL stops the whole cluster but does not delete data directories
+  // on disk for next restart. And it waits "failure-delay-ms" before
+  // recovering this failure.
+  // The expected behavior is that nodes come back online, thus cluster
+  // comes back operative as well. As always, after recovery, each member
+  // must be able to process client requests.
   KILL_ALL = 5;
 
+  // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
+  // packets from/to the peer port on a randomly chosen follower
+  // (non-leader), and waits for "failure-delay-ms" until recovery.
+  // The expected behavior is that once dropping operation is undone,
+  // each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER = 100;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT drops
+  // all outgoing/incoming packets from/to the peer port on a randomly
+  // chosen follower (non-leader), and waits for most up-to-date node
+  // (leader) applies the snapshot count of entries since the blackhole
+  // operation.
+  // The expected behavior is that once packet drop operation is undone,
+  // the slow follower tries to catch up, possibly receiving the snapshot
+  // from the active leader. As always, after recovery, each member must
+  // be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 101;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_LEADER drops all outgoing/incoming packets
+  // from/to the peer port on the active leader (isolated), and waits for
+  // "failure-delay-ms" until recovery, in order to trigger election timeout.
+  // The expected behavior is that after election timeout, a new leader gets
+  // elected, and once dropping operation is undone, the old leader comes
+  // back and rejoins the cluster as a follower. As always, after recovery,
+  // each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_LEADER = 102;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT drops all
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // and waits for most up-to-date node (leader) applies the snapshot
+  // count of entries since the blackhole operation.
+  // The expected behavior is that cluster elects a new leader, and once
+  // dropping operation is undone, the old leader comes back and rejoins
+  // the cluster as a follower. The slow follower tries to catch up, likely
+  // receiving the snapshot from the new active leader. As always, after
+  // recovery, each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 103;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_QUORUM drops all outgoing/incoming packets
+  // from/to the peer ports on majority nodes of cluster, thus losing its
+  // leader and cluster being inoperable. And it waits for "failure-delay-ms"
+  // until recovery.
+  // The expected behavior is that once packet drop operation is undone,
+  // nodes come back online, thus cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_QUORUM = 104;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_ALL drops all outgoing/incoming packets
+  // from/to the peer ports on all nodes, thus making cluster totally
+  // inoperable. It waits for "failure-delay-ms" until recovery.
+  // The expected behavior is that once packet drop operation is undone,
+  // nodes come back online, thus cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_ALL = 105;
 
+  // DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming packets
+  // from/to the peer port on a randomly chosen follower (non-leader).
+  // It waits for "failure-delay-ms" until recovery.
+  // The expected behavior is that once packet delay operation is undone,
+  // the follower comes back and tries to catch up with latest changes from
+  // cluster. And as always, after recovery, each member must be able to
+  // process client requests.
   DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 200;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming
+  // packets from/to the peer port on a randomly chosen follower
+  // (non-leader) with a randomized time duration (thus isolated). It waits
+  // for "failure-delay-ms" until recovery.
+  // The expected behavior is that once packet delay operation is undone,
+  // each member must be able to process client requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 201;
+
+  // DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on a randomly chosen
+  // follower (non-leader), and waits for most up-to-date node (leader)
+  // applies the snapshot count of entries since the delay operation.
+  // The expected behavior is that the delayed follower gets isolated
+  // and behind the current active leader, and once delay operation is undone,
+  // the slow follower comes back and catches up possibly receiving snapshot
+  // from the active leader. As always, after recovery, each member must be
+  // able to process client requests.
   DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 202;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on a randomly chosen
+  // follower (non-leader) with a randomized time duration, and waits for
+  // most up-to-date node (leader) applies the snapshot count of entries
+  // since the delay operation.
+  // The expected behavior is that the delayed follower gets isolated
+  // and behind the current active leader, and once delay operation is undone,
+  // the slow follower comes back and catches up, possibly receiving a
+  // snapshot from the active leader. As always, after recovery, each member
+  // must be able to process client requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 203;
+
+  // DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets from/to
+  // the peer port on the active leader. And waits for "failure-delay-ms"
+  // until recovery.
+  // The expected behavior is that cluster may elect a new leader, and
+  // once packet delay operation is undone, the (old) leader comes back
+  // and tries to catch up with latest changes from cluster. As always,
+  // after recovery, each member must be able to process client requests.
   DELAY_PEER_PORT_TX_RX_LEADER = 204;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets
+  // from/to the peer port on the active leader with a randomized time
+  // duration. And waits for "failure-delay-ms" until recovery.
+  // The expected behavior is that cluster may elect a new leader, and
+  // once packet delay operation is undone, the (old) leader comes back
+  // and tries to catch up with latest changes from cluster. As always,
+  // after recovery, each member must be able to process client requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_LEADER = 205;
+
+  // DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // and waits for most up-to-date node (current or new leader) applies the
+  // snapshot count of entries since the delay operation.
+  // The expected behavior is that cluster may elect a new leader, and
+  // the old leader gets isolated and behind the current active leader,
+  // and once delay operation is undone, the slow follower comes back
+  // and catches up, likely receiving a snapshot from the active leader.
+  // As always, after recovery, each member must be able to process client
+  // requests.
   DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 206;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // with a randomized time duration. And it waits for most up-to-date node
+  // (current or new leader) applies the snapshot count of entries since the
+  // delay operation.
+  // The expected behavior is that cluster may elect a new leader, and
+  // the old leader gets isolated and behind the current active leader,
+  // and once delay operation is undone, the slow follower comes back
+  // and catches up, likely receiving a snapshot from the active leader.
+  // As always, after recovery, each member must be able to process client
+  // requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 207;
+
+  // DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets from/to
+  // the peer ports on majority nodes of cluster. And it waits for
+  // "failure-delay-ms" until recovery, likely to trigger election timeouts.
+  // The expected behavior is that cluster may elect a new leader, while
+  // quorum of nodes struggle with slow networks, and once delay operation
+  // is undone, nodes come back and cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
   DELAY_PEER_PORT_TX_RX_QUORUM = 208;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets
+  // from/to the peer ports on majority nodes of cluster, with randomized
+  // time durations. And it waits for "failure-delay-ms" until recovery,
+  // likely to trigger election timeouts.
+  // The expected behavior is that cluster may elect a new leader, while
+  // quorum of nodes struggle with slow networks, and once delay operation
+  // is undone, nodes come back and cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM = 209;
+
+  // DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets from/to the
+  // peer ports on all nodes. And it waits for "failure-delay-ms" until
+  // recovery, likely to trigger election timeouts.
+  // The expected behavior is that cluster may become totally inoperable,
+  // struggling with slow networks across the whole cluster. Once delay
+  // operation is undone, nodes come back and cluster comes back operative.
+  // As always, after recovery, each member must be able to process client
+  // requests.
   DELAY_PEER_PORT_TX_RX_ALL = 210;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets
+  // from/to the peer ports on all nodes, with randomized time durations.
+  // And it waits for "failure-delay-ms" until recovery, likely to trigger
+  // election timeouts.
+  // The expected behavior is that cluster may become totally inoperable,
+  // struggling with slow networks across the whole cluster. Once delay
+  // operation is undone, nodes come back and cluster comes back operative.
+  // As always, after recovery, each member must be able to process client
+  // requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_ALL = 211;
 
-  // NO_FAIL_WITH_STRESS runs no-op failure injection for specified period
-  // while stressers are still sending requests.
+  // NO_FAIL_WITH_STRESS runs no-op failure injection that does not do
+  // anything against cluster for "failure-delay-ms" duration, while
+  // stressers are still sending requests.
   NO_FAIL_WITH_STRESS = 300;
+
   // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS runs no-op failure injection
-  // with all stressers stopped.
+  // that does not do anything against cluster for "failure-delay-ms"
+  // duration, while all stressers are stopped.
   NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 301;
 
+  // FAILPOINTS injects failpoints to etcd server runtime, triggering panics
+  // in critical code paths.
   FAILPOINTS = 400;
+
+  // EXTERNAL runs external failure injection scripts.
   EXTERNAL = 500;
 }
 
