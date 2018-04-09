@@ -486,12 +486,12 @@ build-functional:
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./Dockerfile-functional
+	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./functional/Dockerfile
 	docker build \
 	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
-	  --file ./Dockerfile-functional \
+	  --file ./functional/Dockerfile \
 	  .
-	@mv ./Dockerfile-functional.bak ./Dockerfile-functional
+	@mv ./functional/Dockerfile.bak ./functional/Dockerfile
 
 	docker run \
 	  --rm \
