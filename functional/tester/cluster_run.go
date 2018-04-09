@@ -31,6 +31,8 @@ const compactQPS = 50000
 
 // Run starts tester.
 func (clus *Cluster) Run() {
+	defer printReport()
+
 	if err := fileutil.TouchDirAll(clus.Tester.DataDir); err != nil {
 		clus.lg.Panic(
 			"failed to create test data directory",
@@ -123,6 +125,7 @@ func (clus *Cluster) doRound() error {
 	for i, fa := range clus.failures {
 		clus.cs = i
 
+		caseTotal[fa.Desc()]++
 		caseTotalCounter.WithLabelValues(fa.Desc()).Inc()
 
 		caseNow := time.Now()

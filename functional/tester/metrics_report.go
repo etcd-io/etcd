@@ -14,9 +14,16 @@
 
 package tester
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"fmt"
+	"sort"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 var (
+	caseTotal = make(map[string]int)
+
 	caseTotalCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "etcd",
@@ -59,4 +66,18 @@ func init() {
 	prometheus.MustRegister(caseFailedTotalCounter)
 	prometheus.MustRegister(roundTotalCounter)
 	prometheus.MustRegister(roundFailedTotalCounter)
+}
+
+func printReport() {
+	rows := make([]string, 0, len(caseTotal))
+	for k, v := range caseTotal {
+		rows = append(rows, fmt.Sprintf("%s: %d", k, v))
+	}
+	sort.Strings(rows)
+
+	println()
+	for _, row := range rows {
+		fmt.Println(row)
+	}
+	println()
 }
