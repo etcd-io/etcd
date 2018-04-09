@@ -582,7 +582,12 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	defer cancel()
 
 	start := time.Now()
-	s.r.Propose(cctx, data)
+	err = s.r.Propose(cctx, data)
+	if err != nil {
+		proposalsFailed.Inc()
+		s.w.Trigger(id, nil) // GC wait
+		return nil, err
+	}
 	proposalsPending.Inc()
 	defer proposalsPending.Dec()
 
