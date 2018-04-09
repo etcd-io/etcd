@@ -51,11 +51,11 @@ COVER=${COVER:-"-cover"}
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
-INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
+INTEGRATION_PKGS="(integration|tests/e2e|contrib|functional)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
 # shellcheck disable=SC1117
-PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
+PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|tests/e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
 # pkg1,pkg2,pkg3
 PKGS_COMMA=${PKGS// /,}
 
@@ -238,7 +238,7 @@ function cov_pass {
 	# shellcheck disable=SC2206
 	GOCOVFLAGS=($GOCOVFLAGS)
 	failed=""
-	for t in $(echo "${TEST_PKGS}" | grep -vE "(e2e|functional-tester)"); do
+	for t in $(echo "${TEST_PKGS}" | grep -vE "(tests/e2e|functional)"); do
 		tf=$(echo "$t" | tr / _)
 		# cache package compilation data for faster repeated builds
 		go test "${GOCOVFLAGS[@]}" -i "${REPO_PATH}/$t" || true
@@ -257,10 +257,10 @@ function cov_pass {
 	# use 30m timeout because e2e coverage takes longer
 	# due to many tests cause etcd process to wait
 	# on leadership transfer timeout during gracefully shutdown
-	echo Testing e2e without proxy...
-	go test -tags cov -timeout 30m -v "${REPO_PATH}/e2e" || failed="$failed e2e"
-	echo Testing e2e with proxy...
-	go test -tags "cov cluster_proxy" -timeout 30m -v "${REPO_PATH}/e2e" || failed="$failed e2e-proxy"
+	echo Testing tests/e2e without proxy...
+	go test -tags cov -timeout 30m -v "${REPO_PATH}/tests/e2e" || failed="$failed tests/e2e"
+	echo Testing tests/e2e with proxy...
+	go test -tags "cov cluster_proxy" -timeout 30m -v "${REPO_PATH}/tests/e2e" || failed="$failed tests/e2e-proxy"
 
 	# incrementally merge to get coverage data even if some coverage files are corrupted
 	# optimistically assume etcdserver package's coverage file is OK since gocovmerge
@@ -297,13 +297,13 @@ function e2e_pass {
 		USERTIMEOUT="${TIMEOUT}"
 	fi
 
-	go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${REPO_PATH}/e2e"
+	go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 20m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e" &
+	go test -timeout 20m -v -cpu 1,2,4 "$@" "${REPO_PATH}/tests/e2e" &
 	e2epid="$!"
 	go test -timeout 20m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
 	intpid="$!"
@@ -315,7 +315,7 @@ function integration_e2e_pass {
 function grpcproxy_pass {
 	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
 	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
-	go test -timeout 20m -v -tags cluster_proxy "$@" "${REPO_PATH}/e2e"
+	go test -timeout 20m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function release_pass {
