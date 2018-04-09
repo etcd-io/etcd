@@ -1359,3 +1359,13 @@ func SetTrailer(ctx context.Context, md metadata.MD) error {
 	}
 	return stream.SetTrailer(md)
 }
+
+// Method returns the method string for the server context.  The returned
+// string is in the format of "/service/method".
+func Method(ctx context.Context) (string, bool) {
+	s := serverTransportStreamFromContext(ctx)
+	if s == nil {
+		return "", false
+	}
+	return s.Method(), true
+}

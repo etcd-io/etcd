@@ -360,8 +360,8 @@
     "tap",
     "transport"
   ]
-  revision = "1e2570b1b19ade82d8dbb31bba4e65e9f9ef5b34"
-  version = "v1.11.1"
+  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
+  version = "v1.11.3"
 
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
@@ -378,6 +378,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b747b3fd3120687183829e5d2d5b2d10bba1719402c9bcc7c955d27ab5f884a0"
+  inputs-digest = "9b6e97c6524385aecaa477af059f4f6555b3609d4a283ecf27ac2ad4fbe08f06"
   solver-name = "gps-cdcl"
   solver-version = 1

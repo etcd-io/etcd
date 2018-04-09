@@ -24,7 +24,6 @@ import (
 	"math"
 	"net"
 	"reflect"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -444,16 +443,7 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 	if cc.dopts.copts.Dialer == nil {
 		cc.dopts.copts.Dialer = newProxyDialer(
 			func(ctx context.Context, addr string) (net.Conn, error) {
-				network := "tcp"
-				p := regexp.MustCompile(`[a-z]+://`)
-				if p.MatchString(addr) {
-					parts := strings.Split(addr, "://")
-					scheme := parts[0]
-					if (scheme == "unix" || scheme == "unixs") && len(parts) > 1 && len(parts[1]) > 0 {
-						network = "unix"
-						addr = parts[1]
-					}
-				}
+				network, addr := parseDialTarget(addr)
 				return dialContext(ctx, network, addr)
 			},
 		)
