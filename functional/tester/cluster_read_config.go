@@ -135,29 +135,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 
 		// TODO: only support generated certs with TLS generator
 		// deprecate auto TLS
-		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertAuth {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS and Etcd.ClientCertAuth are both 'true'")
-		}
-		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientCertFile is %q", mem.Etcd.ClientCertFile)
-		}
-		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile == "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
-		}
-		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientKeyFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.ClientKeyFile)
-		}
-		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientTrustedCAFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
-		}
-		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerClientCertAuth {
-			return nil, fmt.Errorf("Etcd.PeerAutoTLS and Etcd.PeerClientCertAuth are both 'true'")
-		}
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerCertFile != "" {
 			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
-		}
-		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile == "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerKeyFile != "" {
 			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerKeyFile)
@@ -165,8 +144,118 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerTrustedCAFile != "" {
 			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
 		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientCertFile is %q", mem.Etcd.ClientCertFile)
+		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientKeyFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.ClientKeyFile)
+		}
+		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientTrustedCAFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
+		}
 
-		if mem.Etcd.ClientAutoTLS || mem.Etcd.ClientCertFile != "" {
+		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile == "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerKeyFile == "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
+		}
+		// only support self-signed certs
+		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerTrustedCAFile == "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerKeyFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerTrustedCAFile != "" {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
+		}
+		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerAutoTLS {
+			return nil, fmt.Errorf("Etcd.PeerClientCertAuth and Etcd.PeerAutoTLS cannot be both 'true'")
+		}
+		if (mem.Etcd.PeerCertFile == "") != (mem.Etcd.PeerKeyFile == "") {
+			return nil, fmt.Errorf("Both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
+		}
+		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientAutoTLS {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth and Etcd.ClientAutoTLS cannot be both 'true'")
+		}
+		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile == "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientKeyFile == "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientTrustedCAFile == "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
+		}
+		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientKeyFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientTrustedCAFile != "" {
+			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.PeerCertFile)
+		}
+		if (mem.Etcd.ClientCertFile == "") != (mem.Etcd.ClientKeyFile == "") {
+			return nil, fmt.Errorf("Both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
+		}
+
+		peerTLS := mem.Etcd.PeerAutoTLS ||
+			(mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile != "" && mem.Etcd.PeerKeyFile != "" && mem.Etcd.PeerTrustedCAFile != "")
+		if peerTLS {
+			for _, cu := range mem.Etcd.ListenPeerURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
+				}
+			}
+			for _, cu := range mem.Etcd.AdvertisePeerURLs {
+				var u *url.URL
+				u, err = url.Parse(cu)
+				if err != nil {
+					return nil, err
+				}
+				if u.Scheme != "https" { // TODO: support unix
+					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
+				}
+			}
+			clus.Members[i].PeerCertPath = mem.Etcd.PeerCertFile
+			if mem.Etcd.PeerCertFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.PeerCertFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerCertFile, err)
+				}
+				clus.Members[i].PeerCertData = string(data)
+			}
+			clus.Members[i].PeerKeyPath = mem.Etcd.PeerKeyFile
+			if mem.Etcd.PeerKeyFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.PeerKeyFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerKeyFile, err)
+				}
+				clus.Members[i].PeerCertData = string(data)
+			}
+			clus.Members[i].PeerTrustedCAPath = mem.Etcd.PeerTrustedCAFile
+			if mem.Etcd.PeerTrustedCAFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.PeerTrustedCAFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerTrustedCAFile, err)
+				}
+				clus.Members[i].PeerCertData = string(data)
+			}
+		}
+
+		clientTLS := mem.Etcd.ClientAutoTLS ||
+			(mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile != "" && mem.Etcd.ClientKeyFile != "" && mem.Etcd.ClientTrustedCAFile != "")
+		if clientTLS {
 			for _, cu := range mem.Etcd.ListenClientURLs {
 				var u *url.URL
 				u, err = url.Parse(cu)
@@ -187,27 +276,29 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 					return nil, fmt.Errorf("client TLS is enabled with wrong scheme %q", cu)
 				}
 			}
-		}
-		if mem.Etcd.PeerAutoTLS || mem.Etcd.PeerCertFile != "" {
-			for _, cu := range mem.Etcd.ListenPeerURLs {
-				var u *url.URL
-				u, err = url.Parse(cu)
+			clus.Members[i].ClientCertPath = mem.Etcd.ClientCertFile
+			if mem.Etcd.ClientCertFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.ClientCertFile)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientCertFile, err)
 				}
-				if u.Scheme != "https" { // TODO: support unix
-					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
-				}
+				clus.Members[i].ClientCertData = string(data)
 			}
-			for _, cu := range mem.Etcd.AdvertisePeerURLs {
-				var u *url.URL
-				u, err = url.Parse(cu)
+			clus.Members[i].ClientKeyPath = mem.Etcd.ClientKeyFile
+			if mem.Etcd.ClientKeyFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.ClientKeyFile)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientKeyFile, err)
 				}
-				if u.Scheme != "https" { // TODO: support unix
-					return nil, fmt.Errorf("peer TLS is enabled with wrong scheme %q", cu)
+				clus.Members[i].ClientCertData = string(data)
+			}
+			clus.Members[i].ClientTrustedCAPath = mem.Etcd.ClientTrustedCAFile
+			if mem.Etcd.ClientTrustedCAFile != "" {
+				data, err := ioutil.ReadFile(mem.Etcd.ClientTrustedCAFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientTrustedCAFile, err)
 				}
+				clus.Members[i].ClientCertData = string(data)
 			}
 		}
 	}
@@ -233,6 +324,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, fmt.Errorf("StressType is unknown; got %q", v)
 		}
 	}
+
 	if clus.Tester.StressKeySuffixRangeTxn > 100 {
 		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
 	}
