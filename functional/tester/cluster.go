@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -318,15 +319,27 @@ func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
 			continue
 		}
 
-		if err != nil &&
-			op == rpcpb.Operation_DestroyEtcdAgent &&
-			strings.Contains(err.Error(), "rpc error: code = Unavailable desc = transport is closing") {
-			// agent server has already closed;
-			// so this error is expected
-			clus.lg.Info("successfully destroyed all")
-			continue
+		if err != nil {
+			destroyed := false
+			if op == rpcpb.Operation_DestroyEtcdAgent {
+				if err == io.EOF {
+					destroyed = true
+				}
+				if strings.Contains(err.Error(),
+					"rpc error: code = Unavailable desc = transport is closing") {
+					// agent server has already closed;
+					// so this error is expected
+					destroyed = true
+				}
+				if strings.Contains(err.Error(),
+					"desc = os: process already finished") {
+					destroyed = true
+				}
+			}
+			if !destroyed {
+				errs = append(errs, err.Error())
+			}
 		}
-		errs = append(errs, err.Error())
 	}
 
 	if len(errs) == 0 {

@@ -292,10 +292,6 @@ func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
 }
 
 func (clus *Cluster) failed() {
-	if !clus.Tester.ExitOnFailure {
-		return
-	}
-
 	clus.lg.Info(
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
@@ -303,11 +299,14 @@ func (clus *Cluster) failed() {
 		zap.Int("case-total", len(clus.failures)),
 	)
 	clus.DestroyEtcdAgents()
+
 	os.Exit(2)
 }
 
 func (clus *Cluster) cleanup() error {
-	defer clus.failed()
+	if clus.Tester.ExitOnFailure {
+		defer clus.failed()
+	}
 
 	roundFailedTotalCounter.Inc()
 	desc := "compact/defrag"
