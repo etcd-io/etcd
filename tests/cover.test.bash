@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 #
 # Generate coverage HTML for a package
-# e.g. PKG=./unit ./cover
+# e.g. PKG=./unit ./tests/cover.test.bash
 #
 set -e
 
+if ! [[ "$0" =~ "tests/cover.test.bash" ]]; then
+  echo "must be run from repository root"
+  exit 255
+fi
+
 if [ -z "$PKG" ]; then
-	echo "cover only works with a single package, sorry"
-	exit 255
+  echo "cover only works with a single package, sorry"
+  exit 255
 fi
 
 COVEROUT="coverage"
