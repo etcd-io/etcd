@@ -233,7 +233,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].PeerCertPath = mem.Etcd.PeerCertFile
 			if mem.Etcd.PeerCertFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.PeerCertFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.PeerCertFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerCertFile, err)
 				}
@@ -241,7 +242,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].PeerKeyPath = mem.Etcd.PeerKeyFile
 			if mem.Etcd.PeerKeyFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.PeerKeyFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.PeerKeyFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerKeyFile, err)
 				}
@@ -249,7 +251,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].PeerTrustedCAPath = mem.Etcd.PeerTrustedCAFile
 			if mem.Etcd.PeerTrustedCAFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.PeerTrustedCAFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.PeerTrustedCAFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.PeerTrustedCAFile, err)
 				}
@@ -282,7 +285,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].ClientCertPath = mem.Etcd.ClientCertFile
 			if mem.Etcd.ClientCertFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.ClientCertFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.ClientCertFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientCertFile, err)
 				}
@@ -290,7 +294,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].ClientKeyPath = mem.Etcd.ClientKeyFile
 			if mem.Etcd.ClientKeyFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.ClientKeyFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.ClientKeyFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientKeyFile, err)
 				}
@@ -298,7 +303,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 			clus.Members[i].ClientTrustedCAPath = mem.Etcd.ClientTrustedCAFile
 			if mem.Etcd.ClientTrustedCAFile != "" {
-				data, err := ioutil.ReadFile(mem.Etcd.ClientTrustedCAFile)
+				var data []byte
+				data, err = ioutil.ReadFile(mem.Etcd.ClientTrustedCAFile)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientTrustedCAFile, err)
 				}
