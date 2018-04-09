@@ -84,9 +84,9 @@ var (
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        "../../integration/fixtures-expired/server.key.insecure",
-		CertFile:       "../../integration/fixtures-expired/server.crt",
-		TrustedCAFile:  "../../integration/fixtures-expired/ca.crt",
+		KeyFile:        "./fixtures-expired/server.key.insecure",
+		CertFile:       "./fixtures-expired/server.crt",
+		TrustedCAFile:  "./fixtures-expired/ca.crt",
 		ClientCertAuth: true,
 	}
 
