@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package fileutil implements utility functions related to files and paths.
 package fileutil
 
 import (
@@ -93,6 +92,7 @@ func CreateDirAll(dir string) error {
 	return err
 }
 
+// Exist returns true if a file or directory exists.
 func Exist(name string) bool {
 	_, err := os.Stat(name)
 	return err == nil

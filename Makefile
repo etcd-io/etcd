@@ -469,46 +469,48 @@ docker-dns-srv-test-certs-wildcard-run:
 
 
 # Example:
-#   make build-etcd-test-proxy
+#   make build-functional
+#   make build-docker-functional
+#   make push-docker-functional
+#   make pull-docker-functional
 
-build-etcd-test-proxy:
-	go build -v -o ./bin/etcd-test-proxy ./tools/etcd-test-proxy
-
-
-
-# Example:
-#   make build-docker-functional-tester
-#   make push-docker-functional-tester
-#   make pull-docker-functional-tester
-
-build-docker-functional-tester:
+build-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./Dockerfile-functional-tester
+	./functional/build
+	./bin/etcd-agent -help || true && \
+	  ./bin/etcd-proxy -help || true && \
+	  ./bin/etcd-runner --help || true && \
+	  ./bin/etcd-tester -help || true
+
+build-docker-functional:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info ETCD_VERSION: $(ETCD_VERSION))
+	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./Dockerfile-functional
 	docker build \
-	  --tag gcr.io/etcd-development/etcd-functional-tester:go$(GO_VERSION) \
-	  --file ./Dockerfile-functional-tester \
+	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
+	  --file ./Dockerfile-functional \
 	  .
-	@mv ./Dockerfile-functional-tester.bak ./Dockerfile-functional-tester
+	@mv ./Dockerfile-functional.bak ./Dockerfile-functional
 
 	docker run \
 	  --rm \
-	  gcr.io/etcd-development/etcd-functional-tester:go$(GO_VERSION) \
+	  gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
 	  /bin/bash -c "./bin/etcd --version && \
 	   ./bin/etcd-failpoints --version && \
 	   ETCDCTL_API=3 ./bin/etcdctl version && \
 	   ./bin/etcd-agent -help || true && \
-	   ./bin/etcd-tester -help || true && \
+	   ./bin/etcd-proxy -help || true && \
 	   ./bin/etcd-runner --help || true && \
-	   ./bin/benchmark --help || true && \
-	   ./bin/etcd-test-proxy -help || true"
+	   ./bin/etcd-tester -help || true && \
+	   ./bin/benchmark --help || true"
 
-push-docker-functional-tester:
+push-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-functional-tester:go$(GO_VERSION)
+	gcloud docker -- push gcr.io/etcd-development/etcd-functional:go$(GO_VERSION)
 
-pull-docker-functional-tester:
+pull-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	docker pull gcr.io/etcd-development/etcd-functional-tester:go$(GO_VERSION)
+	docker pull gcr.io/etcd-development/etcd-functional:go$(GO_VERSION)
