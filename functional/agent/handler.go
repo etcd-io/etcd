@@ -36,11 +36,15 @@ import (
 // return status error in response for wrong configuration/operation (e.g. start etcd twice)
 func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response, err error) {
 	defer func() {
-		if err == nil {
+		if err == nil && req != nil {
 			srv.last = req.Operation
 			srv.lg.Info("handler success", zap.String("operation", req.Operation.String()))
 		}
 	}()
+	if req != nil {
+		srv.Member = req.Member
+		srv.Tester = req.Tester
+	}
 
 	switch req.Operation {
 	case rpcpb.Operation_InitialStartEtcd:
@@ -77,9 +81,6 @@ func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, 
 			Member:  req.Member,
 		}, nil
 	}
-
-	srv.Member = req.Member
-	srv.Tester = req.Tester
 
 	err := fileutil.TouchDirAll(srv.Member.BaseDir)
 	if err != nil {
@@ -235,45 +236,124 @@ func (srv *Server) creatEtcdCmd() {
 	srv.etcdCmd.Stderr = srv.etcdLogFile
 }
 
+// if started with manual TLS, stores TLS assets
+// from tester/client to disk before starting etcd process
 func (srv *Server) saveTLSAssets() error {
-	// if started with manual TLS, stores TLS assets
-	// from tester/client to disk before starting etcd process
-	// TODO: not implemented yet
-	if !srv.Member.Etcd.ClientAutoTLS {
-		if srv.Member.Etcd.ClientCertAuth {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientCertAuth is %v", srv.Member.Etcd.ClientCertAuth)
+	if srv.Member.PeerCertPath != "" {
+		if srv.Member.PeerCertData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.PeerCertPath)
 		}
-		if srv.Member.Etcd.ClientCertFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientCertFile is %q", srv.Member.Etcd.ClientCertFile)
-		}
-		if srv.Member.Etcd.ClientKeyFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientKeyFile is %q", srv.Member.Etcd.ClientKeyFile)
-		}
-		if srv.Member.Etcd.ClientTrustedCAFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.ClientTrustedCAFile is %q", srv.Member.Etcd.ClientTrustedCAFile)
+		if err := ioutil.WriteFile(srv.Member.PeerCertPath, []byte(srv.Member.PeerCertData), 0644); err != nil {
+			return err
 		}
 	}
-	if !srv.Member.Etcd.PeerAutoTLS {
-		if srv.Member.Etcd.PeerClientCertAuth {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerClientCertAuth is %v", srv.Member.Etcd.PeerClientCertAuth)
+	if srv.Member.PeerKeyPath != "" {
+		if srv.Member.PeerKeyData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.PeerKeyPath)
 		}
-		if srv.Member.Etcd.PeerCertFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerCertFile is %q", srv.Member.Etcd.PeerCertFile)
+		if err := ioutil.WriteFile(srv.Member.PeerKeyPath, []byte(srv.Member.PeerKeyData), 0644); err != nil {
+			return err
 		}
-		if srv.Member.Etcd.PeerKeyFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerKeyFile is %q", srv.Member.Etcd.PeerKeyFile)
+	}
+	if srv.Member.PeerTrustedCAPath != "" {
+		if srv.Member.PeerTrustedCAData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.PeerTrustedCAPath)
 		}
-		if srv.Member.Etcd.PeerTrustedCAFile != "" {
-			return fmt.Errorf("manual TLS setup is not implemented yet, but Member.Etcd.PeerTrustedCAFile is %q", srv.Member.Etcd.PeerTrustedCAFile)
+		if err := ioutil.WriteFile(srv.Member.PeerTrustedCAPath, []byte(srv.Member.PeerTrustedCAData), 0644); err != nil {
+			return err
 		}
+	}
+	if srv.Member.PeerCertPath != "" &&
+		srv.Member.PeerKeyPath != "" &&
+		srv.Member.PeerTrustedCAPath != "" {
+		srv.lg.Info(
+			"wrote",
+			zap.String("peer-cert", srv.Member.PeerCertPath),
+			zap.String("peer-key", srv.Member.PeerKeyPath),
+			zap.String("peer-trusted-ca", srv.Member.PeerTrustedCAPath),
+		)
 	}
 
-	// TODO
+	if srv.Member.ClientCertPath != "" {
+		if srv.Member.ClientCertData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.ClientCertPath)
+		}
+		if err := ioutil.WriteFile(srv.Member.ClientCertPath, []byte(srv.Member.ClientCertData), 0644); err != nil {
+			return err
+		}
+	}
+	if srv.Member.ClientKeyPath != "" {
+		if srv.Member.ClientKeyData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.ClientKeyPath)
+		}
+		if err := ioutil.WriteFile(srv.Member.ClientKeyPath, []byte(srv.Member.ClientKeyData), 0644); err != nil {
+			return err
+		}
+	}
+	if srv.Member.ClientTrustedCAPath != "" {
+		if srv.Member.ClientTrustedCAData == "" {
+			return fmt.Errorf("got empty data for %q", srv.Member.ClientTrustedCAPath)
+		}
+		if err := ioutil.WriteFile(srv.Member.ClientTrustedCAPath, []byte(srv.Member.ClientTrustedCAData), 0644); err != nil {
+			return err
+		}
+	}
+	if srv.Member.ClientCertPath != "" &&
+		srv.Member.ClientKeyPath != "" &&
+		srv.Member.ClientTrustedCAPath != "" {
+		srv.lg.Info(
+			"wrote",
+			zap.String("client-cert", srv.Member.ClientCertPath),
+			zap.String("client-key", srv.Member.ClientKeyPath),
+			zap.String("client-trusted-ca", srv.Member.ClientTrustedCAPath),
+		)
+	}
+
 	return nil
 }
 
 func (srv *Server) loadAutoTLSAssets() error {
-	// if started with auto TLS, sends back TLS assets to tester/client
+	if srv.Member.Etcd.PeerAutoTLS {
+		// in case of slow disk
+		time.Sleep(time.Second)
+
+		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
+
+		srv.lg.Info(
+			"loading client auto TLS assets",
+			zap.String("dir", fdir),
+			zap.String("endpoint", srv.EtcdClientEndpoint),
+		)
+
+		certPath := filepath.Join(fdir, "cert.pem")
+		if !fileutil.Exist(certPath) {
+			return fmt.Errorf("cannot find %q", certPath)
+		}
+		certData, err := ioutil.ReadFile(certPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", certPath, err)
+		}
+		srv.Member.PeerCertData = string(certData)
+
+		keyPath := filepath.Join(fdir, "key.pem")
+		if !fileutil.Exist(keyPath) {
+			return fmt.Errorf("cannot find %q", keyPath)
+		}
+		keyData, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
+		}
+		srv.Member.PeerKeyData = string(keyData)
+
+		srv.lg.Info(
+			"loaded peer auto TLS assets",
+			zap.String("peer-cert-path", certPath),
+			zap.Int("peer-cert-length", len(certData)),
+			zap.String("peer-key-path", keyPath),
+			zap.Int("peer-key-length", len(keyData)),
+		)
+	}
+
 	if srv.Member.Etcd.ClientAutoTLS {
 		// in case of slow disk
 		time.Sleep(time.Second)
@@ -314,46 +394,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 			zap.Int("peer-key-length", len(keyData)),
 		)
 	}
-	if srv.Member.Etcd.ClientAutoTLS {
-		// in case of slow disk
-		time.Sleep(time.Second)
 
-		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
-
-		srv.lg.Info(
-			"loading client TLS assets",
-			zap.String("dir", fdir),
-			zap.String("endpoint", srv.EtcdClientEndpoint),
-		)
-
-		certPath := filepath.Join(fdir, "cert.pem")
-		if !fileutil.Exist(certPath) {
-			return fmt.Errorf("cannot find %q", certPath)
-		}
-		certData, err := ioutil.ReadFile(certPath)
-		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", certPath, err)
-		}
-		srv.Member.PeerCertData = string(certData)
-
-		keyPath := filepath.Join(fdir, "key.pem")
-		if !fileutil.Exist(keyPath) {
-			return fmt.Errorf("cannot find %q", keyPath)
-		}
-		keyData, err := ioutil.ReadFile(keyPath)
-		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
-		}
-		srv.Member.PeerKeyData = string(keyData)
-
-		srv.lg.Info(
-			"loaded peer TLS assets",
-			zap.String("peer-cert-path", certPath),
-			zap.Int("peer-cert-length", len(certData)),
-			zap.String("peer-key-path", keyPath),
-			zap.Int("peer-key-length", len(keyData)),
-		)
-	}
 	return nil
 }
 
@@ -404,7 +445,7 @@ func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully killed etcd!",
+		Status:  "killed etcd",
 	}, nil
 }
 
@@ -443,7 +484,7 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully cleaned up etcd!",
+		Status:  "cleaned up etcd",
 	}, nil
 }
 
@@ -475,7 +516,7 @@ func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully destroyed etcd and agent!",
+		Status:  "destroyed etcd and agent",
 	}, nil
 }
 
@@ -488,7 +529,7 @@ func (srv *Server) handleBlackholePeerPortTxRx() (*rpcpb.Response, error) {
 	}
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully blackholed peer port tx/rx!",
+		Status:  "blackholed peer port tx/rx",
 	}, nil
 }
 
@@ -501,7 +542,7 @@ func (srv *Server) handleUnblackholePeerPortTxRx() (*rpcpb.Response, error) {
 	}
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully unblackholed peer port tx/rx!",
+		Status:  "unblackholed peer port tx/rx",
 	}, nil
 }
 
@@ -526,7 +567,7 @@ func (srv *Server) handleDelayPeerPortTxRx() (*rpcpb.Response, error) {
 
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully delay peer port tx/rx!",
+		Status:  "delayed peer port tx/rx",
 	}, nil
 }
 
@@ -539,6 +580,6 @@ func (srv *Server) handleUndelayPeerPortTxRx() (*rpcpb.Response, error) {
 	}
 	return &rpcpb.Response{
 		Success: true,
-		Status:  "successfully undelay peer port tx/rx!",
+		Status:  "undelayed peer port tx/rx",
 	}, nil
 }
