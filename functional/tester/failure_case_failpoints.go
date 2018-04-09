@@ -145,7 +145,7 @@ func makeRecoverFailpoint(fp string) recoverMemberFunc {
 		fpStats.mu.Lock()
 		fpStats.crashes[fp]++
 		fpStats.mu.Unlock()
-		return recoverKill(clus, idx)
+		return recover_SIGTERM_ETCD(clus, idx)
 	}
 }
 

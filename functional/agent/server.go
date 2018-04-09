@@ -64,7 +64,7 @@ func NewServer(
 		lg:      lg,
 		network: network,
 		address: address,
-		last:    rpcpb.Operation_NotStarted,
+		last:    rpcpb.Operation_NOT_STARTED,
 		advertiseClientPortToProxy: make(map[int]proxy.Server),
 		advertisePeerPortToProxy:   make(map[int]proxy.Server),
 	}

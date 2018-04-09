@@ -8,75 +8,23 @@ option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
 
+message Request {
+  Operation Operation = 1;
+  // Member contains the same Member object from tester configuration.
+  Member Member = 2;
+  // Tester contains tester configuration.
+  Tester Tester = 3;
+}
+
+message Response {
+  bool Success = 1;
+  string Status = 2;
+  // Member contains the same Member object from tester request.
+  Member Member = 3;
+}
+
 service Transport {
   rpc Transport(stream Request) returns (stream Response) {}
-}
-
-enum Operation {
-  NotStarted = 0;
-
-  // InitialStartEtcd is only called to start etcd very first time.
-  InitialStartEtcd = 1;
-  // RestartEtcd is sent to restart killed etcd.
-  RestartEtcd = 2;
-  // KillEtcd pauses etcd process while keeping data directories
-  // and previous etcd configurations.
-  KillEtcd = 3;
-  // FailArchive is sent when consistency check failed,
-  // thus need to archive etcd data directories.
-  FailArchive = 4;
-  // DestroyEtcdAgent destroys etcd process, etcd data, and agent server.
-  DestroyEtcdAgent = 5;
-
-  // BlackholePeerPortTxRx drops all outgoing/incoming packets from/to the
-  // peer port on target member's peer port.
-  BlackholePeerPortTxRx = 100;
-  // UnblackholePeerPortTxRx removes outgoing/incoming packet dropping.
-  UnblackholePeerPortTxRx = 101;
-  // DelayPeerPortTxRx delays all outgoing/incoming packets from/to the
-  // peer port on target member's peer port.
-  DelayPeerPortTxRx = 102;
-  // UndelayPeerPortTxRx removes all outgoing/incoming delays.
-  UndelayPeerPortTxRx = 103;
-}
-
-message Etcd {
-  string Name = 1 [(gogoproto.moretags) = "yaml:\"name\""];
-  string DataDir = 2 [(gogoproto.moretags) = "yaml:\"data-dir\""];
-  string WALDir = 3 [(gogoproto.moretags) = "yaml:\"wal-dir\""];
-
-  // HeartbeatIntervalMs is the time (in milliseconds) of a heartbeat interval.
-  // Default value is 100, which is 100ms.
-  int64 HeartbeatIntervalMs = 11 [(gogoproto.moretags) = "yaml:\"heartbeat-interval\""];
-  // ElectionTimeoutMs is the time (in milliseconds) for an election to timeout.
-  // Default value is 1000, which is 1s.
-  int64 ElectionTimeoutMs = 12 [(gogoproto.moretags) = "yaml:\"election-timeout\""];
-
-  repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
-  repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
-  bool ClientAutoTLS = 23 [(gogoproto.moretags) = "yaml:\"auto-tls\""];
-  bool ClientCertAuth = 24 [(gogoproto.moretags) = "yaml:\"client-cert-auth\""];
-  string ClientCertFile = 25 [(gogoproto.moretags) = "yaml:\"cert-file\""];
-  string ClientKeyFile = 26 [(gogoproto.moretags) = "yaml:\"key-file\""];
-  string ClientTrustedCAFile = 27 [(gogoproto.moretags) = "yaml:\"trusted-ca-file\""];
-
-  repeated string ListenPeerURLs = 31 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
-  repeated string AdvertisePeerURLs = 32 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
-  bool PeerAutoTLS = 33 [(gogoproto.moretags) = "yaml:\"peer-auto-tls\""];
-  bool PeerClientCertAuth = 34 [(gogoproto.moretags) = "yaml:\"peer-client-cert-auth\""];
-  string PeerCertFile = 35 [(gogoproto.moretags) = "yaml:\"peer-cert-file\""];
-  string PeerKeyFile = 36 [(gogoproto.moretags) = "yaml:\"peer-key-file\""];
-  string PeerTrustedCAFile = 37 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-file\""];
-
-  string InitialCluster = 41 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
-  string InitialClusterState = 42 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
-  string InitialClusterToken = 43 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
-
-  int64 SnapshotCount = 51 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
-  int64 QuotaBackendBytes = 52 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
-
-  bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
-  bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
 }
 
 message Member {
@@ -128,18 +76,156 @@ message Member {
   string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
 }
 
+message Tester {
+  string DataDir = 1 [(gogoproto.moretags) = "yaml:\"data-dir\""];
+  string Network = 2 [(gogoproto.moretags) = "yaml:\"network\""];
+  string Addr = 3 [(gogoproto.moretags) = "yaml:\"addr\""];
+
+  // DelayLatencyMsRv is the delay latency in milliseconds,
+  // to inject to simulated slow network.
+  uint32 DelayLatencyMs = 11 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
+  // DelayLatencyMsRv is the delay latency random variable in milliseconds.
+  uint32 DelayLatencyMsRv = 12 [(gogoproto.moretags) = "yaml:\"delay-latency-ms-rv\""];
+  // UpdatedDelayLatencyMs is the update delay latency in milliseconds,
+  // to inject to simulated slow network. It's the final latency to apply,
+  // in case the latency numbers are randomly generated from given delay latency field.
+  uint32 UpdatedDelayLatencyMs = 13 [(gogoproto.moretags) = "yaml:\"updated-delay-latency-ms\""];
+
+  // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
+  int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
+  // ExitOnFailure is true, then exit tester on first failure.
+  bool ExitOnFailure = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
+  // ConsistencyCheck is true to check consistency (revision, hash).
+  bool ConsistencyCheck = 23 [(gogoproto.moretags) = "yaml:\"consistency-check\""];
+  // EnablePprof is true to enable profiler.
+  bool EnablePprof = 24 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
+
+  // FailureDelayMs is the delay duration after failure is injected.
+  // Useful when triggering snapshot or no-op failure cases.
+  uint32 FailureDelayMs = 31 [(gogoproto.moretags) = "yaml:\"failure-delay-ms\""];
+  // FailureShuffle is true to randomize failure injecting order.
+  bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
+  // FailureCases is the selected test cases to schedule.
+  // If empty, run all failure cases.
+  repeated string FailureCases = 33 [(gogoproto.moretags) = "yaml:\"failure-cases\""];
+  // Failpoinommands is the list of "gofail" commands (e.g. panic("etcd-tester"),1*sleep(1000)
+  repeated string FailpointCommands = 34 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
+
+  // RunnerExecPath is a path of etcd-runner binary.
+  string RunnerExecPath = 41 [(gogoproto.moretags) = "yaml:\"runner-exec-path\""];
+  // ExternalExecPath is a path of script for enabling/disabling an external fault injector.
+  string ExternalExecPath = 42 [(gogoproto.moretags) = "yaml:\"external-exec-path\""];
+
+  // StressTypes is the list of stresser names:
+  // keys, lease, nop, election-runner, watch-runner, lock-racer-runner, lease-runner.
+  repeated string StressTypes = 101 [(gogoproto.moretags) = "yaml:\"stress-types\""];
+  // StressKeySize is the size of each small key written into etcd.
+  int32 StressKeySize = 102 [(gogoproto.moretags) = "yaml:\"stress-key-size\""];
+  // StressKeySizeLarge is the size of each large key written into etcd.
+  int32 StressKeySizeLarge = 103 [(gogoproto.moretags) = "yaml:\"stress-key-size-large\""];
+  // StressKeySuffixRange is the count of key range written into etcd.
+  // Stress keys are created with "fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)".
+  int32 StressKeySuffixRange = 104 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range\""];
+  // StressKeySuffixRangeTxn is the count of key range written into etcd txn (max 100).
+  // Stress keys are created with "fmt.Sprintf("/k%03d", i)".
+  int32 StressKeySuffixRangeTxn = 105 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
+  // StressKeyTxnOps is the number of operations per a transaction (max 64).
+  int32 StressKeyTxnOps = 106 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
+
+  // StressClients is the number of concurrent stressing clients
+  // with "one" shared TCP connection.
+  int32 StressClients = 201 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
+  // StressQPS is the maximum number of stresser requests per second.
+  int32 StressQPS = 202 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
+}
+
+message Etcd {
+  string Name = 1 [(gogoproto.moretags) = "yaml:\"name\""];
+  string DataDir = 2 [(gogoproto.moretags) = "yaml:\"data-dir\""];
+  string WALDir = 3 [(gogoproto.moretags) = "yaml:\"wal-dir\""];
+
+  // HeartbeatIntervalMs is the time (in milliseconds) of a heartbeat interval.
+  // Default value is 100, which is 100ms.
+  int64 HeartbeatIntervalMs = 11 [(gogoproto.moretags) = "yaml:\"heartbeat-interval\""];
+  // ElectionTimeoutMs is the time (in milliseconds) for an election to timeout.
+  // Default value is 1000, which is 1s.
+  int64 ElectionTimeoutMs = 12 [(gogoproto.moretags) = "yaml:\"election-timeout\""];
+
+  repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
+  repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
+  bool ClientAutoTLS = 23 [(gogoproto.moretags) = "yaml:\"auto-tls\""];
+  bool ClientCertAuth = 24 [(gogoproto.moretags) = "yaml:\"client-cert-auth\""];
+  string ClientCertFile = 25 [(gogoproto.moretags) = "yaml:\"cert-file\""];
+  string ClientKeyFile = 26 [(gogoproto.moretags) = "yaml:\"key-file\""];
+  string ClientTrustedCAFile = 27 [(gogoproto.moretags) = "yaml:\"trusted-ca-file\""];
+
+  repeated string ListenPeerURLs = 31 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string AdvertisePeerURLs = 32 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool PeerAutoTLS = 33 [(gogoproto.moretags) = "yaml:\"peer-auto-tls\""];
+  bool PeerClientCertAuth = 34 [(gogoproto.moretags) = "yaml:\"peer-client-cert-auth\""];
+  string PeerCertFile = 35 [(gogoproto.moretags) = "yaml:\"peer-cert-file\""];
+  string PeerKeyFile = 36 [(gogoproto.moretags) = "yaml:\"peer-key-file\""];
+  string PeerTrustedCAFile = 37 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-file\""];
+
+  string InitialCluster = 41 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 42 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 43 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+
+  int64 SnapshotCount = 51 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 52 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+
+  bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+}
+
+enum Operation {
+  // NOT_STARTED is the agent status before etcd first start.
+  NOT_STARTED = 0;
+
+  // INITIAL_START_ETCD is only called to start etcd, the very first time.
+  INITIAL_START_ETCD = 10;
+  // RESTART_ETCD is sent to restart killed etcd.
+  RESTART_ETCD = 11;
+
+  // SIGTERM_ETCD pauses etcd process while keeping data directories
+  // and previous etcd configurations.
+  SIGTERM_ETCD = 20;
+  // SIGQUIT_ETCD_AND_REMOVE_DATA kills etcd process and removes all data
+  // directories to simulate destroying the whole machine.
+  SIGQUIT_ETCD_AND_REMOVE_DATA = 21;
+
+  // SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
+  // thus need to archive etcd data directories.
+  SIGQUIT_ETCD_AND_ARCHIVE_DATA = 30;
+  // SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT destroys etcd process,
+  // etcd data, and agent server.
+  SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT = 31;
+
+  // BLACKHOLE_PEER_PORT_TX_RX drops all outgoing/incoming packets from/to
+  // the peer port on target member's peer port.
+  BLACKHOLE_PEER_PORT_TX_RX = 100;
+  // UNBLACKHOLE_PEER_PORT_TX_RX removes outgoing/incoming packet dropping.
+  UNBLACKHOLE_PEER_PORT_TX_RX = 101;
+
+  // DELAY_PEER_PORT_TX_RX delays all outgoing/incoming packets from/to
+  // the peer port on target member's peer port.
+  DELAY_PEER_PORT_TX_RX = 200;
+  // UNDELAY_PEER_PORT_TX_RX removes all outgoing/incoming delays.
+  UNDELAY_PEER_PORT_TX_RX = 201;
+}
+
 // FailureCase defines various system faults in distributed systems,
 // in order to verify correct behavior of etcd servers and clients.
 enum FailureCase {
-  // KILL_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
+  // SIGTERM_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
   // but does not delete its data directories on disk for next restart.
   // It waits "failure-delay-ms" before recovering this failure.
   // The expected behavior is that the follower comes back online
   // and rejoins the cluster, and then each member continues to process
   // client requests ('Put' request that requires Raft consensus).
-  KILL_ONE_FOLLOWER = 0;
+  SIGTERM_ONE_FOLLOWER = 0;
 
-  // KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly chosen
+  // SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly chosen
   // follower but does not delete its data directories on disk for next
   // restart. And waits until most up-to-date node (leader) applies the
   // snapshot count of entries since the stop operation.
@@ -148,9 +234,9 @@ enum FailureCase {
   // to the follower to force it to follow the leader's log.
   // As always, after recovery, each member must be able to process
   // client requests.
-  KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
+  SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
 
-  // KILL_LEADER stops the active leader node but does not delete its
+  // SIGTERM_LEADER stops the active leader node but does not delete its
   // data directories on disk for next restart. Then it waits
   // "failure-delay-ms" before recovering this failure, in order to
   // trigger election timeouts.
@@ -158,9 +244,9 @@ enum FailureCase {
   // old leader comes back online and rejoins the cluster as a follower.
   // As always, after recovery, each member must be able to process
   // client requests.
-  KILL_LEADER = 2;
+  SIGTERM_LEADER = 2;
 
-  // KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader node
+  // SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader node
   // but does not delete its data directories on disk for next restart.
   // And waits until most up-to-date node ("new" leader) applies the
   // snapshot count of entries since the stop operation.
@@ -169,24 +255,24 @@ enum FailureCase {
   // And it receives the snapshot from the new leader to overwrite its
   // store. As always, after recovery, each member must be able to
   // process client requests.
-  KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT = 3;
+  SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT = 3;
 
-  // KILL_QUORUM stops majority number of nodes to make the whole cluster
+  // SIGTERM_QUORUM stops majority number of nodes to make the whole cluster
   // inoperable but does not delete data directories on stopped nodes
   // for next restart. And it waits "failure-delay-ms" before recovering
   // this failure.
   // The expected behavior is that nodes come back online, thus cluster
   // comes back operative as well. As always, after recovery, each member
   // must be able to process client requests.
-  KILL_QUORUM = 4;
+  SIGTERM_QUORUM = 4;
 
-  // KILL_ALL stops the whole cluster but does not delete data directories
+  // SIGTERM_ALL stops the whole cluster but does not delete data directories
   // on disk for next restart. And it waits "failure-delay-ms" before
   // recovering this failure.
   // The expected behavior is that nodes come back online, thus cluster
   // comes back operative as well. As always, after recovery, each member
   // must be able to process client requests.
-  KILL_ALL = 5;
+  SIGTERM_ALL = 5;
 
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
@@ -391,82 +477,4 @@ enum StressType {
   WATCH_RUNNER = 3;
   LOCK_RACER_RUNNER = 4;
   LEASE_RUNNER = 5;
-}
-
-message Tester {
-  string DataDir = 1 [(gogoproto.moretags) = "yaml:\"data-dir\""];
-  string Network = 2 [(gogoproto.moretags) = "yaml:\"network\""];
-  string Addr = 3 [(gogoproto.moretags) = "yaml:\"addr\""];
-
-  // DelayLatencyMsRv is the delay latency in milliseconds,
-  // to inject to simulated slow network.
-  uint32 DelayLatencyMs = 11 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
-  // DelayLatencyMsRv is the delay latency random variable in milliseconds.
-  uint32 DelayLatencyMsRv = 12 [(gogoproto.moretags) = "yaml:\"delay-latency-ms-rv\""];
-  // UpdatedDelayLatencyMs is the update delay latency in milliseconds,
-  // to inject to simulated slow network. It's the final latency to apply,
-  // in case the latency numbers are randomly generated from given delay latency field.
-  uint32 UpdatedDelayLatencyMs = 13 [(gogoproto.moretags) = "yaml:\"updated-delay-latency-ms\""];
-
-  // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
-  int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
-  // ExitOnFailure is true, then exit tester on first failure.
-  bool ExitOnFailure = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
-  // ConsistencyCheck is true to check consistency (revision, hash).
-  bool ConsistencyCheck = 23 [(gogoproto.moretags) = "yaml:\"consistency-check\""];
-  // EnablePprof is true to enable profiler.
-  bool EnablePprof = 24 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
-
-  // FailureDelayMs is the delay duration after failure is injected.
-  // Useful when triggering snapshot or no-op failure cases.
-  uint32 FailureDelayMs = 31 [(gogoproto.moretags) = "yaml:\"failure-delay-ms\""];
-  // FailureShuffle is true to randomize failure injecting order.
-  bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
-  // FailureCases is the selected test cases to schedule.
-  // If empty, run all failure cases.
-  repeated string FailureCases = 33 [(gogoproto.moretags) = "yaml:\"failure-cases\""];
-  // Failpoinommands is the list of "gofail" commands (e.g. panic("etcd-tester"),1*sleep(1000)
-  repeated string FailpointCommands = 34 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
-
-  // RunnerExecPath is a path of etcd-runner binary.
-  string RunnerExecPath = 41 [(gogoproto.moretags) = "yaml:\"runner-exec-path\""];
-  // ExternalExecPath is a path of script for enabling/disabling an external fault injector.
-  string ExternalExecPath = 42 [(gogoproto.moretags) = "yaml:\"external-exec-path\""];
-
-  // StressTypes is the list of stresser names:
-  // keys, lease, nop, election-runner, watch-runner, lock-racer-runner, lease-runner.
-  repeated string StressTypes = 101 [(gogoproto.moretags) = "yaml:\"stress-types\""];
-  // StressKeySize is the size of each small key written into etcd.
-  int32 StressKeySize = 102 [(gogoproto.moretags) = "yaml:\"stress-key-size\""];
-  // StressKeySizeLarge is the size of each large key written into etcd.
-  int32 StressKeySizeLarge = 103 [(gogoproto.moretags) = "yaml:\"stress-key-size-large\""];
-  // StressKeySuffixRange is the count of key range written into etcd.
-  // Stress keys are created with "fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)".
-  int32 StressKeySuffixRange = 104 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range\""];
-  // StressKeySuffixRangeTxn is the count of key range written into etcd txn (max 100).
-  // Stress keys are created with "fmt.Sprintf("/k%03d", i)".
-  int32 StressKeySuffixRangeTxn = 105 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
-  // StressKeyTxnOps is the number of operations per a transaction (max 64).
-  int32 StressKeyTxnOps = 106 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
-
-  // StressClients is the number of concurrent stressing clients
-  // with "one" shared TCP connection.
-  int32 StressClients = 201 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
-  // StressQPS is the maximum number of stresser requests per second.
-  int32 StressQPS = 202 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
-}
-
-message Request {
-  Operation Operation = 1;
-  // Member contains the same Member object from tester configuration.
-  Member Member = 2;
-  // Tester contains tester configuration.
-  Tester Tester = 3;
-}
-
-message Response {
-  bool Success = 1;
-  string Status = 2;
-  // Member contains the same Member object from tester request.
-  Member Member = 3;
 }

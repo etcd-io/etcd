@@ -142,91 +142,91 @@ func (clus *Cluster) serveTesterServer() {
 func (clus *Cluster) updateFailures() {
 	for _, cs := range clus.Tester.FailureCases {
 		switch cs {
-		case "KILL_ONE_FOLLOWER":
+		case "SIGTERM_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
-				newFailureKillOneFollower(clus))
-		case "KILL_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+				new_FailureCase_SIGTERM_ONE_FOLLOWER(clus))
+		case "SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureKillOneFollowerUntilTriggerSnapshot(clus))
-		case "KILL_LEADER":
+				new_FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+		case "SIGTERM_LEADER":
 			clus.failures = append(clus.failures,
-				newFailureKillLeader(clus))
-		case "KILL_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+				new_FailureCase_SIGTERM_LEADER(clus))
+		case "SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureKillLeaderUntilTriggerSnapshot(clus))
-		case "KILL_QUORUM":
+				new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+		case "SIGTERM_QUORUM":
 			clus.failures = append(clus.failures,
-				newFailureKillQuorum(clus))
-		case "KILL_ALL":
+				new_FailureCase_SIGTERM_QUORUM(clus))
+		case "SIGTERM_ALL":
 			clus.failures = append(clus.failures,
-				newFailureKillAll(clus))
+				new_FailureCase_SIGTERM_ALL(clus))
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxOneFollower(clus))
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot())
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxLeader(clus))
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot())
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_QUORUM":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxQuorum(clus))
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures,
-				newFailureBlackholePeerPortTxRxAll(clus))
+				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus))
 
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxOneFollower(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxOneFollower(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxOneFollowerUntilTriggerSnapshot(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxLeader(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxLeader(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxLeaderUntilTriggerSnapshot(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_QUORUM":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxQuorum(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxQuorum(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxAll(clus, false))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
 			clus.failures = append(clus.failures,
-				newFailureDelayPeerPortTxRxAll(clus, true))
+				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, true))
 
 		case "NO_FAIL_WITH_STRESS":
 			clus.failures = append(clus.failures,
-				newFailureNoFailWithStress(clus))
+				new_FailureCase_NO_FAIL_WITH_STRESS(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
 			clus.failures = append(clus.failures,
-				newFailureNoFailWithNoStressForLiveness(clus))
+				new_FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus))
 
 		case "EXTERNAL":
 			clus.failures = append(clus.failures,
-				newFailureExternal(clus.Tester.ExternalExecPath))
+				new_FailureCase_EXTERNAL(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
@@ -310,24 +310,24 @@ func (clus *Cluster) checkConsistency() (err error) {
 	return err
 }
 
-// Bootstrap bootstraps etcd cluster the very first time.
+// Send_INITIAL_START_ETCD bootstraps etcd cluster the very first time.
 // After this, just continue to call kill/restart.
-func (clus *Cluster) Bootstrap() error {
+func (clus *Cluster) Send_INITIAL_START_ETCD() error {
 	// this is the only time that creates request from scratch
-	return clus.broadcastOperation(rpcpb.Operation_InitialStartEtcd)
+	return clus.broadcast(rpcpb.Operation_INITIAL_START_ETCD)
 }
 
-// FailArchive sends "FailArchive" operation.
-func (clus *Cluster) FailArchive() error {
-	return clus.broadcastOperation(rpcpb.Operation_FailArchive)
+// send_SIGQUIT_ETCD_AND_ARCHIVE_DATA sends "send_SIGQUIT_ETCD_AND_ARCHIVE_DATA" operation.
+func (clus *Cluster) send_SIGQUIT_ETCD_AND_ARCHIVE_DATA() error {
+	return clus.broadcast(rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA)
 }
 
-// Restart sends "Restart" operation.
-func (clus *Cluster) Restart() error {
-	return clus.broadcastOperation(rpcpb.Operation_RestartEtcd)
+// send_RESTART_ETCD sends restart operation.
+func (clus *Cluster) send_RESTART_ETCD() error {
+	return clus.broadcast(rpcpb.Operation_RESTART_ETCD)
 }
 
-func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
+func (clus *Cluster) broadcast(op rpcpb.Operation) error {
 	var wg sync.WaitGroup
 	wg.Add(len(clus.agentStreams))
 
@@ -335,7 +335,7 @@ func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
 	for i := range clus.agentStreams {
 		go func(idx int, o rpcpb.Operation) {
 			defer wg.Done()
-			errc <- clus.sendOperation(idx, o)
+			errc <- clus.sendOp(idx, o)
 		}(i, op)
 	}
 	wg.Wait()
@@ -349,7 +349,7 @@ func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
 
 		if err != nil {
 			destroyed := false
-			if op == rpcpb.Operation_DestroyEtcdAgent {
+			if op == rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT {
 				if err == io.EOF {
 					destroyed = true
 				}
@@ -376,8 +376,8 @@ func (clus *Cluster) broadcastOperation(op rpcpb.Operation) error {
 	return errors.New(strings.Join(errs, ", "))
 }
 
-func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
-	if op == rpcpb.Operation_InitialStartEtcd {
+func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
+	if op == rpcpb.Operation_INITIAL_START_ETCD {
 		clus.agentRequests[idx] = &rpcpb.Request{
 			Operation: op,
 			Member:    clus.Members[idx],
@@ -436,7 +436,7 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 	}
 
 	// store TLS assets from agents/servers onto disk
-	if secure && (op == rpcpb.Operation_InitialStartEtcd || op == rpcpb.Operation_RestartEtcd) {
+	if secure && (op == rpcpb.Operation_INITIAL_START_ETCD || op == rpcpb.Operation_RESTART_ETCD) {
 		dirClient := filepath.Join(
 			clus.Tester.DataDir,
 			clus.Members[idx].Etcd.Name,
@@ -496,9 +496,9 @@ func (clus *Cluster) sendOperation(idx int, op rpcpb.Operation) error {
 	return nil
 }
 
-// DestroyEtcdAgents terminates all tester connections to agents and etcd servers.
-func (clus *Cluster) DestroyEtcdAgents() {
-	err := clus.broadcastOperation(rpcpb.Operation_DestroyEtcdAgent)
+// Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT terminates all tester connections to agents and etcd servers.
+func (clus *Cluster) Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() {
+	err := clus.broadcast(rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT)
 	if err != nil {
 		clus.lg.Warn("destroying etcd/agents FAIL", zap.Error(err))
 	} else {

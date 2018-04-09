@@ -316,7 +316,7 @@ func (clus *Cluster) failed() {
 		zap.Int("case", clus.cs),
 		zap.Int("case-total", len(clus.failures)),
 	)
-	clus.DestroyEtcdAgents()
+	clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	os.Exit(2)
 }
@@ -341,7 +341,7 @@ func (clus *Cluster) cleanup() error {
 	)
 	clus.stresser.Close()
 
-	if err := clus.FailArchive(); err != nil {
+	if err := clus.send_SIGQUIT_ETCD_AND_ARCHIVE_DATA(); err != nil {
 		clus.lg.Warn(
 			"cleanup FAIL",
 			zap.Int("round", clus.rd),
@@ -351,7 +351,7 @@ func (clus *Cluster) cleanup() error {
 		)
 		return err
 	}
-	if err := clus.Restart(); err != nil {
+	if err := clus.send_RESTART_ETCD(); err != nil {
 		clus.lg.Warn(
 			"restart FAIL",
 			zap.Int("round", clus.rd),

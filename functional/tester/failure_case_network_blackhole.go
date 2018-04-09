@@ -16,19 +16,19 @@ package tester
 
 import "github.com/coreos/etcd/functional/rpcpb"
 
-func injectBlackholePeerPortTxRx(clus *Cluster, idx int) error {
-	return clus.sendOperation(idx, rpcpb.Operation_BlackholePeerPortTxRx)
+func inject_BLACKHOLE_PEER_PORT_TX_RX(clus *Cluster, idx int) error {
+	return clus.sendOp(idx, rpcpb.Operation_BLACKHOLE_PEER_PORT_TX_RX)
 }
 
-func recoverBlackholePeerPortTxRx(clus *Cluster, idx int) error {
-	return clus.sendOperation(idx, rpcpb.Operation_UnblackholePeerPortTxRx)
+func recover_BLACKHOLE_PEER_PORT_TX_RX(clus *Cluster, idx int) error {
+	return clus.sendOp(idx, rpcpb.Operation_UNBLACKHOLE_PEER_PORT_TX_RX)
 }
 
-func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	f := &failureFollower{ff, -1, -1}
 	return &failureDelay{
@@ -37,11 +37,11 @@ func newFailureBlackholePeerPortTxRxOneFollower(clus *Cluster) Failure {
 	}
 }
 
-func newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot() Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT() Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	f := &failureFollower{ff, -1, -1}
 	return &failureUntilSnapshot{
@@ -50,11 +50,11 @@ func newFailureBlackholePeerPortTxRxOneFollowerUntilTriggerSnapshot() Failure {
 	}
 }
 
-func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	f := &failureLeader{ff, -1, -1}
 	return &failureDelay{
@@ -63,11 +63,11 @@ func newFailureBlackholePeerPortTxRxLeader(clus *Cluster) Failure {
 	}
 }
 
-func newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot() Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT() Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	f := &failureLeader{ff, -1, -1}
 	return &failureUntilSnapshot{
@@ -76,11 +76,11 @@ func newFailureBlackholePeerPortTxRxLeaderUntilTriggerSnapshot() Failure {
 	}
 }
 
-func newFailureBlackholePeerPortTxRxQuorum(clus *Cluster) Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus *Cluster) Failure {
 	f := &failureQuorum{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	return &failureDelay{
 		Failure:       f,
@@ -88,11 +88,11 @@ func newFailureBlackholePeerPortTxRxQuorum(clus *Cluster) Failure {
 	}
 }
 
-func newFailureBlackholePeerPortTxRxAll(clus *Cluster) Failure {
+func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus *Cluster) Failure {
 	f := &failureAll{
 		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL,
-		injectMember:  injectBlackholePeerPortTxRx,
-		recoverMember: recoverBlackholePeerPortTxRx,
+		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
 	}
 	return &failureDelay{
 		Failure:       f,

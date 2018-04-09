@@ -43,7 +43,7 @@ func (f *failureNoFailWithStress) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-func newFailureNoFailWithStress(clus *Cluster) Failure {
+func new_FailureCase_NO_FAIL_WITH_STRESS(clus *Cluster) Failure {
 	f := &failureNoFailWithStress{
 		failureCase: rpcpb.FailureCase_NO_FAIL_WITH_STRESS,
 	}
@@ -88,7 +88,7 @@ func (f *failureNoFailWithNoStressForLiveness) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-func newFailureNoFailWithNoStressForLiveness(clus *Cluster) Failure {
+func new_FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus *Cluster) Failure {
 	f := &failureNoFailWithNoStressForLiveness{
 		failureCase: rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS,
 	}

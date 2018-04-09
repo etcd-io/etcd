@@ -47,25 +47,29 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	}
 
 	switch req.Operation {
-	case rpcpb.Operation_InitialStartEtcd:
-		return srv.handleInitialStartEtcd(req)
-	case rpcpb.Operation_RestartEtcd:
-		return srv.handleRestartEtcd()
-	case rpcpb.Operation_KillEtcd:
-		return srv.handleKillEtcd()
-	case rpcpb.Operation_FailArchive:
-		return srv.handleFailArchive()
-	case rpcpb.Operation_DestroyEtcdAgent:
-		return srv.handleDestroyEtcdAgent()
+	case rpcpb.Operation_INITIAL_START_ETCD:
+		return srv.handle_INITIAL_START_ETCD(req)
+	case rpcpb.Operation_RESTART_ETCD:
+		return srv.handle_RESTART_ETCD()
 
-	case rpcpb.Operation_BlackholePeerPortTxRx:
-		return srv.handleBlackholePeerPortTxRx()
-	case rpcpb.Operation_UnblackholePeerPortTxRx:
-		return srv.handleUnblackholePeerPortTxRx()
-	case rpcpb.Operation_DelayPeerPortTxRx:
-		return srv.handleDelayPeerPortTxRx()
-	case rpcpb.Operation_UndelayPeerPortTxRx:
-		return srv.handleUndelayPeerPortTxRx()
+	case rpcpb.Operation_SIGTERM_ETCD:
+		return srv.handle_SIGTERM_ETCD()
+	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA:
+		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA()
+
+	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
+		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
+	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT:
+		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
+
+	case rpcpb.Operation_BLACKHOLE_PEER_PORT_TX_RX:
+		return srv.handle_BLACKHOLE_PEER_PORT_TX_RX()
+	case rpcpb.Operation_UNBLACKHOLE_PEER_PORT_TX_RX:
+		return srv.handle_UNBLACKHOLE_PEER_PORT_TX_RX()
+	case rpcpb.Operation_DELAY_PEER_PORT_TX_RX:
+		return srv.handle_DELAY_PEER_PORT_TX_RX()
+	case rpcpb.Operation_UNDELAY_PEER_PORT_TX_RX:
+		return srv.handle_UNDELAY_PEER_PORT_TX_RX()
 
 	default:
 		msg := fmt.Sprintf("operation not found (%v)", req.Operation)
@@ -73,11 +77,11 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	}
 }
 
-func (srv *Server) handleInitialStartEtcd(req *rpcpb.Request) (*rpcpb.Response, error) {
-	if srv.last != rpcpb.Operation_NotStarted {
+func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Response, error) {
+	if srv.last != rpcpb.Operation_NOT_STARTED {
 		return &rpcpb.Response{
 			Success: false,
-			Status:  fmt.Sprintf("%q is not valid; last server operation was %q", rpcpb.Operation_InitialStartEtcd.String(), srv.last.String()),
+			Status:  fmt.Sprintf("%q is not valid; last server operation was %q", rpcpb.Operation_INITIAL_START_ETCD.String(), srv.last.String()),
 			Member:  req.Member,
 		}, nil
 	}
@@ -403,10 +407,17 @@ func (srv *Server) startEtcdCmd() error {
 	return srv.etcdCmd.Start()
 }
 
-func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
+func (srv *Server) handle_RESTART_ETCD() (*rpcpb.Response, error) {
+	var err error
+	if !fileutil.Exist(srv.Member.BaseDir) {
+		err = fileutil.TouchDirAll(srv.Member.BaseDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	srv.creatEtcdCmd()
 
-	var err error
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
@@ -434,7 +445,7 @@ func (srv *Server) handleRestartEtcd() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
+func (srv *Server) handle_SIGTERM_ETCD() (*rpcpb.Response, error) {
 	srv.stopProxy()
 
 	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
@@ -449,7 +460,28 @@ func (srv *Server) handleKillEtcd() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
+func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error) {
+	srv.stopProxy()
+
+	err := stopWithSig(srv.etcdCmd, syscall.SIGQUIT)
+	if err != nil {
+		return nil, err
+	}
+	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGQUIT.String()))
+
+	err = os.RemoveAll(srv.Member.BaseDir)
+	if err != nil {
+		return nil, err
+	}
+	srv.lg.Info("removed base directory", zap.String("dir", srv.Member.BaseDir))
+
+	return &rpcpb.Response{
+		Success: true,
+		Status:  "killed etcd and removed base directory",
+	}, nil
+}
+
+func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, error) {
 	srv.stopProxy()
 
 	// exit with stackstrace
@@ -489,12 +521,14 @@ func (srv *Server) handleFailArchive() (*rpcpb.Response, error) {
 }
 
 // stop proxy, etcd, delete data directory
-func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
-	err := stopWithSig(srv.etcdCmd, syscall.SIGTERM)
+func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.Response, error) {
+	srv.stopProxy()
+
+	err := stopWithSig(srv.etcdCmd, syscall.SIGQUIT)
 	if err != nil {
 		return nil, err
 	}
-	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGTERM.String()))
+	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGQUIT.String()))
 
 	err = os.RemoveAll(srv.Member.BaseDir)
 	if err != nil {
@@ -505,22 +539,13 @@ func (srv *Server) handleDestroyEtcdAgent() (*rpcpb.Response, error) {
 	// stop agent server
 	srv.Stop()
 
-	for port, px := range srv.advertiseClientPortToProxy {
-		err := px.Close()
-		srv.lg.Info("closed proxy", zap.Int("client-port", port), zap.Error(err))
-	}
-	for port, px := range srv.advertisePeerPortToProxy {
-		err := px.Close()
-		srv.lg.Info("closed proxy", zap.Int("peer-port", port), zap.Error(err))
-	}
-
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "destroyed etcd and agent",
 	}, nil
 }
 
-func (srv *Server) handleBlackholePeerPortTxRx() (*rpcpb.Response, error) {
+func (srv *Server) handle_BLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("blackholing", zap.Int("peer-port", port))
 		px.BlackholeTx()
@@ -533,7 +558,7 @@ func (srv *Server) handleBlackholePeerPortTxRx() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handleUnblackholePeerPortTxRx() (*rpcpb.Response, error) {
+func (srv *Server) handle_UNBLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("unblackholing", zap.Int("peer-port", port))
 		px.UnblackholeTx()
@@ -546,7 +571,7 @@ func (srv *Server) handleUnblackholePeerPortTxRx() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handleDelayPeerPortTxRx() (*rpcpb.Response, error) {
+func (srv *Server) handle_DELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	lat := time.Duration(srv.Tester.UpdatedDelayLatencyMs) * time.Millisecond
 	rv := time.Duration(srv.Tester.DelayLatencyMsRv) * time.Millisecond
 
@@ -571,7 +596,7 @@ func (srv *Server) handleDelayPeerPortTxRx() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handleUndelayPeerPortTxRx() (*rpcpb.Response, error) {
+func (srv *Server) handle_UNDELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("undelaying", zap.Int("peer-port", port))
 		px.UndelayTx()

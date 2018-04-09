@@ -46,7 +46,7 @@ func (f *failureExternal) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-func newFailureExternal(scriptPath string) Failure {
+func new_FailureCase_EXTERNAL(scriptPath string) Failure {
 	return &failureExternal{
 		desc:        fmt.Sprintf("external fault injector (script: %q)", scriptPath),
 		failureCase: rpcpb.FailureCase_EXTERNAL,

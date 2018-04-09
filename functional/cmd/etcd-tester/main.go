@@ -44,11 +44,11 @@ func main() {
 		logger.Fatal("failed to create a cluster", zap.Error(err))
 	}
 
-	err = clus.Bootstrap()
+	err = clus.Send_INITIAL_START_ETCD()
 	if err != nil {
 		logger.Fatal("Bootstrap failed", zap.Error(err))
 	}
-	defer clus.DestroyEtcdAgents()
+	defer clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	logger.Info("wait health after bootstrap")
 	err = clus.WaitHealth()
