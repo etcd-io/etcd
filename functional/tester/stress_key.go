@@ -34,7 +34,8 @@ import (
 )
 
 type keyStresser struct {
-	lg *zap.Logger
+	stype rpcpb.StressType
+	lg    *zap.Logger
 
 	m *rpcpb.Member
 
@@ -102,7 +103,8 @@ func (s *keyStresser) Stress() error {
 	}
 
 	s.lg.Info(
-		"key stresser START",
+		"stress START",
+		zap.String("stress-type", s.stype.String()),
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return nil
@@ -156,7 +158,8 @@ func (s *keyStresser) run() {
 			return
 		default:
 			s.lg.Warn(
-				"key stresser exited with error",
+				"stress stopped",
+				zap.String("stress-type", s.stype.String()),
 				zap.String("endpoint", s.m.EtcdClientEndpoint),
 				zap.Error(err),
 			)
@@ -188,7 +191,8 @@ func (s *keyStresser) Close() map[string]int {
 	s.emu.Unlock()
 
 	s.lg.Info(
-		"key stresser STOP",
+		"stress STOP",
+		zap.String("stress-type", s.stype.String()),
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return ess

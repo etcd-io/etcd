@@ -245,11 +245,7 @@ func (clus *Cluster) updateStresserChecker() {
 		clus.checker = newNoChecker()
 	}
 
-	clus.lg.Info(
-		"updated stressers",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-	)
+	clus.lg.Info("updated stressers")
 }
 
 func (clus *Cluster) checkConsistency() (err error) {
@@ -646,6 +642,7 @@ func (clus *Cluster) defrag() error {
 		"defrag ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
+		zap.Int("case-total", len(clus.failures)),
 	)
 	return nil
 }

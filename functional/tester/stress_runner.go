@@ -20,10 +20,16 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/coreos/etcd/functional/rpcpb"
+
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
 type runnerStresser struct {
+	stype rpcpb.StressType
+	lg    *zap.Logger
+
 	cmd     *exec.Cmd
 	cmdStr  string
 	args    []string
@@ -34,9 +40,17 @@ type runnerStresser struct {
 	donec chan struct{}
 }
 
-func newRunnerStresser(cmdStr string, args []string, rl *rate.Limiter, reqRate int) *runnerStresser {
+func newRunnerStresser(
+	stype rpcpb.StressType,
+	lg *zap.Logger,
+	cmdStr string,
+	args []string,
+	rl *rate.Limiter,
+	reqRate int,
+) *runnerStresser {
 	rl.SetLimit(rl.Limit() - rate.Limit(reqRate))
 	return &runnerStresser{
+		stype:   stype,
 		cmdStr:  cmdStr,
 		args:    args,
 		rl:      rl,
@@ -71,6 +85,10 @@ func (rs *runnerStresser) setupOnce() (err error) {
 }
 
 func (rs *runnerStresser) Stress() (err error) {
+	rs.lg.Info(
+		"stress START",
+		zap.String("stress-type", rs.stype.String()),
+	)
 	if err = rs.setupOnce(); err != nil {
 		return err
 	}
@@ -78,6 +96,10 @@ func (rs *runnerStresser) Stress() (err error) {
 }
 
 func (rs *runnerStresser) Pause() map[string]int {
+	rs.lg.Info(
+		"stress STOP",
+		zap.String("stress-type", rs.stype.String()),
+	)
 	syscall.Kill(rs.cmd.Process.Pid, syscall.SIGSTOP)
 	return nil
 }

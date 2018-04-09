@@ -52,6 +52,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 			// TODO: Too intensive stressing clients can panic etcd member with
 			// 'out of memory' error. Put rate limits in server side.
 			stressers[i] = &keyStresser{
+				stype:             rpcpb.StressType_KV,
 				lg:                clus.lg,
 				m:                 m,
 				keySize:           int(clus.Tester.StressKeySize),
@@ -65,6 +66,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 
 		case "LEASE":
 			stressers[i] = &leaseStresser{
+				stype:        rpcpb.StressType_LEASE,
 				lg:           clus.lg,
 				m:            m,
 				numLeases:    10, // TODO: configurable
@@ -84,6 +86,8 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
 			stressers[i] = newRunnerStresser(
+				rpcpb.StressType_ELECTION_RUNNER,
+				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
 				clus.rateLimiter,
@@ -102,7 +106,14 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--rounds=0", // runs forever
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
-			stressers[i] = newRunnerStresser(clus.Tester.RunnerExecPath, args, clus.rateLimiter, reqRate)
+			stressers[i] = newRunnerStresser(
+				rpcpb.StressType_WATCH_RUNNER,
+				clus.lg,
+				clus.Tester.RunnerExecPath,
+				args,
+				clus.rateLimiter,
+				reqRate,
+			)
 
 		case "LOCK_RACER_RUNNER":
 			reqRate := 100
@@ -114,7 +125,14 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--rounds=0", // runs forever
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
-			stressers[i] = newRunnerStresser(clus.Tester.RunnerExecPath, args, clus.rateLimiter, reqRate)
+			stressers[i] = newRunnerStresser(
+				rpcpb.StressType_LOCK_RACER_RUNNER,
+				clus.lg,
+				clus.Tester.RunnerExecPath,
+				args,
+				clus.rateLimiter,
+				reqRate,
+			)
 
 		case "LEASE_RUNNER":
 			args := []string{
@@ -122,7 +140,14 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--ttl=30",
 				"--endpoints", m.EtcdClientEndpoint,
 			}
-			stressers[i] = newRunnerStresser(clus.Tester.RunnerExecPath, args, clus.rateLimiter, 0)
+			stressers[i] = newRunnerStresser(
+				rpcpb.StressType_LEASE_RUNNER,
+				clus.lg,
+				clus.Tester.RunnerExecPath,
+				args,
+				clus.rateLimiter,
+				0,
+			)
 		}
 	}
 	return &compositeStresser{stressers}

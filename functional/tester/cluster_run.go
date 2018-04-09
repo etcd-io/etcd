@@ -51,6 +51,7 @@ func (clus *Cluster) Run() {
 				"round FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
+				zap.Int("case-total", len(clus.failures)),
 				zap.Error(err),
 			)
 			if clus.cleanup() != nil {
@@ -74,6 +75,7 @@ func (clus *Cluster) Run() {
 			"compact START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.Duration("timeout", timeout),
 		)
 		if err := clus.compact(revToCompact, timeout); err != nil {
@@ -81,6 +83,7 @@ func (clus *Cluster) Run() {
 				"compact FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
+				zap.Int("case-total", len(clus.failures)),
 				zap.Error(err),
 			)
 			if err = clus.cleanup(); err != nil {
@@ -88,6 +91,7 @@ func (clus *Cluster) Run() {
 					"cleanup FAIL",
 					zap.Int("round", clus.rd),
 					zap.Int("case", clus.cs),
+					zap.Int("case-total", len(clus.failures)),
 					zap.Error(err),
 				)
 				return
@@ -107,6 +111,7 @@ func (clus *Cluster) Run() {
 		"functional-tester PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
+		zap.Int("case-total", len(clus.failures)),
 	)
 }
 
@@ -119,8 +124,9 @@ func (clus *Cluster) doRound() error {
 	clus.lg.Info(
 		"round START",
 		zap.Int("round", clus.rd),
+		zap.Int("case", clus.cs),
+		zap.Int("case-total", len(clus.failures)),
 		zap.Strings("failures", clus.failureStrings()),
-		zap.Int("total-failures", len(clus.failures)),
 	)
 	for i, fa := range clus.failures {
 		clus.cs = i
@@ -133,8 +139,8 @@ func (clus *Cluster) doRound() error {
 			"case START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.String("desc", fa.Desc()),
-			zap.Int("total-failures", len(clus.failures)),
 		)
 
 		clus.lg.Info("wait health before injecting failures")
@@ -149,6 +155,7 @@ func (clus *Cluster) doRound() error {
 				"stresser START",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
+				zap.Int("case-total", len(clus.failures)),
 				zap.String("desc", fa.Desc()),
 			)
 			if err := clus.stresser.Stress(); err != nil {
@@ -161,6 +168,7 @@ func (clus *Cluster) doRound() error {
 			"inject START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := fa.Inject(clus); err != nil {
@@ -174,6 +182,7 @@ func (clus *Cluster) doRound() error {
 			"recover START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := fa.Recover(clus); err != nil {
@@ -218,8 +227,8 @@ func (clus *Cluster) doRound() error {
 			"case PASS",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.String("desc", fa.Desc()),
-			zap.Int("total-failures", len(clus.failures)),
 			zap.Duration("took", time.Since(caseNow)),
 		)
 	}
@@ -228,7 +237,7 @@ func (clus *Cluster) doRound() error {
 		"round ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
-		zap.Int("total-failures", len(clus.failures)),
+		zap.Int("case-total", len(clus.failures)),
 		zap.Duration("took", time.Since(roundNow)),
 	)
 	return nil
@@ -291,6 +300,7 @@ func (clus *Cluster) failed() {
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
+		zap.Int("case-total", len(clus.failures)),
 	)
 	clus.DestroyEtcdAgents()
 	os.Exit(2)
@@ -310,6 +320,7 @@ func (clus *Cluster) cleanup() error {
 		"closing stressers before archiving failure data",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
+		zap.Int("case-total", len(clus.failures)),
 	)
 	clus.stresser.Close()
 
@@ -318,6 +329,7 @@ func (clus *Cluster) cleanup() error {
 			"cleanup FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.Error(err),
 		)
 		return err
@@ -327,6 +339,7 @@ func (clus *Cluster) cleanup() error {
 			"restart FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.failures)),
 			zap.Error(err),
 		)
 		return err

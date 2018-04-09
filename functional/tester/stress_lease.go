@@ -38,7 +38,8 @@ const (
 )
 
 type leaseStresser struct {
-	lg *zap.Logger
+	stype rpcpb.StressType
+	lg    *zap.Logger
 
 	m      *rpcpb.Member
 	cli    *clientv3.Client
@@ -121,7 +122,8 @@ func (ls *leaseStresser) setupOnce() error {
 
 func (ls *leaseStresser) Stress() error {
 	ls.lg.Info(
-		"lease stresser START",
+		"stress START",
+		zap.String("stress-type", ls.stype.String()),
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 	)
 
@@ -159,22 +161,26 @@ func (ls *leaseStresser) run() {
 		}
 
 		ls.lg.Debug(
-			"lease stresser is creating leases",
+			"stress creating leases",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		)
 		ls.createLeases()
 		ls.lg.Debug(
-			"lease stresser created leases",
+			"stress created leases",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		)
 
 		ls.lg.Debug(
-			"lease stresser is dropped leases",
+			"stress dropped leases",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		)
 		ls.randomlyDropLeases()
 		ls.lg.Debug(
-			"lease stresser dropped leases",
+			"stress dropped leases",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		)
 	}
@@ -243,6 +249,7 @@ func (ls *leaseStresser) createLeaseWithKeys(ttl int64) (int64, error) {
 	if err != nil {
 		ls.lg.Debug(
 			"createLease failed",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 			zap.Error(err),
 		)
@@ -251,6 +258,7 @@ func (ls *leaseStresser) createLeaseWithKeys(ttl int64) (int64, error) {
 
 	ls.lg.Debug(
 		"createLease created lease",
+		zap.String("stress-type", ls.stype.String()),
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 	)
@@ -284,6 +292,7 @@ func (ls *leaseStresser) randomlyDropLeases() {
 			}
 			ls.lg.Debug(
 				"randomlyDropLease dropped a lease",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			)
@@ -313,6 +322,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		case <-ls.ctx.Done():
 			ls.lg.Debug(
 				"keepLeaseAlive context canceled",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Error(ls.ctx.Err()),
@@ -327,6 +337,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 				ls.aliveLeases.remove(leaseID)
 				ls.lg.Debug(
 					"keepLeaseAlive lease has not been renewed, dropped it",
+					zap.String("stress-type", ls.stype.String()),
 					zap.String("endpoint", ls.m.EtcdClientEndpoint),
 					zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				)
@@ -337,6 +348,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		if err != nil {
 			ls.lg.Debug(
 				"keepLeaseAlive lease creates stream error",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Error(err),
@@ -350,6 +362,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		if err != nil {
 			ls.lg.Debug(
 				"keepLeaseAlive failed to receive lease keepalive response",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Error(err),
@@ -359,6 +372,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 
 		ls.lg.Debug(
 			"keepLeaseAlive waiting on lease stream",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 		)
@@ -367,6 +381,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		if respRC == nil {
 			ls.lg.Debug(
 				"keepLeaseAlive received nil lease keepalive response",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			)
@@ -378,6 +393,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		if respRC.TTL <= 0 {
 			ls.lg.Debug(
 				"keepLeaseAlive stream received lease keepalive response TTL <= 0",
+				zap.String("stress-type", ls.stype.String()),
 				zap.String("endpoint", ls.m.EtcdClientEndpoint),
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Int64("ttl", respRC.TTL),
@@ -388,6 +404,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		// renew lease timestamp only if lease is present
 		ls.lg.Debug(
 			"keepLeaseAlive renewed a lease",
+			zap.String("stress-type", ls.stype.String()),
 			zap.String("endpoint", ls.m.EtcdClientEndpoint),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 		)
@@ -440,6 +457,7 @@ func (ls *leaseStresser) randomlyDropLease(leaseID int64) (bool, error) {
 
 	ls.lg.Debug(
 		"randomlyDropLease error",
+		zap.String("stress-type", ls.stype.String()),
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 		zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 		zap.Error(ls.ctx.Err()),
@@ -457,7 +475,8 @@ func (ls *leaseStresser) Close() map[string]int {
 	ls.aliveWg.Wait()
 	ls.cli.Close()
 	ls.lg.Info(
-		"lease stresser STOP",
+		"stress STOP",
+		zap.String("stress-type", ls.stype.String()),
 		zap.String("endpoint", ls.m.EtcdClientEndpoint),
 	)
 	return nil
