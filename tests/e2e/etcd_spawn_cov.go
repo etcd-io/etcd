@@ -94,7 +94,7 @@ func getCovArgs() ([]string, error) {
 	if !filepath.IsAbs(coverPath) {
 		// COVERDIR is relative to etcd root but e2e test has its path set to be relative to the e2e folder.
 		// adding ".." in front of COVERDIR ensures that e2e saves coverage reports to the correct location.
-		coverPath = filepath.Join("..", coverPath)
+		coverPath = filepath.Join("../..", coverPath)
 	}
 	if !fileutil.Exist(coverPath) {
 		return nil, fmt.Errorf("could not find coverage folder")
