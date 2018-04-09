@@ -72,15 +72,6 @@
 		]
 	},
 	{
-		"project": "github.com/cpuguy83/go-md2man/md2man",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/dgrijalva/jwt-go",
 		"licenses": [
 			{
@@ -174,7 +165,7 @@
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
 			{
-				"type": "MIT License and BSD 3-clause \"New\" or \"Revised\" License",
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1
 			},
 			{
@@ -252,15 +243,6 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/russross/blackfriday",
-		"licenses": [
-			{
-				"type": "BSD 2-clause \"Simplified\" License",
-				"confidence": 0.9626168224299065
 			}
 		]
 	},
