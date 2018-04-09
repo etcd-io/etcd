@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if ! [[ "$0" =~ "tests/semaphore.test.bash" ]]; then
+  echo "must be run from repository root"
+  exit 255
+fi
+
 TEST_SUFFIX=$(date +%s | base64 | head -c 15)
 
 TEST_OPTS="PASSES='build unit release integration_e2e functional' MANUAL_VER=v3.1.12"
