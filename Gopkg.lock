@@ -209,13 +209,12 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "1c44ec8d3f1552cac48999f9306da23c4d8a288b"
+  revision = "cd30c2a7e91a1d63fd9a0027accf18a681e9d50b"
 
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "1ce0cc6db4029d97571db82f85092fccedb572ce"
 
 [[projects]]
   name = "github.com/tmc/grpc-websocket-proxy"
