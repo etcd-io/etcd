@@ -4,10 +4,11 @@ package client
 
 import (
 	"errors"
-	codec1978 "github.com/ugorji/go/codec"
 	"runtime"
 	"strconv"
 	"time"
+
+	codec1978 "github.com/ugorji/go/codec"
 )
 
 const (
@@ -1818,7 +1819,6 @@ func (x *Node) CodecEncodeSelf(e *codec1978.Encoder) {
 					}
 				}
 				r.WriteMapStart(yynn2)
-				yynn2 = 0
 			}
 			if yyr2 || yy2arr2 {
 				r.WriteArrayElem()
