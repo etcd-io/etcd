@@ -31,7 +31,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Improve [lease expire/revoke operation performance](https://github.com/coreos/etcd/pull/9418), address [lease scalability issue](https://github.com/coreos/etcd/issues/9496).
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
 - Make [etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop](https://github.com/coreos/etcd/pull/9549).
-  - e.g. a node is removed from cluster, [ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975).
+  - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975).
 - Improve [functional tester](https://github.com/coreos/etcd/tree/master/functional) coverage: use [proxy layer to run network fault tests in CI](https://github.com/coreos/etcd/pull/9081), enable [TLS both for server and client](https://github.com/coreos/etcd/pull/9534), add [liveness mode](https://github.com/coreos/etcd/issues/9230), and [shuffle test sequence](https://github.com/coreos/etcd/issues/9381).
 
 ### Breaking Changes
@@ -163,7 +163,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Fix [deadlock during PreVote migration process](https://github.com/coreos/etcd/pull/8525).
 - Add [`raft.ErrProposalDropped`](https://github.com/coreos/etcd/pull/9067).
   - Now [`(r *raft) Step` returns `raft.ErrProposalDropped`](https://github.com/coreos/etcd/pull/9137) if a proposal has been ignored.
-  - e.g. a node is removed from cluster, [ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975).
+  - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975).
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/coreos/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/coreos/etcd/pull/9116).
