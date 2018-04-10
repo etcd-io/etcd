@@ -101,7 +101,12 @@ func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *Requ
 	ch := a.s.w.Register(r.ID)
 
 	start := time.Now()
-	a.s.r.Propose(ctx, data)
+	err = a.s.r.Propose(ctx, data)
+	if err != nil {
+		proposalsFailed.Inc()
+		a.s.w.Trigger(r.ID, nil)
+		return Response{}, err
+	}
 	proposalsPending.Inc()
 	defer proposalsPending.Dec()
 
