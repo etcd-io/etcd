@@ -25,7 +25,8 @@ import (
 // mustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
 // Fatal on time-out.
 func mustWaitPinReady(t *testing.T, cli *clientv3.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	// TODO: decrease timeout after balancer rewrite!!!
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err := cli.Get(ctx, "foo")
 	cancel()
 	if err != nil {
