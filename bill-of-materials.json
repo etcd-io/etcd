@@ -3,6 +3,10 @@
 		"project": "bitbucket.org/ww/goautoneg",
 		"licenses": [
 			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			},
+			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1
 			}
@@ -164,10 +168,6 @@
 	{
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 1
-			},
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
