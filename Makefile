@@ -118,7 +118,7 @@ compile-setup-gopath-with-docker-test:
 #
 # Local machine:
 #   TEST_OPTS="PASSES='fmt'" make test
-#   TEST_OPTS="PASSES='fmt bom dep compile build unit'" make test
+#   TEST_OPTS="PASSES='fmt bom dep build unit'" make test
 #   TEST_OPTS="PASSES='build unit release integration_e2e functional'" make test
 #   TEST_OPTS="PASSES='build grpcproxy'" make test
 #
@@ -128,7 +128,7 @@ compile-setup-gopath-with-docker-test:
 #   TEST_OPTS="VERBOSE=2 PASSES='unit'" make docker-test
 #
 # Travis CI (test with docker):
-#   TEST_OPTS="PASSES='fmt bom dep compile build unit'" make docker-test
+#   TEST_OPTS="PASSES='fmt bom dep build unit'" make docker-test
 #
 # Semaphore CI (test with docker):
 #   TEST_OPTS="PASSES='build unit release integration_e2e functional'" make docker-test

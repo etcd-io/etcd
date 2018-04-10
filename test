@@ -41,7 +41,7 @@ if [[ "${PASSES}" == *"functional"* ]]; then
 fi
 
 if [ -z "$PASSES" ]; then
-	PASSES="fmt bom dep compile build unit"
+	PASSES="fmt bom dep build unit"
 fi
 
 USERPKG=${PKG:-}
@@ -619,14 +619,11 @@ function build_cov_pass {
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
 
-function compile_pass {
-	echo "Checking build..."
-	GO_BUILD_FLAGS="-a -v" tools_build
-}
-
 # fail fast on static tests
 function build_pass {
+	echo "Checking build..."
 	GO_BUILD_FLAGS="-a -v" etcd_build
+	GO_BUILD_FLAGS="-a -v" tools_build
 }
 
 for pass in $PASSES; do
