@@ -16,7 +16,9 @@ package balancer
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/clientv3/balancer/picker"
 
@@ -50,6 +52,7 @@ type builder struct {
 // Then, resolved addreses will be handled via "HandleResolvedAddrs".
 func (b *builder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balancer.Balancer {
 	bb := &baseBalancer{
+		id:     strconv.FormatInt(time.Now().UnixNano(), 36),
 		policy: b.cfg.Policy,
 		name:   b.cfg.Policy.String(),
 		lg:     b.cfg.Logger,
@@ -78,6 +81,7 @@ func (b *builder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balan
 
 	bb.lg.Info(
 		"built balancer",
+		zap.String("balancer-id", bb.id),
 		zap.String("policy", bb.policy.String()),
 		zap.String("resolver-target", cc.Target()),
 	)
@@ -102,6 +106,7 @@ type Balancer interface {
 }
 
 type baseBalancer struct {
+	id     string
 	policy picker.Policy
 	name   string
 	lg     *zap.Logger
@@ -123,10 +128,10 @@ type baseBalancer struct {
 // gRPC sends initial or updated resolved addresses from "Build".
 func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
 	if err != nil {
-		bb.lg.Warn("HandleResolvedAddrs called with error", zap.Error(err))
+		bb.lg.Warn("HandleResolvedAddrs called with error", zap.String("balancer-id", bb.id), zap.Error(err))
 		return
 	}
-	bb.lg.Info("resolved", zap.Strings("addresses", addrsToStrings(addrs)))
+	bb.lg.Info("resolved", zap.String("balancer-id", bb.id), zap.Strings("addresses", addrsToStrings(addrs)))
 
 	bb.mu.Lock()
 	defer bb.mu.Unlock()
@@ -137,7 +142,7 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 		if _, ok := bb.addrToSc[addr]; !ok {
 			sc, err := bb.currentConn.NewSubConn([]resolver.Address{addr}, balancer.NewSubConnOptions{})
 			if err != nil {
-				bb.lg.Warn("NewSubConn failed", zap.Error(err), zap.String("address", addr.Addr))
+				bb.lg.Warn("NewSubConn failed", zap.String("balancer-id", bb.id), zap.Error(err), zap.String("address", addr.Addr))
 				continue
 			}
 			bb.addrToSc[addr] = sc
@@ -155,6 +160,7 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 
 			bb.lg.Info(
 				"removed subconn",
+				zap.String("balancer-id", bb.id),
 				zap.String("address", addr.Addr),
 				zap.String("subconn", scToString(sc)),
 			)
@@ -176,6 +182,7 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connecti
 	if !ok {
 		bb.lg.Warn(
 			"state change for an unknown subconn",
+			zap.String("balancer-id", bb.id),
 			zap.String("subconn", scToString(sc)),
 			zap.String("state", s.String()),
 		)
@@ -184,6 +191,7 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connecti
 
 	bb.lg.Info(
 		"state changed",
+		zap.String("balancer-id", bb.id),
 		zap.Bool("connected", s == connectivity.Ready),
 		zap.String("subconn", scToString(sc)),
 		zap.String("address", bb.scToAddr[sc].Addr),
@@ -221,6 +229,11 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connecti
 
 func (bb *baseBalancer) regeneratePicker() {
 	if bb.currentState == connectivity.TransientFailure {
+		bb.lg.Info(
+			"generated transient error picker",
+			zap.String("balancer-id", bb.id),
+			zap.String("policy", bb.policy.String()),
+		)
 		bb.Picker = picker.NewErr(balancer.ErrTransientFailure)
 		return
 	}
@@ -247,6 +260,7 @@ func (bb *baseBalancer) regeneratePicker() {
 
 	bb.lg.Info(
 		"generated picker",
+		zap.String("balancer-id", bb.id),
 		zap.String("policy", bb.policy.String()),
 		zap.Strings("subconn-ready", scsToStrings(addrToSc)),
 		zap.Int("subconn-size", len(addrToSc)),

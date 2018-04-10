@@ -143,17 +143,15 @@ func (c *Client) Endpoints() (eps []string) {
 
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
-	c.mu.Lock()
-	c.cfg.Endpoints = eps
-	c.mu.Unlock()
-
 	var addrs []resolver.Address
 	for _, ep := range eps {
 		addrs = append(addrs, resolver.Address{Addr: ep})
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cfg.Endpoints = eps
 	c.resolver.NewAddress(addrs)
-
 	// TODO: Does the new grpc balancer provide a way to block until the endpoint changes are propagated?
 	/*if c.balancer.NeedUpdate() {
 		select {
@@ -252,9 +250,8 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 	}
 	opts = append(opts, dopts...)
 
-	f := func(host string, t time.Duration) (net.Conn, error) {
-		// TODO: eliminate this ParseEndpoint call, the endpoint is already parsed by the resolver.
-		proto, host, _ := endpoint.ParseEndpoint(c.resolver.Endpoint(host))
+	f := func(dialEp string, t time.Duration) (net.Conn, error) {
+		proto, host, _ := endpoint.ParseEndpoint(dialEp)
 		if host == "" && ep != "" {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial

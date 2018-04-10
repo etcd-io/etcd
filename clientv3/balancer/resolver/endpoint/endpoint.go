@@ -100,7 +100,6 @@ type Resolver struct {
 	clusterName string
 	cc          resolver.ClientConn
 	addrs       []resolver.Address
-	hostToAddr  map[string]resolver.Address
 	sync.RWMutex
 }
 
@@ -108,7 +107,6 @@ type Resolver struct {
 func (r *Resolver) InitialAddrs(addrs []resolver.Address) {
 	r.Lock()
 	r.addrs = addrs
-	r.hostToAddr = keyAddrsByHost(addrs)
 	r.Unlock()
 }
 
@@ -133,37 +131,13 @@ func epsToAddrs(eps ...string) (addrs []resolver.Address) {
 }
 
 // NewAddress updates the addresses of the resolver.
-func (r *Resolver) NewAddress(addrs []resolver.Address) error {
-	if r.cc == nil {
-		return fmt.Errorf("resolver not yet built, use InitialAddrs to provide initialization endpoints")
-	}
+func (r *Resolver) NewAddress(addrs []resolver.Address) {
 	r.Lock()
 	r.addrs = addrs
-	r.hostToAddr = keyAddrsByHost(addrs)
 	r.Unlock()
-	r.cc.NewAddress(addrs)
-	return nil
-}
-
-func keyAddrsByHost(addrs []resolver.Address) map[string]resolver.Address {
-	// TODO: etcd may be is running on multiple ports on the same host, what to do? Keep a list of addresses?
-	byHost := make(map[string]resolver.Address, len(addrs))
-	for _, addr := range addrs {
-		_, host, _ := ParseEndpoint(addr.Addr)
-		byHost[host] = addr
+	if r.cc != nil {
+		r.cc.NewAddress(addrs)
 	}
-	return byHost
-}
-
-// Endpoint get the resolver address for the host, if any.
-func (r *Resolver) Endpoint(host string) string {
-	var addr string
-	r.RLock()
-	if a, ok := r.hostToAddr[host]; ok {
-		addr = a.Addr
-	}
-	r.RUnlock()
-	return addr
 }
 
 func (*Resolver) ResolveNow(o resolver.ResolveNowOption) {}
