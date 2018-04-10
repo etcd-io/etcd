@@ -783,8 +783,13 @@ func (s *EtcdServer) run() {
 					}
 					lid := lease.ID
 					s.goAttach(func() {
-						s.LeaseRevoke(s.ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
-						leaseExpired.Inc()
+						_, lerr := s.LeaseRevoke(s.ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
+						if lerr == nil {
+							leaseExpired.Inc()
+						} else {
+							plog.Warningf("failed to revoke %016x (%q)", lid, lerr.Error())
+						}
+
 						<-c
 					})
 				}
