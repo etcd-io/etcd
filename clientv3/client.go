@@ -45,13 +45,13 @@ var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
 
-	defaultBalancer balancer.Balancer
+	roundRobinBalancerName = fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String())
 )
 
 func init() {
-	defaultBalancer = balancer.New(balancer.Config{
+	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
-		Name:   fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String()),
+		Name:   roundRobinBalancerName,
 		Logger: zap.NewNop(), // zap.NewExample(),
 	})
 }
@@ -433,24 +433,22 @@ func newClient(cfg *Config) (*Client, error) {
 		client.callOpts = callOpts
 	}
 
-	clientId := fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36))
-	rsv := endpoint.EndpointResolver(clientId)
-	rsv.InitialEndpoints(cfg.Endpoints)
-
-	targets := []string{}
-	for _, ep := range cfg.Endpoints {
-		targets = append(targets, fmt.Sprintf("endpoint://%s/%s", clientId, ep))
-	}
-
-	client.resolver = rsv
-	client.balancer = defaultBalancer // TODO: allow alternate balancers to be passed in via config?
-
-	// use Endpoints[0] so that for https:// without any tls config given, then
-	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dial(targets[0], grpc.WithBalancerName(client.balancer.Name()))
+	// Prepare a 'endpoint://<unique-client-id>/' resolver for the client and create a endpoint target to pass
+	// to dial so the client knows to use this resolver.
+	client.resolver = endpoint.EndpointResolver(fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36)))
+	target, err := client.resolver.InitialEndpoints(cfg.Endpoints)
 	if err != nil {
 		client.cancel()
-		rsv.Close()
+		client.resolver.Close()
+		return nil, err
+	}
+
+	// Use an provided endpoint target so that for https:// without any tls config given, then
+	// grpc will assume the certificate server name is the endpoint host.
+	conn, err := client.dial(target, grpc.WithBalancerName(roundRobinBalancerName))
+	if err != nil {
+		client.cancel()
+		client.resolver.Close()
 		return nil, err
 	}
 	// TODO: With the old grpc balancer interface, we waited until the dial timeout

@@ -28,11 +28,67 @@ import (
 	_ "google.golang.org/grpc/resolver/passthrough" // register passthrough resolver
 )
 
+// RegisterBuilder creates and registers a builder. Since this function calls balancer.Register, it
+// must be invoked at initialization time.
+func RegisterBuilder(cfg Config) {
+	bb := &builder{cfg}
+	balancer.Register(bb)
+
+	bb.cfg.Logger.Info(
+		"registered balancer",
+		zap.String("policy", bb.cfg.Policy.String()),
+		zap.String("name", bb.cfg.Name),
+	)
+}
+
+type builder struct {
+	cfg Config
+}
+
+// Build is called initially when creating "ccBalancerWrapper".
+// "grpc.Dial" is called to this client connection.
+// Then, resolved addreses will be handled via "HandleResolvedAddrs".
+func (b *builder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balancer.Balancer {
+	bb := &baseBalancer{
+		policy: b.cfg.Policy,
+		name:   b.cfg.Policy.String(),
+		lg:     b.cfg.Logger,
+
+		addrToSc: make(map[resolver.Address]balancer.SubConn),
+		scToAddr: make(map[balancer.SubConn]resolver.Address),
+		scToSt:   make(map[balancer.SubConn]connectivity.State),
+
+		currentConn: nil,
+		csEvltr:     &connectivityStateEvaluator{},
+
+		// initialize picker always returns "ErrNoSubConnAvailable"
+		Picker: picker.NewErr(balancer.ErrNoSubConnAvailable),
+	}
+	if b.cfg.Name != "" {
+		bb.name = b.cfg.Name
+	}
+	if bb.lg == nil {
+		bb.lg = zap.NewNop()
+	}
+
+	// TODO: support multiple connections
+	bb.mu.Lock()
+	bb.currentConn = cc
+	bb.mu.Unlock()
+
+	bb.lg.Info(
+		"built balancer",
+		zap.String("policy", bb.policy.String()),
+		zap.String("resolver-target", cc.Target()),
+	)
+	return bb
+}
+
+// Name implements "grpc/balancer.Builder" interface.
+func (b *builder) Name() string { return b.cfg.Name }
+
 // Balancer defines client balancer interface.
 type Balancer interface {
-	// Builder is called at the beginning to initialize sub-connection states and picker.
-	balancer.Builder
-
 	// Balancer is called on specified client connection. Client initiates gRPC
 	// connection with "grpc.Dial(addr, grpc.WithBalancerName)", and then those resolved
 	// addresses are passed to "grpc/balancer.Balancer.HandleResolvedAddrs".
@@ -61,60 +117,6 @@ type baseBalancer struct {
 	csEvltr      *connectivityStateEvaluator
 
 	picker.Picker
-}
-
-// New returns a new balancer from specified picker policy.
-func New(cfg Config) Balancer {
-	bb := &baseBalancer{
-		policy: cfg.Policy,
-		name:   cfg.Policy.String(),
-		lg:     cfg.Logger,
-
-		addrToSc: make(map[resolver.Address]balancer.SubConn),
-		scToAddr: make(map[balancer.SubConn]resolver.Address),
-		scToSt:   make(map[balancer.SubConn]connectivity.State),
-
-		currentConn: nil,
-		csEvltr:     &connectivityStateEvaluator{},
-
-		// initialize picker always returns "ErrNoSubConnAvailable"
-		Picker: picker.NewErr(balancer.ErrNoSubConnAvailable),
-	}
-	if cfg.Name != "" {
-		bb.name = cfg.Name
-	}
-	if bb.lg == nil {
-		bb.lg = zap.NewNop()
-	}
-
-	balancer.Register(bb)
-	bb.lg.Info(
-		"registered balancer",
-		zap.String("policy", bb.policy.String()),
-		zap.String("name", bb.name),
-	)
-	return bb
-}
-
-// Name implements "grpc/balancer.Builder" interface.
-func (bb *baseBalancer) Name() string { return bb.name }
-
-// Build implements "grpc/balancer.Builder" interface.
-// Build is called initially when creating "ccBalancerWrapper".
-// "grpc.Dial" is called to this client connection.
-// Then, resolved addreses will be handled via "HandleResolvedAddrs".
-func (bb *baseBalancer) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balancer.Balancer {
-	// TODO: support multiple connections
-	bb.mu.Lock()
-	bb.currentConn = cc
-	bb.mu.Unlock()
-
-	bb.lg.Info(
-		"built balancer",
-		zap.String("policy", bb.policy.String()),
-		zap.String("resolver-target", cc.Target()),
-	)
-	return bb
 }
 
 // HandleResolvedAddrs implements "grpc/balancer.Balancer" interface.

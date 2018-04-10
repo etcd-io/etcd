@@ -112,8 +112,15 @@ func (r *Resolver) InitialAddrs(addrs []resolver.Address) {
 	r.Unlock()
 }
 
-func (r *Resolver) InitialEndpoints(eps []string) {
+// InitialEndpoints sets the initial endpoints to for the resolver and returns a grpc dial target.
+// This should be called before dialing. The endpoints may be updated after the dial using NewAddress.
+// At least one endpoint is required.
+func (r *Resolver) InitialEndpoints(eps []string) (string, error) {
+	if len(eps) < 1 {
+		return "", fmt.Errorf("At least one endpoint is required, but got: %v", eps)
+	}
 	r.InitialAddrs(epsToAddrs(eps...))
+	return r.Target(eps[0]), nil
 }
 
 // TODO: use balancer.epsToAddrs
