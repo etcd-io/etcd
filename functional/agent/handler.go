@@ -57,6 +57,9 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA()
 
+	case rpcpb.Operation_FETCH_SNAPSHOT:
+		return srv.handle_FETCH_SNAPSHOT()
+
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT:
@@ -499,6 +502,17 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "killed etcd and removed base directory",
+	}, nil
+}
+
+func (srv *Server) handle_FETCH_SNAPSHOT() (*rpcpb.Response, error) {
+	err := srv.Member.FetchSnapshot(srv.lg)
+	if err != nil {
+		return nil, err
+	}
+	return &rpcpb.Response{
+		Success: true,
+		Status:  "downloaded snapshot",
 	}, nil
 }
 
