@@ -57,9 +57,15 @@ func inject_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 	id1 := sresp.Header.MemberId
 	is1 := fmt.Sprintf("%016x", id1)
 
+	clus.lg.Info(
+		"disastrous machine failure START",
+		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
+		zap.String("target-member-id", is1),
+		zap.Error(err),
+	)
 	err = clus.sendOp(idx1, rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA)
 	clus.lg.Info(
-		"disastrous machine failure",
+		"disastrous machine failure END",
 		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
 		zap.String("target-member-id", is1),
 		zap.Error(err),
@@ -78,9 +84,22 @@ func inject_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 	}
 	defer cli2.Close()
 
-	_, err = cli2.MemberRemove(context.Background(), id1)
+	// FIXME(bug): this may block forever during
+	// "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT"
+	// is the new leader too busy with snapshotting?
+	// is raft proposal dropped?
+	// enable client keepalive for failover?
 	clus.lg.Info(
-		"member remove after disaster",
+		"member remove after disaster START",
+		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
+		zap.String("target-member-id", is1),
+		zap.String("request-to", clus.Members[idx2].EtcdClientEndpoint),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	_, err = cli2.MemberRemove(ctx, id1)
+	cancel()
+	clus.lg.Info(
+		"member remove after disaster END",
 		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
 		zap.String("target-member-id", is1),
 		zap.String("request-to", clus.Members[idx2].EtcdClientEndpoint),
