@@ -6,7 +6,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Improved
 
-- TODO: Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
+- Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
 - Improve [slow requests warning logging](https://github.com/coreos/etcd/pull/9288).
   - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
@@ -30,9 +30,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 - Improve [lease expire/revoke operation performance](https://github.com/coreos/etcd/pull/9418), address [lease scalability issue](https://github.com/coreos/etcd/issues/9496).
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
-- Make [etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop](https://github.com/coreos/etcd/pull/9549).
+- Make etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop in [v3 applier](https://github.com/coreos/etcd/pull/9549) and [v2 applier](https://github.com/coreos/etcd/pull/9558).
   - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/coreos/etcd/issues/8975).
-- Improve [functional tester](https://github.com/coreos/etcd/tree/master/functional) coverage: use [proxy layer to run network fault tests in CI](https://github.com/coreos/etcd/pull/9081), enable [TLS both for server and client](https://github.com/coreos/etcd/pull/9534), add [liveness mode](https://github.com/coreos/etcd/issues/9230), and [shuffle test sequence](https://github.com/coreos/etcd/issues/9381).
+- Improve [functional tester](https://github.com/coreos/etcd/tree/master/functional) coverage: [proxy layer to run network fault tests in CI](https://github.com/coreos/etcd/pull/9081), [TLS is enabled both for server and client](https://github.com/coreos/etcd/pull/9534), [liveness mode](https://github.com/coreos/etcd/issues/9230), [shuffle test sequence](https://github.com/coreos/etcd/issues/9381), [membership reconfiguration failure cases](TODO), [disastrous quorum loss and snapshot recovery](TODO).
 
 ### Breaking Changes
 
@@ -69,7 +69,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Dependency
 
-- TODO: Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.11.1).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.1`**](TODO).
 - Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1.1`**](https://github.com/ugorji/go/releases/tag/v1.1.1), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
 - Upgrade [`github.com/soheilhy/cmux`](https://github.com/soheilhy/cmux/releases) from [**`v0.1.3`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.3) to [**`v0.1.4`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.4).
 - Upgrade [`github.com/spf13/cobra`](https://github.com/spf13/cobra/releases) from [**`spf13/cobra@1c44ec8d3`**](https://github.com/spf13/cobra/commit/1c44ec8d3f1552cac48999f9306da23c4d8a288b) to [**`spf13/cobra@cd30c2a7e`**](https://github.com/spf13/cobra/commit/cd30c2a7e91a1d63fd9a0027accf18a681e9d50b).
@@ -79,6 +79,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
+- Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
 
 ### Security, Authentication
 
@@ -94,10 +95,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
-- TODO: Support [TLS cipher suite lists](TODO).
+- Support [TLS cipher suite lists](TODO).
 - Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
 - Allow empty token provider in [`etcdserver.ServerConfig.AuthToken`](https://github.com/coreos/etcd/pull/9369).
+- Fix [TLS reload](TODO) when [cert SAN field only contains IP addresses](https://github.com/coreos/etcd/issues/9541).
 
 ### Added: `etcd`
 
@@ -105,11 +107,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `--pre-vote=false` by default.
   - v3.5 will enable `--pre-vote=true` by default.
-- TODO: [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check` is deprecated).
+- [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check` is deprecated).
   - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- TODO: [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
+- [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
   - `--corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- TODO: [`--enable-v2v3`](TODO) flag is now stable (`--experimental-enable-v2v3` is deprecated).
+- [`--enable-v2v3`](TODO) flag is now stable (`--experimental-enable-v2v3` is deprecated).
   - `--enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
   - `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
   - `--enable-v2=false --enable-v2v3=''` to disable v2 API server.
@@ -124,7 +126,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Added: `embed`
 
 - Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to use [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
-  - TODO: make this configurable...
+  - make this configurable...
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
 - Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 

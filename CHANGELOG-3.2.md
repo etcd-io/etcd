@@ -1,5 +1,18 @@
 
 
+## [v3.2.19](https://github.com/coreos/etcd/releases/tag/v3.2.19) (2018-04-TBD)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Metrics, Monitoring
+
+- Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
+
+### Security, Authentication
+
+- Fix [TLS reload](TODO) when [cert SAN field only contains IP addresses](https://github.com/coreos/etcd/issues/9541).
+
+
 ## [v3.2.18](https://github.com/coreos/etcd/releases/tag/v3.2.18) (2018-03-29)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.17...v3.2.18) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
