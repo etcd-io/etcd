@@ -174,6 +174,19 @@ func new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus
 	}
 }
 
+func new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus *Cluster) Failure {
+	ff := failureByFunc{
+		failureCase:   rpcpb.FailureCase_SIGQUIT_AND_REMOVE_LEADER,
+		injectMember:  inject_SIGQUIT_ETCD_AND_REMOVE_DATA,
+		recoverMember: recover_SIGQUIT_ETCD_AND_REMOVE_DATA,
+	}
+	f := &failureLeader{ff, -1, -1}
+	return &failureDelay{
+		Failure:       f,
+		delayDuration: clus.GetFailureDelayDuration(),
+	}
+}
+
 func describeMembers(mresp *clientv3.MemberListResponse) (ss []string) {
 	ss = make([]string, len(mresp.Members))
 	for i, m := range mresp.Members {
