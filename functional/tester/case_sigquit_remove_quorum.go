@@ -43,22 +43,22 @@ func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 
 	// 2. Download snapshot from node C, before destroying node A and B.
 	clus.lg.Info(
-		"install snapshot on leader node START",
+		"save snapshot on leader node START",
 		zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
 	)
 	var resp *rpcpb.Response
+	resp, err = clus.sendOpWithResp(lead, rpcpb.Operation_SAVE_SNAPSHOT)
 	if resp == nil || err != nil {
 		resp, err = clus.sendOpWithResp(lead, rpcpb.Operation_SAVE_SNAPSHOT)
 		clus.lg.Info(
-			"install snapshot on leader node END",
+			"save snapshot on leader node END",
 			zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
 			zap.Error(err),
 		)
 		return err
 	}
-	resp, err = clus.sendOpWithResp(lead, rpcpb.Operation_SAVE_SNAPSHOT)
 	clus.lg.Info(
-		"install snapshot on leader node END",
+		"save snapshot on leader node END",
 		zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
 		zap.String("member-name", resp.SnapshotInfo.MemberName),
 		zap.Strings("member-client-urls", resp.SnapshotInfo.MemberClientURLs),
@@ -74,6 +74,7 @@ func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 	if err != nil {
 		return err
 	}
+	clus.Members[lead].SnapshotInfo = resp.SnapshotInfo
 
 	leaderc, err := clus.Members[lead].CreateEtcdClient()
 	if err != nil {
