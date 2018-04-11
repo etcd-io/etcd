@@ -57,8 +57,10 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA()
 
-	case rpcpb.Operation_FETCH_SNAPSHOT:
-		return srv.handle_FETCH_SNAPSHOT()
+	case rpcpb.Operation_SAVE_SNAPSHOT:
+		return srv.handle_SAVE_SNAPSHOT()
+	case rpcpb.Operation_RESTORE_SNAPSHOT_AND_RESTART_ETCD:
+		return srv.handle_RESTORE_SNAPSHOT_AND_RESTART_ETCD()
 
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
@@ -99,7 +101,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 		return nil, err
 	}
 
-	srv.creatEtcdCmd()
+	srv.creatEtcdCmd(false)
 
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
@@ -228,8 +230,11 @@ func (srv *Server) createEtcdLogFile() error {
 	return nil
 }
 
-func (srv *Server) creatEtcdCmd() {
+func (srv *Server) creatEtcdCmd(fromSnapshot bool) {
 	etcdPath, etcdFlags := srv.Member.EtcdExecPath, srv.Member.Etcd.Flags()
+	if fromSnapshot {
+		etcdFlags = srv.Member.EtcdOnSnapshotRestore.Flags()
+	}
 	u, _ := url.Parse(srv.Member.FailpointHTTPAddr)
 	srv.lg.Info("creating etcd command",
 		zap.String("etcd-exec-path", etcdPath),
@@ -419,7 +424,7 @@ func (srv *Server) handle_RESTART_ETCD() (*rpcpb.Response, error) {
 		}
 	}
 
-	srv.creatEtcdCmd()
+	srv.creatEtcdCmd(false)
 
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
@@ -505,14 +510,49 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 	}, nil
 }
 
-func (srv *Server) handle_FETCH_SNAPSHOT() (*rpcpb.Response, error) {
-	err := srv.Member.FetchSnapshot(srv.lg)
+func (srv *Server) handle_SAVE_SNAPSHOT() (*rpcpb.Response, error) {
+	err := srv.Member.SaveSnapshot(srv.lg)
 	if err != nil {
 		return nil, err
 	}
 	return &rpcpb.Response{
 		Success:      true,
-		Status:       "downloaded snapshot",
+		Status:       "saved snapshot",
+		SnapshotInfo: srv.Member.SnapshotInfo,
+	}, nil
+}
+
+func (srv *Server) handle_RESTORE_SNAPSHOT_AND_RESTART_ETCD() (*rpcpb.Response, error) {
+	err := srv.Member.RestoreSnapshot(srv.lg)
+	if err != nil {
+		return nil, err
+	}
+
+	srv.creatEtcdCmd(true)
+
+	if err = srv.saveTLSAssets(); err != nil {
+		return nil, err
+	}
+	if err = srv.startEtcdCmd(); err != nil {
+		return nil, err
+	}
+	srv.lg.Info("restarted etcd", zap.String("command-path", srv.etcdCmd.Path))
+	if err = srv.loadAutoTLSAssets(); err != nil {
+		return nil, err
+	}
+
+	// wait some time for etcd listener start
+	// before setting up proxy
+	// TODO: local tests should handle port conflicts
+	// with clients on restart
+	time.Sleep(time.Second)
+	if err = srv.startProxy(); err != nil {
+		return nil, err
+	}
+
+	return &rpcpb.Response{
+		Success:      true,
+		Status:       "restored snapshot and restarted etcd",
 		SnapshotInfo: srv.Member.SnapshotInfo,
 	}, nil
 }
