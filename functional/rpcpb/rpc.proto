@@ -70,6 +70,9 @@ message Member {
   string EtcdClientEndpoint = 301 [(gogoproto.moretags) = "yaml:\"etcd-client-endpoint\""];
   // Etcd defines etcd binary configuration flags.
   Etcd Etcd = 302 [(gogoproto.moretags) = "yaml:\"etcd\""];
+  // EtcdOnSnapshotRestore defines one-time use configuration during etcd
+  // snapshot recovery process.
+  Etcd EtcdOnSnapshotRestore = 303;
 
   // ClientCertData contains cert file contents from this member's etcd server.
   string ClientCertData = 401 [(gogoproto.moretags) = "yaml:\"client-cert-data\""];
