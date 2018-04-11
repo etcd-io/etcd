@@ -8,6 +8,15 @@ etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes 
 
 The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][api-ref] message definitions. Note that `key` and `value` fields are defined as byte arrays and therefore must be base64 encoded in JSON. The following examples use `curl`, but any HTTP/JSON client should work all the same.
 
+### Notes
+
+gRPC gateway endpoint has changed since etcd v3.3:
+
+- etcd v3.2 or before uses only `[CLIENT-URL]/v3alpha/*`.
+- etcd v3.3 uses `[CLIENT-URL]/v3beta/*` while keeping `[CLIENT-URL]/v3alpha/*`.
+- etcd v3.4 uses `[CLIENT-URL]/v3/*` while keeping `[CLIENT-URL]/v3beta/*`, and `[CLIENT-URL]/v3alpha/*` is deprecated.
+- etcd v3.5 or later uses only `[CLIENT-URL]/v3/*`, and `[CLIENT-URL]/v3beta/*` is deprecated.
+
 ### Put and get keys
 
 Use the `/v3/kv/range` and `/v3/kv/put` services to read and write keys:
@@ -20,16 +29,16 @@ bar is 'YmFy'
 COMMENT
 
 curl -L http://localhost:2379/v3/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"}}
 
 curl -L http://localhost:2379/v3/kv/range \
-	-X POST -d '{"key": "Zm9v"}'
+  -X POST -d '{"key": "Zm9v"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 
 # get all keys prefixed with "foo"
 curl -L http://localhost:2379/v3/kv/range \
-	-X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
+  -X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 ```
 
@@ -43,7 +52,7 @@ curl http://localhost:2379/v3/watch \
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
 
 curl -L http://localhost:2379/v3/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}' >/dev/null 2>&1
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}' >/dev/null 2>&1
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"2"},"events":[{"kv":{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}}]}}
 ```
 
@@ -53,7 +62,7 @@ Issue a transaction with `/v3/kv/txn`:
 
 ```bash
 curl -L http://localhost:2379/v3/kv/txn \
-	-X POST \
+  -X POST \
 	-d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
 ```
@@ -65,17 +74,17 @@ Set up authentication with the `/v3/auth` service:
 ```bash
 # create root user
 curl -L http://localhost:2379/v3/auth/user/add \
-	-X POST -d '{"name": "root", "password": "pass"}'
+  -X POST -d '{"name": "root", "password": "pass"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # create root role
 curl -L http://localhost:2379/v3/auth/role/add \
-	-X POST -d '{"name": "root"}'
+  -X POST -d '{"name": "root"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # grant root role
 curl -L http://localhost:2379/v3/auth/user/grant \
-	-X POST -d '{"user": "root", "role": "root"}'
+  -X POST -d '{"user": "root", "role": "root"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
 
 # enable auth
@@ -88,7 +97,7 @@ Authenticate with etcd for an authentication token using `/v3/auth/authenticate`
 ```bash
 # get the auth token for the root user
 curl -L http://localhost:2379/v3/auth/authenticate \
-	-X POST -d '{"name": "root", "password": "pass"}'
+  -X POST -d '{"name": "root", "password": "pass"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"},"token":"sssvIpwfnLAcWAQH.9"}
 ```
 
@@ -97,7 +106,7 @@ Set the `Authorization` header to the authentication token to fetch a key using 
 ```bash
 curl -L http://localhost:2379/v3/kv/put \
 	-H 'Authorization : sssvIpwfnLAcWAQH.9' \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"2","raft_term":"2"}}
 ```
 
@@ -113,4 +122,3 @@ Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][
 [json-mapping]: https://developers.google.com/protocol-buffers/docs/proto3#json
 [swagger]: http://swagger.io/
 [swagger-doc]: apispec/swagger/rpc.swagger.json
-
