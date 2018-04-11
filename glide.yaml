@@ -16,6 +16,8 @@ import:
   - daemon
   - journal
   - util
+- package: go.uber.org/zap
+  version: v1.7.1
 - package: github.com/coreos/pkg
   version: v3
   subpackages:

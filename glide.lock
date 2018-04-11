@@ -1,8 +1,8 @@
-hash: 23d3b011a2e95e7c285287f62d6c7404ee42ccf6f81055cd24ab58da51a10f42
-updated: 2017-12-18T15:54:23.990881-08:00
+hash: f0697416d74e4c0fb9d6471c39c3e005ecdeccc8a864c1b0b65e0087b3242027
+updated: 2018-04-10T23:45:04.40596807-07:00
 imports:
 - name: github.com/beorn7/perks
-  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+  version: 3a771d992973f24aa725d07868b467d1ddfceafb
   subpackages:
   - quantile
 - name: github.com/bgentry/speakeasy
@@ -123,6 +123,18 @@ imports:
   version: 1efa31f08b9333f1bd4882d61f9d668a70cd902e
 - name: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
+- name: go.uber.org/atomic
+  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+- name: go.uber.org/zap
+  version: 35aad584952c3e7020db7b839f6b102de6271f89
+  subpackages:
+  - buffer
+  - internal/bufferpool
+  - internal/color
+  - internal/exit
+  - zapcore
 - name: golang.org/x/crypto
   version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
