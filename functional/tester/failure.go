@@ -143,11 +143,15 @@ func (f *failureLeader) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-type failureQuorum failureByFunc
+type failureQuorum struct {
+	failureByFunc
+	injected map[int]struct{}
+}
 
 func (f *failureQuorum) Inject(clus *Cluster) error {
-	for i := range killMap(len(clus.Members), clus.rd) {
-		if err := f.injectMember(clus, i); err != nil {
+	f.injected = pickQuorum(len(clus.Members))
+	for idx := range f.injected {
+		if err := f.injectMember(clus, idx); err != nil {
 			return err
 		}
 	}
@@ -155,8 +159,8 @@ func (f *failureQuorum) Inject(clus *Cluster) error {
 }
 
 func (f *failureQuorum) Recover(clus *Cluster) error {
-	for i := range killMap(len(clus.Members), clus.rd) {
-		if err := f.recoverMember(clus, i); err != nil {
+	for idx := range f.injected {
+		if err := f.recoverMember(clus, idx); err != nil {
 			return err
 		}
 	}
@@ -174,16 +178,15 @@ func (f *failureQuorum) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-func killMap(size int, seed int) map[int]bool {
-	m := make(map[int]bool)
-	r := rand.New(rand.NewSource(int64(seed)))
-	majority := size/2 + 1
-	for {
-		m[r.Intn(size)] = true
-		if len(m) >= majority {
-			return m
-		}
+func pickQuorum(size int) (picked map[int]struct{}) {
+	picked = make(map[int]struct{})
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	quorum := size/2 + 1
+	for len(picked) < quorum {
+		idx := r.Intn(size)
+		picked[idx] = struct{}{}
 	}
+	return picked
 }
 
 type failureAll failureByFunc

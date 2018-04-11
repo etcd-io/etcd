@@ -78,9 +78,12 @@ func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT() F
 
 func new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus *Cluster) Failure {
 	f := &failureQuorum{
-		failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM,
-		injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
-		recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
+		failureByFunc: failureByFunc{
+			failureCase:   rpcpb.FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM,
+			injectMember:  inject_BLACKHOLE_PEER_PORT_TX_RX,
+			recoverMember: recover_BLACKHOLE_PEER_PORT_TX_RX,
+		},
+		injected: make(map[int]struct{}),
 	}
 	return &failureDelay{
 		Failure:       f,

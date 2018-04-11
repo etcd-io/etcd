@@ -120,9 +120,12 @@ func new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *C
 
 func new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus *Cluster, random bool) Failure {
 	f := &failureQuorum{
-		failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM,
-		injectMember:  inject_DELAY_PEER_PORT_TX_RX,
-		recoverMember: recover_DELAY_PEER_PORT_TX_RX,
+		failureByFunc: failureByFunc{
+			failureCase:   rpcpb.FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM,
+			injectMember:  inject_DELAY_PEER_PORT_TX_RX,
+			recoverMember: recover_DELAY_PEER_PORT_TX_RX,
+		},
+		injected: make(map[int]struct{}),
 	}
 	clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	if random {

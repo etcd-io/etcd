@@ -114,10 +114,13 @@ func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure)
 				lead: -1,
 			},
 			&failureQuorum{
-				desc:          fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd),
-				failureCase:   rpcpb.FailureCase_FAILPOINTS,
-				injectMember:  inject,
-				recoverMember: recov,
+				failureByFunc: failureByFunc{
+					desc:          fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd),
+					failureCase:   rpcpb.FailureCase_FAILPOINTS,
+					injectMember:  inject,
+					recoverMember: recov,
+				},
+				injected: make(map[int]struct{}),
 			},
 			&failureAll{
 				desc:          fmt.Sprintf("failpoint %q (all: %q)", fp, fcmd),

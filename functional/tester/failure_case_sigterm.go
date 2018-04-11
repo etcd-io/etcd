@@ -66,9 +66,12 @@ func new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failur
 
 func new_FailureCase_SIGTERM_QUORUM(clus *Cluster) Failure {
 	f := &failureQuorum{
-		failureCase:   rpcpb.FailureCase_SIGTERM_QUORUM,
-		injectMember:  inject_SIGTERM_ETCD,
-		recoverMember: recover_SIGTERM_ETCD,
+		failureByFunc: failureByFunc{
+			failureCase:   rpcpb.FailureCase_SIGTERM_QUORUM,
+			injectMember:  inject_SIGTERM_ETCD,
+			recoverMember: recover_SIGTERM_ETCD,
+		},
+		injected: make(map[int]struct{}),
 	}
 	return &failureDelay{
 		Failure:       f,
