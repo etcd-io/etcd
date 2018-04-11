@@ -16,7 +16,7 @@ message Request {
   Tester Tester = 3;
 }
 
-// SnapshotInfo contains FETCH_SNAPSHOT request results.
+// SnapshotInfo contains SAVE_SNAPSHOT request results.
 message SnapshotInfo {
   string MemberName = 1;
   repeated string MemberClientURLs = 2;
@@ -36,7 +36,7 @@ message Response {
   // Member contains the same Member object from tester request.
   Member Member = 3;
 
-  // SnapshotInfo contains FETCH_SNAPSHOT request results.
+  // SnapshotInfo contains SAVE_SNAPSHOT request results.
   SnapshotInfo SnapshotInfo = 4;
 }
 
@@ -96,7 +96,7 @@ message Member {
 
   // SnapshotPath is the snapshot file path to store or restore from.
   string SnapshotPath = 601 [(gogoproto.moretags) = "yaml:\"snapshot-path\""];
-  // SnapshotInfo contains last FETCH_SNAPSHOT request results.
+  // SnapshotInfo contains last SAVE_SNAPSHOT request results.
   SnapshotInfo SnapshotInfo = 602;
 }
 
@@ -219,9 +219,12 @@ enum Operation {
   // directories to simulate destroying the whole machine.
   SIGQUIT_ETCD_AND_REMOVE_DATA = 21;
 
-  // FETCH_SNAPSHOT is sent to trigger local member to download its snapshot
+  // SAVE_SNAPSHOT is sent to trigger local member to download its snapshot
   // onto its local disk with the specified path from tester.
-  FETCH_SNAPSHOT = 30;
+  SAVE_SNAPSHOT = 30;
+  // RESTORE_SNAPSHOT_AND_RESTART_ETCD is sent to trigger local member to download its snapshot
+  // onto its local disk with the specified path from tester.
+  RESTORE_SNAPSHOT_AND_RESTART_ETCD = 31;
 
   // SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
   // thus need to archive etcd data directories.
