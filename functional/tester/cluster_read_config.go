@@ -68,6 +68,13 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			clus.Members[i].Etcd.WALDir = filepath.Join(mem.Etcd.DataDir, "member", "wal")
 		}
 
+		switch mem.Etcd.InitialClusterState {
+		case "new":
+		case "existing":
+		default:
+			return nil, fmt.Errorf("'--initial-cluster-state' got %q", mem.Etcd.InitialClusterState)
+		}
+
 		if mem.Etcd.HeartbeatIntervalMs == 0 {
 			return nil, fmt.Errorf("'--heartbeat-interval' cannot be 0 (got %+v)", mem.Etcd)
 		}
