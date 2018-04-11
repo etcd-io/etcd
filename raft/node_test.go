@@ -45,7 +45,7 @@ func TestNodeStep(t *testing.T) {
 	for i, msgn := range raftpb.MessageType_name {
 		n := &node{
 			propc: make(chan msgWithResult, 1),
-			recvc: make(chan raftpb.Message, 1),
+			recvc: make(chan msgWithResult, 1),
 		}
 		msgt := raftpb.MessageType(i)
 		n.Step(context.TODO(), raftpb.Message{Type: msgt})
@@ -486,7 +486,53 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 
 	n.Stop()
 	if len(msgs) != 0 {
-		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 0)
+	}
+}
+
+func TestNodeReadIndexWaitDropped(t *testing.T) {
+	msgs := []raftpb.Message{}
+	droppingMsg := []byte("test_dropping")
+	dropStep := func(r *raft, m raftpb.Message) error {
+		if m.Type == raftpb.MsgReadIndex && strings.Contains(m.String(), string(droppingMsg)) {
+			t.Logf("dropping message: %v", m.String())
+			return ErrReadIndexDropped
+		}
+		msgs = append(msgs, m)
+		return nil
+	}
+
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		s.Append(rd.Entries)
+		// change the step function to dropStep until this raft becomes leader
+		if rd.SoftState.Lead == r.id {
+			r.step = dropStep
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+	readIndexTimeout := time.Millisecond * 100
+	ctx, cancel := context.WithTimeout(context.Background(), readIndexTimeout)
+	// read index with cancel should be cancelled earyly if dropped
+	err := n.ReadIndex(ctx, droppingMsg)
+	if err != ErrReadIndexDropped {
+		t.Errorf("should drop read index: %v", err)
+	}
+	cancel()
+
+	n.Stop()
+	if len(msgs) != 0 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 0)
+	}
+	if len(r.readStates) != 0 {
+		t.Fatalf("len(readStates) = %d, want %d", len(r.readStates), 0)
 	}
 }
 
