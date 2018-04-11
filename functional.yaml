@@ -3,7 +3,7 @@ agent-configs:
   agent-addr: 127.0.0.1:19027
   failpoint-http-addr: http://127.0.0.1:7381
   base-dir: /tmp/etcd-functional-1
-  etcd-log-path: /tmp/etcd-functional-1/current-etcd.log
+  etcd-log-path: /tmp/etcd-functional-1/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:1379
@@ -52,7 +52,7 @@ agent-configs:
   agent-addr: 127.0.0.1:29027
   failpoint-http-addr: http://127.0.0.1:7382
   base-dir: /tmp/etcd-functional-2
-  etcd-log-path: /tmp/etcd-functional-2/current-etcd.log
+  etcd-log-path: /tmp/etcd-functional-2/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:2379
@@ -101,7 +101,7 @@ agent-configs:
   agent-addr: 127.0.0.1:39027
   failpoint-http-addr: http://127.0.0.1:7383
   base-dir: /tmp/etcd-functional-3
-  etcd-log-path: /tmp/etcd-functional-3/current-etcd.log
+  etcd-log-path: /tmp/etcd-functional-3/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:3379
