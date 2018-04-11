@@ -180,7 +180,7 @@ function integration_extra {
 
 function functional_pass {
   	# Clean up any data and logs from previous runs
-  	rm -rf /tmp/etcd-agent-data-*
+  	rm -rf /tmp/etcd-agent-data-* /tmp/etcd-agent-data-*.backup
 
 	for a in 1 2 3; do
 		./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
@@ -621,8 +621,8 @@ function build_cov_pass {
 # fail fast on static tests
 function build_pass {
 	echo "Checking build..."
-	GO_BUILD_FLAGS="-a -v" etcd_build
-	GO_BUILD_FLAGS="-a -v" tools_build
+	GO_BUILD_FLAGS="-v" etcd_build
+	GO_BUILD_FLAGS="-v" tools_build
 }
 
 for pass in $PASSES; do

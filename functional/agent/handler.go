@@ -92,7 +92,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 	}
 	srv.lg.Info("created base directory", zap.String("path", srv.Member.BaseDir))
 
-	if err = srv.saveEtcdLogFile(); err != nil {
+	if err = srv.createEtcdLogFile(); err != nil {
 		return nil, err
 	}
 
@@ -215,7 +215,7 @@ func (srv *Server) stopProxy() {
 	}
 }
 
-func (srv *Server) saveEtcdLogFile() error {
+func (srv *Server) createEtcdLogFile() error {
 	var err error
 	srv.etcdLogFile, err = os.Create(srv.Member.EtcdLogPath)
 	if err != nil {
@@ -469,11 +469,32 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 	}
 	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGQUIT.String()))
 
-	err = os.RemoveAll(srv.Member.BaseDir)
-	if err != nil {
+	srv.etcdLogFile.Sync()
+	srv.etcdLogFile.Close()
+
+	// for debugging purposes, rename instead of removing
+	if err = os.RemoveAll(srv.Member.BaseDir + ".backup"); err != nil {
 		return nil, err
 	}
-	srv.lg.Info("removed base directory", zap.String("dir", srv.Member.BaseDir))
+	if err = os.Rename(srv.Member.BaseDir, srv.Member.BaseDir+".backup"); err != nil {
+		return nil, err
+	}
+	srv.lg.Info(
+		"renamed",
+		zap.String("base-dir", srv.Member.BaseDir),
+		zap.String("new-dir", srv.Member.BaseDir+".backup"),
+	)
+
+	// create a new log file for next new member restart
+	if !fileutil.Exist(srv.Member.BaseDir) {
+		err = fileutil.TouchDirAll(srv.Member.BaseDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = srv.createEtcdLogFile(); err != nil {
+		return nil, err
+	}
 
 	return &rpcpb.Response{
 		Success: true,
@@ -504,7 +525,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 	}
 	srv.lg.Info("archived data", zap.String("base-dir", srv.Member.BaseDir))
 
-	if err = srv.saveEtcdLogFile(); err != nil {
+	if err = srv.createEtcdLogFile(); err != nil {
 		return nil, err
 	}
 
@@ -529,6 +550,9 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.
 		return nil, err
 	}
 	srv.lg.Info("killed etcd", zap.String("signal", syscall.SIGQUIT.String()))
+
+	srv.etcdLogFile.Sync()
+	srv.etcdLogFile.Close()
 
 	err = os.RemoveAll(srv.Member.BaseDir)
 	if err != nil {

@@ -161,6 +161,19 @@ func (clus *Cluster) updateFailures() {
 			clus.failures = append(clus.failures,
 				new_FailureCase_SIGTERM_ALL(clus))
 
+		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER":
+			clus.failures = append(clus.failures,
+				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus))
+		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures,
+				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+		case "SIGQUIT_AND_REMOVE_LEADER":
+			clus.failures = append(clus.failures,
+				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus))
+		case "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures,
+				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
 				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
@@ -377,14 +390,12 @@ func (clus *Cluster) broadcast(op rpcpb.Operation) error {
 }
 
 func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
-	if op == rpcpb.Operation_INITIAL_START_ETCD {
-		clus.agentRequests[idx] = &rpcpb.Request{
-			Operation: op,
-			Member:    clus.Members[idx],
-			Tester:    clus.Tester,
-		}
-	} else {
-		clus.agentRequests[idx].Operation = op
+	// maintain the initial member object
+	// throughout the test time
+	clus.agentRequests[idx] = &rpcpb.Request{
+		Operation: op,
+		Member:    clus.Members[idx],
+		Tester:    clus.Tester,
 	}
 
 	err := clus.agentStreams[idx].Send(clus.agentRequests[idx])

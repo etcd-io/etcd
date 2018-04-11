@@ -121,6 +121,9 @@ tester-config:
 
   failure-delay-ms: 7000
   failure-shuffle: true
+
+  # For full descriptions,
+  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#FailureCase
   failure-cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
@@ -128,6 +131,8 @@ tester-config:
   - SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT
   - SIGTERM_QUORUM
   - SIGTERM_ALL
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
   - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER
@@ -148,6 +153,9 @@ tester-config:
   - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
   - NO_FAIL_WITH_STRESS
   - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
+
+  # - SIGQUIT_AND_REMOVE_LEADER
+  # - SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT
 
   failpoint-commands:
   - panic("etcd-tester")

@@ -274,6 +274,54 @@ enum FailureCase {
   // must be able to process client requests.
   SIGTERM_ALL = 5;
 
+  // SIGQUIT_AND_REMOVE_ONE_FOLLOWER stops a randomly chosen follower
+  // (non-leader), deletes its data directories on disk, and removes
+  // this member from cluster (membership reconfiguration). On recovery,
+  // tester adds a new member, and this member joins the existing cluster
+  // with fresh data. It waits "failure-delay-ms" before recovering this
+  // failure. This simulates destroying one follower machine, where operator
+  // needs to add a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and then each member continues to process client requests.
+  SIGQUIT_AND_REMOVE_ONE_FOLLOWER = 10;
+
+  // SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly
+  // chosen follower, deletes its data directories on disk, and removes
+  // this member from cluster (membership reconfiguration). On recovery,
+  // tester adds a new member, and this member joins the existing cluster
+  // restart. On member remove, cluster waits until most up-to-date node
+  // (leader) applies the snapshot count of entries since the stop operation.
+  // This simulates destroying a leader machine, where operator needs to add
+  // a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and receives a snapshot from the active leader. As always, after
+  // recovery, each member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 11;
+
+  // SIGQUIT_AND_REMOVE_LEADER stops the active leader node, deletes its
+  // data directories on disk, and removes this member from cluster.
+  // On recovery, tester adds a new member, and this member joins the
+  // existing cluster with fresh data. It waits "failure-delay-ms" before
+  // recovering this failure. This simulates destroying a leader machine,
+  // where operator needs to add a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and then each member continues to process client requests.
+  SIGQUIT_AND_REMOVE_LEADER = 12;
+
+  // SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader,
+  // deletes its data directories on disk, and removes this member from
+  // cluster (membership reconfiguration). On recovery, tester adds a new
+  // member, and this member joins the existing cluster restart. On member
+  // remove, cluster waits until most up-to-date node (new leader) applies
+  // the snapshot count of entries since the stop operation. This simulates
+  // destroying a leader machine, where operator needs to add a new member
+  // from a fresh machine.
+  // The expected behavior is that on member remove, cluster elects a new
+  // leader, and a new member joins the existing cluster and receives a
+  // snapshot from the newly elected leader. As always, after recovery, each
+  // member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT = 13;
+
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
   // (non-leader), and waits for "failure-delay-ms" until recovery.
