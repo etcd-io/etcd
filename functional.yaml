@@ -160,12 +160,12 @@ tester-config:
   consistency-check: true
   enable-pprof: true
 
-  failure-delay-ms: 7000
-  failure-shuffle: true
+  case-delay-ms: 7000
+  case-shuffle: true
 
   # For full descriptions,
-  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#FailureCase
-  failure-cases:
+  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case
+  cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - SIGTERM_LEADER

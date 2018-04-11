@@ -52,7 +52,7 @@ type Cluster struct {
 	Members []*rpcpb.Member `yaml:"agent-configs"`
 	Tester  *rpcpb.Tester   `yaml:"tester-config"`
 
-	failures []Failure
+	cases []Case
 
 	rateLimiter *rate.Limiter
 	stresser    Stresser
@@ -80,7 +80,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus.agentClients = make([]rpcpb.TransportClient, len(clus.Members))
 	clus.agentStreams = make([]rpcpb.Transport_TransportClient, len(clus.Members))
 	clus.agentRequests = make([]*rpcpb.Request, len(clus.Members))
-	clus.failures = make([]Failure, 0)
+	clus.cases = make([]Case, 0)
 
 	for i, ap := range clus.Members {
 		var err error
@@ -111,7 +111,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	}
 	go clus.serveTesterServer()
 
-	clus.updateFailures()
+	clus.updateCases()
 
 	clus.rateLimiter = rate.NewLimiter(
 		rate.Limit(int(clus.Tester.StressQPS)),
@@ -139,125 +139,125 @@ func (clus *Cluster) serveTesterServer() {
 	}
 }
 
-func (clus *Cluster) updateFailures() {
-	for _, cs := range clus.Tester.FailureCases {
+func (clus *Cluster) updateCases() {
+	for _, cs := range clus.Tester.Cases {
 		switch cs {
 		case "SIGTERM_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ONE_FOLLOWER(clus))
 		case "SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGTERM_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_LEADER(clus))
 		case "SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGTERM_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_QUORUM(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_QUORUM(clus))
 		case "SIGTERM_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ALL(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ALL(clus))
 
 		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus))
 		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGQUIT_AND_REMOVE_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_LEADER(clus))
 		case "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus))
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT())
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT())
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus))
 
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_QUORUM(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_QUORUM(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ALL(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ALL(clus, true))
 
 		case "NO_FAIL_WITH_STRESS":
-			clus.failures = append(clus.failures,
-				new_FailureCase_NO_FAIL_WITH_STRESS(clus))
+			clus.cases = append(clus.cases,
+				new_Case_NO_FAIL_WITH_STRESS(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
-			clus.failures = append(clus.failures,
-				new_FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus))
+			clus.cases = append(clus.cases,
+				new_Case_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus))
 
 		case "EXTERNAL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_EXTERNAL(clus.Tester.ExternalExecPath))
+			clus.cases = append(clus.cases,
+				new_Case_EXTERNAL(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
-			clus.failures = append(clus.failures,
+			clus.cases = append(clus.cases,
 				fpFailures...)
 		}
 	}
 }
 
 func (clus *Cluster) failureStrings() (fs []string) {
-	fs = make([]string, len(clus.failures))
-	for i := range clus.failures {
-		fs[i] = clus.failures[i].Desc()
+	fs = make([]string, len(clus.cases))
+	for i := range clus.cases {
+		fs[i] = clus.cases[i].Desc()
 	}
 	return fs
 }
@@ -320,7 +320,7 @@ func (clus *Cluster) checkConsistency() (err error) {
 		"consistency check ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.String("desc", clus.failures[clus.cs].Desc()),
+		zap.String("desc", clus.cases[clus.cs].Desc()),
 	)
 
 	return err
@@ -699,14 +699,14 @@ func (clus *Cluster) defrag() error {
 		"defrag ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 	)
 	return nil
 }
 
-// GetFailureDelayDuration computes failure delay duration.
-func (clus *Cluster) GetFailureDelayDuration() time.Duration {
-	return time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond
+// GetCaseDelayDuration computes failure delay duration.
+func (clus *Cluster) GetCaseDelayDuration() time.Duration {
+	return time.Duration(clus.Tester.CaseDelayMs) * time.Millisecond
 }
 
 // Report reports the number of modified keys.

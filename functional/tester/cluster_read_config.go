@@ -320,8 +320,8 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 
-	if len(clus.Tester.FailureCases) == 0 {
-		return nil, errors.New("FailureCases not found")
+	if len(clus.Tester.Cases) == 0 {
+		return nil, errors.New("Cases not found")
 	}
 	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
 		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
@@ -330,9 +330,9 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
 	}
 
-	for _, v := range clus.Tester.FailureCases {
-		if _, ok := rpcpb.FailureCase_value[v]; !ok {
-			return nil, fmt.Errorf("%q is not defined in 'rpcpb.FailureCase_value'", v)
+	for _, v := range clus.Tester.Cases {
+		if _, ok := rpcpb.Case_value[v]; !ok {
+			return nil, fmt.Errorf("%q is not defined in 'rpcpb.Case_value'", v)
 		}
 	}
 

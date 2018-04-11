@@ -20,22 +20,22 @@ import (
 	"go.uber.org/zap"
 )
 
-type failureDelay struct {
-	Failure
+type caseDelay struct {
+	Case
 	delayDuration time.Duration
 }
 
-func (f *failureDelay) Inject(clus *Cluster) error {
-	if err := f.Failure.Inject(clus); err != nil {
+func (c *caseDelay) Inject(clus *Cluster) error {
+	if err := c.Case.Inject(clus); err != nil {
 		return err
 	}
-	if f.delayDuration > 0 {
+	if c.delayDuration > 0 {
 		clus.lg.Info(
 			"wait after inject",
-			zap.Duration("delay", f.delayDuration),
-			zap.String("desc", f.Failure.Desc()),
+			zap.Duration("delay", c.delayDuration),
+			zap.String("desc", c.Case.Desc()),
 		)
-		time.Sleep(f.delayDuration)
+		time.Sleep(c.delayDuration)
 	}
 	return nil
 }

@@ -117,22 +117,23 @@ message Tester {
 
   // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
   int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
-  // ExitOnFailure is true, then exit tester on first failure.
-  bool ExitOnFailure = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
+  // ExitOnCaseFail is true, then exit tester on first failure.
+  bool ExitOnCaseFail = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
   // ConsistencyCheck is true to check consistency (revision, hash).
   bool ConsistencyCheck = 23 [(gogoproto.moretags) = "yaml:\"consistency-check\""];
   // EnablePprof is true to enable profiler.
   bool EnablePprof = 24 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
 
-  // FailureDelayMs is the delay duration after failure is injected.
+  // CaseDelayMs is the delay duration after failure is injected.
   // Useful when triggering snapshot or no-op failure cases.
-  uint32 FailureDelayMs = 31 [(gogoproto.moretags) = "yaml:\"failure-delay-ms\""];
-  // FailureShuffle is true to randomize failure injecting order.
-  bool FailureShuffle = 32 [(gogoproto.moretags) = "yaml:\"failure-shuffle\""];
-  // FailureCases is the selected test cases to schedule.
+  uint32 CaseDelayMs = 31 [(gogoproto.moretags) = "yaml:\"case-delay-ms\""];
+  // CaseShuffle is true to randomize failure injecting order.
+  bool CaseShuffle = 32 [(gogoproto.moretags) = "yaml:\"case-shuffle\""];
+  // Cases is the selected test cases to schedule.
   // If empty, run all failure cases.
-  repeated string FailureCases = 33 [(gogoproto.moretags) = "yaml:\"failure-cases\""];
-  // Failpoinommands is the list of "gofail" commands (e.g. panic("etcd-tester"),1*sleep(1000)
+  repeated string Cases = 33 [(gogoproto.moretags) = "yaml:\"cases\""];
+  // FailpointCommands is the list of "gofail" commands
+  // (e.g. panic("etcd-tester"),1*sleep(1000).
   repeated string FailpointCommands = 34 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
 
   // RunnerExecPath is a path of etcd-runner binary.
@@ -242,12 +243,12 @@ enum Operation {
   UNDELAY_PEER_PORT_TX_RX = 201;
 }
 
-// FailureCase defines various system faults in distributed systems,
+// Case defines various system faults or test case in distributed systems,
 // in order to verify correct behavior of etcd servers and clients.
-enum FailureCase {
+enum Case {
   // SIGTERM_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
   // but does not delete its data directories on disk for next restart.
-  // It waits "failure-delay-ms" before recovering this failure.
+  // It waits "delay-ms" before recovering this failure.
   // The expected behavior is that the follower comes back online
   // and rejoins the cluster, and then each member continues to process
   // client requests ('Put' request that requires Raft consensus).
@@ -265,9 +266,8 @@ enum FailureCase {
   SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
 
   // SIGTERM_LEADER stops the active leader node but does not delete its
-  // data directories on disk for next restart. Then it waits
-  // "failure-delay-ms" before recovering this failure, in order to
-  // trigger election timeouts.
+  // data directories on disk for next restart. Then it waits "delay-ms"
+  // before recovering this failure, in order to trigger election timeouts.
   // The expected behavior is that a new leader gets elected, and the
   // old leader comes back online and rejoins the cluster as a follower.
   // As always, after recovery, each member must be able to process
@@ -287,16 +287,15 @@ enum FailureCase {
 
   // SIGTERM_QUORUM stops majority number of nodes to make the whole cluster
   // inoperable but does not delete data directories on stopped nodes
-  // for next restart. And it waits "failure-delay-ms" before recovering
-  // this failure.
+  // for next restart. And it waits "delay-ms" before recovering failure.
   // The expected behavior is that nodes come back online, thus cluster
   // comes back operative as well. As always, after recovery, each member
   // must be able to process client requests.
   SIGTERM_QUORUM = 4;
 
   // SIGTERM_ALL stops the whole cluster but does not delete data directories
-  // on disk for next restart. And it waits "failure-delay-ms" before
-  // recovering this failure.
+  // on disk for next restart. And it waits "delay-ms" before  recovering
+  // this failure.
   // The expected behavior is that nodes come back online, thus cluster
   // comes back operative as well. As always, after recovery, each member
   // must be able to process client requests.
@@ -306,7 +305,7 @@ enum FailureCase {
   // (non-leader), deletes its data directories on disk, and removes
   // this member from cluster (membership reconfiguration). On recovery,
   // tester adds a new member, and this member joins the existing cluster
-  // with fresh data. It waits "failure-delay-ms" before recovering this
+  // with fresh data. It waits "delay-ms" before recovering this
   // failure. This simulates destroying one follower machine, where operator
   // needs to add a new member from a fresh machine.
   // The expected behavior is that a new member joins the existing cluster,
@@ -329,7 +328,7 @@ enum FailureCase {
   // SIGQUIT_AND_REMOVE_LEADER stops the active leader node, deletes its
   // data directories on disk, and removes this member from cluster.
   // On recovery, tester adds a new member, and this member joins the
-  // existing cluster with fresh data. It waits "failure-delay-ms" before
+  // existing cluster with fresh data. It waits "delay-ms" before
   // recovering this failure. This simulates destroying a leader machine,
   // where operator needs to add a new member from a fresh machine.
   // The expected behavior is that a new member joins the existing cluster,
@@ -378,7 +377,7 @@ enum FailureCase {
 
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
-  // (non-leader), and waits for "failure-delay-ms" until recovery.
+  // (non-leader), and waits for "delay-ms" until recovery.
   // The expected behavior is that once dropping operation is undone,
   // each member must be able to process client requests.
   BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER = 100;
@@ -396,7 +395,7 @@ enum FailureCase {
 
   // BLACKHOLE_PEER_PORT_TX_RX_LEADER drops all outgoing/incoming packets
   // from/to the peer port on the active leader (isolated), and waits for
-  // "failure-delay-ms" until recovery, in order to trigger election timeout.
+  // "delay-ms" until recovery, in order to trigger election timeout.
   // The expected behavior is that after election timeout, a new leader gets
   // elected, and once dropping operation is undone, the old leader comes
   // back and rejoins the cluster as a follower. As always, after recovery,
@@ -416,7 +415,7 @@ enum FailureCase {
 
   // BLACKHOLE_PEER_PORT_TX_RX_QUORUM drops all outgoing/incoming packets
   // from/to the peer ports on majority nodes of cluster, thus losing its
-  // leader and cluster being inoperable. And it waits for "failure-delay-ms"
+  // leader and cluster being inoperable. And it waits for "delay-ms"
   // until recovery.
   // The expected behavior is that once packet drop operation is undone,
   // nodes come back online, thus cluster comes back operative. As always,
@@ -425,7 +424,7 @@ enum FailureCase {
 
   // BLACKHOLE_PEER_PORT_TX_RX_ALL drops all outgoing/incoming packets
   // from/to the peer ports on all nodes, thus making cluster totally
-  // inoperable. It waits for "failure-delay-ms" until recovery.
+  // inoperable. It waits for "delay-ms" until recovery.
   // The expected behavior is that once packet drop operation is undone,
   // nodes come back online, thus cluster comes back operative. As always,
   // after recovery, each member must be able to process client requests.
@@ -433,7 +432,7 @@ enum FailureCase {
 
   // DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming packets
   // from/to the peer port on a randomly chosen follower (non-leader).
-  // It waits for "failure-delay-ms" until recovery.
+  // It waits for "delay-ms" until recovery.
   // The expected behavior is that once packet delay operation is undone,
   // the follower comes back and tries to catch up with latest changes from
   // cluster. And as always, after recovery, each member must be able to
@@ -442,8 +441,8 @@ enum FailureCase {
 
   // RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
-  // (non-leader) with a randomized time duration (thus isolated). It waits
-  // for "failure-delay-ms" until recovery.
+  // (non-leader) with a randomized time duration (thus isolated). It
+  // waits for "delay-ms" until recovery.
   // The expected behavior is that once packet delay operation is undone,
   // each member must be able to process client requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 201;
@@ -472,8 +471,8 @@ enum FailureCase {
   RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 203;
 
   // DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets from/to
-  // the peer port on the active leader. And waits for "failure-delay-ms"
-  // until recovery.
+  // the peer port on the active leader. And waits for "delay-ms" until
+  // recovery.
   // The expected behavior is that cluster may elect a new leader, and
   // once packet delay operation is undone, the (old) leader comes back
   // and tries to catch up with latest changes from cluster. As always,
@@ -482,7 +481,7 @@ enum FailureCase {
 
   // RANDOM_DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets
   // from/to the peer port on the active leader with a randomized time
-  // duration. And waits for "failure-delay-ms" until recovery.
+  // duration. And waits for "delay-ms" until recovery.
   // The expected behavior is that cluster may elect a new leader, and
   // once packet delay operation is undone, the (old) leader comes back
   // and tries to catch up with latest changes from cluster. As always,
@@ -516,7 +515,7 @@ enum FailureCase {
 
   // DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets from/to
   // the peer ports on majority nodes of cluster. And it waits for
-  // "failure-delay-ms" until recovery, likely to trigger election timeouts.
+  // "delay-ms" until recovery, likely to trigger election timeouts.
   // The expected behavior is that cluster may elect a new leader, while
   // quorum of nodes struggle with slow networks, and once delay operation
   // is undone, nodes come back and cluster comes back operative. As always,
@@ -525,8 +524,8 @@ enum FailureCase {
 
   // RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets
   // from/to the peer ports on majority nodes of cluster, with randomized
-  // time durations. And it waits for "failure-delay-ms" until recovery,
-  // likely to trigger election timeouts.
+  // time durations. And it waits for "delay-ms" until recovery, likely
+  // to trigger election timeouts.
   // The expected behavior is that cluster may elect a new leader, while
   // quorum of nodes struggle with slow networks, and once delay operation
   // is undone, nodes come back and cluster comes back operative. As always,
@@ -534,8 +533,8 @@ enum FailureCase {
   RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM = 209;
 
   // DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets from/to the
-  // peer ports on all nodes. And it waits for "failure-delay-ms" until
-  // recovery, likely to trigger election timeouts.
+  // peer ports on all nodes. And it waits for "delay-ms" until recovery,
+  // likely to trigger election timeouts.
   // The expected behavior is that cluster may become totally inoperable,
   // struggling with slow networks across the whole cluster. Once delay
   // operation is undone, nodes come back and cluster comes back operative.
@@ -545,7 +544,7 @@ enum FailureCase {
 
   // RANDOM_DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets
   // from/to the peer ports on all nodes, with randomized time durations.
-  // And it waits for "failure-delay-ms" until recovery, likely to trigger
+  // And it waits for "delay-ms" until recovery, likely to trigger
   // election timeouts.
   // The expected behavior is that cluster may become totally inoperable,
   // struggling with slow networks across the whole cluster. Once delay
@@ -556,7 +555,7 @@ enum FailureCase {
 
   // NO_FAIL_WITH_STRESS stops injecting failures while testing the
   // consistency and correctness under pressure loads, for the duration of
-  // "failure-delay-ms". Goal is to ensure cluster be still making progress
+  // "delay-ms". Goal is to ensure cluster be still making progress
   // on recovery, and verify system does not deadlock following a sequence
   // of failure injections.
   // The expected behavior is that cluster remains fully operative in healthy
@@ -566,7 +565,7 @@ enum FailureCase {
 
   // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS neither injects failures nor
   // sends stressig client requests to the cluster, for the duration of
-  // "failure-delay-ms". Goal is to ensure cluster be still making progress
+  // "delay-ms". Goal is to ensure cluster be still making progress
   // on recovery, and verify system does not deadlock following a sequence
   // of failure injections.
   // The expected behavior is that cluster remains fully operative in healthy

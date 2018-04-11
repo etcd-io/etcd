@@ -51,7 +51,7 @@ func (clus *Cluster) Run() {
 				"round FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.failures)),
+				zap.Int("case-total", len(clus.cases)),
 				zap.Error(err),
 			)
 			if clus.cleanup() != nil {
@@ -75,7 +75,7 @@ func (clus *Cluster) Run() {
 			"compact START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.Duration("timeout", timeout),
 		)
 		if err := clus.compact(revToCompact, timeout); err != nil {
@@ -83,7 +83,7 @@ func (clus *Cluster) Run() {
 				"compact FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.failures)),
+				zap.Int("case-total", len(clus.cases)),
 				zap.Error(err),
 			)
 			if err = clus.cleanup(); err != nil {
@@ -91,7 +91,7 @@ func (clus *Cluster) Run() {
 					"cleanup FAIL",
 					zap.Int("round", clus.rd),
 					zap.Int("case", clus.cs),
-					zap.Int("case-total", len(clus.failures)),
+					zap.Int("case-total", len(clus.cases)),
 					zap.Error(err),
 				)
 				return
@@ -111,13 +111,13 @@ func (clus *Cluster) Run() {
 		"functional-tester PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 	)
 }
 
 func (clus *Cluster) doRound() error {
-	if clus.Tester.FailureShuffle {
-		clus.shuffleFailures()
+	if clus.Tester.CaseShuffle {
+		clus.shuffleCases()
 	}
 
 	roundNow := time.Now()
@@ -125,10 +125,10 @@ func (clus *Cluster) doRound() error {
 		"round START",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 		zap.Strings("failures", clus.failureStrings()),
 	)
-	for i, fa := range clus.failures {
+	for i, fa := range clus.cases {
 		clus.cs = i
 
 		caseTotal[fa.Desc()]++
@@ -139,7 +139,7 @@ func (clus *Cluster) doRound() error {
 			"case START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
 
@@ -149,13 +149,13 @@ func (clus *Cluster) doRound() error {
 		}
 
 		stressStarted := false
-		fcase := fa.FailureCase()
-		if fcase != rpcpb.FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
+		fcase := fa.TestCase()
+		if fcase != rpcpb.Case_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
 			clus.lg.Info(
 				"stress START",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.failures)),
+				zap.Int("case-total", len(clus.cases)),
 				zap.String("desc", fa.Desc()),
 			)
 			if err := clus.stresser.Stress(); err != nil {
@@ -168,7 +168,7 @@ func (clus *Cluster) doRound() error {
 			"inject START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := fa.Inject(clus); err != nil {
@@ -182,7 +182,7 @@ func (clus *Cluster) doRound() error {
 			"recover START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := fa.Recover(clus); err != nil {
@@ -194,11 +194,11 @@ func (clus *Cluster) doRound() error {
 				"stress PAUSE",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.failures)),
+				zap.Int("case-total", len(clus.cases)),
 				zap.String("desc", fa.Desc()),
 			)
 			ems := clus.stresser.Pause()
-			if fcase == rpcpb.FailureCase_NO_FAIL_WITH_STRESS && len(ems) > 0 {
+			if fcase == rpcpb.Case_NO_FAIL_WITH_STRESS && len(ems) > 0 {
 				ess := make([]string, 0, len(ems))
 				cnt := 0
 				for k, v := range ems {
@@ -223,7 +223,7 @@ func (clus *Cluster) doRound() error {
 			"health check START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := clus.WaitHealth(); err != nil {
@@ -234,7 +234,7 @@ func (clus *Cluster) doRound() error {
 			"consistency check START",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
 		if err := clus.checkConsistency(); err != nil {
@@ -245,7 +245,7 @@ func (clus *Cluster) doRound() error {
 			"case PASS",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 			zap.Duration("took", time.Since(caseNow)),
 		)
@@ -255,7 +255,7 @@ func (clus *Cluster) doRound() error {
 		"round ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Strings("failures", clus.failureStrings()),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 		zap.Duration("took", time.Since(roundNow)),
 	)
 	return nil
@@ -314,7 +314,7 @@ func (clus *Cluster) failed() {
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 	)
 	clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
@@ -322,14 +322,14 @@ func (clus *Cluster) failed() {
 }
 
 func (clus *Cluster) cleanup() error {
-	if clus.Tester.ExitOnFailure {
+	if clus.Tester.ExitOnCaseFail {
 		defer clus.failed()
 	}
 
 	roundFailedTotalCounter.Inc()
 	desc := "compact/defrag"
 	if clus.cs != -1 {
-		desc = clus.failures[clus.cs].Desc()
+		desc = clus.cases[clus.cs].Desc()
 	}
 	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
@@ -337,7 +337,7 @@ func (clus *Cluster) cleanup() error {
 		"closing stressers before archiving failure data",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 	)
 	clus.stresser.Close()
 
@@ -346,7 +346,7 @@ func (clus *Cluster) cleanup() error {
 			"cleanup FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.Error(err),
 		)
 		return err
@@ -356,7 +356,7 @@ func (clus *Cluster) cleanup() error {
 			"restart FAIL",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.failures)),
+			zap.Int("case-total", len(clus.cases)),
 			zap.Error(err),
 		)
 		return err

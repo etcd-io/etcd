@@ -2,7 +2,7 @@
 
 [`functional`](https://godoc.org/github.com/coreos/etcd/functional) verifies the correct behavior of etcd under various system and network malfunctions. It sets up an etcd cluster under high pressure loads and continuously injects failures into the cluster. Then it expects the etcd cluster to recover within a few seconds. This has been extremely helpful to find critical bugs.
 
-See [`rpcpb.FailureCase`](https://godoc.org/github.com/coreos/etcd/functional/rpcpb#FailureCase) for all failure cases.
+See [`rpcpb.Case`](https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case) for all failure cases.
 
 See [functional.yaml](https://github.com/coreos/etcd/blob/master/functional.yaml) for an example configuration.
 

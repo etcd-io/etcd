@@ -24,20 +24,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type fetchSnapshotAndFailureQuorum struct {
+type fetchSnapshotCaseQuorum struct {
 	desc        string
-	failureCase rpcpb.FailureCase
+	rpcpbCase   rpcpb.Case
 	injected    map[int]struct{}
 	snapshotted int
 }
 
-func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
+func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 	//  1. Assume node C is the current leader with most up-to-date data.
 	lead, err := clus.GetLeader()
 	if err != nil {
 		return err
 	}
-	f.snapshotted = lead
+	c.snapshotted = lead
 
 	//  2. Download snapshot from node C, before destroying node A and B.
 	clus.lg.Info(
@@ -101,12 +101,12 @@ func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
 
 	//  3. Destroy node A and B, and make the whole cluster inoperable.
 	for {
-		f.injected = pickQuorum(len(clus.Members))
-		if _, ok := f.injected[lead]; !ok {
+		c.injected = pickQuorum(len(clus.Members))
+		if _, ok := c.injected[lead]; !ok {
 			break
 		}
 	}
-	for idx := range f.injected {
+	for idx := range c.injected {
 		clus.lg.Info(
 			"disastrous machine failure to quorum START",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
@@ -139,42 +139,42 @@ func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
 	return err
 }
 
-func (f *fetchSnapshotAndFailureQuorum) Recover(clus *Cluster) error {
+func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 	//  6. Restore a new seed member from node C's latest snapshot file.
 
 	//  7. Add another member to establish 2-node cluster.
 
 	//  8. Add another member to establish 3-node cluster.
 
-	// for idx := range f.injected {
-	// 	if err := f.recoverMember(clus, idx); err != nil {
+	// for idx := range c.injected {
+	// 	if err := c.recoverMember(clus, idx); err != nil {
 	// 		return err
 	// 	}
 	// }
 	return nil
 }
 
-func (f *fetchSnapshotAndFailureQuorum) Desc() string {
-	if f.desc != "" {
-		return f.desc
+func (c *fetchSnapshotCaseQuorum) Desc() string {
+	if c.desc != "" {
+		return c.desc
 	}
-	return f.failureCase.String()
+	return c.rpcpbCase.String()
 }
 
-func (f *fetchSnapshotAndFailureQuorum) FailureCase() rpcpb.FailureCase {
-	return f.failureCase
+func (c *fetchSnapshotCaseQuorum) TestCase() rpcpb.Case {
+	return c.rpcpbCase
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus *Cluster) Failure {
-	f := &fetchSnapshotAndFailureQuorum{
-		failureCase: rpcpb.FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH,
+func new_Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus *Cluster) Case {
+	c := &fetchSnapshotCaseQuorum{
+		rpcpbCase:   rpcpb.Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH,
 		injected:    make(map[int]struct{}),
 		snapshotted: -1,
 	}
 	// simulate real life; machine replacements may happen
 	// after some time since disaster
-	return &failureDelay{
-		Failure:       f,
-		delayDuration: clus.GetFailureDelayDuration(),
+	return &caseDelay{
+		Case:          c,
+		delayDuration: clus.GetCaseDelayDuration(),
 	}
 }

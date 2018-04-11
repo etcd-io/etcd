@@ -189,12 +189,12 @@ func Test_read(t *testing.T) {
 			DelayLatencyMsRv:      500,
 			UpdatedDelayLatencyMs: 5000,
 			RoundLimit:            1,
-			ExitOnFailure:         true,
+			ExitOnCaseFail:        true,
 			ConsistencyCheck:      true,
 			EnablePprof:           true,
-			FailureDelayMs:        7000,
-			FailureShuffle:        true,
-			FailureCases: []string{
+			CaseDelayMs:           7000,
+			CaseShuffle:           true,
+			Cases: []string{
 				"SIGTERM_ONE_FOLLOWER",
 				"SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT",
 				"SIGTERM_LEADER",
@@ -259,16 +259,16 @@ func Test_read(t *testing.T) {
 
 	cfg.lg = logger
 
-	cfg.updateFailures()
+	cfg.updateCases()
 	fs1 := cfg.failureStrings()
 
-	cfg.shuffleFailures()
+	cfg.shuffleCases()
 	fs2 := cfg.failureStrings()
 	if reflect.DeepEqual(fs1, fs2) {
 		t.Fatalf("expected shuffled failure cases, got %q", fs2)
 	}
 
-	cfg.shuffleFailures()
+	cfg.shuffleCases()
 	fs3 := cfg.failureStrings()
 	if reflect.DeepEqual(fs2, fs3) {
 		t.Fatalf("expected reshuffled failure cases from %q, got %q", fs2, fs3)
