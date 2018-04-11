@@ -621,8 +621,8 @@ function build_cov_pass {
 # fail fast on static tests
 function build_pass {
 	echo "Checking build..."
-	GO_BUILD_FLAGS="-a -v" etcd_build
-	GO_BUILD_FLAGS="-a -v" tools_build
+	GO_BUILD_FLAGS="-v" etcd_build
+	GO_BUILD_FLAGS="-v" tools_build
 }
 
 for pass in $PASSES; do
