@@ -196,12 +196,16 @@ enum Operation {
   // directories to simulate destroying the whole machine.
   SIGQUIT_ETCD_AND_REMOVE_DATA = 21;
 
+  // FETCH_SNAPSHOT is sent to trigger local member to download its snapshot
+  // onto its local disk with the specified path from tester.
+  FETCH_SNAPSHOT = 30;
+
   // SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
   // thus need to archive etcd data directories.
-  SIGQUIT_ETCD_AND_ARCHIVE_DATA = 30;
+  SIGQUIT_ETCD_AND_ARCHIVE_DATA = 40;
   // SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT destroys etcd process,
   // etcd data, and agent server.
-  SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT = 31;
+  SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT = 41;
 
   // BLACKHOLE_PEER_PORT_TX_RX drops all outgoing/incoming packets from/to
   // the peer port on target member's peer port.
