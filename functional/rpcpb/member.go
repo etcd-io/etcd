@@ -265,15 +265,28 @@ func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
 		return err
 	}
 
+	m.SnapshotInfo = &SnapshotInfo{
+		MemberName:        m.Etcd.Name,
+		MemberClientURLs:  m.Etcd.AdvertiseClientURLs,
+		SnapshotPath:      m.SnapshotPath,
+		SnapshotFileSize:  humanize.Bytes(uint64(fi.Size())),
+		SnapshotTotalSize: humanize.Bytes(uint64(st.TotalSize)),
+		SnapshotTotalKey:  int64(st.TotalKey),
+		SnapshotHash:      int64(st.Hash),
+		SnapshotRevision:  st.Revision,
+		Took:              fmt.Sprintf("%v", took),
+	}
 	lg.Info(
 		"snapshot saved",
+		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
 		zap.String("snapshot-path", m.SnapshotPath),
-		zap.String("snapshot-file-size", humanize.Bytes(uint64(fi.Size()))),
-		zap.String("snapshot-total-size", humanize.Bytes(uint64(st.TotalSize))),
-		zap.Int("snapshot-total-key", st.TotalKey),
-		zap.Uint32("snapshot-hash", st.Hash),
-		zap.Int64("snapshot-revision", st.Revision),
-		zap.Duration("took", took),
+		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),
+		zap.String("snapshot-total-size", m.SnapshotInfo.SnapshotTotalSize),
+		zap.Int64("snapshot-total-key", m.SnapshotInfo.SnapshotTotalKey),
+		zap.Int64("snapshot-hash", m.SnapshotInfo.SnapshotHash),
+		zap.Int64("snapshot-revision", m.SnapshotInfo.SnapshotRevision),
+		zap.String("took", m.SnapshotInfo.Took),
 	)
 	return nil
 }

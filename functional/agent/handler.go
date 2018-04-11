@@ -511,8 +511,9 @@ func (srv *Server) handle_FETCH_SNAPSHOT() (*rpcpb.Response, error) {
 		return nil, err
 	}
 	return &rpcpb.Response{
-		Success: true,
-		Status:  "downloaded snapshot",
+		Success:      true,
+		Status:       "downloaded snapshot",
+		SnapshotInfo: srv.Member.SnapshotInfo,
 	}, nil
 }
 

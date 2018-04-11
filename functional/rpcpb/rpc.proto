@@ -16,11 +16,28 @@ message Request {
   Tester Tester = 3;
 }
 
+// SnapshotInfo contains FETCH_SNAPSHOT request results.
+message SnapshotInfo {
+  string MemberName = 1;
+  repeated string MemberClientURLs = 2;
+  string SnapshotPath = 3;
+  string SnapshotFileSize = 4;
+  string SnapshotTotalSize = 5;
+  int64 SnapshotTotalKey = 6;
+  int64 SnapshotHash = 7;
+  int64 SnapshotRevision = 8;
+  string Took = 9;
+}
+
 message Response {
   bool Success = 1;
   string Status = 2;
+
   // Member contains the same Member object from tester request.
   Member Member = 3;
+
+  // SnapshotInfo contains FETCH_SNAPSHOT request results.
+  SnapshotInfo SnapshotInfo = 4;
 }
 
 service Transport {
@@ -76,6 +93,8 @@ message Member {
 
   // SnapshotPath is the snapshot file path to store or restore from.
   string SnapshotPath = 601 [(gogoproto.moretags) = "yaml:\"snapshot-path\""];
+  // SnapshotInfo contains last FETCH_SNAPSHOT request results.
+  SnapshotInfo SnapshotInfo = 602;
 }
 
 message Tester {
