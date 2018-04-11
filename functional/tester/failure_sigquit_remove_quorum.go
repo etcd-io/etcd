@@ -16,21 +16,13 @@ package tester
 
 import (
 	"context"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/functional/rpcpb"
 
 	"go.uber.org/zap"
 )
-
-//  1. Assume node C is the current leader with most up-to-date data.
-//  2. Download snapshot from node C, before destroying node A and B.
-//  3. Destroy node A and B, and make the whole cluster inoperable.
-//  4. Now node C cannot operate either.
-//  5. SIGTERM node C and remove its data directories.
-//  6. Restore a new seed member from node C's latest snapshot file.
-//  7. Add another member to establish 2-node cluster.
-//  8. Add another member to establish 3-node cluster.
 
 type fetchSnapshotAndFailureQuorum struct {
 	desc        string
@@ -82,13 +74,13 @@ func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
 		return err
 	}
 
-	cli, err := clus.Members[lead].CreateEtcdClient()
+	leaderc, err := clus.Members[lead].CreateEtcdClient()
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer leaderc.Close()
 	var mresp *clientv3.MemberListResponse
-	mresp, err = cli.MemberList(context.Background())
+	mresp, err = leaderc.MemberList(context.Background())
 	mss := []string{}
 	if err == nil && mresp != nil {
 		mss = describeMembers(mresp)
@@ -103,6 +95,10 @@ func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
 		return err
 	}
 
+	// simulate real life; machine failures may happen
+	// after some time since last snapshot save
+	time.Sleep(time.Second)
+
 	//  3. Destroy node A and B, and make the whole cluster inoperable.
 	for {
 		f.injected = pickQuorum(len(clus.Members))
@@ -110,11 +106,46 @@ func (f *fetchSnapshotAndFailureQuorum) Inject(clus *Cluster) error {
 			break
 		}
 	}
+	for idx := range f.injected {
+		clus.lg.Info(
+			"disastrous machine failure to quorum START",
+			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
+			zap.Error(err),
+		)
+		err = clus.sendOp(idx, rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA)
+		clus.lg.Info(
+			"disastrous machine failure to quorum END",
+			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
+			zap.Error(err),
+		)
+		if err != nil {
+			return err
+		}
+	}
 
-	return nil
+	//  4. Now node C cannot operate either.
+	//  5. SIGTERM node C and remove its data directories.
+	clus.lg.Info(
+		"disastrous machine failure to old leader START",
+		zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
+		zap.Error(err),
+	)
+	err = clus.sendOp(lead, rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA)
+	clus.lg.Info(
+		"disastrous machine failure to old leader END",
+		zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
+		zap.Error(err),
+	)
+	return err
 }
 
 func (f *fetchSnapshotAndFailureQuorum) Recover(clus *Cluster) error {
+	//  6. Restore a new seed member from node C's latest snapshot file.
+
+	//  7. Add another member to establish 2-node cluster.
+
+	//  8. Add another member to establish 3-node cluster.
+
 	// for idx := range f.injected {
 	// 	if err := f.recoverMember(clus, idx); err != nil {
 	// 		return err
@@ -140,6 +171,8 @@ func new_FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_
 		injected:    make(map[int]struct{}),
 		snapshotted: -1,
 	}
+	// simulate real life; machine replacements may happen
+	// after some time since disaster
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),
