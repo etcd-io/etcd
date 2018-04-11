@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/snapshot"
 
 	"github.com/dustin/go-humanize"
@@ -232,8 +233,10 @@ func (m *Member) WriteHealthKey() error {
 	return nil
 }
 
-// FetchSnapshot downloads a snapshot file from this member.
-func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
+// SaveSnapshot downloads a snapshot file from this member, locally.
+// It's meant to requested remotely, so that local member can store
+// snapshot file on local disk.
+func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 	// remove existing snapshot first
 	if err = os.Remove(m.SnapshotPath); err != nil {
 		return err
@@ -246,6 +249,12 @@ func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
 	}
 	defer cli.Close()
 
+	lg.Info(
+		"snapshot save START",
+		zap.String("member-name", m.Etcd.Name),
+		zap.Strings("member-client-urls", m.Etcd.AdvertiseClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+	)
 	now := time.Now()
 	mgr := snapshot.NewV3(cli, lg)
 	if err = mgr.Save(context.Background(), m.SnapshotPath); err != nil {
@@ -258,13 +267,11 @@ func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
 	if err != nil {
 		return err
 	}
-
 	var st snapshot.Status
 	st, err = mgr.Status(m.SnapshotPath)
 	if err != nil {
 		return err
 	}
-
 	m.SnapshotInfo = &SnapshotInfo{
 		MemberName:        m.Etcd.Name,
 		MemberClientURLs:  m.Etcd.AdvertiseClientURLs,
@@ -277,7 +284,7 @@ func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
 		Took:              fmt.Sprintf("%v", took),
 	}
 	lg.Info(
-		"snapshot saved",
+		"snapshot save END",
 		zap.String("member-name", m.SnapshotInfo.MemberName),
 		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
 		zap.String("snapshot-path", m.SnapshotPath),
@@ -289,4 +296,62 @@ func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
 		zap.String("took", m.SnapshotInfo.Took),
 	)
 	return nil
+}
+
+// RestoreSnapshot restores a cluster from a given snapshot file on disk.
+// It's meant to requested remotely, so that local member can load the
+// snapshot file from local disk.
+func (m *Member) RestoreSnapshot(lg *zap.Logger) (err error) {
+	if err = os.RemoveAll(m.EtcdOnSnapshotRestore.DataDir); err != nil {
+		return err
+	}
+	if err = os.RemoveAll(m.EtcdOnSnapshotRestore.WALDir); err != nil {
+		return err
+	}
+
+	var initialCluster types.URLsMap
+	initialCluster, err = types.NewURLsMap(m.EtcdOnSnapshotRestore.InitialCluster)
+	if err != nil {
+		return err
+	}
+	var peerURLs types.URLs
+	peerURLs, err = types.NewURLs(m.EtcdOnSnapshotRestore.AdvertisePeerURLs)
+	if err != nil {
+		return err
+	}
+
+	lg.Info(
+		"snapshot restore START",
+		zap.String("member-name", m.Etcd.Name),
+		zap.Strings("member-client-urls", m.Etcd.AdvertiseClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+	)
+	now := time.Now()
+	mgr := snapshot.NewV3(nil, lg)
+	err = mgr.Restore(m.SnapshotInfo.SnapshotPath, snapshot.RestoreConfig{
+		Name:                m.EtcdOnSnapshotRestore.Name,
+		OutputDataDir:       m.EtcdOnSnapshotRestore.DataDir,
+		OutputWALDir:        m.EtcdOnSnapshotRestore.WALDir,
+		InitialCluster:      initialCluster,
+		InitialClusterToken: m.EtcdOnSnapshotRestore.InitialClusterToken,
+		PeerURLs:            peerURLs,
+		SkipHashCheck:       false,
+
+		// TODO: SkipHashCheck == true, for recover from existing db file
+	})
+	took := time.Since(now)
+	lg.Info(
+		"snapshot restore END",
+		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),
+		zap.String("snapshot-total-size", m.SnapshotInfo.SnapshotTotalSize),
+		zap.Int64("snapshot-total-key", m.SnapshotInfo.SnapshotTotalKey),
+		zap.Int64("snapshot-hash", m.SnapshotInfo.SnapshotHash),
+		zap.Int64("snapshot-revision", m.SnapshotInfo.SnapshotRevision),
+		zap.String("took", took.String()),
+		zap.Error(err),
+	)
+	return err
 }
