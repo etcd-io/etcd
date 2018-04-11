@@ -59,8 +59,10 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 
 	case rpcpb.Operation_SAVE_SNAPSHOT:
 		return srv.handle_SAVE_SNAPSHOT()
-	case rpcpb.Operation_RESTORE_SNAPSHOT_AND_RESTART_ETCD:
-		return srv.handle_RESTORE_SNAPSHOT_AND_RESTART_ETCD()
+	case rpcpb.Operation_RESTORE_RESTART_FROM_SNAPSHOT:
+		return srv.handle_RESTORE_RESTART_FROM_SNAPSHOT()
+	case rpcpb.Operation_RESTART_FROM_SNAPSHOT:
+		return srv.handle_RESTART_FROM_SNAPSHOT()
 
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
@@ -522,12 +524,19 @@ func (srv *Server) handle_SAVE_SNAPSHOT() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handle_RESTORE_SNAPSHOT_AND_RESTART_ETCD() (*rpcpb.Response, error) {
-	err := srv.Member.RestoreSnapshot(srv.lg)
+func (srv *Server) handle_RESTORE_RESTART_FROM_SNAPSHOT() (resp *rpcpb.Response, err error) {
+	err = srv.Member.RestoreSnapshot(srv.lg)
 	if err != nil {
 		return nil, err
 	}
+	resp, err = srv.handle_RESTART_FROM_SNAPSHOT()
+	if resp != nil && err == nil {
+		resp.Status = "restored snapshot and " + resp.Status
+	}
+	return resp, err
+}
 
+func (srv *Server) handle_RESTART_FROM_SNAPSHOT() (resp *rpcpb.Response, err error) {
 	srv.creatEtcdCmd(true)
 
 	if err = srv.saveTLSAssets(); err != nil {
@@ -552,7 +561,7 @@ func (srv *Server) handle_RESTORE_SNAPSHOT_AND_RESTART_ETCD() (*rpcpb.Response, 
 
 	return &rpcpb.Response{
 		Success:      true,
-		Status:       "restored snapshot and restarted etcd",
+		Status:       "restarted etcd from snapshot",
 		SnapshotInfo: srv.Member.SnapshotInfo,
 	}, nil
 }
