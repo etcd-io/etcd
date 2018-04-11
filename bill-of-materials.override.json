@@ -1,13 +1,5 @@
 [
 	{
-		"project": "bitbucket.org/ww/goautoneg",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License"
-			}
-		]
-	},
-	{
 		"project": "github.com/ghodss/yaml",
 		"licenses": [
 			{
