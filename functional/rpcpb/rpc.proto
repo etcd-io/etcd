@@ -308,6 +308,20 @@ enum FailureCase {
   // and then each member continues to process client requests.
   SIGQUIT_AND_REMOVE_LEADER = 12;
 
+  // SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader,
+  // deletes its data directories on disk, and removes this member from
+  // cluster (membership reconfiguration). On recovery, tester adds a new
+  // member, and this member joins the existing cluster restart. On member
+  // remove, cluster waits until most up-to-date node (new leader) applies
+  // the snapshot count of entries since the stop operation. This simulates
+  // destroying a leader machine, where operator needs to add a new member
+  // from a fresh machine.
+  // The expected behavior is that on member remove, cluster elects a new
+  // leader, and a new member joins the existing cluster and receives a
+  // snapshot from the newly elected leader. As always, after recovery, each
+  // member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT = 13;
+
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
   // (non-leader), and waits for "failure-delay-ms" until recovery.
