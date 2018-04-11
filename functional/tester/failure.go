@@ -69,11 +69,11 @@ type failureFollower struct {
 }
 
 func (f *failureFollower) updateIndex(clus *Cluster) error {
-	idx, err := clus.GetLeader()
+	lead, err := clus.GetLeader()
 	if err != nil {
 		return err
 	}
-	f.lead = idx
+	f.lead = lead
 
 	n := len(clus.Members)
 	if f.last == -1 { // first run
@@ -119,12 +119,12 @@ type failureLeader struct {
 }
 
 func (f *failureLeader) updateIndex(clus *Cluster) error {
-	idx, err := clus.GetLeader()
+	lead, err := clus.GetLeader()
 	if err != nil {
 		return err
 	}
-	f.lead = idx
-	f.last = idx
+	f.lead = lead
+	f.last = lead
 	return nil
 }
 
