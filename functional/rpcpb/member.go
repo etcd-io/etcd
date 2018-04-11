@@ -18,12 +18,16 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/snapshot"
 
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -229,7 +233,47 @@ func (m *Member) WriteHealthKey() error {
 }
 
 // FetchSnapshot downloads a snapshot file from this member.
-func (m *Member) FetchSnapshot() error {
+func (m *Member) FetchSnapshot(lg *zap.Logger) (err error) {
+	// remove existing snapshot first
+	if err = os.Remove(m.SnapshotPath); err != nil {
+		return err
+	}
 
+	var cli *clientv3.Client
+	cli, err = m.CreateEtcdClient()
+	if err != nil {
+		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
+	}
+	defer cli.Close()
+
+	now := time.Now()
+	mgr := snapshot.NewV3(cli, lg)
+	if err = mgr.Save(context.Background(), m.SnapshotPath); err != nil {
+		return err
+	}
+	took := time.Since(now)
+
+	var fi os.FileInfo
+	fi, err = os.Stat(m.SnapshotPath)
+	if err != nil {
+		return err
+	}
+
+	var st snapshot.Status
+	st, err = mgr.Status(m.SnapshotPath)
+	if err != nil {
+		return err
+	}
+
+	lg.Info(
+		"snapshot saved",
+		zap.String("snapshot-path", m.SnapshotPath),
+		zap.String("snapshot-file-size", humanize.Bytes(uint64(fi.Size()))),
+		zap.String("snapshot-total-size", humanize.Bytes(uint64(st.TotalSize))),
+		zap.Int("snapshot-total-key", st.TotalKey),
+		zap.Uint32("snapshot-hash", st.Hash),
+		zap.Int64("snapshot-revision", st.Revision),
+		zap.Duration("took", took),
+	)
 	return nil
 }
