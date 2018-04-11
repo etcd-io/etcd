@@ -328,28 +328,31 @@ enum FailureCase {
   // member must be able to process client requests.
   SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT = 13;
 
-  // SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH first stops
-  // majority number of nodes, deletes data directories on those quorum nodes,
-  // to make the whole cluster inoperable. Now that quorum and their data are
-  // totally destroyed, cluster cannot even remove unavailable nodes (e.g. 2
-  // out of 3 are lost, so no leader can be elected).
+  // SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH first
+  // stops majority number of nodes, deletes data directories on those quorum
+  // nodes, to make the whole cluster inoperable. Now that quorum and their
+  // data are totally destroyed, cluster cannot even remove unavailable nodes
+  // (e.g. 2 out of 3 are lost, so no leader can be elected).
   // Let's assume 3-node cluster of node A, B, and C. One day, node A and B
   // are destroyed and all their data are gone. The only viable solution is
   // to recover from C's latest snapshot.
-  // Tester simulates this scenario by:
-  //  1. Download snapshot from node C, before destroying node A and B.
-  //  2. Destroy node A and B, and make the whole cluster inoperable.
-  //  3. Now node C cannot operate either.
-  //  4. SIGTERM node C and remove its data directories.
-  //  5. Restore a new seed member from node C's latest snapshot file.
-  //  6. Add another member to establish 2-node cluster.
-  //  7. Add another member to establish 3-node cluster.
+  //
+  // To simulate:
+  //  1. Assume node C is the current leader with most up-to-date data.
+  //  2. Download snapshot from node C, before destroying node A and B.
+  //  3. Destroy node A and B, and make the whole cluster inoperable.
+  //  4. Now node C cannot operate either.
+  //  5. SIGTERM node C and remove its data directories.
+  //  6. Restore a new seed member from node C's latest snapshot file.
+  //  7. Add another member to establish 2-node cluster.
+  //  8. Add another member to establish 3-node cluster.
+  //
   // The expected behavior is that etcd successfully recovers from such
   // disastrous situation as only 1-node survives out of 3-node cluster,
   // new members joins the existing cluster, and previous data from snapshot
   // are still preserved after recovery process. As always, after recovery,
   // each member must be able to process client requests.
-  SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH = 14;
+  SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH = 14;
 
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower

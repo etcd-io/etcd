@@ -69,7 +69,7 @@ func (f *fetchSnapshotAndFailureQuorum) FailureCase() rpcpb.FailureCase {
 	return f.failureCase
 }
 
-func inject_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH(clus *Cluster, idx1 int) error {
+func inject_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus *Cluster, idx1 int) error {
 	cli1, err := clus.Members[idx1].CreateEtcdClient()
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func inject_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH(clus *Cl
 	return err
 }
 
-func recover_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH(clus *Cluster, idx1 int) error {
+func recover_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus *Cluster, idx1 int) error {
 	idx2 := (idx1 + 1) % len(clus.Members)
 	cli2, err := clus.Members[idx2].CreateEtcdClient()
 	if err != nil {
@@ -216,12 +216,12 @@ func recover_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH(clus *C
 	return err
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH(clus *Cluster) Failure {
+func new_FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus *Cluster) Failure {
 	f := &fetchSnapshotAndFailureQuorum{
 		failureByFunc: failureByFunc{
-			failureCase:   rpcpb.FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH,
-			injectMember:  inject_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH,
-			recoverMember: recover_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_SNAPSHOT_FROM_SCRATCH,
+			failureCase:   rpcpb.FailureCase_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH,
+			injectMember:  inject_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH,
+			recoverMember: recover_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH,
 		},
 		injected: make(map[int]struct{}),
 	}
