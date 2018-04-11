@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transport
+package proxy
 
 import (
 	"bytes"
@@ -28,28 +28,33 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc/grpclog"
+	"github.com/coreos/etcd/pkg/transport"
+
+	"go.uber.org/zap"
 )
 
-var testTLSInfo = TLSInfo{
+// enable DebugLevel
+var testLogger = zap.NewExample()
+
+var testTLSInfo = transport.TLSInfo{
 	KeyFile:        "./fixtures/server.key.insecure",
 	CertFile:       "./fixtures/server.crt",
 	TrustedCAFile:  "./fixtures/ca.crt",
 	ClientCertAuth: true,
 }
 
-func TestProxy_Unix_Insecure(t *testing.T)         { testProxy(t, "unix", false, false) }
-func TestProxy_TCP_Insecure(t *testing.T)          { testProxy(t, "tcp", false, false) }
-func TestProxy_Unix_Secure(t *testing.T)           { testProxy(t, "unix", true, false) }
-func TestProxy_TCP_Secure(t *testing.T)            { testProxy(t, "tcp", true, false) }
-func TestProxy_Unix_Insecure_DelayTx(t *testing.T) { testProxy(t, "unix", false, true) }
-func TestProxy_TCP_Insecure_DelayTx(t *testing.T)  { testProxy(t, "tcp", false, true) }
-func TestProxy_Unix_Secure_DelayTx(t *testing.T)   { testProxy(t, "unix", true, true) }
-func TestProxy_TCP_Secure_DelayTx(t *testing.T)    { testProxy(t, "tcp", true, true) }
-func testProxy(t *testing.T, scheme string, secure bool, delayTx bool) {
+func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
+func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
+func TestServer_Unix_Secure(t *testing.T)           { testServer(t, "unix", true, false) }
+func TestServer_TCP_Secure(t *testing.T)            { testServer(t, "tcp", true, false) }
+func TestServer_Unix_Insecure_DelayTx(t *testing.T) { testServer(t, "unix", false, true) }
+func TestServer_TCP_Insecure_DelayTx(t *testing.T)  { testServer(t, "tcp", false, true) }
+func TestServer_Unix_Secure_DelayTx(t *testing.T)   { testServer(t, "unix", true, true) }
+func TestServer_TCP_Secure_DelayTx(t *testing.T)    { testServer(t, "tcp", true, true) }
+func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	if scheme == "tcp" {
-		ln1, ln2 := listen(t, "tcp", "localhost:0", TLSInfo{}), listen(t, "tcp", "localhost:0", TLSInfo{})
+		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
 		srcAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
 		ln1.Close()
 		ln2.Close()
@@ -61,20 +66,20 @@ func testProxy(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 	tlsInfo := testTLSInfo
 	if !secure {
-		tlsInfo = TLSInfo{}
+		tlsInfo = transport.TLSInfo{}
 	}
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
-	cfg := ProxyConfig{
+	cfg := ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
 	}
-	p := NewProxy(cfg)
+	p := NewServer(cfg)
 	<-p.Ready()
 	defer p.Close()
 
@@ -159,9 +164,9 @@ func testProxy(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 }
 
-func TestProxy_Unix_Insecure_DelayAccept(t *testing.T) { testProxyDelayAccept(t, false) }
-func TestProxy_Unix_Secure_DelayAccept(t *testing.T)   { testProxyDelayAccept(t, true) }
-func testProxyDelayAccept(t *testing.T, secure bool) {
+func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
+func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
+func testServerDelayAccept(t *testing.T, secure bool) {
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
@@ -169,21 +174,21 @@ func testProxyDelayAccept(t *testing.T, secure bool) {
 	}()
 	tlsInfo := testTLSInfo
 	if !secure {
-		tlsInfo = TLSInfo{}
+		tlsInfo = transport.TLSInfo{}
 	}
 	scheme := "unix"
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
-	cfg := ProxyConfig{
+	cfg := ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
 	}
-	p := NewProxy(cfg)
+	p := NewServer(cfg)
 	<-p.Ready()
 	defer p.Close()
 
@@ -218,20 +223,20 @@ func testProxyDelayAccept(t *testing.T, secure bool) {
 	}
 }
 
-func TestProxy_PauseTx(t *testing.T) {
+func TestServer_PauseTx(t *testing.T) {
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, TLSInfo{})
+	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
-	p := NewProxy(ProxyConfig{
+	p := NewServer(ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -239,7 +244,7 @@ func TestProxy_PauseTx(t *testing.T) {
 	p.PauseTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 
 	recvc := make(chan []byte)
 	go func() {
@@ -264,20 +269,20 @@ func TestProxy_PauseTx(t *testing.T) {
 	}
 }
 
-func TestProxy_BlackholeTx(t *testing.T) {
+func TestServer_BlackholeTx(t *testing.T) {
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, TLSInfo{})
+	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
-	p := NewProxy(ProxyConfig{
+	p := NewServer(ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -285,7 +290,7 @@ func TestProxy_BlackholeTx(t *testing.T) {
 	p.BlackholeTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 
 	recvc := make(chan []byte)
 	go func() {
@@ -302,7 +307,7 @@ func TestProxy_BlackholeTx(t *testing.T) {
 
 	// expect different data, old data dropped
 	data[0]++
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 
 	select {
 	case d := <-recvc:
@@ -314,20 +319,20 @@ func TestProxy_BlackholeTx(t *testing.T) {
 	}
 }
 
-func TestProxy_CorruptTx(t *testing.T) {
+func TestServer_CorruptTx(t *testing.T) {
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, TLSInfo{})
+	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
-	p := NewProxy(ProxyConfig{
+	p := NewServer(ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -337,48 +342,48 @@ func TestProxy_CorruptTx(t *testing.T) {
 		return d
 	})
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 	if d := receive(t, ln); bytes.Equal(d, data) {
 		t.Fatalf("expected corrupted data, got %q", string(d))
 	}
 
 	p.UncorruptTx()
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected uncorrupted data, got %q", string(d))
 	}
 }
 
-func TestProxy_Shutdown(t *testing.T) {
+func TestServer_Shutdown(t *testing.T) {
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, TLSInfo{})
+	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
-	p := NewProxy(ProxyConfig{
+	p := NewServer(ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
 
-	px, _ := p.(*proxy)
+	px, _ := p.(*proxyServer)
 	px.listener.Close()
 	time.Sleep(200 * time.Millisecond)
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
 }
 
-func TestProxy_ShutdownListener(t *testing.T) {
+func TestServer_ShutdownListener(t *testing.T) {
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -386,13 +391,13 @@ func TestProxy_ShutdownListener(t *testing.T) {
 		os.RemoveAll(dstAddr)
 	}()
 
-	ln := listen(t, scheme, dstAddr, TLSInfo{})
+	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
-	p := NewProxy(ProxyConfig{
+	p := NewServer(ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	})
 	<-p.Ready()
 	defer p.Close()
@@ -401,23 +406,23 @@ func TestProxy_ShutdownListener(t *testing.T) {
 	ln.Close()
 	time.Sleep(200 * time.Millisecond)
 
-	ln = listen(t, scheme, dstAddr, TLSInfo{})
+	ln = listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, TLSInfo{})
+	send(t, data, scheme, srcAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
 }
 
-func TestProxyHTTP_Insecure_DelayTx(t *testing.T) { testProxyHTTP(t, false, true) }
-func TestProxyHTTP_Secure_DelayTx(t *testing.T)   { testProxyHTTP(t, true, true) }
-func TestProxyHTTP_Insecure_DelayRx(t *testing.T) { testProxyHTTP(t, false, false) }
-func TestProxyHTTP_Secure_DelayRx(t *testing.T)   { testProxyHTTP(t, true, false) }
-func testProxyHTTP(t *testing.T, secure, delayTx bool) {
+func TestServerHTTP_Insecure_DelayTx(t *testing.T) { testServerHTTP(t, false, true) }
+func TestServerHTTP_Secure_DelayTx(t *testing.T)   { testServerHTTP(t, true, true) }
+func TestServerHTTP_Insecure_DelayRx(t *testing.T) { testServerHTTP(t, false, false) }
+func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, false) }
+func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	scheme := "tcp"
-	ln1, ln2 := listen(t, scheme, "localhost:0", TLSInfo{}), listen(t, scheme, "localhost:0", TLSInfo{})
+	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
 	srcAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
 	ln1.Close()
 	ln2.Close()
@@ -461,15 +466,15 @@ func testProxyHTTP(t *testing.T, secure, delayTx bool) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
-	cfg := ProxyConfig{
+	cfg := ServerConfig{
+		Logger: testLogger,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
-		Logger: grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 5),
 	}
 	if secure {
 		cfg.TLSInfo = testTLSInfo
 	}
-	p := NewProxy(cfg)
+	p := NewServer(cfg)
 	<-p.Ready()
 	defer p.Close()
 
@@ -478,7 +483,7 @@ func testProxyHTTP(t *testing.T, secure, delayTx bool) {
 	now := time.Now()
 	var resp *http.Response
 	if secure {
-		tp, terr := NewTransport(testTLSInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(testTLSInfo, 3*time.Second)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -514,7 +519,7 @@ func testProxyHTTP(t *testing.T, secure, delayTx bool) {
 
 	now = time.Now()
 	if secure {
-		tp, terr := NewTransport(testTLSInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(testTLSInfo, 3*time.Second)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -550,10 +555,10 @@ func newUnixAddr() string {
 	return addr
 }
 
-func listen(t *testing.T, scheme, addr string, tlsInfo TLSInfo) (ln net.Listener) {
+func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln net.Listener) {
 	var err error
 	if !tlsInfo.Empty() {
-		ln, err = NewListener(addr, scheme, &tlsInfo)
+		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
 	} else {
 		ln, err = net.Listen(scheme, addr)
 	}
@@ -563,11 +568,11 @@ func listen(t *testing.T, scheme, addr string, tlsInfo TLSInfo) (ln net.Listener
 	return ln
 }
 
-func send(t *testing.T, data []byte, scheme, addr string, tlsInfo TLSInfo) {
+func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
 	var out net.Conn
 	var err error
 	if !tlsInfo.Empty() {
-		tp, terr := NewTransport(tlsInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
 		if terr != nil {
 			t.Fatal(terr)
 		}
