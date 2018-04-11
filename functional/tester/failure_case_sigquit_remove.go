@@ -167,6 +167,13 @@ func new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus *Cluster) Failure {
 	}
 }
 
+func new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus),
+	}
+}
+
 func describeMembers(mresp *clientv3.MemberListResponse) (ss []string) {
 	ss = make([]string, len(mresp.Members))
 	for i, m := range mresp.Members {
