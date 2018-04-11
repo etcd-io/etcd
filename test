@@ -180,7 +180,7 @@ function integration_extra {
 
 function functional_pass {
   	# Clean up any data and logs from previous runs
-  	rm -rf /tmp/etcd-agent-data-* /tmp/etcd-agent-data-*.backup
+  	rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
 	for a in 1 2 3; do
 		./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
