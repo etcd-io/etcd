@@ -170,6 +170,9 @@ func (clus *Cluster) updateFailures() {
 		case "SIGQUIT_AND_REMOVE_LEADER":
 			clus.failures = append(clus.failures,
 				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus))
+		case "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT":
+			clus.failures = append(clus.failures,
+				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.failures = append(clus.failures,
