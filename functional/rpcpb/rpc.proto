@@ -222,9 +222,14 @@ enum Operation {
   // SAVE_SNAPSHOT is sent to trigger local member to download its snapshot
   // onto its local disk with the specified path from tester.
   SAVE_SNAPSHOT = 30;
-  // RESTORE_SNAPSHOT_AND_RESTART_ETCD is sent to trigger local member to download its snapshot
-  // onto its local disk with the specified path from tester.
-  RESTORE_SNAPSHOT_AND_RESTART_ETCD = 31;
+  // RESTORE_RESTART_FROM_SNAPSHOT is sent to trigger local member to
+  // restore a cluster from existing snapshot from disk, and restart
+  // an etcd instance from recovered data.
+  RESTORE_RESTART_FROM_SNAPSHOT = 31;
+  // RESTART_FROM_SNAPSHOT is sent to trigger local member to restart
+  // and join an existing cluster that has been recovered from a snapshot.
+  // Local member joins this cluster with fresh data.
+  RESTART_FROM_SNAPSHOT = 32;
 
   // SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
   // thus need to archive etcd data directories.
@@ -370,6 +375,7 @@ enum Case {
   //  6. Restore a new seed member from node C's latest snapshot file.
   //  7. Add another member to establish 2-node cluster.
   //  8. Add another member to establish 3-node cluster.
+  //  9. Add more if any.
   //
   // The expected behavior is that etcd successfully recovers from such
   // disastrous situation as only 1-node survives out of 3-node cluster,
