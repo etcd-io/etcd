@@ -121,6 +121,9 @@ tester-config:
 
   failure-delay-ms: 7000
   failure-shuffle: true
+
+  # For full descriptions,
+  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#FailureCase
   failure-cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
