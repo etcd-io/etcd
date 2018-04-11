@@ -30,7 +30,6 @@ service Transport {
 message Member {
   // EtcdExecPath is the executable etcd binary path in agent server.
   string EtcdExecPath = 1 [(gogoproto.moretags) = "yaml:\"etcd-exec-path\""];
-
   // TODO: support embedded etcd
 
   // AgentAddr is the agent HTTP server address.
@@ -74,6 +73,9 @@ message Member {
   // PeerTrustedCAData contains trusted CA file contents from this member's etcd server.
   string PeerTrustedCAData = 505 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
   string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
+
+  // SnapshotPath is the snapshot file path to store or restore from.
+  string SnapshotPath = 601 [(gogoproto.moretags) = "yaml:\"snapshot-path\""];
 }
 
 message Tester {
@@ -523,14 +525,26 @@ enum FailureCase {
   // requests.
   RANDOM_DELAY_PEER_PORT_TX_RX_ALL = 211;
 
-  // NO_FAIL_WITH_STRESS runs no-op failure injection that does not do
-  // anything against cluster for "failure-delay-ms" duration, while
-  // stressers are still sending requests.
+  // NO_FAIL_WITH_STRESS stops injecting failures while testing the
+  // consistency and correctness under pressure loads, for the duration of
+  // "failure-delay-ms". Goal is to ensure cluster be still making progress
+  // on recovery, and verify system does not deadlock following a sequence
+  // of failure injections.
+  // The expected behavior is that cluster remains fully operative in healthy
+  // condition. As always, after recovery, each member must be able to process
+  // client requests.
   NO_FAIL_WITH_STRESS = 300;
 
-  // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS runs no-op failure injection
-  // that does not do anything against cluster for "failure-delay-ms"
-  // duration, while all stressers are stopped.
+  // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS neither injects failures nor
+  // sends stressig client requests to the cluster, for the duration of
+  // "failure-delay-ms". Goal is to ensure cluster be still making progress
+  // on recovery, and verify system does not deadlock following a sequence
+  // of failure injections.
+  // The expected behavior is that cluster remains fully operative in healthy
+  // condition, and clients requests during liveness period succeed without
+  // errors.
+  // Note: this is how Google Chubby does failure injection testing
+  // https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf.
   NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 301;
 
   // FAILPOINTS injects failpoints to etcd server runtime, triggering panics

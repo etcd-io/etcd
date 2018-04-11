@@ -227,3 +227,9 @@ func (m *Member) WriteHealthKey() error {
 	}
 	return nil
 }
+
+// FetchSnapshot downloads a snapshot file from this member.
+func (m *Member) FetchSnapshot() error {
+
+	return nil
+}
