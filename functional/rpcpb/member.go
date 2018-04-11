@@ -238,7 +238,7 @@ func (m *Member) WriteHealthKey() error {
 // snapshot file on local disk.
 func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 	// remove existing snapshot first
-	if err = os.Remove(m.SnapshotPath); err != nil {
+	if err = os.RemoveAll(m.SnapshotPath); err != nil {
 		return err
 	}
 
