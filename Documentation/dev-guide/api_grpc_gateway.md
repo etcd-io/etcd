@@ -1,10 +1,9 @@
 
-## Why grpc-gateway
+## Why gRPC gateway
 
-etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes a gRPC-based [Go client][go-client] and a command line utility, [etcdctl][etcdctl], for communicating with an etcd cluster through gRPC. For languages with no gRPC support, etcd provides a JSON [grpc-gateway][grpc-gateway]. This gateway serves a RESTful proxy that translates HTTP/JSON requests into gRPC messages.
+etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes a gRPC-based [Go client][go-client] and a command line utility, [etcdctl][etcdctl], for communicating with an etcd cluster through gRPC. For languages with no gRPC support, etcd provides a JSON [gRPC gateway][grpc-gateway]. This gateway serves a RESTful proxy that translates HTTP/JSON requests into gRPC messages.
 
-
-## Using grpc-gateway
+## Using gRPC gateway
 
 The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][api-ref] message definitions. Note that `key` and `value` fields are defined as byte arrays and therefore must be base64 encoded in JSON. The following examples use `curl`, but any HTTP/JSON client should work all the same.
 
@@ -14,8 +13,10 @@ gRPC gateway endpoint has changed since etcd v3.3:
 
 - etcd v3.2 or before uses only `[CLIENT-URL]/v3alpha/*`.
 - etcd v3.3 uses `[CLIENT-URL]/v3beta/*` while keeping `[CLIENT-URL]/v3alpha/*`.
-- etcd v3.4 uses `[CLIENT-URL]/v3/*` while keeping `[CLIENT-URL]/v3beta/*`, and `[CLIENT-URL]/v3alpha/*` is deprecated.
-- etcd v3.5 or later uses only `[CLIENT-URL]/v3/*`, and `[CLIENT-URL]/v3beta/*` is deprecated.
+- etcd v3.4 uses `[CLIENT-URL]/v3/*` while keeping `[CLIENT-URL]/v3beta/*`.
+  - **`[CLIENT-URL]/v3alpha/*` is deprecated**.
+- etcd v3.5 or later uses only `[CLIENT-URL]/v3/*`.
+  - **`[CLIENT-URL]/v3beta/*` is deprecated**.
 
 ### Put and get keys
 
@@ -48,7 +49,7 @@ Use the `/v3/watch` service to watch keys:
 
 ```bash
 curl http://localhost:2379/v3/watch \
-        -X POST -d '{"create_request": {"key":"Zm9v"} }' &
+  -X POST -d '{"create_request": {"key":"Zm9v"} }' &
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
 
 curl -L http://localhost:2379/v3/kv/put \
@@ -63,7 +64,7 @@ Issue a transaction with `/v3/kv/txn`:
 ```bash
 curl -L http://localhost:2379/v3/kv/txn \
   -X POST \
-	-d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
+  -d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
 ```
 
@@ -105,7 +106,7 @@ Set the `Authorization` header to the authentication token to fetch a key using 
 
 ```bash
 curl -L http://localhost:2379/v3/kv/put \
-	-H 'Authorization : sssvIpwfnLAcWAQH.9' \
+  -H 'Authorization : sssvIpwfnLAcWAQH.9' \
   -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"2","raft_term":"2"}}
 ```
