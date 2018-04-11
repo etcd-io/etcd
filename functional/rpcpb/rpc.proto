@@ -274,6 +274,17 @@ enum FailureCase {
   // must be able to process client requests.
   SIGTERM_ALL = 5;
 
+  // SIGQUIT_AND_REMOVE_ONE_FOLLOWER stops a randomly chosen follower
+  // (non-leader), deletes its data directories on disk, and removes
+  // this member from cluster (membership reconfiguration). On recovery,
+  // tester adds a new member, and this member joins the existing cluster
+  // with fresh data. It waits "failure-delay-ms" before recovering this
+  // failure. This simulates destroying one follower machine, where operator
+  // needs to add a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and then each member continues to process client requests.
+  SIGQUIT_AND_REMOVE_ONE_FOLLOWER = 10;
+
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
   // (non-leader), and waits for "failure-delay-ms" until recovery.
