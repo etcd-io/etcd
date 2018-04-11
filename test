@@ -41,7 +41,7 @@ if [[ "${PASSES}" == *"functional"* ]]; then
 fi
 
 if [ -z "$PASSES" ]; then
-	PASSES="fmt bom dep compile build unit"
+	PASSES="fmt bom dep build unit"
 fi
 
 USERPKG=${PKG:-}
@@ -195,21 +195,20 @@ function functional_pass {
 		done
 	done
 
-	echo "Starting 'etcd-tester'"
+	echo "functional test START!"
 	./bin/etcd-tester --config ./functional.yaml && echo "'etcd-tester' succeeded"
 	ETCD_TESTER_EXIT_CODE=$?
 	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
 
-	echo "Waiting for processes to exit"
 	# shellcheck disable=SC2206
 	agent_pids=($agent_pids)
-	kill -s TERM "${agent_pids[@]}"
-	for a in "${agent_pids[@]}"; do wait "$a" || true; done
+	kill -s TERM "${agent_pids[@]}" || true
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
 		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi
+	echo "functional test PASS!"
 }
 
 function cov_pass {
@@ -551,7 +550,7 @@ function commit_title_pass {
 		spaceCommas=$(echo "$commitMsg" | sed 's/ /\n/g' | grep -c ',$' || echo 0)
 		commaSpaces=$(echo "$commitMsg" | sed 's/,/\n/g' | grep -c '^ ' || echo 0)
 		if [[ $(echo "$commitMsg" | grep -c ":..*") == 0 || "$commitMsg" == "$pkgPrefix" || "$spaceCommas" != "$commaSpaces" ]]; then
-    			echo "$l"...
+			echo "$l"...
 			echo "Expected commit title format '<package>{\", \"<package>}: <description>'"
 			echo "Got: $l"
 			exit 255
@@ -619,14 +618,11 @@ function build_cov_pass {
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
 
-function compile_pass {
-	echo "Checking build..."
-	GO_BUILD_FLAGS="-a -v" tools_build
-}
-
 # fail fast on static tests
 function build_pass {
+	echo "Checking build..."
 	GO_BUILD_FLAGS="-a -v" etcd_build
+	GO_BUILD_FLAGS="-a -v" tools_build
 }
 
 for pass in $PASSES; do
