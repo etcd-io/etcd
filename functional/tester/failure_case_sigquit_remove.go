@@ -67,7 +67,7 @@ func inject_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 		return err
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	idx2 := (idx1 + 1) % len(clus.Members)
 	var cli2 *clientv3.Client
@@ -89,7 +89,7 @@ func inject_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 		return err
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	mresp, err = cli2.MemberList(context.Background())
 	mss = []string{}
@@ -124,7 +124,7 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 		return err
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	clus.Members[idx1].Etcd.InitialClusterState = "existing"
 	err = clus.sendOp(idx1, rpcpb.Operation_RESTART_ETCD)
@@ -137,7 +137,7 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 		return err
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	var mresp *clientv3.MemberListResponse
 	mresp, err = cli2.MemberList(context.Background())

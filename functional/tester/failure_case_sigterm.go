@@ -37,6 +37,13 @@ func new_FailureCase_SIGTERM_ONE_FOLLOWER(clus *Cluster) Failure {
 	}
 }
 
+func new_FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     new_FailureCase_SIGTERM_ONE_FOLLOWER(clus),
+	}
+}
+
 func new_FailureCase_SIGTERM_LEADER(clus *Cluster) Failure {
 	ff := failureByFunc{
 		failureCase:   rpcpb.FailureCase_SIGTERM_LEADER,
@@ -47,6 +54,13 @@ func new_FailureCase_SIGTERM_LEADER(clus *Cluster) Failure {
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),
+	}
+}
+
+func new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
+	return &failureUntilSnapshot{
+		failureCase: rpcpb.FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		Failure:     new_FailureCase_SIGTERM_LEADER(clus),
 	}
 }
 
@@ -71,19 +85,5 @@ func new_FailureCase_SIGTERM_ALL(clus *Cluster) Failure {
 	return &failureDelay{
 		Failure:       f,
 		delayDuration: clus.GetFailureDelayDuration(),
-	}
-}
-
-func new_FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
-	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     new_FailureCase_SIGTERM_ONE_FOLLOWER(clus),
-	}
-}
-
-func new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
-	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     new_FailureCase_SIGTERM_LEADER(clus),
 	}
 }
