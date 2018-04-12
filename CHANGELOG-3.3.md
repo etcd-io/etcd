@@ -7,6 +7,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
 ### Metrics, Monitoring
 
 - Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
+- Fix [race conditions in v2 server stat collecting](https://github.com/coreos/etcd/pull/9562).
 
 ### Security, Authentication
 
