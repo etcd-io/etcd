@@ -119,10 +119,8 @@ message Tester {
   int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
   // ExitOnCaseFail is true, then exit tester on first failure.
   bool ExitOnCaseFail = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
-  // ConsistencyCheck is true to check consistency (revision, hash).
-  bool ConsistencyCheck = 23 [(gogoproto.moretags) = "yaml:\"consistency-check\""];
   // EnablePprof is true to enable profiler.
-  bool EnablePprof = 24 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
+  bool EnablePprof = 23 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
 
   // CaseDelayMs is the delay duration after failure is injected.
   // Useful when triggering snapshot or no-op failure cases.
@@ -141,27 +139,32 @@ message Tester {
   // ExternalExecPath is a path of script for enabling/disabling an external fault injector.
   string ExternalExecPath = 42 [(gogoproto.moretags) = "yaml:\"external-exec-path\""];
 
-  // StressTypes is the list of stresser names:
-  // keys, lease, nop, election-runner, watch-runner, lock-racer-runner, lease-runner.
-  repeated string StressTypes = 101 [(gogoproto.moretags) = "yaml:\"stress-types\""];
+  // Stressers is the list of stresser types:
+  // KV, LEASE, ELECTION_RUNNER, WATCH_RUNNER, LOCK_RACER_RUNNER, LEASE_RUNNER.
+  repeated string Stressers = 101 [(gogoproto.moretags) = "yaml:\"stressers\""];
+  // Checkers is the list of consistency checker types:
+  // KV_HASH, LEASE_EXPIRE, NO_CHECK, RUNNER.
+  // Leave empty to skip consistency checks.
+  repeated string Checkers = 102 [(gogoproto.moretags) = "yaml:\"checkers\""];
+
   // StressKeySize is the size of each small key written into etcd.
-  int32 StressKeySize = 102 [(gogoproto.moretags) = "yaml:\"stress-key-size\""];
+  int32 StressKeySize = 201 [(gogoproto.moretags) = "yaml:\"stress-key-size\""];
   // StressKeySizeLarge is the size of each large key written into etcd.
-  int32 StressKeySizeLarge = 103 [(gogoproto.moretags) = "yaml:\"stress-key-size-large\""];
+  int32 StressKeySizeLarge = 202 [(gogoproto.moretags) = "yaml:\"stress-key-size-large\""];
   // StressKeySuffixRange is the count of key range written into etcd.
   // Stress keys are created with "fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)".
-  int32 StressKeySuffixRange = 104 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range\""];
+  int32 StressKeySuffixRange = 203 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range\""];
   // StressKeySuffixRangeTxn is the count of key range written into etcd txn (max 100).
   // Stress keys are created with "fmt.Sprintf("/k%03d", i)".
-  int32 StressKeySuffixRangeTxn = 105 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
+  int32 StressKeySuffixRangeTxn = 204 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
   // StressKeyTxnOps is the number of operations per a transaction (max 64).
-  int32 StressKeyTxnOps = 106 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
+  int32 StressKeyTxnOps = 205 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
 
   // StressClients is the number of concurrent stressing clients
   // with "one" shared TCP connection.
-  int32 StressClients = 201 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
+  int32 StressClients = 301 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
   // StressQPS is the maximum number of stresser requests per second.
-  int32 StressQPS = 202 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
+  int32 StressQPS = 302 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
 }
 
 message Etcd {
@@ -592,11 +595,18 @@ enum Case {
   EXTERNAL = 500;
 }
 
-enum StressType {
+enum Stresser {
   KV = 0;
   LEASE = 1;
   ELECTION_RUNNER = 2;
   WATCH_RUNNER = 3;
   LOCK_RACER_RUNNER = 4;
   LEASE_RUNNER = 5;
+}
+
+enum Checker {
+  KV_HASH = 0;
+  LEASE_EXPIRE = 1;
+  RUNNER = 2;
+  NO_CHECK = 3;
 }
