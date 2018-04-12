@@ -48,17 +48,16 @@ func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 	)
 	var resp *rpcpb.Response
 	resp, err = clus.sendOpWithResp(lead, rpcpb.Operation_SAVE_SNAPSHOT)
-	if resp == nil || err != nil {
-		resp, err = clus.sendOpWithResp(lead, rpcpb.Operation_SAVE_SNAPSHOT)
+	if resp == nil || (resp != nil && !resp.Success) || err != nil {
 		clus.lg.Info(
-			"save snapshot on leader node END",
+			"save snapshot on leader node FAIL",
 			zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
 			zap.Error(err),
 		)
 		return err
 	}
 	clus.lg.Info(
-		"save snapshot on leader node END",
+		"save snapshot on leader node SUCCESS",
 		zap.String("target-endpoint", clus.Members[lead].EtcdClientEndpoint),
 		zap.String("member-name", resp.SnapshotInfo.MemberName),
 		zap.Strings("member-client-urls", resp.SnapshotInfo.MemberClientURLs),

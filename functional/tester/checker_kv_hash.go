@@ -27,7 +27,6 @@ const retries = 7
 
 type kvHashChecker struct {
 	ctype rpcpb.Checker
-	lg    *zap.Logger
 	clus  *Cluster
 }
 
