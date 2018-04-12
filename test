@@ -621,7 +621,6 @@ function build_cov_pass {
 function build_pass {
 	echo "Checking build..."
 	GO_BUILD_FLAGS="-v" etcd_build
-	GO_BUILD_FLAGS="-v" tools_build
 }
 
 for pass in $PASSES; do
