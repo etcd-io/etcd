@@ -157,7 +157,6 @@ tester-config:
 
   round-limit: 1
   exit-on-failure: true
-  consistency-check: true
   enable-pprof: true
 
   case-delay-ms: 7000
@@ -205,13 +204,17 @@ tester-config:
   runner-exec-path: ./bin/etcd-runner
   external-exec-path: ""
 
-  stress-types:
+  stressers:
   - KV
   - LEASE
   # - ELECTION_RUNNER
   # - WATCH_RUNNER
   # - LOCK_RACER_RUNNER
   # - LEASE_RUNNER
+
+  checkers:
+  - KV_HASH
+  - LEASE_EXPIRE
 
   stress-key-size: 100
   stress-key-size-large: 32769

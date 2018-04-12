@@ -33,14 +33,12 @@ type Stresser interface {
 	Close() map[string]int
 	// ModifiedKeys reports the number of keys created and deleted by stresser
 	ModifiedKeys() int64
-	// Checker returns an invariant checker for after the stresser is canceled.
-	Checker() Checker
 }
 
 // newStresser creates stresser from a comma separated list of stresser types.
-func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
-	stressers := make([]Stresser, len(clus.Tester.StressTypes))
-	for i, stype := range clus.Tester.StressTypes {
+func newStresser(clus *Cluster, m *rpcpb.Member) (stressers []Stresser) {
+	stressers = make([]Stresser, len(clus.Tester.Stressers))
+	for i, stype := range clus.Tester.Stressers {
 		clus.lg.Info(
 			"creating stresser",
 			zap.String("type", stype),
@@ -52,7 +50,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 			// TODO: Too intensive stressing clients can panic etcd member with
 			// 'out of memory' error. Put rate limits in server side.
 			stressers[i] = &keyStresser{
-				stype:             rpcpb.StressType_KV,
+				stype:             rpcpb.Stresser_KV,
 				lg:                clus.lg,
 				m:                 m,
 				keySize:           int(clus.Tester.StressKeySize),
@@ -66,7 +64,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 
 		case "LEASE":
 			stressers[i] = &leaseStresser{
-				stype:        rpcpb.StressType_LEASE,
+				stype:        rpcpb.Stresser_LEASE,
 				lg:           clus.lg,
 				m:            m,
 				numLeases:    10, // TODO: configurable
@@ -86,7 +84,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
 			stressers[i] = newRunnerStresser(
-				rpcpb.StressType_ELECTION_RUNNER,
+				rpcpb.Stresser_ELECTION_RUNNER,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -107,7 +105,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
 			stressers[i] = newRunnerStresser(
-				rpcpb.StressType_WATCH_RUNNER,
+				rpcpb.Stresser_WATCH_RUNNER,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -126,7 +124,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--req-rate", fmt.Sprintf("%v", reqRate),
 			}
 			stressers[i] = newRunnerStresser(
-				rpcpb.StressType_LOCK_RACER_RUNNER,
+				rpcpb.Stresser_LOCK_RACER_RUNNER,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -141,7 +139,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 				"--endpoints", m.EtcdClientEndpoint,
 			}
 			stressers[i] = newRunnerStresser(
-				rpcpb.StressType_LEASE_RUNNER,
+				rpcpb.Stresser_LEASE_RUNNER,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -150,5 +148,5 @@ func newStresser(clus *Cluster, m *rpcpb.Member) Stresser {
 			)
 		}
 	}
-	return &compositeStresser{stressers}
+	return stressers
 }

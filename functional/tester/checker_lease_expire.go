@@ -27,83 +27,30 @@ import (
 	"google.golang.org/grpc"
 )
 
-const retries = 7
-
-// Checker checks cluster consistency.
-type Checker interface {
-	// Check returns an error if the system fails a consistency check.
-	Check() error
+type leaseExpireChecker struct {
+	ctype rpcpb.Checker
+	lg    *zap.Logger
+	m     *rpcpb.Member
+	ls    *leaseStresser
+	cli   *clientv3.Client
 }
 
-type hashAndRevGetter interface {
-	getRevisionHash() (revs map[string]int64, hashes map[string]int64, err error)
-}
-
-type hashChecker struct {
-	lg  *zap.Logger
-	hrg hashAndRevGetter
-}
-
-func newHashChecker(lg *zap.Logger, hrg hashAndRevGetter) Checker {
-	return &hashChecker{
-		lg:  lg,
-		hrg: hrg,
+func newLeaseExpireChecker(ls *leaseStresser) Checker {
+	return &leaseExpireChecker{
+		ctype: rpcpb.Checker_LEASE_EXPIRE,
+		lg:    ls.lg,
+		m:     ls.m,
+		ls:    ls,
 	}
 }
 
-const leaseCheckerTimeout = 10 * time.Second
+const leaseExpireCheckerTimeout = 10 * time.Second
 
-func (hc *hashChecker) checkRevAndHashes() (err error) {
-	var (
-		revs   map[string]int64
-		hashes map[string]int64
-	)
-	// retries in case of transient failure or etcd cluster has not stablized yet.
-	for i := 0; i < retries; i++ {
-		revs, hashes, err = hc.hrg.getRevisionHash()
-		if err != nil {
-			hc.lg.Warn(
-				"failed to get revision and hash",
-				zap.Int("retries", i),
-				zap.Error(err),
-			)
-		} else {
-			sameRev := getSameValue(revs)
-			sameHashes := getSameValue(hashes)
-			if sameRev && sameHashes {
-				return nil
-			}
-			hc.lg.Warn(
-				"retrying; etcd cluster is not stable",
-				zap.Int("retries", i),
-				zap.Bool("same-revisions", sameRev),
-				zap.Bool("same-hashes", sameHashes),
-				zap.String("revisions", fmt.Sprintf("%+v", revs)),
-				zap.String("hashes", fmt.Sprintf("%+v", hashes)),
-			)
-		}
-		time.Sleep(time.Second)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed revision and hash check (%v)", err)
-	}
-
-	return fmt.Errorf("etcd cluster is not stable: [revisions: %v] and [hashes: %v]", revs, hashes)
+func (lc *leaseExpireChecker) Type() rpcpb.Checker {
+	return lc.ctype
 }
 
-func (hc *hashChecker) Check() error {
-	return hc.checkRevAndHashes()
-}
-
-type leaseChecker struct {
-	lg  *zap.Logger
-	m   *rpcpb.Member
-	ls  *leaseStresser
-	cli *clientv3.Client
-}
-
-func (lc *leaseChecker) Check() error {
+func (lc *leaseExpireChecker) Check() error {
 	if lc.ls == nil {
 		return nil
 	}
@@ -135,8 +82,8 @@ func (lc *leaseChecker) Check() error {
 }
 
 // checkShortLivedLeases ensures leases expire.
-func (lc *leaseChecker) checkShortLivedLeases() error {
-	ctx, cancel := context.WithTimeout(context.Background(), leaseCheckerTimeout)
+func (lc *leaseExpireChecker) checkShortLivedLeases() error {
+	ctx, cancel := context.WithTimeout(context.Background(), leaseExpireCheckerTimeout)
 	errc := make(chan error)
 	defer cancel()
 	for leaseID := range lc.ls.shortLivedLeases.leases {
@@ -154,7 +101,7 @@ func (lc *leaseChecker) checkShortLivedLeases() error {
 	return errsToError(errs)
 }
 
-func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64) (err error) {
+func (lc *leaseExpireChecker) checkShortLivedLease(ctx context.Context, leaseID int64) (err error) {
 	// retry in case of transient failure or lease is expired but not yet revoked due to the fact that etcd cluster didn't have enought time to delete it.
 	var resp *clientv3.LeaseTimeToLiveResponse
 	for i := 0; i < retries; i++ {
@@ -199,7 +146,7 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 	return err
 }
 
-func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
+func (lc *leaseExpireChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
 	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 	if err != nil {
 		lc.lg.Warn(
@@ -227,8 +174,8 @@ func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID in
 	return nil
 }
 
-func (lc *leaseChecker) check(expired bool, leases map[int64]time.Time) error {
-	ctx, cancel := context.WithTimeout(context.Background(), leaseCheckerTimeout)
+func (lc *leaseExpireChecker) check(expired bool, leases map[int64]time.Time) error {
+	ctx, cancel := context.WithTimeout(context.Background(), leaseExpireCheckerTimeout)
 	defer cancel()
 	for leaseID := range leases {
 		if err := lc.checkLease(ctx, expired, leaseID); err != nil {
@@ -239,7 +186,7 @@ func (lc *leaseChecker) check(expired bool, leases map[int64]time.Time) error {
 }
 
 // TODO: handle failures from "grpc.FailFast(false)"
-func (lc *leaseChecker) getLeaseByID(ctx context.Context, leaseID int64) (*clientv3.LeaseTimeToLiveResponse, error) {
+func (lc *leaseExpireChecker) getLeaseByID(ctx context.Context, leaseID int64) (*clientv3.LeaseTimeToLiveResponse, error) {
 	return lc.cli.TimeToLive(
 		ctx,
 		clientv3.LeaseID(leaseID),
@@ -247,7 +194,7 @@ func (lc *leaseChecker) getLeaseByID(ctx context.Context, leaseID int64) (*clien
 	)
 }
 
-func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
+func (lc *leaseExpireChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
 	// keep retrying until lease's state is known or ctx is being canceled
 	for ctx.Err() == nil {
 		resp, err := lc.getLeaseByID(ctx, leaseID)
@@ -272,7 +219,7 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 // The keys attached to the lease has the format of "<leaseID>_<idx>" where idx is the ordering key creation
 // Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
 // determines whether the attached keys for a given leaseID has been deleted or not
-func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
+func (lc *leaseExpireChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
 	resp, err := lc.cli.Get(ctx, fmt.Sprintf("%d", leaseID), clientv3.WithPrefix())
 	if err != nil {
 		lc.lg.Warn(
@@ -285,42 +232,3 @@ func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, lease
 	}
 	return len(resp.Kvs) == 0, nil
 }
-
-// compositeChecker implements a checker that runs a slice of Checkers concurrently.
-type compositeChecker struct{ checkers []Checker }
-
-func newCompositeChecker(checkers []Checker) Checker {
-	return &compositeChecker{checkers}
-}
-
-func (cchecker *compositeChecker) Check() error {
-	errc := make(chan error)
-	for _, c := range cchecker.checkers {
-		go func(chk Checker) { errc <- chk.Check() }(c)
-	}
-	var errs []error
-	for range cchecker.checkers {
-		if err := <-errc; err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errsToError(errs)
-}
-
-type runnerChecker struct {
-	errc chan error
-}
-
-func (rc *runnerChecker) Check() error {
-	select {
-	case err := <-rc.errc:
-		return err
-	default:
-		return nil
-	}
-}
-
-type noChecker struct{}
-
-func newNoChecker() Checker        { return &noChecker{} }
-func (nc *noChecker) Check() error { return nil }

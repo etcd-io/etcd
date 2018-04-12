@@ -74,16 +74,3 @@ func (cs *compositeStresser) ModifiedKeys() (modifiedKey int64) {
 	}
 	return modifiedKey
 }
-
-func (cs *compositeStresser) Checker() Checker {
-	var chks []Checker
-	for _, s := range cs.stressers {
-		if chk := s.Checker(); chk != nil {
-			chks = append(chks, chk)
-		}
-	}
-	if len(chks) == 0 {
-		return nil
-	}
-	return newCompositeChecker(chks)
-}

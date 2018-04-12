@@ -38,7 +38,7 @@ const (
 )
 
 type leaseStresser struct {
-	stype rpcpb.StressType
+	stype rpcpb.Stresser
 	lg    *zap.Logger
 
 	m      *rpcpb.Member
@@ -484,8 +484,4 @@ func (ls *leaseStresser) Close() map[string]int {
 
 func (ls *leaseStresser) ModifiedKeys() int64 {
 	return atomic.LoadInt64(&ls.atomicModifiedKey)
-}
-
-func (ls *leaseStresser) Checker() Checker {
-	return &leaseChecker{lg: ls.lg, m: ls.m, ls: ls}
 }

@@ -27,7 +27,7 @@ import (
 )
 
 type runnerStresser struct {
-	stype rpcpb.StressType
+	stype rpcpb.Stresser
 	lg    *zap.Logger
 
 	cmd     *exec.Cmd
@@ -41,7 +41,7 @@ type runnerStresser struct {
 }
 
 func newRunnerStresser(
-	stype rpcpb.StressType,
+	stype rpcpb.Stresser,
 	lg *zap.Logger,
 	cmdStr string,
 	args []string,
@@ -114,8 +114,4 @@ func (rs *runnerStresser) Close() map[string]int {
 
 func (rs *runnerStresser) ModifiedKeys() int64 {
 	return 1
-}
-
-func (rs *runnerStresser) Checker() Checker {
-	return &runnerChecker{rs.errc}
 }

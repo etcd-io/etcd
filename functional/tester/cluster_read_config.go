@@ -336,9 +336,14 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 
-	for _, v := range clus.Tester.StressTypes {
-		if _, ok := rpcpb.StressType_value[v]; !ok {
-			return nil, fmt.Errorf("StressType is unknown; got %q", v)
+	for _, v := range clus.Tester.Stressers {
+		if _, ok := rpcpb.Stresser_value[v]; !ok {
+			return nil, fmt.Errorf("Stresser is unknown; got %q", v)
+		}
+	}
+	for _, v := range clus.Tester.Checkers {
+		if _, ok := rpcpb.Checker_value[v]; !ok {
+			return nil, fmt.Errorf("Checker is unknown; got %q", v)
 		}
 	}
 

@@ -56,7 +56,7 @@ type Cluster struct {
 
 	rateLimiter *rate.Limiter
 	stresser    Stresser
-	checker     Checker
+	checkers    []Checker
 
 	currentRevision int64
 	rd              int
@@ -118,7 +118,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		int(clus.Tester.StressQPS),
 	)
 
-	clus.updateStresserChecker()
+	clus.setStresserChecker()
 
 	return clus, nil
 }
@@ -274,26 +274,49 @@ func (clus *Cluster) UpdateDelayLatencyMs() {
 	}
 }
 
-func (clus *Cluster) updateStresserChecker() {
-	cs := &compositeStresser{}
+func (clus *Cluster) setStresserChecker() {
+	css := &compositeStresser{}
+	lss := []*leaseStresser{}
+	rss := []*runnerStresser{}
 	for _, m := range clus.Members {
-		cs.stressers = append(cs.stressers, newStresser(clus, m))
-	}
-	clus.stresser = cs
-
-	if clus.Tester.ConsistencyCheck {
-		clus.checker = newHashChecker(clus.lg, hashAndRevGetter(clus))
-		if schk := cs.Checker(); schk != nil {
-			clus.checker = newCompositeChecker([]Checker{clus.checker, schk})
+		sss := newStresser(clus, m)
+		css.stressers = append(css.stressers, &compositeStresser{sss})
+		for _, s := range sss {
+			if v, ok := s.(*leaseStresser); ok {
+				lss = append(lss, v)
+				clus.lg.Info("added lease stresser", zap.String("endpoint", m.EtcdClientEndpoint))
+			}
+			if v, ok := s.(*runnerStresser); ok {
+				rss = append(rss, v)
+				clus.lg.Info("added lease stresser", zap.String("endpoint", m.EtcdClientEndpoint))
+			}
 		}
-	} else {
-		clus.checker = newNoChecker()
 	}
+	clus.stresser = css
 
+	for _, cs := range clus.Tester.Checkers {
+		switch cs {
+		case "KV_HASH":
+			clus.checkers = append(clus.checkers, newKVHashChecker(clus.lg, hashRevGetter(clus)))
+
+		case "LEASE_EXPIRE":
+			for _, ls := range lss {
+				clus.checkers = append(clus.checkers, newLeaseExpireChecker(ls))
+			}
+
+		case "RUNNER":
+			for _, rs := range rss {
+				clus.checkers = append(clus.checkers, newRunnerChecker(rs.errc))
+			}
+
+		case "NO_CHECK":
+			clus.checkers = append(clus.checkers, newNoChecker())
+		}
+	}
 	clus.lg.Info("updated stressers")
 }
 
-func (clus *Cluster) checkConsistency() (err error) {
+func (clus *Cluster) runCheckers() (err error) {
 	defer func() {
 		if err != nil {
 			return
@@ -307,15 +330,19 @@ func (clus *Cluster) checkConsistency() (err error) {
 		}
 	}()
 
-	if err = clus.checker.Check(); err != nil {
-		clus.lg.Warn(
-			"consistency check FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
-			zap.Error(err),
-		)
-		return err
+	for _, chk := range clus.checkers {
+		if err = chk.Check(); err != nil {
+			clus.lg.Warn(
+				"consistency check FAIL",
+				zap.String("checker", chk.Type().String()),
+				zap.Int("round", clus.rd),
+				zap.Int("case", clus.cs),
+				zap.Error(err),
+			)
+			return err
+		}
 	}
+
 	clus.lg.Info(
 		"consistency check ALL PASS",
 		zap.Int("round", clus.rd),

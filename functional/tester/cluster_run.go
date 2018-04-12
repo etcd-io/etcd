@@ -237,7 +237,7 @@ func (clus *Cluster) doRound() error {
 			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
-		if err := clus.checkConsistency(); err != nil {
+		if err := clus.runCheckers(); err != nil {
 			return fmt.Errorf("consistency check error (%v)", err)
 		}
 
@@ -362,6 +362,6 @@ func (clus *Cluster) cleanup() error {
 		return err
 	}
 
-	clus.updateStresserChecker()
+	clus.setStresserChecker()
 	return nil
 }
