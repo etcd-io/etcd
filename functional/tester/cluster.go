@@ -325,7 +325,7 @@ func (clus *Cluster) setStresserChecker() {
 	clus.lg.Info("updated stressers")
 }
 
-func (clus *Cluster) runCheckers() (err error) {
+func (clus *Cluster) runCheckers(exceptions ...rpcpb.Checker) (err error) {
 	defer func() {
 		if err != nil {
 			return
@@ -339,28 +339,37 @@ func (clus *Cluster) runCheckers() (err error) {
 		}
 	}()
 
+	exs := make(map[rpcpb.Checker]struct{})
+	for _, e := range exceptions {
+		exs[e] = struct{}{}
+	}
 	for _, chk := range clus.checkers {
-		if err = chk.Check(); err != nil {
+		clus.lg.Warn(
+			"consistency check START",
+			zap.String("checker", chk.Type().String()),
+			zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
+		)
+		err = chk.Check()
+		clus.lg.Warn(
+			"consistency check END",
+			zap.String("checker", chk.Type().String()),
+			zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
+			zap.Error(err),
+		)
+		if err != nil {
+			_, ok := exs[chk.Type()]
+			if !ok {
+				return err
+			}
 			clus.lg.Warn(
-				"consistency check FAIL",
+				"consistency check SKIP FAIL",
 				zap.String("checker", chk.Type().String()),
 				zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
 				zap.Error(err),
 			)
-			return err
 		}
 	}
-
-	clus.lg.Info(
-		"consistency check ALL PASS",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.String("desc", clus.cases[clus.cs].Desc()),
-	)
-
-	return err
+	return nil
 }
 
 // Send_INITIAL_START_ETCD bootstraps etcd cluster the very first time.

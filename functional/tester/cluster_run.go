@@ -230,6 +230,13 @@ func (clus *Cluster) doRound() error {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
 
+		checkerFailExceptions := []rpcpb.Checker{}
+		switch fcase {
+		case rpcpb.Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH:
+			// TODO: restore from snapshot
+			checkerFailExceptions = append(checkerFailExceptions, rpcpb.Checker_LEASE_EXPIRE)
+		}
+
 		clus.lg.Info(
 			"consistency check START",
 			zap.Int("round", clus.rd),
@@ -237,12 +244,11 @@ func (clus *Cluster) doRound() error {
 			zap.Int("case-total", len(clus.cases)),
 			zap.String("desc", fa.Desc()),
 		)
-		if err := clus.runCheckers(); err != nil {
+		if err := clus.runCheckers(checkerFailExceptions...); err != nil {
 			return fmt.Errorf("consistency check error (%v)", err)
 		}
-
 		clus.lg.Info(
-			"case PASS",
+			"consistency check PASS",
 			zap.Int("round", clus.rd),
 			zap.Int("case", clus.cs),
 			zap.Int("case-total", len(clus.cases)),
