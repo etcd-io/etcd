@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/types"
 
 	"go.uber.org/zap"
 )
@@ -52,29 +51,23 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
 	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 
-	sp := NewV3(nil, zap.NewExample())
-
-	err := sp.Restore(dbPath, RestoreConfig{})
-	if err.Error() != `couldn't find local name "" in the initial cluster configuration` {
-		t.Fatalf("expected restore error, got %v", err)
+	sp := NewV3(zap.NewExample())
+	pss := make([]string, 0, len(pURLs))
+	for _, p := range pURLs {
+		pss = append(pss, p.String())
 	}
-	var iURLs types.URLsMap
-	iURLs, err = types.NewURLsMap(cfg.InitialCluster)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = sp.Restore(dbPath, RestoreConfig{
+	if err := sp.Restore(RestoreConfig{
+		SnapshotPath:        dbPath,
 		Name:                cfg.Name,
 		OutputDataDir:       cfg.Dir,
-		InitialCluster:      iURLs,
+		InitialCluster:      cfg.InitialCluster,
 		InitialClusterToken: cfg.InitialClusterToken,
-		PeerURLs:            pURLs,
+		PeerURLs:            pss,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	var srv *embed.Etcd
-	srv, err = embed.StartEtcd(cfg)
+	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,10 +169,12 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		t.Fatalf("failed to start embed.Etcd for creating snapshots")
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}})
+	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
+	cli, err := clientv3.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cli.Close()
 	for i := range kvs {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
 		_, err = cli.Put(ctx, kvs[i].k, kvs[i].v)
@@ -189,9 +184,9 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	sp := NewV3(cli, zap.NewExample())
+	sp := NewV3(zap.NewExample())
 	dpPath := filepath.Join(os.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	if err = sp.Save(context.Background(), dpPath); err != nil {
+	if err = sp.Save(context.Background(), ccfg, dpPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -214,10 +209,6 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		ics += fmt.Sprintf(",%d=%s", i, pURLs[i].String())
 	}
 	ics = ics[1:]
-	iURLs, err := types.NewURLsMap(ics)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	cfgs := make([]*embed.Config, clusterN)
 	for i := 0; i < clusterN; i++ {
@@ -230,13 +221,14 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfg.InitialCluster = ics
 		cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()+i))
 
-		sp := NewV3(nil, zap.NewExample())
-		if err := sp.Restore(dbPath, RestoreConfig{
+		sp := NewV3(zap.NewExample())
+		if err := sp.Restore(RestoreConfig{
+			SnapshotPath:        dbPath,
 			Name:                cfg.Name,
 			OutputDataDir:       cfg.Dir,
-			InitialCluster:      iURLs,
+			PeerURLs:            []string{pURLs[i].String()},
+			InitialCluster:      ics,
 			InitialClusterToken: cfg.InitialClusterToken,
-			PeerURLs:            types.URLs{pURLs[i]},
 		}); err != nil {
 			t.Fatal(err)
 		}
