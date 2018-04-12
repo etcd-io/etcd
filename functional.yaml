@@ -1,0 +1,206 @@
+agent-configs:
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:19027
+  failpoint-http-addr: http://127.0.0.1:7381
+  base-dir: /tmp/etcd-functional-1
+  etcd-log-path: /tmp/etcd-functional-1/etcd.log
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:1379
+  etcd:
+    name: s1
+    data-dir: /tmp/etcd-functional-1/etcd.data
+    wal-dir: /tmp/etcd-functional-1/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:1379"]
+    advertise-client-urls: ["https://127.0.0.1:1379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:1380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:13800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-1.snapshot.db
+
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:29027
+  failpoint-http-addr: http://127.0.0.1:7382
+  base-dir: /tmp/etcd-functional-2
+  etcd-log-path: /tmp/etcd-functional-2/etcd.log
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:2379
+  etcd:
+    name: s2
+    data-dir: /tmp/etcd-functional-2/etcd.data
+    wal-dir: /tmp/etcd-functional-2/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:2379"]
+    advertise-client-urls: ["https://127.0.0.1:2379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:2380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:23800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-2.snapshot.db
+
+- etcd-exec-path: ./bin/etcd
+  agent-addr: 127.0.0.1:39027
+  failpoint-http-addr: http://127.0.0.1:7383
+  base-dir: /tmp/etcd-functional-3
+  etcd-log-path: /tmp/etcd-functional-3/etcd.log
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:3379
+  etcd:
+    name: s3
+    data-dir: /tmp/etcd-functional-3/etcd.data
+    wal-dir: /tmp/etcd-functional-3/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:3379"]
+    advertise-client-urls: ["https://127.0.0.1:3379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:3380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:33800"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 10000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-3.snapshot.db
+
+tester-config:
+  data-dir: /tmp/etcd-tester-data
+  network: tcp
+  addr: 127.0.0.1:9028
+
+  # slow enough to trigger election
+  delay-latency-ms: 5000
+  delay-latency-ms-rv: 500
+
+  round-limit: 1
+  exit-on-failure: true
+  enable-pprof: true
+
+  case-delay-ms: 7000
+  case-shuffle: true
+
+  # For full descriptions,
+  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case
+  cases:
+  - SIGTERM_ONE_FOLLOWER
+  - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - SIGTERM_LEADER
+  - SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - SIGTERM_QUORUM
+  - SIGTERM_ALL
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_QUORUM
+  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - DELAY_PEER_PORT_TX_RX_LEADER
+  - DELAY_PEER_PORT_TX_RX_QUORUM
+
+  failpoint-commands:
+  - panic("etcd-tester")
+
+  runner-exec-path: ./bin/etcd-runner
+  external-exec-path: ""
+
+  stressers:
+  - KV
+  - LEASE
+
+  checkers:
+  - KV_HASH
+  - LEASE_EXPIRE
+
+  stress-key-size: 100
+  stress-key-size-large: 32769
+  stress-key-suffix-range: 250000
+  stress-key-suffix-range-txn: 100
+  stress-key-txn-ops: 10
+
+  stress-clients: 100
+  stress-qps: 2000
