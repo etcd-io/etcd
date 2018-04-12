@@ -35,7 +35,7 @@ import (
 )
 
 type keyStresser struct {
-	stype rpcpb.StressType
+	stype rpcpb.Stresser
 	lg    *zap.Logger
 
 	m *rpcpb.Member
@@ -203,8 +203,6 @@ func (s *keyStresser) Close() map[string]int {
 func (s *keyStresser) ModifiedKeys() int64 {
 	return atomic.LoadInt64(&s.atomicModifiedKeys)
 }
-
-func (s *keyStresser) Checker() Checker { return nil }
 
 type stressFunc func(ctx context.Context) (err error, modifiedKeys int64)
 

@@ -31,15 +31,15 @@ func Test_read(t *testing.T) {
 				EtcdExecPath:       "./bin/etcd",
 				AgentAddr:          "127.0.0.1:19027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7381",
-				BaseDir:            "/tmp/etcd-agent-data-1",
-				EtcdLogPath:        "/tmp/etcd-agent-data-1/current-etcd.log",
+				BaseDir:            "/tmp/etcd-functional-1",
+				EtcdLogPath:        "/tmp/etcd-functional-1/etcd.log",
 				EtcdClientProxy:    false,
 				EtcdPeerProxy:      true,
 				EtcdClientEndpoint: "127.0.0.1:1379",
 				Etcd: &rpcpb.Etcd{
 					Name:                "s1",
-					DataDir:             "/tmp/etcd-agent-data-1/etcd.data",
-					WALDir:              "/tmp/etcd-agent-data-1/etcd.data/member/wal",
+					DataDir:             "/tmp/etcd-functional-1/etcd.data",
+					WALDir:              "/tmp/etcd-functional-1/etcd.data/member/wal",
 					HeartbeatIntervalMs: 100,
 					ElectionTimeoutMs:   1000,
 					ListenClientURLs:    []string{"https://127.0.0.1:1379"},
@@ -64,20 +64,33 @@ func Test_read(t *testing.T) {
 					PreVote:             true,
 					InitialCorruptCheck: true,
 				},
+				ClientCertData:      "",
+				ClientCertPath:      "",
+				ClientKeyData:       "",
+				ClientKeyPath:       "",
+				ClientTrustedCAData: "",
+				ClientTrustedCAPath: "",
+				PeerCertData:        "",
+				PeerCertPath:        "",
+				PeerKeyData:         "",
+				PeerKeyPath:         "",
+				PeerTrustedCAData:   "",
+				PeerTrustedCAPath:   "",
+				SnapshotPath:        "/tmp/etcd-functional-1.snapshot.db",
 			},
 			{
 				EtcdExecPath:       "./bin/etcd",
 				AgentAddr:          "127.0.0.1:29027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7382",
-				BaseDir:            "/tmp/etcd-agent-data-2",
-				EtcdLogPath:        "/tmp/etcd-agent-data-2/current-etcd.log",
+				BaseDir:            "/tmp/etcd-functional-2",
+				EtcdLogPath:        "/tmp/etcd-functional-2/etcd.log",
 				EtcdClientProxy:    false,
 				EtcdPeerProxy:      true,
 				EtcdClientEndpoint: "127.0.0.1:2379",
 				Etcd: &rpcpb.Etcd{
 					Name:                "s2",
-					DataDir:             "/tmp/etcd-agent-data-2/etcd.data",
-					WALDir:              "/tmp/etcd-agent-data-2/etcd.data/member/wal",
+					DataDir:             "/tmp/etcd-functional-2/etcd.data",
+					WALDir:              "/tmp/etcd-functional-2/etcd.data/member/wal",
 					HeartbeatIntervalMs: 100,
 					ElectionTimeoutMs:   1000,
 					ListenClientURLs:    []string{"https://127.0.0.1:2379"},
@@ -102,20 +115,33 @@ func Test_read(t *testing.T) {
 					PreVote:             true,
 					InitialCorruptCheck: true,
 				},
+				ClientCertData:      "",
+				ClientCertPath:      "",
+				ClientKeyData:       "",
+				ClientKeyPath:       "",
+				ClientTrustedCAData: "",
+				ClientTrustedCAPath: "",
+				PeerCertData:        "",
+				PeerCertPath:        "",
+				PeerKeyData:         "",
+				PeerKeyPath:         "",
+				PeerTrustedCAData:   "",
+				PeerTrustedCAPath:   "",
+				SnapshotPath:        "/tmp/etcd-functional-2.snapshot.db",
 			},
 			{
 				EtcdExecPath:       "./bin/etcd",
 				AgentAddr:          "127.0.0.1:39027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7383",
-				BaseDir:            "/tmp/etcd-agent-data-3",
-				EtcdLogPath:        "/tmp/etcd-agent-data-3/current-etcd.log",
+				BaseDir:            "/tmp/etcd-functional-3",
+				EtcdLogPath:        "/tmp/etcd-functional-3/etcd.log",
 				EtcdClientProxy:    false,
 				EtcdPeerProxy:      true,
 				EtcdClientEndpoint: "127.0.0.1:3379",
 				Etcd: &rpcpb.Etcd{
 					Name:                "s3",
-					DataDir:             "/tmp/etcd-agent-data-3/etcd.data",
-					WALDir:              "/tmp/etcd-agent-data-3/etcd.data/member/wal",
+					DataDir:             "/tmp/etcd-functional-3/etcd.data",
+					WALDir:              "/tmp/etcd-functional-3/etcd.data/member/wal",
 					HeartbeatIntervalMs: 100,
 					ElectionTimeoutMs:   1000,
 					ListenClientURLs:    []string{"https://127.0.0.1:3379"},
@@ -140,6 +166,19 @@ func Test_read(t *testing.T) {
 					PreVote:             true,
 					InitialCorruptCheck: true,
 				},
+				ClientCertData:      "",
+				ClientCertPath:      "",
+				ClientKeyData:       "",
+				ClientKeyPath:       "",
+				ClientTrustedCAData: "",
+				ClientTrustedCAPath: "",
+				PeerCertData:        "",
+				PeerCertPath:        "",
+				PeerKeyData:         "",
+				PeerKeyPath:         "",
+				PeerTrustedCAData:   "",
+				PeerTrustedCAPath:   "",
+				SnapshotPath:        "/tmp/etcd-functional-3.snapshot.db",
 			},
 		},
 		Tester: &rpcpb.Tester{
@@ -150,12 +189,11 @@ func Test_read(t *testing.T) {
 			DelayLatencyMsRv:      500,
 			UpdatedDelayLatencyMs: 5000,
 			RoundLimit:            1,
-			ExitOnFailure:         true,
-			ConsistencyCheck:      true,
+			ExitOnCaseFail:        true,
 			EnablePprof:           true,
-			FailureDelayMs:        7000,
-			FailureShuffle:        true,
-			FailureCases: []string{
+			CaseDelayMs:           7000,
+			CaseShuffle:           true,
+			Cases: []string{
 				"SIGTERM_ONE_FOLLOWER",
 				"SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT",
 				"SIGTERM_LEADER",
@@ -166,6 +204,7 @@ func Test_read(t *testing.T) {
 				"SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT",
 				// "SIGQUIT_AND_REMOVE_LEADER",
 				// "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT",
+				"SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH",
 				"BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER",
 				"BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT",
 				"BLACKHOLE_PEER_PORT_TX_RX_LEADER",
@@ -190,7 +229,8 @@ func Test_read(t *testing.T) {
 			FailpointCommands:       []string{`panic("etcd-tester")`},
 			RunnerExecPath:          "./bin/etcd-runner",
 			ExternalExecPath:        "",
-			StressTypes:             []string{"KV", "LEASE"},
+			Stressers:               []string{"KV", "LEASE"},
+			Checkers:                []string{"KV_HASH", "LEASE_EXPIRE"},
 			StressKeySize:           100,
 			StressKeySizeLarge:      32769,
 			StressKeySuffixRange:    250000,
@@ -219,17 +259,17 @@ func Test_read(t *testing.T) {
 
 	cfg.lg = logger
 
-	cfg.updateFailures()
-	fs1 := cfg.failureStrings()
+	cfg.updateCases()
+	fs1 := cfg.listCases()
 
-	cfg.shuffleFailures()
-	fs2 := cfg.failureStrings()
+	cfg.shuffleCases()
+	fs2 := cfg.listCases()
 	if reflect.DeepEqual(fs1, fs2) {
 		t.Fatalf("expected shuffled failure cases, got %q", fs2)
 	}
 
-	cfg.shuffleFailures()
-	fs3 := cfg.failureStrings()
+	cfg.shuffleCases()
+	fs3 := cfg.listCases()
 	if reflect.DeepEqual(fs2, fs3) {
 		t.Fatalf("expected reshuffled failure cases from %q, got %q", fs2, fs3)
 	}

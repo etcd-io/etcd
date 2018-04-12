@@ -18,15 +18,25 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/snapshot"
 
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+// ElectionTimeout returns an election timeout duration.
+func (m *Member) ElectionTimeout() time.Duration {
+	return time.Duration(m.Etcd.ElectionTimeoutMs) * time.Millisecond
+}
 
 // DialEtcdGRPCServer creates a raw gRPC connection to an etcd member.
 func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -85,7 +95,7 @@ func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, er
 
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.EtcdClientEndpoint},
-		DialTimeout: 5 * time.Second,
+		DialTimeout: 10 * time.Second,
 		DialOptions: opts,
 	}
 	if secure {
@@ -226,4 +236,127 @@ func (m *Member) WriteHealthKey() error {
 		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
 	}
 	return nil
+}
+
+// SaveSnapshot downloads a snapshot file from this member, locally.
+// It's meant to requested remotely, so that local member can store
+// snapshot file on local disk.
+func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
+	// remove existing snapshot first
+	if err = os.RemoveAll(m.SnapshotPath); err != nil {
+		return err
+	}
+
+	var cli *clientv3.Client
+	cli, err = m.CreateEtcdClient()
+	if err != nil {
+		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
+	}
+	defer cli.Close()
+
+	lg.Info(
+		"snapshot save START",
+		zap.String("member-name", m.Etcd.Name),
+		zap.Strings("member-client-urls", m.Etcd.AdvertiseClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+	)
+	now := time.Now()
+	mgr := snapshot.NewV3(cli, lg)
+	if err = mgr.Save(context.Background(), m.SnapshotPath); err != nil {
+		return err
+	}
+	took := time.Since(now)
+
+	var fi os.FileInfo
+	fi, err = os.Stat(m.SnapshotPath)
+	if err != nil {
+		return err
+	}
+	var st snapshot.Status
+	st, err = mgr.Status(m.SnapshotPath)
+	if err != nil {
+		return err
+	}
+	m.SnapshotInfo = &SnapshotInfo{
+		MemberName:        m.Etcd.Name,
+		MemberClientURLs:  m.Etcd.AdvertiseClientURLs,
+		SnapshotPath:      m.SnapshotPath,
+		SnapshotFileSize:  humanize.Bytes(uint64(fi.Size())),
+		SnapshotTotalSize: humanize.Bytes(uint64(st.TotalSize)),
+		SnapshotTotalKey:  int64(st.TotalKey),
+		SnapshotHash:      int64(st.Hash),
+		SnapshotRevision:  st.Revision,
+		Took:              fmt.Sprintf("%v", took),
+	}
+	lg.Info(
+		"snapshot save END",
+		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),
+		zap.String("snapshot-total-size", m.SnapshotInfo.SnapshotTotalSize),
+		zap.Int64("snapshot-total-key", m.SnapshotInfo.SnapshotTotalKey),
+		zap.Int64("snapshot-hash", m.SnapshotInfo.SnapshotHash),
+		zap.Int64("snapshot-revision", m.SnapshotInfo.SnapshotRevision),
+		zap.String("took", m.SnapshotInfo.Took),
+	)
+	return nil
+}
+
+// RestoreSnapshot restores a cluster from a given snapshot file on disk.
+// It's meant to requested remotely, so that local member can load the
+// snapshot file from local disk.
+func (m *Member) RestoreSnapshot(lg *zap.Logger) (err error) {
+	if err = os.RemoveAll(m.EtcdOnSnapshotRestore.DataDir); err != nil {
+		return err
+	}
+	if err = os.RemoveAll(m.EtcdOnSnapshotRestore.WALDir); err != nil {
+		return err
+	}
+
+	var initialCluster types.URLsMap
+	initialCluster, err = types.NewURLsMap(m.EtcdOnSnapshotRestore.InitialCluster)
+	if err != nil {
+		return err
+	}
+	var peerURLs types.URLs
+	peerURLs, err = types.NewURLs(m.EtcdOnSnapshotRestore.AdvertisePeerURLs)
+	if err != nil {
+		return err
+	}
+
+	lg.Info(
+		"snapshot restore START",
+		zap.String("member-name", m.Etcd.Name),
+		zap.Strings("member-client-urls", m.Etcd.AdvertiseClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+	)
+	now := time.Now()
+	mgr := snapshot.NewV3(nil, lg)
+	err = mgr.Restore(m.SnapshotInfo.SnapshotPath, snapshot.RestoreConfig{
+		Name:                m.EtcdOnSnapshotRestore.Name,
+		OutputDataDir:       m.EtcdOnSnapshotRestore.DataDir,
+		OutputWALDir:        m.EtcdOnSnapshotRestore.WALDir,
+		InitialCluster:      initialCluster,
+		InitialClusterToken: m.EtcdOnSnapshotRestore.InitialClusterToken,
+		PeerURLs:            peerURLs,
+		SkipHashCheck:       false,
+
+		// TODO: SkipHashCheck == true, for recover from existing db file
+	})
+	took := time.Since(now)
+	lg.Info(
+		"snapshot restore END",
+		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
+		zap.String("snapshot-path", m.SnapshotPath),
+		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),
+		zap.String("snapshot-total-size", m.SnapshotInfo.SnapshotTotalSize),
+		zap.Int64("snapshot-total-key", m.SnapshotInfo.SnapshotTotalKey),
+		zap.Int64("snapshot-hash", m.SnapshotInfo.SnapshotHash),
+		zap.Int64("snapshot-revision", m.SnapshotInfo.SnapshotRevision),
+		zap.String("took", took.String()),
+		zap.Error(err),
+	)
+	return err
 }

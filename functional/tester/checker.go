@@ -14,28 +14,15 @@
 
 package tester
 
-import (
-	"time"
+import "github.com/coreos/etcd/functional/rpcpb"
 
-	"go.uber.org/zap"
-)
-
-type failureDelay struct {
-	Failure
-	delayDuration time.Duration
-}
-
-func (f *failureDelay) Inject(clus *Cluster) error {
-	if err := f.Failure.Inject(clus); err != nil {
-		return err
-	}
-	if f.delayDuration > 0 {
-		clus.lg.Info(
-			"wait after inject",
-			zap.Duration("delay", f.delayDuration),
-			zap.String("desc", f.Failure.Desc()),
-		)
-		time.Sleep(f.delayDuration)
-	}
-	return nil
+// Checker checks cluster consistency.
+type Checker interface {
+	// Type returns the checker type.
+	Type() rpcpb.Checker
+	// EtcdClientEndpoints returns the client endpoints of
+	// all checker target nodes..
+	EtcdClientEndpoints() []string
+	// Check returns an error if the system fails a consistency check.
+	Check() error
 }

@@ -174,43 +174,43 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 	return err
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus *Cluster) Failure {
-	ff := failureByFunc{
-		failureCase:   rpcpb.FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER,
+func new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus *Cluster) Case {
+	cc := caseByFunc{
+		rpcpbCase:     rpcpb.Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER,
 		injectMember:  inject_SIGQUIT_ETCD_AND_REMOVE_DATA,
 		recoverMember: recover_SIGQUIT_ETCD_AND_REMOVE_DATA,
 	}
-	f := &failureFollower{ff, -1, -1}
-	return &failureDelay{
-		Failure:       f,
-		delayDuration: clus.GetFailureDelayDuration(),
+	c := &caseFollower{cc, -1, -1}
+	return &caseDelay{
+		Case:          c,
+		delayDuration: clus.GetCaseDelayDuration(),
 	}
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
-	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus),
+func new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Case {
+	return &caseUntilSnapshot{
+		rpcpbCase: rpcpb.Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT,
+		Case:      new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus),
 	}
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus *Cluster) Failure {
-	ff := failureByFunc{
-		failureCase:   rpcpb.FailureCase_SIGQUIT_AND_REMOVE_LEADER,
+func new_Case_SIGQUIT_AND_REMOVE_LEADER(clus *Cluster) Case {
+	cc := caseByFunc{
+		rpcpbCase:     rpcpb.Case_SIGQUIT_AND_REMOVE_LEADER,
 		injectMember:  inject_SIGQUIT_ETCD_AND_REMOVE_DATA,
 		recoverMember: recover_SIGQUIT_ETCD_AND_REMOVE_DATA,
 	}
-	f := &failureLeader{ff, -1, -1}
-	return &failureDelay{
-		Failure:       f,
-		delayDuration: clus.GetFailureDelayDuration(),
+	c := &caseLeader{cc, -1, -1}
+	return &caseDelay{
+		Case:          c,
+		delayDuration: clus.GetCaseDelayDuration(),
 	}
 }
 
-func new_FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Failure {
-	return &failureUntilSnapshot{
-		failureCase: rpcpb.FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT,
-		Failure:     new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus),
+func new_Case_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Case {
+	return &caseUntilSnapshot{
+		rpcpbCase: rpcpb.Case_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT,
+		Case:      new_Case_SIGQUIT_AND_REMOVE_LEADER(clus),
 	}
 }
 

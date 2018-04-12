@@ -21,17 +21,17 @@ import (
 	"go.uber.org/zap"
 )
 
-func (clus *Cluster) shuffleFailures() {
+func (clus *Cluster) shuffleCases() {
 	rand.Seed(time.Now().UnixNano())
 	offset := rand.Intn(1000)
-	n := len(clus.failures)
+	n := len(clus.cases)
 	cp := coprime(n)
 
-	fs := make([]Failure, n)
+	css := make([]Case, n)
 	for i := 0; i < n; i++ {
-		fs[i] = clus.failures[(cp*i+offset)%n]
+		css[i] = clus.cases[(cp*i+offset)%n]
 	}
-	clus.failures = fs
+	clus.cases = css
 	clus.lg.Info("shuffled test failure cases", zap.Int("total", n))
 }
 

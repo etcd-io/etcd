@@ -52,11 +52,11 @@ type Cluster struct {
 	Members []*rpcpb.Member `yaml:"agent-configs"`
 	Tester  *rpcpb.Tester   `yaml:"tester-config"`
 
-	failures []Failure
+	cases []Case
 
 	rateLimiter *rate.Limiter
 	stresser    Stresser
-	checker     Checker
+	checkers    []Checker
 
 	currentRevision int64
 	rd              int
@@ -80,7 +80,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus.agentClients = make([]rpcpb.TransportClient, len(clus.Members))
 	clus.agentStreams = make([]rpcpb.Transport_TransportClient, len(clus.Members))
 	clus.agentRequests = make([]*rpcpb.Request, len(clus.Members))
-	clus.failures = make([]Failure, 0)
+	clus.cases = make([]Case, 0)
 
 	for i, ap := range clus.Members {
 		var err error
@@ -111,16 +111,25 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	}
 	go clus.serveTesterServer()
 
-	clus.updateFailures()
+	clus.updateCases()
 
 	clus.rateLimiter = rate.NewLimiter(
 		rate.Limit(int(clus.Tester.StressQPS)),
 		int(clus.Tester.StressQPS),
 	)
 
-	clus.updateStresserChecker()
+	clus.setStresserChecker()
 
 	return clus, nil
+}
+
+// EtcdClientEndpoints returns all etcd client endpoints.
+func (clus *Cluster) EtcdClientEndpoints() (css []string) {
+	css = make([]string, len(clus.Members))
+	for i := range clus.Members {
+		css[i] = clus.Members[i].EtcdClientEndpoint
+	}
+	return css
 }
 
 func (clus *Cluster) serveTesterServer() {
@@ -139,124 +148,127 @@ func (clus *Cluster) serveTesterServer() {
 	}
 }
 
-func (clus *Cluster) updateFailures() {
-	for _, cs := range clus.Tester.FailureCases {
+func (clus *Cluster) updateCases() {
+	for _, cs := range clus.Tester.Cases {
 		switch cs {
 		case "SIGTERM_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ONE_FOLLOWER(clus))
 		case "SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGTERM_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_LEADER(clus))
 		case "SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGTERM_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_QUORUM(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_QUORUM(clus))
 		case "SIGTERM_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGTERM_ALL(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGTERM_ALL(clus))
 
 		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus))
 		case "SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus))
 		case "SIGQUIT_AND_REMOVE_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_LEADER(clus))
 		case "SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus))
+		case "SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH":
+			clus.cases = append(clus.cases,
+				new_Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus))
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT())
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_LEADER(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT())
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT())
 		case "BLACKHOLE_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_QUORUM(clus))
 		case "BLACKHOLE_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus))
+			clus.cases = append(clus.cases,
+				new_Case_BLACKHOLE_PEER_PORT_TX_RX_ALL(clus))
 
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_QUORUM(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_QUORUM(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_QUORUM(clus, true))
 		case "DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, false))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ALL(clus, false))
 		case "RANDOM_DELAY_PEER_PORT_TX_RX_ALL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_DELAY_PEER_PORT_TX_RX_ALL(clus, true))
+			clus.cases = append(clus.cases,
+				new_Case_DELAY_PEER_PORT_TX_RX_ALL(clus, true))
 
 		case "NO_FAIL_WITH_STRESS":
-			clus.failures = append(clus.failures,
-				new_FailureCase_NO_FAIL_WITH_STRESS(clus))
+			clus.cases = append(clus.cases,
+				new_Case_NO_FAIL_WITH_STRESS(clus))
 		case "NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS":
-			clus.failures = append(clus.failures,
-				new_FailureCase_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus))
+			clus.cases = append(clus.cases,
+				new_Case_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS(clus))
 
 		case "EXTERNAL":
-			clus.failures = append(clus.failures,
-				new_FailureCase_EXTERNAL(clus.Tester.ExternalExecPath))
+			clus.cases = append(clus.cases,
+				new_Case_EXTERNAL(clus.Tester.ExternalExecPath))
 		case "FAILPOINTS":
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
 			}
-			clus.failures = append(clus.failures,
+			clus.cases = append(clus.cases,
 				fpFailures...)
 		}
 	}
 }
 
-func (clus *Cluster) failureStrings() (fs []string) {
-	fs = make([]string, len(clus.failures))
-	for i := range clus.failures {
-		fs[i] = clus.failures[i].Desc()
+func (clus *Cluster) listCases() (css []string) {
+	css = make([]string, len(clus.cases))
+	for i := range clus.cases {
+		css[i] = clus.cases[i].Desc()
 	}
-	return fs
+	return css
 }
 
 // UpdateDelayLatencyMs updates delay latency with random value
@@ -271,26 +283,49 @@ func (clus *Cluster) UpdateDelayLatencyMs() {
 	}
 }
 
-func (clus *Cluster) updateStresserChecker() {
-	cs := &compositeStresser{}
+func (clus *Cluster) setStresserChecker() {
+	css := &compositeStresser{}
+	lss := []*leaseStresser{}
+	rss := []*runnerStresser{}
 	for _, m := range clus.Members {
-		cs.stressers = append(cs.stressers, newStresser(clus, m))
-	}
-	clus.stresser = cs
-
-	if clus.Tester.ConsistencyCheck {
-		clus.checker = newHashChecker(clus.lg, hashAndRevGetter(clus))
-		if schk := cs.Checker(); schk != nil {
-			clus.checker = newCompositeChecker([]Checker{clus.checker, schk})
+		sss := newStresser(clus, m)
+		css.stressers = append(css.stressers, &compositeStresser{sss})
+		for _, s := range sss {
+			if v, ok := s.(*leaseStresser); ok {
+				lss = append(lss, v)
+				clus.lg.Info("added lease stresser", zap.String("endpoint", m.EtcdClientEndpoint))
+			}
+			if v, ok := s.(*runnerStresser); ok {
+				rss = append(rss, v)
+				clus.lg.Info("added lease stresser", zap.String("endpoint", m.EtcdClientEndpoint))
+			}
 		}
-	} else {
-		clus.checker = newNoChecker()
 	}
+	clus.stresser = css
 
+	for _, cs := range clus.Tester.Checkers {
+		switch cs {
+		case "KV_HASH":
+			clus.checkers = append(clus.checkers, newKVHashChecker(clus))
+
+		case "LEASE_EXPIRE":
+			for _, ls := range lss {
+				clus.checkers = append(clus.checkers, newLeaseExpireChecker(ls))
+			}
+
+		case "RUNNER":
+			for _, rs := range rss {
+				clus.checkers = append(clus.checkers, newRunnerChecker(rs.etcdClientEndpoint, rs.errc))
+			}
+
+		case "NO_CHECK":
+			clus.checkers = append(clus.checkers, newNoChecker())
+		}
+	}
 	clus.lg.Info("updated stressers")
 }
 
-func (clus *Cluster) checkConsistency() (err error) {
+func (clus *Cluster) runCheckers(exceptions ...rpcpb.Checker) (err error) {
 	defer func() {
 		if err != nil {
 			return
@@ -304,23 +339,37 @@ func (clus *Cluster) checkConsistency() (err error) {
 		}
 	}()
 
-	if err = clus.checker.Check(); err != nil {
+	exs := make(map[rpcpb.Checker]struct{})
+	for _, e := range exceptions {
+		exs[e] = struct{}{}
+	}
+	for _, chk := range clus.checkers {
 		clus.lg.Warn(
-			"consistency check FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
+			"consistency check START",
+			zap.String("checker", chk.Type().String()),
+			zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
+		)
+		err = chk.Check()
+		clus.lg.Warn(
+			"consistency check END",
+			zap.String("checker", chk.Type().String()),
+			zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
 			zap.Error(err),
 		)
-		return err
+		if err != nil {
+			_, ok := exs[chk.Type()]
+			if !ok {
+				return err
+			}
+			clus.lg.Warn(
+				"consistency check SKIP FAIL",
+				zap.String("checker", chk.Type().String()),
+				zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
+				zap.Error(err),
+			)
+		}
 	}
-	clus.lg.Info(
-		"consistency check ALL PASS",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.String("desc", clus.failures[clus.cs].Desc()),
-	)
-
-	return err
+	return nil
 }
 
 // Send_INITIAL_START_ETCD bootstraps etcd cluster the very first time.
@@ -390,6 +439,11 @@ func (clus *Cluster) broadcast(op rpcpb.Operation) error {
 }
 
 func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
+	_, err := clus.sendOpWithResp(idx, op)
+	return err
+}
+
+func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Response, error) {
 	// maintain the initial member object
 	// throughout the test time
 	clus.agentRequests[idx] = &rpcpb.Request{
@@ -406,7 +460,7 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 		zap.Error(err),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := clus.agentStreams[idx].Recv()
@@ -428,18 +482,18 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 		)
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !resp.Success {
-		return errors.New(resp.Status)
+		return nil, errors.New(resp.Status)
 	}
 
 	m, secure := clus.Members[idx], false
 	for _, cu := range m.Etcd.AdvertiseClientURLs {
 		u, err := url.Parse(cu)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if u.Scheme == "https" { // TODO: handle unix
 			secure = true
@@ -455,16 +509,16 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 			"client",
 		)
 		if err = fileutil.TouchDirAll(dirClient); err != nil {
-			return err
+			return nil, err
 		}
 
 		clientCertData := []byte(resp.Member.ClientCertData)
 		if len(clientCertData) == 0 {
-			return fmt.Errorf("got empty client cert from %q", m.EtcdClientEndpoint)
+			return nil, fmt.Errorf("got empty client cert from %q", m.EtcdClientEndpoint)
 		}
 		clientCertPath := filepath.Join(dirClient, "cert.pem")
 		if err = ioutil.WriteFile(clientCertPath, clientCertData, 0644); err != nil { // overwrite if exists
-			return err
+			return nil, err
 		}
 		resp.Member.ClientCertPath = clientCertPath
 		clus.lg.Info(
@@ -474,11 +528,11 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 
 		clientKeyData := []byte(resp.Member.ClientKeyData)
 		if len(clientKeyData) == 0 {
-			return fmt.Errorf("got empty client key from %q", m.EtcdClientEndpoint)
+			return nil, fmt.Errorf("got empty client key from %q", m.EtcdClientEndpoint)
 		}
 		clientKeyPath := filepath.Join(dirClient, "key.pem")
 		if err = ioutil.WriteFile(clientKeyPath, clientKeyData, 0644); err != nil { // overwrite if exists
-			return err
+			return nil, err
 		}
 		resp.Member.ClientKeyPath = clientKeyPath
 		clus.lg.Info(
@@ -491,7 +545,7 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 			// TODO: disable this when auto TLS is deprecated
 			clientTrustedCAPath := filepath.Join(dirClient, "ca.pem")
 			if err = ioutil.WriteFile(clientTrustedCAPath, clientTrustedCAData, 0644); err != nil { // overwrite if exists
-				return err
+				return nil, err
 			}
 			resp.Member.ClientTrustedCAPath = clientTrustedCAPath
 			clus.lg.Info(
@@ -504,7 +558,8 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 
 		clus.Members[idx] = resp.Member
 	}
-	return nil
+
+	return resp, nil
 }
 
 // Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT terminates all tester connections to agents and etcd servers.
@@ -690,14 +745,14 @@ func (clus *Cluster) defrag() error {
 		"defrag ALL PASS",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.failures)),
+		zap.Int("case-total", len(clus.cases)),
 	)
 	return nil
 }
 
-// GetFailureDelayDuration computes failure delay duration.
-func (clus *Cluster) GetFailureDelayDuration() time.Duration {
-	return time.Duration(clus.Tester.FailureDelayMs) * time.Millisecond
+// GetCaseDelayDuration computes failure delay duration.
+func (clus *Cluster) GetCaseDelayDuration() time.Duration {
+	return time.Duration(clus.Tester.CaseDelayMs) * time.Millisecond
 }
 
 // Report reports the number of modified keys.

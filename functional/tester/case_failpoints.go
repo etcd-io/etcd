@@ -32,7 +32,7 @@ type failpointStats struct {
 
 var fpStats failpointStats
 
-func failpointFailures(clus *Cluster) (ret []Failure, err error) {
+func failpointFailures(clus *Cluster) (ret []Case, err error) {
 	var fps []string
 	fps, err = failpointPaths(clus.Members[0].FailpointHTTPAddr)
 	if err != nil {
@@ -44,21 +44,21 @@ func failpointFailures(clus *Cluster) (ret []Failure, err error) {
 			continue
 		}
 
-		fpFails := failuresFromFailpoint(fp, clus.Tester.FailpointCommands)
+		fpFails := casesFromFailpoint(fp, clus.Tester.FailpointCommands)
 
 		// wrap in delays so failpoint has time to trigger
 		for i, fpf := range fpFails {
 			if strings.Contains(fp, "Snap") {
 				// hack to trigger snapshot failpoints
-				fpFails[i] = &failureUntilSnapshot{
-					desc:        fpf.Desc(),
-					failureCase: rpcpb.FailureCase_FAILPOINTS,
-					Failure:     fpf,
+				fpFails[i] = &caseUntilSnapshot{
+					desc:      fpf.Desc(),
+					rpcpbCase: rpcpb.Case_FAILPOINTS,
+					Case:      fpf,
 				}
 			} else {
-				fpFails[i] = &failureDelay{
-					Failure:       fpf,
-					delayDuration: clus.GetFailureDelayDuration(),
+				fpFails[i] = &caseDelay{
+					Case:          fpf,
+					delayDuration: clus.GetCaseDelayDuration(),
 				}
 			}
 		}
@@ -86,42 +86,45 @@ func failpointPaths(endpoint string) ([]string, error) {
 	return fps, nil
 }
 
-// failpoints follows FreeBSD KFAIL_POINT syntax.
+// failpoints follows FreeBSD FAIL_POINT syntax.
 // e.g. panic("etcd-tester"),1*sleep(1000)->panic("etcd-tester")
-func failuresFromFailpoint(fp string, failpointCommands []string) (fs []Failure) {
+func casesFromFailpoint(fp string, failpointCommands []string) (fs []Case) {
 	recov := makeRecoverFailpoint(fp)
 	for _, fcmd := range failpointCommands {
 		inject := makeInjectFailpoint(fp, fcmd)
-		fs = append(fs, []Failure{
-			&failureFollower{
-				failureByFunc: failureByFunc{
+		fs = append(fs, []Case{
+			&caseFollower{
+				caseByFunc: caseByFunc{
 					desc:          fmt.Sprintf("failpoint %q (one: %q)", fp, fcmd),
-					failureCase:   rpcpb.FailureCase_FAILPOINTS,
+					rpcpbCase:     rpcpb.Case_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
 				},
 				last: -1,
 				lead: -1,
 			},
-			&failureLeader{
-				failureByFunc: failureByFunc{
+			&caseLeader{
+				caseByFunc: caseByFunc{
 					desc:          fmt.Sprintf("failpoint %q (leader: %q)", fp, fcmd),
-					failureCase:   rpcpb.FailureCase_FAILPOINTS,
+					rpcpbCase:     rpcpb.Case_FAILPOINTS,
 					injectMember:  inject,
 					recoverMember: recov,
 				},
 				last: -1,
 				lead: -1,
 			},
-			&failureQuorum{
-				desc:          fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd),
-				failureCase:   rpcpb.FailureCase_FAILPOINTS,
-				injectMember:  inject,
-				recoverMember: recov,
+			&caseQuorum{
+				caseByFunc: caseByFunc{
+					desc:          fmt.Sprintf("failpoint %q (quorum: %q)", fp, fcmd),
+					rpcpbCase:     rpcpb.Case_FAILPOINTS,
+					injectMember:  inject,
+					recoverMember: recov,
+				},
+				injected: make(map[int]struct{}),
 			},
-			&failureAll{
+			&caseAll{
 				desc:          fmt.Sprintf("failpoint %q (all: %q)", fp, fcmd),
-				failureCase:   rpcpb.FailureCase_FAILPOINTS,
+				rpcpbCase:     rpcpb.Case_FAILPOINTS,
 				injectMember:  inject,
 				recoverMember: recov,
 			},
