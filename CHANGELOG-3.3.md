@@ -127,6 +127,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Translate [gRPC status error in v3 client `Snapshot` API](https://github.com/coreos/etcd/pull/9038).
 - v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`"lease LEASE_ID already expired"`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `"lease LEASE_ID granted with TTL(0s), remaining(-1s)"`.
+- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
 
 ### Dependency
 
@@ -303,7 +304,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### Added: gRPC gateway
 
-- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
+- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
   - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in `v3.4`.
 - Support ["authorization" token](https://github.com/coreos/etcd/pull/7999).
 - Support [websocket for bi-directional streams](https://github.com/coreos/etcd/pull/8257).
