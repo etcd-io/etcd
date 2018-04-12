@@ -65,7 +65,7 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 
 			// TODO: remove this with generated certs
 			// only need it for auto TLS
-			InsecureSkipVerify: true,
+			// InsecureSkipVerify: true,
 		}
 		tlsConfig, err := tlsInfo.ClientConfig()
 		if err != nil {
