@@ -35,6 +35,7 @@ func (cs *compositeStresser) Stress() error {
 }
 
 func (cs *compositeStresser) Pause() (ems map[string]int) {
+	var emu sync.Mutex
 	ems = make(map[string]int)
 	var wg sync.WaitGroup
 	wg.Add(len(cs.stressers))
@@ -43,7 +44,9 @@ func (cs *compositeStresser) Pause() (ems map[string]int) {
 			defer wg.Done()
 			errs := s.Pause()
 			for k, v := range errs {
+				emu.Lock()
 				ems[k] += v
+				emu.Unlock()
 			}
 		}(cs.stressers[i])
 	}
@@ -52,6 +55,7 @@ func (cs *compositeStresser) Pause() (ems map[string]int) {
 }
 
 func (cs *compositeStresser) Close() (ems map[string]int) {
+	var emu sync.Mutex
 	ems = make(map[string]int)
 	var wg sync.WaitGroup
 	wg.Add(len(cs.stressers))
@@ -60,7 +64,9 @@ func (cs *compositeStresser) Close() (ems map[string]int) {
 			defer wg.Done()
 			errs := s.Close()
 			for k, v := range errs {
+				emu.Lock()
 				ems[k] += v
+				emu.Unlock()
 			}
 		}(cs.stressers[i])
 	}
