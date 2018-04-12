@@ -95,7 +95,7 @@ func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, er
 
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.EtcdClientEndpoint},
-		DialTimeout: 5 * time.Second,
+		DialTimeout: 10 * time.Second,
 		DialOptions: opts,
 	}
 	if secure {

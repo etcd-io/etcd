@@ -183,9 +183,10 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 	for idx := range c.injected {
 		idxs = append(idxs, idx)
 	}
+	clus.lg.Info("member add START", zap.Int("members-to-add", len(idxs)))
 	for i, idx := range idxs {
 		clus.lg.Info(
-			"member add request START",
+			"member add request SENT",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
 			zap.Strings("peer-urls", clus.Members[idx].Etcd.AdvertisePeerURLs),
 		)
@@ -193,7 +194,7 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 		_, err := leaderc.MemberAdd(ctx, clus.Members[idx].Etcd.AdvertisePeerURLs)
 		cancel()
 		clus.lg.Info(
-			"member add request END",
+			"member add request DONE",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
 			zap.Strings("peer-urls", clus.Members[idx].Etcd.AdvertisePeerURLs),
 			zap.Error(err),
@@ -211,13 +212,13 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 		}
 		clus.Members[idx].EtcdOnSnapshotRestore.InitialCluster = strings.Join(initClus, ",")
 		clus.lg.Info(
-			"restart from snapshot request START",
+			"restart from snapshot request SENT",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
 			zap.Strings("initial-cluster", initClus),
 		)
 		err = clus.sendOp(idx, rpcpb.Operation_RESTART_FROM_SNAPSHOT)
 		clus.lg.Info(
-			"restart from snapshot request END",
+			"restart from snapshot request DONE",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
 			zap.Strings("initial-cluster", initClus),
 			zap.Error(err),
