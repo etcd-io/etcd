@@ -17,19 +17,25 @@ package tester
 import "github.com/coreos/etcd/functional/rpcpb"
 
 type runnerChecker struct {
-	ctype rpcpb.Checker
-	errc  chan error
+	ctype              rpcpb.Checker
+	etcdClientEndpoint string
+	errc               chan error
 }
 
-func newRunnerChecker(errc chan error) Checker {
+func newRunnerChecker(ep string, errc chan error) Checker {
 	return &runnerChecker{
-		ctype: rpcpb.Checker_RUNNER,
-		errc:  errc,
+		ctype:              rpcpb.Checker_RUNNER,
+		etcdClientEndpoint: ep,
+		errc:               errc,
 	}
 }
 
 func (rc *runnerChecker) Type() rpcpb.Checker {
 	return rc.ctype
+}
+
+func (rc *runnerChecker) EtcdClientEndpoints() []string {
+	return []string{rc.etcdClientEndpoint}
 }
 
 func (rc *runnerChecker) Check() error {

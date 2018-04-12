@@ -44,10 +44,12 @@ func newLeaseExpireChecker(ls *leaseStresser) Checker {
 	}
 }
 
-const leaseExpireCheckerTimeout = 10 * time.Second
-
 func (lc *leaseExpireChecker) Type() rpcpb.Checker {
 	return lc.ctype
+}
+
+func (lc *leaseExpireChecker) EtcdClientEndpoints() []string {
+	return []string{lc.m.EtcdClientEndpoint}
 }
 
 func (lc *leaseExpireChecker) Check() error {
@@ -80,6 +82,8 @@ func (lc *leaseExpireChecker) Check() error {
 	}
 	return lc.checkShortLivedLeases()
 }
+
+const leaseExpireCheckerTimeout = 10 * time.Second
 
 // checkShortLivedLeases ensures leases expire.
 func (lc *leaseExpireChecker) checkShortLivedLeases() error {

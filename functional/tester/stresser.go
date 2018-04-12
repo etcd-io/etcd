@@ -85,6 +85,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) (stressers []Stresser) {
 			}
 			stressers[i] = newRunnerStresser(
 				rpcpb.Stresser_ELECTION_RUNNER,
+				m.EtcdClientEndpoint,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -106,6 +107,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) (stressers []Stresser) {
 			}
 			stressers[i] = newRunnerStresser(
 				rpcpb.Stresser_WATCH_RUNNER,
+				m.EtcdClientEndpoint,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -125,6 +127,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) (stressers []Stresser) {
 			}
 			stressers[i] = newRunnerStresser(
 				rpcpb.Stresser_LOCK_RACER_RUNNER,
+				m.EtcdClientEndpoint,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,
@@ -140,6 +143,7 @@ func newStresser(clus *Cluster, m *rpcpb.Member) (stressers []Stresser) {
 			}
 			stressers[i] = newRunnerStresser(
 				rpcpb.Stresser_LEASE_RUNNER,
+				m.EtcdClientEndpoint,
 				clus.lg,
 				clus.Tester.RunnerExecPath,
 				args,

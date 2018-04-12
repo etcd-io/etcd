@@ -18,6 +18,7 @@ import "github.com/coreos/etcd/functional/rpcpb"
 
 type noCheck struct{}
 
-func newNoChecker() Checker             { return &noCheck{} }
-func (nc *noCheck) Type() rpcpb.Checker { return rpcpb.Checker_NO_CHECK }
-func (nc *noCheck) Check() error        { return nil }
+func newNoChecker() Checker                       { return &noCheck{} }
+func (nc *noCheck) Type() rpcpb.Checker           { return rpcpb.Checker_NO_CHECK }
+func (nc *noCheck) EtcdClientEndpoints() []string { return nil }
+func (nc *noCheck) Check() error                  { return nil }

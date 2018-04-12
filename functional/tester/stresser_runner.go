@@ -27,8 +27,9 @@ import (
 )
 
 type runnerStresser struct {
-	stype rpcpb.Stresser
-	lg    *zap.Logger
+	stype              rpcpb.Stresser
+	etcdClientEndpoint string
+	lg                 *zap.Logger
 
 	cmd     *exec.Cmd
 	cmdStr  string
@@ -42,6 +43,7 @@ type runnerStresser struct {
 
 func newRunnerStresser(
 	stype rpcpb.Stresser,
+	ep string,
 	lg *zap.Logger,
 	cmdStr string,
 	args []string,
@@ -50,13 +52,14 @@ func newRunnerStresser(
 ) *runnerStresser {
 	rl.SetLimit(rl.Limit() - rate.Limit(reqRate))
 	return &runnerStresser{
-		stype:   stype,
-		cmdStr:  cmdStr,
-		args:    args,
-		rl:      rl,
-		reqRate: reqRate,
-		errc:    make(chan error, 1),
-		donec:   make(chan struct{}),
+		stype:              stype,
+		etcdClientEndpoint: ep,
+		cmdStr:             cmdStr,
+		args:               args,
+		rl:                 rl,
+		reqRate:            reqRate,
+		errc:               make(chan error, 1),
+		donec:              make(chan struct{}),
 	}
 }
 

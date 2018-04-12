@@ -25,21 +25,16 @@ import (
 
 const retries = 7
 
-type hashRevGetter interface {
-	getRevisionHash() (revs map[string]int64, hashes map[string]int64, err error)
-}
-
 type kvHashChecker struct {
 	ctype rpcpb.Checker
 	lg    *zap.Logger
-	hrg   hashRevGetter
+	clus  *Cluster
 }
 
-func newKVHashChecker(lg *zap.Logger, hrg hashRevGetter) Checker {
+func newKVHashChecker(clus *Cluster) Checker {
 	return &kvHashChecker{
 		ctype: rpcpb.Checker_KV_HASH,
-		lg:    lg,
-		hrg:   hrg,
+		clus:  clus,
 	}
 }
 
@@ -50,9 +45,9 @@ func (hc *kvHashChecker) checkRevAndHashes() (err error) {
 	)
 	// retries in case of transient failure or etcd cluster has not stablized yet.
 	for i := 0; i < retries; i++ {
-		revs, hashes, err = hc.hrg.getRevisionHash()
+		revs, hashes, err = hc.clus.getRevisionHash()
 		if err != nil {
-			hc.lg.Warn(
+			hc.clus.lg.Warn(
 				"failed to get revision and hash",
 				zap.Int("retries", i),
 				zap.Error(err),
@@ -63,7 +58,7 @@ func (hc *kvHashChecker) checkRevAndHashes() (err error) {
 			if sameRev && sameHashes {
 				return nil
 			}
-			hc.lg.Warn(
+			hc.clus.lg.Warn(
 				"retrying; etcd cluster is not stable",
 				zap.Int("retries", i),
 				zap.Bool("same-revisions", sameRev),
@@ -84,6 +79,10 @@ func (hc *kvHashChecker) checkRevAndHashes() (err error) {
 
 func (hc *kvHashChecker) Type() rpcpb.Checker {
 	return hc.ctype
+}
+
+func (hc *kvHashChecker) EtcdClientEndpoints() []string {
+	return hc.clus.EtcdClientEndpoints()
 }
 
 func (hc *kvHashChecker) Check() error {

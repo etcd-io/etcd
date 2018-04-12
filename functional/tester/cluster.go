@@ -123,6 +123,15 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	return clus, nil
 }
 
+// EtcdClientEndpoints returns all etcd client endpoints.
+func (clus *Cluster) EtcdClientEndpoints() (css []string) {
+	css = make([]string, len(clus.Members))
+	for i := range clus.Members {
+		css[i] = clus.Members[i].EtcdClientEndpoint
+	}
+	return css
+}
+
 func (clus *Cluster) serveTesterServer() {
 	clus.lg.Info(
 		"started tester HTTP server",
@@ -297,7 +306,7 @@ func (clus *Cluster) setStresserChecker() {
 	for _, cs := range clus.Tester.Checkers {
 		switch cs {
 		case "KV_HASH":
-			clus.checkers = append(clus.checkers, newKVHashChecker(clus.lg, hashRevGetter(clus)))
+			clus.checkers = append(clus.checkers, newKVHashChecker(clus))
 
 		case "LEASE_EXPIRE":
 			for _, ls := range lss {
@@ -306,7 +315,7 @@ func (clus *Cluster) setStresserChecker() {
 
 		case "RUNNER":
 			for _, rs := range rss {
-				clus.checkers = append(clus.checkers, newRunnerChecker(rs.errc))
+				clus.checkers = append(clus.checkers, newRunnerChecker(rs.etcdClientEndpoint, rs.errc))
 			}
 
 		case "NO_CHECK":
@@ -335,6 +344,7 @@ func (clus *Cluster) runCheckers() (err error) {
 			clus.lg.Warn(
 				"consistency check FAIL",
 				zap.String("checker", chk.Type().String()),
+				zap.Strings("client-endpoints", chk.EtcdClientEndpoints()),
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.Error(err),
