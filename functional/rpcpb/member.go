@@ -33,6 +33,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// ElectionTimeout returns an election timeout duration.
+func (m *Member) ElectionTimeout() time.Duration {
+	return time.Duration(m.Etcd.ElectionTimeoutMs) * time.Millisecond
+}
+
 // DialEtcdGRPCServer creates a raw gRPC connection to an etcd member.
 func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	dialOpts := []grpc.DialOption{

@@ -158,11 +158,13 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 	clus.lg.Info(
 		"restore snapshot and restart from snapshot request START",
 		zap.String("target-endpoint", clus.Members[oldlead].EtcdClientEndpoint),
+		zap.Strings("initial-cluster", initClus),
 	)
 	err := clus.sendOp(oldlead, rpcpb.Operation_RESTORE_RESTART_FROM_SNAPSHOT)
 	clus.lg.Info(
 		"restore snapshot and restart from snapshot request END",
 		zap.String("target-endpoint", clus.Members[oldlead].EtcdClientEndpoint),
+		zap.Strings("initial-cluster", initClus),
 		zap.Error(err),
 	)
 	if err != nil {
@@ -178,7 +180,11 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 	// 7. Add another member to establish 2-node cluster.
 	// 8. Add another member to establish 3-node cluster.
 	// 9. Add more if any.
+	idxs := make([]int, 0, len(c.injected))
 	for idx := range c.injected {
+		idxs = append(idxs, idx)
+	}
+	for i, idx := range idxs {
 		clus.lg.Info(
 			"member add request START",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
@@ -197,10 +203,6 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 			return err
 		}
 
-		// wait until membership reconfiguration entry gets applied
-		// TODO: test concurrent member add
-		time.Sleep(3 * time.Second)
-
 		// start the added(new) member with fresh data
 		clus.Members[idx].EtcdOnSnapshotRestore = clus.Members[idx].Etcd
 		clus.Members[idx].EtcdOnSnapshotRestore.InitialClusterState = "existing"
@@ -212,18 +214,38 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 		clus.lg.Info(
 			"restart from snapshot request START",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
+			zap.Strings("initial-cluster", initClus),
 		)
 		err = clus.sendOp(idx, rpcpb.Operation_RESTART_FROM_SNAPSHOT)
 		clus.lg.Info(
 			"restart from snapshot request END",
 			zap.String("target-endpoint", clus.Members[idx].EtcdClientEndpoint),
+			zap.Strings("initial-cluster", initClus),
 			zap.Error(err),
 		)
 		if err != nil {
 			return err
 		}
-	}
 
+		if i != len(c.injected)-1 {
+			// wait until membership reconfiguration entry gets applied
+			// TODO: test concurrent member add
+			dur := 5 * clus.Members[idx].ElectionTimeout()
+			clus.lg.Info(
+				"waiting after restart from snapshot request",
+				zap.Int("i", i),
+				zap.Int("idx", idx),
+				zap.Duration("sleep", dur),
+			)
+			time.Sleep(dur)
+		} else {
+			clus.lg.Info(
+				"restart from snapshot request ALL END",
+				zap.Int("i", i),
+				zap.Int("idx", idx),
+			)
+		}
+	}
 	return nil
 }
 
