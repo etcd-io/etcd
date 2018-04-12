@@ -126,7 +126,7 @@ func (clus *Cluster) doRound() error {
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 		zap.Int("case-total", len(clus.cases)),
-		zap.Strings("failures", clus.failureStrings()),
+		zap.Strings("cases", clus.listCases()),
 	)
 	for i, fa := range clus.cases {
 		clus.cs = i
@@ -260,7 +260,7 @@ func (clus *Cluster) doRound() error {
 	clus.lg.Info(
 		"round ALL PASS",
 		zap.Int("round", clus.rd),
-		zap.Strings("failures", clus.failureStrings()),
+		zap.Strings("cases", clus.listCases()),
 		zap.Int("case-total", len(clus.cases)),
 		zap.Duration("took", time.Since(roundNow)),
 	)

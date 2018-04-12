@@ -263,12 +263,12 @@ func (clus *Cluster) updateCases() {
 	}
 }
 
-func (clus *Cluster) failureStrings() (fs []string) {
-	fs = make([]string, len(clus.cases))
+func (clus *Cluster) listCases() (css []string) {
+	css = make([]string, len(clus.cases))
 	for i := range clus.cases {
-		fs[i] = clus.cases[i].Desc()
+		css[i] = clus.cases[i].Desc()
 	}
-	return fs
+	return css
 }
 
 // UpdateDelayLatencyMs updates delay latency with random value

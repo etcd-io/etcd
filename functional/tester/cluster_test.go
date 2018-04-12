@@ -260,16 +260,16 @@ func Test_read(t *testing.T) {
 	cfg.lg = logger
 
 	cfg.updateCases()
-	fs1 := cfg.failureStrings()
+	fs1 := cfg.listCases()
 
 	cfg.shuffleCases()
-	fs2 := cfg.failureStrings()
+	fs2 := cfg.listCases()
 	if reflect.DeepEqual(fs1, fs2) {
 		t.Fatalf("expected shuffled failure cases, got %q", fs2)
 	}
 
 	cfg.shuffleCases()
-	fs3 := cfg.failureStrings()
+	fs3 := cfg.listCases()
 	if reflect.DeepEqual(fs2, fs3) {
 		t.Fatalf("expected reshuffled failure cases from %q, got %q", fs2, fs3)
 	}
