@@ -9,7 +9,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v4.0.0) and [
 
 ### Breaking Changes
 
-- [Secure etcd by default](https://github.com/coreos/etcd/issues/9475).
+- [Secure etcd by default](https://github.com/coreos/etcd/issues/9475)?
 - Change `/health` endpoint output.
   - Previously, `{"health":"true"}`.
   - Now, `{"health":true}`.

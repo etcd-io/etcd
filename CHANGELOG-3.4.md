@@ -134,6 +134,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Added: API
 
 - Add [`snapshot`](https://github.com/coreos/etcd/pull/9118) package for snapshot restore/save operations.
+  - See [`godoc.org:etcd/snapshot`](https://godoc.org/github.com/coreos/etcd/snapshot).
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
   - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
 - Add [`raftAppliedIndex` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9176) for current Raft applied index.
