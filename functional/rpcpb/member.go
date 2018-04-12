@@ -16,6 +16,7 @@ package rpcpb
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/snapshot"
 
 	"github.com/dustin/go-humanize"
@@ -80,11 +80,12 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 	return grpc.Dial(m.EtcdClientEndpoint, dialOpts...)
 }
 
-// CreateEtcdClient creates a client from member.
-func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, error) {
+// CreateEtcdClientConfig creates a client configuration from member.
+func (m *Member) CreateEtcdClientConfig(opts ...grpc.DialOption) (cfg *clientv3.Config, err error) {
 	secure := false
 	for _, cu := range m.Etcd.AdvertiseClientURLs {
-		u, err := url.Parse(cu)
+		var u *url.URL
+		u, err = url.Parse(cu)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +94,7 @@ func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, er
 		}
 	}
 
-	cfg := clientv3.Config{
+	cfg = &clientv3.Config{
 		Endpoints:   []string{m.EtcdClientEndpoint},
 		DialTimeout: 10 * time.Second,
 		DialOptions: opts,
@@ -109,13 +110,23 @@ func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, er
 			// only need it for auto TLS
 			InsecureSkipVerify: true,
 		}
-		tlsConfig, err := tlsInfo.ClientConfig()
+		var tlsConfig *tls.Config
+		tlsConfig, err = tlsInfo.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
 		cfg.TLS = tlsConfig
 	}
-	return clientv3.New(cfg)
+	return cfg, err
+}
+
+// CreateEtcdClient creates a client from member.
+func (m *Member) CreateEtcdClient(opts ...grpc.DialOption) (*clientv3.Client, error) {
+	cfg, err := m.CreateEtcdClientConfig(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return clientv3.New(*cfg)
 }
 
 // CheckCompact ensures that historical data before given revision has been compacted.
@@ -247,12 +258,11 @@ func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 		return err
 	}
 
-	var cli *clientv3.Client
-	cli, err = m.CreateEtcdClient()
+	var ccfg *clientv3.Config
+	ccfg, err = m.CreateEtcdClientConfig()
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, m.EtcdClientEndpoint)
 	}
-	defer cli.Close()
 
 	lg.Info(
 		"snapshot save START",
@@ -261,8 +271,8 @@ func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 		zap.String("snapshot-path", m.SnapshotPath),
 	)
 	now := time.Now()
-	mgr := snapshot.NewV3(cli, lg)
-	if err = mgr.Save(context.Background(), m.SnapshotPath); err != nil {
+	mgr := snapshot.NewV3(lg)
+	if err = mgr.Save(context.Background(), *ccfg, m.SnapshotPath); err != nil {
 		return err
 	}
 	took := time.Since(now)
@@ -314,17 +324,6 @@ func (m *Member) RestoreSnapshot(lg *zap.Logger) (err error) {
 		return err
 	}
 
-	var initialCluster types.URLsMap
-	initialCluster, err = types.NewURLsMap(m.EtcdOnSnapshotRestore.InitialCluster)
-	if err != nil {
-		return err
-	}
-	var peerURLs types.URLs
-	peerURLs, err = types.NewURLs(m.EtcdOnSnapshotRestore.AdvertisePeerURLs)
-	if err != nil {
-		return err
-	}
-
 	lg.Info(
 		"snapshot restore START",
 		zap.String("member-name", m.Etcd.Name),
@@ -332,17 +331,17 @@ func (m *Member) RestoreSnapshot(lg *zap.Logger) (err error) {
 		zap.String("snapshot-path", m.SnapshotPath),
 	)
 	now := time.Now()
-	mgr := snapshot.NewV3(nil, lg)
-	err = mgr.Restore(m.SnapshotInfo.SnapshotPath, snapshot.RestoreConfig{
+	mgr := snapshot.NewV3(lg)
+	err = mgr.Restore(snapshot.RestoreConfig{
+		SnapshotPath:        m.SnapshotInfo.SnapshotPath,
 		Name:                m.EtcdOnSnapshotRestore.Name,
 		OutputDataDir:       m.EtcdOnSnapshotRestore.DataDir,
 		OutputWALDir:        m.EtcdOnSnapshotRestore.WALDir,
-		InitialCluster:      initialCluster,
+		PeerURLs:            m.EtcdOnSnapshotRestore.AdvertisePeerURLs,
+		InitialCluster:      m.EtcdOnSnapshotRestore.InitialCluster,
 		InitialClusterToken: m.EtcdOnSnapshotRestore.InitialClusterToken,
-		PeerURLs:            peerURLs,
 		SkipHashCheck:       false,
-
-		// TODO: SkipHashCheck == true, for recover from existing db file
+		// TODO: set SkipHashCheck it true, to recover from existing db file
 	})
 	took := time.Since(now)
 	lg.Info(

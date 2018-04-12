@@ -148,6 +148,15 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 	return cfg
 }
 
+func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
+	cc := clientConfigFromCmd(cmd)
+	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+	return cfg
+}
+
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	cfg := clientConfigFromCmd(cmd)
 	return cfg.mustClient()
