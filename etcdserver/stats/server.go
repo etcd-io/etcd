@@ -76,8 +76,8 @@ func (ss *ServerStats) JSON() []byte {
 	stats := ss.serverStats
 	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.sendRateQueue.Rate()
 	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.recvRateQueue.Rate()
-	ss.Unlock()
 	stats.LeaderInfo.Uptime = time.Since(stats.LeaderInfo.StartTime).String()
+	ss.Unlock()
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
