@@ -6,11 +6,11 @@
 #
 # Please keep the list sorted.
 
-Anthony Romano <anthony.romano@coreos.com> (@heyitsanthony) pkg:*
-Brandon Philips <brandon.philips@coreos.com> (@philips) pkg:*
-Fanmin Shi <fanmin.shi@coreos.com> (@fanminshi) pkg:*
-Gyuho Lee <gyu_ho.lee@coreos.com> <gyuhox@gmail.com> (@gyuho) pkg:*
+Anthony Romano <romanoanthony061@gmail.com> (@heyitsanthony) pkg:*
+Brandon Philips <bphilips@redhat.com> (@philips) pkg:*
+Fanmin Shi <fashi@redhat.com> (@fanminshi) pkg:*
+Gyuho Lee <gyuhox@gmail.com> <gylee@redhat.com> (@gyuho) pkg:*
 Hitoshi Mitake <mitake.hitoshi@lab.ntt.co.jp> (@mitake) pkg:*
-Xiang Li <xiang.li@coreos.com> (@xiang90) pkg:*
+Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:github.com/coreos/etcd/raft
