@@ -57,7 +57,7 @@ script:
       linux-amd64-functional)
         docker run --rm \
           --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
+          /bin/bash -c "./build && GOARCH=amd64 PASSES='build functional' ./test"
         ;;
       linux-386-build)
         docker run --rm \
