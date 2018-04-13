@@ -83,9 +83,23 @@ var (
 		ClientCertAuth: true,
 	}
 
+	testTLSInfoIP = transport.TLSInfo{
+		KeyFile:        "./fixtures/server-ip.key.insecure",
+		CertFile:       "./fixtures/server-ip.crt",
+		TrustedCAFile:  "./fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
+
 	testTLSInfoExpired = transport.TLSInfo{
 		KeyFile:        "./fixtures-expired/server.key.insecure",
 		CertFile:       "./fixtures-expired/server.crt",
+		TrustedCAFile:  "./fixtures-expired/ca.crt",
+		ClientCertAuth: true,
+	}
+
+	testTLSInfoExpiredIP = transport.TLSInfo{
+		KeyFile:        "./fixtures-expired/server-ip.key.insecure",
+		CertFile:       "./fixtures-expired/server-ip.crt",
 		TrustedCAFile:  "./fixtures-expired/ca.crt",
 		ClientCertAuth: true,
 	}
