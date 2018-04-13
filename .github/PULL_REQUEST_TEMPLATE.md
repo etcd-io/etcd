@@ -1,4 +1,10 @@
-# Contributing guidelines
+
+
+<br>
+<br>
+**!!! PLEASE READ BEFORE CONTRIBUTING !!!**
+<br>
+<br>
 
 Please read our [contribution workflow][contributing] before submitting a pull request.
 

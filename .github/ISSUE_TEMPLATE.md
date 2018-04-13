@@ -1,4 +1,10 @@
-# Bug reporting
+
+
+<br>
+<br>
+**!!! PLEASE READ BEFORE REPORTING !!!**
+<br>
+<br>
 
 A good bug report has some very specific qualities, so please read over our short document on [reporting bugs][report_bugs] before submitting a bug report.
 
