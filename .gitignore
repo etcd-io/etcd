@@ -3,15 +3,11 @@
 /covdir
 /gopath
 /gopath.proto
-/go-bindata
 /release
-/machine*
 /bin
-.vagrant
 *.etcd
 *.log
 /etcd
-*.swp
 /hack/insta-discovery/.env
 *.test
 hack/tls-setup/certs
