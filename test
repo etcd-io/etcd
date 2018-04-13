@@ -40,6 +40,9 @@ if [[ "${PASSES}" == *"functional"* ]]; then
 	./functional/build
 fi
 
+# build tests with vendored dependencies
+etcd_setup_gopath
+
 if [ -z "$PASSES" ]; then
 	PASSES="fmt bom dep build unit"
 fi
