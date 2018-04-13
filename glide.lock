@@ -1,8 +1,8 @@
-hash: f0697416d74e4c0fb9d6471c39c3e005ecdeccc8a864c1b0b65e0087b3242027
-updated: 2018-04-10T23:45:04.40596807-07:00
+hash: 6f74dd3531b9d5e56edca437dd6028e25e5c1ec695e3e88891b6dabea238e49a
+updated: 2018-04-12T18:59:45.917050129-07:00
 imports:
 - name: github.com/beorn7/perks
-  version: 3a771d992973f24aa725d07868b467d1ddfceafb
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/bgentry/speakeasy
@@ -39,7 +39,9 @@ imports:
 - name: github.com/gogo/protobuf
   version: 100ba4e885062801d56799d78530b73b178a78f3
   subpackages:
+  - gogoproto
   - proto
+  - protoc-gen-gogo/descriptor
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:
@@ -85,6 +87,7 @@ imports:
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
   - prometheus
+  - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: 6f3806018612930941127f2a7c6c453ba2c527d2
   subpackages:
