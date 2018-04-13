@@ -238,9 +238,6 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 		return nil, fmt.Errorf("unable to parse target: %v", err)
 	}
 
-	if c.cfg.DialTimeout > 0 {
-		opts = []grpc.DialOption{grpc.WithTimeout(c.cfg.DialTimeout)}
-	}
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:    c.cfg.DialKeepAliveTime,
@@ -304,11 +301,11 @@ func (c *Client) getToken(ctx context.Context) error {
 		host := getHost(endpoint)
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint))
+		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint), c.cfg.DialOptions...)
 		if err != nil {
 			continue
 		}
-		auth, err = newAuthenticator(host, dOpts, c)
+		auth, err = newAuthenticator(ctx, host, dOpts, c)
 		if err != nil {
 			continue
 		}
@@ -341,11 +338,9 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 			tokenMu: &sync.RWMutex{},
 		}
 
-		ctx := c.ctx
+		ctx, cancel := c.ctx, func() {}
 		if c.cfg.DialTimeout > 0 {
-			cctx, cancel := context.WithTimeout(ctx, c.cfg.DialTimeout)
-			defer cancel()
-			ctx = cctx
+			ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
 		}
 
 		err = c.getToken(ctx)
@@ -354,20 +349,29 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
 					err = context.DeadlineExceeded
 				}
+				cancel()
 				return nil, err
 			}
 		} else {
 			opts = append(opts, grpc.WithPerRPCCredentials(c.tokenCred))
 		}
+		cancel()
 	}
 
 	opts = append(opts, c.cfg.DialOptions...)
+
+	dctx := c.ctx
+	if c.cfg.DialTimeout > 0 {
+		var cancel context.CancelFunc
+		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
+		defer cancel()
+	}
 
 	// TODO: The hosts check doesn't really make sense for a load balanced endpoint url for the new grpc load balancer interface.
 	// Is it safe/sane to use the provided endpoint here?
 	//host := getHost(endpoint)
 	//conn, err := grpc.DialContext(c.ctx, host, opts...)
-	conn, err := grpc.DialContext(c.ctx, endpoint, opts...)
+	conn, err := grpc.DialContext(dctx, endpoint, opts...)
 	if err != nil {
 		return nil, err
 	}
