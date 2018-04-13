@@ -11,7 +11,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
 
 ### Security, Authentication
 
-- Fix [TLS reload](TODO) when [cert SAN field only contains IP addresses](https://github.com/coreos/etcd/issues/9541).
+- Fix [TLS reload](https://github.com/coreos/etcd/pull/9570) when [certificate SAN field only includes IP addresses but no domain names](https://github.com/coreos/etcd/issues/9541).
+  - In Go, server calls `(*tls.Config).GetCertificate` for TLS reload if and only if server's `(*tls.Config).Certificates` field is not empty, or `(*tls.ClientHelloInfo).ServerName` is not empty with a valid SNI from the client. Previously, etcd always populates `(*tls.Config).Certificates` on the initial client TLS handshake, as non-empty. Thus, client was always expected to supply a matching SNI in order to pass the TLS verification and to trigger `(*tls.Config).GetCertificate` to reload TLS assets.
+  - However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/coreos/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
+  - Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
 
 
 ## [v3.3.3](https://github.com/coreos/etcd/releases/tag/v3.3.3) (2018-03-29)
