@@ -124,6 +124,9 @@ type ClusterConfig struct {
 
 	ClientMaxCallSendMsgSize int
 	ClientMaxCallRecvMsgSize int
+
+	// UseIP is true to use only IP for gRPC requests.
+	UseIP bool
 }
 
 type cluster struct {
@@ -262,6 +265,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
+			useIP: c.cfg.UseIP,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -525,6 +529,7 @@ type member struct {
 	keepDataDirTerminate     bool
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
+	useIP                    bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -541,6 +546,7 @@ type memberConfig struct {
 	grpcKeepAliveTimeout     time.Duration
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
+	useIP                    bool
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -614,6 +620,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	}
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
+	m.useIP = mcfg.useIP
 
 	m.InitialCorruptCheck = true
 
@@ -624,6 +631,9 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	m.grpcAddr = "localhost:" + m.Name
+	if m.useIP { // for IP-only sTLS certs
+		m.grpcAddr = "127.0.0.1:" + m.Name
+	}
 	l, err := transport.NewUnixListener(m.grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)

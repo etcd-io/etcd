@@ -1654,7 +1654,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testTLSReload(t, cloneFunc, replaceFunc, revertFunc)
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
 
 // TestTLSReloadCopy ensures server reloads expired/valid certs
@@ -1684,17 +1684,57 @@ func TestTLSReloadCopy(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testTLSReload(t, cloneFunc, replaceFunc, revertFunc)
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
 
-func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc func(), revertFunc func()) {
+// TestTLSReloadCopyIPOnly ensures server reloads expired/valid certs
+// when new certs are copied over, one by one. And expects server
+// to reject client requests, and vice versa.
+func TestTLSReloadCopyIPOnly(t *testing.T) {
+	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(certsDir)
+
+	cloneFunc := func() transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(testTLSInfoIP, certsDir)
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		return tlsInfo
+	}
+	replaceFunc := func() {
+		if _, err = copyTLSFiles(testTLSInfoExpiredIP, certsDir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	revertFunc := func() {
+		if _, err = copyTLSFiles(testTLSInfoIP, certsDir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, true)
+}
+
+func testTLSReload(
+	t *testing.T,
+	cloneFunc func() transport.TLSInfo,
+	replaceFunc func(),
+	revertFunc func(),
+	useIP bool) {
 	defer testutil.AfterTest(t)
 
 	// 1. separate copies for TLS assets modification
 	tlsInfo := cloneFunc()
 
 	// 2. start cluster with valid certs
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1, PeerTLS: &tlsInfo, ClientTLS: &tlsInfo})
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:      1,
+		PeerTLS:   &tlsInfo,
+		ClientTLS: &tlsInfo,
+		UseIP:     useIP,
+	})
 	defer clus.Terminate(t)
 
 	// 3. concurrent client dialing while certs become expired
