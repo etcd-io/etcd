@@ -762,7 +762,11 @@ func (m *member) Launch() error {
 			Config:   &http.Server{Handler: h, TLSConfig: peerTLScfg},
 			TLS:      peerTLScfg,
 		}
-		hs.Start()
+		if peerTLScfg == nil {
+			hs.Start()
+		} else {
+			hs.StartTLS()
+		}
 
 		donec := make(chan struct{})
 		go func() {
