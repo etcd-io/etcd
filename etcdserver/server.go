@@ -562,7 +562,7 @@ func (s *EtcdServer) adjustTicks() {
 			// multi-node received peer connection reports
 			// adjust ticks, in case slow leader message receive
 			ticks := s.Cfg.ElectionTicks - 2
-			plog.Infof("%s initialzed peer connection; fast-forwarding %d ticks (election ticks %d) with %d active peer(s)", s.ID(), ticks, s.Cfg.ElectionTicks, peerN)
+			plog.Infof("%s initialized peer connection; fast-forwarding %d ticks (election ticks %d) with %d active peer(s)", s.ID(), ticks, s.Cfg.ElectionTicks, peerN)
 			s.r.advanceTicks(ticks)
 			return
 		}
