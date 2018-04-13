@@ -15,14 +15,14 @@ agent-configs:
     election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:1379"]
     advertise-client-urls: ["http://127.0.0.1:1379"]
-    auto-tls: true
+    auto-tls: false
     client-cert-auth: false
     cert-file: ""
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["http://127.0.0.1:1380"]
     initial-advertise-peer-urls: ["http://127.0.0.1:13800"]
-    peer-auto-tls: true
+    peer-auto-tls: false
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
@@ -64,14 +64,14 @@ agent-configs:
     election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:2379"]
     advertise-client-urls: ["http://127.0.0.1:2379"]
-    auto-tls: true
+    auto-tls: false
     client-cert-auth: false
     cert-file: ""
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["http://127.0.0.1:2380"]
     initial-advertise-peer-urls: ["http://127.0.0.1:23800"]
-    peer-auto-tls: true
+    peer-auto-tls: false
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
@@ -113,14 +113,14 @@ agent-configs:
     election-timeout: 1000
     listen-client-urls: ["http://127.0.0.1:3379"]
     advertise-client-urls: ["http://127.0.0.1:3379"]
-    auto-tls: true
+    auto-tls: false
     client-cert-auth: false
     cert-file: ""
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["http://127.0.0.1:3380"]
     initial-advertise-peer-urls: ["http://127.0.0.1:33800"]
-    peer-auto-tls: true
+    peer-auto-tls: false
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
