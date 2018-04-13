@@ -87,11 +87,11 @@ func (s *keyStresser) Stress() error {
 	}
 	if s.keyTxnSuffixRange > 0 {
 		// adjust to make up ±70% of workloads with writes
-		stressEntries[0].weight = 0.35
-		stressEntries = append(stressEntries, stressEntry{
-			weight: 0.35,
-			f:      newStressTxn(s.cli, s.keyTxnSuffixRange, s.keyTxnOps),
-		})
+		// stressEntries[0].weight = 0.35
+		// stressEntries = append(stressEntries, stressEntry{
+		// 	weight: 0.35,
+		// 	f:      newStressTxn(s.cli, s.keyTxnSuffixRange, s.keyTxnOps),
+		// })
 	}
 	s.stressTable = createStressTable(stressEntries)
 
@@ -247,58 +247,6 @@ func newStressPut(cli *clientv3.Client, keySuffixRange, keySize int) stressFunc 
 		)
 		return err, 1
 	}
-}
-
-func newStressTxn(cli *clientv3.Client, keyTxnSuffixRange, txnOps int) stressFunc {
-	keys := make([]string, keyTxnSuffixRange)
-	for i := range keys {
-		keys[i] = fmt.Sprintf("/k%03d", i)
-	}
-	return writeTxn(cli, keys, txnOps)
-}
-
-func writeTxn(cli *clientv3.Client, keys []string, txnOps int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
-		ks := make(map[string]struct{}, txnOps)
-		for len(ks) != txnOps {
-			ks[keys[rand.Intn(len(keys))]] = struct{}{}
-		}
-		selected := make([]string, 0, txnOps)
-		for k := range ks {
-			selected = append(selected, k)
-		}
-		com, delOp, putOp := getTxnOps(selected[0], "bar00")
-		thenOps := []clientv3.Op{delOp}
-		elseOps := []clientv3.Op{putOp}
-		for i := 1; i < txnOps; i++ { // nested txns
-			k, v := selected[i], fmt.Sprintf("bar%02d", i)
-			com, delOp, putOp = getTxnOps(k, v)
-			txnOp := clientv3.OpTxn(
-				[]clientv3.Cmp{com},
-				[]clientv3.Op{delOp},
-				[]clientv3.Op{putOp},
-			)
-			thenOps = append(thenOps, txnOp)
-			elseOps = append(elseOps, txnOp)
-		}
-		_, err := cli.Txn(ctx).
-			If(com).
-			Then(thenOps...).
-			Else(elseOps...).
-			Commit()
-		return err, int64(txnOps)
-	}
-}
-
-func getTxnOps(k, v string) (
-	cmp clientv3.Cmp,
-	dop clientv3.Op,
-	pop clientv3.Op) {
-	// if key exists (version > 0)
-	cmp = clientv3.Compare(clientv3.Version(k), ">", 0)
-	dop = clientv3.OpDelete(k)
-	pop = clientv3.OpPut(k, v)
-	return cmp, dop, pop
 }
 
 func newStressRange(cli *clientv3.Client, keySuffixRange int) stressFunc {
