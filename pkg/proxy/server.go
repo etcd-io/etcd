@@ -167,8 +167,8 @@ type server struct {
 	listenerMu sync.RWMutex
 	listener   net.Listener
 
-	acceptMu     sync.Mutex
-	pauseAcceptc chan struct{}
+	pauseAcceptMu sync.Mutex
+	pauseAcceptc  chan struct{}
 
 	latencyAcceptMu sync.RWMutex
 	latencyAccept   time.Duration
@@ -280,9 +280,9 @@ func (s *server) listenAndServe() {
 	close(s.readyc)
 
 	for {
-		s.acceptMu.Lock()
+		s.pauseAcceptMu.Lock()
 		pausec := s.pauseAcceptc
-		s.acceptMu.Unlock()
+		s.pauseAcceptMu.Unlock()
 		select {
 		case <-pausec:
 		case <-s.donec:
@@ -633,9 +633,9 @@ func (s *server) Close() (err error) {
 }
 
 func (s *server) PauseAccept() {
-	s.acceptMu.Lock()
+	s.pauseAcceptMu.Lock()
 	s.pauseAcceptc = make(chan struct{})
-	s.acceptMu.Unlock()
+	s.pauseAcceptMu.Unlock()
 
 	s.lg.Info(
 		"paused accept",
@@ -645,16 +645,16 @@ func (s *server) PauseAccept() {
 }
 
 func (s *server) UnpauseAccept() {
-	s.acceptMu.Lock()
+	s.pauseAcceptMu.Lock()
 	select {
 	case <-s.pauseAcceptc: // already unpaused
 	case <-s.donec:
-		s.acceptMu.Unlock()
+		s.pauseAcceptMu.Unlock()
 		return
 	default:
 		close(s.pauseAcceptc)
 	}
-	s.acceptMu.Unlock()
+	s.pauseAcceptMu.Unlock()
 
 	s.lg.Info(
 		"unpaused accept",
