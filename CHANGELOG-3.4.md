@@ -69,6 +69,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3beta` with [`/v3`](https://github.com/coreos/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/coreos/etcd/pull/9298).
+- Remove [`embed.Config.SetupLogging`](TODO).
+  - Now logger is set up automatically based on given [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](TODO).
 
 ### Dependency
 
@@ -129,11 +131,16 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
+- Add [`--logger`](TODO) flag to support [structured logger and logging to file](TODO) in server-side.
+  - e.g. `--logger=capnslog --log-output=default` is the default setting and same as previous etcd server logging format.
+  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations with [JSON-encoded format](TODO) and writes logs to the specified file `/tmp/test.log`.
+  - e.g. `--logger=zap --log-output=default` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (detect systemd journald TODO).
+  - e.g. `--logger=zap --log-output=stderr` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=stdout` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stdout` (bypass journald TODO).
 
 ### Added: `embed`
 
-- Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to use [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
-  - make this configurable...
+- Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
 - Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 
