@@ -623,6 +623,9 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
 
+	// TODO: use "zap"
+	m.Logger = "capnslog"
+
 	m.InitialCorruptCheck = true
 
 	return m
