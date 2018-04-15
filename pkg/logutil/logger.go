@@ -17,6 +17,7 @@ package logutil
 import "google.golang.org/grpc/grpclog"
 
 // Logger defines logging interface.
+// TODO: deprecate in v3.5.
 type Logger interface {
 	grpclog.LoggerV2
 
