@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/contention"
+	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -408,6 +410,13 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
 	}
+	if cfg.Logger != nil {
+		// called after capnslog setting in "init" function
+		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+		if err != nil {
+			log.Fatalf("cannot create raft logger %v", err)
+		}
+	}
 
 	n = raft.StartNode(c, peers)
 	raftStatusMu.Lock()
@@ -441,6 +450,14 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 		MaxInflightMsgs: maxInflightMsgs,
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
+	}
+	if cfg.Logger != nil {
+		// called after capnslog setting in "init" function
+		var err error
+		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+		if err != nil {
+			log.Fatalf("cannot create raft logger %v", err)
+		}
 	}
 
 	n := raft.RestartNode(c)
@@ -498,6 +515,14 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
 	}
+	if cfg.Logger != nil {
+		// called after capnslog setting in "init" function
+		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+		if err != nil {
+			log.Fatalf("cannot create raft logger %v", err)
+		}
+	}
+
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
 	return id, cl, n, s, w

@@ -43,6 +43,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -124,7 +125,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		urlsmap types.URLsMap
 		token   string
 	)
-
 	memberInitialized := true
 	if !isMemberInitialized(cfg) {
 		memberInitialized = false
@@ -173,10 +173,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialCorruptCheck:     cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:        cfg.ExperimentalCorruptCheckTime,
 		PreVote:                 cfg.PreVote,
+		Logger:                  cfg.logger,
+		LoggerConfig:            cfg.loggerConfig,
 		Debug:                   cfg.Debug,
 		ForceNewCluster:         cfg.ForceNewCluster,
 	}
-
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
 	}
@@ -187,7 +188,15 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			ss = append(ss, v)
 		}
 		sort.Strings(ss)
-		plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
+		if e.cfg.logger != nil {
+			e.cfg.logger.Info(
+				"starting with CORS",
+				zap.String("server-id", e.Server.ID().String()),
+				zap.Strings("cors", ss),
+			)
+		} else {
+			plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
+		}
 	}
 	if len(e.cfg.HostWhitelist) > 0 {
 		ss := make([]string, 0, len(e.cfg.HostWhitelist))
@@ -195,7 +204,15 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			ss = append(ss, v)
 		}
 		sort.Strings(ss)
-		plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
+		if e.cfg.logger != nil {
+			e.cfg.logger.Info(
+				"starting with host whitelist",
+				zap.String("server-id", e.Server.ID().String()),
+				zap.Strings("hosts", ss),
+			)
+		} else {
+			plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
+		}
 	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
@@ -321,10 +338,18 @@ func (e *Etcd) Err() <-chan error { return e.errc }
 
 func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	if err = cfg.PeerSelfCert(); err != nil {
-		plog.Fatalf("could not get certs (%v)", err)
+		if cfg.logger != nil {
+			cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
+		} else {
+			plog.Fatalf("could not get certs (%v)", err)
+		}
 	}
 	if !cfg.PeerTLSInfo.Empty() {
-		plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
+		if cfg.logger != nil {
+			cfg.logger.Info("starting with peer TLS", zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)))
+		} else {
+			plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
+		}
 	}
 
 	peers = make([]*peerListener, len(cfg.LPUrls))
@@ -334,7 +359,11 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 		for i := range peers {
 			if peers[i] != nil && peers[i].close != nil {
-				plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
+				if cfg.logger != nil {
+					cfg.logger.Info("stopping listening for peers", zap.String("address", cfg.LPUrls[i].String()))
+				} else {
+					plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
+				}
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				peers[i].close(ctx)
 				cancel()
@@ -345,10 +374,18 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	for i, u := range cfg.LPUrls {
 		if u.Scheme == "http" {
 			if !cfg.PeerTLSInfo.Empty() {
-				plog.Warningf("The scheme of peer url %s is HTTP while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
+				if cfg.logger != nil {
+					cfg.logger.Warn("scheme is HTTP while key and cert files are present; ignoring key and cert files", zap.String("peer-url", u.String()))
+				} else {
+					plog.Warningf("The scheme of peer url %s is HTTP while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
+				}
 			}
 			if cfg.PeerTLSInfo.ClientCertAuth {
-				plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+				if cfg.logger != nil {
+					cfg.logger.Warn("scheme is HTTP while --peer-client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("peer-url", u.String()))
+				} else {
+					plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+				}
 			}
 		}
 		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
@@ -360,7 +397,11 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		peers[i].close = func(context.Context) error {
 			return peers[i].Listener.Close()
 		}
-		plog.Info("listening for peers on ", u.String())
+		if cfg.logger != nil {
+			cfg.logger.Info("listening for peers", zap.String("address", u.String()))
+		} else {
+			plog.Info("listening for peers on ", u.String())
+		}
 	}
 	return peers, nil
 }
@@ -406,22 +447,38 @@ func (e *Etcd) servePeers() (err error) {
 
 func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	if err = cfg.ClientSelfCert(); err != nil {
-		plog.Fatalf("could not get certs (%v)", err)
+		if cfg.logger != nil {
+			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
+		} else {
+			plog.Fatalf("could not get certs (%v)", err)
+		}
 	}
 	if cfg.EnablePprof {
-		plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
+		if cfg.logger != nil {
+			cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
+		} else {
+			plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
+		}
 	}
 
 	sctxs = make(map[string]*serveCtx)
 	for _, u := range cfg.LCUrls {
-		sctx := newServeCtx()
+		sctx := newServeCtx(cfg.logger)
 
 		if u.Scheme == "http" || u.Scheme == "unix" {
 			if !cfg.ClientTLSInfo.Empty() {
-				plog.Warningf("The scheme of client url %s is HTTP while peer key/cert files are presented. Ignored key/cert files.", u.String())
+				if cfg.logger != nil {
+					cfg.logger.Warn("scheme is HTTP while key and cert files are present; ignoring key and cert files", zap.String("client-url", u.String()))
+				} else {
+					plog.Warningf("The scheme of client url %s is HTTP while peer key/cert files are presented. Ignored key/cert files.", u.String())
+				}
 			}
 			if cfg.ClientTLSInfo.ClientCertAuth {
-				plog.Warningf("The scheme of client url %s is HTTP while client cert auth (--client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+				if cfg.logger != nil {
+					cfg.logger.Warn("scheme is HTTP while --client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("client-url", u.String()))
+				} else {
+					plog.Warningf("The scheme of client url %s is HTTP while client cert auth (--client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+				}
 			}
 		}
 		if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
@@ -452,7 +509,15 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 
 		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
 			if fdLimit <= reservedInternalFDNum {
-				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
+				if cfg.logger != nil {
+					cfg.logger.Fatal(
+						"file descriptor limit of etcd process is too low; please set higher",
+						zap.Uint64("limit", fdLimit),
+						zap.Int("recommended-limit", reservedInternalFDNum),
+					)
+				} else {
+					plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
+				}
 			}
 			sctx.l = transport.LimitListener(sctx.l, int(fdLimit-reservedInternalFDNum))
 		}
@@ -463,11 +528,19 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 			}
 		}
 
-		plog.Info("listening for client requests on ", u.Host)
+		if cfg.logger != nil {
+			cfg.logger.Info("listening for client requests", zap.String("host", u.Host))
+		} else {
+			plog.Info("listening for client requests on ", u.Host)
+		}
 		defer func() {
 			if err != nil {
 				sctx.l.Close()
-				plog.Info("stopping listening for client requests on ", u.Host)
+				if cfg.logger != nil {
+					cfg.logger.Info("stopping listening for client requests", zap.String("host", u.Host))
+				} else {
+					plog.Info("stopping listening for client requests on ", u.Host)
+				}
 			}
 		}()
 		for k := range cfg.UserHandlers {
@@ -487,7 +560,11 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 
 func (e *Etcd) serveClients() (err error) {
 	if !e.cfg.ClientTLSInfo.Empty() {
-		plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
+		if e.cfg.logger != nil {
+			e.cfg.logger.Info("starting with client TLS", zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)))
+		} else {
+			plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
+		}
 	}
 
 	// Start a client server goroutine for each listen address
@@ -549,7 +626,11 @@ func (e *Etcd) serveMetrics() (err error) {
 			}
 			e.metricsListeners = append(e.metricsListeners, ml)
 			go func(u url.URL, ln net.Listener) {
-				plog.Info("listening for metrics on ", u.String())
+				if e.cfg.logger != nil {
+					e.cfg.logger.Info("listening for metrics", zap.String("url", u.String()))
+				} else {
+					plog.Info("listening for metrics on ", u.String())
+				}
 				e.errHandler(http.Serve(ln, metricsMux))
 			}(murl, ml)
 		}
@@ -567,6 +648,14 @@ func (e *Etcd) errHandler(err error) {
 	case <-e.stopc:
 	case e.errc <- err:
 	}
+}
+
+// GetLogger returns the logger.
+func (e *Etcd) GetLogger() *zap.Logger {
+	e.cfg.loggerMu.RLock()
+	l := e.cfg.logger
+	e.cfg.loggerMu.RUnlock()
+	return l
 }
 
 func parseCompactionRetention(mode, retention string) (ret time.Duration, err error) {

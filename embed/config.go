@@ -24,11 +24,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
@@ -107,21 +110,12 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	LPUrls, LCUrls []url.URL
-	Dir            string `json:"data-dir"`
-	WalDir         string `json:"wal-dir"`
-	MaxSnapFiles   uint   `json:"max-snapshots"`
-	MaxWalFiles    uint   `json:"max-wals"`
-	Name           string `json:"name"`
-	SnapCount      uint64 `json:"snapshot-count"`
-
-	// AutoCompactionMode is either 'periodic' or 'revision'.
-	AutoCompactionMode string `json:"auto-compaction-mode"`
-	// AutoCompactionRetention is either duration string with time unit
-	// (e.g. '5m' for 5-minute), or revision unit (e.g. '5000').
-	// If no time unit is provided and compaction mode is 'periodic',
-	// the unit defaults to hour. For example, '5' translates into 5-hour.
-	AutoCompactionRetention string `json:"auto-compaction-retention"`
+	Name         string `json:"name"`
+	Dir          string `json:"data-dir"`
+	WalDir       string `json:"wal-dir"`
+	SnapCount    uint64 `json:"snapshot-count"`
+	MaxSnapFiles uint   `json:"max-snapshots"`
+	MaxWalFiles  uint   `json:"max-wals"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
@@ -131,6 +125,31 @@ type Config struct {
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
 	MaxTxnOps         uint  `json:"max-txn-ops"`
 	MaxRequestBytes   uint  `json:"max-request-bytes"`
+
+	LPUrls, LCUrls []url.URL
+	APUrls, ACUrls []url.URL
+	ClientTLSInfo  transport.TLSInfo
+	ClientAutoTLS  bool
+	PeerTLSInfo    transport.TLSInfo
+	PeerAutoTLS    bool
+
+	ClusterState          string `json:"initial-cluster-state"`
+	DNSCluster            string `json:"discovery-srv"`
+	DNSClusterServiceName string `json:"discovery-srv-name"`
+	Dproxy                string `json:"discovery-proxy"`
+	Durl                  string `json:"discovery"`
+	InitialCluster        string `json:"initial-cluster"`
+	InitialClusterToken   string `json:"initial-cluster-token"`
+	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
+	EnableV2              bool   `json:"enable-v2"`
+
+	// AutoCompactionMode is either 'periodic' or 'revision'.
+	AutoCompactionMode string `json:"auto-compaction-mode"`
+	// AutoCompactionRetention is either duration string with time unit
+	// (e.g. '5m' for 5-minute), or revision unit (e.g. '5000').
+	// If no time unit is provided and compaction mode is 'periodic',
+	// the unit defaults to hour. For example, '5' translates into 5-hour.
+	AutoCompactionRetention string `json:"auto-compaction-retention"`
 
 	// GRPCKeepAliveMinTime is the minimum interval that a client should
 	// wait before pinging server. When client pings "too fast", server
@@ -147,28 +166,12 @@ type Config struct {
 	// before closing a non-responsive connection. 0 to disable.
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
-	APUrls, ACUrls        []url.URL
-	ClusterState          string `json:"initial-cluster-state"`
-	DNSCluster            string `json:"discovery-srv"`
-	DNSClusterServiceName string `json:"discovery-srv-name"`
-	Dproxy                string `json:"discovery-proxy"`
-	Durl                  string `json:"discovery"`
-	InitialCluster        string `json:"initial-cluster"`
-	InitialClusterToken   string `json:"initial-cluster-token"`
-	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
-	EnableV2              bool   `json:"enable-v2"`
-
 	// PreVote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
 	// an election, thus minimizing disruptions.
 	// TODO: enable by default in 3.5.
 	PreVote bool `json:"pre-vote"`
-
-	ClientTLSInfo transport.TLSInfo
-	ClientAutoTLS bool
-	PeerTLSInfo   transport.TLSInfo
-	PeerAutoTLS   bool
 
 	CORS map[string]struct{}
 
@@ -198,21 +201,6 @@ type Config struct {
 	// - https://github.com/coreos/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
-	// Logger logs server-side operations.
-	// If nil, all logs are discarded.
-	// TODO: make it configurable with existing logger.
-	// Currently, only logs TLS transport.
-	Logger *zap.Logger
-
-	Debug        bool   `json:"debug"`
-	LogPkgLevels string `json:"log-package-levels"`
-	LogOutput    string `json:"log-output"`
-
-	EnablePprof           bool   `json:"enable-pprof"`
-	Metrics               string `json:"metrics"`
-	ListenMetricsUrls     []url.URL
-	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
-
 	// UserHandlers is for registering users handlers and only used for
 	// embedding etcd into other applications.
 	// The map key is the route path for the handler, and
@@ -235,6 +223,36 @@ type Config struct {
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
+
+	EnablePprof           bool   `json:"enable-pprof"`
+	Metrics               string `json:"metrics"`
+	ListenMetricsUrls     []url.URL
+	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
+
+	// logger logs server-side operations. The default is nil,
+	// and "setupLogging" must be called before starting server.
+	// Do not set logger directly.
+	loggerMu     *sync.RWMutex
+	logger       *zap.Logger
+	loggerConfig zap.Config
+
+	// Logger is logger options: "zap", "capnslog".
+	// WARN: "capnslog" is being deprecated in v3.5.
+	Logger string `json:"logger"`
+
+	// LogOutput is either:
+	//  - "default" as os.Stderr
+	//  - "stderr" as os.Stderr
+	//  - "stdout" as os.Stdout
+	//  - file path to append server logs to
+	LogOutput string `json:"log-output"`
+	// Debug is true, to enable debug level logging.
+	Debug bool `json:"debug"`
+
+	// LogPkgLevels is being deprecated in v3.5.
+	// Only valid if "logger" option is "capnslog".
+	// WARN: DO NOT USE THIS!
+	LogPkgLevels string `json:"log-package-levels"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -271,7 +289,6 @@ func NewConfig() *Config {
 	apurl, _ := url.Parse(DefaultInitialAdvertisePeerURLs)
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
-	lg, _ := zap.NewProduction()
 	cfg := &Config{
 		MaxSnapFiles:          DefaultMaxSnapshots,
 		MaxWalFiles:           DefaultMaxWALs,
@@ -291,14 +308,19 @@ func NewConfig() *Config {
 		ClusterState:          ClusterStateFlagNew,
 		InitialClusterToken:   "etcd-cluster",
 		StrictReconfigCheck:   DefaultStrictReconfigCheck,
-		Logger:                lg,
-		LogOutput:             DefaultLogOutput,
 		Metrics:               "basic",
 		EnableV2:              DefaultEnableV2,
 		CORS:                  map[string]struct{}{"*": {}},
 		HostWhitelist:         map[string]struct{}{"*": {}},
 		AuthToken:             "simple",
 		PreVote:               false, // TODO: enable by default in v3.5
+
+		loggerMu:     new(sync.RWMutex),
+		logger:       nil,
+		Logger:       "capnslog",
+		LogOutput:    DefaultLogOutput,
+		Debug:        false,
+		LogPkgLevels: "",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -317,45 +339,150 @@ func logTLSHandshakeFailure(conn *tls.Conn, err error) {
 	}
 }
 
-// SetupLogging initializes etcd logging.
-// Must be called after flag parsing.
-func (cfg *Config) SetupLogging() {
-	cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-	cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+// GetLogger returns the logger.
+func (cfg Config) GetLogger() *zap.Logger {
+	cfg.loggerMu.RLock()
+	l := cfg.logger
+	cfg.loggerMu.RUnlock()
+	return l
+}
 
-	capnslog.SetGlobalLogLevel(capnslog.INFO)
-	if cfg.Debug {
-		cfg.Logger = zap.NewExample()
-		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
-		grpc.EnableTracing = true
-		// enable info, warning, error
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
-	} else {
-		// only discard info
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
-	}
-	if cfg.LogPkgLevels != "" {
-		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
-		settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
-		if err != nil {
-			plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
-			return
+// setupLogging initializes etcd logging.
+// Must be called after flag parsing or finishing configuring embed.Config.
+func (cfg *Config) setupLogging() error {
+	switch cfg.Logger {
+	case "capnslog": // TODO: deprecate this in v3.5
+		capnslog.SetGlobalLogLevel(capnslog.INFO)
+		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+
+		if cfg.Debug {
+			capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+			grpc.EnableTracing = true
+			// enable info, warning, error
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+		} else {
+			// only discard info
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
 		}
-		repoLog.SetLogLevel(settings)
+
+		// TODO: deprecate with "capnslog"
+		if cfg.LogPkgLevels != "" {
+			repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
+			settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
+			if err != nil {
+				plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
+				return nil
+			}
+			repoLog.SetLogLevel(settings)
+		}
+
+		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
+		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
+		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
+		switch cfg.LogOutput {
+		case "stdout":
+			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
+		case "stderr":
+			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
+		case DefaultLogOutput:
+		default:
+			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
+		}
+
+	case "zap":
+		// TODO: make this more configurable
+		lcfg := zap.Config{
+			Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
+			Development: false,
+			Sampling: &zap.SamplingConfig{
+				Initial:    100,
+				Thereafter: 100,
+			},
+			Encoding:      "json",
+			EncoderConfig: zap.NewProductionEncoderConfig(),
+		}
+		switch cfg.LogOutput {
+		case DefaultLogOutput:
+			if syscall.Getppid() == 1 {
+				// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
+				// where "NewDefaultFormatter" returns "NewJournaldFormatter"
+				// when syscall.Getppid() == 1, specify 'stdout' or 'stderr' to
+				// skip journald logging even when running under systemd
+				fmt.Println("running under init, which may be systemd!")
+				// TODO: capnlog.NewJournaldFormatter()
+				lcfg.OutputPaths = []string{"stderr"}
+				lcfg.ErrorOutputPaths = []string{"stderr"}
+			} else {
+				lcfg.OutputPaths = []string{"stderr"}
+				lcfg.ErrorOutputPaths = []string{"stderr"}
+			}
+		case "stderr":
+			lcfg.OutputPaths = []string{"stderr"}
+			lcfg.ErrorOutputPaths = []string{"stderr"}
+		case "stdout":
+			lcfg.OutputPaths = []string{"stdout"}
+			lcfg.ErrorOutputPaths = []string{"stdout"}
+		default:
+			lcfg.OutputPaths = []string{cfg.LogOutput}
+			lcfg.ErrorOutputPaths = []string{cfg.LogOutput}
+		}
+		if cfg.Debug {
+			lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+			grpc.EnableTracing = true
+		}
+
+		var err error
+		cfg.logger, err = lcfg.Build()
+		if err != nil {
+			return err
+		}
+		cfg.loggerConfig = lcfg
+
+		// debug true, enable info, warning, error
+		// debug false, only discard info
+		var gl grpclog.LoggerV2
+		gl, err = logutil.NewGRPCLoggerV2(lcfg)
+		if err != nil {
+			return err
+		}
+		grpclog.SetLoggerV2(gl)
+
+		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
+			state := conn.ConnectionState()
+			remoteAddr := conn.RemoteAddr().String()
+			serverName := state.ServerName
+			if len(state.PeerCertificates) > 0 {
+				cert := state.PeerCertificates[0]
+				ips := make([]string, 0, len(cert.IPAddresses))
+				for i := range cert.IPAddresses {
+					ips[i] = cert.IPAddresses[i].String()
+				}
+				cfg.logger.Warn(
+					"rejected connection",
+					zap.String("remote-addr", remoteAddr),
+					zap.String("server-name", serverName),
+					zap.Strings("ip-addresses", ips),
+					zap.Strings("dns-names", cert.DNSNames),
+					zap.Error(err),
+				)
+			} else {
+				cfg.logger.Warn(
+					"rejected connection",
+					zap.String("remote-addr", remoteAddr),
+					zap.String("server-name", serverName),
+					zap.Error(err),
+				)
+			}
+		}
+		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
+
+	default:
+		return fmt.Errorf("unknown logger option %q", cfg.Logger)
 	}
 
-	// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-	// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
-	// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-	switch cfg.LogOutput {
-	case "stdout":
-		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
-	case "stderr":
-		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
-	case DefaultLogOutput:
-	default:
-		plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
-	}
+	return nil
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -382,7 +509,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 	if cfg.LPUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.LPUrlsJSON, ","))
 		if err != nil {
-			plog.Fatalf("unexpected error setting up listen-peer-urls: %v", err)
+			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-peer-urls: %v\n", err)
+			os.Exit(1)
 		}
 		cfg.LPUrls = []url.URL(u)
 	}
@@ -390,7 +518,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 	if cfg.LCUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.LCUrlsJSON, ","))
 		if err != nil {
-			plog.Fatalf("unexpected error setting up listen-client-urls: %v", err)
+			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-client-urls: %v\n", err)
+			os.Exit(1)
 		}
 		cfg.LCUrls = []url.URL(u)
 	}
@@ -398,7 +527,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 	if cfg.APUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.APUrlsJSON, ","))
 		if err != nil {
-			plog.Fatalf("unexpected error setting up initial-advertise-peer-urls: %v", err)
+			fmt.Fprintf(os.Stderr, "unexpected error setting up initial-advertise-peer-urls: %v\n", err)
+			os.Exit(1)
 		}
 		cfg.APUrls = []url.URL(u)
 	}
@@ -406,7 +536,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 	if cfg.ACUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.ACUrlsJSON, ","))
 		if err != nil {
-			plog.Fatalf("unexpected error setting up advertise-peer-urls: %v", err)
+			fmt.Fprintf(os.Stderr, "unexpected error setting up advertise-peer-urls: %v\n", err)
+			os.Exit(1)
 		}
 		cfg.ACUrls = []url.URL(u)
 	}
@@ -414,7 +545,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 	if cfg.ListenMetricsUrlsJSON != "" {
 		u, err := types.NewURLs(strings.Split(cfg.ListenMetricsUrlsJSON, ","))
 		if err != nil {
-			plog.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
+			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-metrics-urls: %v\n", err)
+			os.Exit(1)
 		}
 		cfg.ListenMetricsUrls = []url.URL(u)
 	}
@@ -453,6 +585,9 @@ func (cfg *configYAML) configFromFile(path string) error {
 
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
+	if err := cfg.setupLogging(); err != nil {
+		return err
+	}
 	if err := checkBindURLs(cfg.LPUrls); err != nil {
 		return err
 	}
@@ -532,13 +667,21 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		token = cfg.Durl
 	case cfg.DNSCluster != "":
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
-
+		lg := cfg.logger
 		if cerr != nil {
-			plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
+			if lg != nil {
+				lg.Error("failed to resolve during SRV discovery", zap.Error(cerr))
+			} else {
+				plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
+			}
 			return nil, "", cerr
 		}
 		for _, s := range clusterStrs {
-			plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
+			if lg != nil {
+				lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
+			} else {
+				plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
+			}
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
 		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.TrustedCAFile == "" {
@@ -612,10 +755,14 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		for i, u := range cfg.LCUrls {
 			chosts[i] = u.Host
 		}
-		cfg.ClientTLSInfo, err = transport.SelfCert(cfg.Logger, filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
+		cfg.ClientTLSInfo, err = transport.SelfCert(cfg.logger, filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
 		return err
 	} else if cfg.ClientAutoTLS {
-		plog.Warningf("ignoring client auto TLS since certs given")
+		if cfg.logger != nil {
+			cfg.logger.Warn("ignoring client auto TLS since certs given")
+		} else {
+			plog.Warningf("ignoring client auto TLS since certs given")
+		}
 	}
 	return nil
 }
@@ -626,10 +773,14 @@ func (cfg *Config) PeerSelfCert() (err error) {
 		for i, u := range cfg.LPUrls {
 			phosts[i] = u.Host
 		}
-		cfg.PeerTLSInfo, err = transport.SelfCert(cfg.Logger, filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
+		cfg.PeerTLSInfo, err = transport.SelfCert(cfg.logger, filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
 		return err
 	} else if cfg.PeerAutoTLS {
-		plog.Warningf("ignoring peer auto TLS since certs given")
+		if cfg.logger != nil {
+			cfg.logger.Warn("ignoring peer auto TLS since certs given")
+		} else {
+			plog.Warningf("ignoring peer auto TLS since certs given")
+		}
 	}
 	return nil
 }

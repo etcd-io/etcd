@@ -21,6 +21,8 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
@@ -79,16 +81,12 @@ func newGatewayStartCommand() *cobra.Command {
 
 func stripSchema(eps []string) []string {
 	var endpoints []string
-
 	for _, ep := range eps {
-
 		if u, err := url.Parse(ep); err == nil && u.Host != "" {
 			ep = u.Host
 		}
-
 		endpoints = append(endpoints, ep)
 	}
-
 	return endpoints
 }
 
@@ -104,7 +102,8 @@ func startGateway(cmd *cobra.Command, args []string) {
 		for _, ep := range srvs.Endpoints {
 			h, p, err := net.SplitHostPort(ep)
 			if err != nil {
-				plog.Fatalf("error parsing endpoint %q", ep)
+				fmt.Printf("error parsing endpoint %q", ep)
+				os.Exit(1)
 			}
 			var port uint16
 			fmt.Sscanf(p, "%d", &port)
@@ -113,23 +112,33 @@ func startGateway(cmd *cobra.Command, args []string) {
 	}
 
 	if len(srvs.Endpoints) == 0 {
-		plog.Fatalf("no endpoints found")
+		fmt.Println("no endpoints found")
+		os.Exit(1)
 	}
 
-	l, err := net.Listen("tcp", gatewayListenAddr)
+	var lg *zap.Logger
+	lg, err := zap.NewProduction()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	var l net.Listener
+	l, err = net.Listen("tcp", gatewayListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
 	tp := tcpproxy.TCPProxy{
+		Logger:          lg,
 		Listener:        l,
 		Endpoints:       srvs.SRVs,
 		MonitorInterval: getewayRetryDelay,
 	}
 
 	// At this point, etcd gateway listener is initialized
-	notifySystemd()
+	notifySystemd(lg)
 
 	tp.Run()
 }
