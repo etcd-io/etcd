@@ -45,9 +45,8 @@ service Transport {
 }
 
 message Member {
-  // EtcdExecPath is the executable etcd binary path in agent server.
-  string EtcdExecPath = 1 [(gogoproto.moretags) = "yaml:\"etcd-exec-path\""];
-  // TODO: support embedded etcd
+  // EtcdExec is the executable etcd binary path in agent server.
+  string EtcdExec = 1 [(gogoproto.moretags) = "yaml:\"etcd-exec\""];
 
   // AgentAddr is the agent HTTP server address.
   string AgentAddr = 11 [(gogoproto.moretags) = "yaml:\"agent-addr\""];
@@ -56,8 +55,6 @@ message Member {
 
   // BaseDir is the base directory where all logs and etcd data are stored.
   string BaseDir = 101 [(gogoproto.moretags) = "yaml:\"base-dir\""];
-  // EtcdLogPath is the log file to store current etcd server logs.
-  string EtcdLogPath = 102 [(gogoproto.moretags) = "yaml:\"etcd-log-path\""];
 
   // EtcdClientProxy is true when client traffic needs to be proxied.
   // If true, listen client URL port must be different than advertise client URL port.
@@ -204,6 +201,11 @@ message Etcd {
 
   bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
   bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+
+  string Logger = 71 [(gogoproto.moretags) = "yaml:\"logger\""];
+  // LogOutput is the log file to store current etcd server logs.
+  string LogOutput = 72 [(gogoproto.moretags) = "yaml:\"log-output\""];
+  bool Debug = 73 [(gogoproto.moretags) = "yaml:\"debug\""];
 }
 
 enum Operation {

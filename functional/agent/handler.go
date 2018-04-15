@@ -233,13 +233,13 @@ func (srv *Server) createEtcdLogFile() error {
 }
 
 func (srv *Server) creatEtcdCmd(fromSnapshot bool) {
-	etcdPath, etcdFlags := srv.Member.EtcdExecPath, srv.Member.Etcd.Flags()
+	etcdPath, etcdFlags := srv.Member.EtcdExec, srv.Member.Etcd.Flags()
 	if fromSnapshot {
 		etcdFlags = srv.Member.EtcdOnSnapshotRestore.Flags()
 	}
 	u, _ := url.Parse(srv.Member.FailpointHTTPAddr)
 	srv.lg.Info("creating etcd command",
-		zap.String("etcd-exec-path", etcdPath),
+		zap.String("etcd-exec", etcdPath),
 		zap.Strings("etcd-flags", etcdFlags),
 		zap.String("failpoint-http-addr", srv.Member.FailpointHTTPAddr),
 		zap.String("failpoint-addr", u.Host),

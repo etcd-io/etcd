@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 var etcdFields = []string{
@@ -53,12 +57,16 @@ var etcdFields = []string{
 
 	"PreVote",
 	"InitialCorruptCheck",
+
+	"Logger",
+	"LogOutput",
+	"Debug",
 }
 
 // Flags returns etcd flags in string slice.
-func (cfg *Etcd) Flags() (fs []string) {
-	tp := reflect.TypeOf(*cfg)
-	vo := reflect.ValueOf(*cfg)
+func (e *Etcd) Flags() (fs []string) {
+	tp := reflect.TypeOf(*e)
+	vo := reflect.ValueOf(*e)
 	for _, name := range etcdFields {
 		field, ok := tp.FieldByName(name)
 		if !ok {
@@ -96,4 +104,71 @@ func (cfg *Etcd) Flags() (fs []string) {
 		}
 	}
 	return fs
+}
+
+// EmbedConfig returns etcd embed.Config.
+func (e *Etcd) EmbedConfig() (cfg *embed.Config, err error) {
+	var lcURLs types.URLs
+	lcURLs, err = types.NewURLs(e.ListenClientURLs)
+	if err != nil {
+		return nil, err
+	}
+	var acURLs types.URLs
+	acURLs, err = types.NewURLs(e.AdvertiseClientURLs)
+	if err != nil {
+		return nil, err
+	}
+	var lpURLs types.URLs
+	lpURLs, err = types.NewURLs(e.ListenPeerURLs)
+	if err != nil {
+		return nil, err
+	}
+	var apURLs types.URLs
+	apURLs, err = types.NewURLs(e.AdvertisePeerURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg = embed.NewConfig()
+	cfg.Name = e.Name
+	cfg.Dir = e.DataDir
+	cfg.WalDir = e.WALDir
+	cfg.TickMs = uint(e.HeartbeatIntervalMs)
+	cfg.ElectionMs = uint(e.ElectionTimeoutMs)
+
+	cfg.LCUrls = lcURLs
+	cfg.ACUrls = acURLs
+	cfg.ClientAutoTLS = e.ClientAutoTLS
+	cfg.ClientTLSInfo = transport.TLSInfo{
+		ClientCertAuth: e.ClientCertAuth,
+		CertFile:       e.ClientCertFile,
+		KeyFile:        e.ClientKeyFile,
+		TrustedCAFile:  e.ClientTrustedCAFile,
+	}
+
+	cfg.LPUrls = lpURLs
+	cfg.APUrls = apURLs
+	cfg.PeerAutoTLS = e.PeerAutoTLS
+	cfg.PeerTLSInfo = transport.TLSInfo{
+		ClientCertAuth: e.PeerClientCertAuth,
+		CertFile:       e.PeerCertFile,
+		KeyFile:        e.PeerKeyFile,
+		TrustedCAFile:  e.PeerTrustedCAFile,
+	}
+
+	cfg.InitialCluster = e.InitialCluster
+	cfg.ClusterState = e.InitialClusterState
+	cfg.InitialClusterToken = e.InitialClusterToken
+
+	cfg.SnapCount = uint64(e.SnapshotCount)
+	cfg.QuotaBackendBytes = e.QuotaBackendBytes
+
+	cfg.PreVote = e.PreVote
+	cfg.ExperimentalInitialCorruptCheck = e.InitialCorruptCheck
+
+	cfg.Logger = e.Logger
+	cfg.LogOutput = e.LogOutput
+	cfg.Debug = e.Debug
+
+	return cfg, nil
 }

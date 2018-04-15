@@ -48,10 +48,6 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		if mem.BaseDir == "" {
 			return nil, fmt.Errorf("BaseDir cannot be empty (got %q)", mem.BaseDir)
 		}
-		if mem.EtcdLogPath == "" {
-			return nil, fmt.Errorf("EtcdLogPath cannot be empty (got %q)", mem.EtcdLogPath)
-		}
-
 		if mem.Etcd.Name == "" {
 			return nil, fmt.Errorf("'--name' cannot be empty (got %+v)", mem)
 		}
@@ -132,9 +128,6 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 		}
 
-		if !strings.HasPrefix(mem.EtcdLogPath, mem.BaseDir) {
-			return nil, fmt.Errorf("EtcdLogPath must be prefixed with BaseDir (got %q)", mem.EtcdLogPath)
-		}
 		if !strings.HasPrefix(mem.Etcd.DataDir, mem.BaseDir) {
 			return nil, fmt.Errorf("Etcd.DataDir must be prefixed with BaseDir (got %q)", mem.Etcd.DataDir)
 		}
@@ -316,6 +309,13 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 					return nil, fmt.Errorf("failed to read %q (%v)", mem.Etcd.ClientTrustedCAFile, err)
 				}
 				clus.Members[i].ClientCertData = string(data)
+			}
+
+			if mem.Etcd.LogOutput == "" {
+				return nil, fmt.Errorf("mem.Etcd.LogOutput cannot be empty")
+			}
+			if !strings.HasPrefix(mem.Etcd.LogOutput, mem.BaseDir) {
+				return nil, fmt.Errorf("LogOutput %q must be prefixed with BaseDir %q", mem.Etcd.LogOutput, mem.BaseDir)
 			}
 		}
 	}
