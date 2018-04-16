@@ -63,6 +63,9 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	time.Sleep(testutil.ApplyTimeout)
 
 	cfg := embed.NewConfig()
+	cfg.Logger = "zap"
+	cfg.LogOutput = "io-discard"
+	cfg.Debug = false
 	cfg.Name = "3"
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
