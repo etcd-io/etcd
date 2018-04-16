@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/version"
+	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
@@ -56,7 +57,7 @@ func init() {
 }
 
 // UpdateCapability updates the enabledMap when the cluster version increases.
-func UpdateCapability(v *semver.Version) {
+func UpdateCapability(lg *zap.Logger, v *semver.Version) {
 	if v == nil {
 		// if recovered but version was never set by cluster
 		return
@@ -69,7 +70,15 @@ func UpdateCapability(v *semver.Version) {
 	curVersion = v
 	enabledMap = capabilityMaps[curVersion.String()]
 	enableMapMu.Unlock()
-	plog.Infof("enabled capabilities for version %s", version.Cluster(v.String()))
+
+	if lg != nil {
+		lg.Info(
+			"enabled capabilities for version",
+			zap.String("cluster-version", version.Cluster(v.String())),
+		)
+	} else {
+		plog.Infof("enabled capabilities for version %s", version.Cluster(v.String()))
+	}
 }
 
 func IsCapabilityEnabled(c Capability) bool {

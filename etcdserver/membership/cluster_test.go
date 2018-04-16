@@ -26,6 +26,8 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+
+	"go.uber.org/zap"
 )
 
 func TestClusterMember(t *testing.T) {
@@ -274,7 +276,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
-	cl := NewCluster("")
+	cl := NewCluster(zap.NewExample(), "")
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
@@ -559,7 +561,7 @@ func TestNodeToMember(t *testing.T) {
 }
 
 func newTestCluster(membs []*Member) *RaftCluster {
-	c := &RaftCluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	c := &RaftCluster{lg: zap.NewExample(), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}

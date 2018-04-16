@@ -27,12 +27,13 @@ import (
 	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
-func isMemberBootstrapped(cl *membership.RaftCluster, member string, rt http.RoundTripper, timeout time.Duration) bool {
-	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), timeout, false, rt)
+func isMemberBootstrapped(lg *zap.Logger, cl *membership.RaftCluster, member string, rt http.RoundTripper, timeout time.Duration) bool {
+	rcl, err := getClusterFromRemotePeers(lg, getRemotePeerURLs(cl, member), timeout, false, rt)
 	if err != nil {
 		return false
 	}
@@ -54,21 +55,26 @@ func isMemberBootstrapped(cl *membership.RaftCluster, member string, rt http.Rou
 // response, an error is returned.
 // Each request has a 10-second timeout. Because the upper limit of TTL is 5s,
 // 10 second is enough for building connection and finishing request.
-func GetClusterFromRemotePeers(urls []string, rt http.RoundTripper) (*membership.RaftCluster, error) {
-	return getClusterFromRemotePeers(urls, 10*time.Second, true, rt)
+func GetClusterFromRemotePeers(lg *zap.Logger, urls []string, rt http.RoundTripper) (*membership.RaftCluster, error) {
+	return getClusterFromRemotePeers(lg, urls, 10*time.Second, true, rt)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool, rt http.RoundTripper) (*membership.RaftCluster, error) {
+func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Duration, logerr bool, rt http.RoundTripper) (*membership.RaftCluster, error) {
 	cc := &http.Client{
 		Transport: rt,
 		Timeout:   timeout,
 	}
 	for _, u := range urls {
-		resp, err := cc.Get(u + "/members")
+		addr := u + "/members"
+		resp, err := cc.Get(addr)
 		if err != nil {
 			if logerr {
-				plog.Warningf("could not get cluster response from %s: %v", u, err)
+				if lg != nil {
+					lg.Warn("failed to get cluster response", zap.String("address", addr), zap.Error(err))
+				} else {
+					plog.Warningf("could not get cluster response from %s: %v", u, err)
+				}
 			}
 			continue
 		}
@@ -76,21 +82,38 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 		resp.Body.Close()
 		if err != nil {
 			if logerr {
-				plog.Warningf("could not read the body of cluster response: %v", err)
+				if lg != nil {
+					lg.Warn("failed to read body of cluster response", zap.String("address", addr), zap.Error(err))
+				} else {
+					plog.Warningf("could not read the body of cluster response: %v", err)
+				}
 			}
 			continue
 		}
 		var membs []*membership.Member
 		if err = json.Unmarshal(b, &membs); err != nil {
 			if logerr {
-				plog.Warningf("could not unmarshal cluster response: %v", err)
+				if lg != nil {
+					lg.Warn("failed to unmarshal cluster response", zap.String("address", addr), zap.Error(err))
+				} else {
+					plog.Warningf("could not unmarshal cluster response: %v", err)
+				}
 			}
 			continue
 		}
 		id, err := types.IDFromString(resp.Header.Get("X-Etcd-Cluster-ID"))
 		if err != nil {
 			if logerr {
-				plog.Warningf("could not parse the cluster ID from cluster res: %v", err)
+				if lg != nil {
+					lg.Warn(
+						"failed to parse cluster ID",
+						zap.String("address", addr),
+						zap.String("header", resp.Header.Get("X-Etcd-Cluster-ID")),
+						zap.Error(err),
+					)
+				} else {
+					plog.Warningf("could not parse the cluster ID from cluster res: %v", err)
+				}
 			}
 			continue
 		}
@@ -100,12 +123,11 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 		// if membership members are not present then the raft cluster formed will be
 		// an invalid empty cluster hence return failed to get raft cluster member(s) from the given urls error
 		if len(membs) > 0 {
-			return membership.NewClusterFromMembers("", id, membs), nil
+			return membership.NewClusterFromMembers(lg, "", id, membs), nil
 		}
-
-		return nil, fmt.Errorf("failed to get raft cluster member(s) from the given urls.")
+		return nil, fmt.Errorf("failed to get raft cluster member(s) from the given URLs")
 	}
-	return nil, fmt.Errorf("could not retrieve cluster information from the given urls")
+	return nil, fmt.Errorf("could not retrieve cluster information from the given URLs")
 }
 
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
@@ -126,7 +148,7 @@ func getRemotePeerURLs(cl *membership.RaftCluster, local string) []string {
 // The key of the returned map is the member's ID. The value of the returned map
 // is the semver versions string, including server and cluster.
 // If it fails to get the version of a member, the key will be nil.
-func getVersions(cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
+func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
 	members := cl.Members()
 	vers := make(map[string]*version.Versions)
 	for _, m := range members {
@@ -138,9 +160,13 @@ func getVersions(cl *membership.RaftCluster, local types.ID, rt http.RoundTrippe
 			vers[m.ID.String()] = &version.Versions{Server: version.Version, Cluster: cv}
 			continue
 		}
-		ver, err := getVersion(m, rt)
+		ver, err := getVersion(lg, m, rt)
 		if err != nil {
-			plog.Warningf("cannot get the version of member %s (%v)", m.ID, err)
+			if lg != nil {
+				lg.Warn("failed to get version", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
+			} else {
+				plog.Warningf("cannot get the version of member %s (%v)", m.ID, err)
+			}
 			vers[m.ID.String()] = nil
 		} else {
 			vers[m.ID.String()] = ver
@@ -152,7 +178,7 @@ func getVersions(cl *membership.RaftCluster, local types.ID, rt http.RoundTrippe
 // decideClusterVersion decides the cluster version based on the versions map.
 // The returned version is the min server version in the map, or nil if the min
 // version in unknown.
-func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
+func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *semver.Version {
 	var cv *semver.Version
 	lv := semver.Must(semver.NewVersion(version.Version))
 
@@ -162,12 +188,30 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 		}
 		v, err := semver.NewVersion(ver.Server)
 		if err != nil {
-			plog.Errorf("cannot understand the version of member %s (%v)", mid, err)
+			if lg != nil {
+				lg.Warn(
+					"failed to parse server version of remote member",
+					zap.String("remote-member-id", mid),
+					zap.String("remote-member-version", ver.Server),
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("cannot understand the version of member %s (%v)", mid, err)
+			}
 			return nil
 		}
 		if lv.LessThan(*v) {
-			plog.Warningf("the local etcd version %s is not up-to-date", lv.String())
-			plog.Warningf("member %s has a higher version %s", mid, ver.Server)
+			if lg != nil {
+				lg.Warn(
+					"local etcd version is not up-to-date",
+					zap.String("local-member-version", lv.String()),
+					zap.String("remote-member-id", mid),
+					zap.String("remote-member-version", ver.Server),
+				)
+			} else {
+				plog.Warningf("the local etcd version %s is not up-to-date", lv.String())
+				plog.Warningf("member %s has a higher version %s", mid, ver.Server)
+			}
 		}
 		if cv == nil {
 			cv = v
@@ -184,19 +228,18 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-func isCompatibleWithCluster(cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
-	vers := getVersions(cl, local, rt)
+func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+	vers := getVersions(lg, cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))
 	maxV = &semver.Version{
 		Major: maxV.Major,
 		Minor: maxV.Minor,
 	}
-
-	return isCompatibleWithVers(vers, local, minV, maxV)
+	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }
 
-func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
+func isCompatibleWithVers(lg *zap.Logger, vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
 	var ok bool
 	for id, v := range vers {
 		// ignore comparison with local version
@@ -208,15 +251,42 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 		}
 		clusterv, err := semver.NewVersion(v.Cluster)
 		if err != nil {
-			plog.Errorf("cannot understand the cluster version of member %s (%v)", id, err)
+			if lg != nil {
+				lg.Warn(
+					"failed to parse cluster version of remote member",
+					zap.String("remote-member-id", id),
+					zap.String("remote-member-cluster-version", v.Cluster),
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("cannot understand the cluster version of member %s (%v)", id, err)
+			}
 			continue
 		}
 		if clusterv.LessThan(*minV) {
-			plog.Warningf("the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
+			if lg != nil {
+				lg.Warn(
+					"cluster version of remote member is not compatible; too low",
+					zap.String("remote-member-id", id),
+					zap.String("remote-member-cluster-version", clusterv.String()),
+					zap.String("minimum-cluster-version-supported", minV.String()),
+				)
+			} else {
+				plog.Warningf("the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
+			}
 			return false
 		}
 		if maxV.LessThan(*clusterv) {
-			plog.Warningf("the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			if lg != nil {
+				lg.Warn(
+					"cluster version of remote member is not compatible; too high",
+					zap.String("remote-member-id", id),
+					zap.String("remote-member-cluster-version", clusterv.String()),
+					zap.String("minimum-cluster-version-supported", minV.String()),
+				)
+			} else {
+				plog.Warningf("the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			}
 			return false
 		}
 		ok = true
@@ -226,7 +296,7 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 
 // getVersion returns the Versions of the given member via its
 // peerURLs. Returns the last error if it fails to get the version.
-func getVersion(m *membership.Member, rt http.RoundTripper) (*version.Versions, error) {
+func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*version.Versions, error) {
 	cc := &http.Client{
 		Transport: rt,
 	}
@@ -236,21 +306,49 @@ func getVersion(m *membership.Member, rt http.RoundTripper) (*version.Versions, 
 	)
 
 	for _, u := range m.PeerURLs {
-		resp, err = cc.Get(u + "/version")
+		addr := u + "/version"
+		resp, err = cc.Get(addr)
 		if err != nil {
-			plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			if lg != nil {
+				lg.Warn(
+					"failed to reach the peer URL",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			} else {
+				plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			}
 			continue
 		}
 		var b []byte
 		b, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			plog.Warningf("failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			if lg != nil {
+				lg.Warn(
+					"failed to read body of response",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			} else {
+				plog.Warningf("failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			}
 			continue
 		}
 		var vers version.Versions
 		if err = json.Unmarshal(b, &vers); err != nil {
-			plog.Warningf("failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			if lg != nil {
+				lg.Warn(
+					"failed to unmarshal response",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			} else {
+				plog.Warningf("failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			}
 			continue
 		}
 		return &vers, nil

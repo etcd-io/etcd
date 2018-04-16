@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 // ApplierV2 is the interface for processing V2 raft messages
@@ -36,11 +37,12 @@ type ApplierV2 interface {
 	Sync(r *RequestV2) Response
 }
 
-func NewApplierV2(s v2store.Store, c *membership.RaftCluster) ApplierV2 {
+func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
 	return &applierV2store{store: s, cluster: c}
 }
 
 type applierV2store struct {
+	lg      *zap.Logger
 	store   v2store.Store
 	cluster *membership.RaftCluster
 }
@@ -77,7 +79,11 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 			id := membership.MustParseMemberIDFromKey(path.Dir(r.Path))
 			var attr membership.Attributes
 			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-				plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
+				if a.lg != nil {
+					a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
+				} else {
+					plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
+				}
 			}
 			if a.cluster != nil {
 				a.cluster.UpdateAttributes(id, attr)
@@ -108,7 +114,7 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
-	defer warnOfExpensiveRequest(time.Now(), r)
+	defer warnOfExpensiveRequest(s.getLogger(), time.Now(), r)
 
 	switch r.Method {
 	case "POST":

@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +28,8 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+
+	"go.uber.org/zap"
 )
 
 func TestGetIDs(t *testing.T) {
@@ -64,7 +67,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := getIDs(&snap, tt.ents)
+		idSet := getIDs(testLogger, &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
@@ -144,7 +147,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gents := createConfigChangeEnts(tt.ids, tt.self, tt.term, tt.index)
+		gents := createConfigChangeEnts(testLogger, tt.ids, tt.self, tt.term, tt.index)
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
@@ -154,12 +157,13 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
 	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	})
-	srv := &EtcdServer{r: *r}
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
 	srv.r.start(nil)
 	n.readyc <- raft.Ready{}
 	select {
@@ -181,12 +185,13 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	})
-	srv := &EtcdServer{r: *r}
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
 
 	srv.r.start(&raftReadyHandler{
 		getLead:          func() uint64 { return 0 },
