@@ -96,7 +96,7 @@ func (srv *Server) createEtcdLogFile() error {
 }
 
 func (srv *Server) creatEtcd(fromSnapshot bool) error {
-	if !fileutil.Exist(srv.Member.EtcdExec) || srv.Member.EtcdExec != "embed" {
+	if !fileutil.Exist(srv.Member.EtcdExec) && srv.Member.EtcdExec != "embed" {
 		return fmt.Errorf("unknown etcd exec %q or path does not exist", srv.Member.EtcdExec)
 	}
 
