@@ -96,7 +96,7 @@
 [[projects]]
   name = "github.com/google/btree"
   packages = ["."]
-  revision = "925471ac9e2131377a91e1595defec898166fe49"
+  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
