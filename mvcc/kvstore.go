@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/schedule"
 
 	"github.com/coreos/pkg/capnslog"
+	"go.uber.org/zap"
 )
 
 var (
@@ -100,15 +101,17 @@ type store struct {
 	fifoSched schedule.Scheduler
 
 	stopc chan struct{}
+
+	lg *zap.Logger
 }
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
 	s := &store{
 		b:       b,
 		ig:      ig,
-		kvindex: newTreeIndex(),
+		kvindex: newTreeIndex(lg),
 
 		le: le,
 
@@ -119,6 +122,8 @@ func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *sto
 		fifoSched: schedule.NewFIFOScheduler(),
 
 		stopc: make(chan struct{}),
+
+		lg: lg,
 	}
 	s.ReadView = &readView{s}
 	s.WriteView = &writeView{s}
@@ -291,7 +296,7 @@ func (s *store) Restore(b backend.Backend) error {
 
 	atomic.StoreUint64(&s.consistentIndex, 0)
 	s.b = b
-	s.kvindex = newTreeIndex()
+	s.kvindex = newTreeIndex(s.lg)
 	s.currentRev = 1
 	s.compactMainRev = -1
 	s.fifoSched = schedule.NewFIFOScheduler()

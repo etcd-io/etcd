@@ -17,6 +17,8 @@ package mvcc
 import (
 	"encoding/binary"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
@@ -51,7 +53,15 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
-			plog.Printf("finished scheduled compaction at %d (took %v)", compactMainRev, time.Since(totalStart))
+			if s.lg != nil {
+				s.lg.Info(
+					"finished scheduled compaction",
+					zap.Int64("compact-revision", compactMainRev),
+					zap.Duration("took", time.Since(totalStart)),
+				)
+			} else {
+				plog.Printf("finished scheduled compaction at %d (took %v)", compactMainRev, time.Since(totalStart))
+			}
 			return true
 		}
 

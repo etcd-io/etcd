@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
+	"go.uber.org/zap"
 )
 
 type index interface {
@@ -39,11 +40,13 @@ type index interface {
 type treeIndex struct {
 	sync.RWMutex
 	tree *btree.BTree
+	lg   *zap.Logger
 }
 
-func newTreeIndex() index {
+func newTreeIndex(lg *zap.Logger) index {
 	return &treeIndex{
 		tree: btree.New(32),
+		lg:   lg,
 	}
 }
 
@@ -183,7 +186,11 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
 	var emptyki []*keyIndex
-	plog.Printf("store.index: compact %d", rev)
+	if ti.lg != nil {
+		ti.lg.Info("compact tree index", zap.Int64("revision", rev))
+	} else {
+		plog.Printf("store.index: compact %d", rev)
+	}
 	// TODO: do not hold the lock for long time?
 	// This is probably OK. Compacting 10M keys takes O(10ms).
 	ti.Lock()
@@ -192,7 +199,11 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	for _, ki := range emptyki {
 		item := ti.tree.Delete(ki)
 		if item == nil {
-			plog.Panic("store.index: unexpected delete failure during compaction")
+			if ti.lg != nil {
+				ti.lg.Panic("failed to delete during compaction")
+			} else {
+				plog.Panic("store.index: unexpected delete failure during compaction")
+			}
 		}
 	}
 	return available
