@@ -20,10 +20,14 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/etcd/pkg/fileutil"
+
+	"go.uber.org/zap"
 )
 
 // filePipeline pipelines allocating disk space
 type filePipeline struct {
+	lg *zap.Logger
+
 	// dir to put files
 	dir string
 	// size of files to make, in bytes
@@ -36,8 +40,9 @@ type filePipeline struct {
 	donec chan struct{}
 }
 
-func newFilePipeline(dir string, fileSize int64) *filePipeline {
+func newFilePipeline(lg *zap.Logger, dir string, fileSize int64) *filePipeline {
 	fp := &filePipeline{
+		lg:    lg,
 		dir:   dir,
 		size:  fileSize,
 		filec: make(chan *fileutil.LockedFile),

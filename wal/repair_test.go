@@ -23,6 +23,8 @@ import (
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"go.uber.org/zap"
 )
 
 type corruptFunc func(string, int64) error
@@ -30,7 +32,7 @@ type corruptFunc func(string, int64) error
 // TestRepairTruncate ensures a truncated file can be repaired
 func TestRepairTruncate(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(p)
+		f, err := openLast(zap.NewExample(), p)
 		if err != nil {
 			return err
 		}
@@ -48,7 +50,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	}
 	defer os.RemoveAll(p)
 	// create WAL
-	w, err := Create(p, nil)
+	w, err := Create(zap.NewExample(), p, nil)
 	defer func() {
 		if err = w.Close(); err != nil {
 			t.Fatal(err)
@@ -76,7 +78,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	}
 
 	// verify we broke the wal
-	w, err = Open(p, walpb.Snapshot{})
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,12 +89,12 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	w.Close()
 
 	// repair the wal
-	if ok := Repair(p); !ok {
+	if ok := Repair(zap.NewExample(), p); !ok {
 		t.Fatalf("fix = %t, want %t", ok, true)
 	}
 
 	// read it back
-	w, err = Open(p, walpb.Snapshot{})
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +116,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	w.Close()
 
 	// read back entries following repair, ensure it's all there
-	w, err = Open(p, walpb.Snapshot{})
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +140,7 @@ func makeEnts(ents int) (ret [][]raftpb.Entry) {
 // that straddled two sectors.
 func TestRepairWriteTearLast(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(p)
+		f, err := openLast(zap.NewExample(), p)
 		if err != nil {
 			return err
 		}
@@ -162,7 +164,7 @@ func TestRepairWriteTearLast(t *testing.T) {
 // in the middle of a record.
 func TestRepairWriteTearMiddle(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(p)
+		f, err := openLast(zap.NewExample(), p)
 		if err != nil {
 			return err
 		}

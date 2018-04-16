@@ -21,12 +21,14 @@ import (
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"go.uber.org/zap"
 )
 
 // Repair tries to repair ErrUnexpectedEOF in the
 // last wal file by truncating.
-func Repair(dirpath string) bool {
-	f, err := openLast(dirpath)
+func Repair(lg *zap.Logger, dirpath string) bool {
+	f, err := openLast(lg, dirpath)
 	if err != nil {
 		return false
 	}
@@ -51,46 +53,77 @@ func Repair(dirpath string) bool {
 				decoder.updateCRC(rec.Crc)
 			}
 			continue
+
 		case io.EOF:
 			return true
+
 		case io.ErrUnexpectedEOF:
-			plog.Noticef("repairing %v", f.Name())
+			if lg != nil {
+				lg.Info("repairing", zap.String("path", f.Name()))
+			} else {
+				plog.Noticef("repairing %v", f.Name())
+			}
 			bf, bferr := os.Create(f.Name() + ".broken")
 			if bferr != nil {
-				plog.Errorf("could not repair %v, failed to create backup file", f.Name())
+				if lg != nil {
+					lg.Warn("failed to create backup file", zap.String("path", f.Name()+".broken"))
+				} else {
+					plog.Errorf("could not repair %v, failed to create backup file", f.Name())
+				}
 				return false
 			}
 			defer bf.Close()
 
 			if _, err = f.Seek(0, io.SeekStart); err != nil {
-				plog.Errorf("could not repair %v, failed to read file", f.Name())
+				if lg != nil {
+					lg.Warn("failed to read file", zap.String("path", f.Name()))
+				} else {
+					plog.Errorf("could not repair %v, failed to read file", f.Name())
+				}
 				return false
 			}
 
 			if _, err = io.Copy(bf, f); err != nil {
-				plog.Errorf("could not repair %v, failed to copy file", f.Name())
+				if lg != nil {
+					lg.Warn("failed to copy", zap.String("from", f.Name()+".broken"), zap.String("to", f.Name()))
+				} else {
+					plog.Errorf("could not repair %v, failed to copy file", f.Name())
+				}
 				return false
 			}
 
 			if err = f.Truncate(int64(lastOffset)); err != nil {
-				plog.Errorf("could not repair %v, failed to truncate file", f.Name())
+				if lg != nil {
+					lg.Warn("failed to truncate", zap.String("path", f.Name()))
+				} else {
+					plog.Errorf("could not repair %v, failed to truncate file", f.Name())
+				}
 				return false
 			}
 			if err = fileutil.Fsync(f.File); err != nil {
-				plog.Errorf("could not repair %v, failed to sync file", f.Name())
+				if lg != nil {
+					lg.Warn("failed to fsync", zap.String("path", f.Name()))
+				} else {
+					plog.Errorf("could not repair %v, failed to sync file", f.Name())
+				}
 				return false
 			}
 			return true
+
 		default:
-			plog.Errorf("could not repair error (%v)", err)
+			if lg != nil {
+				lg.Warn("failed to repair", zap.Error(err))
+			} else {
+				plog.Errorf("could not repair error (%v)", err)
+			}
 			return false
 		}
 	}
 }
 
 // openLast opens the last wal file for read and write.
-func openLast(dirpath string) (*fileutil.LockedFile, error) {
-	names, err := readWalNames(dirpath)
+func openLast(lg *zap.Logger, dirpath string) (*fileutil.LockedFile, error) {
+	names, err := readWalNames(lg, dirpath)
 	if err != nil {
 		return nil, err
 	}
