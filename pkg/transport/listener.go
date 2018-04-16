@@ -194,6 +194,26 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string) (info TLSInfo, err
 	return SelfCert(lg, dirpath, hosts)
 }
 
+// baseConfig is called on initial TLS handshake start.
+//
+// Previously,
+// 1. Server has non-empty (*tls.Config).Certificates on client hello
+// 2. Server calls (*tls.Config).GetCertificate iff:
+//    - Server's (*tls.Config).Certificates is not empty, or
+//    - Client supplies SNI; non-empty (*tls.ClientHelloInfo).ServerName
+//
+// When (*tls.Config).Certificates is always populated on initial handshake,
+// client is expected to provide a valid matching SNI to pass the TLS
+// verification, thus trigger server (*tls.Config).GetCertificate to reload
+// TLS assets. However, a cert whose SAN field does not include domain names
+// but only IP addresses, has empty (*tls.ClientHelloInfo).ServerName, thus
+// it was never able to trigger TLS reload on initial handshake; first
+// ceritifcate object was being used, never being updated.
+//
+// Now, (*tls.Config).Certificates is created empty on initial TLS client
+// handshake, in order to trigger (*tls.Config).GetCertificate and populate
+// rest of the certificates on every new TLS connection, even when client
+// SNI is empty (e.g. cert only includes IPs).
 func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	if info.KeyFile == "" || info.CertFile == "" {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
@@ -202,15 +222,14 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		info.Logger = zap.NewNop()
 	}
 
-	tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	_, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := &tls.Config{
-		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS12,
-		ServerName:   info.ServerName,
+		MinVersion: tls.VersionTLS12,
+		ServerName: info.ServerName,
 	}
 
 	if info.AllowedCN != "" {

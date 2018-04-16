@@ -46,6 +46,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
@@ -83,9 +84,23 @@ var (
 		ClientCertAuth: true,
 	}
 
+	testTLSInfoIP = transport.TLSInfo{
+		KeyFile:        "./fixtures/server-ip.key.insecure",
+		CertFile:       "./fixtures/server-ip.crt",
+		TrustedCAFile:  "./fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
+
 	testTLSInfoExpired = transport.TLSInfo{
 		KeyFile:        "./fixtures-expired/server.key.insecure",
 		CertFile:       "./fixtures-expired/server.crt",
+		TrustedCAFile:  "./fixtures-expired/ca.crt",
+		ClientCertAuth: true,
+	}
+
+	testTLSInfoExpiredIP = transport.TLSInfo{
+		KeyFile:        "./fixtures-expired/server-ip.key.insecure",
+		CertFile:       "./fixtures-expired/server-ip.crt",
 		TrustedCAFile:  "./fixtures-expired/ca.crt",
 		ClientCertAuth: true,
 	}
@@ -110,6 +125,9 @@ type ClusterConfig struct {
 
 	ClientMaxCallSendMsgSize int
 	ClientMaxCallRecvMsgSize int
+
+	// UseIP is true to use only IP for gRPC requests.
+	UseIP bool
 }
 
 type cluster struct {
@@ -248,6 +266,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
+			useIP: c.cfg.UseIP,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -511,6 +530,7 @@ type member struct {
 	keepDataDirTerminate     bool
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
+	useIP                    bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -527,6 +547,7 @@ type memberConfig struct {
 	grpcKeepAliveTimeout     time.Duration
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
+	useIP                    bool
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -600,6 +621,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	}
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
+	m.useIP = mcfg.useIP
 
 	m.InitialCorruptCheck = true
 
@@ -610,6 +632,9 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	m.grpcAddr = "localhost:" + m.Name
+	if m.useIP { // for IP-only sTLS certs
+		m.grpcAddr = "127.0.0.1:" + m.Name
+	}
 	l, err := transport.NewUnixListener(m.grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)
@@ -785,10 +810,45 @@ func (m *member) Launch() error {
 		if m.ClientTLSInfo == nil {
 			hs.Start()
 		} else {
-			hs.TLS, err = m.ClientTLSInfo.ServerConfig()
+			info := m.ClientTLSInfo
+			hs.TLS, err = info.ServerConfig()
 			if err != nil {
 				return err
 			}
+
+			// baseConfig is called on initial TLS handshake start.
+			//
+			// Previously,
+			// 1. Server has non-empty (*tls.Config).Certificates on client hello
+			// 2. Server calls (*tls.Config).GetCertificate iff:
+			//    - Server's (*tls.Config).Certificates is not empty, or
+			//    - Client supplies SNI; non-empty (*tls.ClientHelloInfo).ServerName
+			//
+			// When (*tls.Config).Certificates is always populated on initial handshake,
+			// client is expected to provide a valid matching SNI to pass the TLS
+			// verification, thus trigger server (*tls.Config).GetCertificate to reload
+			// TLS assets. However, a cert whose SAN field does not include domain names
+			// but only IP addresses, has empty (*tls.ClientHelloInfo).ServerName, thus
+			// it was never able to trigger TLS reload on initial handshake; first
+			// ceritifcate object was being used, never being updated.
+			//
+			// Now, (*tls.Config).Certificates is created empty on initial TLS client
+			// handshake, in order to trigger (*tls.Config).GetCertificate and populate
+			// rest of the certificates on every new TLS connection, even when client
+			// SNI is empty (e.g. cert only includes IPs).
+			//
+			// This introduces another problem with "httptest.Server":
+			// when server initial certificates are empty, certificates
+			// are overwritten by Go's internal test certs, which have
+			// different SAN fields (e.g. example.com). To work around,
+			// re-overwrite (*tls.Config).Certificates before starting
+			// test server.
+			tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, nil)
+			if err != nil {
+				return err
+			}
+			hs.TLS.Certificates = []tls.Certificate{*tlsCert}
+
 			hs.StartTLS()
 		}
 		closer := func() {
