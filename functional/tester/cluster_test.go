@@ -28,7 +28,7 @@ func Test_read(t *testing.T) {
 	exp := &Cluster{
 		Members: []*rpcpb.Member{
 			{
-				EtcdExec:           "embed",
+				EtcdExec:           "./bin/etcd",
 				AgentAddr:          "127.0.0.1:19027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7381",
 				BaseDir:            "/tmp/etcd-functional-1",
@@ -81,7 +81,7 @@ func Test_read(t *testing.T) {
 				SnapshotPath:        "/tmp/etcd-functional-1.snapshot.db",
 			},
 			{
-				EtcdExec:           "embed",
+				EtcdExec:           "./bin/etcd",
 				AgentAddr:          "127.0.0.1:29027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7382",
 				BaseDir:            "/tmp/etcd-functional-2",
@@ -134,7 +134,7 @@ func Test_read(t *testing.T) {
 				SnapshotPath:        "/tmp/etcd-functional-2.snapshot.db",
 			},
 			{
-				EtcdExec:           "embed",
+				EtcdExec:           "./bin/etcd",
 				AgentAddr:          "127.0.0.1:39027",
 				FailpointHTTPAddr:  "http://127.0.0.1:7383",
 				BaseDir:            "/tmp/etcd-functional-3",
