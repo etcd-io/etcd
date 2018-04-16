@@ -1,5 +1,5 @@
 agent-configs:
-- etcd-exec: ./bin/etcd
+- etcd-exec: embed
   agent-addr: 127.0.0.1:19027
   failpoint-http-addr: http://127.0.0.1:7381
   base-dir: /tmp/etcd-functional-1
@@ -50,7 +50,7 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-1.snapshot.db
 
-- etcd-exec: ./bin/etcd
+- etcd-exec: embed
   agent-addr: 127.0.0.1:29027
   failpoint-http-addr: http://127.0.0.1:7382
   base-dir: /tmp/etcd-functional-2
@@ -101,7 +101,7 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-2.snapshot.db
 
-- etcd-exec: ./bin/etcd
+- etcd-exec: embed
   agent-addr: 127.0.0.1:39027
   failpoint-http-addr: http://127.0.0.1:7383
   base-dir: /tmp/etcd-functional-3
