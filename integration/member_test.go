@@ -28,6 +28,7 @@ import (
 
 func TestPauseMember(t *testing.T) {
 	defer testutil.AfterTest(t)
+
 	c := NewCluster(t, 5)
 	c.Launch(t)
 	defer c.Terminate(t)
