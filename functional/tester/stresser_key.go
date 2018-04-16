@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/functional/rpcpb"
+	"github.com/coreos/etcd/raft"
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -151,6 +152,8 @@ func (s *keyStresser) run() {
 			// capability check has not been done (in the beginning)
 		case rpctypes.ErrTooManyRequests.Error():
 			// hitting the recovering member.
+		case raft.ErrProposalDropped.Error():
+			// removed member, or leadership has changed (old leader got raftpb.MsgProp)
 		case context.Canceled.Error():
 			// from stresser.Cancel method:
 			return
@@ -163,6 +166,7 @@ func (s *keyStresser) run() {
 				zap.String("stress-type", s.stype.String()),
 				zap.String("endpoint", s.m.EtcdClientEndpoint),
 				zap.String("error-type", reflect.TypeOf(err).String()),
+				zap.String("error-desc", rpctypes.ErrorDesc(err)),
 				zap.Error(err),
 			)
 			return
