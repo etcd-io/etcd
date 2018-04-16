@@ -571,7 +571,7 @@ func (e *Etcd) serveClients() (err error) {
 	var h http.Handler
 	if e.Config().EnableV2 {
 		if len(e.Config().ExperimentalEnableV2V3) > 0 {
-			srv := v2v3.NewServer(v3client.New(e.Server), e.cfg.ExperimentalEnableV2V3)
+			srv := v2v3.NewServer(e.cfg.logger, v3client.New(e.Server), e.cfg.ExperimentalEnableV2V3)
 			h = v2http.NewClientHandler(srv, e.Server.Cfg.ReqTimeout())
 		} else {
 			h = v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout())

@@ -259,7 +259,7 @@ func startEtcdOrProxyV2() {
 		}
 	}
 
-	osutil.HandleInterrupts()
+	osutil.HandleInterrupts(lg)
 
 	// At this point, the initialization of etcd is done.
 	// The listeners are listening on the TCP ports and ready
@@ -408,7 +408,7 @@ func startProxy(cfg *config) error {
 
 	clientURLs := []string{}
 	uf := func() []string {
-		gcls, gerr := etcdserver.GetClusterFromRemotePeers(peerURLs, tr)
+		gcls, gerr := etcdserver.GetClusterFromRemotePeers(lg, peerURLs, tr)
 		if gerr != nil {
 			if lg != nil {
 				lg.Warn(

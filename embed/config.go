@@ -352,7 +352,6 @@ func (cfg Config) GetLogger() *zap.Logger {
 func (cfg *Config) setupLogging() error {
 	switch cfg.Logger {
 	case "capnslog": // TODO: deprecate this in v3.5
-		capnslog.SetGlobalLogLevel(capnslog.INFO)
 		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
 		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
 
@@ -362,6 +361,7 @@ func (cfg *Config) setupLogging() error {
 			// enable info, warning, error
 			grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 		} else {
+			capnslog.SetGlobalLogLevel(capnslog.INFO)
 			// only discard info
 			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
 		}
