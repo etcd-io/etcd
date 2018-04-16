@@ -347,6 +347,9 @@ func (cfg Config) GetLogger() *zap.Logger {
 	return l
 }
 
+// for testing
+var grpcLogOnce = new(sync.Once)
+
 // setupLogging initializes etcd logging.
 // Must be called after flag parsing or finishing configuring embed.Config.
 func (cfg *Config) setupLogging() error {
@@ -402,6 +405,7 @@ func (cfg *Config) setupLogging() error {
 			Encoding:      "json",
 			EncoderConfig: zap.NewProductionEncoderConfig(),
 		}
+		ignoreLog := false
 		switch cfg.LogOutput {
 		case DefaultLogOutput:
 			if syscall.Getppid() == 1 {
@@ -423,6 +427,8 @@ func (cfg *Config) setupLogging() error {
 		case "stdout":
 			lcfg.OutputPaths = []string{"stdout"}
 			lcfg.ErrorOutputPaths = []string{"stdout"}
+		case "io-discard": // only for testing
+			ignoreLog = true
 		default:
 			lcfg.OutputPaths = []string{cfg.LogOutput}
 			lcfg.ErrorOutputPaths = []string{cfg.LogOutput}
@@ -433,20 +439,28 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		var err error
-		cfg.logger, err = lcfg.Build()
+		if !ignoreLog {
+			cfg.logger, err = lcfg.Build()
+		} else {
+			cfg.logger = zap.NewNop()
+		}
 		if err != nil {
 			return err
 		}
 		cfg.loggerConfig = lcfg
 
-		// debug true, enable info, warning, error
-		// debug false, only discard info
-		var gl grpclog.LoggerV2
-		gl, err = logutil.NewGRPCLoggerV2(lcfg)
+		grpcLogOnce.Do(func() {
+			// debug true, enable info, warning, error
+			// debug false, only discard info
+			var gl grpclog.LoggerV2
+			gl, err = logutil.NewGRPCLoggerV2(lcfg)
+			if err == nil {
+				grpclog.SetLoggerV2(gl)
+			}
+		})
 		if err != nil {
 			return err
 		}
-		grpclog.SetLoggerV2(gl)
 
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
 			state := conn.ConnectionState()
