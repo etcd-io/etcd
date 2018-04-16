@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -64,13 +66,31 @@ func (p *pipeline) start() {
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
 	}
-	plog.Infof("started HTTP pipelining with peer %s", p.peerID)
+
+	if p.tr != nil && p.tr.Logger != nil {
+		p.tr.Logger.Info(
+			"started HTTP pipelining with remote peer",
+			zap.String("local-member-id", p.tr.ID.String()),
+			zap.String("remote-peer-id", p.peerID.String()),
+		)
+	} else {
+		plog.Infof("started HTTP pipelining with peer %s", p.peerID)
+	}
 }
 
 func (p *pipeline) stop() {
 	close(p.stopc)
 	p.wg.Wait()
-	plog.Infof("stopped HTTP pipelining with peer %s", p.peerID)
+
+	if p.tr != nil && p.tr.Logger != nil {
+		p.tr.Logger.Info(
+			"stopped HTTP pipelining with remote peer",
+			zap.String("local-member-id", p.tr.ID.String()),
+			zap.String("remote-peer-id", p.peerID.String()),
+		)
+	} else {
+		plog.Infof("stopped HTTP pipelining with peer %s", p.peerID)
+	}
 }
 
 func (p *pipeline) handle() {

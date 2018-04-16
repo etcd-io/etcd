@@ -15,11 +15,14 @@
 package rafthttp
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/pkg/types"
+
+	"go.uber.org/zap"
 )
 
 type failureType struct {
@@ -28,23 +31,26 @@ type failureType struct {
 }
 
 type peerStatus struct {
+	lg     *zap.Logger
 	id     types.ID
 	mu     sync.Mutex // protect variables below
 	active bool
 	since  time.Time
 }
 
-func newPeerStatus(id types.ID) *peerStatus {
-	return &peerStatus{
-		id: id,
-	}
+func newPeerStatus(lg *zap.Logger, id types.ID) *peerStatus {
+	return &peerStatus{lg: lg, id: id}
 }
 
 func (s *peerStatus) activate() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.active {
-		plog.Infof("peer %s became active", s.id)
+		if s.lg != nil {
+			s.lg.Info("peer became active", zap.String("peer-id", s.id.String()))
+		} else {
+			plog.Infof("peer %s became active", s.id)
+		}
 		s.active = true
 		s.since = time.Now()
 	}
@@ -55,13 +61,19 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 	defer s.mu.Unlock()
 	msg := fmt.Sprintf("failed to %s %s on %s (%s)", failure.action, s.id, failure.source, reason)
 	if s.active {
-		plog.Errorf(msg)
-		plog.Infof("peer %s became inactive", s.id)
+		if s.lg != nil {
+			s.lg.Warn("peer became inactive", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
+		} else {
+			plog.Errorf(msg)
+			plog.Infof("peer %s became inactive", s.id)
+		}
 		s.active = false
 		s.since = time.Time{}
 		return
 	}
-	plog.Debugf(msg)
+	if s.lg != nil {
+		s.lg.Warn("peer deactivated again", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
+	}
 }
 
 func (s *peerStatus) isActive() bool {

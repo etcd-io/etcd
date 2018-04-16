@@ -30,6 +30,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/xiang90/probing"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -98,6 +99,8 @@ type Transporter interface {
 // User needs to call Start before calling other functions, and call
 // Stop when the Transport is no longer used.
 type Transport struct {
+	Logger *zap.Logger
+
 	DialTimeout time.Duration // maximum duration before timing out dial of the request
 	// DialRetryFrequency defines the frequency of streamReader dial retrial attempts;
 	// a distinct rate limiter is created per every peer (default value: 10 events/sec)
@@ -197,7 +200,15 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 
-		plog.Debugf("ignored message %s (sent to unknown peer %s)", m.Type, to)
+		if t.Logger != nil {
+			t.Logger.Debug(
+				"ignored message send request; unknown remote peer target",
+				zap.String("type", m.Type.String()),
+				zap.String("unknown-target-peer-id", to.String()),
+			)
+		} else {
+			plog.Debugf("ignored message %s (sent to unknown peer %s)", m.Type, to)
+		}
 	}
 }
 
@@ -268,7 +279,11 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		if t.Logger != nil {
+			t.Logger.Panic("failed NewURLs", zap.Strings("urls", us), zap.Error(err))
+		} else {
+			plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		}
 	}
 	t.remotes[id] = startRemote(t, urls, id)
 }
@@ -285,13 +300,21 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		if t.Logger != nil {
+			t.Logger.Panic("failed NewURLs", zap.Strings("urls", us), zap.Error(err))
+		} else {
+			plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		}
 	}
 	fs := t.LeaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t, urls, id, fs)
-	addPeerToProber(t.prober, id.String(), us)
+	addPeerToProber(t.Logger, t.prober, id.String(), us)
 
-	plog.Infof("added peer %s", id)
+	if t.Logger != nil {
+		t.Logger.Info("added remote peer", zap.String("remote-peer-id", id.String()))
+	} else {
+		plog.Infof("added peer %s", id)
+	}
 }
 
 func (t *Transport) RemovePeer(id types.ID) {
@@ -313,12 +336,21 @@ func (t *Transport) removePeer(id types.ID) {
 	if peer, ok := t.peers[id]; ok {
 		peer.stop()
 	} else {
-		plog.Panicf("unexpected removal of unknown peer '%d'", id)
+		if t.Logger != nil {
+			t.Logger.Panic("unexpected removal of unknown remote peer", zap.String("remote-peer-id", id.String()))
+		} else {
+			plog.Panicf("unexpected removal of unknown peer '%d'", id)
+		}
 	}
 	delete(t.peers, id)
 	delete(t.LeaderStats.Followers, id.String())
 	t.prober.Remove(id.String())
-	plog.Infof("removed peer %s", id)
+
+	if t.Logger != nil {
+		t.Logger.Info("removed remote peer", zap.String("remote-peer-id", id.String()))
+	} else {
+		plog.Infof("removed peer %s", id)
+	}
 }
 
 func (t *Transport) UpdatePeer(id types.ID, us []string) {
@@ -330,13 +362,22 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		if t.Logger != nil {
+			t.Logger.Panic("failed NewURLs", zap.Strings("urls", us), zap.Error(err))
+		} else {
+			plog.Panicf("newURLs %+v should never fail: %+v", us, err)
+		}
 	}
 	t.peers[id].update(urls)
 
 	t.prober.Remove(id.String())
-	addPeerToProber(t.prober, id.String(), us)
-	plog.Infof("updated peer %s", id)
+	addPeerToProber(t.Logger, t.prober, id.String(), us)
+
+	if t.Logger != nil {
+		t.Logger.Info("updated remote peer", zap.String("remote-peer-id", id.String()))
+	} else {
+		plog.Infof("updated peer %s", id)
+	}
 }
 
 func (t *Transport) ActiveSince(id types.ID) time.Time {
@@ -425,7 +466,7 @@ func NewSnapTransporter(snapDir string) (Transporter, <-chan raftsnap.Message) {
 }
 
 func (s *snapTransporter) SendSnapshot(m raftsnap.Message) {
-	ss := raftsnap.New(s.snapDir)
+	ss := raftsnap.New(zap.NewExample(), s.snapDir)
 	ss.SaveDBFrom(m.ReadCloser, m.Snapshot.Metadata.Index+1)
 	m.CloseWithError(nil)
 	s.snapDoneC <- m

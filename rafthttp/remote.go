@@ -17,9 +17,13 @@ package rafthttp
 import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+
+	"go.uber.org/zap"
 )
 
 type remote struct {
+	lg       *zap.Logger
+	localID  types.ID
 	id       types.ID
 	status   *peerStatus
 	pipeline *pipeline
@@ -27,7 +31,7 @@ type remote struct {
 
 func startRemote(tr *Transport, urls types.URLs, id types.ID) *remote {
 	picker := newURLPicker(urls)
-	status := newPeerStatus(id)
+	status := newPeerStatus(tr.Logger, id)
 	pipeline := &pipeline{
 		peerID: id,
 		tr:     tr,
@@ -39,6 +43,8 @@ func startRemote(tr *Transport, urls types.URLs, id types.ID) *remote {
 	pipeline.start()
 
 	return &remote{
+		lg:       tr.Logger,
+		localID:  tr.ID,
 		id:       id,
 		status:   status,
 		pipeline: pipeline,
@@ -50,9 +56,32 @@ func (g *remote) send(m raftpb.Message) {
 	case g.pipeline.msgc <- m:
 	default:
 		if g.status.isActive() {
-			plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
+			if g.lg != nil {
+				g.lg.Warn(
+					"dropped internal Raft message since sending buffer is full (overloaded network)",
+					zap.String("message-type", m.Type.String()),
+					zap.String("local-member-id", g.localID.String()),
+					zap.String("from", types.ID(m.From).String()),
+					zap.String("remote-peer-id", types.ID(g.id).String()),
+					zap.Bool("remote-peer-active", g.status.isActive()),
+				)
+			} else {
+				plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
+			}
+		} else {
+			if g.lg != nil {
+				g.lg.Warn(
+					"dropped Raft message since sending buffer is full (overloaded network)",
+					zap.String("message-type", m.Type.String()),
+					zap.String("local-member-id", g.localID.String()),
+					zap.String("from", types.ID(m.From).String()),
+					zap.String("remote-peer-id", types.ID(g.id).String()),
+					zap.Bool("remote-peer-active", g.status.isActive()),
+				)
+			} else {
+				plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+			}
 		}
-		plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 	}
 }

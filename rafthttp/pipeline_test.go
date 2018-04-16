@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -301,7 +303,7 @@ func startTestPipeline(tr *Transport, picker *urlPicker) *pipeline {
 		peerID:        types.ID(1),
 		tr:            tr,
 		picker:        picker,
-		status:        newPeerStatus(types.ID(1)),
+		status:        newPeerStatus(zap.NewExample(), types.ID(1)),
 		raft:          &fakeRaft{},
 		followerStats: &stats.FollowerStats{},
 		errorc:        make(chan error, 1),
