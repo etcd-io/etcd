@@ -67,13 +67,14 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 			defer rsv.Close()
 			rsv.InitialAddrs(resolvedAddrs)
 
+			name := genName()
 			cfg := Config{
 				Policy: picker.RoundrobinBalanced,
-				Name:   genName(),
+				Name:   name,
 				Logger: zap.NewExample(),
 			}
-			rrb := New(cfg)
-			conn, err := grpc.Dial(fmt.Sprintf("endpoint://nofailover/*"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+			RegisterBuilder(cfg)
+			conn, err := grpc.Dial(fmt.Sprintf("endpoint://nofailover/*"), grpc.WithInsecure(), grpc.WithBalancerName(name))
 			if err != nil {
 				t.Fatalf("failed to dial mock server: %v", err)
 			}
@@ -129,13 +130,14 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	defer rsv.Close()
 	rsv.InitialAddrs(resolvedAddrs)
 
+	name := genName()
 	cfg := Config{
 		Policy: picker.RoundrobinBalanced,
-		Name:   genName(),
+		Name:   name,
 		Logger: zap.NewExample(),
 	}
-	rrb := New(cfg)
-	conn, err := grpc.Dial(fmt.Sprintf("endpoint://serverfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+	RegisterBuilder(cfg)
+	conn, err := grpc.Dial(fmt.Sprintf("endpoint://serverfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(name))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}
@@ -242,13 +244,14 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 	defer rsv.Close()
 	rsv.InitialAddrs(resolvedAddrs)
 
+	name := genName()
 	cfg := Config{
 		Policy: picker.RoundrobinBalanced,
-		Name:   genName(),
+		Name:   name,
 		Logger: zap.NewExample(),
 	}
-	rrb := New(cfg)
-	conn, err := grpc.Dial(fmt.Sprintf("endpoint://requestfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(rrb.Name()))
+	RegisterBuilder(cfg)
+	conn, err := grpc.Dial(fmt.Sprintf("endpoint://requestfail/mock.server"), grpc.WithInsecure(), grpc.WithBalancerName(name))
 	if err != nil {
 		t.Fatalf("failed to dial mock server: %s", err)
 	}

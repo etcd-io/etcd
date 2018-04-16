@@ -142,8 +142,9 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	clus.Members[3].WaitStarted(t)
 	cli.SetEndpoints(clus.Members[3].GRPCAddr())
-	time.Sleep(1 * time.Second) // give enough time for operation
+	time.Sleep(5 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ErrNoGreaterRev {
