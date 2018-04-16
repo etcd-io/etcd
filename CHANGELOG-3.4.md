@@ -67,7 +67,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Change [`wal` package function signatures](https://github.com/coreos/etcd/pull/9572) to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
   - Previously, `Open(dirpath string, snap walpb.Snapshot) (*WAL, error)`, now `Open(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, error)`.
   - Previously, `OpenForRead(dirpath string, snap walpb.Snapshot) (*WAL, error)`, now `OpenForRead(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, error)`.
-  - Previously, `Repair(dirpath string) bool` now `Repair(lg *zap.Logger, dirpath string) bool`.
+  - Previously, `Repair(dirpath string) bool`, now `Repair(lg *zap.Logger, dirpath string) bool`.
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
 - Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).

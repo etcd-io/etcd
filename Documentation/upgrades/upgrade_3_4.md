@@ -26,7 +26,7 @@ Highlighted breaking changes in 3.4.
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
-#### Change in ``pkg/transport`
+#### Change in `pkg/transport`
 
 Deprecated `pkg/transport.TLSInfo.CAFile` field.
 
@@ -43,6 +43,40 @@ tlsConfig, err := tlsInfo.ClientConfig()
 if err != nil {
     panic(err)
 }
+```
+
+#### Change in `wal`
+
+Changed `wal` function signatures to support structured logger.
+
+```diff
+import "github.com/coreos/etcd/wal"
++import "go.uber.org/zap"
+
++lg, _ = zap.NewProduction()
+
+-wal.Open(dirpath, snap)
++wal.Open(lg, dirpath, snap)
+
+-wal.OpenForRead(dirpath, snap)
++wal.OpenForRead(lg, dirpath, snap)
+
+-wal.Repair(dirpath)
++wal.Repair(lg, dirpath)
+
+-wal.Create(dirpath, metadata)
++wal.Create(lg, dirpath, metadata)
+```
+
+#### Change in `embed.Etcd`
+
+`embed.Config.SetupLogging` has been removed in order to prevent wrong logging configuration, and now set up automatically.
+
+```diff
+import "github.com/coreos/etcd/embed"
+
+cfg := &embed.Config{Debug: false}
+-cfg.SetupLogging()
 ```
 
 ### Server upgrade checklists
