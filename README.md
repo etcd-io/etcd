@@ -39,7 +39,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 etcd contributors and maintainers have bi-weekly meetings at 11:00 AM (USA Pacific) on Tuesdays. Anyone is welcome to join via [BlueJeans][bluejeans]. An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
 
 [bluejeans]: https://bluejeans.com/2732309610
-[shared-meeting-notes]: https://docs.google.com/document/d/1DbVXOHvd9scFsSmL2oNg4YGOHJdXqtx583DmeVWrB_M/edit#
+[shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
 
 ## Getting started
 
