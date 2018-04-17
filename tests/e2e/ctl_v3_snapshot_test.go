@@ -117,7 +117,6 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 			"--data-dir", "snap.etcd",
 			fpath),
 		"added member")
-
 	if serr != nil {
 		cx.t.Fatal(serr)
 	}

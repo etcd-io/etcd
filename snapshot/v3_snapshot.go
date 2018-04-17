@@ -239,6 +239,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	}
 
 	srv := etcdserver.ServerConfig{
+		Logger:              s.lg,
 		Name:                cfg.Name,
 		PeerURLs:            pURLs,
 		InitialPeerURLsMap:  ics,
