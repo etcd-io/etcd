@@ -248,20 +248,12 @@ func (c *ServerConfig) print(initial bool) {
 			plog.Infof("initial cluster = %s", c.InitialPeerURLsMap)
 		}
 	} else {
-		caddrs := make([]string, len(c.ClientURLs))
-		for i := range c.ClientURLs {
-			caddrs[i] = c.ClientURLs[i].String()
-		}
-		paddrs := make([]string, len(c.PeerURLs))
-		for i := range c.PeerURLs {
-			paddrs[i] = c.PeerURLs[i].String()
-		}
 		state := "new"
 		if !c.NewCluster {
 			state = "existing"
 		}
 		c.Logger.Info(
-			"server starting",
+			"server configuration",
 			zap.String("name", c.Name),
 			zap.String("data-dir", c.DataDir),
 			zap.String("member-dir", c.MemberDir()),
@@ -272,8 +264,8 @@ func (c *ServerConfig) print(initial bool) {
 			zap.Int("election-tick-ms", c.ElectionTicks),
 			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond)),
 			zap.Uint64("snapshot-count", c.SnapCount),
-			zap.Strings("advertise-client-urls", caddrs),
-			zap.Strings("initial-advertise-peer-urls", paddrs),
+			zap.Strings("advertise-client-urls", c.getACURLs()),
+			zap.Strings("initial-advertise-peer-urls", c.getAPURLs()),
 			zap.Bool("initial", initial),
 			zap.String("initial-cluster", c.InitialPeerURLsMap.String()),
 			zap.String("initial-cluster-state", state),
@@ -309,3 +301,19 @@ func (c *ServerConfig) bootstrapTimeout() time.Duration {
 }
 
 func (c *ServerConfig) backendPath() string { return filepath.Join(c.SnapDir(), "db") }
+
+func (c *ServerConfig) getAPURLs() (ss []string) {
+	ss = make([]string, len(c.PeerURLs))
+	for i := range c.PeerURLs {
+		ss[i] = c.PeerURLs[i].String()
+	}
+	return ss
+}
+
+func (c *ServerConfig) getACURLs() (ss []string) {
+	ss = make([]string, len(c.ClientURLs))
+	for i := range c.ClientURLs {
+		ss[i] = c.ClientURLs[i].String()
+	}
+	return ss
+}

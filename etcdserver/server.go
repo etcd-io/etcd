@@ -711,7 +711,7 @@ func (s *EtcdServer) start() {
 	if s.ClusterVersion() != nil {
 		if lg != nil {
 			lg.Info(
-				"starting server",
+				"starting etcd server",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("local-server-version", version.Version),
 				zap.String("cluster-id", s.Cluster().ID().String()),
@@ -723,7 +723,7 @@ func (s *EtcdServer) start() {
 	} else {
 		if lg != nil {
 			lg.Info(
-				"starting server",
+				"starting etcd server",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("local-server-version", version.Version),
 				zap.String("cluster-version", "to_be_decided"),

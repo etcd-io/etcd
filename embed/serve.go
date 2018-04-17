@@ -90,9 +90,7 @@ func (sctx *serveCtx) serve(
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 
-	if sctx.lg != nil {
-		sctx.lg.Info("ready to server client requests")
-	} else {
+	if sctx.lg == nil {
 		plog.Info("ready to serve client requests")
 	}
 
@@ -136,7 +134,7 @@ func (sctx *serveCtx) serve(
 		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
 		if sctx.lg != nil {
 			sctx.lg.Info(
-				"serving insecure client requests; this is strongly discouraged!",
+				"serving client traffic insecurely; this is strongly discouraged!",
 				zap.String("address", sctx.l.Addr().String()),
 			)
 		} else {
@@ -186,7 +184,7 @@ func (sctx *serveCtx) serve(
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		if sctx.lg != nil {
 			sctx.lg.Info(
-				"serving client requests",
+				"serving client traffic insecurely",
 				zap.String("address", sctx.l.Addr().String()),
 			)
 		} else {
