@@ -71,6 +71,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
 - Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
+- Change [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+  - Now that `log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
+  - Previously, `etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
 - Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
 - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 - Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
@@ -140,10 +143,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
   - e.g. `--logger=capnslog --log-output=default` is the default setting and same as previous etcd server logging format.
   - TODO: `--logger=zap` is experimental, and journald logging may not work when etcd runs as PID 1.
-  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations with [JSON-encoded format](TODO) and writes logs to the specified file `/tmp/test.log`.
-  - e.g. `--logger=zap --log-output=default` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (detect systemd journald TODO).
-  - e.g. `--logger=zap --log-output=stderr` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (bypass journald TODO).
-  - e.g. `--logger=zap --log-output=stdout` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `/tmp/test.log`.
+  - e.g. `--logger=zap --log-output=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (detect systemd journald TODO).
+  - e.g. `--logger=zap --log-output=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - e.g. `--logger=zap --log-output=/dev/null` will discard all server logs.
 
 ### Added: `embed`

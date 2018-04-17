@@ -58,7 +58,7 @@ func TestEtcd(t *testing.T) {
 		InitialCorruptCheck: true,
 
 		Logger:    "zap",
-		LogOutput: "/tmp/etcd-functional-1/etcd.log",
+		LogOutput: []string{"/tmp/etcd-functional-1/etcd.log"},
 		Debug:     true,
 	}
 
@@ -133,7 +133,7 @@ func TestEtcd(t *testing.T) {
 	expc.PreVote = true
 	expc.ExperimentalInitialCorruptCheck = true
 	expc.Logger = "zap"
-	expc.LogOutput = "/tmp/etcd-functional-1/etcd.log"
+	expc.LogOutput = []string{"/tmp/etcd-functional-1/etcd.log"}
 	expc.Debug = true
 	cfg, err := e.EmbedConfig()
 	if err != nil {

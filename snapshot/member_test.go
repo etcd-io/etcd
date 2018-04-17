@@ -64,7 +64,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	cfg := embed.NewConfig()
 	cfg.Logger = "zap"
-	cfg.LogOutput = "/dev/null"
+	cfg.LogOutput = []string{"/dev/null"}
 	cfg.Debug = false
 	cfg.Name = "3"
 	cfg.InitialClusterToken = testClusterTkn

@@ -79,6 +79,26 @@ cfg := &embed.Config{Debug: false}
 -cfg.SetupLogging()
 ```
 
+Changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+
+```diff
+import "github.com/coreos/etcd/embed"
+
+cfg := &embed.Config{Debug: false}
+-cfg.LogOutput = "stderr"
++cfg.LogOutput = []string{"stderr"}
+```
+
+#### Change in `etcd --config-file`
+
+Now that `log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type as below:
+
+```diff
+ # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+-log-output: default
++log-output: [default]
+```
+
 ### Server upgrade checklists
 
 #### Upgrade requirements

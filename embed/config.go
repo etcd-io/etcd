@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -241,11 +242,12 @@ type Config struct {
 	Logger string `json:"logger"`
 
 	// LogOutput is either:
-	//  - "default" as os.Stderr
-	//  - "stderr" as os.Stderr
-	//  - "stdout" as os.Stdout
-	//  - file path to append server logs to
-	LogOutput string `json:"log-output"`
+	//  - "default" as os.Stderr,
+	//  - "stderr" as os.Stderr,
+	//  - "stdout" as os.Stdout,
+	//  - file path to append server logs to.
+	// It can be multiple when "Logger" is zap.
+	LogOutput []string `json:"log-output"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
@@ -318,7 +320,7 @@ func NewConfig() *Config {
 		loggerMu:     new(sync.RWMutex),
 		logger:       nil,
 		Logger:       "capnslog",
-		LogOutput:    DefaultLogOutput,
+		LogOutput:    []string{DefaultLogOutput},
 		Debug:        false,
 		LogPkgLevels: "",
 	}
@@ -380,21 +382,37 @@ func (cfg *Config) setupLogging() error {
 			repoLog.SetLogLevel(settings)
 		}
 
+		if len(cfg.LogOutput) != 1 {
+			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutput)
+			os.Exit(1)
+		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
 		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		switch cfg.LogOutput {
+		output := cfg.LogOutput[0]
+		switch output {
 		case "stdout":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 		case "stderr":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
 		case DefaultLogOutput:
 		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
+			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, output, DefaultLogOutput)
 		}
 
 	case "zap":
-		// TODO: make this more configurable
+		if len(cfg.LogOutput) == 0 {
+			cfg.LogOutput = []string{DefaultLogOutput}
+		}
+		if len(cfg.LogOutput) > 1 {
+			for _, v := range cfg.LogOutput {
+				if v == DefaultLogOutput {
+					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
+				}
+			}
+		}
+
+		// TODO: use zapcore to support more features?
 		lcfg := zap.Config{
 			Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
 			Development: false,
@@ -404,35 +422,50 @@ func (cfg *Config) setupLogging() error {
 			},
 			Encoding:      "json",
 			EncoderConfig: zap.NewProductionEncoderConfig(),
+
+			OutputPaths:      make([]string, 0),
+			ErrorOutputPaths: make([]string, 0),
 		}
-		switch cfg.LogOutput {
-		case DefaultLogOutput:
-			if syscall.Getppid() == 1 {
-				// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-				// where "NewDefaultFormatter" returns "NewJournaldFormatter"
-				// when syscall.Getppid() == 1, specify 'stdout' or 'stderr' to
-				// skip journald logging even when running under systemd
-				fmt.Println("running under init, which may be systemd!")
-				// TODO: capnlog.NewJournaldFormatter()
-				lcfg.OutputPaths = []string{"stderr"}
-				lcfg.ErrorOutputPaths = []string{"stderr"}
-			} else {
-				lcfg.OutputPaths = []string{"stderr"}
-				lcfg.ErrorOutputPaths = []string{"stderr"}
+		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
+		for _, v := range cfg.LogOutput {
+			switch v {
+			case DefaultLogOutput:
+				if syscall.Getppid() == 1 {
+					// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
+					// where "NewDefaultFormatter" returns "NewJournaldFormatter"
+					// when syscall.Getppid() == 1, specify 'stdout' or 'stderr' to
+					// skip journald logging even when running under systemd
+					// TODO: capnlog.NewJournaldFormatter()
+					fmt.Println("running under init, which may be systemd!")
+					outputPaths["stderr"] = struct{}{}
+					errOutputPaths["stderr"] = struct{}{}
+					continue
+				}
+
+				outputPaths["stderr"] = struct{}{}
+				errOutputPaths["stderr"] = struct{}{}
+
+			case "stderr":
+				outputPaths["stderr"] = struct{}{}
+				errOutputPaths["stderr"] = struct{}{}
+
+			case "stdout":
+				outputPaths["stdout"] = struct{}{}
+				errOutputPaths["stdout"] = struct{}{}
+
+			default:
+				outputPaths[v] = struct{}{}
+				errOutputPaths[v] = struct{}{}
 			}
-
-		case "stderr":
-			lcfg.OutputPaths = []string{"stderr"}
-			lcfg.ErrorOutputPaths = []string{"stderr"}
-
-		case "stdout":
-			lcfg.OutputPaths = []string{"stdout"}
-			lcfg.ErrorOutputPaths = []string{"stdout"}
-
-		default:
-			lcfg.OutputPaths = []string{cfg.LogOutput}
-			lcfg.ErrorOutputPaths = []string{cfg.LogOutput}
 		}
+		for v := range outputPaths {
+			lcfg.OutputPaths = append(lcfg.OutputPaths, v)
+		}
+		for v := range errOutputPaths {
+			lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
+		}
+		sort.Strings(lcfg.OutputPaths)
+		sort.Strings(lcfg.ErrorOutputPaths)
 
 		if cfg.Debug {
 			lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
