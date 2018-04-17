@@ -290,30 +290,40 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		MaxSnapFiles:          DefaultMaxSnapshots,
-		MaxWalFiles:           DefaultMaxWALs,
-		Name:                  DefaultName,
-		SnapCount:             etcdserver.DefaultSnapCount,
-		MaxTxnOps:             DefaultMaxTxnOps,
-		MaxRequestBytes:       DefaultMaxRequestBytes,
+		MaxSnapFiles: DefaultMaxSnapshots,
+		MaxWalFiles:  DefaultMaxWALs,
+
+		Name: DefaultName,
+
+		SnapCount:       etcdserver.DefaultSnapCount,
+		MaxTxnOps:       DefaultMaxTxnOps,
+		MaxRequestBytes: DefaultMaxRequestBytes,
+
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
 		GRPCKeepAliveTimeout:  DefaultGRPCKeepAliveTimeout,
-		TickMs:                100,
-		ElectionMs:            1000,
-		LPUrls:                []url.URL{*lpurl},
-		LCUrls:                []url.URL{*lcurl},
-		APUrls:                []url.URL{*apurl},
-		ACUrls:                []url.URL{*acurl},
-		ClusterState:          ClusterStateFlagNew,
-		InitialClusterToken:   "etcd-cluster",
-		StrictReconfigCheck:   DefaultStrictReconfigCheck,
-		Metrics:               "basic",
-		EnableV2:              DefaultEnableV2,
-		CORS:                  map[string]struct{}{"*": {}},
-		HostWhitelist:         map[string]struct{}{"*": {}},
-		AuthToken:             "simple",
-		PreVote:               false, // TODO: enable by default in v3.5
+
+		TickMs:     100,
+		ElectionMs: 1000,
+
+		LPUrls: []url.URL{*lpurl},
+		LCUrls: []url.URL{*lcurl},
+		APUrls: []url.URL{*apurl},
+		ACUrls: []url.URL{*acurl},
+
+		ClusterState:        ClusterStateFlagNew,
+		InitialClusterToken: "etcd-cluster",
+
+		StrictReconfigCheck: DefaultStrictReconfigCheck,
+		Metrics:             "basic",
+		EnableV2:            DefaultEnableV2,
+
+		CORS:          map[string]struct{}{"*": {}},
+		HostWhitelist: map[string]struct{}{"*": {}},
+
+		AuthToken: "simple",
+
+		PreVote: false, // TODO: enable by default in v3.5
 
 		loggerMu:     new(sync.RWMutex),
 		logger:       nil,
@@ -609,17 +619,11 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 	if err := checkHostURLs(cfg.APUrls); err != nil {
-		addrs := make([]string, len(cfg.APUrls))
-		for i := range cfg.APUrls {
-			addrs[i] = cfg.APUrls[i].String()
-		}
+		addrs := cfg.getAPURLs()
 		return fmt.Errorf(`--initial-advertise-peer-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
 	}
 	if err := checkHostURLs(cfg.ACUrls); err != nil {
-		addrs := make([]string, len(cfg.ACUrls))
-		for i := range cfg.ACUrls {
-			addrs[i] = cfg.ACUrls[i].String()
-		}
+		addrs := cfg.getACURLs()
 		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
 	}
 	// Check if conflicting flags are passed.
@@ -869,4 +873,44 @@ func checkHostURLs(urls []url.URL) error {
 		}
 	}
 	return nil
+}
+
+func (cfg *Config) getAPURLs() (ss []string) {
+	ss = make([]string, len(cfg.APUrls))
+	for i := range cfg.APUrls {
+		ss[i] = cfg.APUrls[i].String()
+	}
+	return ss
+}
+
+func (cfg *Config) getLPURLs() (ss []string) {
+	ss = make([]string, len(cfg.LPUrls))
+	for i := range cfg.LPUrls {
+		ss[i] = cfg.LPUrls[i].String()
+	}
+	return ss
+}
+
+func (cfg *Config) getACURLs() (ss []string) {
+	ss = make([]string, len(cfg.ACUrls))
+	for i := range cfg.ACUrls {
+		ss[i] = cfg.ACUrls[i].String()
+	}
+	return ss
+}
+
+func (cfg *Config) getLCURLs() (ss []string) {
+	ss = make([]string, len(cfg.LCUrls))
+	for i := range cfg.LCUrls {
+		ss[i] = cfg.LCUrls[i].String()
+	}
+	return ss
+}
+
+func (cfg *Config) getMetricsURLs() (ss []string) {
+	ss = make([]string, len(cfg.ListenMetricsUrls))
+	for i := range cfg.ListenMetricsUrls {
+		ss[i] = cfg.ListenMetricsUrls[i].String()
+	}
+	return ss
 }

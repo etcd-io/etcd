@@ -111,12 +111,26 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e = nil
 	}()
 
-	if e.Peers, err = startPeerListeners(cfg); err != nil {
+	if e.cfg.logger != nil {
+		e.cfg.logger.Info(
+			"configuring peer listeners",
+			zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
+		)
+	}
+	if e.Peers, err = configurePeerListeners(cfg); err != nil {
 		return e, err
 	}
-	if e.sctxs, err = startClientListeners(cfg); err != nil {
+
+	if e.cfg.logger != nil {
+		e.cfg.logger.Info(
+			"configuring client listeners",
+			zap.Strings("listen-client-urls", e.cfg.getLCURLs()),
+		)
+	}
+	if e.sctxs, err = configureClientListeners(cfg); err != nil {
 		return e, err
 	}
+
 	for _, sctx := range e.sctxs {
 		e.Clients = append(e.Clients, sctx.l)
 	}
@@ -189,11 +203,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 		sort.Strings(ss)
 		if e.cfg.logger != nil {
-			e.cfg.logger.Info(
-				"starting with CORS",
-				zap.String("server-id", e.Server.ID().String()),
-				zap.Strings("cors", ss),
-			)
+			e.cfg.logger.Info("configured CORS", zap.Strings("cors", ss))
 		} else {
 			plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
 		}
@@ -205,11 +215,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 		sort.Strings(ss)
 		if e.cfg.logger != nil {
-			e.cfg.logger.Info(
-				"starting with host whitelist",
-				zap.String("server-id", e.Server.ID().String()),
-				zap.Strings("hosts", ss),
-			)
+			e.cfg.logger.Info("configured host whitelist", zap.Strings("hosts", ss))
 		} else {
 			plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
 		}
@@ -240,6 +246,17 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	if e.cfg.logger != nil {
+		e.cfg.logger.Info(
+			"now serving peer/client/metrics",
+			zap.String("local-member-id", e.Server.ID().String()),
+			zap.Strings("initial-advertise-peer-urls", e.cfg.getAPURLs()),
+			zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
+			zap.Strings("advertise-client-urls", e.cfg.getACURLs()),
+			zap.Strings("listen-client-urls", e.cfg.getLCURLs()),
+			zap.Strings("listen-metrics-urls", e.cfg.getMetricsURLs()),
+		)
+	}
 	serving = true
 	return e, nil
 }
@@ -336,7 +353,7 @@ func stopServers(ctx context.Context, ss *servers) {
 
 func (e *Etcd) Err() <-chan error { return e.errc }
 
-func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
+func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	if err = cfg.PeerSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
@@ -360,7 +377,11 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		for i := range peers {
 			if peers[i] != nil && peers[i].close != nil {
 				if cfg.logger != nil {
-					cfg.logger.Info("stopping listening for peers", zap.String("address", cfg.LPUrls[i].String()))
+					cfg.logger.Warn(
+						"closing peer listener",
+						zap.String("address", cfg.LPUrls[i].String()),
+						zap.Error(err),
+					)
 				} else {
 					plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
 				}
@@ -397,11 +418,6 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		peers[i].close = func(context.Context) error {
 			return peers[i].Listener.Close()
 		}
-		if cfg.logger != nil {
-			cfg.logger.Info("listening for peers", zap.String("address", u.String()))
-		} else {
-			plog.Info("listening for peers on ", u.String())
-		}
 	}
 	return peers, nil
 }
@@ -417,6 +433,7 @@ func (e *Etcd) servePeers() (err error) {
 	}
 
 	for _, p := range e.Peers {
+		u := p.Listener.Addr().String()
 		gs := v3rpc.Server(e.Server, peerTLScfg)
 		m := cmux.New(p.Listener)
 		go gs.Serve(m.Match(cmux.HTTP2()))
@@ -431,7 +448,19 @@ func (e *Etcd) servePeers() (err error) {
 			// gracefully shutdown http.Server
 			// close open listeners, idle connections
 			// until context cancel or time-out
+			if e.cfg.logger != nil {
+				e.cfg.logger.Info(
+					"stopping serving peer traffic",
+					zap.String("address", u),
+				)
+			}
 			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
+			if e.cfg.logger != nil {
+				e.cfg.logger.Info(
+					"stopped serving peer traffic",
+					zap.String("address", u),
+				)
+			}
 			return nil
 		}
 	}
@@ -439,13 +468,22 @@ func (e *Etcd) servePeers() (err error) {
 	// start peer servers in a goroutine
 	for _, pl := range e.Peers {
 		go func(l *peerListener) {
+			u := l.Addr().String()
+			if e.cfg.logger != nil {
+				e.cfg.logger.Info(
+					"serving peer traffic",
+					zap.String("address", u),
+				)
+			} else {
+				plog.Info("listening for peers on ", u)
+			}
 			e.errHandler(l.serve())
 		}(pl)
 	}
 	return nil
 }
 
-func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
+func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	if err = cfg.ClientSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
@@ -464,7 +502,6 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	sctxs = make(map[string]*serveCtx)
 	for _, u := range cfg.LCUrls {
 		sctx := newServeCtx(cfg.logger)
-
 		if u.Scheme == "http" || u.Scheme == "unix" {
 			if !cfg.ClientTLSInfo.Empty() {
 				if cfg.logger != nil {
@@ -528,19 +565,19 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 			}
 		}
 
-		if cfg.logger != nil {
-			cfg.logger.Info("listening for client requests", zap.String("host", u.Host))
-		} else {
-			plog.Info("listening for client requests on ", u.Host)
-		}
 		defer func() {
-			if err != nil {
-				sctx.l.Close()
-				if cfg.logger != nil {
-					cfg.logger.Info("stopping listening for client requests", zap.String("host", u.Host))
-				} else {
-					plog.Info("stopping listening for client requests on ", u.Host)
-				}
+			if err == nil {
+				return
+			}
+			sctx.l.Close()
+			if cfg.logger != nil {
+				cfg.logger.Warn(
+					"closing peer listener",
+					zap.String("address", u.Host),
+					zap.Error(err),
+				)
+			} else {
+				plog.Info("stopping listening for client requests on ", u.Host)
 			}
 		}()
 		for k := range cfg.UserHandlers {
@@ -561,7 +598,10 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 func (e *Etcd) serveClients() (err error) {
 	if !e.cfg.ClientTLSInfo.Empty() {
 		if e.cfg.logger != nil {
-			e.cfg.logger.Info("starting with client TLS", zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)))
+			e.cfg.logger.Info(
+				"starting with client TLS",
+				zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)),
+			)
 		} else {
 			plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
 		}
@@ -627,7 +667,10 @@ func (e *Etcd) serveMetrics() (err error) {
 			e.metricsListeners = append(e.metricsListeners, ml)
 			go func(u url.URL, ln net.Listener) {
 				if e.cfg.logger != nil {
-					e.cfg.logger.Info("listening for metrics", zap.String("url", u.String()))
+					e.cfg.logger.Info(
+						"serving metrics",
+						zap.String("address", u.String()),
+					)
 				} else {
 					plog.Info("listening for metrics on ", u.String())
 				}
