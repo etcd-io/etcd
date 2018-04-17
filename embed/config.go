@@ -405,7 +405,6 @@ func (cfg *Config) setupLogging() error {
 			Encoding:      "json",
 			EncoderConfig: zap.NewProductionEncoderConfig(),
 		}
-		ignoreLog := false
 		switch cfg.LogOutput {
 		case DefaultLogOutput:
 			if syscall.Getppid() == 1 {
@@ -430,11 +429,6 @@ func (cfg *Config) setupLogging() error {
 			lcfg.OutputPaths = []string{"stdout"}
 			lcfg.ErrorOutputPaths = []string{"stdout"}
 
-		case "discard": // only for testing
-			lcfg.OutputPaths = []string{}
-			lcfg.ErrorOutputPaths = []string{}
-			ignoreLog = true
-
 		default:
 			lcfg.OutputPaths = []string{cfg.LogOutput}
 			lcfg.ErrorOutputPaths = []string{cfg.LogOutput}
@@ -446,11 +440,7 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		var err error
-		if !ignoreLog {
-			cfg.logger, err = lcfg.Build()
-		} else {
-			cfg.logger = zap.NewNop()
-		}
+		cfg.logger, err = lcfg.Build()
 		if err != nil {
 			return err
 		}

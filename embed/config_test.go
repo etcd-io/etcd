@@ -41,7 +41,7 @@ func TestConfigFileOtherFields(t *testing.T) {
 		ptls,
 		true,
 		"zap",
-		"discard",
+		"/dev/null",
 		false,
 	}
 
@@ -157,7 +157,7 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 func TestAutoCompactionModeInvalid(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Logger = "zap"
-	cfg.LogOutput = "discard"
+	cfg.LogOutput = "/dev/null"
 	cfg.Debug = false
 	cfg.AutoCompactionMode = "period"
 	err := cfg.Validate()
