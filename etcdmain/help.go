@@ -154,12 +154,16 @@ Profiling:
     List of URLs to listen on for metrics.
 
 Logging:
-  --debug 'false'
-    Enable debug-level logging for etcd.
-  --log-package-levels ''
-    Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
+  --logger 'capnslog'
+    Specify 'zap' for structured logging or 'capnslog'.
   --log-output 'default'
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+  --debug 'false'
+    Enable debug-level logging for etcd.
+
+Logging (to be deprecated in v3.5):
+  --log-package-levels ''
+    Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
 
 v2 Proxy (to be deprecated in v4):
   --proxy 'off'

@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/functional/rpcpb"
 	"github.com/coreos/etcd/pkg/proxy"
 
@@ -33,8 +34,9 @@ import (
 // no need to lock fields since request operations are
 // serialized in tester-side
 type Server struct {
+	lg *zap.Logger
+
 	grpcServer *grpc.Server
-	lg         *zap.Logger
 
 	network string
 	address string
@@ -46,6 +48,7 @@ type Server struct {
 	*rpcpb.Member
 	*rpcpb.Tester
 
+	etcdServer  *embed.Etcd
 	etcdCmd     *exec.Cmd
 	etcdLogFile *os.File
 

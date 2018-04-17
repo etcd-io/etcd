@@ -117,7 +117,6 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 			"--data-dir", "snap.etcd",
 			fpath),
 		"added member")
-
 	if serr != nil {
 		cx.t.Fatal(serr)
 	}
@@ -201,7 +200,7 @@ func TestIssue6361(t *testing.T) {
 	defer os.RemoveAll(newDataDir)
 
 	// etcdctl restore the snapshot
-	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "membership: added member")
+	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "added member")
 	if err != nil {
 		t.Fatal(err)
 	}

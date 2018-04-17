@@ -28,6 +28,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"go.uber.org/zap"
 )
 
 // Functional tests for features implemented in v3 store. It treats v3 store
@@ -75,7 +76,7 @@ func TestKVTxnRange(t *testing.T) { testKVRange(t, txnRangeFunc) }
 
 func testKVRange(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -141,7 +142,7 @@ func TestKVTxnRangeRev(t *testing.T) { testKVRangeRev(t, txnRangeFunc) }
 
 func testKVRangeRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -177,7 +178,7 @@ func TestKVTxnRangeBadRev(t *testing.T) { testKVRangeBadRev(t, txnRangeFunc) }
 
 func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	put3TestKVs(s)
@@ -210,7 +211,7 @@ func TestKVTxnRangeLimit(t *testing.T) { testKVRangeLimit(t, txnRangeFunc) }
 
 func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -251,7 +252,7 @@ func TestKVTxnPutMultipleTimes(t *testing.T) { testKVPutMultipleTimes(t, txnPutF
 
 func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -313,7 +314,7 @@ func testKVDeleteRange(t *testing.T, f deleteRangeFunc) {
 
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b, &lease.FakeLessor{}, nil)
+		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease)
@@ -333,7 +334,7 @@ func TestKVTxnDeleteMultipleTimes(t *testing.T) { testKVDeleteMultipleTimes(t, t
 
 func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -354,7 +355,7 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 // test that range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -401,7 +402,7 @@ func TestKVOperationInSequence(t *testing.T) {
 
 func TestKVTxnBlockWriteOperations(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 
 	tests := []func(){
 		func() { s.Put([]byte("foo"), nil, lease.NoLease) },
@@ -434,7 +435,7 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 
 func TestKVTxnNonBlockRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	txn := s.Write()
@@ -455,7 +456,7 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 // test that txn range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVTxnOperationInSequence(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -505,7 +506,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 
 func TestKVCompactReserveLastValue(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), 1)
@@ -559,7 +560,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 
 func TestKVCompactBad(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), lease.NoLease)
@@ -592,7 +593,7 @@ func TestKVHash(t *testing.T) {
 	for i := 0; i < len(hashes); i++ {
 		var err error
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		kv := NewStore(b, &lease.FakeLessor{}, nil)
+		kv := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
 		hashes[i], _, err = kv.Hash()
@@ -630,7 +631,7 @@ func TestKVRestore(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b, &lease.FakeLessor{}, nil)
+		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 		tt(s)
 		var kvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
@@ -642,7 +643,7 @@ func TestKVRestore(t *testing.T) {
 		s.Close()
 
 		// ns should recover the the previous state from backend.
-		ns := NewStore(b, &lease.FakeLessor{}, nil)
+		ns := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 
 		if keysRestore := readGaugeInt(&keysGauge); keysBefore != keysRestore {
 			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
@@ -674,7 +675,7 @@ func readGaugeInt(g *prometheus.Gauge) int {
 
 func TestKVSnapshot(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	wkvs := put3TestKVs(s)
@@ -694,7 +695,7 @@ func TestKVSnapshot(t *testing.T) {
 	}
 	f.Close()
 
-	ns := NewStore(b, &lease.FakeLessor{}, nil)
+	ns := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer ns.Close()
 	r, err := ns.Range([]byte("a"), []byte("z"), RangeOptions{})
 	if err != nil {
@@ -710,7 +711,7 @@ func TestKVSnapshot(t *testing.T) {
 
 func TestWatchableKVWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

@@ -1,9 +1,8 @@
 agent-configs:
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:19027
   failpoint-http-addr: http://127.0.0.1:7381
   base-dir: /tmp/etcd-functional-1
-  etcd-log-path: /tmp/etcd-functional-1/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:1379
@@ -34,6 +33,9 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    logger: zap
+    log-output: /tmp/etcd-functional-1/etcd.log
+    debug: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -48,11 +50,10 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-1.snapshot.db
 
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:29027
   failpoint-http-addr: http://127.0.0.1:7382
   base-dir: /tmp/etcd-functional-2
-  etcd-log-path: /tmp/etcd-functional-2/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:2379
@@ -83,6 +84,9 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    logger: zap
+    log-output: /tmp/etcd-functional-2/etcd.log
+    debug: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -97,11 +101,10 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-2.snapshot.db
 
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:39027
   failpoint-http-addr: http://127.0.0.1:7383
   base-dir: /tmp/etcd-functional-3
-  etcd-log-path: /tmp/etcd-functional-3/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:3379
@@ -132,6 +135,9 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    logger: zap
+    log-output: /tmp/etcd-functional-3/etcd.log
+    debug: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""

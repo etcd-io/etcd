@@ -31,11 +31,12 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/schedule"
 	"github.com/coreos/etcd/pkg/testutil"
+	"go.uber.org/zap"
 )
 
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer s.Close()
 	defer os.Remove(tmpPath)
 
@@ -419,7 +420,7 @@ func TestRestoreDelete(t *testing.T) {
 	defer func() { restoreChunkKeys = oldChunk }()
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	keys := make(map[string]struct{})
@@ -445,7 +446,7 @@ func TestRestoreDelete(t *testing.T) {
 	}
 	s.Close()
 
-	s = NewStore(b, &lease.FakeLessor{}, nil)
+	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer s.Close()
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
@@ -465,7 +466,7 @@ func TestRestoreDelete(t *testing.T) {
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(b, &lease.FakeLessor{}, nil)
+	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -482,7 +483,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 
 	s0.Close()
 
-	s1 := NewStore(b, &lease.FakeLessor{}, nil)
+	s1 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 
 	// wait for scheduled compaction to be finished
 	time.Sleep(100 * time.Millisecond)
@@ -519,7 +520,7 @@ type hashKVResult struct {
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -587,7 +588,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	rev := 1000
@@ -620,7 +621,7 @@ func TestTxnPut(t *testing.T) {
 	vals := createBytesSlice(bytesN, sliceN)
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
@@ -635,7 +636,7 @@ func TestTxnPut(t *testing.T) {
 
 func TestTxnBlockBackendForceCommit(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	txn := s.Read()

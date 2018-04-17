@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 
 	"github.com/coreos/pkg/capnslog"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -1047,7 +1048,7 @@ func decomposeOpts(optstr string) (string, map[string]string, error) {
 
 }
 
-func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+func NewTokenProvider(lg *zap.Logger, tokenOpts string, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
@@ -1055,14 +1056,22 @@ func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}
 
 	switch tokenType {
 	case "simple":
-		plog.Warningf("simple token is not cryptographically signed")
+		if lg != nil {
+			lg.Warn("simple token is not cryptographically signed")
+		} else {
+			plog.Warningf("simple token is not cryptographically signed")
+		}
 		return newTokenProviderSimple(indexWaiter), nil
 	case "jwt":
 		return newTokenProviderJWT(typeSpecificOpts)
 	case "":
 		return newTokenProviderNop()
 	default:
-		plog.Errorf("unknown token type: %s", tokenType)
+		if lg != nil {
+			lg.Warn("unknown token type", zap.String("type", tokenType), zap.Error(ErrInvalidAuthOpts))
+		} else {
+			plog.Errorf("unknown token type: %s", tokenType)
+		}
 		return nil, ErrInvalidAuthOpts
 	}
 }

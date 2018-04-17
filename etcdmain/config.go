@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"runtime"
@@ -31,6 +32,7 @@ import (
 	"github.com/coreos/etcd/version"
 
 	"github.com/ghodss/yaml"
+	"go.uber.org/zap"
 )
 
 var (
@@ -213,9 +215,10 @@ func newConfig() *config {
 	fs.Var(flags.NewUniqueStringsValue("*"), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
 
 	// logging
-	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
-	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
+	fs.StringVar(&cfg.ec.Logger, "logger", "capnslog", "Specify 'zap' for structured logging or 'capnslog'.")
 	fs.StringVar(&cfg.ec.LogOutput, "log-output", embed.DefaultLogOutput, "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.")
+	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
+	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "(To be deprecated) Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
 
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
@@ -271,18 +274,26 @@ func (cfg *config) parse(arguments []string) error {
 
 	var err error
 	if cfg.configFile != "" {
-		plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
 		err = cfg.configFromFile(cfg.configFile)
+		if lg := cfg.ec.GetLogger(); lg != nil {
+			lg.Info(
+				"loaded server configuraionl, other configuration command line flags and environment variables will be ignored if provided",
+				zap.String("path", cfg.configFile),
+			)
+		} else {
+			plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
+		}
 	} else {
 		err = cfg.configFromCmdLine()
 	}
+	// now logger is set up
 	return err
 }
 
 func (cfg *config) configFromCmdLine() error {
 	err := flags.SetFlagsFromEnv("ETCD", cfg.cf.flagSet)
 	if err != nil {
-		plog.Fatalf("%v", err)
+		return err
 	}
 
 	cfg.ec.LPUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-peer-urls")
@@ -331,21 +342,21 @@ func (cfg *config) configFromFile(path string) error {
 	if cfg.ec.ListenMetricsUrlsJSON != "" {
 		us, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
 		if err != nil {
-			plog.Panicf("unexpected error setting up listen-metrics-urls: %v", err)
+			log.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
 		}
 		cfg.ec.ListenMetricsUrls = []url.URL(us)
 	}
 
 	if cfg.cp.FallbackJSON != "" {
 		if err := cfg.cf.fallback.Set(cfg.cp.FallbackJSON); err != nil {
-			plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
+			log.Fatalf("unexpected error setting up discovery-fallback flag: %v", err)
 		}
 		cfg.cp.Fallback = cfg.cf.fallback.String()
 	}
 
 	if cfg.cp.ProxyJSON != "" {
 		if err := cfg.cf.proxy.Set(cfg.cp.ProxyJSON); err != nil {
-			plog.Panicf("unexpected error setting up proxyFlag: %v", err)
+			log.Fatalf("unexpected error setting up proxyFlag: %v", err)
 		}
 		cfg.cp.Proxy = cfg.cf.proxy.String()
 	}

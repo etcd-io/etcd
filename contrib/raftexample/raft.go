@@ -33,6 +33,8 @@ import (
 	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"go.uber.org/zap"
 )
 
 // A key-value stream backed by raft
@@ -201,7 +203,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 			log.Fatalf("raftexample: cannot create dir for wal (%v)", err)
 		}
 
-		w, err := wal.Create(rc.waldir, nil)
+		w, err := wal.Create(zap.NewExample(), rc.waldir, nil)
 		if err != nil {
 			log.Fatalf("raftexample: create wal error (%v)", err)
 		}
@@ -213,7 +215,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
 	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(rc.waldir, walsnap)
+	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
 	if err != nil {
 		log.Fatalf("raftexample: error loading wal (%v)", err)
 	}
@@ -261,7 +263,7 @@ func (rc *raftNode) startRaft() {
 			log.Fatalf("raftexample: cannot create dir for snapshot (%v)", err)
 		}
 	}
-	rc.snapshotter = raftsnap.New(rc.snapdir)
+	rc.snapshotter = raftsnap.New(zap.NewExample(), rc.snapdir)
 	rc.snapshotterReady <- rc.snapshotter
 
 	oldwal := wal.Exist(rc.waldir)
@@ -291,6 +293,7 @@ func (rc *raftNode) startRaft() {
 	}
 
 	rc.transport = &rafthttp.Transport{
+		Logger:      zap.NewExample(),
 		ID:          types.ID(rc.id),
 		ClusterID:   0x1000,
 		Raft:        rc,

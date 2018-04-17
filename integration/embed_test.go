@@ -52,6 +52,10 @@ func TestEmbedEtcd(t *testing.T) {
 	// setup defaults
 	for i := range tests {
 		tests[i].cfg = *embed.NewConfig()
+		tests[i].cfg.Logger = "zap"
+		tests[i].cfg.LogOutput = "discard"
+		tests[i].cfg.Debug = false
+
 	}
 
 	tests[0].cfg.Durl = "abc"
@@ -175,6 +179,10 @@ func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 }
 
 func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
+	cfg.Logger = "zap"
+	cfg.LogOutput = "discard"
+	cfg.Debug = false
+
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = curls, curls
 	cfg.LPUrls, cfg.APUrls = purls, purls

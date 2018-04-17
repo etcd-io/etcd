@@ -95,13 +95,9 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, err)
 	}
 
-	debug, err := cmd.Flags().GetBool("debug")
+	lg, err := zap.NewProduction()
 	if err != nil {
 		ExitWithError(ExitError, err)
-	}
-	lg := zap.NewNop()
-	if debug {
-		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(lg)
 	cfg := mustClientCfgFromCmd(cmd)
@@ -120,13 +116,9 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 	}
 	initDisplayFromCmd(cmd)
 
-	debug, err := cmd.Flags().GetBool("debug")
+	lg, err := zap.NewProduction()
 	if err != nil {
 		ExitWithError(ExitError, err)
-	}
-	lg := zap.NewNop()
-	if debug {
-		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(lg)
 	ds, err := sp.Status(args[0])
@@ -152,13 +144,9 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		walDir = filepath.Join(dataDir, "member", "wal")
 	}
 
-	debug, err := cmd.Flags().GetBool("debug")
+	lg, err := zap.NewProduction()
 	if err != nil {
 		ExitWithError(ExitError, err)
-	}
-	lg := zap.NewNop()
-	if debug {
-		lg = zap.NewExample()
 	}
 	sp := snapshot.NewV3(lg)
 

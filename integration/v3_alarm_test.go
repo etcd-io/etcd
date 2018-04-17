@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"go.uber.org/zap"
 )
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
@@ -164,7 +166,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 	clus.Members[0].Stop(t)
 	fp := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	be := backend.NewDefaultBackend(fp)
-	s := mvcc.NewStore(be, nil, &fakeConsistentIndex{13})
+	s := mvcc.NewStore(zap.NewExample(), be, nil, &fakeConsistentIndex{13})
 	// NOTE: cluster_proxy mode with namespacing won't set 'k', but namespace/'k'.
 	s.Put([]byte("abc"), []byte("def"), 0)
 	s.Put([]byte("xyz"), []byte("123"), 0)

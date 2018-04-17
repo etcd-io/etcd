@@ -36,10 +36,13 @@ import (
 	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
+	lg *zap.Logger
+
 	id    types.ID
 	token string
 
@@ -54,8 +57,8 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 }
 
-func NewClusterFromURLsMap(token string, urlsmap types.URLsMap) (*RaftCluster, error) {
-	c := NewCluster(token)
+func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
+	c := NewCluster(lg, token)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -70,8 +73,8 @@ func NewClusterFromURLsMap(token string, urlsmap types.URLsMap) (*RaftCluster, e
 	return c, nil
 }
 
-func NewClusterFromMembers(token string, id types.ID, membs []*Member) *RaftCluster {
-	c := NewCluster(token)
+func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*Member) *RaftCluster {
+	c := NewCluster(lg, token)
 	c.id = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -79,8 +82,9 @@ func NewClusterFromMembers(token string, id types.ID, membs []*Member) *RaftClus
 	return c
 }
 
-func NewCluster(token string) *RaftCluster {
+func NewCluster(lg *zap.Logger, token string) *RaftCluster {
 	return &RaftCluster{
+		lg:      lg,
 		token:   token,
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
@@ -115,7 +119,11 @@ func (c *RaftCluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				plog.Panicf("two members with the given name %q exist", name)
+				if c.lg != nil {
+					c.lg.Panic("two member with same name found", zap.String("name", name))
+				} else {
+					plog.Panicf("two members with the given name %q exist", name)
+				}
 			}
 			memb = m
 		}
@@ -203,27 +211,43 @@ func (c *RaftCluster) SetBackend(be backend.Backend) {
 	mustCreateBackendBuckets(c.be)
 }
 
-func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
+func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members, c.removed = membersFromStore(c.v2store)
-	c.version = clusterVersionFromStore(c.v2store)
-	mustDetectDowngrade(c.version)
-	onSet(c.version)
+	c.members, c.removed = membersFromStore(c.lg, c.v2store)
+	c.version = clusterVersionFromStore(c.lg, c.v2store)
+	mustDetectDowngrade(c.lg, c.version)
+	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
-		plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
+		if c.lg != nil {
+			c.lg.Info(
+				"added member from store",
+				zap.String("cluster-id", c.id.String()),
+				zap.String("member-id", m.ID.String()),
+				zap.Strings("member-peer-urls", m.PeerURLs),
+			)
+		} else {
+			plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
+		}
 	}
 	if c.version != nil {
-		plog.Infof("set the cluster version to %v from store", version.Cluster(c.version.String()))
+		if c.lg != nil {
+			c.lg.Info(
+				"set cluster version from store",
+				zap.String("cluster-version", version.Cluster(c.version.String())),
+			)
+		} else {
+			plog.Infof("set the cluster version to %v from store", version.Cluster(c.version.String()))
+		}
 	}
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	members, removed := membersFromStore(c.v2store)
+	members, removed := membersFromStore(c.lg, c.v2store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
 		return ErrIDRemoved
@@ -241,17 +265,23 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			plog.Panicf("unmarshal member should never fail: %v", err)
+			if c.lg != nil {
+				c.lg.Panic("failed to unmarshal member", zap.Error(err))
+			} else {
+				plog.Panicf("unmarshal member should never fail: %v", err)
+			}
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
 				return ErrPeerURLexists
 			}
 		}
+
 	case raftpb.ConfChangeRemoveNode:
 		if members[id] == nil {
 			return ErrIDNotFound
 		}
+
 	case raftpb.ConfChangeUpdateNode:
 		if members[id] == nil {
 			return ErrIDNotFound
@@ -267,15 +297,24 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			plog.Panicf("unmarshal member should never fail: %v", err)
+			if c.lg != nil {
+				c.lg.Panic("failed to unmarshal member", zap.Error(err))
+			} else {
+				plog.Panicf("unmarshal member should never fail: %v", err)
+			}
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
 				return ErrPeerURLexists
 			}
 		}
+
 	default:
-		plog.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+		if c.lg != nil {
+			c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))
+		} else {
+			plog.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+		}
 	}
 	return nil
 }
@@ -295,7 +334,16 @@ func (c *RaftCluster) AddMember(m *Member) {
 
 	c.members[m.ID] = m
 
-	plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.id)
+	if c.lg != nil {
+		c.lg.Info(
+			"added member",
+			zap.String("member-id", m.ID.String()),
+			zap.Strings("member-peer-urls", m.PeerURLs),
+			zap.String("cluster-id", c.id.String()),
+		)
+	} else {
+		plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.id)
+	}
 }
 
 // RemoveMember removes a member from the store.
@@ -313,7 +361,15 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	delete(c.members, id)
 	c.removed[id] = true
 
-	plog.Infof("removed member %s from cluster %s", id, c.id)
+	if c.lg != nil {
+		c.lg.Info(
+			"removed member",
+			zap.String("member-id", id.String()),
+			zap.String("cluster-id", c.id.String()),
+		)
+	} else {
+		plog.Infof("removed member %s from cluster %s", id, c.id)
+	}
 }
 
 func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
@@ -331,9 +387,18 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 	}
 	_, ok := c.removed[id]
 	if !ok {
-		plog.Panicf("error updating attributes of unknown member %s", id)
+		if c.lg != nil {
+			c.lg.Panic("failed to update; member unknown", zap.String("member-id", id.String()))
+		} else {
+			plog.Panicf("error updating attributes of unknown member %s", id)
+		}
 	}
-	plog.Warningf("skipped updating attributes of removed member %s", id)
+
+	if c.lg != nil {
+		c.lg.Warn("skipped attributes update of removed member", zap.String("member-id", id.String()))
+	} else {
+		plog.Warningf("skipped updating attributes of removed member %s", id)
+	}
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
@@ -348,7 +413,16 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 		mustSaveMemberToBackend(c.be, c.members[id])
 	}
 
-	plog.Noticef("updated member %s %v in cluster %s", id, raftAttr.PeerURLs, c.id)
+	if c.lg != nil {
+		c.lg.Info(
+			"updated member",
+			zap.String("member-id", id.String()),
+			zap.Strings("member-peer-urls", raftAttr.PeerURLs),
+			zap.String("cluster-id", c.id.String()),
+		)
+	} else {
+		plog.Noticef("updated member %s %v in cluster %s", id, raftAttr.PeerURLs, c.id)
+	}
 }
 
 func (c *RaftCluster) Version() *semver.Version {
@@ -360,23 +434,38 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version)) {
+func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
-		plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
+		if c.lg != nil {
+			c.lg.Info(
+				"updated cluster version",
+				zap.String("from", version.Cluster(c.version.String())),
+				zap.String("from", version.Cluster(ver.String())),
+			)
+		} else {
+			plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
+		}
 	} else {
-		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
+		if c.lg != nil {
+			c.lg.Info(
+				"set initial cluster version",
+				zap.String("cluster-version", version.Cluster(ver.String())),
+			)
+		} else {
+			plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
+		}
 	}
 	c.version = ver
-	mustDetectDowngrade(c.version)
+	mustDetectDowngrade(c.lg, c.version)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.v2store, ver)
 	}
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
-	onSet(ver)
+	onSet(c.lg, ver)
 }
 
 func (c *RaftCluster) IsReadyToAddNewMember() bool {
@@ -393,14 +482,25 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
 		// https://github.com/coreos/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
-
-		plog.Debugf("The number of started member is 1. This cluster can accept add member request.")
+		if c.lg != nil {
+			c.lg.Debug("number of started member is 1; can accept add member request")
+		} else {
+			plog.Debugf("The number of started member is 1. This cluster can accept add member request.")
+		}
 		return true
 	}
 
 	nquorum := nmembers/2 + 1
 	if nstarted < nquorum {
-		plog.Warningf("Reject add member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		if c.lg != nil {
+			c.lg.Warn(
+				"rejecting member add; started member will be less than quorum",
+				zap.Int("number-of-started-member", nstarted),
+				zap.Int("quorum", nquorum),
+			)
+		} else {
+			plog.Warningf("Reject add member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		}
 		return false
 	}
 
@@ -424,14 +524,22 @@ func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 
 	nquorum := nmembers/2 + 1
 	if nstarted < nquorum {
-		plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		if c.lg != nil {
+			c.lg.Warn(
+				"rejecting member remove; started member will be less than quorum",
+				zap.Int("number-of-started-member", nstarted),
+				zap.Int("quorum", nquorum),
+			)
+		} else {
+			plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		}
 		return false
 	}
 
 	return true
 }
 
-func membersFromStore(st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
+func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)
 	e, err := st.Get(StoreMembersPrefix, true, true)
@@ -439,13 +547,21 @@ func membersFromStore(st v2store.Store) (map[types.ID]*Member, map[types.ID]bool
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		plog.Panicf("get storeMembers should never fail: %v", err)
+		if lg != nil {
+			lg.Panic("failed to get members from store", zap.String("path", StoreMembersPrefix), zap.Error(err))
+		} else {
+			plog.Panicf("get storeMembers should never fail: %v", err)
+		}
 	}
 	for _, n := range e.Node.Nodes {
 		var m *Member
 		m, err = nodeToMember(n)
 		if err != nil {
-			plog.Panicf("nodeToMember should never fail: %v", err)
+			if lg != nil {
+				lg.Panic("failed to nodeToMember", zap.Error(err))
+			} else {
+				plog.Panicf("nodeToMember should never fail: %v", err)
+			}
 		}
 		members[m.ID] = m
 	}
@@ -455,7 +571,15 @@ func membersFromStore(st v2store.Store) (map[types.ID]*Member, map[types.ID]bool
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		plog.Panicf("get storeRemovedMembers should never fail: %v", err)
+		if lg != nil {
+			lg.Panic(
+				"failed to get removed members from store",
+				zap.String("path", storeRemovedMembersPrefix),
+				zap.Error(err),
+			)
+		} else {
+			plog.Panicf("get storeRemovedMembers should never fail: %v", err)
+		}
 	}
 	for _, n := range e.Node.Nodes {
 		removed[MustParseMemberIDFromKey(n.Key)] = true
@@ -463,13 +587,21 @@ func membersFromStore(st v2store.Store) (map[types.ID]*Member, map[types.ID]bool
 	return members, removed
 }
 
-func clusterVersionFromStore(st v2store.Store) *semver.Version {
+func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {
 		if isKeyNotFound(err) {
 			return nil
 		}
-		plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
+		if lg != nil {
+			lg.Panic(
+				"failed to get cluster version from store",
+				zap.String("path", path.Join(storePrefix, "version")),
+				zap.Error(err),
+			)
+		} else {
+			plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
+		}
 	}
 	return semver.Must(semver.NewVersion(*e.Node.Value))
 }
@@ -502,11 +634,19 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	return nil
 }
 
-func mustDetectDowngrade(cv *semver.Version) {
+func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 	lv := semver.Must(semver.NewVersion(version.Version))
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
-		plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		if lg != nil {
+			lg.Fatal(
+				"invalid downgrade; server version is lower than determined cluster version",
+				zap.String("current-server-version", version.Version),
+				zap.String("determined-cluster-version", version.Cluster(cv.String())),
+			)
+		} else {
+			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		}
 	}
 }

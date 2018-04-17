@@ -21,6 +21,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
+
+	"go.uber.org/zap"
 )
 
 // isConnectedToQuorumSince checks whether the local member is connected to the
@@ -97,18 +99,28 @@ func (nc *notifier) notify(err error) {
 	close(nc.c)
 }
 
-func warnOfExpensiveRequest(now time.Time, stringer fmt.Stringer) {
-	warnOfExpensiveGenericRequest(now, stringer, "")
+func warnOfExpensiveRequest(lg *zap.Logger, now time.Time, stringer fmt.Stringer) {
+	warnOfExpensiveGenericRequest(lg, now, stringer, "")
 }
 
-func warnOfExpensiveReadOnlyRangeRequest(now time.Time, stringer fmt.Stringer) {
-	warnOfExpensiveGenericRequest(now, stringer, "read-only range ")
+func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, stringer fmt.Stringer) {
+	warnOfExpensiveGenericRequest(lg, now, stringer, "read-only range ")
 }
 
-func warnOfExpensiveGenericRequest(now time.Time, stringer fmt.Stringer, prefix string) {
+func warnOfExpensiveGenericRequest(lg *zap.Logger, now time.Time, stringer fmt.Stringer, prefix string) {
 	// TODO: add metrics
 	d := time.Since(now)
 	if d > warnApplyDuration {
-		plog.Warningf("%srequest %q took too long (%v) to execute", prefix, stringer.String(), d)
+		if lg != nil {
+			lg.Warn(
+				"request took too long",
+				zap.Duration("took", d),
+				zap.Duration("expected-duration", warnApplyDuration),
+				zap.String("prefix", prefix),
+				zap.String("request", stringer.String()),
+			)
+		} else {
+			plog.Warningf("%srequest %q took too long (%v) to execute", prefix, stringer.String(), d)
+		}
 	}
 }

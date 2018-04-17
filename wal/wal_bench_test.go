@@ -19,6 +19,8 @@ import (
 	"os"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -41,7 +43,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p, []byte("somedata"))
+	w, err := Create(zap.NewExample(), p, []byte("somedata"))
 	if err != nil {
 		b.Fatalf("err = %v, want nil", err)
 	}

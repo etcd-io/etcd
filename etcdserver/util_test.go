@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -31,7 +33,7 @@ func TestLongestConnected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clus, err := membership.NewClusterFromURLsMap("test", umap)
+	clus, err := membership.NewClusterFromURLsMap(zap.NewExample(), "test", umap)
 	if err != nil {
 		t.Fatal(err)
 	}

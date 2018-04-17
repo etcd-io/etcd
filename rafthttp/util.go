@@ -150,18 +150,21 @@ func minClusterVersion(h http.Header) *semver.Version {
 	return semver.Must(semver.NewVersion(verStr))
 }
 
-// checkVersionCompability checks whether the given version is compatible
+// checkVersionCompatibility checks whether the given version is compatible
 // with the local version.
-func checkVersionCompability(name string, server, minCluster *semver.Version) error {
-	localServer := semver.Must(semver.NewVersion(version.Version))
-	localMinCluster := semver.Must(semver.NewVersion(version.MinClusterVersion))
+func checkVersionCompatibility(name string, server, minCluster *semver.Version) (
+	localServer *semver.Version,
+	localMinCluster *semver.Version,
+	err error) {
+	localServer = semver.Must(semver.NewVersion(version.Version))
+	localMinCluster = semver.Must(semver.NewVersion(version.MinClusterVersion))
 	if compareMajorMinorVersion(server, localMinCluster) == -1 {
-		return fmt.Errorf("remote version is too low: remote[%s]=%s, local=%s", name, server, localServer)
+		return localServer, localMinCluster, fmt.Errorf("remote version is too low: remote[%s]=%s, local=%s", name, server, localServer)
 	}
 	if compareMajorMinorVersion(minCluster, localServer) == 1 {
-		return fmt.Errorf("local version is too low: remote[%s]=%s, local=%s", name, server, localServer)
+		return localServer, localMinCluster, fmt.Errorf("local version is too low: remote[%s]=%s, local=%s", name, server, localServer)
 	}
-	return nil
+	return localServer, localMinCluster, nil
 }
 
 // setPeerURLsHeader reports local urls for peer discovery

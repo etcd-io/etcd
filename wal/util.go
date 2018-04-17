@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/pkg/fileutil"
+	"go.uber.org/zap"
 )
 
 var (
@@ -67,25 +68,33 @@ func isValidSeq(names []string) bool {
 	}
 	return true
 }
-func readWalNames(dirpath string) ([]string, error) {
+
+func readWalNames(lg *zap.Logger, dirpath string) ([]string, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}
-	wnames := checkWalNames(names)
+	wnames := checkWalNames(lg, names)
 	if len(wnames) == 0 {
 		return nil, ErrFileNotFound
 	}
 	return wnames, nil
 }
 
-func checkWalNames(names []string) []string {
+func checkWalNames(lg *zap.Logger, names []string) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
 		if _, _, err := parseWalName(name); err != nil {
 			// don't complain about left over tmp files
 			if !strings.HasSuffix(name, ".tmp") {
-				plog.Warningf("ignored file %v in wal", name)
+				if lg != nil {
+					lg.Warn(
+						"ignored file in WAL directory",
+						zap.String("path", name),
+					)
+				} else {
+					plog.Warningf("ignored file %v in wal", name)
+				}
 			}
 			continue
 		}

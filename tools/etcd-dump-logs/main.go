@@ -28,6 +28,8 @@ import (
 	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -57,7 +59,7 @@ func main() {
 		walsnap.Index = *index
 	} else {
 		if *snapfile == "" {
-			ss := raftsnap.New(snapDir(dataDir))
+			ss := raftsnap.New(zap.NewExample(), snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
 			snapshot, err = raftsnap.Read(filepath.Join(snapDir(dataDir), *snapfile))
@@ -77,7 +79,7 @@ func main() {
 		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
-	w, err := wal.OpenForRead(walDir(dataDir), walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), walDir(dataDir), walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}

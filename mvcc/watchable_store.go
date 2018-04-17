@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.uber.org/zap"
 )
 
 // non-const so modifiable by tests
@@ -67,13 +68,13 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) ConsistentWatchableKV {
-	return newWatchableStore(b, le, ig)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, ig)
 }
 
-func newWatchableStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *watchableStore {
 	s := &watchableStore{
-		store:    NewStore(b, le, ig),
+		store:    NewStore(lg, b, le, ig),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),

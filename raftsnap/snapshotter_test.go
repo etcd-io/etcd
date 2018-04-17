@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/raft/raftpb"
+
+	"go.uber.org/zap"
 )
 
 var testSnap = &raftpb.Snapshot{
@@ -44,7 +46,7 @@ func TestSaveAndLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	err = ss.save(testSnap)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +68,7 @@ func TestBadCRC(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	err = ss.save(testSnap)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +98,7 @@ func TestFailback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	err = ss.save(testSnap)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +133,7 @@ func TestSnapNames(t *testing.T) {
 			f.Close()
 		}
 	}
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	names, err := ss.snapNames()
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
@@ -152,7 +154,7 @@ func TestLoadNewestSnap(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	err = ss.save(testSnap)
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +183,7 @@ func TestNoSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	_, err = ss.Load()
 	if err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
@@ -222,7 +224,7 @@ func TestAllSnapshotBroken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss := New(dir)
+	ss := New(zap.NewExample(), dir)
 	_, err = ss.Load()
 	if err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)

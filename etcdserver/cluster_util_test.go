@@ -22,7 +22,10 @@ import (
 	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
+
+var testLogger = zap.NewExample()
 
 func TestDecideClusterVersion(t *testing.T) {
 	tests := []struct {
@@ -53,7 +56,7 @@ func TestDecideClusterVersion(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		dver := decideClusterVersion(tt.vers)
+		dver := decideClusterVersion(testLogger, tt.vers)
 		if !reflect.DeepEqual(dver, tt.wdver) {
 			t.Errorf("#%d: ver = %+v, want %+v", i, dver, tt.wdver)
 		}
@@ -124,7 +127,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ok := isCompatibleWithVers(tt.vers, tt.local, tt.minV, tt.maxV)
+		ok := isCompatibleWithVers(testLogger, tt.vers, tt.local, tt.minV, tt.maxV)
 		if ok != tt.wok {
 			t.Errorf("#%d: ok = %+v, want %+v", i, ok, tt.wok)
 		}

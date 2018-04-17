@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/version"
+
+	"go.uber.org/zap"
 )
 
 type KVGetter interface {
@@ -54,6 +56,7 @@ type AuthGetter interface {
 }
 
 type maintenanceServer struct {
+	lg  *zap.Logger
 	rg  etcdserver.RaftStatusGetter
 	kg  KVGetter
 	bg  BackendGetter
@@ -63,18 +66,30 @@ type maintenanceServer struct {
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s)}
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s)}
 	return &authMaintenanceServer{srv, s}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
-	plog.Noticef("starting to defragment the storage backend...")
+	if ms.lg != nil {
+		ms.lg.Info("starting defragment")
+	} else {
+		plog.Noticef("starting to defragment the storage backend...")
+	}
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
-		plog.Errorf("failed to defragment the storage backend (%v)", err)
+		if ms.lg != nil {
+			ms.lg.Warn("failed to defragment", zap.Error(err))
+		} else {
+			plog.Errorf("failed to defragment the storage backend (%v)", err)
+		}
 		return nil, err
 	}
-	plog.Noticef("finished defragmenting the storage backend")
+	if ms.lg != nil {
+		ms.lg.Info("finished defragment")
+	} else {
+		plog.Noticef("finished defragmenting the storage backend")
+	}
 	return &pb.DefragmentResponse{}, nil
 }
 
@@ -87,7 +102,11 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	go func() {
 		snap.WriteTo(pw)
 		if err := snap.Close(); err != nil {
-			plog.Errorf("error closing snapshot (%v)", err)
+			if ms.lg != nil {
+				ms.lg.Warn("failed to close snapshot", zap.Error(err))
+			} else {
+				plog.Errorf("error closing snapshot (%v)", err)
+			}
 		}
 		pw.Close()
 	}()

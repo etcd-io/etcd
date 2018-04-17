@@ -188,7 +188,7 @@ func TestCheckVersionCompatibility(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := checkVersionCompability("", tt.server, tt.minCluster)
+		_, _, err := checkVersionCompatibility("", tt.server, tt.minCluster)
 		if ok := err == nil; ok != tt.wok {
 			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
 		}

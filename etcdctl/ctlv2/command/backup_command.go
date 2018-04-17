@@ -35,6 +35,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 )
 
 func NewBackupCommand() cli.Command {
@@ -86,7 +87,7 @@ func handleBackup(c *cli.Context) error {
 	metadata.NodeID = idgen.Next()
 	metadata.ClusterID = idgen.Next()
 
-	neww, err := wal.Create(destWAL, pbutil.MustMarshal(&metadata))
+	neww, err := wal.Create(zap.NewExample(), destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,14 +103,14 @@ func handleBackup(c *cli.Context) error {
 }
 
 func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
-	ss := raftsnap.New(srcSnap)
+	ss := raftsnap.New(zap.NewExample(), srcSnap)
 	snapshot, err := ss.Load()
 	if err != nil && err != raftsnap.ErrNoSnapshot {
 		log.Fatal(err)
 	}
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-		newss := raftsnap.New(destSnap)
+		newss := raftsnap.New(zap.NewExample(), destSnap)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)
 		}
@@ -118,7 +119,7 @@ func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
 }
 
 func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
-	w, err := wal.OpenForRead(srcWAL, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), srcWAL, walsnap)
 	if err != nil {
 		log.Fatal(err)
 	}

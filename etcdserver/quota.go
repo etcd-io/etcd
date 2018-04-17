@@ -16,6 +16,9 @@ package etcdserver
 
 import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
+	humanize "github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 )
 
 const (
@@ -57,18 +60,58 @@ const (
 	kvOverhead = 256
 )
 
-func NewBackendQuota(s *EtcdServer) Quota {
+func NewBackendQuota(s *EtcdServer, name string) Quota {
+	lg := s.getLogger()
+
 	if s.Cfg.QuotaBackendBytes < 0 {
 		// disable quotas if negative
-		plog.Warningf("disabling backend quota")
+		if lg != nil {
+			lg.Info(
+				"disabled backend quota",
+				zap.String("quota-name", name),
+				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+			)
+		} else {
+			plog.Warningf("disabling backend quota")
+		}
 		return &passthroughQuota{}
 	}
+
 	if s.Cfg.QuotaBackendBytes == 0 {
 		// use default size if no quota size given
+		if lg != nil {
+			lg.Info(
+				"enabled backend quota with default value",
+				zap.String("quota-name", name),
+				zap.Int64("quota-size-bytes", DefaultQuotaBytes),
+				zap.String("quota-size", humanize.Bytes(uint64(DefaultQuotaBytes))),
+			)
+		}
 		return &backendQuota{s, DefaultQuotaBytes}
 	}
+
 	if s.Cfg.QuotaBackendBytes > MaxQuotaBytes {
-		plog.Warningf("backend quota %v exceeds maximum recommended quota %v", s.Cfg.QuotaBackendBytes, MaxQuotaBytes)
+		if lg != nil {
+			lg.Warn(
+				"quota exceeds the maximum value",
+				zap.String("quota-name", name),
+				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+				zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+				zap.Int64("quota-maximum-size-bytes", MaxQuotaBytes),
+				zap.String("quota-maximum-size", humanize.Bytes(uint64(MaxQuotaBytes))),
+			)
+		} else {
+			plog.Warningf("backend quota %v exceeds maximum recommended quota %v", s.Cfg.QuotaBackendBytes, MaxQuotaBytes)
+		}
+	}
+
+	if lg != nil {
+		lg.Info(
+			"enabled backend quota",
+			zap.String("quota-name", name),
+			zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+			zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+		)
 	}
 	return &backendQuota{s, s.Cfg.QuotaBackendBytes}
 }

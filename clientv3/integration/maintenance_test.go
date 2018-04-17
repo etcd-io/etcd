@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
@@ -145,7 +147,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	b := backend.NewDefaultBackend(dpath)
-	s := mvcc.NewStore(b, &lease.FakeLessor{}, nil)
+	s := mvcc.NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	rev := 100000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte(fmt.Sprintf("%10d", i)), bytes.Repeat([]byte("a"), 1024), lease.NoLease)

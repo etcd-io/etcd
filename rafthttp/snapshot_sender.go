@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raftsnap"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -66,18 +68,35 @@ func (s *snapshotSender) stop() { close(s.stopc) }
 func (s *snapshotSender) send(merged raftsnap.Message) {
 	m := merged.Message
 
-	body := createSnapBody(merged)
+	body := createSnapBody(s.tr.Logger, merged)
 	defer body.Close()
 
 	u := s.picker.pick()
 	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
 
-	plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
+	if s.tr.Logger != nil {
+		s.tr.Logger.Info(
+			"sending database snapshot",
+			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.String("remote-peer-id", types.ID(m.To).String()),
+		)
+	} else {
+		plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
+	}
 
 	err := s.post(req)
 	defer merged.CloseWithError(err)
 	if err != nil {
-		plog.Warningf("database snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
+		if s.tr.Logger != nil {
+			s.tr.Logger.Warn(
+				"failed to send database snapshot",
+				zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+				zap.String("remote-peer-id", types.ID(m.To).String()),
+				zap.Error(err),
+			)
+		} else {
+			plog.Warningf("database snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
+		}
 
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
@@ -97,7 +116,16 @@ func (s *snapshotSender) send(merged raftsnap.Message) {
 	}
 	s.status.activate()
 	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
-	plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+
+	if s.tr.Logger != nil {
+		s.tr.Logger.Info(
+			"sent database snapshot",
+			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.String("remote-peer-id", types.ID(m.To).String()),
+		)
+	} else {
+		plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+	}
 
 	sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(merged.TotalSize))
 }
@@ -142,12 +170,16 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-func createSnapBody(merged raftsnap.Message) io.ReadCloser {
+func createSnapBody(lg *zap.Logger, merged raftsnap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
 	if err := enc.encode(&merged.Message); err != nil {
-		plog.Panicf("encode message error (%v)", err)
+		if lg != nil {
+			lg.Panic("failed to encode message", zap.Error(err))
+		} else {
+			plog.Panicf("encode message error (%v)", err)
+		}
 	}
 
 	return &pioutil.ReaderAndCloser{

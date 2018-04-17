@@ -239,6 +239,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	}
 
 	srv := etcdserver.ServerConfig{
+		Logger:              s.lg,
 		Name:                cfg.Name,
 		PeerURLs:            pURLs,
 		InitialPeerURLsMap:  ics,
@@ -248,7 +249,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	s.cl, err = membership.NewClusterFromURLsMap(cfg.InitialClusterToken, ics)
+	s.cl, err = membership.NewClusterFromURLsMap(s.lg, cfg.InitialClusterToken, ics)
 	if err != nil {
 		return err
 	}
@@ -374,7 +375,7 @@ func (s *v3Manager) saveDB() error {
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(be, math.MaxInt64)
 
-	mvs := mvcc.NewStore(be, lessor, (*initIndex)(&commit))
+	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit))
 	txn := mvs.Write()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
@@ -417,7 +418,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 	if merr != nil {
 		return merr
 	}
-	w, walerr := wal.Create(s.walDir, metadata)
+	w, walerr := wal.Create(s.lg, s.walDir, metadata)
 	if walerr != nil {
 		return walerr
 	}
@@ -476,10 +477,9 @@ func (s *v3Manager) saveWALAndSnap() error {
 			},
 		},
 	}
-	sn := raftsnap.New(s.snapDir)
+	sn := raftsnap.New(s.lg, s.snapDir)
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return err
 	}
-
 	return w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term})
 }

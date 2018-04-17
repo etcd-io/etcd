@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/etcd/raftsnap/snappb"
 
 	"github.com/coreos/pkg/capnslog"
+	"go.uber.org/zap"
 )
 
 const (
@@ -53,11 +54,13 @@ var (
 )
 
 type Snapshotter struct {
+	lg  *zap.Logger
 	dir string
 }
 
-func New(dir string) *Snapshotter {
+func New(lg *zap.Logger, dir string) *Snapshotter {
 	return &Snapshotter{
+		lg:  lg,
 		dir: dir,
 	}
 }

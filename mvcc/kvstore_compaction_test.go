@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
+	"go.uber.org/zap"
 )
 
 func TestScheduleCompaction(t *testing.T) {
@@ -64,7 +65,7 @@ func TestScheduleCompaction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b, &lease.FakeLessor{}, nil)
+		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -98,7 +99,7 @@ func TestScheduleCompaction(t *testing.T) {
 
 func TestCompactAllAndRestore(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(b, &lease.FakeLessor{}, nil)
+	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -124,7 +125,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s1 := NewStore(b, &lease.FakeLessor{}, nil)
+	s1 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	if s1.Rev() != rev {
 		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
 	}

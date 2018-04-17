@@ -17,13 +17,16 @@ package rpcpb
 import (
 	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/types"
 )
 
-func TestEtcdFlags(t *testing.T) {
-	cfg := &Etcd{
+func TestEtcd(t *testing.T) {
+	e := &Etcd{
 		Name:    "s1",
-		DataDir: "/tmp/etcd-agent-data-1/etcd.data",
-		WALDir:  "/tmp/etcd-agent-data-1/etcd.data/member/wal",
+		DataDir: "/tmp/etcd-functionl-1/etcd.data",
+		WALDir:  "/tmp/etcd-functionl-1/etcd.data/member/wal",
 
 		HeartbeatIntervalMs: 100,
 		ElectionTimeoutMs:   1000,
@@ -53,12 +56,16 @@ func TestEtcdFlags(t *testing.T) {
 
 		PreVote:             true,
 		InitialCorruptCheck: true,
+
+		Logger:    "zap",
+		LogOutput: "/tmp/etcd-functional-1/etcd.log",
+		Debug:     true,
 	}
 
-	exp := []string{
+	exps := []string{
 		"--name=s1",
-		"--data-dir=/tmp/etcd-agent-data-1/etcd.data",
-		"--wal-dir=/tmp/etcd-agent-data-1/etcd.data/member/wal",
+		"--data-dir=/tmp/etcd-functionl-1/etcd.data",
+		"--wal-dir=/tmp/etcd-functionl-1/etcd.data/member/wal",
 		"--heartbeat-interval=100",
 		"--election-timeout=1000",
 		"--listen-client-urls=https://127.0.0.1:1379",
@@ -76,9 +83,63 @@ func TestEtcdFlags(t *testing.T) {
 		"--quota-backend-bytes=10740000000",
 		"--pre-vote=true",
 		"--experimental-initial-corrupt-check=true",
+		"--logger=zap",
+		"--log-output=/tmp/etcd-functional-1/etcd.log",
+		"--debug=true",
 	}
-	fs := cfg.Flags()
-	if !reflect.DeepEqual(exp, fs) {
-		t.Fatalf("expected %q, got %q", exp, fs)
+	fs := e.Flags()
+	if !reflect.DeepEqual(exps, fs) {
+		t.Fatalf("expected %q, got %q", exps, fs)
+	}
+
+	var err error
+	var lcURLs types.URLs
+	lcURLs, err = types.NewURLs([]string{"https://127.0.0.1:1379"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var acURLs types.URLs
+	acURLs, err = types.NewURLs([]string{"https://127.0.0.1:13790"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lpURLs types.URLs
+	lpURLs, err = types.NewURLs([]string{"https://127.0.0.1:1380"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var apURLs types.URLs
+	apURLs, err = types.NewURLs([]string{"https://127.0.0.1:13800"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expc := embed.NewConfig()
+	expc.Name = "s1"
+	expc.Dir = "/tmp/etcd-functionl-1/etcd.data"
+	expc.WalDir = "/tmp/etcd-functionl-1/etcd.data/member/wal"
+	expc.TickMs = 100
+	expc.ElectionMs = 1000
+	expc.LCUrls = lcURLs
+	expc.ACUrls = acURLs
+	expc.ClientAutoTLS = true
+	expc.LPUrls = lpURLs
+	expc.APUrls = apURLs
+	expc.PeerAutoTLS = true
+	expc.InitialCluster = "s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800"
+	expc.ClusterState = "new"
+	expc.InitialClusterToken = "tkn"
+	expc.SnapCount = 10000
+	expc.QuotaBackendBytes = 10740000000
+	expc.PreVote = true
+	expc.ExperimentalInitialCorruptCheck = true
+	expc.Logger = "zap"
+	expc.LogOutput = "/tmp/etcd-functional-1/etcd.log"
+	expc.Debug = true
+	cfg, err := e.EmbedConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(expc, cfg) {
+		t.Fatalf("expected %+v, got %+v", expc, cfg)
 	}
 }

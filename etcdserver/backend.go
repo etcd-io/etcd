@@ -24,11 +24,13 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/raftsnap"
+	"go.uber.org/zap"
 )
 
 func newBackend(cfg ServerConfig) backend.Backend {
 	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path = cfg.backendPath()
+	bcfg.Logger = cfg.Logger
 	if cfg.QuotaBackendBytes > 0 && cfg.QuotaBackendBytes != DefaultQuotaBytes {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
@@ -51,17 +53,32 @@ func openSnapshotBackend(cfg ServerConfig, ss *raftsnap.Snapshotter, snapshot ra
 // openBackend returns a backend using the current etcd db.
 func openBackend(cfg ServerConfig) backend.Backend {
 	fn := cfg.backendPath()
-	beOpened := make(chan backend.Backend)
+
+	now, beOpened := time.Now(), make(chan backend.Backend)
 	go func() {
 		beOpened <- newBackend(cfg)
 	}()
+
 	select {
 	case be := <-beOpened:
+		if cfg.Logger != nil {
+			cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
+		}
 		return be
+
 	case <-time.After(10 * time.Second):
-		plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
-		plog.Warningf("waiting for it to exit before starting...")
+		if cfg.Logger != nil {
+			cfg.Logger.Info(
+				"db file is flocked by another process, or taking too long",
+				zap.String("path", fn),
+				zap.Duration("took", time.Since(now)),
+			)
+		} else {
+			plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
+			plog.Warningf("waiting for it to exit before starting...")
+		}
 	}
+
 	return <-beOpened
 }
 
@@ -71,11 +88,11 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // case, replace the db with the snapshot db sent by the leader.
 func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	var cIndex consistentIndex
-	kv := mvcc.New(oldbe, &lease.FakeLessor{}, &cIndex)
+	kv := mvcc.New(cfg.Logger, oldbe, &lease.FakeLessor{}, &cIndex)
 	defer kv.Close()
 	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil
 	}
 	oldbe.Close()
-	return openSnapshotBackend(cfg, raftsnap.New(cfg.SnapDir()), snapshot)
+	return openSnapshotBackend(cfg, raftsnap.New(cfg.Logger, cfg.SnapDir()), snapshot)
 }
