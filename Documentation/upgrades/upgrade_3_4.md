@@ -79,6 +79,16 @@ cfg := &embed.Config{Debug: false}
 -cfg.SetupLogging()
 ```
 
+Changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+
+```diff
+import "github.com/coreos/etcd/embed"
+
+cfg := &embed.Config{Debug: false}
+-cfg.LogOutput = "stderr"
++cfg.LogOutput = []string{"stderr"}
+```
+
 ### Server upgrade checklists
 
 #### Upgrade requirements
