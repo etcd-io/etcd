@@ -421,18 +421,25 @@ func (cfg *Config) setupLogging() error {
 				lcfg.OutputPaths = []string{"stderr"}
 				lcfg.ErrorOutputPaths = []string{"stderr"}
 			}
+
 		case "stderr":
 			lcfg.OutputPaths = []string{"stderr"}
 			lcfg.ErrorOutputPaths = []string{"stderr"}
+
 		case "stdout":
 			lcfg.OutputPaths = []string{"stdout"}
 			lcfg.ErrorOutputPaths = []string{"stdout"}
-		case "io-discard": // only for testing
+
+		case "discard": // only for testing
+			lcfg.OutputPaths = []string{}
+			lcfg.ErrorOutputPaths = []string{}
 			ignoreLog = true
+
 		default:
 			lcfg.OutputPaths = []string{cfg.LogOutput}
 			lcfg.ErrorOutputPaths = []string{cfg.LogOutput}
 		}
+
 		if cfg.Debug {
 			lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 			grpc.EnableTracing = true

@@ -144,6 +144,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - e.g. `--logger=zap --log-output=default` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (detect systemd journald TODO).
   - e.g. `--logger=zap --log-output=stderr` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (bypass journald TODO).
   - e.g. `--logger=zap --log-output=stdout` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=discard` will discard all server logs.
 
 ### Added: `embed`
 
