@@ -138,7 +138,7 @@ debug: false
 log-package-levels:
 
 # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
-log-output: default
+log-output: [default]
 
 # Force to create a new one member cluster.
 force-new-cluster: false
