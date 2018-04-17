@@ -204,7 +204,7 @@ message Etcd {
 
   string Logger = 71 [(gogoproto.moretags) = "yaml:\"logger\""];
   // LogOutput is the log file to store current etcd server logs.
-  string LogOutput = 72 [(gogoproto.moretags) = "yaml:\"log-output\""];
+  repeated string LogOutput = 72 [(gogoproto.moretags) = "yaml:\"log-output\""];
   bool Debug = 73 [(gogoproto.moretags) = "yaml:\"debug\""];
 }
 

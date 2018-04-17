@@ -34,7 +34,7 @@ agent-configs:
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
-    log-output: /tmp/etcd-functional-1/etcd.log
+    log-output: [/tmp/etcd-functional-1/etcd.log]
     debug: true
   client-cert-data: ""
   client-cert-path: ""
@@ -85,7 +85,7 @@ agent-configs:
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
-    log-output: /tmp/etcd-functional-2/etcd.log
+    log-output: [/tmp/etcd-functional-2/etcd.log]
     debug: true
   client-cert-data: ""
   client-cert-path: ""
@@ -136,7 +136,7 @@ agent-configs:
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
-    log-output: /tmp/etcd-functional-3/etcd.log
+    log-output: [/tmp/etcd-functional-3/etcd.log]
     debug: true
   client-cert-data: ""
   client-cert-path: ""
