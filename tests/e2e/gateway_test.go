@@ -52,7 +52,7 @@ func startGateway(t *testing.T, endpoints string) *expect.ExpectProcess {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.Expect("tcpproxy: ready to proxy client requests to")
+	_, err = p.Expect("ready to proxy client requests")
 	if err != nil {
 		t.Fatal(err)
 	}
