@@ -140,10 +140,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
   - e.g. `--logger=capnslog --log-output=default` is the default setting and same as previous etcd server logging format.
   - TODO: `--logger=zap` is experimental, and journald logging may not work when etcd runs as PID 1.
-  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations with [JSON-encoded format](TODO) and writes logs to the specified file `/tmp/test.log`.
-  - e.g. `--logger=zap --log-output=default` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (detect systemd journald TODO).
-  - e.g. `--logger=zap --log-output=stderr` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stderr` (bypass journald TODO).
-  - e.g. `--logger=zap --log-output=stdout` will log server operations with [JSON-encoded format](TODO) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `/tmp/test.log`.
+  - e.g. `--logger=zap --log-output=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (detect systemd journald TODO).
+  - e.g. `--logger=zap --log-output=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. `--logger=zap --log-output=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - e.g. `--logger=zap --log-output=/dev/null` will discard all server logs.
 
 ### Added: `embed`
