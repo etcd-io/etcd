@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/embed"
@@ -216,7 +217,7 @@ func newConfig() *config {
 
 	// logging
 	fs.StringVar(&cfg.ec.Logger, "logger", "capnslog", "Specify 'zap' for structured logging or 'capnslog'.")
-	fs.StringVar(&cfg.ec.LogOutput, "log-output", embed.DefaultLogOutput, "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.")
+	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-output", "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.")
 	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "(To be deprecated) Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
 
@@ -304,6 +305,13 @@ func (cfg *config) configFromCmdLine() error {
 
 	cfg.ec.CORS = flags.UniqueURLsMapFromFlag(cfg.cf.flagSet, "cors")
 	cfg.ec.HostWhitelist = flags.UniqueStringsMapFromFlag(cfg.cf.flagSet, "host-whitelist")
+	outputs := flags.UniqueStringsMapFromFlag(cfg.cf.flagSet, "log-output")
+	oss := make([]string, 0, len(outputs))
+	for v := range outputs {
+		oss = append(oss, v)
+	}
+	sort.Strings(oss)
+	cfg.ec.LogOutput = oss
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
