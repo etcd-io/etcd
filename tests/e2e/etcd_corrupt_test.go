@@ -32,9 +32,9 @@ import (
 // TODO: test with embedded etcd in integration package
 
 func TestEtcdCorruptHash(t *testing.T) {
-	oldenv := os.Getenv("EXPECT_DEBUG")
-	defer os.Setenv("EXPECT_DEBUG", oldenv)
-	os.Setenv("EXPECT_DEBUG", "1")
+	// oldenv := os.Getenv("EXPECT_DEBUG")
+	// defer os.Setenv("EXPECT_DEBUG", oldenv)
+	// os.Setenv("EXPECT_DEBUG", "1")
 
 	cfg := configNoTLS
 
