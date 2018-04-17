@@ -89,6 +89,16 @@ cfg := &embed.Config{Debug: false}
 +cfg.LogOutput = []string{"stderr"}
 ```
 
+#### Change in `etcd --config-file`
+
+Now that `log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type as below:
+
+```diff
+ # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+-log-output: default
++log-output: [default]
+```
+
 ### Server upgrade checklists
 
 #### Upgrade requirements
