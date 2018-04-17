@@ -696,10 +696,16 @@ func (m *member) Launch() error {
 		if m.PeerTLSInfo == nil {
 			hs.Start()
 		} else {
-			hs.TLS, err = m.PeerTLSInfo.ServerConfig()
+			info := m.PeerTLSInfo
+			hs.TLS, err = info.ServerConfig()
 			if err != nil {
 				return err
 			}
+			tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, nil)
+			if err != nil {
+				return err
+			}
+			hs.TLS.Certificates = []tls.Certificate{*tlsCert}
 			hs.StartTLS()
 		}
 		m.hss = append(m.hss, hs)
