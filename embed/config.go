@@ -242,11 +242,12 @@ type Config struct {
 	Logger string `json:"logger"`
 
 	// LogOutput is either:
-	//  - "default" as os.Stderr
-	//  - "stderr" as os.Stderr
-	//  - "stdout" as os.Stdout
-	//  - file path to append server logs to
-	LogOutput string `json:"log-output"`
+	//  - "default" as os.Stderr,
+	//  - "stderr" as os.Stderr,
+	//  - "stdout" as os.Stdout,
+	//  - file path to append server logs to.
+	// It can be multiple when "Logger" is zap.
+	LogOutput []string `json:"log-output"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
@@ -319,7 +320,7 @@ func NewConfig() *Config {
 		loggerMu:     new(sync.RWMutex),
 		logger:       nil,
 		Logger:       "capnslog",
-		LogOutput:    DefaultLogOutput,
+		LogOutput:    []string{DefaultLogOutput},
 		Debug:        false,
 		LogPkgLevels: "",
 	}
@@ -381,27 +382,33 @@ func (cfg *Config) setupLogging() error {
 			repoLog.SetLogLevel(settings)
 		}
 
+		if len(cfg.LogOutput) != 1 {
+			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutput)
+			os.Exit(1)
+		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
 		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		switch cfg.LogOutput {
+		output := cfg.LogOutput[0]
+		switch output {
 		case "stdout":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 		case "stderr":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
 		case DefaultLogOutput:
 		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, cfg.LogOutput, DefaultLogOutput)
+			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, output, DefaultLogOutput)
 		}
 
 	case "zap":
-		if cfg.LogOutput == "" {
-			cfg.LogOutput = DefaultLogOutput
+		if len(cfg.LogOutput) == 0 {
+			cfg.LogOutput = []string{DefaultLogOutput}
 		}
-		outputs := strings.Split(cfg.LogOutput, ",")
-		for _, v := range outputs {
-			if v == DefaultLogOutput {
-				panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
+		if len(cfg.LogOutput) > 1 {
+			for _, v := range cfg.LogOutput {
+				if v == DefaultLogOutput {
+					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
+				}
 			}
 		}
 
@@ -420,7 +427,7 @@ func (cfg *Config) setupLogging() error {
 			ErrorOutputPaths: make([]string, 0),
 		}
 		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
-		for _, v := range outputs {
+		for _, v := range cfg.LogOutput {
 			switch v {
 			case DefaultLogOutput:
 				if syscall.Getppid() == 1 {
