@@ -63,11 +63,11 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 				zap.Int64("local-member-revision", rev),
 				zap.Int64("local-member-compact-revision", crev),
 				zap.Uint32("local-member-hash", h),
-				zap.String("remote-member-id", peerID.String()),
-				zap.Strings("remote-member-endpoints", p.eps),
-				zap.Int64("remote-member-revision", p.resp.Header.Revision),
-				zap.Int64("remote-member-compact-revision", p.resp.CompactRevision),
-				zap.Uint32("remote-member-hash", p.resp.Hash),
+				zap.String("remote-peer-id", peerID.String()),
+				zap.Strings("remote-peer-endpoints", p.eps),
+				zap.Int64("remote-peer-revision", p.resp.Header.Revision),
+				zap.Int64("remote-peer-compact-revision", p.resp.CompactRevision),
+				zap.Uint32("remote-peer-hash", p.resp.Hash),
 			}
 
 			if h != p.resp.Hash {
@@ -100,8 +100,8 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 						zap.Int64("local-member-revision", rev),
 						zap.Int64("local-member-compact-revision", crev),
 						zap.Uint32("local-member-hash", h),
-						zap.String("remote-member-id", p.id.String()),
-						zap.Strings("remote-member-endpoints", p.eps),
+						zap.String("remote-peer-id", p.id.String()),
+						zap.Strings("remote-peer-endpoints", p.eps),
 						zap.Error(err),
 					)
 				} else {
@@ -115,8 +115,8 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 						zap.Int64("local-member-revision", rev),
 						zap.Int64("local-member-compact-revision", crev),
 						zap.Uint32("local-member-hash", h),
-						zap.String("remote-member-id", p.id.String()),
-						zap.Strings("remote-member-endpoints", p.eps),
+						zap.String("remote-peer-id", p.id.String()),
+						zap.Strings("remote-peer-endpoints", p.eps),
 						zap.Error(err),
 					)
 				} else {
@@ -336,8 +336,8 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 				lg.Warn(
 					"failed to create client to peer URL",
 					zap.String("local-member-id", s.ID().String()),
-					zap.String("remote-member-id", p.id.String()),
-					zap.Strings("remote-member-endpoints", p.eps),
+					zap.String("remote-peer-id", p.id.String()),
+					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(cerr),
 				)
 			} else {
@@ -361,7 +361,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 					"failed hash kv request",
 					zap.String("local-member-id", s.ID().String()),
 					zap.Int64("requested-revision", rev),
-					zap.String("remote-member-endpoint", c),
+					zap.String("remote-peer-endpoint", c),
 					zap.Error(cerr),
 				)
 			} else {

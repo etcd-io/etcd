@@ -348,11 +348,12 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 
 		remotes = existingCluster.Members()
-		cl.SetID(existingCluster.ID())
+		cl.SetID(types.ID(0), existingCluster.ID())
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cfg.Print()
 		id, n, s, w = startNode(cfg, cl, nil)
+		cl.SetID(id, existingCluster.ID())
 
 	case !haveWAL && cfg.NewCluster:
 		if err = cfg.VerifyBootstrap(); err != nil {
@@ -388,6 +389,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetBackend(be)
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
+		cl.SetID(id, cl.ID())
 
 	case haveWAL:
 		if err = fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
