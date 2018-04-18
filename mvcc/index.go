@@ -185,27 +185,34 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
-	var emptyki []*keyIndex
 	if ti.lg != nil {
 		ti.lg.Info("compact tree index", zap.Int64("revision", rev))
 	} else {
 		plog.Printf("store.index: compact %d", rev)
 	}
-	// TODO: do not hold the lock for long time?
-	// This is probably OK. Compacting 10M keys takes O(10ms).
 	ti.Lock()
-	defer ti.Unlock()
-	ti.tree.Ascend(compactIndex(rev, available, &emptyki))
-	for _, ki := range emptyki {
-		item := ti.tree.Delete(ki)
-		if item == nil {
-			if ti.lg != nil {
-				ti.lg.Panic("failed to delete during compaction")
-			} else {
-				plog.Panic("store.index: unexpected delete failure during compaction")
+	clone := ti.tree.Clone()
+	ti.Unlock()
+
+	clone.Ascend(func(item btree.Item) bool {
+		keyi := item.(*keyIndex)
+		//Lock is needed here to prevent modification to the keyIndex while
+		//compaction is going on or revision added to empty before deletion
+		ti.Lock()
+		keyi.compact(rev, available)
+		if keyi.isEmpty() {
+			item := ti.tree.Delete(keyi)
+			if item == nil {
+				if ti.lg != nil {
+					ti.lg.Panic("failed to delete during compaction")
+				} else {
+					plog.Panic("store.index: unexpected delete failure during compaction")
+				}
 			}
 		}
-	}
+		ti.Unlock()
+		return true
+	})
 	return available
 }
 
@@ -220,17 +227,6 @@ func (ti *treeIndex) Keep(rev int64) map[revision]struct{} {
 		return true
 	})
 	return available
-}
-
-func compactIndex(rev int64, available map[revision]struct{}, emptyki *[]*keyIndex) func(i btree.Item) bool {
-	return func(i btree.Item) bool {
-		keyi := i.(*keyIndex)
-		keyi.compact(rev, available)
-		if keyi.isEmpty() {
-			*emptyki = append(*emptyki, keyi)
-		}
-		return true
-	}
 }
 
 func (ti *treeIndex) Equal(bi index) bool {
