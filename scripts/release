@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+help() {
+  echo "$(basename $0) [version]"
+  echo "Release etcd using the same approach as the etcd-release-runbook (https://goo.gl/Gxwysq)"
+  echo ""
+  echo "WARNING: This does not perform the 'Add API capabilities', 'Performance testing' "
+  echo "         or 'Documentation' steps. These steps must be performed manually BEFORE running this tool."
+  echo ""
+  echo "WARNING: This script does not sign releases, publish releases to github or sent announcement"
+  echo "         emails. These steps must be performed manually AFTER running this tool."
+  echo ""
+  echo "  args:"
+  echo "    version: version of etcd to release, e.g. '3.2.18'"
+}
+
+main() {
+  VERSION=$1
+  if [[ ! "${VERSION}" =~ [0-9]+.[0-9]+.[0-9]+ ]]; then
+    echo "Expected 'version' param of the form '<major-version>.<minor-version>.<patch-version>' but got '${VERSION}'"
+    exit 1
+  fi
+  RELEASE_VERSION="v${VERSION}"
+  MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
+  BRANCH="release-${MINOR_VERSION}"
+
+  # Check go version.
+  local go_version="go$(yq -r ".go[0]" .travis.yml)"
+  local current_go_version=$(go version | awk '{ print $3 }')
+  if [[ "${current_go_version}" != "${go_version}" ]]; then
+    echo "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
+    exit 1
+  fi
+
+  # Make a temp directory
+  cd $(mktemp -d)
+  git clone git@github.com:coreos/etcd.git --branch "${BRANCH}"
+  cd etcd
+
+  KEYID=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
+
+  if [[ -z "${KEYID}" ]]; then
+    echo "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
+    exit 1
+  fi
+
+  # Bump version/version.go to release version.
+  local source_version=$(egrep "\s+Version\s*=" version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
+  if [[ "${source_version}" != "${VERSION}" ]]; then
+    source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2)
+    if [[ "${source_minor_version}" != "${MINOR_VERSION}" ]]; then
+      echo "Wrong etcd minor version in version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
+      exit 1
+    fi
+    
+    echo "Updating version from ${source_version} to ${VERSION} in version/version.go"
+    sed -i.bak "s/${source_version}/${VERSION}/g" version/version.go
+    echo "Building etcd with updated version"
+    ./build
+  fi
+
+  local etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
+  if [[ "${etcd_version}" != "${VERSION}" ]]; then
+    echo "Wrong etcd version in version/version.go. Expected ${etcd_version} but got ${VERSION}. Aborting."
+    exit 1
+  fi
+
+  git add version/version.go
+  git commit -m "version: bump up to ${VERSION}"
+  git diff --staged
+  read -p "Push version bump up to ${VERSION} to github.com/coreos/etcd [y/N]? " confirm
+  [[ "${confirm,,}" == "y" ]] || exit 1
+  git push
+
+  echo "Tagging release..."
+  git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
+  git tag --list | grep "{VERSION}"
+  read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " confirm
+  [[ "${confirm,,}" == "y" ]] || exit 1
+  git push origin "tags/${RELEASE_VERSION}"
+
+  echo "Building release..."
+  ./scripts/release.sh "${RELEASE_VERSION}"
+
+  # TODO: validate output of checks
+  ./release/etcd-${RELEASE_VERSION}-linux-amd64/etcd --version
+  ETCDCTL_API=3 ./release/etcd-${RELEASE_VERSION}-linux-amd64/etcdctl version
+  
+  read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " confirm
+  [[ "${confirm,,}" == "y" ]] || exit 1
+
+  gsutil -m cp ./release/*.zip gs://etcd/${RELEASE_VERSION}/
+  gsutil -m cp ./release/*.tar.gz gs://etcd/${RELEASE_VERSION}/
+  gsutil -m cp ./release/*.aci gs://etcd/${RELEASE_VERSION}/
+  gsutil -m acl ch -u allUsers:R -r gs://etcd/${RELEASE_VERSION}/
+
+  read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " confirm
+  [[ "${confirm,,}" == "y" ]] || exit 1
+  docker login quay.io
+  gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+ 
+  for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
+    docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+    gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+  done
+  gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
+
+  docker tag quay.io/coreos/etcd:${RELEASE_VERSION} quay.io/coreos/etcd:${MINOR_VERSION}
+  docker push quay.io/coreos/etcd:${MINOR_VERSION}
+  
+  gcloud docker -- tag gcr.io/etcd-development/etcd:${RELEASE_VERSION} gcr.io/etcd-development/etcd:${MINOR_VERSION}
+  gcloud docker -- push gcr.io/etcd-development/etcd:${MINOR_VERSION}
+
+  # TODO: test
+  # docker run --rm --name etcd-gcr-${RELEASE_VERSION} gcr.io/etcd-development/etcd:${RELEASE_VERSION};
+  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "/usr/local/bin/etcd --version"
+  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "ETCDCTL_API=3 /usr/local/bin/etcdctl version"
+  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "ETCDCTL_API=3 /usr/local/bin/etcdctl put foo bar"
+  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "ETCDCTL_API=3 /usr/local/bin/etcdctl get foo"
+
+  echo "Updating version from ${VERSION} to ${VERSION}+git in version/version.go"
+  sed -i.bak "s/${VERSION}/${VERSION}+git/g" version/version.go
+  echo "Building etcd with ${VERSION}+git in version/version.go"
+  git add version/version.go
+  git commit -m "version: bump up to ${VERSION}+git"
+  git diff --staged
+  read -p "Push version bump up to ${VERSION}+git to github.com/coreos/etcd [y/N]? " confirm
+  [[ "${confirm,,}" == "y" ]] || exit 1
+  git push
+
+  # TODO: signing process
+  echo "WARNING: The release has not been signed and published to github. This must be done manually."
+
+  echo "WARNING: version/version.go has not been updated to ${RELEASE_VERSION}+git. This must be done manually."
+  echo "Success."
+  exit 0
+}
+
+POSITIONAL=()
+while test $# -gt 0; do
+        case "$1" in
+          -h|--help)
+            shift
+            help
+            exit 0
+            ;;
+          *)
+            POSITIONAL+=("$1") # save it in an array for later
+            shift # past argument
+            ;;
+        esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [[ ! $# -eq 1 ]]; then
+  help
+  exit 1
+fi
+
+main $1
