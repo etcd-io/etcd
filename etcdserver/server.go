@@ -635,6 +635,10 @@ func (s *EtcdServer) adjustTicks() {
 		return
 	}
 
+	if !s.Cfg.InitialElectionTickAdvance {
+		return
+	}
+
 	// retry up to "rafthttp.ConnReadTimeout", which is 5-sec
 	// until peer connection reports; otherwise:
 	// 1. all connections failed, or
