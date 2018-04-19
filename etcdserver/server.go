@@ -636,7 +636,13 @@ func (s *EtcdServer) adjustTicks() {
 	}
 
 	if !s.Cfg.InitialElectionTickAdvance {
+		if lg != nil {
+			lg.Info("skipping initial election tick advance", zap.Int("election-ticks", s.Cfg.ElectionTicks))
+		}
 		return
+	}
+	if lg != nil {
+		lg.Info("starting initial election tick advance", zap.Int("election-ticks", s.Cfg.ElectionTicks))
 	}
 
 	// retry up to "rafthttp.ConnReadTimeout", which is 5-sec

@@ -293,6 +293,7 @@ func (c *ServerConfig) print(initial bool) {
 			zap.String("heartbeat-interval", fmt.Sprintf("%v", time.Duration(c.TickMs)*time.Millisecond)),
 			zap.Int("election-tick-ms", c.ElectionTicks),
 			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond)),
+			zap.Bool("initial-election-tick-advance", c.InitialElectionTickAdvance),
 			zap.Uint64("snapshot-count", c.SnapCount),
 			zap.Strings("advertise-client-urls", c.getACURLs()),
 			zap.Strings("initial-advertise-peer-urls", c.getAPURLs()),
