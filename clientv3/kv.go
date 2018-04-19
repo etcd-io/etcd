@@ -39,7 +39,7 @@ type KV interface {
 
 	// Get retrieves keys.
 	// By default, Get will return the value for "key", if any.
-	// When passed WithRange(end), Get will return the keys in the range [key, end).
+	// When passed WithRange(end), Get will return the keys in the range [key, end].
 	// When passed WithFromKey(), Get returns keys greater than or equal to key.
 	// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
 	// if the required revision is compacted, the request will fail with ErrCompacted .
