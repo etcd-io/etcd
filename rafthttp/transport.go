@@ -286,6 +286,15 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 		}
 	}
 	t.remotes[id] = startRemote(t, urls, id)
+
+	if t.Logger != nil {
+		t.Logger.Info(
+			"added new remote peer",
+			zap.String("local-member-id", t.ID.String()),
+			zap.String("remote-peer-id", id.String()),
+			zap.Strings("remote-peer-urls", us),
+		)
+	}
 }
 
 func (t *Transport) AddPeer(id types.ID, us []string) {
@@ -311,7 +320,12 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 	addPeerToProber(t.Logger, t.prober, id.String(), us)
 
 	if t.Logger != nil {
-		t.Logger.Info("added remote peer", zap.String("remote-peer-id", id.String()))
+		t.Logger.Info(
+			"added remote peer",
+			zap.String("local-member-id", t.ID.String()),
+			zap.String("remote-peer-id", id.String()),
+			zap.Strings("remote-peer-urls", us),
+		)
 	} else {
 		plog.Infof("added peer %s", id)
 	}
@@ -347,7 +361,11 @@ func (t *Transport) removePeer(id types.ID) {
 	t.prober.Remove(id.String())
 
 	if t.Logger != nil {
-		t.Logger.Info("removed remote peer", zap.String("remote-peer-id", id.String()))
+		t.Logger.Info(
+			"removed remote peer",
+			zap.String("local-member-id", t.ID.String()),
+			zap.String("removed-remote-peer-id", id.String()),
+		)
 	} else {
 		plog.Infof("removed peer %s", id)
 	}
@@ -374,7 +392,12 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 	addPeerToProber(t.Logger, t.prober, id.String(), us)
 
 	if t.Logger != nil {
-		t.Logger.Info("updated remote peer", zap.String("remote-peer-id", id.String()))
+		t.Logger.Info(
+			"updated remote peer",
+			zap.String("local-member-id", t.ID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", us),
+		)
 	} else {
 		plog.Infof("updated peer %s", id)
 	}

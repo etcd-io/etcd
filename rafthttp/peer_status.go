@@ -72,7 +72,7 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 		return
 	}
 	if s.lg != nil {
-		s.lg.Warn("peer deactivated again", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
+		s.lg.Debug("peer deactivated again", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
 	}
 }
 
