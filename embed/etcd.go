@@ -522,12 +522,13 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPs scheme", u.String())
 		}
 
-		proto := "tcp"
+		network := "tcp"
 		addr := u.Host
 		if u.Scheme == "unix" || u.Scheme == "unixs" {
-			proto = "unix"
+			network = "unix"
 			addr = u.Host + u.Path
 		}
+		sctx.network = network
 
 		sctx.secure = u.Scheme == "https" || u.Scheme == "unixs"
 		sctx.insecure = !sctx.secure
@@ -537,7 +538,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			continue
 		}
 
-		if sctx.l, err = net.Listen(proto, addr); err != nil {
+		if sctx.l, err = net.Listen(network, addr); err != nil {
 			return nil, err
 		}
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
@@ -559,8 +560,8 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx.l = transport.LimitListener(sctx.l, int(fdLimit-reservedInternalFDNum))
 		}
 
-		if proto == "tcp" {
-			if sctx.l, err = transport.NewKeepAliveListener(sctx.l, "tcp", nil); err != nil {
+		if network == "tcp" {
+			if sctx.l, err = transport.NewKeepAliveListener(sctx.l, network, nil); err != nil {
 				return nil, err
 			}
 		}
