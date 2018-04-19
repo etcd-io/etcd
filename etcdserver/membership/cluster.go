@@ -344,8 +344,8 @@ func (c *RaftCluster) AddMember(m *Member) {
 			"added member",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
-			zap.String("removed-remote-peer-id", m.ID.String()),
-			zap.Strings("removed-remote-peer-peer-urls", m.PeerURLs),
+			zap.String("added-peer-id", m.ID.String()),
+			zap.Strings("added-peer-peer-urls", m.PeerURLs),
 		)
 	} else {
 		plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.cid)
@@ -424,7 +424,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 			"skipped attributes update of removed member",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
-			zap.String("removed-remote-peer-id", id.String()),
+			zap.String("updated-peer-id", id.String()),
 		)
 	} else {
 		plog.Warningf("skipped updating attributes of removed member %s", id)

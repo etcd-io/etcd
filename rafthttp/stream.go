@@ -101,6 +101,9 @@ type outgoingConn struct {
 	io.Writer
 	http.Flusher
 	io.Closer
+
+	localID types.ID
+	peerID  types.ID
 }
 
 // streamWriter writes messages to the attached outgoingConn.
@@ -241,6 +244,14 @@ func (cw *streamWriter) run() {
 				enc = &messageEncoder{w: conn.Writer}
 			default:
 				plog.Panicf("unhandled stream type %s", conn.t)
+			}
+			if cw.lg != nil {
+				cw.lg.Info(
+					"set message encoder",
+					zap.String("from", conn.localID.String()),
+					zap.String("to", conn.peerID.String()),
+					zap.String("stream-type", t.String()),
+				)
 			}
 			flusher = conn.Flusher
 			unflushed = 0
@@ -578,6 +589,14 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	uu := u
 	uu.Path = path.Join(t.endpoint(), cr.tr.ID.String())
 
+	if cr.lg != nil {
+		cr.lg.Debug(
+			"dial stream reader",
+			zap.String("from", cr.tr.ID.String()),
+			zap.String("to", cr.peerID.String()),
+			zap.String("address", uu.String()),
+		)
+	}
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)
