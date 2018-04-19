@@ -15,7 +15,9 @@
 package integration
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +139,62 @@ func TestNetworkPartition4Members(t *testing.T) {
 	clus.WaitLeader(t)
 
 	clusterMustProgress(t, clus.Members)
+}
+
+func TestFastFailReadUnderNotLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
+	defer clus.Terminate(t)
+
+	leadIndex := clus.WaitLeader(t)
+
+	// majority: leader, follower, follower / minority: follower, follower
+	majority := []int{leadIndex, (leadIndex + 1) % 5, (leadIndex + 2) % 5}
+	minority := []int{(leadIndex + 3) % 5, (leadIndex + 4) % 5}
+
+	majorityMembers := getMembersByIndexSlice(clus.cluster, majority)
+	minorityMembers := getMembersByIndexSlice(clus.cluster, minority)
+
+	cliIndex := minority[0]
+	cli := clus.Client(cliIndex)
+	timeout := 20 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	_, err := cli.Put(ctx, "foo", "bar")
+	cancel()
+	if err != nil {
+		t.Fatalf("get error = %v, want nil", err)
+	}
+
+	// network partition (bi-directional)
+	// minority leader must be lost
+	// the request must fast faild
+	injectPartition(t, majorityMembers, minorityMembers)
+	clus.waitNoLeader(minorityMembers)
+	clus.waitLeader(t, majorityMembers)
+
+	// test for reading index dropped
+	ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	_, err = cli.Get(ctx, "foo")
+	cancel()
+	if !strings.Contains(err.Error(), "raft read index dropped") {
+		t.Fatalf("expect dropped read index error, but get %s", err)
+	}
+
+	// add the leader to the endpoints
+	// the client will switch
+	cli.SetEndpoints(majorityMembers[0].grpcAddr, cli.Endpoints()[0])
+	for i := 0; i < 5; i++ {
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+		_, err = cli.Get(ctx, "foo")
+		cancel()
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		t.Fatalf("get error = %s, want nil", err)
+	}
 }
 
 func getMembersByIndexSlice(clus *cluster, idxs []int) []*member {
