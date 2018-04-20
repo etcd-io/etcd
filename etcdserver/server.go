@@ -1069,12 +1069,11 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	if apply.snapshot.Metadata.Index <= ep.appliedi {
 		if lg != nil {
-			// expect apply.snapshot.Metadata.Index > ep.appliedi + 1
 			lg.Panic(
-				"unexpected snapshot from future index",
+				"unexpected leader snapshot from outdated index",
 				zap.Uint64("current-snapshot-index", ep.snapi),
 				zap.Uint64("current-applied-index", ep.appliedi),
-				zap.Uint64("incoming-snapshot-index", apply.snapshot.Metadata.Index),
+				zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
 			)
 		} else {
 			plog.Panicf("snapshot index [%d] should > appliedi[%d] + 1",
