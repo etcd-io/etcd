@@ -75,8 +75,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
 - Change [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
-  - Now that `log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
-  - Previously, `etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
+  - Now that `--log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
+  - Previously, `--config-file etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
 - Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
 - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 - Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
