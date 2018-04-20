@@ -146,8 +146,19 @@ func (r *Resolver) Close() {
 	bldr.removeResolver(r)
 }
 
+// Target constructs a endpoint target with current resolver's clusterName.
 func (r *Resolver) Target(endpoint string) string {
-	return fmt.Sprintf("%s://%s/%s", scheme, r.clusterName, endpoint)
+	return Target(r.clusterName, endpoint)
+}
+
+// Target constructs a endpoint resolver target.
+func Target(clusterName, endpoint string) string {
+	return fmt.Sprintf("%s://%s/%s", scheme, clusterName, endpoint)
+}
+
+// IsTarget checks if a given target string in an endpoint resolver target.
+func IsTarget(target string) bool {
+	return strings.HasPrefix(target, "endpoint://")
 }
 
 // Parse endpoint parses a endpoint of the form (http|https)://<host>*|(unix|unixs)://<path>) and returns a

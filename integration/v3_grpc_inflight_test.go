@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/transport"
 )
 
 // TestV3MaintenanceDefragmentInflightRange ensures inflight range requests
@@ -81,8 +82,9 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 			defer wg.Done()
 			_, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo"), Serializable: true}, grpc.FailFast(false))
 			if err != nil {
-				if err != nil && rpctypes.ErrorDesc(err) != context.Canceled.Error() {
-					t.Fatalf("inflight request should be canceld with %v, got %v", context.Canceled, err)
+				errDesc := rpctypes.ErrorDesc(err)
+				if err != nil && !(errDesc == context.Canceled.Error() || errDesc == transport.ErrConnClosing.Desc) {
+					t.Fatalf("inflight request should be canceled with '%v' or '%v', got '%v'", context.Canceled.Error(), transport.ErrConnClosing.Desc, errDesc)
 				}
 			}
 		}()

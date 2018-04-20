@@ -191,10 +191,12 @@ func TestV3CorruptAlarm(t *testing.T) {
 	}
 	// Member 0 restarts into split brain.
 
+	clus.Members[0].WaitStarted(t)
 	resp0, err0 := clus.Client(0).Get(context.TODO(), "abc")
 	if err0 != nil {
 		t.Fatal(err0)
 	}
+	clus.Members[1].WaitStarted(t)
 	resp1, err1 := clus.Client(1).Get(context.TODO(), "abc")
 	if err1 != nil {
 		t.Fatal(err1)

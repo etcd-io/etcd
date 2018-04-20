@@ -298,14 +298,13 @@ func (c *Client) getToken(ctx context.Context) error {
 
 	for i := 0; i < len(c.cfg.Endpoints); i++ {
 		endpoint := c.cfg.Endpoints[i]
-		host := getHost(endpoint)
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
 		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint), c.cfg.DialOptions...)
 		if err != nil {
 			continue
 		}
-		auth, err = newAuthenticator(ctx, host, dOpts, c)
+		auth, err = newAuthenticator(ctx, endpoint, dOpts, c)
 		if err != nil {
 			continue
 		}
@@ -327,8 +326,8 @@ func (c *Client) getToken(ctx context.Context) error {
 	return err
 }
 
-func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(endpoint, dopts...)
+func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts, err := c.dialSetupOpts(ep, dopts...)
 	if err != nil {
 		return nil, err
 	}
@@ -367,11 +366,18 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		defer cancel()
 	}
 
-	// TODO: The hosts check doesn't really make sense for a load balanced endpoint url for the new grpc load balancer interface.
-	// Is it safe/sane to use the provided endpoint here?
-	//host := getHost(endpoint)
-	//conn, err := grpc.DialContext(c.ctx, host, opts...)
-	conn, err := grpc.DialContext(dctx, endpoint, opts...)
+	// We pass a target to DialContext of the form: endpoint://<clusterName>/<host-part> that
+	// does not include scheme (http/https/unix/unixs) or path parts.
+	if endpoint.IsTarget(ep) {
+		clusterName, tep, err := endpoint.ParseTarget(ep)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse endpoint target '%s': %v", ep, err)
+		}
+		_, host, _ := endpoint.ParseEndpoint(tep)
+		ep = endpoint.Target(clusterName, host)
+	}
+
+	conn, err := grpc.DialContext(dctx, ep, opts...)
 	if err != nil {
 		return nil, err
 	}
