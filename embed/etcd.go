@@ -312,6 +312,11 @@ func (e *Etcd) Close() {
 			cancel()
 		}
 	}
+
+	lg := e.GetLogger()
+	if lg != nil {
+		lg.Sync()
+	}
 }
 
 func stopServers(ctx context.Context, ss *servers) {
