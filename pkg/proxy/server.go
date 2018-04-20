@@ -222,7 +222,7 @@ func NewServer(cfg ServerConfig) Server {
 
 	_, fromPort, err := net.SplitHostPort(cfg.From.Host)
 	if err == nil {
-		s.fromPort, err = strconv.Atoi(fromPort)
+		s.fromPort, _ = strconv.Atoi(fromPort)
 	}
 	var toPort string
 	_, toPort, err = net.SplitHostPort(cfg.To.Host)
