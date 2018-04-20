@@ -109,7 +109,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ## Clustering flags
 
-`--initial` prefix flags are used in bootstrapping ([static bootstrap][build-cluster], [discovery-service bootstrap][discovery] or [runtime reconfiguration][reconfig]) a new member, and ignored when restarting an existing member.
+`--initial-advertise-peer-urls`, `--initial-cluster`, `--initial-cluster-state`, and `--initial-cluster-token` flags are used in bootstrapping ([static bootstrap][build-cluster], [discovery-service bootstrap][discovery] or [runtime reconfiguration][reconfig]) a new member, and ignored when restarting an existing member.
 
 `--discovery` prefix flags need to be set when using [discovery service][discovery].
 
@@ -311,6 +311,16 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_PEER_CERT_ALLOWED_CN
 
 ## Logging flags
+
+### --logger
++ Specify 'zap' for structured logging or 'capnslog'.
++ default: capnslog
++ env variable: ETCD_LOGGER
+
+### --log-output
++ Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
++ default: default
++ env variable: ETCD_LOG_OUTPUT
 
 ### --debug
 + Drop the default log level to DEBUG for all subpackages.
