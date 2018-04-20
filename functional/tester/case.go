@@ -274,32 +274,39 @@ func (c *caseUntilSnapshot) Inject(clus *Cluster) error {
 	}
 
 	for i := 0; i < retries; i++ {
-		lastRev, _ = clus.maxRev()
+		lastRev, err = clus.maxRev()
 		// If the number of proposals committed is bigger than snapshot count,
 		// a new snapshot should have been created.
-		dicc := lastRev - startRev
-		if dicc > snapshotCount {
+		diff := lastRev - startRev
+		if diff > snapshotCount {
 			clus.lg.Info(
 				"trigger snapshot PASS",
 				zap.Int("retries", i),
 				zap.String("desc", c.Desc()),
-				zap.Int64("committed-entries", dicc),
+				zap.Int64("committed-entries", diff),
 				zap.Int64("etcd-snapshot-count", snapshotCount),
+				zap.Int64("start-revision", startRev),
 				zap.Int64("last-revision", lastRev),
 				zap.Duration("took", time.Since(now)),
 			)
 			return nil
 		}
 
+		dur := time.Second
+		if diff < 0 || err != nil {
+			dur = 3 * time.Second
+		}
 		clus.lg.Info(
 			"trigger snapshot PROGRESS",
 			zap.Int("retries", i),
-			zap.Int64("committed-entries", dicc),
+			zap.Int64("committed-entries", diff),
 			zap.Int64("etcd-snapshot-count", snapshotCount),
+			zap.Int64("start-revision", startRev),
 			zap.Int64("last-revision", lastRev),
 			zap.Duration("took", time.Since(now)),
+			zap.Error(err),
 		)
-		time.Sleep(time.Second)
+		time.Sleep(dur)
 	}
 
 	return fmt.Errorf("cluster too slow: only %d commits in %d retries", lastRev-startRev, retries)
