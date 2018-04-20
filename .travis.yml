@@ -18,7 +18,9 @@ env:
   - TARGET=linux-amd64-build
   - TARGET=linux-amd64-unit
   - TARGET=linux-amd64-fmt
-  - TARGET=linux-amd64-integration
+  - TARGET=linux-amd64-integration-1-cpu
+  - TARGET=linux-amd64-integration-2-cpu
+  - TARGET=linux-amd64-integration-4-cpu
   - TARGET=linux-amd64-functional
   - TARGET=linux-386-build
   - TARGET=linux-386-unit
@@ -42,7 +44,11 @@ matrix:
   - go: tip
     env: TARGET=linux-amd64-fmt
   - go: tip
-    env: TARGET=linux-amd64-integration
+    env: TARGET=linux-amd64-integration-1-cpu
+  - go: tip
+    env: TARGET=linux-amd64-integration-2-cpu
+  - go: tip
+    env: TARGET=linux-amd64-integration-4-cpu
   - go: tip
     env: TARGET=linux-amd64-functional
   - go: tip
@@ -87,10 +93,20 @@ script:
           --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='fmt bom dep' ./test"
         ;;
-      linux-amd64-integration)
+      linux-amd64-integration-1-cpu)
         docker run --rm \
           --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='integration' ./test"
+          /bin/bash -c "GOARCH=amd64 CPU=1 PASSES='integration' ./test"
+        ;;
+      linux-amd64-integration-2-cpu)
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
+          /bin/bash -c "GOARCH=amd64 CPU=2 PASSES='integration' ./test"
+        ;;
+      linux-amd64-integration-4-cpu)
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
+          /bin/bash -c "GOARCH=amd64 CPU=4 PASSES='integration' ./test"
         ;;
       linux-amd64-functional)
         docker run --rm \
