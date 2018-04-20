@@ -101,6 +101,13 @@ if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
 fi
 
+# determine the number of CPUs to use for Go tests
+TEST_CPUS="1,2,4"
+if [ ! -z "${CPU}" ]; then
+	TEST_CPUS="${CPU}"
+fi
+echo "Running with" "${TEST_CPUS}"
+
 # determine whether target supports race detection
 if [ "$GOARCH" == "amd64" ]; then
 	RACE="--race"
@@ -134,7 +141,7 @@ function unit_pass {
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
-	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu 1,2,4 ${RUN_ARG} "$@" "${TEST[@]}"
+	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu "${TEST_CPUS}" ${RUN_ARG} "$@" "${TEST[@]}"
 }
 
 function integration_pass {
@@ -154,7 +161,7 @@ function integration_pass {
 	# if TESTCASE not set, PKG set, run all test cases in specified package
 	# if TESTCASE not set, PKG not set, run all tests in all integration and integration_extra packages
 	if [ -z "${TESTCASE}" ] && [ -z "${USERPKG}" ]; then
-		go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
+		go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
 		integration_extra "$@"
 	else
 		if [ -z "${USERPKG}" ]; then
@@ -166,16 +173,16 @@ function integration_pass {
 		else
 			INTEGTESTPKG=("${TEST[@]}")
 		fi
-		go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${INTEGTESTPKG[@]}"
+		go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${INTEGTESTPKG[@]}"
 	fi
 }
 
 function integration_extra {
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/client/integration"
-	go test -timeout 25m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
-	go test -timeout 1m -v -cpu 1,2,4 "$@" "${REPO_PATH}/contrib/raftexample"
+	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
+	go test -timeout 25m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 1m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/contrib/raftexample"
 	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/v2store"
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example "$@" "${TEST[@]}"
+	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
 }
 
 function functional_pass {
@@ -296,15 +303,15 @@ function e2e_pass {
 		USERTIMEOUT="${TIMEOUT}"
 	fi
 
-	go test -timeout "${USERTIMEOUT}" -v -cpu 1,2,4 "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
+	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 20m -v -cpu 1,2,4 "$@" "${REPO_PATH}/tests/e2e" &
+	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/tests/e2e" &
 	e2epid="$!"
-	go test -timeout 20m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
+	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration" &
 	intpid="$!"
 	wait $e2epid
 	wait $intpid
@@ -312,8 +319,8 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
 	go test -timeout 20m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
