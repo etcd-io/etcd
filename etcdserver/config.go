@@ -272,9 +272,10 @@ func (c *ServerConfig) print(initial bool) {
 			zap.String("initial-cluster-token", c.InitialClusterToken),
 			zap.Bool("pre-vote", c.PreVote),
 			zap.Bool("initial-corrupt-check", c.InitialCorruptCheck),
-			zap.Duration("corrupt-check-time", c.CorruptCheckTime),
+			zap.String("corrupt-check-time-interval", c.CorruptCheckTime.String()),
 			zap.String("auto-compaction-mode", c.AutoCompactionMode),
 			zap.Duration("auto-compaction-retention", c.AutoCompactionRetention),
+			zap.String("auto-compaction-interval", c.AutoCompactionRetention.String()),
 			zap.String("discovery-url", c.DiscoveryURL),
 			zap.String("discovery-proxy", c.DiscoveryProxy),
 		)
