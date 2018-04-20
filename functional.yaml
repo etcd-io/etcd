@@ -20,13 +20,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:1380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:13800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:1381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -71,13 +71,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:2380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:23800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:2381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -122,13 +122,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:3380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:33800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:3381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -179,16 +179,10 @@ tester-config:
   - SIGTERM_ALL
   - SIGQUIT_AND_REMOVE_ONE_FOLLOWER
   - SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
-  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
-  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_QUORUM
   - BLACKHOLE_PEER_PORT_TX_RX_ALL
-  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
-  - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
-  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
-  - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - DELAY_PEER_PORT_TX_RX_LEADER
   - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER
   - DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
@@ -199,6 +193,14 @@ tester-config:
   - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
   - NO_FAIL_WITH_STRESS
   - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
+
+  # TODO: use iptables for discarding outbound rafthttp traffic to peer port
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   # - SIGQUIT_AND_REMOVE_LEADER
   # - SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT
   # - SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH
