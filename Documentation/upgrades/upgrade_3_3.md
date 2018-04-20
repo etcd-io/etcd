@@ -91,14 +91,14 @@ Before
 
 ```bash
 curl -L http://localhost:2379/v3alpha/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
 After
 
 ```bash
 curl -L http://localhost:2379/v3beta/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
 Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.

@@ -1,6 +1,6 @@
 
 
-Breaking change wishlists.
+Planned breaking changes.
 
 
 ## v4.0.0 (TBD)

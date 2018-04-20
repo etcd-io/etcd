@@ -61,7 +61,7 @@ curl -L https://m1.etcd.local:2379/v3/kv/put \
   --cacert /certs/ca.crt \
   --cert /certs/server.crt \
   --key /certs/server.key.insecure \
-	-X POST \
+  -X POST \
   -d '{"key": "Zm9v", "value": "YmFy"}'
 
 printf "\n\nReading v3 key...\n"
@@ -69,7 +69,7 @@ curl -L https://m1.etcd.local:2379/v3/kv/range \
   --cacert /certs/ca.crt \
   --cert /certs/server.crt \
   --key /certs/server.key.insecure \
-	-X POST \
+  -X POST \
   -d '{"key": "Zm9v"}'
 
 printf "\n\nFetching 'curl https://m1.etcd.local:2379/metrics'...\n"

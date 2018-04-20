@@ -131,6 +131,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - v3 `etcdctl` [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease now prints [`"lease LEASE_ID already expired"`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `"lease LEASE_ID granted with TTL(0s), remaining(-1s)"`.
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
+  - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in v3.4.
+  - In v3.3, `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` still works as a fallback to `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'`, but `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` won't work in v3.4. Use `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 
 ### Dependency
 
@@ -216,11 +218,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Use [monotonic time in Go 1.9](https://github.com/coreos/etcd/pull/8507) for `lease` package.
 - Warn on [empty hosts in advertise URLs](https://github.com/coreos/etcd/pull/8384).
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
-  - etcd `v3.4` will exit on this error.
+  - etcd v3.4 will exit on this error.
     - e.g. `--advertise-client-urls=http://:2379`.
 - Warn on [shadowed environment variables](https://github.com/coreos/etcd/pull/8385).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
-  - etcd `v3.4` will exit on this error.
+  - etcd v3.4 will exit on this error.
 
 ### Added: API
 
@@ -308,7 +310,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Added: gRPC gateway
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
-  - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in `v3.4`.
+  - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in v3.4.
+  - In v3.3, `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` still works as a fallback to `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'`, but `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` won't work in v3.4. Use `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 - Support ["authorization" token](https://github.com/coreos/etcd/pull/7999).
 - Support [websocket for bi-directional streams](https://github.com/coreos/etcd/pull/8257).
   - Fix [`Watch` API with gRPC gateway](https://github.com/coreos/etcd/issues/8237).
@@ -347,7 +350,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - `v3.3.x` is the last release cycle that supports `ACI`.
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
-  - `*.aci` files won't be available from etcd `v3.4` release.
+  - `*.aci` files won't be available from etcd v3.4 release.
 - Add container registry [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd).
   - [quay.io/coreos/etcd](https://quay.io/coreos/etcd) is still supported as secondary.
 
