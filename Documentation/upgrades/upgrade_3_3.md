@@ -12,6 +12,19 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.3.
 
+#### Change in `--auto-compaction-retention` flag
+
+Changed `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503). Now that `--auto-compaction-retention` accepts string values, etcd configuration YAML file `log-output` field must be changed to `string` type. Previously, `--config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`. If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `--auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
+
+```diff
+# etcd.config.yaml
++auto-compaction-mode: periodic
+-auto-compaction-retention: 24
++auto-compaction-retention: "24"
++# Or
++# auto-compaction-retention: "24h"
+```
+
 #### Change in `etcdserver.EtcdServer` struct
 
 `etcdserver.EtcdServer` has changed the type of its member field `*etcdserver.ServerConfig` to `etcdserver.ServerConfig`. And `etcdserver.NewServer` now takes `etcdserver.ServerConfig`, instead of `*etcdserver.ServerConfig`.
