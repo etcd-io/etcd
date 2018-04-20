@@ -99,6 +99,12 @@ func startEtcdOrProxyV2() {
 		plog.Infof("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", maxProcs, cpus)
 	}
+	defer func() {
+		logger := cfg.ec.GetLogger()
+		if logger != nil {
+			logger.Sync()
+		}
+	}()
 
 	defaultHost, dhErr := (&cfg.ec).UpdateDefaultClusterFromName(defaultInitialCluster)
 	if defaultHost != "" {
