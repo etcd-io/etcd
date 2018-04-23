@@ -44,7 +44,18 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		return nil, fmt.Errorf("len(clus.Members) expects at least 3, got %d", len(clus.Members))
 	}
 
+	failpointsEnabled := false
+	for _, c := range clus.Tester.Cases {
+		if c == rpcpb.Case_FAILPOINTS.String() {
+			failpointsEnabled = true
+			break
+		}
+	}
+
 	for i, mem := range clus.Members {
+		if mem.EtcdExec == "embed" && failpointsEnabled {
+			return nil, errors.New("EtcdExec 'embed' cannot be run with failpoints enabled")
+		}
 		if mem.BaseDir == "" {
 			return nil, fmt.Errorf("BaseDir cannot be empty (got %q)", mem.BaseDir)
 		}
