@@ -807,6 +807,15 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 		if isHaltErr(w.ctx, err) {
 			return nil, v3rpc.Error(err)
 		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+			continue
+		case <-w.ctx.Done():
+			if err == nil {
+				return nil, w.ctx.Err()
+			}
+			return nil, err
+		}
 	}
 	return ws, nil
 }
