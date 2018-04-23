@@ -241,6 +241,8 @@ func newConfig() *config {
 	fs.DurationVar(&cfg.ec.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ec.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes.")
 	fs.StringVar(&cfg.ec.ExperimentalEnableV2V3, "experimental-enable-v2v3", cfg.ec.ExperimentalEnableV2V3, "v3 prefix for serving emulated v2 state.")
 
+	fs.BoolVar(&cfg.ec.PersistExpiry, "persist-expiry", cfg.ec.PersistExpiry, "Persist expiry values for leases.")
+
 	// unsafe
 	fs.BoolVar(&cfg.ec.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
 

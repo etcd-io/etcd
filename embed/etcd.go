@@ -191,6 +191,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LoggerConfig:            cfg.loggerConfig,
 		Debug:                   cfg.Debug,
 		ForceNewCluster:         cfg.ForceNewCluster,
+		PersistExpiry:           cfg.PersistExpiry,
 	}
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
