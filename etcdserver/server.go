@@ -518,6 +518,7 @@ func (s *EtcdServer) adjustTicks() {
 	}
 
 	if !s.Cfg.InitialElectionTickAdvance {
+		plog.Infof("skipping initial election tick advance (election tick %d)", s.Cfg.ElectionTicks)
 		return
 	}
 
