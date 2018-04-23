@@ -199,7 +199,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func leaseFromArgs(arg string) v3.LeaseID {
-	id, err := strconv.ParseInt(arg, 16, 64)
+	id, err := strconv.ParseInt(arg, 10, 64)
 	if err != nil {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
