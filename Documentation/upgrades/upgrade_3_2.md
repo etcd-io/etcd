@@ -14,7 +14,9 @@ Highlighted breaking changes in 3.2.
 
 #### Change in default `snapshot-count` value
 
-The default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160). Higher snapshot count means it holds Raft entries in memory for longer before discarding old entries. It is a trade-off between less frequent snapshotting and [higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156). Higher `--snapshot-count` will be manifested with higher memory usage, while retaining more Raft entries helps with the availabilities of slow followers: leader is still able to replicate its logs to followers, rather than forcing followers to rebuild its stores from leader snapshots.
+Higher `--snapshot-count` holds more Raft entries in memory until snapshot, thus causing [recurrent higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156). Since leader retains latest Raft entries for longer, a slow follower has more time to catch up before leader snapshot. `--snapshot-count` is a tradeoff between higher memory usage and better availabilities of slow followers.
+
+Since v3.2, the default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
 
 #### Change in gRPC dependency (>=3.2.10)
 

@@ -6,7 +6,17 @@ An etcd cluster needs periodic maintenance to remain reliable. Depending on an e
 
 All etcd maintenance manages storage resources consumed by the etcd keyspace. Failure to adequately control the keyspace size is guarded by storage space quotas; if an etcd member runs low on space, a quota will trigger cluster-wide alarms which will put the system into a limited-operation maintenance mode. To avoid running out of space for writes to the keyspace, the etcd keyspace history must be compacted. Storage space itself may be reclaimed by defragmenting etcd members. Finally, periodic snapshot backups of etcd member state makes it possible to recover any unintended logical data loss or corruption caused by operational error.
 
-## History compaction
+## Raft log retention
+
+`etcd --snapshot-count` configures the number of applied Raft entries to hold in-memory before compaction. When `--snapshot-count` reaches, server first persists snapshot data onto disk, and then truncates old entries. When a slow follower requests logs before a compacted index, leader sends the snapshot forcing the follower to overwrite its state.
+
+Higher `--snapshot-count` holds more Raft entries in memory until snapshot, thus causing [recurrent higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156). Since leader retains latest Raft entries for longer, a slow follower has more time to catch up before leader snapshot. `--snapshot-count` is a tradeoff between higher memory usage and better availabilities of slow followers.
+
+Since v3.2, the default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
+
+In performance-wise, `--snapshot-count` greater than 100,000 may impact the write throughput. Higher number of in-memory objects can slow down [Go GC mark phase `runtime.scanobject`](https://golang.org/src/runtime/mgc.go), and infrequent memory reclamation makes allocation slow. Performance varies depending on the workloads and system environments. However, in general, too frequent compaction affects cluster availabilities and write throughputs. Too infrequent compaction is also harmful placing too much pressure on Go garbage collector. See https://www.slideshare.net/mitakeh/understanding-performance-aspects-of-etcd-and-raft for more research results.
+
+## History compaction: v3 API Key-Value Database
 
 Since etcd keeps an exact history of its keyspace, this history should be periodically compacted to avoid performance degradation and eventual storage space exhaustion. Compacting the keyspace history drops all information about keys superseded prior to a given keyspace revision. The space used by these keys then becomes available for additional writes to the keyspace.
 
@@ -26,9 +36,9 @@ $ etcdctl get --rev=2 somekey
 Error:  rpc error: code = 11 desc = etcdserver: mvcc: required revision has been compacted
 ```
 
-## History compaction: `--auto-compaction`
+### Auto Compaction
 
-`etcd` can be set to automatically compact the keyspace with the `--auto-compaction` option with a period of hours:
+`etcd` can be set to automatically compact the keyspace with the `--auto-compaction-*` option with a period of hours:
 
 ```sh
 # keep one hour of history
@@ -52,7 +62,6 @@ When `--auto-compaction-retention=10h`, etcd first waits 10-hour for the first c
 10hr (rev = 100, Compact(1))
 11hr (rev = 110, Compact(10))
 ...
-
 ```
 
 Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
@@ -156,5 +165,4 @@ $ etcdctl --write-out=table snapshot status backup.db
 +----------+----------+------------+------------+
 | fe01cf57 |       10 |          7 | 2.1 MB     |
 +----------+----------+------------+------------+
-
 ```
