@@ -111,8 +111,38 @@ type Config struct {
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
 	// make ticks a cluster wide configuration.
-	TickMs            uint  `json:"heartbeat-interval"`
-	ElectionMs        uint  `json:"election-timeout"`
+	TickMs     uint `json:"heartbeat-interval"`
+	ElectionMs uint `json:"election-timeout"`
+
+	// InitialElectionTickAdvance is true, then local member fast-forwards
+	// election ticks to speed up "initial" leader election trigger. This
+	// benefits the case of larger election ticks. For instance, cross
+	// datacenter deployment may require longer election timeout of 10-second.
+	// If true, local node does not need wait up to 10-second. Instead,
+	// forwards its election ticks to 8-second, and have only 2-second left
+	// before leader election.
+	//
+	// Major assumptions are that:
+	//  - cluster has no active leader thus advancing ticks enables faster
+	//    leader election, or
+	//  - cluster already has an established leader, and rejoining follower
+	//    is likely to receive heartbeats from the leader after tick advance
+	//    and before election timeout.
+	//
+	// However, when network from leader to rejoining follower is congested,
+	// and the follower does not receive leader heartbeat within left election
+	// ticks, disruptive election has to happen thus affecting cluster
+	// availabilities.
+	//
+	// Disabling this would slow down initial bootstrap process for cross
+	// datacenter deployments. Make your own tradeoffs by configuring
+	// --initial-election-tick-advance at the cost of slow initial bootstrap.
+	//
+	// If single-node, it advances ticks regardless.
+	//
+	// See https://github.com/coreos/etcd/issues/9333 for more detail.
+	InitialElectionTickAdvance bool `json:"initial-election-tick-advance"`
+
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
 	MaxTxnOps         uint  `json:"max-txn-ops"`
 	MaxRequestBytes   uint  `json:"max-request-bytes"`
@@ -224,29 +254,30 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		CorsInfo:              &cors.CORSInfo{},
-		MaxSnapFiles:          DefaultMaxSnapshots,
-		MaxWalFiles:           DefaultMaxWALs,
-		Name:                  DefaultName,
-		SnapCount:             etcdserver.DefaultSnapCount,
-		MaxTxnOps:             DefaultMaxTxnOps,
-		MaxRequestBytes:       DefaultMaxRequestBytes,
-		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
-		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
-		GRPCKeepAliveTimeout:  DefaultGRPCKeepAliveTimeout,
-		TickMs:                100,
-		ElectionMs:            1000,
-		LPUrls:                []url.URL{*lpurl},
-		LCUrls:                []url.URL{*lcurl},
-		APUrls:                []url.URL{*apurl},
-		ACUrls:                []url.URL{*acurl},
-		ClusterState:          ClusterStateFlagNew,
-		InitialClusterToken:   "etcd-cluster",
-		StrictReconfigCheck:   DefaultStrictReconfigCheck,
-		LogOutput:             DefaultLogOutput,
-		Metrics:               "basic",
-		EnableV2:              DefaultEnableV2,
-		AuthToken:             "simple",
+		CorsInfo:                   &cors.CORSInfo{},
+		MaxSnapFiles:               DefaultMaxSnapshots,
+		MaxWalFiles:                DefaultMaxWALs,
+		Name:                       DefaultName,
+		SnapCount:                  etcdserver.DefaultSnapCount,
+		MaxTxnOps:                  DefaultMaxTxnOps,
+		MaxRequestBytes:            DefaultMaxRequestBytes,
+		GRPCKeepAliveMinTime:       DefaultGRPCKeepAliveMinTime,
+		GRPCKeepAliveInterval:      DefaultGRPCKeepAliveInterval,
+		GRPCKeepAliveTimeout:       DefaultGRPCKeepAliveTimeout,
+		TickMs:                     100,
+		ElectionMs:                 1000,
+		InitialElectionTickAdvance: true,
+		LPUrls:              []url.URL{*lpurl},
+		LCUrls:              []url.URL{*lcurl},
+		APUrls:              []url.URL{*apurl},
+		ACUrls:              []url.URL{*acurl},
+		ClusterState:        ClusterStateFlagNew,
+		InitialClusterToken: "etcd-cluster",
+		StrictReconfigCheck: DefaultStrictReconfigCheck,
+		LogOutput:           DefaultLogOutput,
+		Metrics:             "basic",
+		EnableV2:            DefaultEnableV2,
+		AuthToken:           "simple",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
