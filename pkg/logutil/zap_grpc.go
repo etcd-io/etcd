@@ -31,6 +31,15 @@ func NewGRPCLoggerV2(lcfg zap.Config) (grpclog.LoggerV2, error) {
 	return &zapGRPCLogger{lg: lg, sugar: lg.Sugar()}, nil
 }
 
+// NewGRPCLoggerV2FromZapCore creates "grpclog.LoggerV2" from "zap.Core"
+// and "zapcore.WriteSyncer". It discards all INFO level logging in gRPC,
+// if debug level is not enabled in "*zap.Logger".
+func NewGRPCLoggerV2FromZapCore(cr zapcore.Core, syncer zapcore.WriteSyncer) grpclog.LoggerV2 {
+	// "AddCallerSkip" to annotate caller outside of "logutil"
+	lg := zap.New(cr, zap.AddCaller(), zap.AddCallerSkip(1), zap.ErrorOutput(syncer))
+	return &zapGRPCLogger{lg: lg, sugar: lg.Sugar()}
+}
+
 type zapGRPCLogger struct {
 	lg    *zap.Logger
 	sugar *zap.SugaredLogger

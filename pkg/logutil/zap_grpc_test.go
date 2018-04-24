@@ -20,10 +20,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestNewGRPCLoggerV2(t *testing.T) {
@@ -68,5 +70,22 @@ func TestNewGRPCLoggerV2(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("logutil/zap_grpc_test.go:")) {
 		t.Fatalf("unexpected caller; %q", string(data))
+	}
+}
+
+func TestNewGRPCLoggerV2FromZapCore(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	syncer := zapcore.AddSync(buf)
+	cr := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		syncer,
+		zap.NewAtomicLevelAt(zap.InfoLevel),
+	)
+
+	lg := NewGRPCLoggerV2FromZapCore(cr, syncer)
+	lg.Warning("TestNewGRPCLoggerV2FromZapCore")
+	txt := buf.String()
+	if !strings.Contains(txt, "TestNewGRPCLoggerV2FromZapCore") {
+		t.Fatalf("unexpected log %q", txt)
 	}
 }
