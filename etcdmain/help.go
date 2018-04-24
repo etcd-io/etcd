@@ -154,6 +154,8 @@ security flags:
 		enable peer client cert authentication.
 	--peer-trusted-ca-file ''
 		path to the peer server TLS trusted CA file.
+	--peer-cert-allowed-cn ''
+		Required CN for client certs connecting to the peer endpoint.
 	--peer-auto-tls 'false'
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--peer-crl-file ''
