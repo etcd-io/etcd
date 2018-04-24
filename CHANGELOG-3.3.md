@@ -1,6 +1,6 @@
 
 
-## [v3.3.4](https://github.com/coreos/etcd/releases/tag/v3.3.4) (2018-04-TBD)
+## [v3.3.4](https://github.com/coreos/etcd/releases/tag/v3.3.4) (2018-04-24)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
@@ -33,6 +33,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
 
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
+
+### Go
+
+- Compile with [*Go 1.9.5*](https://golang.org/doc/devel/release.html#go1.9).
 
 
 ## [v3.3.3](https://github.com/coreos/etcd/releases/tag/v3.3.3) (2018-03-29)
