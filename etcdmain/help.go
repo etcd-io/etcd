@@ -134,6 +134,8 @@ Security:
     Enable peer client cert authentication.
   --peer-trusted-ca-file ''
     Path to the peer server TLS trusted CA file.
+  --peer-cert-allowed-cn ''
+    Required CN for client certs connecting to the peer endpoint.
   --peer-auto-tls 'false'
     Peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
   --peer-crl-file ''
