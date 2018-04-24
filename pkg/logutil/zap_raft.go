@@ -15,6 +15,8 @@
 package logutil
 
 import (
+	"errors"
+
 	"github.com/coreos/etcd/raft"
 
 	"go.uber.org/zap"
@@ -22,7 +24,10 @@ import (
 )
 
 // NewRaftLogger converts "*zap.Logger" to "raft.Logger".
-func NewRaftLogger(lcfg zap.Config) (raft.Logger, error) {
+func NewRaftLogger(lcfg *zap.Config) (raft.Logger, error) {
+	if lcfg == nil {
+		return nil, errors.New("nil zap.Config")
+	}
 	lg, err := lcfg.Build(zap.AddCallerSkip(1)) // to annotate caller outside of "logutil"
 	if err != nil {
 		return nil, err

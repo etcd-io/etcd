@@ -32,7 +32,7 @@ func TestNewRaftLogger(t *testing.T) {
 	logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
 	defer os.RemoveAll(logPath)
 
-	lcfg := zap.Config{
+	lcfg := &zap.Config{
 		Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development: false,
 		Sampling: &zap.SamplingConfig{
