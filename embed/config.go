@@ -41,6 +41,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -468,19 +469,17 @@ func (cfg *Config) setupLogging() error {
 			ErrorOutputPaths: make([]string, 0),
 		}
 		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
+		isJournald := false
 		for _, v := range cfg.LogOutput {
 			switch v {
 			case DefaultLogOutput:
 				if syscall.Getppid() == 1 {
 					// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 					// where "NewDefaultFormatter" returns "NewJournaldFormatter"
-					// when syscall.Getppid() == 1, specify 'stdout' or 'stderr' to
-					// skip journald logging even when running under systemd
-					// TODO: capnlog.NewJournaldFormatter()
-					fmt.Println("running under init, which may be systemd!")
-					outputPaths["stderr"] = struct{}{}
-					errOutputPaths["stderr"] = struct{}{}
-					continue
+					// specify 'stdout' or 'stderr' to override this redirects
+					// when syscall.Getppid() == 1
+					isJournald = true
+					break
 				}
 
 				outputPaths["stderr"] = struct{}{}
@@ -499,38 +498,59 @@ func (cfg *Config) setupLogging() error {
 				errOutputPaths[v] = struct{}{}
 			}
 		}
-		for v := range outputPaths {
-			lcfg.OutputPaths = append(lcfg.OutputPaths, v)
-		}
-		for v := range errOutputPaths {
-			lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
-		}
-		sort.Strings(lcfg.OutputPaths)
-		sort.Strings(lcfg.ErrorOutputPaths)
 
-		if cfg.Debug {
-			lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-			grpc.EnableTracing = true
-		}
-
-		var err error
-		cfg.logger, err = lcfg.Build()
-		if err != nil {
-			return err
-		}
-		cfg.loggerConfig = lcfg
-
-		grpcLogOnce.Do(func() {
-			// debug true, enable info, warning, error
-			// debug false, only discard info
-			var gl grpclog.LoggerV2
-			gl, err = logutil.NewGRPCLoggerV2(lcfg)
-			if err == nil {
-				grpclog.SetLoggerV2(gl)
+		if !isJournald {
+			for v := range outputPaths {
+				lcfg.OutputPaths = append(lcfg.OutputPaths, v)
 			}
-		})
-		if err != nil {
-			return err
+			for v := range errOutputPaths {
+				lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
+			}
+			sort.Strings(lcfg.OutputPaths)
+			sort.Strings(lcfg.ErrorOutputPaths)
+
+			if cfg.Debug {
+				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+				grpc.EnableTracing = true
+			}
+
+			var err error
+			cfg.logger, err = lcfg.Build()
+			if err != nil {
+				return err
+			}
+			cfg.loggerConfig = lcfg
+
+			grpcLogOnce.Do(func() {
+				// debug true, enable info, warning, error
+				// debug false, only discard info
+				var gl grpclog.LoggerV2
+				gl, err = logutil.NewGRPCLoggerV2(lcfg)
+				if err == nil {
+					grpclog.SetLoggerV2(gl)
+				}
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			// use stderr as fallback
+			syncer := zapcore.AddSync(logutil.NewJournaldWriter(os.Stderr))
+			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
+			if cfg.Debug {
+				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
+				grpc.EnableTracing = true
+			}
+			cr := zapcore.NewCore(
+				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+				syncer,
+				lvl,
+			)
+			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+
+			grpcLogOnce.Do(func() {
+				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+			})
 		}
 
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
