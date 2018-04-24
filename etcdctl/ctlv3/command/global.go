@@ -128,7 +128,9 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
 	} else {
-		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+		// Enable logging for WARNING and ERROR since these levels include issues with
+		// connecting to the server, such as TLS misconfiguration.
+		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
 	}
 
 	cfg := &clientConfig{}
