@@ -261,13 +261,6 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// logger logs server-side operations. The default is nil,
-	// and "setupLogging" must be called before starting server.
-	// Do not set logger directly.
-	loggerMu     *sync.RWMutex
-	logger       *zap.Logger
-	loggerConfig *zap.Config
-
 	// Logger is logger options: "zap", "capnslog".
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
@@ -281,6 +274,22 @@ type Config struct {
 	LogOutput []string `json:"log-output"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
+
+	// logger logs server-side operations. The default is nil,
+	// and "setupLogging" must be called before starting server.
+	// Do not set logger directly.
+	loggerMu *sync.RWMutex
+	logger   *zap.Logger
+
+	// loggerConfig is server logger configuration for Raft logger.
+	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
+	loggerConfig *zap.Config
+	// loggerCore is "zapcore.Core" for raft logger.
+	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
+	loggerCore        zapcore.Core
+	loggerWriteSyncer zapcore.WriteSyncer
+
+	// TO BE DEPRECATED
 
 	// LogPkgLevels is being deprecated in v3.5.
 	// Only valid if "logger" option is "capnslog".
@@ -519,7 +528,10 @@ func (cfg *Config) setupLogging() error {
 			if err != nil {
 				return err
 			}
+
 			cfg.loggerConfig = &lcfg
+			cfg.loggerCore = nil
+			cfg.loggerWriteSyncer = nil
 
 			grpcLogOnce.Do(func() {
 				// debug true, enable info, warning, error
@@ -547,6 +559,10 @@ func (cfg *Config) setupLogging() error {
 				lvl,
 			)
 			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+
+			cfg.loggerConfig = nil
+			cfg.loggerCore = cr
+			cfg.loggerWriteSyncer = syncer
 
 			grpcLogOnce.Do(func() {
 				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
