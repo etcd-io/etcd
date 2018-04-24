@@ -1,4 +1,4 @@
-## [v3.1.14](https://github.com/coreos/etcd/releases/tag/v3.1.14) (2018-04-TBD)
+## [v3.1.14](https://github.com/coreos/etcd/releases/tag/v3.1.14) (2018-04-24)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
 

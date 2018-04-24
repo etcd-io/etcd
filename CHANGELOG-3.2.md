@@ -1,6 +1,6 @@
 
 
-## [v3.2.19](https://github.com/coreos/etcd/releases/tag/v3.2.19) (2018-04-TBD)
+## [v3.2.19](https://github.com/coreos/etcd/releases/tag/v3.2.19) (2018-04-24)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
