@@ -266,7 +266,7 @@ type Config struct {
 	// Do not set logger directly.
 	loggerMu     *sync.RWMutex
 	logger       *zap.Logger
-	loggerConfig zap.Config
+	loggerConfig *zap.Config
 
 	// Logger is logger options: "zap", "capnslog".
 	// WARN: "capnslog" is being deprecated in v3.5.
@@ -519,7 +519,7 @@ func (cfg *Config) setupLogging() error {
 			if err != nil {
 				return err
 			}
-			cfg.loggerConfig = lcfg
+			cfg.loggerConfig = &lcfg
 
 			grpcLogOnce.Do(func() {
 				// debug true, enable info, warning, error
