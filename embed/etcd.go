@@ -74,9 +74,10 @@ type Etcd struct {
 
 	Server *etcdserver.EtcdServer
 
-	cfg   Config
-	stopc chan struct{}
-	errc  chan error
+	cfg        Config
+	closeMutex *sync.RWMutex
+	stopc      chan struct{}
+	errc       chan error
 
 	closeOnce sync.Once
 }
@@ -95,7 +96,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return nil, err
 	}
 	serving := false
-	e = &Etcd{cfg: *inCfg, stopc: make(chan struct{})}
+	e = &Etcd{
+		cfg:        *inCfg,
+		stopc:      make(chan struct{}),
+		closeMutex: &sync.RWMutex{},
+	}
 	cfg := &e.cfg
 	defer func() {
 		if e == nil || err == nil {
@@ -271,7 +276,12 @@ func (e *Etcd) Config() Config {
 // Client requests will be terminated with request timeout.
 // After timeout, enforce remaning requests be closed immediately.
 func (e *Etcd) Close() {
-	e.closeOnce.Do(func() { close(e.stopc) })
+	e.closeOnce.Do(func() {
+		e.closeMutex.Lock()
+		defer e.closeMutex.Unlock()
+		close(e.stopc)
+		close(e.errc) // sign close signal on public method
+	})
 
 	// close client requests with request timeout
 	timeout := 2 * time.Second
@@ -357,6 +367,8 @@ func stopServers(ctx context.Context, ss *servers) {
 	}
 }
 
+// Err returns a channel that you can read errors from anytime they occur. It
+// closes when the server shuts down, and as such can be used as a close signal.
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
@@ -689,6 +701,9 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
+	// the read mutex stops a write to the closed e.errc channel if closed
+	e.closeMutex.RLock()
+	defer e.closeMutex.RUnlock()
 	select {
 	case <-e.stopc:
 		return
