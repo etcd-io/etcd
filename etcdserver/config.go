@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -115,8 +116,14 @@ type ServerConfig struct {
 	// Logger logs server-side operations.
 	// If not nil, it disables "capnslog" and uses the given logger.
 	Logger *zap.Logger
+
 	// LoggerConfig is server logger configuration for Raft logger.
-	LoggerConfig zap.Config
+	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
+	LoggerConfig *zap.Config
+	// LoggerCore is "zapcore.Core" for raft logger.
+	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
+	LoggerCore        zapcore.Core
+	LoggerWriteSyncer zapcore.WriteSyncer
 
 	Debug bool
 
