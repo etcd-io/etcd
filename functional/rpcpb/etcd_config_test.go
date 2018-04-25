@@ -84,7 +84,7 @@ func TestEtcd(t *testing.T) {
 		"--pre-vote=true",
 		"--experimental-initial-corrupt-check=true",
 		"--logger=zap",
-		"--log-output=/tmp/etcd-functional-1/etcd.log",
+		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
 		"--debug=true",
 	}
 	fs := e.Flags()
