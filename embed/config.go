@@ -265,13 +265,13 @@ type Config struct {
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
 
-	// LogOutput is either:
+	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
 	//  - "stdout" as os.Stdout,
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
-	LogOutput []string `json:"log-output"`
+	LogOutputs []string `json:"log-output"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
@@ -371,7 +371,7 @@ func NewConfig() *Config {
 		loggerMu:     new(sync.RWMutex),
 		logger:       nil,
 		Logger:       "capnslog",
-		LogOutput:    []string{DefaultLogOutput},
+		LogOutputs:   []string{DefaultLogOutput},
 		Debug:        false,
 		LogPkgLevels: "",
 	}
@@ -433,14 +433,14 @@ func (cfg *Config) setupLogging() error {
 			repoLog.SetLogLevel(settings)
 		}
 
-		if len(cfg.LogOutput) != 1 {
-			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutput)
+		if len(cfg.LogOutputs) != 1 {
+			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutputs)
 			os.Exit(1)
 		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
 		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		output := cfg.LogOutput[0]
+		output := cfg.LogOutputs[0]
 		switch output {
 		case "stdout":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
@@ -452,11 +452,11 @@ func (cfg *Config) setupLogging() error {
 		}
 
 	case "zap":
-		if len(cfg.LogOutput) == 0 {
-			cfg.LogOutput = []string{DefaultLogOutput}
+		if len(cfg.LogOutputs) == 0 {
+			cfg.LogOutputs = []string{DefaultLogOutput}
 		}
-		if len(cfg.LogOutput) > 1 {
-			for _, v := range cfg.LogOutput {
+		if len(cfg.LogOutputs) > 1 {
+			for _, v := range cfg.LogOutputs {
 				if v == DefaultLogOutput {
 					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
 				}
@@ -479,7 +479,7 @@ func (cfg *Config) setupLogging() error {
 		}
 		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
 		isJournald := false
-		for _, v := range cfg.LogOutput {
+		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
 				if syscall.Getppid() == 1 {

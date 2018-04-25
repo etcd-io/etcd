@@ -312,7 +312,7 @@ func (cfg *config) configFromCmdLine() error {
 		oss = append(oss, v)
 	}
 	sort.Strings(oss)
-	cfg.ec.LogOutput = oss
+	cfg.ec.LogOutputs = oss
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
