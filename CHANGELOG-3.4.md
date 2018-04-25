@@ -1,6 +1,6 @@
 
 
-## v3.4.0 (TBD 2018-06-01)
+## v3.4.0 (TBD 2018-07-01)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
@@ -56,6 +56,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/coreos/etcd/pull/9433).
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
+- Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
+  - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
+- Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+  - **`etcd --log-output`** will be deprecated in v3.5.
+- Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+- Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+  - Now that `--log-outputs` accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type.
+  - Previously, `--config-file etcd.config.yaml` can have `log-outputs: default` field, now must be `log-outputs: [default]`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/coreos/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
@@ -72,16 +80,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously, `OpenForRead(dirpath string, snap walpb.Snapshot) (*WAL, error)`, now `OpenForRead(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, error)`.
   - Previously, `Repair(dirpath string) bool`, now `Repair(lg *zap.Logger, dirpath string) bool`.
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
-- Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
-  - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
-- Change [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
-  - Now that `--log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
-  - Previously, `--config-file etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
 - Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
-- Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
-- Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
-- Move `"github.com/coreos/etcd/error"` to [`"github.com/coreos/etcd/etcdserver/v2error"`](https://github.com/coreos/etcd/pull/9274).
-- Move `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/etcdserver/v2store"`](https://github.com/coreos/etcd/pull/9274).
+- Move internal package `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
+- Move internal package `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
+- Move internal package `"github.com/coreos/etcd/error"` to [`"github.com/coreos/etcd/etcdserver/v2error"`](https://github.com/coreos/etcd/pull/9274).
+- Move internal package `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/etcdserver/v2store"`](https://github.com/coreos/etcd/pull/9274).
 
 ### Dependency
 
@@ -123,7 +126,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/coreos/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
   - Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
@@ -153,25 +156,32 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
+- Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+  - **`etcd --log-output`** will be deprecated in v3.5.
 - Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
-  - e.g. `--logger=capnslog --log-output=default` is the default setting and same as previous etcd server logging format.
-  - TODO: `--logger=zap` is experimental, and journald logging may not work when etcd runs as PID 1.
-  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `/tmp/test.log`.
-  - e.g. `--logger=zap --log-output=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (detect systemd journald TODO).
-  - e.g. `--logger=zap --log-output=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (bypass journald TODO).
-  - e.g. `--logger=zap --log-output=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` (bypass journald TODO).
-  - e.g. `--logger=zap --log-output=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
-  - e.g. `--logger=zap --log-output=/dev/null` will discard all server logs.
+  - e.g. `--logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
+  - e.g. `--logger=zap --log-outputs=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`.
+  - e.g. If etcd parent process ID (`ppid`) is 1 (e.g. run with systemd), `--logger=zap --log-outputs=default` will [redirect server logs to local systemd journal](https://github.com/coreos/etcd/pull/9624) in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig). And if write to journald fails, it writes to `os.Stderr` as a fallback.
+  - e.g. `--logger=zap --log-outputs=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`. Use this to override journald log redirects.
+  - e.g. `--logger=zap --log-outputs=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` Use this to override journald log redirects.
+  - e.g. `--logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
+  - e.g. `--logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
+  - e.g. `--logger=zap --log-outputs=/dev/null` will discard all server logs.
 
-### Added: `embed`
+### Package `embed`
 
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
 - Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
 - Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
+- Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
+- Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
+  - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
+- Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+- Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
 
-### Added: API
+### API
 
 - Add [`snapshot`](https://github.com/coreos/etcd/pull/9118) package for snapshot restore/save operations (see [`godoc.org/github.com/etcd/snapshot`](https://godoc.org/github.com/coreos/etcd/snapshot) for more).
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/coreos/etcd/pull/9065), allow user-provided watch ID to `mvcc`.
@@ -181,7 +191,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 - Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
 
-### Added: v3 `etcdctl`
+### v3 `etcdctl`
 
 - Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
 - Add [`check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
@@ -192,7 +202,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`endpoint health --write-out` support](https://github.com/coreos/etcd/pull/9540).
   - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
 
-### Added: gRPC gateway
+### gRPC gateway
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3beta` with [`/v3`](https://github.com/coreos/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/coreos/etcd/pull/9298).
@@ -235,5 +245,5 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Go
 
 - Require *Go 1.10+*.
-- Compile with [*Go 1.10*](https://golang.org/doc/devel/release.html#go1.10).
+- Compile with [*Go 1.10.1*](https://golang.org/doc/devel/release.html#go1.10).
 

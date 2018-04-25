@@ -59,7 +59,7 @@ var etcdFields = []string{
 	"InitialCorruptCheck",
 
 	"Logger",
-	"LogOutput",
+	"LogOutputs",
 	"Debug",
 }
 
@@ -167,7 +167,7 @@ func (e *Etcd) EmbedConfig() (cfg *embed.Config, err error) {
 	cfg.ExperimentalInitialCorruptCheck = e.InitialCorruptCheck
 
 	cfg.Logger = e.Logger
-	cfg.LogOutput = e.LogOutput
+	cfg.LogOutputs = e.LogOutputs
 	cfg.Debug = e.Debug
 
 	return cfg, nil

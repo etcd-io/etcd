@@ -16,6 +16,7 @@ package embed
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -23,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -41,6 +43,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -260,26 +263,39 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// logger logs server-side operations. The default is nil,
-	// and "setupLogging" must be called before starting server.
-	// Do not set logger directly.
-	loggerMu     *sync.RWMutex
-	logger       *zap.Logger
-	loggerConfig zap.Config
-
 	// Logger is logger options: "zap", "capnslog".
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
 
-	// LogOutput is either:
+	// DeprecatedLogOutput is to be deprecated in v3.5.
+	// Just here for safe migration in v3.4.
+	DeprecatedLogOutput []string `json:"log-output"`
+
+	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
 	//  - "stdout" as os.Stdout,
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
-	LogOutput []string `json:"log-output"`
+	LogOutputs []string `json:"log-outputs"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
+
+	// logger logs server-side operations. The default is nil,
+	// and "setupLogging" must be called before starting server.
+	// Do not set logger directly.
+	loggerMu *sync.RWMutex
+	logger   *zap.Logger
+
+	// loggerConfig is server logger configuration for Raft logger.
+	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
+	loggerConfig *zap.Config
+	// loggerCore is "zapcore.Core" for raft logger.
+	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
+	loggerCore        zapcore.Core
+	loggerWriteSyncer zapcore.WriteSyncer
+
+	// TO BE DEPRECATED
 
 	// LogPkgLevels is being deprecated in v3.5.
 	// Only valid if "logger" option is "capnslog".
@@ -358,12 +374,13 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:     new(sync.RWMutex),
-		logger:       nil,
-		Logger:       "capnslog",
-		LogOutput:    []string{DefaultLogOutput},
-		Debug:        false,
-		LogPkgLevels: "",
+		loggerMu:            new(sync.RWMutex),
+		logger:              nil,
+		Logger:              "capnslog",
+		DeprecatedLogOutput: []string{DefaultLogOutput},
+		LogOutputs:          []string{DefaultLogOutput},
+		Debug:               false,
+		LogPkgLevels:        "",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -396,6 +413,34 @@ var grpcLogOnce = new(sync.Once)
 // setupLogging initializes etcd logging.
 // Must be called after flag parsing or finishing configuring embed.Config.
 func (cfg *Config) setupLogging() error {
+	// handle "DeprecatedLogOutput" in v3.4
+	// TODO: remove "DeprecatedLogOutput" in v3.5
+	len1 := len(cfg.DeprecatedLogOutput)
+	len2 := len(cfg.LogOutputs)
+	if len1 != len2 {
+		switch {
+		case len1 > len2: // deprecate "log-output" flag is used
+			fmt.Fprintln(os.Stderr, "'--log-output' flag has been deprecated! Please use '--log-outputs'!")
+			cfg.LogOutputs = cfg.DeprecatedLogOutput
+		case len1 < len2: // "--log-outputs" flag has been set with multiple writers
+			cfg.DeprecatedLogOutput = []string{}
+		}
+	} else {
+		if len1 > 1 {
+			return errors.New("both '--log-output' and '--log-outputs' are set; only set '--log-outputs'")
+		}
+		if len1 < 1 {
+			return errors.New("either '--log-output' or '--log-outputs' flag must be set")
+		}
+		if reflect.DeepEqual(cfg.DeprecatedLogOutput, cfg.LogOutputs) && cfg.DeprecatedLogOutput[0] != DefaultLogOutput {
+			return fmt.Errorf("'--log-output=%q' and '--log-outputs=%q' are incompatible; only set --log-outputs", cfg.DeprecatedLogOutput, cfg.LogOutputs)
+		}
+		if !reflect.DeepEqual(cfg.DeprecatedLogOutput, []string{DefaultLogOutput}) {
+			fmt.Fprintf(os.Stderr, "Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
+			fmt.Fprintln(os.Stderr, "Please use '--log-outputs' flag")
+		}
+	}
+
 	switch cfg.Logger {
 	case "capnslog": // TODO: deprecate this in v3.5
 		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
@@ -423,14 +468,14 @@ func (cfg *Config) setupLogging() error {
 			repoLog.SetLogLevel(settings)
 		}
 
-		if len(cfg.LogOutput) != 1 {
-			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutput)
+		if len(cfg.LogOutputs) != 1 {
+			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutputs)
 			os.Exit(1)
 		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
 		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		output := cfg.LogOutput[0]
+		output := cfg.LogOutputs[0]
 		switch output {
 		case "stdout":
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
@@ -442,11 +487,11 @@ func (cfg *Config) setupLogging() error {
 		}
 
 	case "zap":
-		if len(cfg.LogOutput) == 0 {
-			cfg.LogOutput = []string{DefaultLogOutput}
+		if len(cfg.LogOutputs) == 0 {
+			cfg.LogOutputs = []string{DefaultLogOutput}
 		}
-		if len(cfg.LogOutput) > 1 {
-			for _, v := range cfg.LogOutput {
+		if len(cfg.LogOutputs) > 1 {
+			for _, v := range cfg.LogOutputs {
 				if v == DefaultLogOutput {
 					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
 				}
@@ -468,19 +513,17 @@ func (cfg *Config) setupLogging() error {
 			ErrorOutputPaths: make([]string, 0),
 		}
 		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
-		for _, v := range cfg.LogOutput {
+		isJournald := false
+		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
 				if syscall.Getppid() == 1 {
 					// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 					// where "NewDefaultFormatter" returns "NewJournaldFormatter"
-					// when syscall.Getppid() == 1, specify 'stdout' or 'stderr' to
-					// skip journald logging even when running under systemd
-					// TODO: capnlog.NewJournaldFormatter()
-					fmt.Println("running under init, which may be systemd!")
-					outputPaths["stderr"] = struct{}{}
-					errOutputPaths["stderr"] = struct{}{}
-					continue
+					// specify 'stdout' or 'stderr' to override this redirects
+					// when syscall.Getppid() == 1
+					isJournald = true
+					break
 				}
 
 				outputPaths["stderr"] = struct{}{}
@@ -499,38 +542,66 @@ func (cfg *Config) setupLogging() error {
 				errOutputPaths[v] = struct{}{}
 			}
 		}
-		for v := range outputPaths {
-			lcfg.OutputPaths = append(lcfg.OutputPaths, v)
-		}
-		for v := range errOutputPaths {
-			lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
-		}
-		sort.Strings(lcfg.OutputPaths)
-		sort.Strings(lcfg.ErrorOutputPaths)
 
-		if cfg.Debug {
-			lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-			grpc.EnableTracing = true
-		}
-
-		var err error
-		cfg.logger, err = lcfg.Build()
-		if err != nil {
-			return err
-		}
-		cfg.loggerConfig = lcfg
-
-		grpcLogOnce.Do(func() {
-			// debug true, enable info, warning, error
-			// debug false, only discard info
-			var gl grpclog.LoggerV2
-			gl, err = logutil.NewGRPCLoggerV2(lcfg)
-			if err == nil {
-				grpclog.SetLoggerV2(gl)
+		if !isJournald {
+			for v := range outputPaths {
+				lcfg.OutputPaths = append(lcfg.OutputPaths, v)
 			}
-		})
-		if err != nil {
-			return err
+			for v := range errOutputPaths {
+				lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
+			}
+			sort.Strings(lcfg.OutputPaths)
+			sort.Strings(lcfg.ErrorOutputPaths)
+
+			if cfg.Debug {
+				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+				grpc.EnableTracing = true
+			}
+
+			var err error
+			cfg.logger, err = lcfg.Build()
+			if err != nil {
+				return err
+			}
+
+			cfg.loggerConfig = &lcfg
+			cfg.loggerCore = nil
+			cfg.loggerWriteSyncer = nil
+
+			grpcLogOnce.Do(func() {
+				// debug true, enable info, warning, error
+				// debug false, only discard info
+				var gl grpclog.LoggerV2
+				gl, err = logutil.NewGRPCLoggerV2(lcfg)
+				if err == nil {
+					grpclog.SetLoggerV2(gl)
+				}
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			// use stderr as fallback
+			syncer := getZapWriteSyncer()
+			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
+			if cfg.Debug {
+				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
+				grpc.EnableTracing = true
+			}
+			cr := zapcore.NewCore(
+				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+				syncer,
+				lvl,
+			)
+			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+
+			cfg.loggerConfig = nil
+			cfg.loggerCore = cr
+			cfg.loggerWriteSyncer = syncer
+
+			grpcLogOnce.Do(func() {
+				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+			})
 		}
 
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {

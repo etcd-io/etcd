@@ -1,3 +1,5 @@
+
+
 ## [v3.1.14](https://github.com/coreos/etcd/releases/tag/v3.1.14) (2018-04-24)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes.
@@ -6,7 +8,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and
 
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
@@ -17,6 +19,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and
   - Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make tradeoffs by configuring `--initial-election-tick-advance` at the cost of slow initial bootstrap.
   - If single-node, it advances ticks regardless.
   - Address [disruptive rejoining follower node](https://github.com/coreos/etcd/issues/9333).
+
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 ## [v3.1.13](https://github.com/coreos/etcd/releases/tag/v3.1.13) (2018-03-29)

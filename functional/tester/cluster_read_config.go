@@ -322,10 +322,10 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 				clus.Members[i].ClientCertData = string(data)
 			}
 
-			if len(mem.Etcd.LogOutput) == 0 {
-				return nil, fmt.Errorf("mem.Etcd.LogOutput cannot be empty")
+			if len(mem.Etcd.LogOutputs) == 0 {
+				return nil, fmt.Errorf("mem.Etcd.LogOutputs cannot be empty")
 			}
-			for _, v := range mem.Etcd.LogOutput {
+			for _, v := range mem.Etcd.LogOutputs {
 				switch v {
 				case "stderr", "stdout", "/dev/null", "default":
 				default:

@@ -468,9 +468,13 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	}
 	if cfg.Logger != nil {
 		// called after capnslog setting in "init" function
-		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
-		if err != nil {
-			log.Fatalf("cannot create raft logger %v", err)
+		if cfg.LoggerConfig != nil {
+			c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+			if err != nil {
+				log.Fatalf("cannot create raft logger %v", err)
+			}
+		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
+			c.Logger = logutil.NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
 		}
 	}
 
@@ -519,9 +523,13 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 	if cfg.Logger != nil {
 		// called after capnslog setting in "init" function
 		var err error
-		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
-		if err != nil {
-			log.Fatalf("cannot create raft logger %v", err)
+		if cfg.LoggerConfig != nil {
+			c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+			if err != nil {
+				log.Fatalf("cannot create raft logger %v", err)
+			}
+		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
+			c.Logger = logutil.NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
 		}
 	}
 
@@ -611,9 +619,13 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 	}
 	if cfg.Logger != nil {
 		// called after capnslog setting in "init" function
-		c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
-		if err != nil {
-			log.Fatalf("cannot create raft logger %v", err)
+		if cfg.LoggerConfig != nil {
+			c.Logger, err = logutil.NewRaftLogger(cfg.LoggerConfig)
+			if err != nil {
+				log.Fatalf("cannot create raft logger %v", err)
+			}
+		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
+			c.Logger = logutil.NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer)
 		}
 	}
 

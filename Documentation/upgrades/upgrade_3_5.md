@@ -1,8 +1,8 @@
-## Upgrade etcd from 3.3 to 3.4
+## Upgrade etcd from 3.4 to 3.5
 
-In the general case, upgrading from etcd 3.3 to 3.4 can be a zero-downtime, rolling upgrade:
- - one by one, stop the etcd v3.3 processes and replace them with etcd v3.4 processes
- - after running all v3.4 processes, new features in v3.4 are available to the cluster
+In the general case, upgrading from etcd 3.4 to 3.5 can be a zero-downtime, rolling upgrade:
+ - one by one, stop the etcd v3.4 processes and replace them with etcd v3.5 processes
+ - after running all v3.5 processes, new features in v3.5 are available to the cluster
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
@@ -10,126 +10,24 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 **NOTE:** When [migrating from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
 
-Highlighted breaking changes in 3.4.
+Highlighted breaking changes in 3.5.
 
-#### Change in `etcd` flags
-
-`--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
-
-```diff
--etcd --ca-file ca-client.crt
-+etcd --trusted-ca-file ca-client.crt
-```
-
-```diff
--etcd --peer-ca-file ca-peer.crt
-+etcd --peer-trusted-ca-file ca-peer.crt
-```
+#### Deprecated in `etcd --log-output`
 
 Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624)  to support multiple log outputs.
 
-**`etcd --log-output`** will be deprecated in v3.5.
+**`etcd --log-output`** is deprecated in v3.5.
 
 ```diff
--etcd --log-output stderr
-+etcd --log-outputs stderr,a.log
-```
-
-#### Change in `pkg/transport`
-
-Deprecated `pkg/transport.TLSInfo.CAFile` field.
-
-```diff
-import "github.com/coreos/etcd/pkg/transport"
-
-tlsInfo := transport.TLSInfo{
-    CertFile: "/tmp/test-certs/test.pem",
-    KeyFile: "/tmp/test-certs/test-key.pem",
--   CAFile: "/tmp/test-certs/trusted-ca.pem",
-+   TrustedCAFile: "/tmp/test-certs/trusted-ca.pem",
-}
-tlsConfig, err := tlsInfo.ClientConfig()
-if err != nil {
-    panic(err)
-}
-```
-
-#### Change in `wal`
-
-Changed `wal` function signatures to support structured logger.
-
-```diff
-import "github.com/coreos/etcd/wal"
-+import "go.uber.org/zap"
-
-+lg, _ = zap.NewProduction()
-
--wal.Open(dirpath, snap)
-+wal.Open(lg, dirpath, snap)
-
--wal.OpenForRead(dirpath, snap)
-+wal.OpenForRead(lg, dirpath, snap)
-
--wal.Repair(dirpath)
-+wal.Repair(lg, dirpath)
-
--wal.Create(dirpath, metadata)
-+wal.Create(lg, dirpath, metadata)
-```
-
-#### Change in `embed.Etcd`
-
-`embed.Config.SetupLogging` has been removed in order to prevent wrong logging configuration, and now set up automatically.
-
-```diff
-import "github.com/coreos/etcd/embed"
-
-cfg := &embed.Config{Debug: false}
--cfg.SetupLogging()
-```
-
-Renamed [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. And changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
-
-```diff
-import "github.com/coreos/etcd/embed"
-
-cfg := &embed.Config{Debug: false}
--cfg.LogOutput = "stderr"
-+cfg.LogOutputs = []string{"stderr"}
-```
-
-#### Change in `etcd --log-output` (now `--log-outputs`)
-
-Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624)  to support multiple log outputs.
-
-**`etcd --log-output`** will be deprecated in v3.5.
-
-```diff
--etcd --log-output stderr
-+etcd --log-outputs stderr,a.log
-```
-
-```diff
- # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
--log-output: [default]
-+log-outputs: [default]
-```
-
-#### Change in `etcd --config-file`
-
-Now that `log-outputs` (old field name `log-output`) accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type as below:
-
-```diff
- # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
--log-output: default
-+log-outputs: [default]
+-$ etcd --log-output stderr
++$ etcd --log-outputs stderr,a.log
 ```
 
 ### Server upgrade checklists
 
 #### Upgrade requirements
 
-To upgrade an existing etcd deployment to 3.4, the running cluster must be 3.3 or greater. If it's before 3.3, please [upgrade to 3.3](upgrade_3_3.md) before upgrading to 3.4.
+To upgrade an existing etcd deployment to 3.5, the running cluster must be 3.4 or greater. If it's before 3.4, please [upgrade to 3.4](upgrade_3_3.md) before upgrading to 3.5.
 
 Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. Check the health of the cluster by using the `etcdctl endpoint health` command before proceeding.
 
@@ -141,7 +39,7 @@ Before beginning, [backup the etcd data](../op-guide/maintenance.md#snapshot-bac
 
 #### Mixed versions
 
-While upgrading, an etcd cluster supports mixed versions of etcd members, and operates with the protocol of the lowest common version. The cluster is only considered upgraded once all of its members are upgraded to version 3.4. Internally, etcd members negotiate with each other to determine the overall cluster version, which controls the reported version and the supported features.
+While upgrading, an etcd cluster supports mixed versions of etcd members, and operates with the protocol of the lowest common version. The cluster is only considered upgraded once all of its members are upgraded to version 3.5. Internally, etcd members negotiate with each other to determine the overall cluster version, which controls the reported version and the supported features.
 
 #### Limitations
 
@@ -153,17 +51,17 @@ For a much larger total data size, 100MB or more , this one-time process might t
 
 #### Downgrade
 
-If all members have been upgraded to v3.4, the cluster will be upgraded to v3.4, and downgrade from this completed state is **not possible**. If any single member is still v3.3, however, the cluster and its operations remains "v3.3", and it is possible from this mixed cluster state to return to using a v3.3 etcd binary on all members.
+If all members have been upgraded to v3.5, the cluster will be upgraded to v3.5, and downgrade from this completed state is **not possible**. If any single member is still v3.4, however, the cluster and its operations remains "v3.4", and it is possible from this mixed cluster state to return to using a v3.4 etcd binary on all members.
 
 Please [backup the data directory](../op-guide/maintenance.md#snapshot-backup) of all etcd members to make downgrading the cluster possible even after it has been completely upgraded.
 
 ### Upgrade procedure
 
-This example shows how to upgrade a 3-member v3.3 ectd cluster running on a local machine.
+This example shows how to upgrade a 3-member v3.4 ectd cluster running on a local machine.
 
 #### 1. Check upgrade requirements
 
-Is the cluster healthy and running v3.3.x?
+Is the cluster healthy and running v3.4.x?
 
 ```
 $ ETCDCTL_API=3 etcdctl endpoint health --endpoints=localhost:2379,localhost:22379,localhost:32379
@@ -172,7 +70,7 @@ localhost:22379 is healthy: successfully committed proposal: took = 8.540064ms
 localhost:32379 is healthy: successfully committed proposal: took = 8.763432ms
 
 $ curl http://localhost:2379/version
-{"etcdserver":"3.3.0","etcdcluster":"3.3.0"}
+{"etcdserver":"3.4.0","etcdcluster":"3.4.0"}
 ```
 
 #### 2. Stop the existing etcd process
@@ -203,15 +101,15 @@ It's a good idea at this point to [backup the etcd data](../op-guide/maintenance
 $ etcdctl snapshot save backup.db
 ```
 
-#### 3. Drop-in etcd v3.4 binary and start the new etcd process
+#### 3. Drop-in etcd v3.5 binary and start the new etcd process
 
-The new v3.4 etcd will publish its information to the cluster:
+The new v3.5 etcd will publish its information to the cluster:
 
 ```
 14:14:25.363225 I | etcdserver: published {Name:s1 ClientURLs:[http://localhost:2379]} to cluster a9ededbffcb1b1f1
 ```
 
-Verify that each member, and then the entire cluster, becomes healthy with the new v3.4 etcd binary:
+Verify that each member, and then the entire cluster, becomes healthy with the new v3.5 etcd binary:
 
 ```
 $ ETCDCTL_API=3 /etcdctl endpoint health --endpoints=localhost:2379,localhost:22379,localhost:32379
@@ -220,25 +118,25 @@ localhost:32379 is healthy: successfully committed proposal: took = 7.321771ms
 localhost:2379 is healthy: successfully committed proposal: took = 10.629901ms
 ```
 
-Upgraded members will log warnings like the following until the entire cluster is upgraded. This is expected and will cease after all etcd cluster members are upgraded to v3.4:
+Upgraded members will log warnings like the following until the entire cluster is upgraded. This is expected and will cease after all etcd cluster members are upgraded to v3.5:
 
 ```
-14:15:17.071804 W | etcdserver: member c89feb932daef420 has a higher version 3.4.0
-14:15:21.073110 W | etcdserver: the local etcd version 3.3.0 is not up-to-date
-14:15:21.073142 W | etcdserver: member 6d4f535bae3ab960 has a higher version 3.4.0
-14:15:21.073157 W | etcdserver: the local etcd version 3.3.0 is not up-to-date
-14:15:21.073164 W | etcdserver: member c89feb932daef420 has a higher version 3.4.0
+14:15:17.071804 W | etcdserver: member c89feb932daef420 has a higher version 3.5.0
+14:15:21.073110 W | etcdserver: the local etcd version 3.4.0 is not up-to-date
+14:15:21.073142 W | etcdserver: member 6d4f535bae3ab960 has a higher version 3.5.0
+14:15:21.073157 W | etcdserver: the local etcd version 3.4.0 is not up-to-date
+14:15:21.073164 W | etcdserver: member c89feb932daef420 has a higher version 3.5.0
 ```
 
 #### 4. Repeat step 2 to step 3 for all other members
 
 #### 5. Finish
 
-When all members are upgraded, the cluster will report upgrading to 3.4 successfully:
+When all members are upgraded, the cluster will report upgrading to 3.5 successfully:
 
 ```
-14:15:54.536901 N | etcdserver/membership: updated the cluster version from 3.3 to 3.4
-14:15:54.537035 I | etcdserver/api: enabled capabilities for version 3.4
+14:15:54.536901 N | etcdserver/membership: updated the cluster version from 3.4 to 3.5
+14:15:54.537035 I | etcdserver/api: enabled capabilities for version 3.5
 ```
 
 ```

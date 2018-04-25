@@ -190,6 +190,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PreVote:                    cfg.PreVote,
 		Logger:                     cfg.logger,
 		LoggerConfig:               cfg.loggerConfig,
+		LoggerCore:                 cfg.loggerCore,
+		LoggerWriteSyncer:          cfg.loggerWriteSyncer,
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
 	}

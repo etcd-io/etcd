@@ -57,9 +57,9 @@ func TestEtcd(t *testing.T) {
 		PreVote:             true,
 		InitialCorruptCheck: true,
 
-		Logger:    "zap",
-		LogOutput: []string{"/tmp/etcd-functional-1/etcd.log"},
-		Debug:     true,
+		Logger:     "zap",
+		LogOutputs: []string{"/tmp/etcd-functional-1/etcd.log"},
+		Debug:      true,
 	}
 
 	exps := []string{
@@ -84,7 +84,7 @@ func TestEtcd(t *testing.T) {
 		"--pre-vote=true",
 		"--experimental-initial-corrupt-check=true",
 		"--logger=zap",
-		"--log-output=/tmp/etcd-functional-1/etcd.log",
+		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
 		"--debug=true",
 	}
 	fs := e.Flags()
@@ -133,7 +133,7 @@ func TestEtcd(t *testing.T) {
 	expc.PreVote = true
 	expc.ExperimentalInitialCorruptCheck = true
 	expc.Logger = "zap"
-	expc.LogOutput = []string{"/tmp/etcd-functional-1/etcd.log"}
+	expc.LogOutputs = []string{"/tmp/etcd-functional-1/etcd.log"}
 	expc.Debug = true
 	cfg, err := e.EmbedConfig()
 	if err != nil {

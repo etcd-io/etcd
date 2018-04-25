@@ -34,7 +34,7 @@ func TestConfigFileOtherFields(t *testing.T) {
 		PeerSecurityCfgFile   securityConfig `json:"peer-transport-security"`
 		ForceNewCluster       bool           `json:"force-new-cluster"`
 		Logger                string         `json:"logger"`
-		LogOutputs            []string       `json:"log-output"`
+		LogOutputs            []string       `json:"log-outputs"`
 		Debug                 bool           `json:"debug"`
 	}{
 		ctls,
@@ -157,7 +157,7 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 func TestAutoCompactionModeInvalid(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Logger = "zap"
-	cfg.LogOutput = []string{"/dev/null"}
+	cfg.LogOutputs = []string{"/dev/null"}
 	cfg.Debug = false
 	cfg.AutoCompactionMode = "period"
 	err := cfg.Validate()
