@@ -47,7 +47,7 @@ spec:
     - containerPort: 2380
       name: server
       protocol: TCP
-  restartPolicy: Never
+  restartPolicy: Always
 
 ---
 
@@ -106,7 +106,7 @@ spec:
     - containerPort: 2380
       name: server
       protocol: TCP
-  restartPolicy: Never
+  restartPolicy: Always
 
 ---
 
@@ -165,7 +165,7 @@ spec:
     - containerPort: 2380
       name: server
       protocol: TCP
-  restartPolicy: Never
+  restartPolicy: Always
 
 ---
 
