@@ -145,11 +145,13 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
 - [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
   - `--corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- [`--enable-v2v3`](TODO) flag is now stable (`--experimental-enable-v2v3` is deprecated).
+- [`--enable-v2v3`](TODO) flag is now stable.
+  - `--experimental-enable-v2v3` is deprecated.
   - `--enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
   - `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
   - `--enable-v2=false --enable-v2v3=''` to disable v2 API server.
   - `--enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - Automatically [create parent directory if it does not exist](https://github.com/coreos/etcd/pull/9626) (fix [issue#9609](https://github.com/coreos/etcd/issues/9609)).
   - v4.0 will configure `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
@@ -172,12 +174,12 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
-- Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
 - Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
 - Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
+- Add [`embed.Config.Logger`](https://github.com/coreos/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
 
