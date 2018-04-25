@@ -160,7 +160,7 @@ Profiling:
 Logging:
   --logger 'capnslog'
     Specify 'zap' for structured logging or 'capnslog'.
-  --log-output 'default'
+  --log-outputs 'default'
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
   --debug 'false'
     Enable debug-level logging for etcd.

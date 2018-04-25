@@ -16,6 +16,7 @@ package embed
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -23,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -265,13 +267,17 @@ type Config struct {
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
 
+	// DeprecatedLogOutput is to be deprecated in v3.5.
+	// Just here for safe migration in v3.4.
+	DeprecatedLogOutput []string `json:"log-output"`
+
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
 	//  - "stdout" as os.Stdout,
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
-	LogOutputs []string `json:"log-output"`
+	LogOutputs []string `json:"log-outputs"`
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
@@ -368,12 +374,13 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:     new(sync.RWMutex),
-		logger:       nil,
-		Logger:       "capnslog",
-		LogOutputs:   []string{DefaultLogOutput},
-		Debug:        false,
-		LogPkgLevels: "",
+		loggerMu:            new(sync.RWMutex),
+		logger:              nil,
+		Logger:              "capnslog",
+		DeprecatedLogOutput: []string{DefaultLogOutput},
+		LogOutputs:          []string{DefaultLogOutput},
+		Debug:               false,
+		LogPkgLevels:        "",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -406,6 +413,34 @@ var grpcLogOnce = new(sync.Once)
 // setupLogging initializes etcd logging.
 // Must be called after flag parsing or finishing configuring embed.Config.
 func (cfg *Config) setupLogging() error {
+	// handle "DeprecatedLogOutput" in v3.4
+	// TODO: remove "DeprecatedLogOutput" in v3.5
+	len1 := len(cfg.DeprecatedLogOutput)
+	len2 := len(cfg.LogOutputs)
+	if len1 != len2 {
+		switch {
+		case len1 > len2: // deprecate "log-output" flag is used
+			fmt.Fprintln(os.Stderr, "'--log-output' flag has been deprecated! Please use '--log-outputs'!")
+			cfg.LogOutputs = cfg.DeprecatedLogOutput
+		case len1 < len2: // "--log-outputs" flag has been set with multiple writers
+			cfg.DeprecatedLogOutput = []string{}
+		}
+	} else {
+		if len1 > 1 {
+			return errors.New("both '--log-output' and '--log-outputs' are set; only set '--log-outputs'")
+		}
+		if len1 < 1 {
+			return errors.New("either '--log-output' or '--log-outputs' flag must be set")
+		}
+		if reflect.DeepEqual(cfg.DeprecatedLogOutput, cfg.LogOutputs) && cfg.DeprecatedLogOutput[0] != DefaultLogOutput {
+			return fmt.Errorf("'--log-output=%q' and '--log-outputs=%q' are incompatible; only set --log-outputs", cfg.DeprecatedLogOutput, cfg.LogOutputs)
+		}
+		if !reflect.DeepEqual(cfg.DeprecatedLogOutput, []string{DefaultLogOutput}) {
+			fmt.Fprintf(os.Stderr, "Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
+			fmt.Fprintln(os.Stderr, "Please use '--log-outputs' flag")
+		}
+	}
+
 	switch cfg.Logger {
 	case "capnslog": // TODO: deprecate this in v3.5
 		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
