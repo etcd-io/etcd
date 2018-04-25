@@ -145,8 +145,21 @@ func TestSet(t *testing.T) {
 	testutil.AssertEqual(t, *e.PrevNode.Value, "bar")
 	testutil.AssertEqual(t, e.PrevNode.ModifiedIndex, uint64(2))
 
-	// Set /dir as a directory
+	// Set /a/b/c/d="efg"
 	eidx = 4
+	e, err = s.Set("/a/b/c/d", false, "efg", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	testutil.AssertNil(t, err)
+	testutil.AssertEqual(t, e.EtcdIndex, eidx)
+	testutil.AssertEqual(t, e.Node.Key, "/a/b/c/d")
+	testutil.AssertFalse(t, e.Node.Dir)
+	testutil.AssertEqual(t, *e.Node.Value, "efg")
+	testutil.AssertNil(t, e.Node.Nodes)
+	testutil.AssertNil(t, e.Node.Expiration)
+	testutil.AssertEqual(t, e.Node.TTL, int64(0))
+	testutil.AssertEqual(t, e.Node.ModifiedIndex, uint64(4))
+
+	// Set /dir as a directory
+	eidx = 5
 	e, err = s.Set("/dir", true, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
@@ -157,7 +170,7 @@ func TestSet(t *testing.T) {
 	testutil.AssertNil(t, e.Node.Nodes)
 	testutil.AssertNil(t, e.Node.Expiration)
 	testutil.AssertEqual(t, e.Node.TTL, int64(0))
-	testutil.AssertEqual(t, e.Node.ModifiedIndex, uint64(4))
+	testutil.AssertEqual(t, e.Node.ModifiedIndex, uint64(5))
 }
 
 // Ensure that the store can create a new key if it doesn't already exist.
