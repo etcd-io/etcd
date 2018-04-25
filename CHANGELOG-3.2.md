@@ -29,6 +29,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and
   - If single-node, it advances ticks regardless.
   - Address [disruptive rejoining follower node](https://github.com/coreos/etcd/issues/9333).
 
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
+
 
 ## [v3.2.18](https://github.com/coreos/etcd/releases/tag/v3.2.18) (2018-03-29)
 

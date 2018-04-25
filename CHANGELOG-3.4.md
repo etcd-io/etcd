@@ -1,6 +1,6 @@
 
 
-## v3.4.0 (TBD 2018-06-01)
+## v3.4.0 (TBD 2018-07-01)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
@@ -56,6 +56,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/coreos/etcd/pull/9433).
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
+- Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
+  - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
+- Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+- Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+  - Now that `--log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
+  - Previously, `--config-file etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/coreos/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
@@ -72,11 +78,6 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously, `OpenForRead(dirpath string, snap walpb.Snapshot) (*WAL, error)`, now `OpenForRead(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, error)`.
   - Previously, `Repair(dirpath string) bool`, now `Repair(lg *zap.Logger, dirpath string) bool`.
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
-- Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
-  - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutput`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
-- Change [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
-  - Now that `--log-output` accepts multiple writers, etcd configuration YAML file `log-output` field must be changed to `[]string` type.
-  - Previously, `--config-file etcd.config.yaml` can have `log-output: default` field, now must be `log-output: [default]`.
 - Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
 - Move `"github.com/coreos/etcd/snap"` to [`"github.com/coreos/etcd/raftsnap"`](https://github.com/coreos/etcd/pull/9211).
 - Move `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
@@ -155,11 +156,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 - Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
   - e.g. `--logger=capnslog --log-output=default` is the default setting and same as previous etcd server logging format.
-  - TODO: `--logger=zap` is experimental, and journald logging may not work when etcd runs as PID 1.
-  - e.g. `--logger=zap --log-output=/tmp/test.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `/tmp/test.log`.
   - e.g. `--logger=zap --log-output=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (detect systemd journald TODO).
-  - e.g. `--logger=zap --log-output=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr` (bypass journald TODO).
-  - e.g. `--logger=zap --log-output=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` (bypass journald TODO).
+  - e.g. If etcd parent process ID (`ppid`) is 1 (e.g. run with systemd), `--logger=zap --log-output=default` will [redirect server logs to local systemd journal](https://github.com/coreos/etcd/pull/9624) in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig). And if write to journald fails, it writes to `os.Stderr` as a fallback.
+  - e.g. `--logger=zap --log-output=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`. Use this to override journald log redirects.
+  - e.g. `--logger=zap --log-output=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` Use this to override journald log redirects.
+  - e.g. `--logger=zap --log-output=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
   - e.g. `--logger=zap --log-output=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - e.g. `--logger=zap --log-output=/dev/null` will discard all server logs.
 
