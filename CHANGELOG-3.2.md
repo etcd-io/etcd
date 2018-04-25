@@ -17,7 +17,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and
   - However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/coreos/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
   - Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
@@ -153,7 +153,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 - Fix [error message of `Revision` compactor](https://github.com/coreos/etcd/pull/8999) in server-side.
 
-### Added: `clientv3`
+### `clientv3`
 
 - Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/coreos/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
   - Fix [exceeded response size limit error in client-side](https://github.com/coreos/etcd/issues/9043).
@@ -299,7 +299,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6) and [
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
 
-### Added: v3 `etcdctl`
+### v3 `etcdctl`
 
 - Return non-zero exit code on unhealthy `endpoint health`.
 
@@ -457,7 +457,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Logging, monitoring
   - Server warns large snapshot operations.
 
-### Added: `etcd`
+### `etcd`
 
 - Add `--enable-v2` flag to enable v2 API server.
   - `--enable-v2=true` by default.
@@ -472,14 +472,14 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If compaction succeeds or requested revision has already been compacted, it resets period timer and removes used compacted revision from historical revision records (e.g. start next revision collect and compaction from previously collected revisions).
   - If compaction fails, it retries in 5 minutes.
 
-### Added: `clientv3`
+### `clientv3`
 
 - STM prefetching.
 - Add namespace feature.
 - Add `ErrOldCluster` with server version checking.
 - Translate `WithPrefix()` into `WithFromKey()` for empty key.
 
-### Added: v3 `etcdctl`
+### v3 `etcdctl`
 
 - Add `check perf` command.
 - Add `--from-key` flag to role grant-permission command.
@@ -489,13 +489,13 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 - Allow snapshot over 512MB.
 
-### Added: `grpc-proxy`
+### `grpc-proxy`
 
 - Proxy endpoint discovery.
 - Namespaces.
 - Coalesce lease requests.
 
-### Added: `gateway`
+### `gateway`
 
 - Support [DNS SRV priority](https://github.com/coreos/etcd/pull/7882) for [smart proxy routing](https://github.com/coreos/etcd/issues/4378).
 

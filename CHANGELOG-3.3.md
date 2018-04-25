@@ -17,7 +17,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
   - However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/coreos/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
   - Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
@@ -29,7 +29,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
   - If single-node, it advances ticks regardless.
   - Address [disruptive rejoining follower node](https://github.com/coreos/etcd/issues/9333).
 
-### Added: `embed`
+### Package `embed`
 
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
@@ -205,7 +205,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Provide user's role on [auth permission error](https://github.com/coreos/etcd/pull/8164).
 - Fix [auth store panic with disabled token](https://github.com/coreos/etcd/pull/8695).
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--experimental-initial-corrupt-check`](https://github.com/coreos/etcd/pull/8554) flag to [check cluster database hashes before serving client/peer traffic](https://github.com/coreos/etcd/issues/8313).
   - `--experimental-initial-corrupt-check=false` by default.
@@ -253,7 +253,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
   - etcd v3.4 will exit on this error.
 
-### Added: API
+### API
 
 - Support [ranges in transaction comparisons](https://github.com/coreos/etcd/pull/8025) for [disconnected linearized reads](https://github.com/coreos/etcd/issues/7924).
 - Add [nested transactions](https://github.com/coreos/etcd/pull/8102) to extend [proxy use cases](https://github.com/coreos/etcd/issues/7857).
@@ -261,7 +261,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [lease list](https://github.com/coreos/etcd/pull/8358).
 - Add [hash by revision](https://github.com/coreos/etcd/pull/8263) for [better corruption checking against boltdb](https://github.com/coreos/etcd/issues/8016).
 
-### Added: `clientv3`
+### `clientv3`
 
 - Add [health balancer](https://github.com/coreos/etcd/pull/8545) to fix [watch API hangs](https://github.com/coreos/etcd/issues/7247), improve [endpoint switch under network faults](https://github.com/coreos/etcd/issues/7941).
 - [Refactor balancer](https://github.com/coreos/etcd/pull/8840) and add [client-side keepalive pings](https://github.com/coreos/etcd/pull/8199) to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
@@ -285,7 +285,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Fix [`concurrency/stm` `Put` with serializable snapshot](https://github.com/coreos/etcd/pull/8439).
   - Use store revision from first fetch to resolve write conflicts instead of modified revision.
 
-### Added: v3 `etcdctl`
+### v3 `etcdctl`
 
 - Add [`--discovery-srv`](https://github.com/coreos/etcd/pull/8462) flag.
 - Add [`--keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
@@ -311,11 +311,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 - Handle [empty key permission](https://github.com/coreos/etcd/pull/8514) in `etcdctl`.
 
-### Added: v2 `etcdctl`
+### v2 `etcdctl`
 
 - Add [`backup --with-v3`](https://github.com/coreos/etcd/pull/8479) flag.
 
-### Added: `grpc-proxy`
+### `grpc-proxy`
 
 - Add [`grpc-proxy start --experimental-leasing-prefix`](https://github.com/coreos/etcd/pull/8341) flag.
   - For disconnected linearized reads.
@@ -336,7 +336,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Fix [KV API `PrevKv` flag handling](https://github.com/coreos/etcd/pull/8366).
 - Fix [KV API `KeysOnly` flag handling](https://github.com/coreos/etcd/pull/8552).
 
-### Added: gRPC gateway
+### gRPC gateway
 
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
   - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in v3.4.

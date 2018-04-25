@@ -8,7 +8,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and
 
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 
-### Added: `etcd`
+### `etcd`
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
