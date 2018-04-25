@@ -157,7 +157,7 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 func TestAutoCompactionModeInvalid(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Logger = "zap"
-	cfg.LogOutput = []string{"/dev/null"}
+	cfg.LogOutputs = []string{"/dev/null"}
 	cfg.Debug = false
 	cfg.AutoCompactionMode = "period"
 	err := cfg.Validate()

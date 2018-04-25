@@ -88,11 +88,11 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 // just archive the first file
 func (srv *Server) createEtcdLogFile() error {
 	var err error
-	srv.etcdLogFile, err = os.Create(srv.Member.Etcd.LogOutput[0])
+	srv.etcdLogFile, err = os.Create(srv.Member.Etcd.LogOutputs[0])
 	if err != nil {
 		return err
 	}
-	srv.lg.Info("created etcd log file", zap.String("path", srv.Member.Etcd.LogOutput[0]))
+	srv.lg.Info("created etcd log file", zap.String("path", srv.Member.Etcd.LogOutputs[0]))
 	return nil
 }
 
@@ -665,7 +665,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 	// TODO: support separate WAL directory
 	if err = archive(
 		srv.Member.BaseDir,
-		srv.Member.Etcd.LogOutput[0],
+		srv.Member.Etcd.LogOutputs[0],
 		srv.Member.Etcd.DataDir,
 	); err != nil {
 		return nil, err
