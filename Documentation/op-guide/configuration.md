@@ -317,7 +317,7 @@ The security flags help to [build a secure etcd cluster][security].
 + default: capnslog
 + env variable: ETCD_LOGGER
 
-### --log-output
+### --log-outputs
 + Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
 + default: default
 + env variable: ETCD_LOG_OUTPUT

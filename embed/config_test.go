@@ -34,7 +34,7 @@ func TestConfigFileOtherFields(t *testing.T) {
 		PeerSecurityCfgFile   securityConfig `json:"peer-transport-security"`
 		ForceNewCluster       bool           `json:"force-new-cluster"`
 		Logger                string         `json:"logger"`
-		LogOutputs            []string       `json:"log-output"`
+		LogOutputs            []string       `json:"log-outputs"`
 		Debug                 bool           `json:"debug"`
 	}{
 		ctls,
