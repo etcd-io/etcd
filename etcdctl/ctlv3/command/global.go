@@ -128,9 +128,11 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
 	} else {
-		// Enable logging for WARNING and ERROR since these levels include issues with
-		// connecting to the server, such as TLS misconfiguration.
-		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+		// WARNING logs contain important information like TLS misconfirugation, but spams
+		// too many routine connection disconnects to turn on by default.
+		//
+		// See https://github.com/coreos/etcd/pull/9623 for background
+		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 
 	cfg := &clientConfig{}
