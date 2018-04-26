@@ -21,11 +21,10 @@ import (
 	"os"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/coreos/etcd/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var (
@@ -91,7 +90,14 @@ func stripSchema(eps []string) []string {
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
-	srvs := discoverEndpoints(gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery)
+	var lg *zap.Logger
+	lg, err := zap.NewProduction()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	srvs := discoverEndpoints(lg, gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery)
 	if len(srvs.Endpoints) == 0 {
 		// no endpoints discovered, fall back to provided endpoints
 		srvs.Endpoints = gatewayEndpoints
@@ -113,13 +119,6 @@ func startGateway(cmd *cobra.Command, args []string) {
 
 	if len(srvs.Endpoints) == 0 {
 		fmt.Println("no endpoints found")
-		os.Exit(1)
-	}
-
-	var lg *zap.Logger
-	lg, err := zap.NewProduction()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
