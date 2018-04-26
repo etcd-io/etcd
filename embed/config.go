@@ -16,7 +16,6 @@ package embed
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -24,28 +23,22 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
-	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/flags"
-	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 )
 
 const (
@@ -278,6 +271,7 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
+
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
@@ -397,259 +391,6 @@ func logTLSHandshakeFailure(conn *tls.Conn, err error) {
 	} else {
 		plog.Infof("rejected connection from %q (error %q, ServerName %q)", remoteAddr, err.Error(), serverName)
 	}
-}
-
-// GetLogger returns the logger.
-func (cfg Config) GetLogger() *zap.Logger {
-	cfg.loggerMu.RLock()
-	l := cfg.logger
-	cfg.loggerMu.RUnlock()
-	return l
-}
-
-// for testing
-var grpcLogOnce = new(sync.Once)
-
-// setupLogging initializes etcd logging.
-// Must be called after flag parsing or finishing configuring embed.Config.
-func (cfg *Config) setupLogging() error {
-	// handle "DeprecatedLogOutput" in v3.4
-	// TODO: remove "DeprecatedLogOutput" in v3.5
-	len1 := len(cfg.DeprecatedLogOutput)
-	len2 := len(cfg.LogOutputs)
-	if len1 != len2 {
-		switch {
-		case len1 > len2: // deprecate "log-output" flag is used
-			fmt.Fprintln(os.Stderr, "'--log-output' flag has been deprecated! Please use '--log-outputs'!")
-			cfg.LogOutputs = cfg.DeprecatedLogOutput
-		case len1 < len2: // "--log-outputs" flag has been set with multiple writers
-			cfg.DeprecatedLogOutput = []string{}
-		}
-	} else {
-		if len1 > 1 {
-			return errors.New("both '--log-output' and '--log-outputs' are set; only set '--log-outputs'")
-		}
-		if len1 < 1 {
-			return errors.New("either '--log-output' or '--log-outputs' flag must be set")
-		}
-		if reflect.DeepEqual(cfg.DeprecatedLogOutput, cfg.LogOutputs) && cfg.DeprecatedLogOutput[0] != DefaultLogOutput {
-			return fmt.Errorf("'--log-output=%q' and '--log-outputs=%q' are incompatible; only set --log-outputs", cfg.DeprecatedLogOutput, cfg.LogOutputs)
-		}
-		if !reflect.DeepEqual(cfg.DeprecatedLogOutput, []string{DefaultLogOutput}) {
-			fmt.Fprintf(os.Stderr, "Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
-			fmt.Fprintln(os.Stderr, "Please use '--log-outputs' flag")
-		}
-	}
-
-	switch cfg.Logger {
-	case "capnslog": // TODO: deprecate this in v3.5
-		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-
-		if cfg.Debug {
-			capnslog.SetGlobalLogLevel(capnslog.DEBUG)
-			grpc.EnableTracing = true
-			// enable info, warning, error
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
-		} else {
-			capnslog.SetGlobalLogLevel(capnslog.INFO)
-			// only discard info
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
-		}
-
-		// TODO: deprecate with "capnslog"
-		if cfg.LogPkgLevels != "" {
-			repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
-			settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
-			if err != nil {
-				plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
-				return nil
-			}
-			repoLog.SetLogLevel(settings)
-		}
-
-		if len(cfg.LogOutputs) != 1 {
-			fmt.Printf("--logger=capnslog supports only 1 value in '--log-outputs', got %q\n", cfg.LogOutputs)
-			os.Exit(1)
-		}
-		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
-		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		output := cfg.LogOutputs[0]
-		switch output {
-		case "stdout":
-			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
-		case "stderr":
-			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
-		case DefaultLogOutput:
-		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, output, DefaultLogOutput)
-		}
-
-	case "zap":
-		if len(cfg.LogOutputs) == 0 {
-			cfg.LogOutputs = []string{DefaultLogOutput}
-		}
-		if len(cfg.LogOutputs) > 1 {
-			for _, v := range cfg.LogOutputs {
-				if v == DefaultLogOutput {
-					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
-				}
-			}
-		}
-
-		// TODO: use zapcore to support more features?
-		lcfg := zap.Config{
-			Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-			Development: false,
-			Sampling: &zap.SamplingConfig{
-				Initial:    100,
-				Thereafter: 100,
-			},
-			Encoding:      "json",
-			EncoderConfig: zap.NewProductionEncoderConfig(),
-
-			OutputPaths:      make([]string, 0),
-			ErrorOutputPaths: make([]string, 0),
-		}
-		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
-		isJournald := false
-		for _, v := range cfg.LogOutputs {
-			switch v {
-			case DefaultLogOutput:
-				if syscall.Getppid() == 1 {
-					// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-					// where "NewDefaultFormatter" returns "NewJournaldFormatter"
-					// specify 'stdout' or 'stderr' to override this redirects
-					// when syscall.Getppid() == 1
-					isJournald = true
-					break
-				}
-
-				outputPaths["stderr"] = struct{}{}
-				errOutputPaths["stderr"] = struct{}{}
-
-			case "stderr":
-				outputPaths["stderr"] = struct{}{}
-				errOutputPaths["stderr"] = struct{}{}
-
-			case "stdout":
-				outputPaths["stdout"] = struct{}{}
-				errOutputPaths["stdout"] = struct{}{}
-
-			default:
-				outputPaths[v] = struct{}{}
-				errOutputPaths[v] = struct{}{}
-			}
-		}
-
-		if !isJournald {
-			for v := range outputPaths {
-				lcfg.OutputPaths = append(lcfg.OutputPaths, v)
-			}
-			for v := range errOutputPaths {
-				lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
-			}
-			sort.Strings(lcfg.OutputPaths)
-			sort.Strings(lcfg.ErrorOutputPaths)
-
-			if cfg.Debug {
-				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-				grpc.EnableTracing = true
-			}
-
-			var err error
-			cfg.logger, err = lcfg.Build()
-			if err != nil {
-				return err
-			}
-
-			cfg.loggerConfig = &lcfg
-			cfg.loggerCore = nil
-			cfg.loggerWriteSyncer = nil
-
-			grpcLogOnce.Do(func() {
-				// debug true, enable info, warning, error
-				// debug false, only discard info
-				var gl grpclog.LoggerV2
-				gl, err = logutil.NewGRPCLoggerV2(lcfg)
-				if err == nil {
-					grpclog.SetLoggerV2(gl)
-				}
-			})
-			if err != nil {
-				return err
-			}
-		} else {
-			if len(cfg.LogOutputs) > 1 {
-				for _, v := range cfg.LogOutputs {
-					if v != DefaultLogOutput {
-						return fmt.Errorf("running as a systemd unit but other '--log-output' values (%q) are configured with 'default'; override 'default' value with something else", cfg.LogOutputs)
-					}
-				}
-			}
-
-			// use stderr as fallback
-			syncer := getZapWriteSyncer()
-			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
-			if cfg.Debug {
-				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
-				grpc.EnableTracing = true
-			}
-
-			// WARN: do not change field names in encoder config
-			// journald logging writer assumes field names of "level" and "caller"
-			cr := zapcore.NewCore(
-				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-				syncer,
-				lvl,
-			)
-			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
-
-			cfg.loggerConfig = nil
-			cfg.loggerCore = cr
-			cfg.loggerWriteSyncer = syncer
-
-			grpcLogOnce.Do(func() {
-				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
-			})
-		}
-
-		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
-			state := conn.ConnectionState()
-			remoteAddr := conn.RemoteAddr().String()
-			serverName := state.ServerName
-			if len(state.PeerCertificates) > 0 {
-				cert := state.PeerCertificates[0]
-				ips := make([]string, 0, len(cert.IPAddresses))
-				for i := range cert.IPAddresses {
-					ips[i] = cert.IPAddresses[i].String()
-				}
-				cfg.logger.Warn(
-					"rejected connection",
-					zap.String("remote-addr", remoteAddr),
-					zap.String("server-name", serverName),
-					zap.Strings("ip-addresses", ips),
-					zap.Strings("dns-names", cert.DNSNames),
-					zap.Error(err),
-				)
-			} else {
-				cfg.logger.Warn(
-					"rejected connection",
-					zap.String("remote-addr", remoteAddr),
-					zap.String("server-name", serverName),
-					zap.Error(err),
-				)
-			}
-		}
-		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-
-	default:
-		return fmt.Errorf("unknown logger option %q", cfg.Logger)
-	}
-
-	return nil
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -826,12 +567,13 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		// self's advertised peer URLs
 		urlsmap[cfg.Name] = cfg.APUrls
 		token = cfg.Durl
+
 	case cfg.DNSCluster != "":
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
 		lg := cfg.logger
 		if cerr != nil {
 			if lg != nil {
-				lg.Error("failed to resolve during SRV discovery", zap.Error(cerr))
+				lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
 			} else {
 				plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
 			}
@@ -856,6 +598,7 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 				return nil, "", fmt.Errorf("cannot find local etcd member %q in SRV records", cfg.Name)
 			}
 		}
+
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		urlsmap, err = types.NewURLsMap(cfg.InitialCluster)
@@ -873,15 +616,45 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	if cfg.DNSClusterServiceName != "" {
 		serviceNameSuffix = "-" + cfg.DNSClusterServiceName
 	}
-	// Use both etcd-server-ssl and etcd-server for discovery. Combine the results if both are available.
+
+	lg := cfg.GetLogger()
+
+	// Use both etcd-server-ssl and etcd-server for discovery.
+	// Combine the results if both are available.
 	clusterStrs, cerr = srv.GetCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
-	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}
+	if lg != nil {
+		lg.Info(
+			"get cluster for etcd-server-ssl SRV",
+			zap.String("service-scheme", "https"),
+			zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
+			zap.String("server-name", cfg.Name),
+			zap.String("discovery-srv", cfg.DNSCluster),
+			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+			zap.Strings("found-cluster", clusterStrs),
+			zap.Error(cerr),
+		)
+	}
+
+	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if httpCerr != nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
+	if lg != nil {
+		lg.Info(
+			"get cluster for etcd-server SRV",
+			zap.String("service-scheme", "http"),
+			zap.String("service-name", "etcd-server"+serviceNameSuffix),
+			zap.String("server-name", cfg.Name),
+			zap.String("discovery-srv", cfg.DNSCluster),
+			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+			zap.Strings("found-cluster", clusterStrs),
+			zap.Error(httpCerr),
+		)
+	}
+
 	return clusterStrs, cerr
 }
 

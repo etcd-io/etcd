@@ -20,9 +20,11 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/pkg/logutil"
+
 	"go.uber.org/zap/zapcore"
 )
 
+// use stderr as fallback
 func getZapWriteSyncer() zapcore.WriteSyncer {
 	return zapcore.AddSync(logutil.NewJournaldWriter(os.Stderr))
 }
