@@ -23,11 +23,14 @@ import (
 	"github.com/coreos/etcd/mvcc"
 
 	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 // Revision compacts the log by purging revisions older than
 // the configured reivison number. Compaction happens every 5 minutes.
 type Revision struct {
+	lg *zap.Logger
+
 	clock     clockwork.Clock
 	retention int64
 
@@ -41,75 +44,100 @@ type Revision struct {
 	paused bool
 }
 
-// NewRevision creates a new instance of Revisonal compactor that purges
+// newRevision creates a new instance of Revisonal compactor that purges
 // the log older than retention revisions from the current revision.
-func NewRevision(retention int64, rg RevGetter, c Compactable) *Revision {
-	return newRevision(clockwork.NewRealClock(), retention, rg, c)
-}
-
-func newRevision(clock clockwork.Clock, retention int64, rg RevGetter, c Compactable) *Revision {
-	t := &Revision{
+func newRevision(lg *zap.Logger, clock clockwork.Clock, retention int64, rg RevGetter, c Compactable) *Revision {
+	rc := &Revision{
+		lg:        lg,
 		clock:     clock,
 		retention: retention,
 		rg:        rg,
 		c:         c,
 	}
-	t.ctx, t.cancel = context.WithCancel(context.Background())
-	return t
+	rc.ctx, rc.cancel = context.WithCancel(context.Background())
+	return rc
 }
 
 const revInterval = 5 * time.Minute
 
 // Run runs revision-based compactor.
-func (t *Revision) Run() {
+func (rc *Revision) Run() {
 	prev := int64(0)
 	go func() {
 		for {
 			select {
-			case <-t.ctx.Done():
+			case <-rc.ctx.Done():
 				return
-			case <-t.clock.After(revInterval):
-				t.mu.Lock()
-				p := t.paused
-				t.mu.Unlock()
+			case <-rc.clock.After(revInterval):
+				rc.mu.Lock()
+				p := rc.paused
+				rc.mu.Unlock()
 				if p {
 					continue
 				}
 			}
 
-			rev := t.rg.Rev() - t.retention
+			rev := rc.rg.Rev() - rc.retention
 			if rev <= 0 || rev == prev {
 				continue
 			}
 
-			plog.Noticef("Starting auto-compaction at revision %d (retention: %d revisions)", rev, t.retention)
-			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
+			now := time.Now()
+			if rc.lg != nil {
+				rc.lg.Info(
+					"starting auto revision compaction",
+					zap.Int64("revision", rev),
+					zap.Int64("revision-compaction-retention", rc.retention),
+				)
+			} else {
+				plog.Noticef("Starting auto-compaction at revision %d (retention: %d revisions)", rev, rc.retention)
+			}
+			_, err := rc.c.Compact(rc.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
 				prev = rev
-				plog.Noticef("Finished auto-compaction at revision %d", rev)
+				if rc.lg != nil {
+					rc.lg.Info(
+						"completed auto revision compaction",
+						zap.Int64("revision", rev),
+						zap.Int64("revision-compaction-retention", rc.retention),
+						zap.Duration("took", time.Since(now)),
+					)
+				} else {
+					plog.Noticef("Finished auto-compaction at revision %d", rev)
+				}
 			} else {
-				plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
-				plog.Noticef("Retry after %v", revInterval)
+				if rc.lg != nil {
+					rc.lg.Warn(
+						"failed auto revision compaction",
+						zap.Int64("revision", rev),
+						zap.Int64("revision-compaction-retention", rc.retention),
+						zap.Duration("retry-interval", revInterval),
+						zap.Error(err),
+					)
+				} else {
+					plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
+					plog.Noticef("Retry after %v", revInterval)
+				}
 			}
 		}
 	}()
 }
 
 // Stop stops revision-based compactor.
-func (t *Revision) Stop() {
-	t.cancel()
+func (rc *Revision) Stop() {
+	rc.cancel()
 }
 
 // Pause pauses revision-based compactor.
-func (t *Revision) Pause() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.paused = true
+func (rc *Revision) Pause() {
+	rc.mu.Lock()
+	rc.paused = true
+	rc.mu.Unlock()
 }
 
 // Resume resumes revision-based compactor.
-func (t *Revision) Resume() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.paused = false
+func (rc *Revision) Resume() {
+	rc.mu.Lock()
+	rc.paused = false
+	rc.mu.Unlock()
 }
