@@ -581,6 +581,14 @@ func (cfg *Config) setupLogging() error {
 				return err
 			}
 		} else {
+			if len(cfg.LogOutputs) > 1 {
+				for _, v := range cfg.LogOutputs {
+					if v != DefaultLogOutput {
+						return fmt.Errorf("running as a systemd unit but other '--log-output' values (%q) are configured with 'default'; override 'default' value with something else", cfg.LogOutputs)
+					}
+				}
+			}
+
 			// use stderr as fallback
 			syncer := getZapWriteSyncer()
 			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
