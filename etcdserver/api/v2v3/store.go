@@ -143,10 +143,20 @@ func (s *v2v3Store) Set(
 
 	ecode := 0
 	applyf := func(stm concurrency.STM) error {
-		parent := path.Dir(nodePath)
-		if !isRoot(parent) && stm.Rev(s.mkPath(parent)+"/") == 0 {
-			ecode = v2error.EcodeKeyNotFound
-			return nil
+		// build path if any directories in path do not exist
+		dirs := []string{}
+		for p := path.Dir(nodePath); !isRoot(p); p = path.Dir(p) {
+			pp := s.mkPath(p)
+			if stm.Rev(pp) > 0 {
+				ecode = v2error.EcodeNotDir
+				return nil
+			}
+			if stm.Rev(pp+"/") == 0 {
+				dirs = append(dirs, pp+"/")
+			}
+		}
+		for _, d := range dirs {
+			stm.Put(d, "")
 		}
 
 		key := s.mkPath(nodePath)
