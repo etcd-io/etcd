@@ -391,7 +391,8 @@ infra2.example.com.  300  IN  A  10.0.1.12
 
 #### Bootstrap the etcd cluster using DNS
 
-etcd cluster members can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
+etcd cluster members can advertise domain names or IP address, the bootstrap process will resolve DNS A records.
+Since 3.2 (3.1 prints warnings) `--listen-peer-urls` and `--listen-client-urls` will reject domain name for the network interface binding.
 
 The resolved address in `--initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets. The etcd member reads the resolved address to find out if it belongs to the cluster defined in the SRV records.
 
@@ -402,8 +403,8 @@ $ etcd --name infra0 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra0.example.com:2379 \
---listen-client-urls http://infra0.example.com:2379 \
---listen-peer-urls http://infra0.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -413,8 +414,8 @@ $ etcd --name infra1 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra1.example.com:2379 \
---listen-client-urls http://infra1.example.com:2379 \
---listen-peer-urls http://infra1.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -424,8 +425,8 @@ $ etcd --name infra2 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra2.example.com:2379 \
---listen-client-urls http://infra2.example.com:2379 \
---listen-peer-urls http://infra2.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 The cluster can also bootstrap using IP addresses instead of domain names:
