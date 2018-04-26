@@ -469,7 +469,7 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		if len(cfg.LogOutputs) != 1 {
-			fmt.Printf("expected only 1 value in 'log-output', got %v\n", cfg.LogOutputs)
+			fmt.Printf("--logger=capnslog supports only 1 value in '--log-outputs', got %q\n", cfg.LogOutputs)
 			os.Exit(1)
 		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
@@ -596,6 +596,9 @@ func (cfg *Config) setupLogging() error {
 				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
 				grpc.EnableTracing = true
 			}
+
+			// WARN: do not change field names in encoder config
+			// journald logging writer assumes field names of "level" and "caller"
 			cr := zapcore.NewCore(
 				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 				syncer,

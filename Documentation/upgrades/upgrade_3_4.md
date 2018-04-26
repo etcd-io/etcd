@@ -12,7 +12,7 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.4.
 
-#### Change in `etcd` flags
+#### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
 
 `--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
 
@@ -26,16 +26,42 @@ Highlighted breaking changes in 3.4.
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
-Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624)  to support multiple log outputs.
+#### Deprecating `etcd --log-output` flag (now `--log-outputs`)
 
-**`etcd --log-output`** will be deprecated in v3.5.
+Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. **`etcd --logger=capnslog` does not support multiple log outputs.**
+
+**`etcd --log-output`** will be deprecated in v3.5. **`etcd --logger=capnslog` will be deprecated in v3.5**.
 
 ```diff
 -etcd --log-output stderr
 +etcd --log-outputs stderr,a.log
 ```
 
-#### Change in `pkg/transport`
+v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.
+
+#### Changed `log-outputs` field type in `etcd --config-file` to `[]string`
+
+Now that `log-outputs` (old field name `log-output`) accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type as below:
+
+```diff
+ # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+-log-output: default
++log-outputs: [default]
+```
+
+#### Renamed `embed.Config.LogOutput` to `embed.Config.LogOutputs`
+
+Renamed [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. And changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+
+```diff
+import "github.com/coreos/etcd/embed"
+
+cfg := &embed.Config{Debug: false}
+-cfg.LogOutput = "stderr"
++cfg.LogOutputs = []string{"stderr"}
+```
+
+#### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
 Deprecated `pkg/transport.TLSInfo.CAFile` field.
 
@@ -54,7 +80,7 @@ if err != nil {
 }
 ```
 
-#### Change in `wal`
+#### Changed function signature in package `wal`
 
 Changed `wal` function signatures to support structured logger.
 
@@ -77,7 +103,7 @@ import "github.com/coreos/etcd/wal"
 +wal.Create(lg, dirpath, metadata)
 ```
 
-#### Change in `embed.Etcd`
+#### Deprecated `embed.Config.SetupLogging`
 
 `embed.Config.SetupLogging` has been removed in order to prevent wrong logging configuration, and now set up automatically.
 
@@ -88,42 +114,23 @@ cfg := &embed.Config{Debug: false}
 -cfg.SetupLogging()
 ```
 
-Renamed [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. And changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+#### Changed gRPC gateway HTTP endpoints (replaced `/v3beta` with `/v3`)
 
-```diff
-import "github.com/coreos/etcd/embed"
+Before
 
-cfg := &embed.Config{Debug: false}
--cfg.LogOutput = "stderr"
-+cfg.LogOutputs = []string{"stderr"}
+```bash
+curl -L http://localhost:2379/v3beta/kv/put \
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
-#### Change in `etcd --log-output` (now `--log-outputs`)
+After
 
-Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624)  to support multiple log outputs.
-
-**`etcd --log-output`** will be deprecated in v3.5.
-
-```diff
--etcd --log-output stderr
-+etcd --log-outputs stderr,a.log
+```bash
+curl -L http://localhost:2379/v3/kv/put \
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
-```diff
- # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
--log-output: [default]
-+log-outputs: [default]
-```
-
-#### Change in `etcd --config-file`
-
-Now that `log-outputs` (old field name `log-output`) accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type as below:
-
-```diff
- # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
--log-output: default
-+log-outputs: [default]
-```
+Requests to `/v3beta` endpoints will redirect to `/v3`, and `/v3beta` will be removed in 3.5 release.
 
 ### Server upgrade checklists
 
