@@ -29,6 +29,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
@@ -105,7 +106,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -341,10 +342,10 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		_, err := cli.Get(ctx, "abc", gops...)
 		cancel()
 		if err != nil {
-			if linearizable && strings.Contains(err.Error(), "context deadline exceeded") {
+			if linearizable && isServerUnavailable(err) {
 				t.Logf("TODO: FIX THIS after balancer rewrite! %v %v", reflect.TypeOf(err), err)
 			} else {
-				t.Fatal(err)
+				t.Fatalf("expected linearizable=true and a server unavailable error, but got linearizable=%t and '%v'", linearizable, err)
 			}
 		}
 	}()
@@ -372,4 +373,33 @@ func isServerCtxTimeout(err error) bool {
 	}
 	code := ev.Code()
 	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
+}
+
+// In grpc v1.11.3+ dial timeouts can error out with transport.ErrConnClosing. Previously dial timeouts
+// would always error out with context.DeadlineExceeded.
+func isClientTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.DeadlineExceeded {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.DeadlineExceeded || ev.Message() == transport.ErrConnClosing.Desc
+}
+
+func isServerUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Unavailable
 }

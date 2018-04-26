@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -131,8 +130,8 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && err != context.DeadlineExceeded {
-		t.Errorf("expected %v, got %v", context.DeadlineExceeded, err)
+	if err != nil && !isClientTimeout(err) {
+		t.Errorf("expected client timeout, got %v", err)
 	}
 }
 
@@ -189,7 +188,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	// 300ms left and expect timeout while snapshot reading is in progress
 	time.Sleep(700 * time.Millisecond)
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && !strings.Contains(err.Error(), context.DeadlineExceeded.Error()) {
-		t.Errorf("expected %v from gRPC, got %v", context.DeadlineExceeded, err)
+	if err != nil && !isClientTimeout(err) {
+		t.Errorf("expected client timeout, got %v", err)
 	}
 }

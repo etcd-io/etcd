@@ -297,15 +297,17 @@ func (c *Client) getToken(ctx context.Context) error {
 	var auth *authenticator
 
 	for i := 0; i < len(c.cfg.Endpoints); i++ {
-		endpoint := c.cfg.Endpoints[i]
+		ep := c.cfg.Endpoints[i]
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint), c.cfg.DialOptions...)
+		_, host, _ := endpoint.ParseEndpoint(ep)
+		target := c.resolver.Target(host)
+		dOpts, err = c.dialSetupOpts(target, c.cfg.DialOptions...)
 		if err != nil {
 			err = fmt.Errorf("failed to configure auth dialer: %v", err)
 			continue
 		}
-		auth, err = newAuthenticator(ctx, endpoint, dOpts, c)
+		auth, err = newAuthenticator(ctx, target, dOpts, c)
 		if err != nil {
 			continue
 		}
@@ -369,7 +371,7 @@ func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, er
 	if c.cfg.DialTimeout > 0 {
 		var cancel context.CancelFunc
 		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
-		defer cancel()
+		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
 	}
 
 	conn, err := grpc.DialContext(dctx, target, opts...)
@@ -456,7 +458,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		client.cancel()
 		client.resolver.Close()
-		return nil, fmt.Errorf("failed to dial initial client connection: %v", err)
+		return nil, err
 	}
 	// TODO: With the old grpc balancer interface, we waited until the dial timeout
 	// for the balancer to be ready. Is there an equivalent wait we should do with the new grpc balancer interface?

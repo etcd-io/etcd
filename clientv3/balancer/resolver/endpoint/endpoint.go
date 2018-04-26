@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// resolves to etcd entpoints for grpc targets of the form 'endpoint://<cluster-name>/<endpoint>'.
+// Package endpoint resolves etcd entpoints using grpc targets of the form 'endpoint://<clientId>/<endpoint>'.
 package endpoint
 
 import (
@@ -36,13 +36,13 @@ var (
 
 func init() {
 	bldr = &builder{
-		clusterResolvers: make(map[string]*Resolver),
+		clientResolvers: make(map[string]*Resolver),
 	}
 	resolver.Register(bldr)
 }
 
 type builder struct {
-	clusterResolvers map[string]*Resolver
+	clientResolvers map[string]*Resolver
 	sync.RWMutex
 }
 
@@ -59,16 +59,16 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 	return r, nil
 }
 
-func (b *builder) getResolver(clusterName string) *Resolver {
+func (b *builder) getResolver(clientId string) *Resolver {
 	b.RLock()
-	r, ok := b.clusterResolvers[clusterName]
+	r, ok := b.clientResolvers[clientId]
 	b.RUnlock()
 	if !ok {
 		r = &Resolver{
-			clusterName: clusterName,
+			clientId: clientId,
 		}
 		b.Lock()
-		b.clusterResolvers[clusterName] = r
+		b.clientResolvers[clientId] = r
 		b.Unlock()
 	}
 	return r
@@ -76,13 +76,13 @@ func (b *builder) getResolver(clusterName string) *Resolver {
 
 func (b *builder) addResolver(r *Resolver) {
 	bldr.Lock()
-	bldr.clusterResolvers[r.clusterName] = r
+	bldr.clientResolvers[r.clientId] = r
 	bldr.Unlock()
 }
 
 func (b *builder) removeResolver(r *Resolver) {
 	bldr.Lock()
-	delete(bldr.clusterResolvers, r.clusterName)
+	delete(bldr.clientResolvers, r.clientId)
 	bldr.Unlock()
 }
 
@@ -91,15 +91,15 @@ func (r *builder) Scheme() string {
 }
 
 // EndpointResolver gets the resolver for  given etcd cluster name.
-func EndpointResolver(clusterName string) *Resolver {
-	return bldr.getResolver(clusterName)
+func EndpointResolver(clientId string) *Resolver {
+	return bldr.getResolver(clientId)
 }
 
 // Resolver provides a resolver for a single etcd cluster, identified by name.
 type Resolver struct {
-	clusterName string
-	cc          resolver.ClientConn
-	addrs       []resolver.Address
+	clientId string
+	cc       resolver.ClientConn
+	addrs    []resolver.Address
 	sync.RWMutex
 }
 
@@ -146,14 +146,14 @@ func (r *Resolver) Close() {
 	bldr.removeResolver(r)
 }
 
-// Target constructs a endpoint target with current resolver's clusterName.
+// Target constructs a endpoint target with current resolver's clientId.
 func (r *Resolver) Target(endpoint string) string {
-	return Target(r.clusterName, endpoint)
+	return Target(r.clientId, endpoint)
 }
 
 // Target constructs a endpoint resolver target.
-func Target(clusterName, endpoint string) string {
-	return fmt.Sprintf("%s://%s/%s", scheme, clusterName, endpoint)
+func Target(clientId, endpoint string) string {
+	return fmt.Sprintf("%s://%s/%s", scheme, clientId, endpoint)
 }
 
 // IsTarget checks if a given target string in an endpoint resolver target.
@@ -185,7 +185,7 @@ func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	return proto, host, scheme
 }
 
-// ParseTarget parses a endpoint://<clusterName>/<endpoint> string and returns the parsed clusterName and endpoint.
+// ParseTarget parses a endpoint://<clientId>/<endpoint> string and returns the parsed clientId and endpoint.
 // If the target is malformed, an error is returned.
 func ParseTarget(target string) (string, string, error) {
 	noPrefix := strings.TrimPrefix(target, targetPrefix)
@@ -194,7 +194,7 @@ func ParseTarget(target string) (string, string, error) {
 	}
 	parts := strings.SplitN(noPrefix, "/", 2)
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("malformed target, expected %s://<clusterName>/<endpoint>, but got %s", scheme, target)
+		return "", "", fmt.Errorf("malformed target, expected %s://<clientId>/<endpoint>, but got %s", scheme, target)
 	}
 	return parts[0], parts[1], nil
 }
