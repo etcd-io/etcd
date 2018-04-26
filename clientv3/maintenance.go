@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -77,7 +78,7 @@ func NewMaintenance(c *Client) Maintenance {
 		dial: func(endpoint string) (pb.MaintenanceClient, func(), error) {
 			conn, err := c.dial(endpoint)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("failed to dial endpoint %s with maintenance client: %v", endpoint, err)
 			}
 			cancel := func() { conn.Close() }
 			return RetryMaintenanceClient(c, conn), cancel, nil
@@ -175,6 +176,7 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 func (m *maintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error) {
 	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
+
 		return nil, toErr(ctx, err)
 	}
 	defer cancel()

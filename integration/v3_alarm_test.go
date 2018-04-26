@@ -175,12 +175,20 @@ func TestV3CorruptAlarm(t *testing.T) {
 	s.Close()
 	be.Close()
 
+	clus.Members[1].WaitOK(t)
+	clus.Members[2].WaitOK(t)
+	time.Sleep(time.Second * 2)
+
 	// Wait for cluster so Puts succeed in case member 0 was the leader.
 	if _, err := clus.Client(1).Get(context.TODO(), "k"); err != nil {
 		t.Fatal(err)
 	}
-	clus.Client(1).Put(context.TODO(), "xyz", "321")
-	clus.Client(1).Put(context.TODO(), "abc", "fed")
+	if _, err := clus.Client(1).Put(context.TODO(), "xyz", "321"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := clus.Client(1).Put(context.TODO(), "abc", "fed"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Restart with corruption checking enabled.
 	clus.Members[1].Stop(t)
@@ -189,7 +197,8 @@ func TestV3CorruptAlarm(t *testing.T) {
 		m.CorruptCheckTime = time.Second
 		m.Restart(t)
 	}
-	// Member 0 restarts into split brain.
+	clus.WaitLeader(t)
+	time.Sleep(time.Second * 2)
 
 	clus.Members[0].WaitStarted(t)
 	resp0, err0 := clus.Client(0).Get(context.TODO(), "abc")

@@ -302,6 +302,7 @@ func (c *Client) getToken(ctx context.Context) error {
 		var dOpts []grpc.DialOption
 		dOpts, err = c.dialSetupOpts(c.resolver.Target(endpoint), c.cfg.DialOptions...)
 		if err != nil {
+			err = fmt.Errorf("failed to configure auth dialer: %v", err)
 			continue
 		}
 		auth, err = newAuthenticator(ctx, endpoint, dOpts, c)
@@ -327,9 +328,14 @@ func (c *Client) getToken(ctx context.Context) error {
 }
 
 func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(ep, dopts...)
+	// We pass a target to DialContext of the form: endpoint://<clusterName>/<host-part> that
+	// does not include scheme (http/https/unix/unixs) or path parts.
+	_, host, _ := endpoint.ParseEndpoint(ep)
+	target := c.resolver.Target(host)
+
+	opts, err := c.dialSetupOpts(target, dopts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to configure dialer: %v", err)
 	}
 
 	if c.Username != "" && c.Password != "" {
@@ -366,18 +372,7 @@ func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, er
 		defer cancel()
 	}
 
-	// We pass a target to DialContext of the form: endpoint://<clusterName>/<host-part> that
-	// does not include scheme (http/https/unix/unixs) or path parts.
-	if endpoint.IsTarget(ep) {
-		clusterName, tep, err := endpoint.ParseTarget(ep)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse endpoint target '%s': %v", ep, err)
-		}
-		_, host, _ := endpoint.ParseEndpoint(tep)
-		ep = endpoint.Target(clusterName, host)
-	}
-
-	conn, err := grpc.DialContext(dctx, ep, opts...)
+	conn, err := grpc.DialContext(dctx, target, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -443,20 +438,25 @@ func newClient(cfg *Config) (*Client, error) {
 	// Prepare a 'endpoint://<unique-client-id>/' resolver for the client and create a endpoint target to pass
 	// to dial so the client knows to use this resolver.
 	client.resolver = endpoint.EndpointResolver(fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36)))
-	target, err := client.resolver.InitialEndpoints(cfg.Endpoints)
+	err := client.resolver.InitialEndpoints(cfg.Endpoints)
 	if err != nil {
 		client.cancel()
 		client.resolver.Close()
 		return nil, err
 	}
 
+	if len(cfg.Endpoints) < 1 {
+		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
+	}
+	dialEndpoint := cfg.Endpoints[0]
+
 	// Use an provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dial(target, grpc.WithBalancerName(roundRobinBalancerName))
+	conn, err := client.dial(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
 	if err != nil {
 		client.cancel()
 		client.resolver.Close()
-		return nil, err
+		return nil, fmt.Errorf("failed to dial initial client connection: %v", err)
 	}
 	// TODO: With the old grpc balancer interface, we waited until the dial timeout
 	// for the balancer to be ready. Is there an equivalent wait we should do with the new grpc balancer interface?
