@@ -47,7 +47,7 @@ func TestStartEtcdLargeBcryptCost(t *testing.T) {
 	defer os.RemoveAll(tdir)
 	cfg := NewConfig()
 	cfg.Dir = tdir
-	cfg.BcryptCost = uint(bcrypt.MaxCost) + 1 // Greater than bcrypt.MaxCost
+	cfg.BcryptCost = uint(bcrypt.MaxCost) + 1
 	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}
@@ -62,7 +62,7 @@ func TestStartEtcdSmallBcryptCost(t *testing.T) {
 	defer os.RemoveAll(tdir)
 	cfg := NewConfig()
 	cfg.Dir = tdir
-	cfg.BcryptCost = uint(bcrypt.MinCost) - 1 // Smaller than bcrypt.MinCost
+	cfg.BcryptCost = uint(bcrypt.MinCost) - 1
 	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}
