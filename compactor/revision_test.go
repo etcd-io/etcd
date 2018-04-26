@@ -23,13 +23,14 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 func TestRevision(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newRevision(fc, 10, rg, compactable)
+	tb := newRevision(zap.NewExample(), fc, 10, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -72,7 +73,7 @@ func TestRevisionPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 99} // will be 100
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newRevision(fc, 10, rg, compactable)
+	tb := newRevision(zap.NewExample(), fc, 10, rg, compactable)
 
 	tb.Run()
 	tb.Pause()

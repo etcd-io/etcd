@@ -238,7 +238,7 @@ func checkArgs() {
 }
 
 func mustNewClient(lg *zap.Logger) *clientv3.Client {
-	srvs := discoverEndpoints(grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery)
+	srvs := discoverEndpoints(lg, grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery)
 	eps := srvs.Endpoints
 	if len(eps) == 0 {
 		eps = grpcProxyEndpoints
