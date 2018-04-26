@@ -30,8 +30,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
 )
 
