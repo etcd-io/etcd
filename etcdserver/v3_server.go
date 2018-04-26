@@ -19,8 +19,6 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -28,7 +26,9 @@ import (
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/raft"
+	"github.com/gogo/protobuf/proto"
 
+	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 )
 
