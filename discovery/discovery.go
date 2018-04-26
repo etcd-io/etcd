@@ -35,6 +35,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 var (
@@ -59,8 +60,8 @@ var (
 
 // JoinCluster will connect to the discovery service at the given url, and
 // register the server represented by the given id and config to the cluster
-func JoinCluster(durl, dproxyurl string, id types.ID, config string) (string, error) {
-	d, err := newDiscovery(durl, dproxyurl, id)
+func JoinCluster(lg *zap.Logger, durl, dproxyurl string, id types.ID, config string) (string, error) {
+	d, err := newDiscovery(lg, durl, dproxyurl, id)
 	if err != nil {
 		return "", err
 	}
@@ -69,8 +70,8 @@ func JoinCluster(durl, dproxyurl string, id types.ID, config string) (string, er
 
 // GetCluster will connect to the discovery service at the given url and
 // retrieve a string describing the cluster
-func GetCluster(durl, dproxyurl string) (string, error) {
-	d, err := newDiscovery(durl, dproxyurl, 0)
+func GetCluster(lg *zap.Logger, durl, dproxyurl string) (string, error) {
+	d, err := newDiscovery(lg, durl, dproxyurl, 0)
 	if err != nil {
 		return "", err
 	}
@@ -78,6 +79,7 @@ func GetCluster(durl, dproxyurl string) (string, error) {
 }
 
 type discovery struct {
+	lg      *zap.Logger
 	cluster string
 	id      types.ID
 	c       client.KeysAPI
@@ -90,7 +92,7 @@ type discovery struct {
 // newProxyFunc builds a proxy function from the given string, which should
 // represent a URL that can be used as a proxy. It performs basic
 // sanitization of the URL and returns any error encountered.
-func newProxyFunc(proxy string) (func(*http.Request) (*url.URL, error), error) {
+func newProxyFunc(lg *zap.Logger, proxy string) (func(*http.Request) (*url.URL, error), error) {
 	if proxy == "" {
 		return nil, nil
 	}
@@ -111,18 +113,22 @@ func newProxyFunc(proxy string) (func(*http.Request) (*url.URL, error), error) {
 		return nil, fmt.Errorf("invalid proxy address %q: %v", proxy, err)
 	}
 
-	plog.Infof("using proxy %q", proxyURL.String())
+	if lg != nil {
+		lg.Info("running proxy with discovery", zap.String("proxy-url", proxyURL.String()))
+	} else {
+		plog.Infof("using proxy %q", proxyURL.String())
+	}
 	return http.ProxyURL(proxyURL), nil
 }
 
-func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
+func newDiscovery(lg *zap.Logger, durl, dproxyurl string, id types.ID) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
 	}
 	token := u.Path
 	u.Path = ""
-	pf, err := newProxyFunc(dproxyurl)
+	pf, err := newProxyFunc(lg, dproxyurl)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +149,7 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	}
 	dc := client.NewKeysAPIWithPrefix(c, "")
 	return &discovery{
+		lg:      lg,
 		cluster: token,
 		c:       dc,
 		id:      id,
@@ -225,7 +232,17 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 			return nil, 0, 0, ErrBadDiscoveryEndpoint
 		}
 		if ce, ok := err.(*client.ClusterError); ok {
-			plog.Error(ce.Detail())
+			if d.lg != nil {
+				d.lg.Warn(
+					"failed to get from discovery server",
+					zap.String("discovery-url", d.url.String()),
+					zap.String("path", path.Join(configKey, "size")),
+					zap.Error(err),
+					zap.String("err-detail", ce.Detail()),
+				)
+			} else {
+				plog.Error(ce.Detail())
+			}
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -240,7 +257,17 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	cancel()
 	if err != nil {
 		if ce, ok := err.(*client.ClusterError); ok {
-			plog.Error(ce.Detail())
+			if d.lg != nil {
+				d.lg.Warn(
+					"failed to get from discovery server",
+					zap.String("discovery-url", d.url.String()),
+					zap.String("path", d.cluster),
+					zap.Error(err),
+					zap.String("err-detail", ce.Detail()),
+				)
+			} else {
+				plog.Error(ce.Detail())
+			}
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -276,7 +303,16 @@ func (d *discovery) logAndBackoffForRetry(step string) {
 		retries = maxExpoentialRetries
 	}
 	retryTimeInSecond := time.Duration(0x1<<retries) * time.Second
-	plog.Infof("%s: error connecting to %s, retrying in %s", step, d.url, retryTimeInSecond)
+	if d.lg != nil {
+		d.lg.Info(
+			"retry connecting to discovery service",
+			zap.String("url", d.url.String()),
+			zap.String("reason", step),
+			zap.Duration("backoff", retryTimeInSecond),
+		)
+	} else {
+		plog.Infof("%s: error connecting to %s, retrying in %s", step, d.url, retryTimeInSecond)
+	}
 	d.clock.Sleep(retryTimeInSecond)
 }
 
@@ -310,15 +346,40 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 	copy(all, nodes)
 	for _, n := range all {
 		if path.Base(n.Key) == path.Base(d.selfKey()) {
-			plog.Noticef("found self %s in the cluster", path.Base(d.selfKey()))
+			if d.lg != nil {
+				d.lg.Info(
+					"found self from discovery server",
+					zap.String("discovery-url", d.url.String()),
+					zap.String("self", path.Base(d.selfKey())),
+				)
+			} else {
+				plog.Noticef("found self %s in the cluster", path.Base(d.selfKey()))
+			}
 		} else {
-			plog.Noticef("found peer %s in the cluster", path.Base(n.Key))
+			if d.lg != nil {
+				d.lg.Info(
+					"found peer from discovery server",
+					zap.String("discovery-url", d.url.String()),
+					zap.String("peer", path.Base(n.Key)),
+				)
+			} else {
+				plog.Noticef("found peer %s in the cluster", path.Base(n.Key))
+			}
 		}
 	}
 
 	// wait for others
 	for len(all) < size {
-		plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
+		if d.lg != nil {
+			d.lg.Info(
+				"found peers from discovery server; waiting for more",
+				zap.String("discovery-url", d.url.String()),
+				zap.Int("found-peers", len(all)),
+				zap.Int("needed-peers", size-len(all)),
+			)
+		} else {
+			plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
+		}
 		resp, err := w.Next(context.Background())
 		if err != nil {
 			if ce, ok := err.(*client.ClusterError); ok {
@@ -327,10 +388,26 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 			}
 			return nil, err
 		}
-		plog.Noticef("found peer %s in the cluster", path.Base(resp.Node.Key))
+		if d.lg != nil {
+			d.lg.Info(
+				"found peer from discovery server",
+				zap.String("discovery-url", d.url.String()),
+				zap.String("peer", path.Base(resp.Node.Key)),
+			)
+		} else {
+			plog.Noticef("found peer %s in the cluster", path.Base(resp.Node.Key))
+		}
 		all = append(all, resp.Node)
 	}
-	plog.Noticef("found %d needed peer(s)", len(all))
+	if d.lg != nil {
+		d.lg.Info(
+			"found all needed peers from discovery server",
+			zap.String("discovery-url", d.url.String()),
+			zap.Int("found-peers", len(all)),
+		)
+	} else {
+		plog.Noticef("found %d needed peer(s)", len(all))
+	}
 	return all, nil
 }
 
