@@ -38,7 +38,7 @@ func TestStartEtcdWrongToken(t *testing.T) {
 	}
 }
 
-// TestStartEtcdLargeBcryptCost ensures that StartEtcd with good configs returns with error.
+// TestStartEtcdLargeBcryptCost ensures that StartEtcd with invalid large bcrypt-cost returns with error.
 func TestStartEtcdLargeBcryptCost(t *testing.T) {
 	tdir, err := ioutil.TempDir(os.TempDir(), "large-bcrypt-cost-test")
 	if err != nil {
@@ -53,7 +53,7 @@ func TestStartEtcdLargeBcryptCost(t *testing.T) {
 	}
 }
 
-// TestStartEtcdSmallBcryptCost ensures that StartEtcd with wrong bcrypt-cost returns with error.
+// TestStartEtcdSmallBcryptCost ensures that StartEtcd with invalid small bcrypt-cost returns with error.
 func TestStartEtcdSmallBcryptCost(t *testing.T) {
 	tdir, err := ioutil.TempDir(os.TempDir(), "small-bcrypt-cost-test")
 	if err != nil {
