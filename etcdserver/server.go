@@ -547,7 +547,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}()
 
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
-	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
+	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken, int(cfg.BcryptCost),
 		func(index uint64) <-chan struct{} {
 			return srv.applyWait.Wait(index)
 		},

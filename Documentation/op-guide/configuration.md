@@ -375,6 +375,10 @@ Follow the instructions when using these flags.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512,ttl=10m'
 + default: "simple"
 
+### --bcrypt-cost
++ Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
++ default: 10
+
 ## Experimental flags
 
 ### --experimental-corrupt-check-time

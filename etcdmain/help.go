@@ -148,6 +148,8 @@ Security:
 Auth:
   --auth-token 'simple'
     Specify a v3 authentication token type and its options ('simple' or 'jwt').
+  --bcrypt-cost 10
+    Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 
 Profiling:
   --enable-pprof 'false'

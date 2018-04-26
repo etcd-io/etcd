@@ -44,6 +44,7 @@ import (
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -249,7 +250,8 @@ type Config struct {
 	//	embed.StartEtcd(cfg)
 	ServiceRegister func(*grpc.Server) `json:"-"`
 
-	AuthToken string `json:"auth-token"`
+	AuthToken  string `json:"auth-token"`
+	BcryptCost uint   `json:"bcrypt-cost"`
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
@@ -370,7 +372,8 @@ func NewConfig() *Config {
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
 
-		AuthToken: "simple",
+		AuthToken:  "simple",
+		BcryptCost: uint(bcrypt.DefaultCost),
 
 		PreVote: false, // TODO: enable by default in v3.5
 

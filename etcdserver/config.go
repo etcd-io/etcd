@@ -103,7 +103,8 @@ type ServerConfig struct {
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.
 	ClientCertAuthEnabled bool
 
-	AuthToken string
+	AuthToken  string
+	BcryptCost uint
 
 	// InitialCorruptCheck is true to check data corruption on boot
 	// before serving any peer/client traffic.

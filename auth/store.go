@@ -1048,11 +1048,17 @@ func decomposeOpts(optstr string) (string, map[string]string, error) {
 
 }
 
-func NewTokenProvider(lg *zap.Logger, tokenOpts string, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+func NewTokenProvider(lg *zap.Logger, tokenOpts string, bcryptCost int, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
 	}
+
+	if bcryptCost < bcrypt.MinCost || bcryptCost > bcrypt.MaxCost {
+		plog.Errorf("Invalid bcrypt-cost: %d", bcryptCost)
+		return nil, ErrInvalidAuthOpts
+	}
+	BcryptCost = bcryptCost
 
 	switch tokenType {
 	case "simple":

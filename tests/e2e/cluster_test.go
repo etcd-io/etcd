@@ -123,6 +123,7 @@ type etcdProcessClusterConfig struct {
 	noStrictReconfig    bool
 	initialCorruptCheck bool
 	authTokenOpts       string
+	bcryptCost          int
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -247,6 +248,12 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 
 		if cfg.authTokenOpts != "" {
 			args = append(args, "--auth-token", cfg.authTokenOpts)
+		}
+
+		if cfg.bcryptCost > 0 {
+			args = append(args,
+				"--bcrypt-cost", fmt.Sprintf("%d", cfg.bcryptCost),
+			)
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{

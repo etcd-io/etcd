@@ -34,8 +34,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func init() { BcryptCost = bcrypt.MinCost }
-
 func dummyIndexWaiter(index uint64) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
@@ -50,7 +48,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +76,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +513,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -581,7 +579,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -663,7 +661,7 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -709,7 +707,7 @@ func TestAuthInfoFromCtxWithRoot(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
