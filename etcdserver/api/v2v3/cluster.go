@@ -15,6 +15,9 @@
 package v2v3
 
 import (
+	"context"
+	"time"
+
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
 
@@ -25,7 +28,18 @@ func (s *v2v3Server) ID() types.ID {
 	// TODO: use an actual member ID
 	return types.ID(0xe7cd2f00d)
 }
-func (s *v2v3Server) ClientURLs() []string                  { panic("STUB") }
-func (s *v2v3Server) Members() []*membership.Member         { panic("STUB") }
+func (s *v2v3Server) ClientURLs() []string { panic("STUB") }
+
+func (s *v2v3Server) Members() []*membership.Member {
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	resp, err := s.c.MemberList(ctx)
+	if err != nil {
+		// TODO: how can we upport errors here?
+		panic("STUB")
+	}
+	return v3MembersToMembership(resp.Members)
+}
+
 func (s *v2v3Server) Member(id types.ID) *membership.Member { panic("STUB") }
 func (s *v2v3Server) Version() *semver.Version              { panic("STUB") }

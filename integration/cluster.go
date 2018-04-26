@@ -38,6 +38,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
+	"github.com/coreos/etcd/etcdserver/api/v2v3"
 	"github.com/coreos/etcd/etcdserver/api/v3client"
 	"github.com/coreos/etcd/etcdserver/api/v3election"
 	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
@@ -517,6 +518,7 @@ type member struct {
 	raftHandler   *testutil.PauseableHandler
 	s             *etcdserver.EtcdServer
 	serverClosers []func()
+	v2v3Server    etcdserver.ServerPeer
 
 	grpcServerOpts []grpc.ServerOption
 	grpcServer     *grpc.Server
@@ -766,6 +768,8 @@ func (m *member) Launch() error {
 		})
 	}
 
+	m.v2v3Server = v2v3.NewServer(nil, v3client.New(m.s), "/v2v3")
+
 	for _, ln := range m.PeerListeners {
 		cm := cmux.New(ln)
 		// don't hang on matcher after closing listener
@@ -806,7 +810,7 @@ func (m *member) Launch() error {
 	for _, ln := range m.ClientListeners {
 		hs := &httptest.Server{
 			Listener: ln,
-			Config:   &http.Server{Handler: v2http.NewClientHandler(m.s, m.ServerConfig.ReqTimeout())},
+			Config:   &http.Server{Handler: v2http.NewClientHandler(m.v2API(), m.ServerConfig.ReqTimeout())},
 		}
 		if m.ClientTLSInfo == nil {
 			hs.Start()

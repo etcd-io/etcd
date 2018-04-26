@@ -54,19 +54,19 @@ func TestV2Set(t *testing.T) {
 			"/v2/keys/foo/bar",
 			v,
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":4,"createdIndex":4}}`,
+			fmt.Sprintf(`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":%d,"createdIndex":%d}}`, v2IndexOffset+1, v2IndexOffset+1),
 		},
 		{
 			"/v2/keys/foodir?dir=true",
 			url.Values{},
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":5,"createdIndex":5}}`,
+			fmt.Sprintf(`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":%d,"createdIndex":%d}}`, v2IndexOffset+2, v2IndexOffset+2),
 		},
 		{
 			"/v2/keys/fooempty",
 			url.Values(map[string][]string{"value": {""}}),
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":6,"createdIndex":6}}`,
+			fmt.Sprintf(`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":%d,"createdIndex":%d}}`, v2IndexOffset+3, v2IndexOffset+3),
 		},
 		{
 			"/v2/keys/foo/novalue",
