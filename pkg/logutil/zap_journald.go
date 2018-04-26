@@ -41,6 +41,8 @@ type journaldWriter struct {
 	io.Writer
 }
 
+// WARN: assume that etcd uses default field names in zap encoder config
+// make sure to keep this up-to-date!
 type logLine struct {
 	Level  string `json:"level"`
 	Caller string `json:"caller"`
