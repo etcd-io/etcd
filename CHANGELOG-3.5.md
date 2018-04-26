@@ -12,8 +12,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.4.0...v3.5.0) and [
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/coreos/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
-- **`etcd --log-output` has been deprecated**.
-- **`etcd --logger=capnslog` has been deprecated**.
+- **`etcd --log-output` has been deprecated**. Use **`etcd --log-outputs`** instead.
+- **`etcd --logger=capnslog` has been deprecated**. Now, **`etcd --logger=zap`** is the default.
 
 ### gRPC gateway
 
