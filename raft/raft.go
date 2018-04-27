@@ -192,7 +192,7 @@ type Config struct {
 	// this feature would be in a situation where the Raft leader is used to
 	// compute the data of a proposal, for example, adding a timestamp from a
 	// hybrid logical clock to data in a monotonically increasing way. Forwarding
-	// should be disabled to prevent a follower with an innaccurate hybrid
+	// should be disabled to prevent a follower with an inaccurate hybrid
 	// logical clock from assigning the timestamp and then forwarding the data
 	// to the leader.
 	DisableProposalForwarding bool
