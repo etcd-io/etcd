@@ -256,3 +256,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Require *Go 1.10+*.
 - Compile with [*Go 1.10.1*](https://golang.org/doc/devel/release.html#go1.10).
 
+### Tooling
+
+- Add [`etcd-dump-logs -entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
+
