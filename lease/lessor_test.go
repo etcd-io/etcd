@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"sync"
 	"testing"
@@ -44,6 +45,7 @@ func TestLessorGrant(t *testing.T) {
 	le := newLessor(be, minLeaseTTL)
 	defer le.Stop()
 	le.Promote(0)
+	waitForPromotion(le)
 
 	l, err := le.Grant(1, 1)
 	if err != nil {
@@ -205,7 +207,7 @@ func TestLessorRenew(t *testing.T) {
 	le := newLessor(be, minLeaseTTL)
 	defer le.Stop()
 	le.Promote(0)
-
+	waitForPromotion(le)
 	l, err := le.Grant(1, minLeaseTTL)
 	if err != nil {
 		t.Fatalf("failed to grant lease (%v)", err)
@@ -263,6 +265,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 
 	// extend after recovery should extend expiration on lease pile-up
 	le.Promote(0)
+	waitForPromotion(le)
 
 	windowCounts := make(map[int64]int)
 	for _, l := range le.leaseMap {
@@ -360,6 +363,7 @@ func TestLessorExpire(t *testing.T) {
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
+	waitForPromotion(le)
 	l, err := le.Grant(1, testMinTTL)
 	if err != nil {
 		t.Fatalf("failed to create lease: %v", err)
@@ -412,6 +416,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
+	waitForPromotion(le)
 	l, err := le.Grant(1, testMinTTL)
 	if err != nil {
 		t.Fatalf("failed to create lease: %v", err)
@@ -491,4 +496,16 @@ func NewTestBackend(t *testing.T) (string, backend.Backend) {
 	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path = filepath.Join(tmpPath, "be")
 	return tmpPath, backend.New(bcfg)
+}
+func waitForPromotion(le *lessor) {
+	for {
+		le.mu.RLock()
+		ready := le.Ready
+		le.mu.RUnlock()
+		if ready {
+			return
+		} else {
+			runtime.Gosched()
+		}
+	}
 }

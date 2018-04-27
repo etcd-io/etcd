@@ -144,6 +144,11 @@ type lessor struct {
 	stopC chan struct{}
 	// doneC is a channel whose closure indicates that the lessor is stopped.
 	doneC chan struct{}
+
+	// Ready is false when promotion is starting and gets
+	// set to true once lease processing is done to
+	// let findExpiredLeases start
+	Ready bool
 }
 
 func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
@@ -348,54 +353,69 @@ func (le *lessor) Leases() []*Lease {
 
 func (le *lessor) Promote(extend time.Duration) {
 	le.mu.Lock()
-	defer le.mu.Unlock()
+	le.Ready = false
+	le.mu.Unlock()
+	go func() {
+		le.mu.Lock()
+		le.demotec = make(chan struct{})
+		leaseCopy := le.unsafeLeases()
+		le.mu.Unlock()
+		var updateList []*LeaseWithTime
+		defer func() {
+			le.mu.Lock()
+			defer le.mu.Unlock()
+			for _, item := range updateList {
+				heap.Push(&le.leaseHeap, item)
+			}
+			le.Ready = true
+		}()
 
-	le.demotec = make(chan struct{})
-
-	// refresh the expiries of all leases.
-	for _, l := range le.leaseMap {
-		l.refresh(extend)
-		item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
-		heap.Push(&le.leaseHeap, item)
-	}
-
-	if len(le.leaseMap) < leaseRevokeRate {
-		// no possibility of lease pile-up
-		return
-	}
-
-	// adjust expiries in case of overlap
-	leases := le.unsafeLeases()
-	sort.Sort(leasesByExpiry(leases))
-
-	baseWindow := leases[0].Remaining()
-	nextWindow := baseWindow + time.Second
-	expires := 0
-	// have fewer expires than the total revoke rate so piled up leases
-	// don't consume the entire revoke limit
-	targetExpiresPerSecond := (3 * leaseRevokeRate) / 4
-	for _, l := range leases {
-		remaining := l.Remaining()
-		if remaining > nextWindow {
-			baseWindow = remaining
-			nextWindow = baseWindow + time.Second
-			expires = 1
-			continue
+		// refresh the expiries of all leases.
+		for _, l := range leaseCopy {
+			l.refresh(extend)
+			// check that the lease hasn't been revoked
+			item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
+			updateList = append(updateList, item)
 		}
-		expires++
-		if expires <= targetExpiresPerSecond {
-			continue
+
+		if len(le.leaseMap) < leaseRevokeRate {
+			// no possibility of lease pile-up
+			return
 		}
-		rateDelay := float64(time.Second) * (float64(expires) / float64(targetExpiresPerSecond))
-		// If leases are extended by n seconds, leases n seconds ahead of the
-		// base window should be extended by only one second.
-		rateDelay -= float64(remaining - baseWindow)
-		delay := time.Duration(rateDelay)
-		nextWindow = baseWindow + delay
-		l.refresh(delay + extend)
-		item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
-		heap.Push(&le.leaseHeap, item)
-	}
+
+		// adjust expiries in case of overlap
+		sort.Sort(leasesByExpiry(leaseCopy))
+
+		baseWindow := leaseCopy[0].Remaining()
+		nextWindow := baseWindow + time.Second
+		expires := 0
+		// have fewer expires than the total revoke rate so piled up leases
+		// don't consume the entire revoke limit
+		targetExpiresPerSecond := (3 * leaseRevokeRate) / 4
+
+		for _, l := range leaseCopy {
+			remaining := l.Remaining()
+			if remaining > nextWindow {
+				baseWindow = remaining
+				nextWindow = baseWindow + time.Second
+				expires = 1
+				continue
+			}
+			expires++
+			if expires <= targetExpiresPerSecond {
+				continue
+			}
+			rateDelay := float64(time.Second) * (float64(expires) / float64(targetExpiresPerSecond))
+			// If leases are extended by n seconds, leases n seconds ahead of the
+			// base window should be extended by only one second.
+			rateDelay -= float64(remaining - baseWindow)
+			delay := time.Duration(rateDelay)
+			nextWindow = baseWindow + delay
+			l.refresh(delay + extend)
+			item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
+			updateList = append(updateList, item)
+		}
+	}()
 }
 
 type leasesByExpiry []*Lease
@@ -497,7 +517,7 @@ func (le *lessor) runLoop() {
 		revokeLimit := leaseRevokeRate / 2
 
 		le.mu.RLock()
-		if le.isPrimary() {
+		if le.isPrimary() && le.Ready {
 			ls = le.findExpiredLeases(revokeLimit)
 		}
 		le.mu.RUnlock()

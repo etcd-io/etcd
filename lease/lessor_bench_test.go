@@ -17,6 +17,7 @@ package lease
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
 )
@@ -52,6 +53,14 @@ func BenchmarkLessorRevoke1000(b *testing.B)    { benchmarkLessorRevoke(1000, b)
 func BenchmarkLessorRevoke10000(b *testing.B)   { benchmarkLessorRevoke(10000, b) }
 func BenchmarkLessorRevoke100000(b *testing.B)  { benchmarkLessorRevoke(100000, b) }
 func BenchmarkLessorRevoke1000000(b *testing.B) { benchmarkLessorRevoke(1000000, b) }
+
+func BenchmarkLessorPromote1(b *testing.B)       { benchmarkLessorPromote(1, b) }
+func BenchmarkLessorPromote10(b *testing.B)      { benchmarkLessorPromote(10, b) }
+func BenchmarkLessorPromote100(b *testing.B)     { benchmarkLessorPromote(100, b) }
+func BenchmarkLessorPromote1000(b *testing.B)    { benchmarkLessorPromote(1000, b) }
+func BenchmarkLessorPromote10000(b *testing.B)   { benchmarkLessorPromote(10000, b) }
+func BenchmarkLessorPromote100000(b *testing.B)  { benchmarkLessorPromote(100000, b) }
+func BenchmarkLessorPromote1000000(b *testing.B) { benchmarkLessorPromote(1000000, b) }
 
 func benchmarkLessorFindExpired(size int, b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
@@ -112,6 +121,23 @@ func benchmarkLessorRenew(size int, b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		le.Renew(LeaseID(i))
+	}
+}
+
+func benchmarkLessorPromote(size int, b *testing.B) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	le := newLessor(be, minLeaseTTL)
+	defer le.Stop()
+	defer cleanup(be, tmpPath)
+	for i := 0; i < size; i++ {
+		le.Grant(LeaseID(i), int64(100+i))
+	}
+
+	b.ResetTimer()
+
+	go func() { le.Promote(100 * time.Second) }()
+	for i := 0; i < b.N; i++ {
+		le.Grant(LeaseID(i+size), int64(100+i+size))
 	}
 }
 
