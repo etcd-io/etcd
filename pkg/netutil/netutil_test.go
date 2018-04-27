@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func TestResolveTCPAddrs(t *testing.T) {
@@ -118,7 +120,7 @@ func TestResolveTCPAddrs(t *testing.T) {
 				return nil, err
 			}
 			if tt.hostMap[host] == "" {
-				return nil, errors.New("cannot resolve host.")
+				return nil, errors.New("cannot resolve host")
 			}
 			i, err := strconv.Atoi(port)
 			if err != nil {
@@ -127,7 +129,7 @@ func TestResolveTCPAddrs(t *testing.T) {
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
-		urls, err := resolveTCPAddrs(ctx, tt.urls)
+		urls, err := resolveTCPAddrs(ctx, zap.NewExample(), tt.urls)
 		cancel()
 		if tt.hasError {
 			if err == nil {
@@ -278,7 +280,7 @@ func TestURLsEqual(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		result, err := urlsEqual(context.TODO(), test.a, test.b)
+		result, err := urlsEqual(context.TODO(), zap.NewExample(), test.a, test.b)
 		if result != test.expect {
 			t.Errorf("#%d: a:%v b:%v, expected %v but %v", i, test.a, test.b, test.expect, result)
 		}
@@ -290,7 +292,7 @@ func TestURLsEqual(t *testing.T) {
 	}
 }
 func TestURLStringsEqual(t *testing.T) {
-	result, err := URLStringsEqual(context.TODO(), []string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"})
+	result, err := URLStringsEqual(context.TODO(), zap.NewExample(), []string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"})
 	if !result {
 		t.Errorf("unexpected result %v", result)
 	}
