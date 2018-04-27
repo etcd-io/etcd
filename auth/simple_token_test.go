@@ -17,14 +17,16 @@ package auth
 import (
 	"context"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 // TestSimpleTokenDisabled ensures that TokenProviderSimple behaves correctly when
 // disabled.
 func TestSimpleTokenDisabled(t *testing.T) {
-	initialState := newTokenProviderSimple(dummyIndexWaiter)
+	initialState := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter)
 
-	explicitlyDisabled := newTokenProviderSimple(dummyIndexWaiter)
+	explicitlyDisabled := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter)
 	explicitlyDisabled.enable()
 	explicitlyDisabled.disable()
 
@@ -46,7 +48,7 @@ func TestSimpleTokenDisabled(t *testing.T) {
 // TestSimpleTokenAssign ensures that TokenProviderSimple can correctly assign a
 // token, look it up with info, and invalidate it by user.
 func TestSimpleTokenAssign(t *testing.T) {
-	tp := newTokenProviderSimple(dummyIndexWaiter)
+	tp := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter)
 	tp.enable()
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	token, err := tp.assign(ctx, "user1", 0)

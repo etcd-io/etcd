@@ -560,7 +560,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		return nil, err
 	}
-	srv.authStore = auth.NewAuthStore(srv.be, tp)
+	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, tp)
 	if num := cfg.AutoCompactionRetention; num != 0 {
 		srv.compactor, err = compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {

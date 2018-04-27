@@ -473,7 +473,7 @@ function staticcheck_pass {
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
-			STATIC_CHECK_MASK="SA(1012|1019|2002)"
+			STATIC_CHECK_MASK="SA(1012|1019|2002|4004)"
 			if echo "${staticcheckResult}" | grep -vE "$STATIC_CHECK_MASK"; then
 				echo -e "staticcheck checking failed:\\n${staticcheckResult}"
 				exit 255
