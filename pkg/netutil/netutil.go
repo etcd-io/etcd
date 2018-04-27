@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package netutil implements network-related utility functions.
 package netutil
 
 import (
