@@ -1,0 +1,11 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   5	        11	norm	ID:6 put:<key:"foo1" value:"bar1" lease:1 ignore_lease:true > 
+
+Entry types (IRRPut) count is : 1
