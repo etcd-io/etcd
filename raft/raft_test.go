@@ -2943,6 +2943,38 @@ func TestIgnoreProvidingSnap(t *testing.T) {
 	}
 }
 
+func TestDisableSnapshotMsg(t *testing.T) {
+	// restore the state machine from a snapshot so it has a compacted log and a snapshot
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+		},
+	}
+
+	// create node 1 and disable sending snapshot message
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	cfg.DisableSnapshotMsg = true
+	sm := newRaft(cfg)
+	sm.restore(s)
+
+	sm.becomeCandidate()
+	sm.becomeLeader()
+
+	// force set the next of node 2, so that node 2 needs a snapshot.
+	// keep node 2 to be active, but still expect node 1 to ignore sending snapshot to 2.
+	sm.prs[2].Next = sm.raftLog.firstIndex() - 1
+	sm.prs[2].RecentActive = true
+
+	sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+
+	msgs := sm.readMessages()
+	if len(msgs) != 0 {
+		t.Errorf("len(msgs) = %d, want 0", len(msgs))
+	}
+}
+
 func TestRestoreFromSnapMsg(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
