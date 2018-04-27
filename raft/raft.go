@@ -196,6 +196,13 @@ type Config struct {
 	// logical clock from assigning the timestamp and then forwarding the data
 	// to the leader.
 	DisableProposalForwarding bool
+
+	// DisableSnapshotMsg set to true means that the leader will NOT send snapshot
+	// to repair a slow follower. As a result, the follower will never be able to
+	// receive additional raft logs from the leader. This feature allows etcd-raft
+	// user to disable the built-in snapshot repair flow, and implement their own
+	// out of band snapshot repair mechanism.
+	DisableSnapshotMsg bool
 }
 
 func (c *Config) validate() error {
@@ -290,6 +297,7 @@ type raft struct {
 	// when raft changes its state to follower or candidate.
 	randomizedElectionTimeout int
 	disableProposalForwarding bool
+	disableSnapshotMsg        bool
 
 	tick func()
 	step stepFunc
@@ -334,6 +342,7 @@ func newRaft(c *Config) *raft {
 		preVote:                   c.PreVote,
 		readOnly:                  newReadOnly(c.ReadOnlyOption),
 		disableProposalForwarding: c.DisableProposalForwarding,
+		disableSnapshotMsg:        c.DisableSnapshotMsg,
 	}
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
@@ -453,6 +462,11 @@ func (r *raft) sendAppend(to uint64) {
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
 
 	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
+		if r.disableSnapshotMsg {
+			r.logger.Debugf("raft snapshot repair has been disabled, ignore sending snapshot to %x", to)
+			return
+		}
+
 		if !pr.RecentActive {
 			r.logger.Debugf("ignore sending snapshot to %x since it is not recently active", to)
 			return
