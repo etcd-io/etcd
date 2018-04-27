@@ -340,7 +340,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if gerr != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
 		}
-		if err = membership.ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
+		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {

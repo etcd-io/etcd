@@ -180,7 +180,7 @@ func (c *ServerConfig) advertiseMatchesCluster() error {
 	sort.Strings(apurls)
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
-	ok, err := netutil.URLStringsEqual(ctx, apurls, urls.StringSlice())
+	ok, err := netutil.URLStringsEqual(ctx, c.Logger, apurls, urls.StringSlice())
 	if ok {
 		return nil
 	}
