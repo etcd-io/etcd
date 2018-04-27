@@ -1,0 +1,11 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   4	        10	norm	ID:5 range:<key:"1" range_end:"hi" limit:6 revision:1 sort_order:ASCEND max_mod_revision:20000 max_create_revision:20000 > 
+
+Entry types (IRRRange) count is : 1

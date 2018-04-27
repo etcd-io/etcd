@@ -1,0 +1,11 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   9	        15	norm	ID:10 lease_grant:<TTL:1 ID:1 > 
+
+Entry types (IRRLeaseGrant) count is : 1
