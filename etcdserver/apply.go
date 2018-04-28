@@ -108,8 +108,21 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 	)
 }
 
+type authStringer struct {
+	*pb.InternalRaftRequest
+}
+
+func (as *authStringer) String() string {
+	return fmt.Sprintf("header:%s authenticate:<name:%s>", as.Header.String(), as.Authenticate.Name)
+}
+
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
-	defer warnOfExpensiveRequest(a.s.getLogger(), time.Now(), r)
+	if r.Authenticate != nil {
+		// we need the custom stringer of Authenticate RPC for not printing password
+		defer warnOfExpensiveRequest(a.s.getLogger(), time.Now(), &authStringer{r})
+	} else {
+		defer warnOfExpensiveRequest(a.s.getLogger(), time.Now(), r)
+	}
 
 	ar := &applyResult{}
 
