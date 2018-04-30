@@ -86,12 +86,12 @@ func (enc *msgAppV2Encoder) encode(m *raftpb.Message) error {
 	start := time.Now()
 	switch {
 	case isLinkHeartbeatMessage(m):
-		enc.uint8buf[0] = byte(msgTypeLinkHeartbeat)
+		enc.uint8buf[0] = msgTypeLinkHeartbeat
 		if _, err := enc.w.Write(enc.uint8buf); err != nil {
 			return err
 		}
 	case enc.index == m.Index && enc.term == m.LogTerm && m.LogTerm == m.Term:
-		enc.uint8buf[0] = byte(msgTypeAppEntries)
+		enc.uint8buf[0] = msgTypeAppEntries
 		if _, err := enc.w.Write(enc.uint8buf); err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 	if _, err := io.ReadFull(dec.r, dec.uint8buf); err != nil {
 		return m, err
 	}
-	typ = uint8(dec.uint8buf[0])
+	typ = dec.uint8buf[0]
 	switch typ {
 	case msgTypeLinkHeartbeat:
 		return linkHeartbeatMessage, nil
