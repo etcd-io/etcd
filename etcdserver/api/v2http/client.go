@@ -630,7 +630,7 @@ func trimErrorPrefix(err error, prefix string) error {
 
 func unmarshalRequest(r *http.Request, req json.Unmarshaler, w http.ResponseWriter) bool {
 	ctype := r.Header.Get("Content-Type")
-	semicolonPosition := strings.Index(ctype, ";")
+	semicolonPosition := strings.IndexByte(ctype, ';')
 	if semicolonPosition != -1 {
 		ctype = strings.TrimSpace(strings.ToLower(ctype[0:semicolonPosition]))
 	}
