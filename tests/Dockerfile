@@ -33,6 +33,7 @@ RUN ln -s /lib64/libhunspell-1.6.so /lib64/libhunspell.so
 
 RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u github.com/coreos/license-bill-of-materials \
+  && go get -v -u github.com/mdempsky/unconvert \
   && go get -v -u honnef.co/go/tools/cmd/gosimple \
   && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
