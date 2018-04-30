@@ -21,13 +21,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:1380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:13800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:1381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -70,13 +70,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:2380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:23800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:2381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
@@ -119,13 +119,13 @@ agent-configs:
     key-file: ""
     trusted-ca-file: ""
     listen-peer-urls: ["https://127.0.0.1:3380"]
-    initial-advertise-peer-urls: ["https://127.0.0.1:33800"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:3381"]
     peer-auto-tls: true
     peer-client-cert-auth: false
     peer-cert-file: ""
     peer-key-file: ""
     peer-trusted-ca-file: ""
-    initial-cluster: s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
     snapshot-count: 10000
