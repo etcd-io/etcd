@@ -1048,7 +1048,12 @@ func decomposeOpts(optstr string) (string, map[string]string, error) {
 
 }
 
-func NewTokenProvider(lg *zap.Logger, tokenOpts string, bCost int, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+// NewTokenProvider creates a new token provider.
+func NewTokenProvider(
+	lg *zap.Logger,
+	tokenOpts string,
+	bCost int,
+	indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
