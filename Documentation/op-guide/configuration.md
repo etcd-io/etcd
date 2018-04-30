@@ -379,6 +379,10 @@ Follow the instructions when using these flags.
 + Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 + default: 10
 
+### --bcrypt-cost
++ Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
++ default: 10
+
 ## Experimental flags
 
 ### --experimental-corrupt-check-time

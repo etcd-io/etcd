@@ -67,8 +67,8 @@ var (
 	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
 	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
 
-	// BcryptCost is the algorithm cost / strength for hashing auth passwords
-	BcryptCost = bcrypt.DefaultCost
+	// bcryptCost is the algorithm cost / strength for hashing auth passwords
+	bcryptCost = bcrypt.DefaultCost
 )
 
 const (
@@ -347,7 +347,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		return nil, ErrUserEmpty
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), BcryptCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcryptCost)
 	if err != nil {
 		plog.Errorf("failed to hash password: %s", err)
 		return nil, err
@@ -406,7 +406,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
 	// TODO(mitake): measure the cost of bcrypt.GenerateFromPassword()
 	// If the cost is too high, we should move the encryption to outside of the raft
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), BcryptCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcryptCost)
 	if err != nil {
 		plog.Errorf("failed to hash password: %s", err)
 		return nil, err
@@ -1048,17 +1048,27 @@ func decomposeOpts(optstr string) (string, map[string]string, error) {
 
 }
 
-func NewTokenProvider(lg *zap.Logger, tokenOpts string, bcryptCost int, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+func NewTokenProvider(lg *zap.Logger, tokenOpts string, bCost int, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
 	}
 
-	if bcryptCost < bcrypt.MinCost || bcryptCost > bcrypt.MaxCost {
-		plog.Errorf("Invalid bcrypt-cost: %d", bcryptCost)
+	if bCost < bcrypt.MinCost || bCost > bcrypt.MaxCost {
+		if lg != nil {
+			lg.Warn(
+				"invalid bcrypt cost",
+				zap.Int("min-cost", bcrypt.MinCost),
+				zap.Int("max-cost", bcrypt.MaxCost),
+				zap.Int("given-cost", bCost),
+			)
+		} else {
+			plog.Errorf("Invalid bcrypt-cost: %d", bCost)
+		}
 		return nil, ErrInvalidAuthOpts
 	}
-	BcryptCost = bcryptCost
+
+	bcryptCost = bCost
 
 	switch tokenType {
 	case "simple":

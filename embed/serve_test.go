@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/auth"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
@@ -33,36 +32,6 @@ func TestStartEtcdWrongToken(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
-	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
-		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
-	}
-}
-
-// TestStartEtcdLargeBcryptCost ensures that StartEtcd with invalid large bcrypt-cost returns with error.
-func TestStartEtcdLargeBcryptCost(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "large-bcrypt-cost-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
-	cfg := NewConfig()
-	cfg.Dir = tdir
-	cfg.BcryptCost = uint(bcrypt.MaxCost) + 1
-	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
-		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
-	}
-}
-
-// TestStartEtcdSmallBcryptCost ensures that StartEtcd with invalid small bcrypt-cost returns with error.
-func TestStartEtcdSmallBcryptCost(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "small-bcrypt-cost-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
-	cfg := NewConfig()
-	cfg.Dir = tdir
-	cfg.BcryptCost = uint(bcrypt.MinCost) - 1
 	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}

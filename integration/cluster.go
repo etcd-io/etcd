@@ -53,7 +53,6 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/soheilhy/cmux"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -606,7 +605,6 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 		m.MaxRequestBytes = embed.DefaultMaxRequestBytes
 	}
 	m.AuthToken = "simple" // for the purpose of integration testing, simple token is enough
-	m.BcryptCost = uint(bcrypt.MinCost)
 
 	m.grpcServerOpts = []grpc.ServerOption{}
 	if mcfg.grpcKeepAliveMinTime > time.Duration(0) {

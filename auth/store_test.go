@@ -73,6 +73,24 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	}
 }
 
+// TestNewTokenProvideBryptCost ensures that NewTokenProvide succeeds with valid bcrypt-cost, fails with invalid bcrypt-costs
+func TestNewTokenProvideBcryptCost(t *testing.T) {
+	_, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MaxCost+1, dummyIndexWaiter)
+	if err == nil {
+		t.Fatalf("expected failure when bcryptcost is too large")
+	}
+
+	_, err = NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost-1, dummyIndexWaiter)
+	if err == nil {
+		t.Fatalf("expected failure when bcryptcost is too small")
+	}
+
+	_, err = NewTokenProvider(zap.NewExample(), "simple", bcrypt.DefaultCost, dummyIndexWaiter)
+	if err != nil {
+		t.Fatalf("expected success when bcryptcost is the default value")
+	}
+}
+
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 

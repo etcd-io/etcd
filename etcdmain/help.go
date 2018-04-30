@@ -15,9 +15,11 @@
 package etcdmain
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/coreos/etcd/embed"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -148,7 +150,7 @@ Security:
 Auth:
   --auth-token 'simple'
     Specify a v3 authentication token type and its options ('simple' or 'jwt').
-  --bcrypt-cost 10
+  --bcrypt-cost '` + fmt.Sprintf("%d", bcrypt.DefaultCost) + `'
     Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 
 Profiling:
