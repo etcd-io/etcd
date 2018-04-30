@@ -1129,7 +1129,7 @@ func (as *authStore) Revision() uint64 {
 	return atomic.LoadUint64(&as.revision)
 }
 
-func (as *authStore) AuthInfoFromTLS(ctx context.Context) *AuthInfo {
+func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 	peer, ok := peer.FromContext(ctx)
 	if !ok || peer == nil || peer.AuthInfo == nil {
 		return nil
@@ -1137,18 +1137,26 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) *AuthInfo {
 
 	tlsInfo := peer.AuthInfo.(credentials.TLSInfo)
 	for _, chains := range tlsInfo.State.VerifiedChains {
-		for _, chain := range chains {
-			cn := chain.Subject.CommonName
-			if as.lg != nil {
-				as.lg.Debug("found command name", zap.String("common-name", cn))
-			} else {
-				plog.Debugf("found common name %s", cn)
-			}
-			return &AuthInfo{Username: cn, Revision: as.Revision()}
+		if len(chains) < 1 {
+			continue
 		}
+		ai = &AuthInfo{
+			Username: chains[0].Subject.CommonName,
+			Revision: as.Revision(),
+		}
+		if as.lg != nil {
+			as.lg.Debug(
+				"found command name",
+				zap.String("common-name", ai.Username),
+				zap.String("user-name", ai.Username),
+				zap.Uint64("revision", ai.Revision),
+			)
+		} else {
+			plog.Debugf("found common name %s", ai.Username)
+		}
+		break
 	}
-
-	return nil
+	return ai
 }
 
 func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
