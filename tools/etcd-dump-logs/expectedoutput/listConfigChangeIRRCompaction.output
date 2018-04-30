@@ -1,0 +1,15 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   1	         1	conf	method=ConfChangeAddNode id=2
+   2	         2	conf	method=ConfChangeRemoveNode id=2
+   2	         3	conf	method=ConfChangeUpdateNode id=2
+   2	         4	conf	method=ConfChangeAddLearnerNode id=3
+   8	        14	norm	ID:9 compaction:<physical:true > 
+
+Entry types (ConfigChange,IRRCompaction) count is : 5

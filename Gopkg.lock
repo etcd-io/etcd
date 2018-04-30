@@ -31,8 +31,8 @@
     "journal",
     "util"
   ]
-  revision = "d2196463941895ee908e13531a23a39feb9e1243"
-  version = "v15"
+  revision = "40e2722dffead74698ca12a750f64ef313ddce05"
+  version = "v16"
 
 [[projects]]
   name = "github.com/coreos/pkg"
@@ -42,11 +42,6 @@
   ]
   revision = "3ac0863d7acf3bc44daf49afef8919af12f704ef"
   version = "v3"
-
-[[projects]]
-  name = "github.com/cpuguy83/go-md2man"
-  packages = ["md2man"]
-  revision = "23709d0847197db6021a51fdb193e66e9222d4e7"
 
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
@@ -188,11 +183,6 @@
     "xfs"
   ]
   revision = "a6e9df898b1336106c743392c48ee0b71f5c4efa"
-
-[[projects]]
-  name = "github.com/russross/blackfriday"
-  packages = ["."]
-  revision = "4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -359,6 +349,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8d19d25de42fad79e4e417d847283a0057b08e2cacbf556d1da5dbcf8b81d0a9"
+  inputs-digest = "943bf7648c0129f59546321f569622e933f24a103b5d68525b82d5e47d52733f"
   solver-name = "gps-cdcl"
   solver-version = 1

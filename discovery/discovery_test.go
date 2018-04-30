@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/client"
 
 	"github.com/jonboulle/clockwork"
@@ -36,7 +38,7 @@ const (
 )
 
 func TestNewProxyFuncUnset(t *testing.T) {
-	pf, err := newProxyFunc("")
+	pf, err := newProxyFunc(zap.NewExample(), "")
 	if pf != nil {
 		t.Fatal("unexpected non-nil proxyFunc")
 	}
@@ -51,7 +53,7 @@ func TestNewProxyFuncBad(t *testing.T) {
 		"http://foo.com/%1",
 	}
 	for i, in := range tests {
-		pf, err := newProxyFunc(in)
+		pf, err := newProxyFunc(zap.NewExample(), in)
 		if pf != nil {
 			t.Errorf("#%d: unexpected non-nil proxyFunc", i)
 		}
@@ -67,7 +69,7 @@ func TestNewProxyFunc(t *testing.T) {
 		"http://disco.foo.bar": "http://disco.foo.bar",
 	}
 	for in, w := range tests {
-		pf, err := newProxyFunc(in)
+		pf, err := newProxyFunc(zap.NewExample(), in)
 		if pf == nil {
 			t.Errorf("%s: unexpected nil proxyFunc", in)
 			continue

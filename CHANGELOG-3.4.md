@@ -1,8 +1,11 @@
 
 
+Previous change logs can be found at [CHANGELOG-3.3](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.3.md).
+
+
 ## v3.4.0 (TBD 2018-07-01)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
 ### Improved
 
@@ -85,6 +88,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Move internal package `"github.com/coreos/etcd/etcdserver/auth"` to [`"github.com/coreos/etcd/etcdserver/v2auth"`](https://github.com/coreos/etcd/pull/9275).
 - Move internal package `"github.com/coreos/etcd/error"` to [`"github.com/coreos/etcd/etcdserver/v2error"`](https://github.com/coreos/etcd/pull/9274).
 - Move internal package `"github.com/coreos/etcd/store"` to [`"github.com/coreos/etcd/etcdserver/v2store"`](https://github.com/coreos/etcd/pull/9274).
+- [`--experimental-enable-v2v3`](TODO) has been deprecated, `--enable-v2v3` flag is now stable.
 
 ### Dependency
 
@@ -94,6 +98,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Upgrade [`github.com/google/btree`](https://github.com/google/btree/releases) from [**`google/btree@925471ac9`**](https://github.com/google/btree/commit/925471ac9e2131377a91e1595defec898166fe49) to [**`google/btree@e89373fe6`**](https://github.com/google/btree/commit/e89373fe6b4a7413d7acd6da1725b83ef713e6e4).
 - Upgrade [`github.com/spf13/cobra`](https://github.com/spf13/cobra/releases) from [**`spf13/cobra@1c44ec8d3`**](https://github.com/spf13/cobra/commit/1c44ec8d3f1552cac48999f9306da23c4d8a288b) to [**`spf13/cobra@cd30c2a7e`**](https://github.com/spf13/cobra/commit/cd30c2a7e91a1d63fd9a0027accf18a681e9d50b).
 - Upgrade [`github.com/spf13/pflag`](https://github.com/spf13/pflag/releases) from [**`v1.0.0`**](https://github.com/spf13/pflag/releases/tag/v1.0.0) to [**`spf13/pflag@1ce0cc6db`**](https://github.com/spf13/pflag/commit/1ce0cc6db4029d97571db82f85092fccedb572ce).
+- Upgrade [`github.com/coreos/go-systemd`](https://github.com/coreos/go-systemd/releases) from [**`v15`**](https://github.com/coreos/go-systemd/releases/tag/v15) to [**`v16`**](https://github.com/coreos/go-systemd/releases/tag/v16).
 
 ### Metrics, Monitoring
 
@@ -141,12 +146,13 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `--pre-vote=false` by default.
   - v3.5 will enable `--pre-vote=true` by default.
-- [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check` is deprecated).
+- [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check`haisbeen  deprecated).
   - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time` is deprecated).
+- [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time`haisbeen  deprecated).
   - `--corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
 - [`--enable-v2v3`](TODO) flag is now stable.
-  - `--experimental-enable-v2v3` is deprecated.
+  - `--experimental-enable-v2v3` has been deprecated.
+  - Added [more v2v3 integration tests](https://github.com/coreos/etcd/pull/9634).
   - `--enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
   - `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
   - `--enable-v2=false --enable-v2v3=''` to disable v2 API server.
@@ -159,8 +165,10 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Useful for operating multiple etcd clusters under the same domain.
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 - Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
-  - **`etcd --log-output`** will be deprecated in v3.5.
-- Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and logging to file](https://github.com/coreos/etcd/issues/9438) in server-side.
+  - **`etcd --log-output` will be deprecated in v3.5**.
+- Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and multiple log outputs](https://github.com/coreos/etcd/issues/9438) in server-side.
+  - **`etcd --logger=capnslog` will be deprecated in v3.5**.
+  - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - e.g. `--logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
   - e.g. `--logger=zap --log-outputs=default` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`.
   - e.g. If etcd parent process ID (`ppid`) is 1 (e.g. run with systemd), `--logger=zap --log-outputs=default` will [redirect server logs to local systemd journal](https://github.com/coreos/etcd/pull/9624) in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig). And if write to journald fails, it writes to `os.Stderr` as a fallback.
@@ -248,4 +256,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 - Require *Go 1.10+*.
 - Compile with [*Go 1.10.1*](https://golang.org/doc/devel/release.html#go1.10).
+
+### Tooling
+
+- Add [`etcd-dump-logs -entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
 

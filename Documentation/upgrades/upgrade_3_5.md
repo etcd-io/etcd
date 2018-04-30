@@ -12,16 +12,45 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.5.
 
-#### Deprecated in `etcd --log-output`
+#### Deprecated in `etcd --logger capnslog`
 
-Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624)  to support multiple log outputs.
-
-**`etcd --log-output`** is deprecated in v3.5.
+v3.4 adds `--logger=zap` to support multiple log outputs and structured logging. **`etcd --logger=capnslog` has been deprecated in v3.5**, and now `--logger=zap` is the default.
 
 ```diff
--$ etcd --log-output stderr
-+$ etcd --log-outputs stderr,a.log
+-etcd --logger capnslog
++etcd --logger zap --log-outputs stderr,a.log
 ```
+
+TODO(add more monitoring guides); v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.
+
+#### Deprecated in `etcd --log-output`
+
+v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+
+**`etcd --log-output` has been deprecated in v3.5**.
+
+```diff
+-etcd --log-output stderr
++etcd --log-outputs stderr,a.log
+```
+
+#### Changed gRPC gateway HTTP endpoints (deprecated `/v3beta`)
+
+Before
+
+```bash
+curl -L http://localhost:2379/v3beta/kv/put \
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+```
+
+After
+
+```bash
+curl -L http://localhost:2379/v3/kv/put \
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+```
+
+`/v3beta` has been removed in 3.5 release.
 
 ### Server upgrade checklists
 

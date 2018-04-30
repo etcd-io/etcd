@@ -17,6 +17,8 @@ package auth
 import (
 	"context"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -30,7 +32,7 @@ func TestJWTInfo(t *testing.T) {
 		"priv-key":    jwtPrivKey,
 		"sign-method": "RS256",
 	}
-	jwt, err := newTokenProviderJWT(opts)
+	jwt, err := newTokenProviderJWT(zap.NewExample(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,35 +61,35 @@ func TestJWTBad(t *testing.T) {
 	}
 	// private key instead of public key
 	opts["pub-key"] = jwtPrivKey
-	if _, err := newTokenProviderJWT(opts); err == nil {
+	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
 		t.Fatalf("expected failure on missing public key")
 	}
 	opts["pub-key"] = jwtPubKey
 
 	// public key instead of private key
 	opts["priv-key"] = jwtPubKey
-	if _, err := newTokenProviderJWT(opts); err == nil {
+	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
 		t.Fatalf("expected failure on missing public key")
 	}
 	opts["priv-key"] = jwtPrivKey
 
 	// missing signing option
 	delete(opts, "sign-method")
-	if _, err := newTokenProviderJWT(opts); err == nil {
+	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
 		t.Fatal("expected error on missing option")
 	}
 	opts["sign-method"] = "RS256"
 
 	// bad file for pubkey
 	opts["pub-key"] = "whatever"
-	if _, err := newTokenProviderJWT(opts); err == nil {
+	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
 		t.Fatalf("expected failure on missing public key")
 	}
 	opts["pub-key"] = jwtPubKey
 
 	// bad file for private key
 	opts["priv-key"] = "whatever"
-	if _, err := newTokenProviderJWT(opts); err == nil {
+	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
 		t.Fatalf("expeceted failure on missing private key")
 	}
 	opts["priv-key"] = jwtPrivKey

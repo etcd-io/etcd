@@ -38,8 +38,8 @@ func TestSendingSnapshotSetPendingSnapshot(t *testing.T) {
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	// force set the next of node 1, so that
-	// node 1 needs a snapshot
+	// force set the next of node 2, so that
+	// node 2 needs a snapshot
 	sm.prs[2].Next = sm.raftLog.firstIndex()
 
 	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: sm.prs[2].Next - 1, Reject: true})

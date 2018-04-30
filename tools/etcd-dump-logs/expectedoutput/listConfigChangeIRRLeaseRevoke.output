@@ -1,0 +1,11 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+  10	        16	norm	ID:11 lease_revoke:<ID:2 > 
+
+Entry types (IRRLeaseRevoke) count is : 1

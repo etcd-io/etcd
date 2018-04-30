@@ -12,17 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows
-
-package embed
-
-import (
-	"os"
-
-	"github.com/coreos/etcd/pkg/logutil"
-	"go.uber.org/zap/zapcore"
-)
-
-func getZapWriteSyncer() zapcore.WriteSyncer {
-	return zapcore.AddSync(logutil.NewJournaldWriter(os.Stderr))
-}
+// Package netutil implements network-related utility functions.
+package netutil

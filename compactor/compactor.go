@@ -22,6 +22,8 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
 	"github.com/coreos/pkg/capnslog"
+	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 var (
@@ -54,12 +56,19 @@ type RevGetter interface {
 	Rev() int64
 }
 
-func New(mode string, retention time.Duration, rg RevGetter, c Compactable) (Compactor, error) {
+// New returns a new Compactor based on given "mode".
+func New(
+	lg *zap.Logger,
+	mode string,
+	retention time.Duration,
+	rg RevGetter,
+	c Compactable,
+) (Compactor, error) {
 	switch mode {
 	case ModePeriodic:
-		return NewPeriodic(retention, rg, c), nil
+		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c), nil
 	case ModeRevision:
-		return NewRevision(int64(retention), rg, c), nil
+		return newRevision(lg, clockwork.NewRealClock(), int64(retention), rg, c), nil
 	default:
 		return nil, fmt.Errorf("unsupported compaction mode %s", mode)
 	}
