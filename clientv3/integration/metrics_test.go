@@ -132,7 +132,7 @@ func sumCountersForMetricAndLabels(t *testing.T, url string, metricName string, 
 			continue
 		}
 
-		valueString := line[strings.LastIndex(line, " ")+1 : len(line)-1]
+		valueString := line[strings.LastIndexByte(line, ' ')+1 : len(line)-1]
 		valueFloat, err := strconv.ParseFloat(valueString, 32)
 		if err != nil {
 			t.Fatalf("failed parsing value for line: %v and matchingLabelValues: %v", line, matchingLabelValues)

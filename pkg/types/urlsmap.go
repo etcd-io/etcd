@@ -98,7 +98,7 @@ func parse(s string) map[string][]string {
 			continue
 		}
 		value := ""
-		if i := strings.Index(key, "="); i >= 0 {
+		if i := strings.IndexByte(key, '='); i >= 0 {
 			key, value = key[:i], key[i+1:]
 		}
 		m[key] = append(m[key], value)
