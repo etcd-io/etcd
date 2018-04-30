@@ -12,7 +12,7 @@
 
 *the etcd v2 [documentation](Documentation/v2/README.md) has moved*
 
-![etcd Logo](logos/etcd-horizontal-color.png)
+![etcd Logo](logos/etcd-horizontal-color.svg)
 
 etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
 
