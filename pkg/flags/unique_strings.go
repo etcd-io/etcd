@@ -67,7 +67,7 @@ func NewUniqueStringsValue(s string) (us *UniqueStringsValue) {
 
 // UniqueStringsFromFlag returns a string slice from the flag.
 func UniqueStringsFromFlag(fs *flag.FlagSet, flagName string) []string {
-	return []string((*fs.Lookup(flagName).Value.(*UniqueStringsValue)).stringSlice())
+	return (*fs.Lookup(flagName).Value.(*UniqueStringsValue)).stringSlice()
 }
 
 // UniqueStringsMapFromFlag returns a map of strings from the flag.
