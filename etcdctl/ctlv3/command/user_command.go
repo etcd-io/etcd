@@ -272,7 +272,7 @@ func readPasswordInteractive(name string) string {
 		ExitWithError(ExitBadArgs, fmt.Errorf("failed to ask password: %s.", err2))
 	}
 
-	if strings.Compare(password1, password2) != 0 {
+	if password1 != password2 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("given passwords are different."))
 	}
 
