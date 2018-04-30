@@ -2002,7 +2002,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 				lg.Panic(
 					"got different member ID",
 					zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
-					zap.String("member-id-from-message", types.ID(m.ID).String()),
+					zap.String("member-id-from-message", m.ID.String()),
 				)
 			} else {
 				plog.Panicf("nodeID should always be equal to member ID")
@@ -2035,7 +2035,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 				lg.Panic(
 					"got different member ID",
 					zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
-					zap.String("member-id-from-message", types.ID(m.ID).String()),
+					zap.String("member-id-from-message", m.ID.String()),
 				)
 			} else {
 				plog.Panicf("nodeID should always be equal to member ID")

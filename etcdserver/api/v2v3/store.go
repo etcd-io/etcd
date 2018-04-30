@@ -601,7 +601,7 @@ func (s *v2v3Store) mkV2Node(kv *mvccpb.KeyValue) *v2store.NodeExtern {
 		return nil
 	}
 	n := &v2store.NodeExtern{
-		Key:           string(s.mkNodePath(string(kv.Key))),
+		Key:           s.mkNodePath(string(kv.Key)),
 		Dir:           kv.Key[len(kv.Key)-1] == '/',
 		CreatedIndex:  mkV2Rev(kv.CreateRevision),
 		ModifiedIndex: mkV2Rev(kv.ModRevision),
