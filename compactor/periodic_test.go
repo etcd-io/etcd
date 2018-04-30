@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 func TestPeriodicHourly(t *testing.T) {
@@ -32,7 +33,7 @@ func TestPeriodicHourly(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newPeriodic(fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -83,7 +84,7 @@ func TestPeriodicMinutes(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newPeriodic(fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -131,7 +132,7 @@ func TestPeriodicPause(t *testing.T) {
 	retentionDuration := time.Hour
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newPeriodic(fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	tb.Pause()

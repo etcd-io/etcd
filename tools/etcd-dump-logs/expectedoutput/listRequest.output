@@ -1,0 +1,15 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   3	         5	norm	noop
+   3	         6	norm	method=QGET path="/path1"
+   3	         7	norm	method=SYNC time="1969-12-31 16:00:00.000000001 -0800 PST"
+   3	         8	norm	method=DELETE path="/path3"
+   3	         9	norm	method=RANDOM path="/path4/superlong/path/path/path/path/path/path/path/path/path/pa"..."path/path/path/path/path/path/path/path/path/path/path/path/path" val="{\"hey\":\"ho\",\"hi\":[\"yo\"]}"
+
+Entry types (Request) count is : 5

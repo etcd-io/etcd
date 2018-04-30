@@ -52,7 +52,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
-	as = NewAuthStore(b2, tp)
+	as = NewAuthStore(zap.NewExample(), b2, tp)
 	new := as.Revision()
 	b2.Close()
 	as.Close()
@@ -98,7 +98,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -535,7 +535,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp)
 	defer as.Close()
 
 	donec := make(chan struct{})
@@ -601,7 +601,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as2 := NewAuthStore(as.be, tp)
+	as2 := NewAuthStore(zap.NewExample(), as.be, tp)
 	defer func(a *authStore) {
 		a.Close()
 	}(as2)
@@ -683,7 +683,7 @@ func TestRolesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -729,7 +729,7 @@ func TestAuthInfoFromCtxWithRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp)
 	defer as.Close()
 
 	if err = enableAuthAndCreateRoot(as); err != nil {

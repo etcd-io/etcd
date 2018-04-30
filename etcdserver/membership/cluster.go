@@ -649,7 +649,7 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
 // If the validation fails, an error will be returned.
-func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) error {
+func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *RaftCluster) error {
 	ems := existing.Members()
 	lms := local.Members()
 	if len(ems) != len(lms) {
@@ -661,7 +661,7 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 	for i := range ems {
-		if ok, err := netutil.URLStringsEqual(ctx, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
+		if ok, err := netutil.URLStringsEqual(ctx, lg, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
 			return fmt.Errorf("unmatched member while checking PeerURLs (%v)", err)
 		}
 		lms[i].ID = ems[i].ID

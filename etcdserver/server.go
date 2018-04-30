@@ -340,7 +340,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if gerr != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
 		}
-		if err = membership.ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
+		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
@@ -369,7 +369,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		if cfg.ShouldDiscover() {
 			var str string
-			str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			str, err = discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, &DiscoveryError{Op: "join", Err: err}
 			}
@@ -560,9 +560,9 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		return nil, err
 	}
-	srv.authStore = auth.NewAuthStore(srv.be, tp)
+	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, tp)
 	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = compactor.New(cfg.AutoCompactionMode, num, srv.kv, srv)
+		srv.compactor, err = compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {
 			return nil, err
 		}

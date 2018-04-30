@@ -12,17 +12,17 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.2.
 
-#### Change in default `snapshot-count` value
+#### Changed default `snapshot-count` value
 
 Higher `--snapshot-count` holds more Raft entries in memory until snapshot, thus causing [recurrent higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156). Since leader retains latest Raft entries for longer, a slow follower has more time to catch up before leader snapshot. `--snapshot-count` is a tradeoff between higher memory usage and better availabilities of slow followers.
 
 Since v3.2, the default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
 
-#### Change in gRPC dependency (>=3.2.10)
+#### Changed gRPC dependency (>=3.2.10)
 
 3.2.10 or later now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.5` (<=3.2.9 requires `v1.2.1`).
 
-##### Deprecate `grpclog.Logger`
+##### Deprecated `grpclog.Logger`
 
 `grpclog.Logger` has been deprecated in favor of [`grpclog.LoggerV2`](https://github.com/grpc/grpc-go/blob/master/grpclog/loggerv2.go). `clientv3.Logger` is now `grpclog.LoggerV2`.
 
@@ -43,7 +43,7 @@ clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 // log.New above cannot be used (not implement grpclog.LoggerV2 interface)
 ```
 
-##### Deprecate `grpc.ErrClientConnTimeout`
+##### Deprecated `grpc.ErrClientConnTimeout`
 
 Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.2 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
 
@@ -72,7 +72,7 @@ if err == context.DeadlineExceeded {
 }
 ```
 
-#### Change in maximum request size limits (>=3.2.10)
+#### Changed maximum request size limits (>=3.2.10)
 
 3.2.10 and 3.2.11 allow custom request size limits in server side. >=3.2.12 allows custom request size limits for both server and **client side**. In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
 
@@ -145,7 +145,7 @@ err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received messag
 
 **If not specified, client-side send limit defaults to 2 MiB (1.5 MiB + gRPC overhead bytes) and receive limit to `math.MaxInt32`**. Please see [clientv3 godoc](https://godoc.org/github.com/coreos/etcd/clientv3#Config) for more detail.
 
-#### Change in raw gRPC client wrappers
+#### Changed raw gRPC client wrappers
 
 3.2.12 or later changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/coreos/etcd/pull/9047).
 
@@ -168,7 +168,7 @@ Before and after
 +func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 ```
 
-#### Change in `clientv3.Lease.TimeToLive` API
+#### Changed `clientv3.Lease.TimeToLive` API
 
 Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
 
@@ -190,7 +190,7 @@ resp.TTL == -1
 err == nil
 ```
 
-#### Change in `clientv3.NewFromConfigFile`
+#### Moved `clientv3.NewFromConfigFile` to `clientv3.yaml.NewConfig`
 
 `clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
 

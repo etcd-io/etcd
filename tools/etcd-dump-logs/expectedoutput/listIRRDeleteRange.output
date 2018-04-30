@@ -1,0 +1,11 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   6	        12	norm	ID:7 delete_range:<key:"0" range_end:"9" prev_kv:true > 
+
+Entry types (IRRDeleteRange) count is : 1
