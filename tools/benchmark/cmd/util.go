@@ -70,7 +70,7 @@ func getUsernamePassword(usernameFlag string) (string, string, error) {
 	if globalUserName != "" && globalPassword != "" {
 		return globalUserName, globalPassword, nil
 	}
-	colon := strings.Index(usernameFlag, ":")
+	colon := strings.IndexByte(usernameFlag, ':')
 	if colon == -1 {
 		// Prompt for the password.
 		password, err := speakeasy.Ask("Password: ")

@@ -192,7 +192,7 @@ func getUsernamePasswordFromFlag(usernameFlag string) (username string, password
 }
 
 func getUsernamePassword(prompt, usernameFlag string) (username string, password string, err error) {
-	colon := strings.Index(usernameFlag, ":")
+	colon := strings.IndexByte(usernameFlag, ':')
 	if colon == -1 {
 		username = usernameFlag
 		// Prompt for the password.
