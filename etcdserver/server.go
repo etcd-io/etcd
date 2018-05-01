@@ -1701,6 +1701,14 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 			}
 		}
 		resp := x.(*confChangeResponse)
+		if lg := s.getLogger(); lg != nil {
+			lg.Info(
+				"applied a configuration change through raft",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("raft-conf-change", cc.Type.String()),
+				zap.String("raft-conf-change-node-id", types.ID(cc.NodeID).String()),
+			)
+		}
 		return resp.membs, resp.err
 
 	case <-ctx.Done():
@@ -1761,10 +1769,12 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 			close(s.readych)
 			if lg := s.getLogger(); lg != nil {
 				lg.Info(
-					"published local member to cluster",
+					"published local member to cluster through raft",
 					zap.String("local-member-id", s.ID().String()),
 					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.String("request-path", req.Path),
 					zap.String("cluster-id", s.cluster.ID().String()),
+					zap.Duration("publish-timeout", timeout),
 				)
 			} else {
 				plog.Infof("published %+v to cluster %s", s.attributes, s.cluster.ID())
@@ -1777,6 +1787,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 					"stopped publish because server is stopped",
 					zap.String("local-member-id", s.ID().String()),
 					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.Duration("publish-timeout", timeout),
 					zap.Error(err),
 				)
 			} else {
@@ -1787,9 +1798,11 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 		default:
 			if lg := s.getLogger(); lg != nil {
 				lg.Warn(
-					"failed to publish",
+					"failed to publish local member to cluster through raft",
 					zap.String("local-member-id", s.ID().String()),
 					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.String("request-path", req.Path),
+					zap.Duration("publish-timeout", timeout),
 					zap.Error(err),
 				)
 			} else {
