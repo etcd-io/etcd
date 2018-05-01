@@ -128,8 +128,7 @@ peer-transport-security:
 # Enable debug-level logging for etcd.
 debug: false
 
-# Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG'.
-log-package-levels:
+logger: zap
 
 # Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
 log-outputs: [default]
