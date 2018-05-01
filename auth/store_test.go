@@ -48,57 +48,61 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
 	old := as.Revision()
-	b.Close()
 	as.Close()
+	b.Close()
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
-	as = NewAuthStore(zap.NewExample(), b2, tp)
+	as = NewAuthStore(zap.NewExample(), b2, tp, bcrypt.MinCost)
 	new := as.Revision()
-	b2.Close()
 	as.Close()
+	b2.Close()
 
 	if old != new {
 		t.Fatalf("expected revision %d, got %d", old, new)
 	}
 }
 
-// TestNewTokenProvideBryptCost ensures that NewTokenProvide succeeds with valid bcrypt-cost, fails with invalid bcrypt-costs
-func TestNewTokenProvideBcryptCost(t *testing.T) {
-	_, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MaxCost+1, dummyIndexWaiter)
-	if err == nil {
-		t.Fatalf("expected failure when bcryptcost is too large")
-	}
+// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+func TestNewAuthStoreBcryptCost(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
 
-	_, err = NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost-1, dummyIndexWaiter)
-	if err == nil {
-		t.Fatalf("expected failure when bcryptcost is too small")
-	}
-
-	_, err = NewTokenProvider(zap.NewExample(), "simple", bcrypt.DefaultCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
-		t.Fatalf("expected success when bcryptcost is the default value")
+		t.Fatal(err)
 	}
+
+	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
+	for _, invalidCost := range invalidCosts {
+		as := NewAuthStore(zap.NewExample(), b, tp, invalidCost)
+		if as.BcryptCost() != bcrypt.DefaultCost {
+			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
+		}
+		as.Close()
+	}
+
+	b.Close()
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -531,11 +535,11 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	donec := make(chan struct{})
@@ -597,11 +601,11 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as2 := NewAuthStore(zap.NewExample(), as.be, tp)
+	as2 := NewAuthStore(zap.NewExample(), as.be, tp, bcrypt.MinCost)
 	defer func(a *authStore) {
 		a.Close()
 	}(as2)
@@ -679,11 +683,11 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -725,11 +729,11 @@ func TestAuthInfoFromCtxWithRoot(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), "simple", bcrypt.MinCost, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	if err = enableAuthAndCreateRoot(as); err != nil {
