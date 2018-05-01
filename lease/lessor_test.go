@@ -88,7 +88,7 @@ func TestLessorGrant(t *testing.T) {
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, IDToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 1 {
 		t.Errorf("len(vs) = %d, want 1", len(vs))
 	}
@@ -189,7 +189,7 @@ func TestLessorRevoke(t *testing.T) {
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, IDToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 0 {
 		t.Errorf("len(vs) = %d, want 0", len(vs))
 	}
