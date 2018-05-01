@@ -179,8 +179,8 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 				h.Write(k)
 				h.Write(v)
 				if iskeyb {
-					rev := bytesToRev(k)
-					ds.Revision = rev.main
+					rev := mvcc.BytesToRev(k)
+					ds.Revision = rev.Main
 				}
 				ds.TotalKey++
 				return nil
