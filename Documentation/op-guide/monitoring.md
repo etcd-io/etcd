@@ -43,7 +43,7 @@ When	Elapsed (s)
 
 ## Metrics endpoint
 
-Each etcd server exports metrics under the `/metrics` path on its client port and optionally on interfaces given by `--listen-metrics-urls`.
+Each etcd server exports metrics under the `/metrics` path on its client port and optionally on locations given by `--listen-metrics-urls`.
 
 The metrics can be fetched with `curl`:
 
@@ -58,6 +58,10 @@ etcd_disk_backend_commit_duration_seconds_bucket{le="0.008"} 405979
 etcd_disk_backend_commit_duration_seconds_bucket{le="0.016"} 406464
 ...
 ```
+
+## Health Check
+
+In addtion to responding to the `/metrics` endpoint, any locations specified by `--listen-metrics-urls` will also respond to the `/health` endpoint. This can be useful if the standard endpoint is configured with mutual (client) TLS authentation, but a load balancer or monitoring service still needs access to the health check.
 
 ## Prometheus
 

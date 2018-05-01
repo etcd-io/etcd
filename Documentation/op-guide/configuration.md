@@ -365,7 +365,7 @@ Follow the instructions when using these flags.
 + default: basic
 
 ### --listen-metrics-urls
-+ List of URLs to listen on for metrics.
++ List of additional URLs to listen on that will respond to both the `/metrics` and `/health` endpoints
 + default: ""
 
 ## Auth flags
