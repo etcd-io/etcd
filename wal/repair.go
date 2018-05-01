@@ -92,7 +92,7 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 				return false
 			}
 
-			if err = f.Truncate(int64(lastOffset)); err != nil {
+			if err = f.Truncate(lastOffset); err != nil {
 				if lg != nil {
 					lg.Warn("failed to truncate", zap.String("path", f.Name()))
 				} else {

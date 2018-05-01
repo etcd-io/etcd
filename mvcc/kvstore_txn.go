@@ -83,14 +83,14 @@ func (tw *storeTxnWrite) Range(key, end []byte, ro RangeOptions) (r *RangeResult
 
 func (tw *storeTxnWrite) DeleteRange(key, end []byte) (int64, int64) {
 	if n := tw.deleteRange(key, end); n != 0 || len(tw.changes) > 0 {
-		return n, int64(tw.beginRev + 1)
+		return n, tw.beginRev + 1
 	}
-	return 0, int64(tw.beginRev)
+	return 0, tw.beginRev
 }
 
 func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID) int64 {
 	tw.put(key, value, lease)
-	return int64(tw.beginRev + 1)
+	return tw.beginRev + 1
 }
 
 func (tw *storeTxnWrite) End() {
@@ -120,7 +120,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 
-	revpairs := tr.s.kvindex.Revisions(key, end, int64(rev))
+	revpairs := tr.s.kvindex.Revisions(key, end, rev)
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}

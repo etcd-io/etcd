@@ -82,6 +82,8 @@ fi
 
 # shellcheck disable=SC2206
 FMT=($FMT)
+# shellcheck disable=SC2128
+echo "Running with FMT:" "${FMT}"
 
 # prepend REPO_PATH to each local package
 split=$TEST
@@ -90,12 +92,16 @@ for a in $split; do TEST="$TEST ${REPO_PATH}/${a}"; done
 
 # shellcheck disable=SC2206
 TEST=($TEST)
+# shellcheck disable=SC2128
+echo "Running with TEST:" "${TEST}"
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-STATIC_ANALYSIS_PATHS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
 # shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
+# shellcheck disable=SC2128
+echo "Running with STATIC_ANALYSIS_PATHS:" "${STATIC_ANALYSIS_PATHS}"
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
@@ -106,7 +112,7 @@ TEST_CPUS="1,2,4"
 if [ ! -z "${CPU}" ]; then
 	TEST_CPUS="${CPU}"
 fi
-echo "Running with" "${TEST_CPUS}"
+echo "Running with TEST_CPUS:" "${TEST_CPUS}"
 
 # determine whether target supports race detection
 if [ "$GOARCH" == "amd64" ]; then
@@ -487,6 +493,18 @@ function staticcheck_pass {
 	fi
 }
 
+function unconvert_pass {
+	if which unconvert >/dev/null; then
+		unconvertResult=$(unconvert -v "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${unconvertResult}" ]; then
+			echo -e "unconvert checking failed:\\n${unconvertResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping unconvert..."
+	fi
+}
+
 function ineffassign_pass {
 	if which ineffassign >/dev/null; then
 		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
@@ -578,6 +596,7 @@ function fmt_pass {
 			gosimple \
 			unused \
 			staticcheck \
+			unconvert \
 			ineffassign \
 			nakedret \
 			license_header \

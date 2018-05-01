@@ -628,7 +628,7 @@ func (l *Lease) expired() bool {
 func (l *Lease) persistTo(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
-	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl)}
+	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl}
 	val, err := lpb.Marshal()
 	if err != nil {
 		panic("failed to marshal lease proto item")

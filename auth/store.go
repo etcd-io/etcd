@@ -683,7 +683,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	}
 
 	for _, perm := range role.KeyPermission {
-		if !bytes.Equal(perm.Key, []byte(r.Key)) || !bytes.Equal(perm.RangeEnd, []byte(r.RangeEnd)) {
+		if !bytes.Equal(perm.Key, r.Key) || !bytes.Equal(perm.RangeEnd, r.RangeEnd) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
 		}
 	}
@@ -821,7 +821,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	}
 
 	idx := sort.Search(len(role.KeyPermission), func(i int) bool {
-		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
+		return bytes.Compare(role.KeyPermission[i].Key, r.Perm.Key) >= 0
 	})
 
 	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
@@ -830,8 +830,8 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	} else {
 		// append new permission to the role
 		newPerm := &authpb.Permission{
-			Key:      []byte(r.Perm.Key),
-			RangeEnd: []byte(r.Perm.RangeEnd),
+			Key:      r.Perm.Key,
+			RangeEnd: r.Perm.RangeEnd,
 			PermType: r.Perm.PermType,
 		}
 
@@ -1046,7 +1046,7 @@ func putRole(lg *zap.Logger, tx backend.BatchTx, role *authpb.Role) {
 		}
 	}
 
-	tx.UnsafePut(authRolesBucketName, []byte(role.Name), b)
+	tx.UnsafePut(authRolesBucketName, role.Name, b)
 }
 
 func delRole(tx backend.BatchTx, rolename string) {
@@ -1113,7 +1113,7 @@ func (as *authStore) commitRevision(tx backend.BatchTx) {
 }
 
 func getRevision(tx backend.BatchTx) uint64 {
-	_, vs := tx.UnsafeRange(authBucketName, []byte(revisionKey), nil, 0)
+	_, vs := tx.UnsafeRange(authBucketName, revisionKey, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0

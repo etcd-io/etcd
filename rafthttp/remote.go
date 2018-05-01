@@ -62,7 +62,7 @@ func (g *remote) send(m raftpb.Message) {
 					zap.String("message-type", m.Type.String()),
 					zap.String("local-member-id", g.localID.String()),
 					zap.String("from", types.ID(m.From).String()),
-					zap.String("remote-peer-id", types.ID(g.id).String()),
+					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
 			} else {
@@ -75,7 +75,7 @@ func (g *remote) send(m raftpb.Message) {
 					zap.String("message-type", m.Type.String()),
 					zap.String("local-member-id", g.localID.String()),
 					zap.String("from", types.ID(m.From).String()),
-					zap.String("remote-peer-id", types.ID(g.id).String()),
+					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
 			} else {
