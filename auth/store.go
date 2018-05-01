@@ -17,7 +17,6 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"sort"
 	"strings"
@@ -71,8 +70,6 @@ var (
 const (
 	rootUser = "root"
 	rootRole = "root"
-
-	revBytesLen = 8
 )
 
 type AuthInfo struct {
@@ -1122,8 +1119,7 @@ func hasRootRole(u *authpb.User) bool {
 
 func (as *authStore) commitRevision(tx backend.BatchTx) {
 	atomic.AddUint64(&as.revision, 1)
-	revBytes := make([]byte, revBytesLen)
-	binary.BigEndian.PutUint64(revBytes, as.Revision())
+	revBytes := RevToBytes(as.Revision())
 	tx.UnsafePut(authBucketName, revisionKey, revBytes)
 }
 
@@ -1133,7 +1129,7 @@ func getRevision(tx backend.BatchTx) uint64 {
 		// this can happen in the initialization phase
 		return 0
 	}
-	return binary.BigEndian.Uint64(vs[0])
+	return BytesToRev(vs[0])
 }
 
 func (as *authStore) setRevision(rev uint64) {
