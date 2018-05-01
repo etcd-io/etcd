@@ -412,7 +412,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 }
 
 func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	if as.enabled && strings.Compare(r.Name, rootUser) == 0 {
+	if as.enabled && r.Name == rootUser {
 		if as.lg != nil {
 			as.lg.Warn("cannot delete 'root' user", zap.String("user-name", r.Name))
 		} else {
@@ -518,7 +518,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	idx := sort.SearchStrings(user.Roles, r.Role)
-	if idx < len(user.Roles) && strings.Compare(user.Roles[idx], r.Role) == 0 {
+	if idx < len(user.Roles) && user.Roles[idx] == r.Role {
 		if as.lg != nil {
 			as.lg.Warn(
 				"ignored grant role request to a user",
@@ -583,7 +583,7 @@ func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListRespon
 }
 
 func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	if as.enabled && strings.Compare(r.Name, rootUser) == 0 && strings.Compare(r.Role, rootRole) == 0 {
+	if as.enabled && r.Name == rootUser && r.Role == rootRole {
 		if as.lg != nil {
 			as.lg.Warn(
 				"'root' user cannot revoke 'root' role",
@@ -611,7 +611,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	}
 
 	for _, role := range user.Roles {
-		if strings.Compare(role, r.Role) != 0 {
+		if role != r.Role {
 			updatedUser.Roles = append(updatedUser.Roles, role)
 		}
 	}
@@ -714,7 +714,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 }
 
 func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	if as.enabled && strings.Compare(r.Role, rootRole) == 0 {
+	if as.enabled && r.Role == rootRole {
 		if as.lg != nil {
 			as.lg.Warn("cannot delete 'root' role", zap.String("role-name", r.Role))
 		} else {
@@ -742,7 +742,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 		}
 
 		for _, role := range user.Roles {
-			if strings.Compare(role, r.Role) != 0 {
+			if role != r.Role {
 				updatedUser.Roles = append(updatedUser.Roles, role)
 			}
 		}
