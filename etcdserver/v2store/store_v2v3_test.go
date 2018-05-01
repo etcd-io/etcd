@@ -25,12 +25,10 @@ import (
 	"github.com/coreos/etcd/etcdserver/v2store"
 	"github.com/coreos/etcd/integration"
 
-	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/grpc/grpclog"
 )
 
 func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
 	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 }
 
