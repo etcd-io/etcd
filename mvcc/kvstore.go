@@ -50,15 +50,6 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "mvcc")
 )
 
-const (
-	// markedRevBytesLen is the byte length of marked revision.
-	// The first `revBytesLen` bytes represents a normal revision. The last
-	// one byte is the mark.
-	markedRevBytesLen      = revBytesLen + 1
-	markBytePosition       = markedRevBytesLen - 1
-	markTombstone     byte = 't'
-)
-
 var restoreChunkKeys = 10000 // non-const for testing
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
@@ -192,13 +183,13 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	defer tx.Unlock()
 	s.mu.RUnlock()
 
-	upper := revision{main: rev + 1}
-	lower := revision{main: compactRev + 1}
+	upper := Revision{Main: rev + 1}
+	lower := Revision{Main: compactRev + 1}
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	h.Write(keyBucketName)
 	err = tx.UnsafeForEach(keyBucketName, func(k, v []byte) error {
-		kr := bytesToRev(k)
+		kr := BytesToRev(k)
 		if !upper.GreaterThan(kr) {
 			return nil
 		}
@@ -237,8 +228,8 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 
 	s.compactMainRev = rev
 
-	rbytes := newRevBytes()
-	revToBytes(revision{main: rev}, rbytes)
+	rbytes := NewRevBytes()
+	RevToBytes(Revision{Main: rev}, rbytes)
 
 	tx := s.b.BatchTx()
 	tx.Lock()
@@ -318,9 +309,9 @@ func (s *store) restore() error {
 	reportDbTotalSizeInUseInBytes = func() float64 { return float64(b.SizeInUse()) }
 	reportDbTotalSizeInUseInBytesMu.Unlock()
 
-	min, max := newRevBytes(), newRevBytes()
-	revToBytes(revision{main: 1}, min)
-	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
+	min, max := NewRevBytes(), NewRevBytes()
+	RevToBytes(Revision{Main: 1}, min)
+	RevToBytes(Revision{Main: math.MaxInt64, Sub: math.MaxInt64}, max)
 
 	keyToLease := make(map[string]lease.LeaseID)
 
@@ -330,7 +321,7 @@ func (s *store) restore() error {
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
-		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
+		s.compactMainRev = BytesToRev(finishedCompactBytes[0]).Main
 
 		if s.lg != nil {
 			s.lg.Info(
@@ -346,7 +337,7 @@ func (s *store) restore() error {
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
 	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
+		scheduledCompact = BytesToRev(scheduledCompactBytes[0]).Main
 	}
 
 	// index keys concurrently as they're loaded in from tx
@@ -365,9 +356,9 @@ func (s *store) restore() error {
 			break
 		}
 		// next set begins after where this one ended
-		newMin := bytesToRev(keys[len(keys)-1][:revBytesLen])
-		newMin.sub++
-		revToBytes(newMin, min)
+		newMin := BytesToRev(keys[len(keys)-1][:revBytesLen])
+		newMin.Sub++
+		RevToBytes(newMin, min)
 	}
 	close(rkvc)
 	s.currentRev = <-revc
@@ -453,16 +444,16 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					ok = true
 				}
 			}
-			rev := bytesToRev(rkv.key)
-			currentRev = rev.main
+			rev := BytesToRev(rkv.key)
+			currentRev = rev.Main
 			if ok {
 				if isTombstone(rkv.key) {
-					ki.tombstone(lg, rev.main, rev.sub)
+					ki.tombstone(lg, rev.Main, rev.Sub)
 					continue
 				}
-				ki.put(lg, rev.main, rev.sub)
+				ki.put(lg, rev.Main, rev.Sub)
 			} else if !isTombstone(rkv.key) {
-				ki.restore(lg, revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				ki.restore(lg, Revision{Main: rkv.kv.CreateRevision, Sub: 0}, rev, rkv.kv.Version)
 				idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}
@@ -526,25 +517,4 @@ func (s *store) ConsistentIndex() uint64 {
 	v := binary.BigEndian.Uint64(vs[0])
 	atomic.StoreUint64(&s.consistentIndex, v)
 	return v
-}
-
-// appendMarkTombstone appends tombstone mark to normal revision bytes.
-func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
-	if len(b) != revBytesLen {
-		if lg != nil {
-			lg.Panic(
-				"cannot append tombstone mark to non-normal revision bytes",
-				zap.Int("expected-revision-bytes-size", revBytesLen),
-				zap.Int("given-revision-bytes-size", len(b)),
-			)
-		} else {
-			plog.Panicf("cannot append mark to non normal revision bytes")
-		}
-	}
-	return append(b, markTombstone)
-}
-
-// isTombstone checks whether the revision bytes is a tombstone.
-func isTombstone(b []byte) bool {
-	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
 }

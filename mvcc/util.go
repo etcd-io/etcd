@@ -43,8 +43,8 @@ func UpdateConsistentIndex(be backend.Backend, index uint64) {
 }
 
 func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
-	ibytes := newRevBytes()
-	revToBytes(revision{main: kv.ModRevision}, ibytes)
+	ibytes := NewRevBytes()
+	RevToBytes(Revision{Main: kv.ModRevision}, ibytes)
 
 	d, err := kv.Marshal()
 	if err != nil {
