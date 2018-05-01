@@ -159,7 +159,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		if rerr := sws.recvLoop(); rerr != nil {
 			if isClientCtxErr(stream.Context().Err(), rerr) {
 				if sws.lg != nil {
-					sws.lg.Debug("failed to receive watch request from gRPC stream", zap.Error(err))
+					sws.lg.Debug("failed to receive watch request from gRPC stream", zap.Error(rerr))
 				} else {
 					plog.Debugf("failed to receive watch request from gRPC stream (%q)", rerr.Error())
 				}
