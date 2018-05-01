@@ -255,7 +255,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Go
 
 - Require *Go 1.10+*.
-- Compile with [*Go 1.10.1*](https://golang.org/doc/devel/release.html#go1.10).
+- Compile with [*Go 1.10.2*](https://golang.org/doc/devel/release.html#go1.10).
 
 ### Tooling
 

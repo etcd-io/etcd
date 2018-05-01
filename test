@@ -82,8 +82,10 @@ fi
 
 # shellcheck disable=SC2206
 FMT=($FMT)
-# shellcheck disable=SC2128
-echo "Running with FMT:" "${FMT}"
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with FMT:" "${FMT[@]}"
+fi
 
 # prepend REPO_PATH to each local package
 split=$TEST
@@ -92,16 +94,20 @@ for a in $split; do TEST="$TEST ${REPO_PATH}/${a}"; done
 
 # shellcheck disable=SC2206
 TEST=($TEST)
-# shellcheck disable=SC2128
-echo "Running with TEST:" "${TEST}"
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with TEST:" "${TEST[@]}"
+fi
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
 STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
 # shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
-# shellcheck disable=SC2128
-echo "Running with STATIC_ANALYSIS_PATHS:" "${STATIC_ANALYSIS_PATHS}"
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with STATIC_ANALYSIS_PATHS:" "${STATIC_ANALYSIS_PATHS[@]}"
+fi
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
