@@ -51,8 +51,8 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 
-	"github.com/coreos/pkg/capnslog"
 	"github.com/soheilhy/cmux"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -105,8 +105,14 @@ var (
 		ClientCertAuth: true,
 	}
 
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "integration")
+	lg = zap.NewNop()
 )
+
+func init() {
+	if os.Getenv("CLUSTER_DEBUG") != "" {
+		lg, _ = zap.NewProduction()
+	}
+}
 
 type ClusterConfig struct {
 	Size                  int
@@ -626,6 +632,27 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 
 	m.InitialCorruptCheck = true
 
+	m.LoggerConfig = &zap.Config{
+		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
+		Development: false,
+		Sampling: &zap.SamplingConfig{
+			Initial:    100,
+			Thereafter: 100,
+		},
+		Encoding:      "json",
+		EncoderConfig: zap.NewProductionEncoderConfig(),
+
+		OutputPaths:      []string{"/dev/null"},
+		ErrorOutputPaths: []string{"/dev/null"},
+	}
+	if os.Getenv("CLUSTER_DEBUG") != "" {
+		m.LoggerConfig.OutputPaths = []string{"stderr"}
+		m.LoggerConfig.ErrorOutputPaths = []string{"stderr"}
+	}
+	m.Logger, err = m.LoggerConfig.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
 	return m
 }
 
@@ -633,7 +660,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	m.grpcAddr = "localhost:" + m.Name
-	if m.useIP { // for IP-only sTLS certs
+	if m.useIP { // for IP-only TLS certs
 		m.grpcAddr = "127.0.0.1:" + m.Name
 	}
 	l, err := transport.NewUnixListener(m.grpcAddr)
@@ -720,7 +747,13 @@ func (m *member) Clone(t *testing.T) *member {
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
 func (m *member) Launch() error {
-	plog.Printf("launching %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"launching a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 	var err error
 	if m.s, err = etcdserver.NewServer(m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %v", err)
@@ -860,7 +893,13 @@ func (m *member) Launch() error {
 		m.serverClosers = append(m.serverClosers, closer)
 	}
 
-	plog.Printf("launched %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"launched a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 	return nil
 }
 
@@ -920,10 +959,22 @@ func (m *member) Close() {
 
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
-	plog.Printf("stopping %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"stopping a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 	m.Close()
 	m.serverClosers = nil
-	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"stopped a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 }
 
 // checkLeaderTransition waits for leader transition, returning the new leader ID.
@@ -942,7 +993,13 @@ func (m *member) StopNotify() <-chan struct{} {
 
 // Restart starts the member using the preserved data dir.
 func (m *member) Restart(t *testing.T) error {
-	plog.Printf("restarting %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"restarting a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
 		newPeerListeners = append(newPeerListeners, NewListenerWithAddr(t, ln.Addr().String()))
@@ -961,20 +1018,39 @@ func (m *member) Restart(t *testing.T) error {
 	}
 
 	err := m.Launch()
-	plog.Printf("restarted %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"restarted a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+		zap.Error(err),
+	)
 	return err
 }
 
 // Terminate stops the member and removes the data dir.
 func (m *member) Terminate(t *testing.T) {
-	plog.Printf("terminating %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"terminating a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 	m.Close()
 	if !m.keepDataDirTerminate {
 		if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
 			t.Fatal(err)
 		}
 	}
-	plog.Printf("terminated %s (%s)", m.Name, m.grpcAddr)
+	lg.Info(
+		"terminated a member",
+		zap.String("name", m.Name),
+		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
+		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
+		zap.String("grpc-address", m.grpcAddr),
+	)
 }
 
 // Metric gets the metric value for a member
