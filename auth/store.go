@@ -66,9 +66,6 @@ var (
 	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
 	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
 	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
-
-	// BcryptCost is the algorithm cost / strength for hashing auth passwords
-	BcryptCost = bcrypt.DefaultCost
 )
 
 const (
@@ -205,6 +202,7 @@ type authStore struct {
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
 	tokenProvider TokenProvider
+	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
 }
 
 func (as *authStore) AuthEnable() error {
@@ -371,7 +369,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		return nil, ErrUserEmpty
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), BcryptCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
 	if err != nil {
 		if as.lg != nil {
 			as.lg.Warn(
@@ -452,7 +450,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
 	// TODO(mitake): measure the cost of bcrypt.GenerateFromPassword()
 	// If the cost is too high, we should move the encryption to outside of the raft
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), BcryptCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
 	if err != nil {
 		if as.lg != nil {
 			as.lg.Warn(
@@ -1060,7 +1058,23 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
+	if bcryptCost < bcrypt.MinCost || bcryptCost > bcrypt.MaxCost {
+		if lg != nil {
+			lg.Warn(
+				"use default bcrypt cost instead of the invalid given cost",
+				zap.Int("min-cost", bcrypt.MinCost),
+				zap.Int("max-cost", bcrypt.MaxCost),
+				zap.Int("default-cost", bcrypt.DefaultCost),
+				zap.Int("given-cost", bcryptCost))
+		} else {
+			plog.Warningf("Use default bcrypt-cost %d instead of the invalid value %d",
+				bcrypt.DefaultCost, bcryptCost)
+		}
+
+		bcryptCost = bcrypt.DefaultCost
+	}
+
 	tx := be.BatchTx()
 	tx.Lock()
 
@@ -1083,6 +1097,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider) *authSto
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
+		bcryptCost:     bcryptCost,
 	}
 
 	if enabled {
@@ -1341,4 +1356,8 @@ func (as *authStore) HasRole(user, role string) bool {
 		}
 	}
 	return false
+}
+
+func (as *authStore) BcryptCost() int {
+	return as.bcryptCost
 }
