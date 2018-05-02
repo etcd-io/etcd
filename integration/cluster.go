@@ -839,7 +839,13 @@ func (m *member) Launch() error {
 	for _, ln := range m.ClientListeners {
 		hs := &httptest.Server{
 			Listener: ln,
-			Config:   &http.Server{Handler: v2http.NewClientHandler(m.s, m.ServerConfig.ReqTimeout())},
+			Config: &http.Server{
+				Handler: v2http.NewClientHandler(
+					m.Logger,
+					m.s,
+					m.ServerConfig.ReqTimeout(),
+				),
+			},
 		}
 		if m.ClientTLSInfo == nil {
 			hs.Start()
