@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package endpoint resolves etcd entpoints using grpc targets of the form 'endpoint://<clientId>/<endpoint>'.
+// Package endpoint resolves etcd entpoints using grpc targets of the form 'endpoint://<id>/<endpoint>'.
 package endpoint
 
 import (
@@ -36,14 +36,78 @@ var (
 
 func init() {
 	bldr = &builder{
-		clientResolvers: make(map[string]*Resolver),
+		resolverGroups: make(map[string]*ResolverGroup),
 	}
 	resolver.Register(bldr)
 }
 
 type builder struct {
-	clientResolvers map[string]*Resolver
+	resolverGroups map[string]*ResolverGroup
 	sync.RWMutex
+}
+
+// NewResolverGroup creates a new ResolverGroup with the given id.
+func NewResolverGroup(id string) (*ResolverGroup, error) {
+	return bldr.newResolverGroup(id)
+}
+
+// ResolverGroup keeps all endpoints of resolvers using a common endpoint://<id>/ target
+// up-to-date.
+type ResolverGroup struct {
+	id        string
+	endpoints []string
+	resolvers []*Resolver
+	sync.RWMutex
+}
+
+func (e *ResolverGroup) addResolver(r *Resolver) {
+	e.Lock()
+	addrs := epsToAddrs(e.endpoints...)
+	e.resolvers = append(e.resolvers, r)
+	e.Unlock()
+	r.cc.NewAddress(addrs)
+}
+
+func (e *ResolverGroup) removeResolver(r *Resolver) {
+	e.Lock()
+	for i, er := range e.resolvers {
+		if er == r {
+			e.resolvers = append(e.resolvers[:i], e.resolvers[i+1:]...)
+			break
+		}
+	}
+	e.Unlock()
+}
+
+// SetEndpoints updates the endpoints for ResolverGroup. All registered resolver are updated
+// immediately with the new endpoints.
+func (e *ResolverGroup) SetEndpoints(endpoints []string) {
+	addrs := epsToAddrs(endpoints...)
+	e.Lock()
+	e.endpoints = endpoints
+	for _, r := range e.resolvers {
+		r.cc.NewAddress(addrs)
+	}
+	e.Unlock()
+}
+
+// Target constructs a endpoint target using the endpoint id of the ResolverGroup.
+func (e *ResolverGroup) Target(endpoint string) string {
+	return Target(e.id, endpoint)
+}
+
+// Target constructs a endpoint resolver target.
+func Target(id, endpoint string) string {
+	return fmt.Sprintf("%s://%s/%s", scheme, id, endpoint)
+}
+
+// IsTarget checks if a given target string in an endpoint resolver target.
+func IsTarget(target string) bool {
+	return strings.HasPrefix(target, "endpoint://")
+}
+
+func (e *ResolverGroup) Close() {
+	bldr.close(e.id)
 }
 
 // Build creates or reuses an etcd resolver for the etcd cluster name identified by the authority part of the target.
@@ -51,74 +115,59 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 	if len(target.Authority) < 1 {
 		return nil, fmt.Errorf("'etcd' target scheme requires non-empty authority identifying etcd cluster being routed to")
 	}
-	r := b.getResolver(target.Authority)
-	r.cc = cc
-	if r.addrs != nil {
-		r.NewAddress(r.addrs)
+	id := target.Authority
+	es, err := b.getResolverGroup(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build resolver: %v", err)
 	}
+	r := &Resolver{
+		endpointId: id,
+		cc:         cc,
+	}
+	es.addResolver(r)
 	return r, nil
 }
 
-func (b *builder) getResolver(clientId string) *Resolver {
+func (b *builder) newResolverGroup(id string) (*ResolverGroup, error) {
 	b.RLock()
-	r, ok := b.clientResolvers[clientId]
+	es, ok := b.resolverGroups[id]
 	b.RUnlock()
 	if !ok {
-		r = &Resolver{
-			clientId: clientId,
-		}
+		es = &ResolverGroup{id: id}
 		b.Lock()
-		b.clientResolvers[clientId] = r
+		b.resolverGroups[id] = es
 		b.Unlock()
+	} else {
+		return nil, fmt.Errorf("Endpoint already exists for id: %s", id)
 	}
-	return r
+	return es, nil
 }
 
-func (b *builder) addResolver(r *Resolver) {
-	bldr.Lock()
-	bldr.clientResolvers[r.clientId] = r
-	bldr.Unlock()
+func (b *builder) getResolverGroup(id string) (*ResolverGroup, error) {
+	b.RLock()
+	es, ok := b.resolverGroups[id]
+	b.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("ResolverGroup not found for id: %s", id)
+	}
+	return es, nil
 }
 
-func (b *builder) removeResolver(r *Resolver) {
-	bldr.Lock()
-	delete(bldr.clientResolvers, r.clientId)
-	bldr.Unlock()
+func (b *builder) close(id string) {
+	b.Lock()
+	delete(b.resolverGroups, id)
+	b.Unlock()
 }
 
 func (r *builder) Scheme() string {
 	return scheme
 }
 
-// EndpointResolver gets the resolver for  given etcd cluster name.
-func EndpointResolver(clientId string) *Resolver {
-	return bldr.getResolver(clientId)
-}
-
 // Resolver provides a resolver for a single etcd cluster, identified by name.
 type Resolver struct {
-	clientId string
-	cc       resolver.ClientConn
-	addrs    []resolver.Address
+	endpointId string
+	cc         resolver.ClientConn
 	sync.RWMutex
-}
-
-// InitialAddrs sets the initial endpoint addresses for the resolver.
-func (r *Resolver) InitialAddrs(addrs []resolver.Address) {
-	r.Lock()
-	r.addrs = addrs
-	r.Unlock()
-}
-
-// InitialEndpoints sets the initial endpoints to for the resolver.
-// This should be called before dialing. The endpoints may be updated after the dial using NewAddress.
-// At least one endpoint is required.
-func (r *Resolver) InitialEndpoints(eps []string) error {
-	if len(eps) < 1 {
-		return fmt.Errorf("At least one endpoint is required, but got: %v", eps)
-	}
-	r.InitialAddrs(epsToAddrs(eps...))
-	return nil
 }
 
 // TODO: use balancer.epsToAddrs
@@ -130,35 +179,14 @@ func epsToAddrs(eps ...string) (addrs []resolver.Address) {
 	return addrs
 }
 
-// NewAddress updates the addresses of the resolver.
-func (r *Resolver) NewAddress(addrs []resolver.Address) {
-	r.Lock()
-	r.addrs = addrs
-	r.Unlock()
-	if r.cc != nil {
-		r.cc.NewAddress(addrs)
-	}
-}
-
 func (*Resolver) ResolveNow(o resolver.ResolveNowOption) {}
 
 func (r *Resolver) Close() {
-	bldr.removeResolver(r)
-}
-
-// Target constructs a endpoint target with current resolver's clientId.
-func (r *Resolver) Target(endpoint string) string {
-	return Target(r.clientId, endpoint)
-}
-
-// Target constructs a endpoint resolver target.
-func Target(clientId, endpoint string) string {
-	return fmt.Sprintf("%s://%s/%s", scheme, clientId, endpoint)
-}
-
-// IsTarget checks if a given target string in an endpoint resolver target.
-func IsTarget(target string) bool {
-	return strings.HasPrefix(target, "endpoint://")
+	es, err := bldr.getResolverGroup(r.endpointId)
+	if err != nil {
+		return
+	}
+	es.removeResolver(r)
 }
 
 // Parse endpoint parses a endpoint of the form (http|https)://<host>*|(unix|unixs)://<path>) and returns a
@@ -185,7 +213,7 @@ func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	return proto, host, scheme
 }
 
-// ParseTarget parses a endpoint://<clientId>/<endpoint> string and returns the parsed clientId and endpoint.
+// ParseTarget parses a endpoint://<id>/<endpoint> string and returns the parsed id and endpoint.
 // If the target is malformed, an error is returned.
 func ParseTarget(target string) (string, string, error) {
 	noPrefix := strings.TrimPrefix(target, targetPrefix)
@@ -194,7 +222,7 @@ func ParseTarget(target string) (string, string, error) {
 	}
 	parts := strings.SplitN(noPrefix, "/", 2)
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("malformed target, expected %s://<clientId>/<endpoint>, but got %s", scheme, target)
+		return "", "", fmt.Errorf("malformed target, expected %s://<id>/<endpoint>, but got %s", scheme, target)
 	}
 	return parts[0], parts[1], nil
 }

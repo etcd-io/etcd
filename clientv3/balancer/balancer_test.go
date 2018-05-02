@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 )
 
@@ -58,14 +57,17 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 			}
 			defer ms.Stop()
 
-			var resolvedAddrs []resolver.Address
+			var eps []string
 			for _, svr := range ms.Servers {
-				resolvedAddrs = append(resolvedAddrs, svr.ResolverAddress())
+				eps = append(eps, svr.ResolverAddress().Addr)
 			}
 
-			rsv := endpoint.EndpointResolver("nofailover")
+			rsv, err := endpoint.NewResolverGroup("nofailover")
+			if err != nil {
+				t.Fatal(err)
+			}
 			defer rsv.Close()
-			rsv.InitialAddrs(resolvedAddrs)
+			rsv.SetEndpoints(eps)
 
 			name := genName()
 			cfg := Config{
@@ -121,14 +123,17 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 		t.Fatalf("failed to start mock servers: %s", err)
 	}
 	defer ms.Stop()
-	var resolvedAddrs []resolver.Address
+	var eps []string
 	for _, svr := range ms.Servers {
-		resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
+		eps = append(eps, svr.ResolverAddress().Addr)
 	}
 
-	rsv := endpoint.EndpointResolver("serverfail")
+	rsv, err := endpoint.NewResolverGroup("serverfail")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer rsv.Close()
-	rsv.InitialAddrs(resolvedAddrs)
+	rsv.SetEndpoints(eps)
 
 	name := genName()
 	cfg := Config{
@@ -158,7 +163,7 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	ms.StopAt(0)
 	available := make(map[string]struct{})
 	for i := 1; i < serverCount; i++ {
-		available[resolvedAddrs[i].Addr] = struct{}{}
+		available[eps[i]] = struct{}{}
 	}
 
 	reqN := 10
@@ -169,8 +174,8 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 			continue
 		}
 		if prev == "" { // first failover
-			if resolvedAddrs[0].Addr == picked {
-				t.Fatalf("expected failover from %q, picked %q", resolvedAddrs[0].Addr, picked)
+			if eps[0] == picked {
+				t.Fatalf("expected failover from %q, picked %q", eps[0], picked)
 			}
 			prev = picked
 			continue
@@ -194,7 +199,7 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	time.Sleep(time.Second)
 
 	prev, switches = "", 0
-	recoveredAddr, recovered := resolvedAddrs[0].Addr, 0
+	recoveredAddr, recovered := eps[0], 0
 	available[recoveredAddr] = struct{}{}
 
 	for i := 0; i < 2*reqN; i++ {
@@ -234,15 +239,18 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 		t.Fatalf("failed to start mock servers: %s", err)
 	}
 	defer ms.Stop()
-	var resolvedAddrs []resolver.Address
+	var eps []string
 	available := make(map[string]struct{})
 	for _, svr := range ms.Servers {
-		resolvedAddrs = append(resolvedAddrs, resolver.Address{Addr: svr.Address})
+		eps = append(eps, svr.ResolverAddress().Addr)
 		available[svr.Address] = struct{}{}
 	}
-	rsv := endpoint.EndpointResolver("requestfail")
+	rsv, err := endpoint.NewResolverGroup("requestfail")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer rsv.Close()
-	rsv.InitialAddrs(resolvedAddrs)
+	rsv.SetEndpoints(eps)
 
 	name := genName()
 	cfg := Config{

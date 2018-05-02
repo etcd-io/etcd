@@ -30,7 +30,6 @@ import (
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -667,8 +666,9 @@ func TestWatchErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		ch := cli.Watch(context.TODO(), "foo")
-		if wr := <-ch; wr.Err() != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, wr.Err())
+
+		if wr := <-ch; !isCanceled(wr.Err()) {
+			t.Fatalf("expected context canceled, got %v", wr.Err())
 		}
 	}()
 
@@ -699,8 +699,8 @@ func TestWatchAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		cli.Watch(context.TODO(), "foo")
-		if err := cli.Close(); err != nil && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		if err := cli.Close(); err != nil && err != context.Canceled {
+			t.Fatalf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()

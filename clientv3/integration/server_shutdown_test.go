@@ -403,3 +403,18 @@ func isServerUnavailable(err error) bool {
 	code := ev.Code()
 	return code == codes.Unavailable
 }
+
+func isCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled
+}

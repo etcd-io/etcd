@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 )
 
@@ -68,11 +67,11 @@ type Client struct {
 	conn     *grpc.ClientConn
 	dialerrc chan error
 
-	cfg      Config
-	creds    *credentials.TransportCredentials
-	balancer balancer.Balancer
-	resolver *endpoint.Resolver
-	mu       *sync.Mutex
+	cfg           Config
+	creds         *credentials.TransportCredentials
+	balancer      balancer.Balancer
+	resolverGroup *endpoint.ResolverGroup
+	mu            *sync.Mutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -119,11 +118,11 @@ func (c *Client) Close() error {
 	c.cancel()
 	c.Watcher.Close()
 	c.Lease.Close()
+	if c.resolverGroup != nil {
+		c.resolverGroup.Close()
+	}
 	if c.conn != nil {
 		return toErr(c.ctx, c.conn.Close())
-	}
-	if c.resolver != nil {
-		c.resolver.Close()
 	}
 	return c.ctx.Err()
 }
@@ -143,22 +142,10 @@ func (c *Client) Endpoints() (eps []string) {
 
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
-	var addrs []resolver.Address
-	for _, ep := range eps {
-		addrs = append(addrs, resolver.Address{Addr: ep})
-	}
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cfg.Endpoints = eps
-	c.resolver.NewAddress(addrs)
-	// TODO: Does the new grpc balancer provide a way to block until the endpoint changes are propagated?
-	/*if c.balancer.NeedUpdate() {
-		select {
-		case c.balancer.UpdateAddrsC() <- balancer.NotifyNext:
-		case <-c.balancer.StopC():
-		}
-	}*/
+	c.resolverGroup.SetEndpoints(eps)
 }
 
 // Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
@@ -301,12 +288,13 @@ func (c *Client) getToken(ctx context.Context) error {
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
 		_, host, _ := endpoint.ParseEndpoint(ep)
-		target := c.resolver.Target(host)
+		target := c.resolverGroup.Target(host)
 		dOpts, err = c.dialSetupOpts(target, c.cfg.DialOptions...)
 		if err != nil {
 			err = fmt.Errorf("failed to configure auth dialer: %v", err)
 			continue
 		}
+		dOpts = append(dOpts, grpc.WithBalancerName(roundRobinBalancerName))
 		auth, err = newAuthenticator(ctx, target, dOpts, c)
 		if err != nil {
 			continue
@@ -333,7 +321,7 @@ func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, er
 	// We pass a target to DialContext of the form: endpoint://<clusterName>/<host-part> that
 	// does not include scheme (http/https/unix/unixs) or path parts.
 	_, host, _ := endpoint.ParseEndpoint(ep)
-	target := c.resolver.Target(host)
+	target := c.resolverGroup.Target(host)
 
 	opts, err := c.dialSetupOpts(target, dopts...)
 	if err != nil {
@@ -439,13 +427,13 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// Prepare a 'endpoint://<unique-client-id>/' resolver for the client and create a endpoint target to pass
 	// to dial so the client knows to use this resolver.
-	client.resolver = endpoint.EndpointResolver(fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36)))
-	err := client.resolver.InitialEndpoints(cfg.Endpoints)
+	var err error
+	client.resolverGroup, err = endpoint.NewResolverGroup(fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36)))
 	if err != nil {
 		client.cancel()
-		client.resolver.Close()
 		return nil, err
 	}
+	client.resolverGroup.SetEndpoints(cfg.Endpoints)
 
 	if len(cfg.Endpoints) < 1 {
 		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
@@ -457,7 +445,7 @@ func newClient(cfg *Config) (*Client, error) {
 	conn, err := client.dial(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
 	if err != nil {
 		client.cancel()
-		client.resolver.Close()
+		client.resolverGroup.Close()
 		return nil, err
 	}
 	// TODO: With the old grpc balancer interface, we waited until the dial timeout
