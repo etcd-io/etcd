@@ -47,7 +47,10 @@ const (
 // that do not access the v2 store.
 func HandleBasic(mux *http.ServeMux, server etcdserver.ServerPeer) {
 	mux.HandleFunc(varsPath, serveVars)
+
+	// TODO: deprecate '/config/local/log' in v3.5
 	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
+
 	HandleMetricsHealth(mux, server)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 }
@@ -80,6 +83,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 	w.Write(b)
 }
 
+// TODO: deprecate '/config/local/log' in v3.5
 func logHandleFunc(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, "PUT") {
 		return
