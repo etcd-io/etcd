@@ -257,12 +257,12 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
 
+### Tooling
+
+- Add [`etcd-dump-logs --entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
+
 ### Go
 
 - Require *Go 1.10+*.
 - Compile with [*Go 1.10.2*](https://golang.org/doc/devel/release.html#go1.10).
-
-### Tooling
-
-- Add [`etcd-dump-logs -entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
 
