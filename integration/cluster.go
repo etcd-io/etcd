@@ -612,7 +612,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 		m.MaxRequestBytes = embed.DefaultMaxRequestBytes
 	}
 	m.AuthToken = "simple"              // for the purpose of integration testing, simple token is enough
-	m.BcryptCost = uint(bcrypt.MinCost) // for integration testing, use smallest bcrypt cost to speedy up
+	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
 	m.grpcServerOpts = []grpc.ServerOption{}
 	if mcfg.grpcKeepAliveMinTime > time.Duration(0) {
