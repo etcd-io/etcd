@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -818,8 +819,12 @@ func (m *member) Launch() error {
 		}
 		hs := &httptest.Server{
 			Listener: ll,
-			Config:   &http.Server{Handler: h, TLSConfig: peerTLScfg},
-			TLS:      peerTLScfg,
+			Config: &http.Server{
+				Handler:   h,
+				TLSConfig: peerTLScfg,
+				ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
+			},
+			TLS: peerTLScfg,
 		}
 		hs.Start()
 
@@ -845,6 +850,7 @@ func (m *member) Launch() error {
 					m.s,
 					m.ServerConfig.ReqTimeout(),
 				),
+				ErrorLog: log.New(ioutil.Discard, "net/http", 0),
 			},
 		}
 		if m.ClientTLSInfo == nil {
