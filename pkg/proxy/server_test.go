@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -485,6 +486,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		Addr:      dstAddr,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
+		ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
 	}
 
 	donec := make(chan struct{})
