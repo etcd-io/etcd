@@ -76,8 +76,17 @@ func (s *Snapshotter) DBFilePath(id uint64) (string, error) {
 	if _, err := fileutil.ReadDir(s.dir); err != nil {
 		return "", err
 	}
-	if fn := s.dbFilePath(id); fileutil.Exist(fn) {
+	fn := s.dbFilePath(id)
+	if fileutil.Exist(fn) {
 		return fn, nil
+	}
+	if s.lg != nil {
+		s.lg.Warn(
+			"failed to find [SNAPSHOT-INDEX].snap.db",
+			zap.Uint64("snapshot-index", id),
+			zap.String("snapshot-file-path", fn),
+			zap.Error(ErrNoDBSnapshot),
+		)
 	}
 	return "", ErrNoDBSnapshot
 }
