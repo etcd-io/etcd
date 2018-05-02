@@ -272,7 +272,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
-			useIP: c.cfg.UseIP,
+			useIP:                    c.cfg.UseIP,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
