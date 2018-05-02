@@ -156,9 +156,11 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	b.Close()
 	clus.Members[0].Restart(t)
 
+	cli := clus.RandClient()
+	integration.WaitClientV3(t, cli)
 	// reading snapshot with canceled context should error out
 	ctx, cancel := context.WithCancel(context.Background())
-	rc1, err := clus.RandClient().Snapshot(ctx)
+	rc1, err := cli.Snapshot(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,12 +21,11 @@ import (
 )
 
 var (
-	// Disable gRPC internal retrial logic
-	// TODO: enable when gRPC retry is stable (FailFast=false)
-	// Reference:
-	//  - https://github.com/grpc/grpc-go/issues/1532
-	//  - https://github.com/grpc/proposal/blob/master/A6-client-retries.md
-	defaultFailFast = grpc.FailFast(true)
+	// client-side handling retrying of request failures where data was not written to the wire or
+	// where server indicates it did not process the data. gPRC default is default is "FailFast(true)"
+	// but for etcd we default to "FailFast(false)" to minimize client request error responses due to
+	// transident failures.
+	defaultFailFast = grpc.FailFast(false)
 
 	// client-side request send limit, gRPC default is math.MaxInt32
 	// Make sure that "client-side send limit < server-side default send/recv limit"

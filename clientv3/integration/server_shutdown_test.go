@@ -339,7 +339,17 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		defer close(donec)
 		ctx, cancel := context.WithTimeout(context.TODO(), clientTimeout)
 		readyc <- struct{}{}
-		_, err := cli.Get(ctx, "abc", gops...)
+
+		// TODO: The new grpc load balancer will not pin to an endpoint
+		// as intended by this test. But it will round robin member within
+		// two attempts.
+		// Remove retry loop once the new grpc load balancer provides retry.
+		for i := 0; i < 2; i++ {
+			_, err = cli.Get(ctx, "abc", gops...)
+			if err == nil {
+				break
+			}
+		}
 		cancel()
 		if err != nil {
 			if linearizable && isServerUnavailable(err) {

@@ -73,6 +73,9 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
+		if err == rpctypes.ErrTimeout {
+			return errExpected
+		}
 		return err
 	}, 7*time.Second)
 }
@@ -128,7 +131,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	time.Sleep(time.Second * 2)
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		err = op(cli, ctx)
 		cancel()
@@ -168,16 +171,13 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},
-		DialTimeout: 1 * time.Second,
+		DialTimeout: 2 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
-
-	// wait for non-leader to be pinned
-	mustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -186,10 +186,18 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 	// isolate leader
 	clus.Members[lead].InjectPartition(t, clus.Members[(lead+1)%3], clus.Members[(lead+2)%3])
 
-	// expects balancer endpoint switch while ongoing leader election
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-	_, err = cli.Get(ctx, "a")
-	cancel()
+	// TODO: Remove wait once the new grpc load balancer provides retry.
+	integration.WaitClientV3(t, cli)
+
+	// expects balancer to round robin to leader within two attempts
+	for i := 0; i < 2; i++ {
+		ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+		_, err = cli.Get(ctx, "a")
+		cancel()
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

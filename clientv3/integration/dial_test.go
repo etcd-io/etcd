@@ -156,6 +156,10 @@ func TestSwitchSetEndpoints(t *testing.T) {
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	cli.SetEndpoints(eps...)
+
+	// TODO: Remove wait once the new grpc load balancer provides retry.
+	integration.WaitClientV3(t, cli)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := cli.Get(ctx, "foo"); err != nil {

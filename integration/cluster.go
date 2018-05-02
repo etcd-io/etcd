@@ -974,7 +974,23 @@ func (m *member) WaitStarted(t *testing.T) {
 		cancel()
 		break
 	}
+}
 
+func WaitClientV3(t *testing.T, kv clientv3.KV) {
+	timeout := time.Now().Add(requestTimeout)
+	var err error
+	for time.Now().Before(timeout) {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err := kv.Get(ctx, "/")
+		cancel()
+		if err == nil {
+			return
+		}
+		time.Sleep(tickDuration)
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for client: %v", err)
+	}
 }
 
 func (m *member) URL() string { return m.ClientURLs[0].String() }

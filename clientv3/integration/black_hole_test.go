@@ -192,22 +192,23 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	// blackhole eps[0]
 	clus.Members[0].Blackhole()
 
-	// fail first due to blackhole, retry should succeed
+	// With round robin balancer, client will make a request to a healthy endpoint
+	// within a few requests.
 	// TODO: first operation can succeed
 	// when gRPC supports better retry on non-delivered request
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		err = op(cli, ctx)
 		cancel()
 		if err == nil {
 			break
-		}
-		if i == 0 {
-			if err != errExpected {
-				t.Errorf("#%d: expected %v, got %v", i, errExpected, err)
-			}
-		} else if err != nil {
+		} else if err == errExpected {
+			t.Logf("#%d: current error %v", i, err)
+		} else {
 			t.Errorf("#%d: failed with error %v", i, err)
 		}
+	}
+	if err != nil {
+		t.Fatal(err)
 	}
 }
