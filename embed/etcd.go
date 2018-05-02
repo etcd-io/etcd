@@ -446,7 +446,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 
 // configure peer handlers after rafthttp.Transport started
 func (e *Etcd) servePeers() (err error) {
-	ph := etcdhttp.NewPeerHandler(e.Server)
+	ph := etcdhttp.NewPeerHandler(e.GetLogger(), e.Server)
 	var peerTLScfg *tls.Config
 	if !e.cfg.PeerTLSInfo.Empty() {
 		if peerTLScfg, err = e.cfg.PeerTLSInfo.ServerConfig(); err != nil {
