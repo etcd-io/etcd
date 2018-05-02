@@ -32,6 +32,8 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/v2auth"
+
+	"go.uber.org/zap"
 )
 
 const goodPassword = "good"
@@ -363,6 +365,7 @@ func TestAuthFlow(t *testing.T) {
 	for i, tt := range testCases {
 		mux := http.NewServeMux()
 		h := &authHandler{
+			lg:      zap.NewExample(),
 			sec:     &tt.store,
 			cluster: &fakeCluster{id: 1},
 		}
@@ -750,13 +753,13 @@ func TestPrefixAccess(t *testing.T) {
 	}
 
 	for i, tt := range table {
-		if tt.hasRoot != hasRootAccess(tt.store, tt.req, true) {
+		if tt.hasRoot != hasRootAccess(zap.NewExample(), tt.store, tt.req, true) {
 			t.Errorf("#%d: hasRoot doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, false, true) {
+		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(zap.NewExample(), tt.store, tt.req, tt.key, false, true) {
 			t.Errorf("#%d: hasKeyPrefixAccess doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true, true) {
+		if tt.hasRecursiveAccess != hasKeyPrefixAccess(zap.NewExample(), tt.store, tt.req, tt.key, true, true) {
 			t.Errorf("#%d: hasRecursiveAccess doesn't match (expected %v)", i, tt.hasRoot)
 		}
 	}
@@ -832,7 +835,7 @@ func TestUserFromClientCertificate(t *testing.T) {
 	}
 
 	for i, tt := range table {
-		user := userFromClientCertificate(tt.store, tt.req)
+		user := userFromClientCertificate(zap.NewExample(), tt.store, tt.req)
 		userExists := user != nil
 
 		if tt.userExists != userExists {
@@ -897,7 +900,7 @@ func TestUserFromBasicAuth(t *testing.T) {
 	}
 
 	for i, tt := range table {
-		user := userFromBasicAuth(sec, tt.req)
+		user := userFromBasicAuth(zap.NewExample(), sec, tt.req)
 		userExists := user != nil
 
 		if tt.userExists != userExists {

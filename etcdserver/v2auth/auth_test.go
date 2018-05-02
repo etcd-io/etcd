@@ -24,6 +24,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/v2error"
 	"github.com/coreos/etcd/etcdserver/v2store"
+
+	"go.uber.org/zap"
 )
 
 type fakeDoer struct{}
@@ -33,7 +35,7 @@ func (_ fakeDoer) Do(context.Context, etcdserverpb.Request) (etcdserver.Response
 }
 
 func TestCheckPassword(t *testing.T) {
-	st := NewStore(fakeDoer{}, 5*time.Second)
+	st := NewStore(zap.NewExample(), fakeDoer{}, 5*time.Second)
 	u := User{Password: "$2a$10$I3iddh1D..EIOXXQtsra4u8AjOtgEa2ERxVvYGfXFBJDo1omXwP.q"}
 	matched := st.CheckPassword(u, "foo")
 	if matched {
@@ -95,7 +97,7 @@ func TestMergeUser(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		out, err := tt.input.merge(tt.merge, passwordStore{})
+		out, err := tt.input.merge(zap.NewExample(), tt.merge, passwordStore{})
 		if err != nil && !tt.iserr {
 			t.Fatalf("Got unexpected error on item %d", i)
 		}
@@ -140,7 +142,7 @@ func TestMergeRole(t *testing.T) {
 		},
 	}
 	for i, tt := range tbl {
-		out, err := tt.input.merge(tt.merge)
+		out, err := tt.input.merge(zap.NewExample(), tt.merge)
 		if err != nil && !tt.iserr {
 			t.Fatalf("Got unexpected error on item %d", i)
 		}
@@ -220,7 +222,7 @@ func TestAllUsers(t *testing.T) {
 	}
 	expected := []string{"cat", "dog"}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: false}
 	users, err := s.AllUsers()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -248,7 +250,7 @@ func TestGetAndDeleteUser(t *testing.T) {
 	}
 	expected := User{User: "cat", Roles: []string{"animal"}}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.GetUser("cat")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -285,7 +287,7 @@ func TestAllRoles(t *testing.T) {
 	}
 	expected := []string{"animal", "human", "root"}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.AllRoles()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -313,7 +315,7 @@ func TestGetAndDeleteRole(t *testing.T) {
 	}
 	expected := Role{Role: "animal"}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.GetRole("animal")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -360,7 +362,7 @@ func TestEnsure(t *testing.T) {
 		},
 	}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: false}
 	err := s.ensureAuthDirectories()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -429,7 +431,7 @@ func TestCreateAndUpdateUser(t *testing.T) {
 	update := User{User: "cat", Grant: []string{"pet"}}
 	expected := User{User: "cat", Roles: []string{"animal", "pet"}}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true, PasswordStore: fastPasswordStore{}}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: true, PasswordStore: fastPasswordStore{}}
 	out, created, err := s.CreateOrUpdateUser(user)
 	if !created {
 		t.Error("Should have created user, instead updated?")
@@ -484,7 +486,7 @@ func TestUpdateRole(t *testing.T) {
 	update := Role{Role: "animal", Grant: &Permissions{KV: RWPermission{Read: []string{}, Write: []string{"/animal"}}}}
 	expected := Role{Role: "animal", Permissions: Permissions{KV: RWPermission{Read: []string{"/animal"}, Write: []string{"/animal"}}}}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: true}
 	out, err := s.UpdateRole(update)
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -515,7 +517,7 @@ func TestCreateRole(t *testing.T) {
 	}
 	r := Role{Role: "animal", Permissions: Permissions{KV: RWPermission{Read: []string{"/animal"}, Write: []string{}}}}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.CreateRole(Role{Role: "root"})
 	if err == nil {
 		t.Error("Should error creating root role")
@@ -581,7 +583,7 @@ func TestEnableAuth(t *testing.T) {
 		},
 		explicitlyEnabled: false,
 	}
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.EnableAuth()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -625,7 +627,7 @@ func TestDisableAuth(t *testing.T) {
 		},
 		explicitlyEnabled: false,
 	}
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
+	s := store{lg: zap.NewExample(), server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.DisableAuth()
 	if err == nil {
 		t.Error("Expected error; already disabled")

@@ -55,7 +55,7 @@ func Hooks(hooks ...func(zapcore.Entry) error) Option {
 }
 
 // Fields adds fields to the Logger.
-func Fields(fs ...zapcore.Field) Option {
+func Fields(fs ...Field) Option {
 	return optionFunc(func(log *Logger) {
 		log.core = log.core.With(fs)
 	})

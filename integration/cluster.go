@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -786,7 +787,7 @@ func (m *member) Launch() error {
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 
-	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.s)}
+	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.Logger, m.s)}
 
 	h := (http.Handler)(m.raftHandler)
 	if m.grpcListener != nil {
@@ -818,8 +819,12 @@ func (m *member) Launch() error {
 		}
 		hs := &httptest.Server{
 			Listener: ll,
-			Config:   &http.Server{Handler: h, TLSConfig: peerTLScfg},
-			TLS:      peerTLScfg,
+			Config: &http.Server{
+				Handler:   h,
+				TLSConfig: peerTLScfg,
+				ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
+			},
+			TLS: peerTLScfg,
 		}
 		hs.Start()
 
@@ -839,7 +844,14 @@ func (m *member) Launch() error {
 	for _, ln := range m.ClientListeners {
 		hs := &httptest.Server{
 			Listener: ln,
-			Config:   &http.Server{Handler: v2http.NewClientHandler(m.s, m.ServerConfig.ReqTimeout())},
+			Config: &http.Server{
+				Handler: v2http.NewClientHandler(
+					m.Logger,
+					m.s,
+					m.ServerConfig.ReqTimeout(),
+				),
+				ErrorLog: log.New(ioutil.Discard, "net/http", 0),
+			},
 		}
 		if m.ClientTLSInfo == nil {
 			hs.Start()

@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net"
@@ -388,7 +389,10 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 		}
 		lg.Info("gRPC proxy enabled pprof", zap.String("path", debugutil.HTTPPrefixPProf))
 	}
-	srvhttp := &http.Server{Handler: httpmux}
+	srvhttp := &http.Server{
+		Handler:  httpmux,
+		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
+	}
 
 	if tlsinfo == nil {
 		return srvhttp, m.Match(cmux.HTTP1())

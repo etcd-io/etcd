@@ -23,6 +23,8 @@ import (
 	"sort"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -55,7 +57,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test data"))
 	})
-	ph := newPeerHandler(&fakeCluster{}, h, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeCluster{}, h, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
