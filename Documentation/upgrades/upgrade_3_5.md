@@ -34,6 +34,17 @@ v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/
 +etcd --log-outputs stderr,a.log
 ```
 
+#### Deprecated in `etcd --log-package-levels`
+
+**`etcd --log-package-levels` for `capnslog` has been deprecated**.
+
+Now, **`etcd --logger=zap`** is the default.
+
+```diff
+-etcd --log-package-levels 'etcdmain=CRITICAL,etcdserver=DEBUG'
++etcd --logger=zap
+```
+
 #### Changed gRPC gateway HTTP endpoints (deprecated `/v3beta`)
 
 Before
