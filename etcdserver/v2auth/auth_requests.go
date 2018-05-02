@@ -22,6 +22,8 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/v2error"
+
+	"go.uber.org/zap"
 )
 
 func (s *store) ensureAuthDirectories() error {
@@ -45,7 +47,14 @@ func (s *store) ensureAuthDirectories() error {
 					continue
 				}
 			}
-			plog.Errorf("failed to create auth directories in the store (%v)", err)
+			if s.lg != nil {
+				s.lg.Warn(
+					"failed to create auth directories",
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("failed to create auth directories in the store (%v)", err)
+			}
 			return err
 		}
 	}
@@ -92,14 +101,28 @@ func (s *store) detectAuth() bool {
 				return false
 			}
 		}
-		plog.Errorf("failed to detect auth settings (%s)", err)
+		if s.lg != nil {
+			s.lg.Warn(
+				"failed to detect auth settings",
+				zap.Error(err),
+			)
+		} else {
+			plog.Errorf("failed to detect auth settings (%s)", err)
+		}
 		return false
 	}
 
 	var u bool
 	err = json.Unmarshal([]byte(*value.Event.Node.Value), &u)
 	if err != nil {
-		plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
+		if s.lg != nil {
+			s.lg.Warn(
+				"internal bookkeeping value for enabled isn't valid JSON",
+				zap.Error(err),
+			)
+		} else {
+			plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
+		}
 		return false
 	}
 	return u
