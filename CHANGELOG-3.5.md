@@ -12,9 +12,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.4.0...v3.5.0) and [
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/coreos/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
-- **`etcd --log-output` has been deprecated**. Use **`etcd --log-outputs`** instead.
-- **`etcd --logger=capnslog` has been deprecated**. Now, **`etcd --logger=zap`** is the default.
-- **`etcd --log-package-levels` for `capnslog` has been deprecated**. Now, **`etcd --logger=zap`** is the default.
+- **`etcd --log-output` flag has been deprecated.** Use **`etcd --log-outputs`** instead.
+- **`etcd --logger=capnslog` flag has been deprecated.** Now, **`etcd --logger=zap`** is the default.
+- **`etcd --log-package-levels` flag for `capnslog` has been deprecated.** Now, **`etcd --logger=zap`** is the default.
+- **`[CLIENT-URL]/config/local/log` endpoint has been deprecated, as is `etcd --log-package-levels` flag.**
+  - `curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'` won't work.
+  - Please use `etcd --logger=zap` instead.
 
 ### gRPC gateway
 
