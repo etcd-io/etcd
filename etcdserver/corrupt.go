@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // CheckInitialHashKV compares initial hash values with its peers
@@ -58,7 +57,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 	for _, p := range peers {
 		if p.resp != nil {
 			peerID := types.ID(p.resp.Header.MemberId)
-			fields := []zapcore.Field{
+			fields := []zap.Field{
 				zap.String("local-member-id", s.ID().String()),
 				zap.Int64("local-member-revision", rev),
 				zap.Int64("local-member-compact-revision", crev),

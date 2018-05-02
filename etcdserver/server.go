@@ -61,7 +61,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -1816,7 +1815,7 @@ func (s *EtcdServer) sendMergedSnap(merged raftsnap.Message) {
 	atomic.AddInt64(&s.inflightSnapshots, 1)
 
 	lg := s.getLogger()
-	fields := []zapcore.Field{
+	fields := []zap.Field{
 		zap.String("from", s.ID().String()),
 		zap.String("to", types.ID(merged.To).String()),
 		zap.Int64("bytes", merged.TotalSize),

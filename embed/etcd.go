@@ -28,8 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap/zapcore"
-
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
@@ -275,7 +273,7 @@ func (e *Etcd) Config() Config {
 // Client requests will be terminated with request timeout.
 // After timeout, enforce remaning requests be closed immediately.
 func (e *Etcd) Close() {
-	fields := []zapcore.Field{
+	fields := []zap.Field{
 		zap.String("name", e.cfg.Name),
 		zap.String("data-dir", e.cfg.Dir),
 		zap.Strings("advertise-peer-urls", e.cfg.getAPURLs()),
