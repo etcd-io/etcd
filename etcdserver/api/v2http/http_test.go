@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 type fakeCluster struct {
@@ -78,7 +79,7 @@ func TestWriteError(t *testing.T) {
 	// nil error should not panic
 	rec := httptest.NewRecorder()
 	r := new(http.Request)
-	writeError(rec, r, nil)
+	writeError(zap.NewExample(), rec, r, nil)
 	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -111,7 +112,7 @@ func TestWriteError(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeError(rw, r, tt.err)
+		writeError(zap.NewExample(), rw, r, tt.err)
 		if code := rw.Code; code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, code, tt.wcode)
 		}

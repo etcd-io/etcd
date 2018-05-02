@@ -42,6 +42,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
 )
 
 func mustMarshalEvent(t *testing.T, ev *v2store.Event) string {
@@ -657,6 +658,7 @@ func TestServeMembers(t *testing.T) {
 		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
+		lg:      zap.NewExample(),
 		server:  &serverRecorder{},
 		clock:   clockwork.NewFakeClock(),
 		cluster: cluster,
@@ -710,6 +712,7 @@ func TestServeLeader(t *testing.T) {
 		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
+		lg:      zap.NewExample(),
 		server:  &serverRecorder{},
 		clock:   clockwork.NewFakeClock(),
 		cluster: cluster,
@@ -762,6 +765,7 @@ func TestServeMembersCreate(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &membersHandler{
+		lg:      zap.NewExample(),
 		server:  s,
 		clock:   clockwork.NewFakeClock(),
 		cluster: &fakeCluster{id: 1},
@@ -811,6 +815,7 @@ func TestServeMembersDelete(t *testing.T) {
 	}
 	s := &serverRecorder{}
 	h := &membersHandler{
+		lg:      zap.NewExample(),
 		server:  s,
 		cluster: &fakeCluster{id: 1},
 	}
@@ -847,6 +852,7 @@ func TestServeMembersUpdate(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &membersHandler{
+		lg:      zap.NewExample(),
 		server:  s,
 		clock:   clockwork.NewFakeClock(),
 		cluster: &fakeCluster{id: 1},
@@ -1139,6 +1145,7 @@ func TestServeMembersFail(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &membersHandler{
+			lg:      zap.NewExample(),
 			server:  tt.server,
 			cluster: &fakeCluster{id: 1},
 			clock:   clockwork.NewFakeClock(),
@@ -1302,7 +1309,7 @@ func TestGetID(t *testing.T) {
 
 	for i, tt := range tests {
 		w := httptest.NewRecorder()
-		id, ok := getID(tt.path, w)
+		id, ok := getID(zap.NewExample(), tt.path, w)
 		if id != tt.wid {
 			t.Errorf("#%d: id = %d, want %d", i, id, tt.wid)
 		}
@@ -1489,6 +1496,7 @@ func TestBadServeKeys(t *testing.T) {
 	}
 	for i, tt := range testBadCases {
 		h := &keysHandler{
+			lg:      zap.NewExample(),
 			timeout: 0, // context times out immediately
 			server:  tt.server,
 			cluster: &fakeCluster{id: 1},
@@ -1547,6 +1555,7 @@ func TestServeKeysGood(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &keysHandler{
+			lg:      zap.NewExample(),
 			timeout: time.Hour,
 			server:  server,
 			cluster: &fakeCluster{id: 1},
@@ -1602,6 +1611,7 @@ func TestServeKeysEvent(t *testing.T) {
 
 	server := &resServer{}
 	h := &keysHandler{
+		lg:      zap.NewExample(),
 		timeout: time.Hour,
 		server:  server,
 		cluster: &fakeCluster{id: 1},
@@ -1644,6 +1654,7 @@ func TestServeKeysWatch(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
+		lg:      zap.NewExample(),
 		timeout: time.Hour,
 		server:  server,
 		cluster: &fakeCluster{id: 1},
@@ -1771,7 +1782,7 @@ func TestHandleWatch(t *testing.T) {
 		tt.doToChan(wa.echan)
 
 		resp := etcdserver.Response{Term: 5, Index: 100, Watcher: wa}
-		handleKeyWatch(tt.getCtx(), rw, resp, false)
+		handleKeyWatch(tt.getCtx(), zap.NewExample(), rw, resp, false)
 
 		wcode := http.StatusOK
 		wct := "application/json"
@@ -1816,7 +1827,7 @@ func TestHandleWatchStreaming(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		resp := etcdserver.Response{Watcher: wa}
-		handleKeyWatch(ctx, rw, resp, true)
+		handleKeyWatch(ctx, zap.NewExample(), rw, resp, true)
 		close(done)
 	}()
 
