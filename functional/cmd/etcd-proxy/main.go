@@ -19,6 +19,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -191,8 +193,9 @@ $ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 		}
 	})
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", httpPort),
-		Handler: mux,
+		Addr:     fmt.Sprintf(":%d", httpPort),
+		Handler:  mux,
+		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
 	}
 	defer srv.Close()
 

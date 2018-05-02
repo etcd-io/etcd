@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -106,8 +107,9 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 	clus.testerHTTPServer = &http.Server{
-		Addr:    clus.Tester.Addr,
-		Handler: mux,
+		Addr:     clus.Tester.Addr,
+		Handler:  mux,
+		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
 	}
 	go clus.serveTesterServer()
 
