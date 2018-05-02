@@ -61,6 +61,10 @@ cfg := &embed.Config{Debug: false}
 +cfg.LogOutputs = []string{"stderr"}
 ```
 
+#### v3.5 deprecates `capnslog`
+
+**v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+
 #### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
 Deprecated `pkg/transport.TLSInfo.CAFile` field.
