@@ -70,7 +70,7 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			if err == raftsnap.ErrNoSnapshot {
 				return
 			}
-			if err != nil && err != raftsnap.ErrNoSnapshot {
+			if err != nil {
 				log.Panic(err)
 			}
 			log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)

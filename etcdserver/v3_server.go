@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -32,6 +30,7 @@ import (
 	"github.com/coreos/etcd/raft"
 
 	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 )
 
 const (

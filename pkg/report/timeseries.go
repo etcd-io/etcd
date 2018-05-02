@@ -102,7 +102,7 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 	for k, v := range sp.tm {
 		var lat time.Duration
 		if v.count > 0 {
-			lat = time.Duration(v.totalLatency) / time.Duration(v.count)
+			lat = v.totalLatency / time.Duration(v.count)
 		}
 		tslice[i] = DataPoint{
 			Timestamp:  k,

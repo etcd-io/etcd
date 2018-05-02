@@ -87,9 +87,9 @@ func codeFromError(err error) int {
 	}
 	switch e := err.(type) {
 	case *v2error.Error:
-		return (*v2error.Error)(e).StatusCode()
+		return e.StatusCode()
 	case *httptypes.HTTPError:
-		return (*httptypes.HTTPError)(e).Code
+		return e.Code
 	default:
 		return http.StatusInternalServerError
 	}

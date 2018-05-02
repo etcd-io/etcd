@@ -410,7 +410,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 }
 
 func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	if as.enabled && strings.Compare(r.Name, rootUser) == 0 {
+	if as.enabled && r.Name == rootUser {
 		if as.lg != nil {
 			as.lg.Warn("cannot delete 'root' user", zap.String("user-name", r.Name))
 		} else {
@@ -516,7 +516,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	idx := sort.SearchStrings(user.Roles, r.Role)
-	if idx < len(user.Roles) && strings.Compare(user.Roles[idx], r.Role) == 0 {
+	if idx < len(user.Roles) && user.Roles[idx] == r.Role {
 		if as.lg != nil {
 			as.lg.Warn(
 				"ignored grant role request to a user",
@@ -581,7 +581,7 @@ func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListRespon
 }
 
 func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	if as.enabled && strings.Compare(r.Name, rootUser) == 0 && strings.Compare(r.Role, rootRole) == 0 {
+	if as.enabled && r.Name == rootUser && r.Role == rootRole {
 		if as.lg != nil {
 			as.lg.Warn(
 				"'root' user cannot revoke 'root' role",
@@ -609,7 +609,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	}
 
 	for _, role := range user.Roles {
-		if strings.Compare(role, r.Role) != 0 {
+		if role != r.Role {
 			updatedUser.Roles = append(updatedUser.Roles, role)
 		}
 	}
@@ -681,7 +681,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	}
 
 	for _, perm := range role.KeyPermission {
-		if !bytes.Equal(perm.Key, []byte(r.Key)) || !bytes.Equal(perm.RangeEnd, []byte(r.RangeEnd)) {
+		if !bytes.Equal(perm.Key, r.Key) || !bytes.Equal(perm.RangeEnd, r.RangeEnd) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
 		}
 	}
@@ -712,7 +712,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 }
 
 func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	if as.enabled && strings.Compare(r.Role, rootRole) == 0 {
+	if as.enabled && r.Role == rootRole {
 		if as.lg != nil {
 			as.lg.Warn("cannot delete 'root' role", zap.String("role-name", r.Role))
 		} else {
@@ -740,7 +740,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 		}
 
 		for _, role := range user.Roles {
-			if strings.Compare(role, r.Role) != 0 {
+			if role != r.Role {
 				updatedUser.Roles = append(updatedUser.Roles, role)
 			}
 		}
@@ -819,7 +819,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	}
 
 	idx := sort.Search(len(role.KeyPermission), func(i int) bool {
-		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
+		return bytes.Compare(role.KeyPermission[i].Key, r.Perm.Key) >= 0
 	})
 
 	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
@@ -828,8 +828,8 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	} else {
 		// append new permission to the role
 		newPerm := &authpb.Permission{
-			Key:      []byte(r.Perm.Key),
-			RangeEnd: []byte(r.Perm.RangeEnd),
+			Key:      r.Perm.Key,
+			RangeEnd: r.Perm.RangeEnd,
 			PermType: r.Perm.PermType,
 		}
 
@@ -1044,7 +1044,7 @@ func putRole(lg *zap.Logger, tx backend.BatchTx, role *authpb.Role) {
 		}
 	}
 
-	tx.UnsafePut(authRolesBucketName, []byte(role.Name), b)
+	tx.UnsafePut(authRolesBucketName, role.Name, b)
 }
 
 func delRole(tx backend.BatchTx, rolename string) {
@@ -1128,7 +1128,7 @@ func (as *authStore) commitRevision(tx backend.BatchTx) {
 }
 
 func getRevision(tx backend.BatchTx) uint64 {
-	_, vs := tx.UnsafeRange(authBucketName, []byte(revisionKey), nil, 0)
+	_, vs := tx.UnsafeRange(authBucketName, revisionKey, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0

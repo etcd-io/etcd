@@ -204,7 +204,7 @@ func (s *EtcdServer) checkHashKV() error {
 		}
 		alarmed = true
 		a := &pb.AlarmRequest{
-			MemberID: uint64(id),
+			MemberID: id,
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_CORRUPT,
 		}

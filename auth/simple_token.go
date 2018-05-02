@@ -148,7 +148,7 @@ func (t *tokenSimple) invalidateUser(username string) {
 	}
 	t.simpleTokensMu.Lock()
 	for token, name := range t.simpleTokens {
-		if strings.Compare(name, username) == 0 {
+		if name == username {
 			delete(t.simpleTokens, token)
 			t.simpleTokenKeeper.deleteSimpleToken(token)
 		}

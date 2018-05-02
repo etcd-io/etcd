@@ -27,9 +27,9 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
-	"go.uber.org/zap"
 
 	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 )
 
 const (
@@ -109,7 +109,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 }
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
-	defer warnOfExpensiveRequest(a.s.getLogger(), time.Now(), r)
+	defer warnOfExpensiveRequest(a.s.getLogger(), time.Now(), &pb.InternalRaftStringer{Request: r})
 
 	ar := &applyResult{}
 

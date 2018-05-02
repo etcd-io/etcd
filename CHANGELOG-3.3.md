@@ -174,7 +174,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 
 ### Metrics, Monitoring
 
-- Add [`etcd --listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` endpoints.
+- Add [`etcd --listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` and `/health` endpoints.
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
 - Add [`etcd_server_version`](https://github.com/coreos/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/coreos/etcd/issues/8948).
@@ -222,9 +222,9 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If not configured, it defaults to 1.5 MiB.
 - Add [`--client-crl-file`, `--peer-crl-file`](https://github.com/coreos/etcd/pull/8124) flags for [Certificate revocation list](https://github.com/coreos/etcd/issues/4034).
 - Add [`--peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
-- Add [`--listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` endpoints.
+- Add [`--listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` and `/health` endpoints.
   - Support [additional (non) TLS `/metrics` endpoints for a TLS-enabled cluster](https://github.com/coreos/etcd/pull/8282).
-  - e.g. `--listen-metrics-urls=https://localhost:2378,http://localhost:9379` to serve `/metrics` in secure port 2378 and insecure port 9379.
+  - e.g. `--listen-metrics-urls=https://localhost:2378,http://localhost:9379` to serve `/metrics` and `/health` on secure port 2378 and insecure port 9379.
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
 - Add [`--auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
 - Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).

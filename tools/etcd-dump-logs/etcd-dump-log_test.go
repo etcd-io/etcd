@@ -117,12 +117,12 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 			}
 			if !bytes.Equal(actual, expected) {
 				t.Errorf(`Got input of length %d, wanted input of length %d
-==== BEGIN RECIEVED FILE ====
+==== BEGIN RECEIVED FILE ====
 %s
-==== END RECIEVED FILE ====
+==== END RECEIVED FILE ====
 ==== BEGIN EXPECTED FILE ====
 %s
-==== END EXPECTED FILE ==== 
+==== END EXPECTED FILE ====
 `, len(actual), len(expected), actual, expected)
 			}
 		})

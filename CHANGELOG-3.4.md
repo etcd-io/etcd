@@ -191,6 +191,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
 
+### Package `integration`
+
+- Add [`CLUSTER_DEBUG` to enable test cluster logging](https://github.com/coreos/etcd/pull/9678).
+  - Deprecated `capnslog` in integration tests.
+
 ### API
 
 - Add [`snapshot`](https://github.com/coreos/etcd/pull/9118) package for snapshot restore/save operations (see [`godoc.org/github.com/etcd/snapshot`](https://godoc.org/github.com/coreos/etcd/snapshot) for more).
@@ -255,7 +260,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### Go
 
 - Require *Go 1.10+*.
-- Compile with [*Go 1.10.1*](https://golang.org/doc/devel/release.html#go1.10).
+- Compile with [*Go 1.10.2*](https://golang.org/doc/devel/release.html#go1.10).
 
 ### Tooling
 

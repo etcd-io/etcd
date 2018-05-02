@@ -145,7 +145,7 @@ func newConfig() *config {
 	fs.Var(
 		flags.NewUniqueURLsWithExceptions("", ""),
 		"listen-metrics-urls",
-		"List of URLs to listen on for metrics.",
+		"List of URLs to listen on for the metrics and health endpoints.",
 	)
 	fs.UintVar(&cfg.ec.MaxSnapFiles, "max-snapshots", cfg.ec.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited).")
 	fs.UintVar(&cfg.ec.MaxWalFiles, "max-wals", cfg.ec.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")

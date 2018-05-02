@@ -45,7 +45,7 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "mvcc/backend")
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
-	minSnapshotWarningTimeout = time.Duration(30 * time.Second)
+	minSnapshotWarningTimeout = 30 * time.Second
 )
 
 type Backend interface {
