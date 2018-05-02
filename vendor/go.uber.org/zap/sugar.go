@@ -62,9 +62,9 @@ func (s *SugaredLogger) Named(name string) *SugaredLogger {
 }
 
 // With adds a variadic number of fields to the logging context. It accepts a
-// mix of strongly-typed zapcore.Field objects and loosely-typed key-value
-// pairs. When processing pairs, the first element of the pair is used as the
-// field key and the second as the field value.
+// mix of strongly-typed Field objects and loosely-typed key-value pairs. When
+// processing pairs, the first element of the pair is used as the field key
+// and the second as the field value.
 //
 // For example,
 //   sugaredLogger.With(
@@ -235,19 +235,19 @@ func (s *SugaredLogger) log(lvl zapcore.Level, template string, fmtArgs []interf
 	}
 }
 
-func (s *SugaredLogger) sweetenFields(args []interface{}) []zapcore.Field {
+func (s *SugaredLogger) sweetenFields(args []interface{}) []Field {
 	if len(args) == 0 {
 		return nil
 	}
 
 	// Allocate enough space for the worst case; if users pass only structured
 	// fields, we shouldn't penalize them with extra allocations.
-	fields := make([]zapcore.Field, 0, len(args))
+	fields := make([]Field, 0, len(args))
 	var invalid invalidPairs
 
 	for i := 0; i < len(args); {
 		// This is a strongly-typed field. Consume it and move on.
-		if f, ok := args[i].(zapcore.Field); ok {
+		if f, ok := args[i].(Field); ok {
 			fields = append(fields, f)
 			i++
 			continue

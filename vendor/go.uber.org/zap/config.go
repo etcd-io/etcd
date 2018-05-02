@@ -210,7 +210,7 @@ func (cfg Config) buildOptions(errSink zapcore.WriteSyncer) []Option {
 	}
 
 	if len(cfg.InitialFields) > 0 {
-		fs := make([]zapcore.Field, 0, len(cfg.InitialFields))
+		fs := make([]Field, 0, len(cfg.InitialFields))
 		keys := make([]string, 0, len(cfg.InitialFields))
 		for k := range cfg.InitialFields {
 			keys = append(keys, k)
