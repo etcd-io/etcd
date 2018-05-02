@@ -786,7 +786,7 @@ func (m *member) Launch() error {
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 
-	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.s)}
+	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.Logger, m.s)}
 
 	h := (http.Handler)(m.raftHandler)
 	if m.grpcListener != nil {
