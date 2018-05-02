@@ -21,28 +21,37 @@ v3.4 adds `--logger=zap` to support multiple log outputs and structured logging.
 +etcd --logger zap --log-outputs stderr,a.log
 ```
 
-TODO(add more monitoring guides); v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.
+TODO(add more monitoring guides); v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5.**
 
 #### Deprecated in `etcd --log-output`
 
 v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
 
-**`etcd --log-output` has been deprecated in v3.5**.
+**`etcd --log-output` has been deprecated in v3.5.**
 
 ```diff
 -etcd --log-output stderr
 +etcd --log-outputs stderr,a.log
 ```
 
-#### Deprecated in `etcd --log-package-levels`
+#### Deprecated `etcd --log-package-levels`
 
-**`etcd --log-package-levels` for `capnslog` has been deprecated**.
+**`etcd --log-package-levels` flag for `capnslog` has been deprecated.**
 
 Now, **`etcd --logger=zap`** is the default.
 
 ```diff
 -etcd --log-package-levels 'etcdmain=CRITICAL,etcdserver=DEBUG'
 +etcd --logger=zap
+```
+
+#### Deprecated `[CLIENT-URL]/config/local/log`
+
+**`/config/local/log` endpoint is being deprecated in v3.5, as is `etcd --log-package-levels` flag.**
+
+```diff
+-$ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'
+-# debug logging enabled
 ```
 
 #### Changed gRPC gateway HTTP endpoints (deprecated `/v3beta`)
@@ -91,7 +100,7 @@ For a much larger total data size, 100MB or more , this one-time process might t
 
 #### Downgrade
 
-If all members have been upgraded to v3.5, the cluster will be upgraded to v3.5, and downgrade from this completed state is **not possible**. If any single member is still v3.4, however, the cluster and its operations remains "v3.4", and it is possible from this mixed cluster state to return to using a v3.4 etcd binary on all members.
+If all members have been upgraded to v3.5, the cluster will be upgraded to v3.5, and downgrade from this completed state is **not possible.** If any single member is still v3.4, however, the cluster and its operations remains "v3.4", and it is possible from this mixed cluster state to return to using a v3.4 etcd binary on all members.
 
 Please [backup the data directory](../op-guide/maintenance.md#snapshot-backup) of all etcd members to make downgrading the cluster possible even after it has been completely upgraded.
 
