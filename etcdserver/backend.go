@@ -42,10 +42,10 @@ func newBackend(cfg ServerConfig) backend.Backend {
 func openSnapshotBackend(cfg ServerConfig, ss *raftsnap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
 	if err != nil {
-		return nil, fmt.Errorf("database snapshot file path error: %v", err)
+		return nil, fmt.Errorf("failed to find database snapshot file (%v)", err)
 	}
 	if err := os.Rename(snapPath, cfg.backendPath()); err != nil {
-		return nil, fmt.Errorf("rename snapshot file error: %v", err)
+		return nil, fmt.Errorf("failed to rename database snapshot file (%v)", err)
 	}
 	return openBackend(cfg), nil
 }
