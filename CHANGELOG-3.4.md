@@ -257,6 +257,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
 
+### Fixed: v3 `etcdctl`
+
+- Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
+  - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
+
 ### Tooling
 
 - Add [`etcd-dump-logs --entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
