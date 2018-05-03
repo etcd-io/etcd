@@ -107,18 +107,48 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		}
 	}
 	if err := fileutil.CreateDirAll(tmpdirpath); err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to create a temporary WAL directory",
+				zap.String("tmp-dir-path", tmpdirpath),
+				zap.String("dir-path", dirpath),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
 	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
 	if err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to flock an initial WAL file",
+				zap.String("path", p),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 	if _, err = f.Seek(0, io.SeekEnd); err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to seek an initial WAL file",
+				zap.String("path", p),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 	if err = fileutil.Preallocate(f.File, SegmentSizeBytes, true); err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to preallocate an initial WAL file",
+				zap.String("path", p),
+				zap.Int64("segment-bytes", SegmentSizeBytes),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
@@ -143,18 +173,50 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	if w, err = w.renameWal(tmpdirpath); err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to rename the temporary WAL directory",
+				zap.String("tmp-dir-path", tmpdirpath),
+				zap.String("dir-path", w.dir),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to open the parent data directory",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
 	if perr = fileutil.Fsync(pdir); perr != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to fsync the parent data directory file",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
 	if perr = pdir.Close(); err != nil {
+		if lg != nil {
+			lg.Warn(
+				"failed to close the parent data directory file",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
 
