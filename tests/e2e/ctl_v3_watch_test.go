@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -220,6 +221,7 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
+	fmt.Println("ctlV3WatchFailPerm cmdArgs:", cmdArgs)
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err

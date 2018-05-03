@@ -857,9 +857,9 @@ func authTestWatch(cx ctlCtx) {
 			err = ctlV3Watch(cx, tt.args, tt.wkv...)
 			fmt.Println("ctlV3Watch 2", err)
 		} else {
-			fmt.Println("ctlV3WatchFailPerm 1")
+			fmt.Println("ctlV3WatchFailPerm 1", tt.args)
 			err = ctlV3WatchFailPerm(cx, tt.args)
-			fmt.Println("ctlV3WatchFailPerm 2", err)
+			fmt.Println("ctlV3WatchFailPerm 2", tt.args, "/", err)
 		}
 
 		if err != nil {

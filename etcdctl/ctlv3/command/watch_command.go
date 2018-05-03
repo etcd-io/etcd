@@ -250,7 +250,12 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 	if idx < len(osArgs)-1 {
 		osArgs = osArgs[idx+1:]
 	} else if envKey == "" {
-		fmt.Println("2 watchArgs before errBadArgsNum:", watchArgs, "/", osArgs, "/", envKey)
+		fmt.Println(
+			"idx:", idx,
+			"/ watchArgs before errBadArgsNum:", watchArgs,
+			"/ osArgs:", osArgs,
+			"/ envKey:", envKey,
+		)
 		return nil, nil, errBadArgsNum
 	}
 
