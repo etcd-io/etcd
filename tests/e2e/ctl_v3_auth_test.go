@@ -40,7 +40,14 @@ func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, wi
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
 func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
-func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
+
+func TestCtlV3AuthAndWatch(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, authTestWatch)
+}
 
 func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T)         { testCtl(t, authLeaseTestKeepAlive) }
 func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, authLeaseTestTimeToLiveExpired) }
@@ -846,9 +853,13 @@ func authTestWatch(cx ctlCtx) {
 
 		var err error
 		if tt.want {
+			fmt.Println("ctlV3Watch 1")
 			err = ctlV3Watch(cx, tt.args, tt.wkv...)
+			fmt.Println("ctlV3Watch 2", err)
 		} else {
+			fmt.Println("ctlV3WatchFailPerm 1", tt.args)
 			err = ctlV3WatchFailPerm(cx, tt.args)
+			fmt.Println("ctlV3WatchFailPerm 2", tt.args, "/", err)
 		}
 
 		if err != nil {

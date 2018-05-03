@@ -15,16 +15,31 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 )
 
-func TestCtlV3Watch(t *testing.T)          { testCtl(t, watchTest) }
-func TestCtlV3WatchNoTLS(t *testing.T)     { testCtl(t, watchTest, withCfg(configNoTLS)) }
+func TestCtlV3Watch(t *testing.T) { testCtl(t, watchTest) }
+
+func TestCtlV3WatchNoTLS(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, watchTest, withCfg(configNoTLS))
+}
+
 func TestCtlV3WatchClientTLS(t *testing.T) { testCtl(t, watchTest, withCfg(configClientTLS)) }
 func TestCtlV3WatchPeerTLS(t *testing.T)   { testCtl(t, watchTest, withCfg(configPeerTLS)) }
-func TestCtlV3WatchTimeout(t *testing.T)   { testCtl(t, watchTest, withDialTimeout(0)) }
+func TestCtlV3WatchTimeout(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, watchTest, withDialTimeout(0))
+}
 
 func TestCtlV3WatchInteractive(t *testing.T) {
 	testCtl(t, watchTest, withInteractive())
@@ -165,11 +180,14 @@ func watchTest(cx ctlCtx) {
 				}
 			}
 		}
+		fmt.Printf("#%d-1 ctlV3Watch: %+v\n", i, tt)
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
+			fmt.Printf("#%d-2 ctlV3Watch: %+v (error %v)\n", i, tt, err)
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
 		}
+		fmt.Printf("#%d-3 ctlV3Watch: %+v\n", i, tt)
 		unsetEnv()
 		<-donec
 	}
@@ -189,6 +207,12 @@ func setupWatchArgs(cx ctlCtx, args []string) []string {
 func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
+	println()
+	fmt.Println("ctlV3Watch os.Args:", os.Args)
+	fmt.Println("ctlV3Watch kvs:", kvs)
+	fmt.Println("ctlV3Watch args:", args)
+	fmt.Println("ctlV3Watch cmdArgs:", cmdArgs)
+	println()
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
@@ -220,6 +244,7 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
+	fmt.Println("ctlV3WatchFailPerm cmdArgs:", cmdArgs)
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
