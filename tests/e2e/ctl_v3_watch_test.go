@@ -180,11 +180,14 @@ func watchTest(cx ctlCtx) {
 				}
 			}
 		}
+		fmt.Printf("#%d-1 ctlV3Watch: %+v\n", i, tt)
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
+			fmt.Printf("#%d-2 ctlV3Watch: %+v (error %v)\n", i, tt, err)
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
 		}
+		fmt.Printf("#%d-3 ctlV3Watch: %+v\n", i, tt)
 		unsetEnv()
 		<-donec
 	}
@@ -204,6 +207,12 @@ func setupWatchArgs(cx ctlCtx, args []string) []string {
 func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
+	println()
+	fmt.Println("ctlV3Watch os.Args:", os.Args)
+	fmt.Println("ctlV3Watch kvs:", kvs)
+	fmt.Println("ctlV3Watch args:", args)
+	fmt.Println("ctlV3Watch cmdArgs:", cmdArgs)
+	println()
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
