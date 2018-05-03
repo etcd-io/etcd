@@ -127,6 +127,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 
 func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error) {
 	if len(args) < 1 {
+		fmt.Println("1 args before errBadArgsNum:", args)
 		return nil, errBadArgsNum
 	}
 
@@ -236,6 +237,7 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 		return nil, nil, errBadArgsInteractiveWatch
 	}
 	if len(watchArgs) < 1 && envKey == "" {
+		fmt.Println("1 watchArgs before errBadArgsNum:", watchArgs, "/", envKey)
 		return nil, nil, errBadArgsNum
 	}
 
@@ -248,6 +250,7 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 	if idx < len(osArgs)-1 {
 		osArgs = osArgs[idx+1:]
 	} else if envKey == "" {
+		fmt.Println("2 watchArgs before errBadArgsNum:", watchArgs, "/", osArgs, "/", envKey)
 		return nil, nil, errBadArgsNum
 	}
 
