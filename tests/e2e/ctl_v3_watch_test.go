@@ -21,11 +21,25 @@ import (
 	"testing"
 )
 
-func TestCtlV3Watch(t *testing.T)          { testCtl(t, watchTest) }
-func TestCtlV3WatchNoTLS(t *testing.T)     { testCtl(t, watchTest, withCfg(configNoTLS)) }
+func TestCtlV3Watch(t *testing.T) { testCtl(t, watchTest) }
+
+func TestCtlV3WatchNoTLS(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, watchTest, withCfg(configNoTLS))
+}
+
 func TestCtlV3WatchClientTLS(t *testing.T) { testCtl(t, watchTest, withCfg(configClientTLS)) }
 func TestCtlV3WatchPeerTLS(t *testing.T)   { testCtl(t, watchTest, withCfg(configPeerTLS)) }
-func TestCtlV3WatchTimeout(t *testing.T)   { testCtl(t, watchTest, withDialTimeout(0)) }
+func TestCtlV3WatchTimeout(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, watchTest, withDialTimeout(0))
+}
 
 func TestCtlV3WatchInteractive(t *testing.T) {
 	testCtl(t, watchTest, withInteractive())
