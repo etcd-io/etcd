@@ -365,16 +365,30 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 		panic(err)
 	}
 
-	compactIndex := uint64(1)
-	if rc.appliedIndex > snapshotCatchUpEntriesN {
-		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
-	}
-	if err := rc.raftStorage.Compact(compactIndex); err != nil {
+	// Don't compact if the Storage does not has any log entries.
+	rc.snapshotIndex = rc.appliedIndex
+	firstIdx, err := rc.raftStorage.FirstIndex()
+	if err != nil {
 		panic(err)
 	}
+	lastIdx, err := rc.raftStorage.LastIndex()
+	if err != nil {
+		panic(err)
+	}
+	if lastIdx < firstIdx {
+		return
+	}
 
-	log.Printf("compacted log at index %d", compactIndex)
-	rc.snapshotIndex = rc.appliedIndex
+	if rc.snapshotIndex <= snapshotCatchUpEntriesN {
+		return
+	}
+	compactIndex := rc.snapshotIndex - snapshotCatchUpEntriesN
+	if compactIndex >= firstIdx {
+		if err := rc.raftStorage.Compact(compactIndex); err != nil {
+			panic(err)
+		}
+		log.Printf("compacted log at index %d", compactIndex)
+	}
 }
 
 func (rc *raftNode) serveChannels() {
