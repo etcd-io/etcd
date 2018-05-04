@@ -7,7 +7,7 @@ Previous change logs can be found at [CHANGELOG-3.2](https://github.com/coreos/e
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.4...v3.3.5) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### Fixed: v3 `etcdctl`
+### etcdctl v3
 
 - Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
@@ -34,7 +34,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
   - However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/coreos/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
   - Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
 
-### `etcd`
+### etcd server
 
 - Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
@@ -88,7 +88,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### Fixed: v3
+### etcd server
 
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
@@ -103,7 +103,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
 
-### Fixed: v2
+### Proxy v2
 
 - Fix [v2 proxy leaky HTTP requests](https://github.com/coreos/etcd/pull/9336).
 
@@ -121,7 +121,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [
 - Add [warnings on requests taking too long](https://github.com/coreos/etcd/pull/9288).
   - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
 
-### Fixed: v3
+### etcd server
 
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
@@ -222,7 +222,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Provide user's role on [auth permission error](https://github.com/coreos/etcd/pull/8164).
 - Fix [auth store panic with disabled token](https://github.com/coreos/etcd/pull/8695).
 
-### `etcd`
+### etcd server
 
 - Add [`--experimental-initial-corrupt-check`](https://github.com/coreos/etcd/pull/8554) flag to [check cluster database hashes before serving client/peer traffic](https://github.com/coreos/etcd/issues/8313).
   - `--experimental-initial-corrupt-check=false` by default.
@@ -278,7 +278,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [lease list](https://github.com/coreos/etcd/pull/8358).
 - Add [hash by revision](https://github.com/coreos/etcd/pull/8263) for [better corruption checking against boltdb](https://github.com/coreos/etcd/issues/8016).
 
-### `clientv3`
+### client v3
 
 - Add [health balancer](https://github.com/coreos/etcd/pull/8545) to fix [watch API hangs](https://github.com/coreos/etcd/issues/7247), improve [endpoint switch under network faults](https://github.com/coreos/etcd/issues/7941).
 - [Refactor balancer](https://github.com/coreos/etcd/pull/8840) and add [client-side keepalive pings](https://github.com/coreos/etcd/pull/8199) to handle [network partitions](https://github.com/coreos/etcd/issues/8711).
@@ -294,15 +294,12 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`HashKV`](https://github.com/coreos/etcd/pull/8351) to `Maintenance`.
 - Add [`Leases`](https://github.com/coreos/etcd/pull/8358) to `Lease`.
 - Add [`clientv3/ordering`](https://github.com/coreos/etcd/pull/8092) for enforce [ordering in serialized requests](https://github.com/coreos/etcd/issues/7623).
-
-### Fixed: `clientv3`
-
 - Fix ["put at-most-once" violation](https://github.com/coreos/etcd/pull/8335).
 - Fix [`WatchResponse.Canceled`](https://github.com/coreos/etcd/pull/8283) on [compacted watch request](https://github.com/coreos/etcd/issues/8231).
 - Fix [`concurrency/stm` `Put` with serializable snapshot](https://github.com/coreos/etcd/pull/8439).
   - Use store revision from first fetch to resolve write conflicts instead of modified revision.
 
-### v3 `etcdctl`
+### etcdctl v3
 
 - Add [`--discovery-srv`](https://github.com/coreos/etcd/pull/8462) flag.
 - Add [`--keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
@@ -324,15 +321,15 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Print [`"del"` instead of `"delete"`](https://github.com/coreos/etcd/pull/8297) in `txn` interactive mode.
 - Print [`ETCD_INITIAL_ADVERTISE_PEER_URLS` in `member add`](https://github.com/coreos/etcd/pull/8332).
 
-### Fixed: v3 `etcdctl`
+### etcdctl v3
 
 - Handle [empty key permission](https://github.com/coreos/etcd/pull/8514) in `etcdctl`.
 
-### v2 `etcdctl`
+### etcdctl v2
 
 - Add [`backup --with-v3`](https://github.com/coreos/etcd/pull/8479) flag.
 
-### `grpc-proxy`
+### gRPC Proxy
 
 - Add [`grpc-proxy start --experimental-leasing-prefix`](https://github.com/coreos/etcd/pull/8341) flag.
   - For disconnected linearized reads.
@@ -346,9 +343,6 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`grpc-proxy start --debug`](https://github.com/coreos/etcd/pull/8994) flag.
 - Add [`grpc-proxy start --max-send-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
 - Add [`grpc-proxy start --max-recv-bytes`](https://github.com/coreos/etcd/pull/9250) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
-
-### Fixed: `grpc-proxy`
-
 - Fix [Snapshot API error handling](https://github.com/coreos/etcd/commit/dbd16d52fbf81e5fd806d21ff5e9148d5bf203ab).
 - Fix [KV API `PrevKv` flag handling](https://github.com/coreos/etcd/pull/8366).
 - Fix [KV API `KeysOnly` flag handling](https://github.com/coreos/etcd/pull/8552).
@@ -363,7 +357,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Fix [`Watch` API with gRPC gateway](https://github.com/coreos/etcd/issues/8237).
 - Upgrade gRPC gateway to [v1.3.0](https://github.com/coreos/etcd/issues/8838).
 
-### Fixed: v3
+### etcd server
 
 - Fix [backend database in-memory index corruption](https://github.com/coreos/etcd/pull/8127) issue on restore (only 3.2.0 is affected).
 - Fix [watch restore from snapshot](https://github.com/coreos/etcd/pull/8427).
@@ -378,11 +372,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Fix server-side auth so [concurrent auth operations do not return old revision error](https://github.com/coreos/etcd/pull/8442).
 - Handle [WAL renaming failure on Windows](https://github.com/coreos/etcd/pull/8286).
 - Upgrade [`coreos/go-systemd`](https://github.com/coreos/go-systemd/releases) to `v15` (see https://github.com/coreos/go-systemd/releases/tag/v15).
+- [Put back `/v2/machines`](https://github.com/coreos/etcd/pull/8062) endpoint for python-etcd wrapper.
 
-### Fixed: v2
+### client v2
 
 - [Fail-over v2 client](https://github.com/coreos/etcd/pull/8519) to next endpoint on [oneshot failure](https://github.com/coreos/etcd/issues/8515).
-- [Put back `/v2/machines`](https://github.com/coreos/etcd/pull/8062) endpoint for python-etcd wrapper.
 
 ### Package `raft`
 
