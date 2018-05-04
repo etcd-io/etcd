@@ -284,10 +284,10 @@ func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.restore(created, modified, ver)
+		keyi.restore(ti.lg, created, modified, ver)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(modified.main, modified.sub)
+	okeyi.put(ti.lg, modified.main, modified.sub)
 }

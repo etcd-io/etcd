@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/schedule"
 	"github.com/coreos/etcd/pkg/testutil"
+
 	"go.uber.org/zap"
 )
 
@@ -672,7 +673,7 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 	bytes := newRevBytes()
 	revToBytes(rev, bytes)
 	if tombstone {
-		bytes = appendMarkTombstone(bytes)
+		bytes = appendMarkTombstone(zap.NewExample(), bytes)
 	}
 	return bytes
 }
@@ -696,6 +697,7 @@ func newFakeStore() *store {
 		compactMainRev: -1,
 		fifoSched:      schedule.NewFIFOScheduler(),
 		stopc:          make(chan struct{}),
+		lg:             zap.NewExample(),
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
 	return s

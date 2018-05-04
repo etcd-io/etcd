@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -47,7 +48,7 @@ func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		plog.Fatalf("cannot marshal event: %v", err)
+		panic(fmt.Errorf("cannot marshal event: %v", err))
 	}
 
 	be.BatchTx().Lock()

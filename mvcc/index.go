@@ -57,12 +57,12 @@ func (ti *treeIndex) Put(key []byte, rev revision) {
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.put(rev.main, rev.sub)
+		keyi.put(ti.lg, rev.main, rev.sub)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(rev.main, rev.sub)
+	okeyi.put(ti.lg, rev.main, rev.sub)
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
@@ -72,7 +72,7 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, v
 	if keyi = ti.keyIndex(keyi); keyi == nil {
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
-	return keyi.get(atRev)
+	return keyi.get(ti.lg, atRev)
 }
 
 func (ti *treeIndex) KeyIndex(keyi *keyIndex) *keyIndex {
@@ -112,7 +112,7 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
 		return []revision{rev}
 	}
 	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
+		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 		}
 	})
@@ -128,7 +128,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 		return [][]byte{key}, []revision{rev}
 	}
 	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
+		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 			keys = append(keys, ki.key)
 		}
@@ -147,7 +147,7 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	}
 
 	ki := item.(*keyIndex)
-	return ki.tombstone(rev.main, rev.sub)
+	return ki.tombstone(ti.lg, rev.main, rev.sub)
 }
 
 // RangeSince returns all revisions from key(including) to end(excluding)
@@ -165,7 +165,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return nil
 		}
 		keyi = item.(*keyIndex)
-		return keyi.since(rev)
+		return keyi.since(ti.lg, rev)
 	}
 
 	endi := &keyIndex{key: end}
@@ -175,7 +175,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return false
 		}
 		curKeyi := item.(*keyIndex)
-		revs = append(revs, curKeyi.since(rev)...)
+		revs = append(revs, curKeyi.since(ti.lg, rev)...)
 		return true
 	})
 	sort.Sort(revisions(revs))
@@ -199,7 +199,7 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 		//Lock is needed here to prevent modification to the keyIndex while
 		//compaction is going on or revision added to empty before deletion
 		ti.Lock()
-		keyi.compact(rev, available)
+		keyi.compact(ti.lg, rev, available)
 		if keyi.isEmpty() {
 			item := ti.tree.Delete(keyi)
 			if item == nil {

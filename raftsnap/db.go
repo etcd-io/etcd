@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/etcd/pkg/fileutil"
+
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 )
