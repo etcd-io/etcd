@@ -56,10 +56,10 @@ import (
 	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
-	humanize "github.com/dustin/go-humanize"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
+	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 )
 
