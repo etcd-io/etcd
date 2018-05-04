@@ -9,6 +9,7 @@
 *.log
 /etcd
 /hack/insta-discovery/.env
+*.coverprofile
 *.test
 hack/tls-setup/certs
 .idea
