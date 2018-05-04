@@ -72,6 +72,9 @@ const (
 	rootUser = "root"
 	rootRole = "root"
 
+	tokenTypeSimple = "simple"
+	tokenTypeJWT    = "jwt"
+
 	revBytesLen = 8
 )
 
@@ -1255,7 +1258,7 @@ func NewTokenProvider(
 	}
 
 	switch tokenType {
-	case "simple":
+	case tokenTypeSimple:
 		if lg != nil {
 			lg.Warn("simple token is not cryptographically signed")
 		} else {
@@ -1263,7 +1266,7 @@ func NewTokenProvider(
 		}
 		return newTokenProviderSimple(lg, indexWaiter), nil
 
-	case "jwt":
+	case tokenTypeJWT:
 		return newTokenProviderJWT(lg, typeSpecificOpts)
 
 	case "":
@@ -1289,7 +1292,7 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 	}
 
 	var ctxForAssign context.Context
-	if ts := as.tokenProvider.(*tokenSimple); ts != nil {
+	if ts, ok := as.tokenProvider.(*tokenSimple); ok && ts != nil {
 		ctx1 := context.WithValue(ctx, AuthenticateParamIndex{}, uint64(0))
 		prefix, err := ts.genTokenPrefix()
 		if err != nil {
