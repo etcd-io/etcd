@@ -48,7 +48,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +513,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -579,7 +579,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -661,7 +661,7 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -702,12 +702,21 @@ func TestRolesOrder(t *testing.T) {
 	}
 }
 
-// TestAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
-func TestAuthInfoFromCtxWithRoot(t *testing.T) {
+func TestAuthInfoFromCtxWithRootSimple(t *testing.T) {
+	testAuthInfoFromCtxWithRoot(t, tokenTypeSimple)
+}
+
+func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
+	opts := testJWTOpts()
+	testAuthInfoFromCtxWithRoot(t, opts)
+}
+
+// testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
+func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(opts, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
