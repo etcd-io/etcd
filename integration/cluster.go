@@ -54,6 +54,7 @@ import (
 
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -611,7 +612,8 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	if m.MaxRequestBytes == 0 {
 		m.MaxRequestBytes = embed.DefaultMaxRequestBytes
 	}
-	m.AuthToken = "simple" // for the purpose of integration testing, simple token is enough
+	m.AuthToken = "simple"              // for the purpose of integration testing, simple token is enough
+	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
 	m.grpcServerOpts = []grpc.ServerOption{}
 	if mcfg.grpcKeepAliveMinTime > time.Duration(0) {
