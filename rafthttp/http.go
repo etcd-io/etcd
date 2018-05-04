@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 
+	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 )
 
@@ -229,7 +230,8 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
+	msgSize := m.Size()
+	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(msgSize))
 
 	if m.Type != raftpb.MsgSnap {
 		if h.lg != nil {
@@ -251,7 +253,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"receiving database snapshot",
 			zap.String("local-member-id", h.localID.String()),
 			zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
-			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Int("incoming-snapshot-message-size-bytes", msgSize),
+			zap.String("incoming-snapshot-message-size", humanize.Bytes(uint64(msgSize))),
 		)
 	} else {
 		plog.Infof("receiving database snapshot [index:%d, from %s] ...", m.Snapshot.Metadata.Index, types.ID(m.From))
@@ -263,9 +267,10 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
 		if h.lg != nil {
 			h.lg.Warn(
-				"failed to save KV snapshot",
+				"failed to save incoming database snapshot",
 				zap.String("local-member-id", h.localID.String()),
 				zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+				zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 				zap.Error(err),
 			)
 		} else {
@@ -282,7 +287,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"received and saved database snapshot",
 			zap.String("local-member-id", h.localID.String()),
 			zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
-			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Int64("incoming-snapshot-size-bytes", n),
+			zap.String("incoming-snapshot-size", humanize.Bytes(uint64(n))),
 		)
 	} else {
 		plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
