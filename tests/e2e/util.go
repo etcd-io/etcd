@@ -44,7 +44,9 @@ func spawnWithExpect(args []string, expected string) error {
 }
 
 func spawnWithExpects(args []string, xs ...string) error {
+	fmt.Println("spawnWithExpectLines 1:", args, "/", xs)
 	_, err := spawnWithExpectLines(args, xs...)
+	fmt.Println("spawnWithExpectLines 2:", args, "/", xs, "/", err)
 	return err
 }
 
