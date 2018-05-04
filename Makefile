@@ -20,9 +20,12 @@ clean:
 	rm -f ./codecov
 	rm -rf ./agent-*
 	rm -rf ./covdir
+	rm -f ./*.coverprofile
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/*.etcd
+	rm -rf ./default.etcd
+	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./gopath
 	rm -rf ./gopath.proto
 	rm -rf ./release
