@@ -196,7 +196,11 @@ func (b *backend) Snapshot() Snapshot {
 	defer b.mu.RUnlock()
 	tx, err := b.db.Begin(false)
 	if err != nil {
-		plog.Fatalf("cannot begin tx (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to begin tx", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot begin tx (%s)", err)
+		}
 	}
 
 	stopc, donec := make(chan struct{}), make(chan struct{})
