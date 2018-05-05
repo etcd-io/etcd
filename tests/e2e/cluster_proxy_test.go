@@ -284,5 +284,5 @@ func (v3p *proxyV3Proc) Start() error {
 	if err := v3p.start(); err != nil {
 		return err
 	}
-	return v3p.waitReady("listening for grpc-proxy client requests")
+	return v3p.waitReady("started gRPC proxy")
 }
