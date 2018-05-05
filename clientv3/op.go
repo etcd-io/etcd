@@ -14,7 +14,11 @@
 
 package clientv3
 
-import pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+import (
+	"fmt"
+
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
 
 type opType int
 
@@ -73,6 +77,17 @@ type Op struct {
 	cmps    []Cmp
 	thenOps []Op
 	elseOps []Op
+}
+
+// Cmp compares the Op with another one. If they are equivalent, it returns nil.
+func (op *Op) Cmp(x *Op) error {
+	// XXX: add other comparisons here
+
+	if op.createdNotify != x.createdNotify {
+		return fmt.Errorf("the WithCreatedNotify op differs")
+	}
+
+	return nil
 }
 
 // accessors / mutators
@@ -301,6 +316,15 @@ func (op *Op) applyOpts(opts []OpOption) {
 
 // OpOption configures Operations like Get, Put, Delete.
 type OpOption func(*Op)
+
+// OpOptionCmp compares two OpOption's and returns nil if they are identical.
+func OpOptionCmp(o1, o2 OpOption) error {
+	x1 := &Op{}
+	x2 := &Op{}
+	o1(x1) // apply
+	o2(x2)
+	return x1.Cmp(x2)
+}
 
 // WithLease attaches a lease ID to a key in 'Put' request.
 func WithLease(leaseID LeaseID) OpOption {
