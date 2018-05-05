@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -25,7 +26,16 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-func TestCtlV2Set(t *testing.T)          { testCtlV2Set(t, &configNoTLS, false) }
+func TestCtlV2Set(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	fmt.Println(time.Now(), "TestCtlV2Set 1")
+	testCtlV2Set(t, &configNoTLS, false)
+	fmt.Println(time.Now(), "TestCtlV2Set 2")
+}
+
 func TestCtlV2SetQuorum(t *testing.T)    { testCtlV2Set(t, &configNoTLS, true) }
 func TestCtlV2SetClientTLS(t *testing.T) { testCtlV2Set(t, &configClientTLS, false) }
 func TestCtlV2SetPeerTLS(t *testing.T)   { testCtlV2Set(t, &configPeerTLS, false) }
@@ -33,7 +43,9 @@ func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, &configTLS, false) }
 func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	defer testutil.AfterTest(t)
 
+	fmt.Println(time.Now(), "setupEtcdctlTest 1")
 	epc := setupEtcdctlTest(t, cfg, quorum)
+	fmt.Println(time.Now(), "setupEtcdctlTest 2")
 	defer func() {
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
@@ -42,13 +54,17 @@ func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 
 	key, value := "foo", "bar"
 
+	fmt.Println("etcdctlSet 1:", key, value)
 	if err := etcdctlSet(epc, key, value); err != nil {
 		t.Fatalf("failed set (%v)", err)
 	}
+	fmt.Println("etcdctlSet 2:", key, value)
 
+	fmt.Println("etcdctlGet 1:", key, value, quorum)
 	if err := etcdctlGet(epc, key, value, quorum); err != nil {
 		t.Fatalf("failed get (%v)", err)
 	}
+	fmt.Println("etcdctlGet 2:", key, value, quorum)
 }
 
 func TestCtlV2Mk(t *testing.T)       { testCtlV2Mk(t, &configNoTLS, false) }
