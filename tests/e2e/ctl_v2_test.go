@@ -31,9 +31,9 @@ func TestCtlV2Set(t *testing.T) {
 	defer os.Setenv("EXPECT_DEBUG", oldenv)
 	os.Setenv("EXPECT_DEBUG", "1")
 
-	fmt.Println("TestCtlV2Set 1")
+	fmt.Println(time.Now(), "TestCtlV2Set 1")
 	testCtlV2Set(t, &configNoTLS, false)
-	fmt.Println("TestCtlV2Set 2")
+	fmt.Println(time.Now(), "TestCtlV2Set 2")
 }
 
 func TestCtlV2SetQuorum(t *testing.T)    { testCtlV2Set(t, &configNoTLS, true) }
@@ -43,7 +43,9 @@ func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, &configTLS, false) }
 func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	defer testutil.AfterTest(t)
 
+	fmt.Println(time.Now(), "setupEtcdctlTest 1")
 	epc := setupEtcdctlTest(t, cfg, quorum)
+	fmt.Println(time.Now(), "setupEtcdctlTest 2")
 	defer func() {
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)

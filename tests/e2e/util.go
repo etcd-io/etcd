@@ -26,6 +26,7 @@ import (
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
 	c := 0
+	fmt.Println(time.Now(), "waitReadyExpectProc 1", readyStrs)
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
 			if strings.Contains(l, s) {
@@ -36,6 +37,7 @@ func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error
 		return c == len(readyStrs)
 	}
 	_, err := exproc.ExpectFunc(matchSet)
+	fmt.Println(time.Now(), "waitReadyExpectProc 2", readyStrs, "/", err)
 	return err
 }
 
