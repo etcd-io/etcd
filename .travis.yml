@@ -3,6 +3,10 @@ go_import_path: github.com/coreos/etcd
 
 sudo: required
 
+os:
+  - linux
+  - linux-ppc64le
+
 services: docker
 
 go:
@@ -29,6 +33,9 @@ env:
   - TARGET=linux-arm-build
   - TARGET=linux-arm64-build
   - TARGET=linux-ppc64le-build
+  - TARGET=linux-ppc64le-unit
+  - TARGET=linux-ppc64le-integration-1-cpu
+  - TARGET=linux-ppc64le-functional
   - TARGET=linux-amd64-fmt-unit-go-tip
 
 matrix:
@@ -36,6 +43,9 @@ matrix:
   allow_failures:
   - go: tip
     env: TARGET=linux-amd64-fmt-unit-go-tip
+  - go: tip
+    os: linux-ppc64le
+    env: TARGET=linux-ppc64le-unit
   exclude:
   - go: tip
     env: TARGET=linux-amd64-build
@@ -67,6 +77,55 @@ matrix:
     env: TARGET=linux-ppc64le-build
   - go: 1.10.2
     env: TARGET=linux-amd64-fmt-unit-go-tip
+  - os: linux
+    env: TARGET=linux-ppc64le-build
+  - os: linux
+    env: TARGET=linux-ppc64le-unit
+  - os: linux
+    env: TARGET=linux-ppc64le-integration-1-cpu
+  - os: linux
+    env: TARGET=linux-ppc64le-functional
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-build
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-unit
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-fmt
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-integration-1-cpu
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-integration-2-cpu
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-integration-4-cpu
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-functional
+  - os: linux-ppc64le
+    env: TARGET=linux-386-build
+  - os: linux-ppc64le
+    env: TARGET=linux-386-unit
+  - os: linux-ppc64le
+    env: TARGET=darwin-amd64-build
+  - os: linux-ppc64le
+    env: TARGET=windows-amd64-build
+  - os: linux-ppc64le
+    env: TARGET=linux-arm-build
+  - os: linux-ppc64le
+    env: TARGET=linux-arm64-build
+  - os: linux-ppc64le
+    env: TARGET=linux-amd64-fmt-unit-go-tip
+  - os: linux-ppc64le
+    go: tip
+    env: TARGET=linux-ppc64le-build
+  - os: linux-ppc64le
+    go: tip
+    env: TARGET=linux-ppc64le-integration-1-cpu
+  - os: linux-ppc64le
+    go: tip
+    env: TARGET=linux-ppc64le-functional
+  - os: linux-ppc64le
+    go: tip
+    env: TARGET=linux-amd64-fmt-unit-go-tip
+  
 
 before_install:
 - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
@@ -144,9 +203,16 @@ script:
           /bin/bash -c "GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build"
         ;;
       linux-ppc64le-build)
-        docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build"
+        GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build
+        ;;
+      linux-ppc64le-unit)
+        GOARCH=ppc64le PASSES='unit' ./test
+        ;;
+      linux-ppc64le-integration-1-cpu)
+        GOARCH=ppc64le CPU=1 PASSES='integration' ./test
+        ;;
+      linux-ppc64le-functional)
+        GOARCH=ppc64le ./build && GOARCH=ppc64le PASSES='functional' ./test
         ;;
       linux-amd64-fmt-unit-go-tip)
         GOARCH=amd64 PASSES='fmt unit' ./test
