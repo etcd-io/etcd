@@ -158,6 +158,9 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		},
 		Encoding:      "json",
 		EncoderConfig: zap.NewProductionEncoderConfig(),
+
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
 	}
 	if grpcProxyDebug {
 		lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
