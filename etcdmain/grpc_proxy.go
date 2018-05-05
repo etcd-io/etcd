@@ -195,7 +195,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	grpcl := m.Match(cmux.HTTP2())
 	defer func() {
 		grpcl.Close()
-		lg.Info("stopping listening gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
+		lg.Info("stop listening gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
 	}()
 
 	client := mustNewClient(lg)
@@ -211,10 +211,17 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 			mux := http.NewServeMux()
 			etcdhttp.HandlePrometheus(mux)
 			grpcproxy.HandleHealth(mux, client)
+			lg.Info("gRPC proxy server metrics URL serving")
 			herr := http.Serve(mhttpl, mux)
-			lg.Fatal("gRPC proxy server serve returned", zap.Error(herr))
+			if herr != nil {
+				lg.Fatal("gRPC proxy server metrics URL returned", zap.Error(herr))
+			} else {
+				lg.Info("gRPC proxy server metrics URL returned")
+			}
 		}()
 	}
+
+	lg.Info("started gRPC proxy", zap.String("address", grpcProxyListenAddr))
 
 	// grpc-proxy is initialized, ready to serve
 	notifySystemd(lg)

@@ -549,9 +549,9 @@ func startProxy(cfg *config) error {
 		host := u.String()
 		go func() {
 			if lg != nil {
-				lg.Info("proxy started listening on client requests", zap.String("host", host))
+				lg.Info("v2 proxy started listening on client requests", zap.String("host", host))
 			} else {
-				plog.Info("proxy: listening for client requests on ", host)
+				plog.Infof("v2 proxy started listening on client requests on %q", host)
 			}
 			mux := http.NewServeMux()
 			etcdhttp.HandlePrometheus(mux) // v2 proxy just uses the same port
