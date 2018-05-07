@@ -34,7 +34,11 @@ Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/p
 
 ```diff
 -etcd --log-output stderr
-+etcd --log-outputs stderr,a.log
++etcd --log-outputs stderr
+
++# to write logs to stderr and a.log file at the same time
++# only "--logger zap" supports multiple writers
++etcd --logger zap --log-outputs stderr,a.log
 ```
 
 v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.

@@ -14,10 +14,15 @@ Highlighted breaking changes in 3.5.
 
 #### Deprecated in `etcd --logger capnslog`
 
-v3.4 adds `--logger=zap` to support multiple log outputs and structured logging. **`etcd --logger=capnslog` has been deprecated in v3.5**, and now `--logger=zap` is the default.
+v3.4 defaults to `--logger=zap` in order to support multiple log outputs and structured logging.
+
+**`etcd --logger=capnslog` has been deprecated in v3.5**, and now `--logger=zap` is the default.
 
 ```diff
 -etcd --logger capnslog
++etcd --logger zap --log-outputs stderr
+
++# to write logs to stderr and a.log file at the same time
 +etcd --logger zap --log-outputs stderr,a.log
 ```
 
@@ -31,7 +36,7 @@ v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/
 
 ```diff
 -etcd --log-output stderr
-+etcd --log-outputs stderr,a.log
++etcd --log-outputs stderr
 ```
 
 #### Deprecated in `etcd --log-package-levels`

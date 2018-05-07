@@ -22,7 +22,7 @@ Changed `--auto-compaction-retention` flag to [accept string values](https://git
 -auto-compaction-retention: 24
 +auto-compaction-retention: "24"
 +# Or
-+# auto-compaction-retention: "24h"
++auto-compaction-retention: "24h"
 ```
 
 #### Changed `etcdserver.EtcdServer.ServerConfig` to `*etcdserver.EtcdServer.ServerConfig`
