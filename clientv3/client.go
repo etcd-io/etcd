@@ -64,8 +64,7 @@ type Client struct {
 	Auth
 	Maintenance
 
-	conn     *grpc.ClientConn
-	dialerrc chan error
+	conn *grpc.ClientConn
 
 	cfg           Config
 	creds         *credentials.TransportCredentials
@@ -250,14 +249,7 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 		default:
 		}
 		dialer := &net.Dialer{Timeout: t}
-		conn, err := dialer.DialContext(c.ctx, proto, host)
-		if err != nil {
-			select {
-			case c.dialerrc <- err:
-			default:
-			}
-		}
-		return conn, err
+		return dialer.DialContext(c.ctx, proto, host)
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
@@ -395,7 +387,6 @@ func newClient(cfg *Config) (*Client, error) {
 	ctx, cancel := context.WithCancel(baseCtx)
 	client := &Client{
 		conn:     nil,
-		dialerrc: make(chan error, 1),
 		cfg:      *cfg,
 		creds:    creds,
 		ctx:      ctx,
