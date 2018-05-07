@@ -108,18 +108,6 @@ ANNOTATIONS {
   description = "{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}",
 }
 
-# alert if the 99th percentile of HTTP requests take more than 150ms
-ALERT HTTPRequestsSlow
-IF histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m])) > 0.15
-FOR 10m
-LABELS {
-  severity = "warning"
-}
-ANNOTATIONS {
-  summary = "slow HTTP requests",
-  description = "on etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow",
-}
-
 # file descriptor alerts
 # ======================
 
