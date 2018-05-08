@@ -52,6 +52,41 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 
+	if len(clus.Tester.Cases) == 0 {
+		return nil, errors.New("Cases not found")
+	}
+	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
+		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
+	}
+	if clus.Tester.UpdatedDelayLatencyMs == 0 {
+		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
+	}
+
+	for _, v := range clus.Tester.Cases {
+		if _, ok := rpcpb.Case_value[v]; !ok {
+			return nil, fmt.Errorf("%q is not defined in 'rpcpb.Case_value'", v)
+		}
+	}
+
+	for _, s := range clus.Tester.Stressers {
+		if _, ok := rpcpb.StresserType_value[s.Type]; !ok {
+			return nil, fmt.Errorf("unknown 'StresserType' %+v", s)
+		}
+	}
+
+	for _, v := range clus.Tester.Checkers {
+		if _, ok := rpcpb.Checker_value[v]; !ok {
+			return nil, fmt.Errorf("Checker is unknown; got %q", v)
+		}
+	}
+
+	if clus.Tester.StressKeySuffixRangeTxn > 100 {
+		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
+	}
+	if clus.Tester.StressKeyTxnOps > 64 {
+		return nil, fmt.Errorf("StressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
+	}
+
 	for i, mem := range clus.Members {
 		if mem.EtcdExec == "embed" && failpointsEnabled {
 			return nil, errors.New("EtcdExec 'embed' cannot be run with failpoints enabled")
@@ -335,40 +370,6 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 				}
 			}
 		}
-	}
-
-	if len(clus.Tester.Cases) == 0 {
-		return nil, errors.New("Cases not found")
-	}
-	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
-		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
-	}
-	if clus.Tester.UpdatedDelayLatencyMs == 0 {
-		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
-	}
-
-	for _, v := range clus.Tester.Cases {
-		if _, ok := rpcpb.Case_value[v]; !ok {
-			return nil, fmt.Errorf("%q is not defined in 'rpcpb.Case_value'", v)
-		}
-	}
-
-	for _, v := range clus.Tester.Stressers {
-		if _, ok := rpcpb.Stresser_value[v]; !ok {
-			return nil, fmt.Errorf("Stresser is unknown; got %q", v)
-		}
-	}
-	for _, v := range clus.Tester.Checkers {
-		if _, ok := rpcpb.Checker_value[v]; !ok {
-			return nil, fmt.Errorf("Checker is unknown; got %q", v)
-		}
-	}
-
-	if clus.Tester.StressKeySuffixRangeTxn > 100 {
-		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
-	}
-	if clus.Tester.StressKeyTxnOps > 64 {
-		return nil, fmt.Errorf("StressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
 	}
 
 	return clus, err

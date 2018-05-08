@@ -212,9 +212,25 @@ tester-config:
   runner-exec-path: ./bin/etcd-runner
   external-exec-path: ""
 
+  # make up ±70% of workloads with writes
   stressers:
-  - KV
-  - LEASE
+  - type: KV_WRITE_SMALL
+    weight: 0.35
+  - type: KV_WRITE_LARGE
+    weight: 0.002
+  - type: KV_READ_ONE_KEY
+    weight: 0.07
+  - type: KV_READ_RANGE
+    weight: 0.07
+  - type: KV_DELETE_ONE_KEY
+    weight: 0.07
+  - type: KV_DELETE_RANGE
+    weight: 0.07
+  - type: KV_TXN_WRITE_DELETE
+    weight: 0.35
+  - type: LEASE
+    weight: 0.0
+
   # - ELECTION_RUNNER
   # - WATCH_RUNNER
   # - LOCK_RACER_RUNNER

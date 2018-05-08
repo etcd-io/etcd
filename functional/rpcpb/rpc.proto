@@ -138,7 +138,7 @@ message Tester {
 
   // Stressers is the list of stresser types:
   // KV, LEASE, ELECTION_RUNNER, WATCH_RUNNER, LOCK_RACER_RUNNER, LEASE_RUNNER.
-  repeated string Stressers = 101 [(gogoproto.moretags) = "yaml:\"stressers\""];
+  repeated Stresser Stressers = 101 [(gogoproto.moretags) = "yaml:\"stressers\""];
   // Checkers is the list of consistency checker types:
   // KV_HASH, LEASE_EXPIRE, NO_CHECK, RUNNER.
   // Leave empty to skip consistency checks.
@@ -162,6 +162,35 @@ message Tester {
   int32 StressClients = 301 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
   // StressQPS is the maximum number of stresser requests per second.
   int32 StressQPS = 302 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
+}
+
+enum StresserType {
+  KV_WRITE_SMALL = 0;
+  KV_WRITE_LARGE = 1;
+  KV_READ_ONE_KEY = 2;
+  KV_READ_RANGE = 3;
+  KV_DELETE_ONE_KEY = 4;
+  KV_DELETE_RANGE = 5;
+  KV_TXN_WRITE_DELETE = 6;
+
+  LEASE = 10;
+
+  ELECTION_RUNNER = 20;
+  WATCH_RUNNER = 31;
+  LOCK_RACER_RUNNER = 41;
+  LEASE_RUNNER = 51;
+}
+
+message Stresser {
+  string Type = 1 [(gogoproto.moretags) = "yaml:\"type\""];
+  double Weight = 2 [(gogoproto.moretags) = "yaml:\"weight\""];
+}
+
+enum Checker {
+  KV_HASH = 0;
+  LEASE_EXPIRE = 1;
+  RUNNER = 2;
+  NO_CHECK = 3;
 }
 
 message Etcd {
@@ -595,20 +624,4 @@ enum Case {
 
   // EXTERNAL runs external failure injection scripts.
   EXTERNAL = 500;
-}
-
-enum Stresser {
-  KV = 0;
-  LEASE = 1;
-  ELECTION_RUNNER = 2;
-  WATCH_RUNNER = 3;
-  LOCK_RACER_RUNNER = 4;
-  LEASE_RUNNER = 5;
-}
-
-enum Checker {
-  KV_HASH = 0;
-  LEASE_EXPIRE = 1;
-  RUNNER = 2;
-  NO_CHECK = 3;
 }
