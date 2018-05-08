@@ -27,7 +27,7 @@ import (
 )
 
 type runnerStresser struct {
-	stype              rpcpb.Stresser
+	stype              rpcpb.StresserType
 	etcdClientEndpoint string
 	lg                 *zap.Logger
 
@@ -42,7 +42,7 @@ type runnerStresser struct {
 }
 
 func newRunnerStresser(
-	stype rpcpb.Stresser,
+	stype rpcpb.StresserType,
 	ep string,
 	lg *zap.Logger,
 	cmdStr string,
