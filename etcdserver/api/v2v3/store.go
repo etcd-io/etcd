@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -94,6 +95,9 @@ func (s *v2v3Store) Get(nodePath string, recursive, sorted bool) (*v2store.Event
 func (s *v2v3Store) getDir(nodePath string, recursive, sorted bool, rev int64) ([]*v2store.NodeExtern, error) {
 	rootNodes, err := s.getDirDepth(nodePath, 1, rev)
 	if err != nil || !recursive {
+		if sorted {
+			sort.Sort(v2store.NodeExterns(rootNodes))
+		}
 		return rootNodes, err
 	}
 	nextNodes := rootNodes
@@ -109,6 +113,10 @@ func (s *v2v3Store) getDir(nodePath string, recursive, sorted bool, rev int64) (
 		if nextNodes, err = s.getDirDepth(nodePath, i, rev); err != nil {
 			return nil, err
 		}
+	}
+
+	if sorted {
+		sort.Sort(v2store.NodeExterns(rootNodes))
 	}
 	return rootNodes, nil
 }
