@@ -30,6 +30,9 @@ type v2TestStore struct {
 func (s *v2TestStore) Close() {}
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
+	if len(ns) == 0 {
+		t.Logf("new v2 store with no namespace")
+	}
 	return &v2TestStore{v2store.New(ns...)}
 }
 
