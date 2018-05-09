@@ -258,9 +258,9 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 		}
 
 		flagset := NewWatchCommand().Flags()
-		if err := flagset.Parse(watchArgs); err != nil {
+		if perr := flagset.Parse(watchArgs); perr != nil {
 			watchPrefix, watchRev, watchPrevKey = false, 0, false
-			return nil, nil, err
+			return nil, nil, perr
 		}
 		pArgs := flagset.Args()
 
@@ -298,8 +298,8 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 
 	if interactive {
 		flagset := NewWatchCommand().Flags()
-		if err := flagset.Parse(argsWithSep); err != nil {
-			return nil, nil, err
+		if perr := flagset.Parse(argsWithSep); perr != nil {
+			return nil, nil, perr
 		}
 		watchArgs = flagset.Args()
 
