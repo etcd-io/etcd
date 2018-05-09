@@ -336,6 +336,10 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
+	bar := pb.New(cfg.limit)
+	bar.Format("Bom !")
+	bar.Start()
+
 	for i := range clients {
 		go func(c *v3.Client) {
 			defer wg.Done()
@@ -343,6 +347,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 				st := time.Now()
 				_, derr := c.Do(context.Background(), op)
 				r.Results() <- report.Result{Err: derr, Start: st, End: time.Now()}
+				bar.Increment()
 			}
 		}(clients[i])
 	}
@@ -358,6 +363,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	sc := r.Stats()
 	wg.Wait()
 	close(r.Results())
+	bar.Finish()
 	s := <-sc
 
 	// get the process_resident_memory_bytes after the put operations
