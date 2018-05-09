@@ -41,7 +41,7 @@ func NewListener(addr, scheme string, tlsinfo *TLSInfo) (l net.Listener, err err
 	if l, err = newListener(addr, scheme); err != nil {
 		return nil, err
 	}
-	return wrapTLS(addr, scheme, tlsinfo, l)
+	return wrapTLS(scheme, tlsinfo, l)
 }
 
 func newListener(addr string, scheme string) (net.Listener, error) {
@@ -52,7 +52,7 @@ func newListener(addr string, scheme string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 
-func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, error) {
+func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, error) {
 	if scheme != "https" && scheme != "unixs" {
 		return l, nil
 	}
