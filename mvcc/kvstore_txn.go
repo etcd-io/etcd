@@ -239,17 +239,17 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	if len(tw.changes) > 0 {
 		rrev += 1
 	}
-	keys, revs := tw.s.kvindex.Range(key, end, rrev)
+	keys, _ := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {
 		return 0
 	}
-	for i, key := range keys {
-		tw.delete(key, revs[i])
+	for _, key := range keys {
+		tw.delete(key)
 	}
 	return int64(len(keys))
 }
 
-func (tw *storeTxnWrite) delete(key []byte, rev revision) {
+func (tw *storeTxnWrite) delete(key []byte) {
 	ibytes := newRevBytes()
 	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
