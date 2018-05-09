@@ -48,6 +48,9 @@ main() {
     exit 1
   fi
 
+  # Expected umask for etcd release artifacts
+  umask 022
+
   # Set up release directory.
   local reldir="/tmp/etcd-release-${VERSION}"
   if [ ! -d "${reldir}/etcd" ]; then
@@ -58,8 +61,8 @@ main() {
   cd "${reldir}/etcd"
 
   # If a release version tag already exists, use it.
-  local remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -q "${RELEASE_VERSION}")
-  if ${remote_tag_exists}; then
+  local remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}")
+  if [ ${remote_tag_exists} -gt 0 ]; then
     echo "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
     git checkout -q "tags/${RELEASE_VERSION}"
   fi
@@ -73,7 +76,7 @@ main() {
   fi
 
   # If the release tag does not already exist remotely, create it.
-  if ! ${remote_tag_exists}; then
+  if [ ${remote_tag_exists} -eq 0 ]; then
     # Bump version/version.go to release version.
     local source_version=$(egrep "\s+Version\s*=" version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
     if [[ "${source_version}" != "${VERSION}" ]]; then
@@ -109,7 +112,7 @@ main() {
     fi
 
     # Tag release.
-    if $(git tag --list | grep -q "${RELEASE_VERSION}"); then
+    if [ $(git tag --list | grep -c "${RELEASE_VERSION}") -gt 0 ]; then
       echo "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
       echo "Tagging release..."
@@ -159,15 +162,18 @@ main() {
   else    
     read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
-    until $(docker login quay.io); do
-      echo "Docker login failed, retrying."
+    for i in {1..5}; do
+      docker login quay.io && break
+      echo "login failed, retrying"
     done
     gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-    
-    for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
-      docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
-      gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
-    done
+
+    if [ "${MINOR_VERSION}" != "3.1" ]; then
+      for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
+        docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+        gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+      done
+    fi
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 
     docker tag quay.io/coreos/etcd:${RELEASE_VERSION} quay.io/coreos/etcd:v${MINOR_VERSION}
