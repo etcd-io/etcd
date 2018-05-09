@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestCtlV3Put(t *testing.T)              { testCtl(t, putTest) }
+func TestCtlV3Put(t *testing.T)              { testCtl(t, putTest, withDialTimeout(7*time.Second)) }
 func TestCtlV3PutNoTLS(t *testing.T)         { testCtl(t, putTest, withCfg(configNoTLS)) }
 func TestCtlV3PutClientTLS(t *testing.T)     { testCtl(t, putTest, withCfg(configClientTLS)) }
 func TestCtlV3PutClientAutoTLS(t *testing.T) { testCtl(t, putTest, withCfg(configClientAutoTLS)) }

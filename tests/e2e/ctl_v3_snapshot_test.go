@@ -43,7 +43,7 @@ func snapshotTest(cx ctlCtx) {
 		cx.t.Fatalf("snapshot: ctlV3Put error (%v)", err)
 	}
 
-	fpath := "test.snapshot"
+	fpath := "test1.snapshot"
 	defer os.RemoveAll(fpath)
 
 	if err = ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -65,7 +65,7 @@ func snapshotTest(cx ctlCtx) {
 func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
 
 func snapshotCorruptTest(cx ctlCtx) {
-	fpath := "test.snapshot"
+	fpath := "test2.snapshot"
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -98,7 +98,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
 
 func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
-	fpath := "test.snapshot"
+	fpath := "test3.snapshot"
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
