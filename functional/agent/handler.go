@@ -71,13 +71,13 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	case rpcpb.Operation_BLACKHOLE_PEER_PORT_TX_RX:
-		return srv.handle_BLACKHOLE_PEER_PORT_TX_RX()
+		return srv.handle_BLACKHOLE_PEER_PORT_TX_RX(), nil
 	case rpcpb.Operation_UNBLACKHOLE_PEER_PORT_TX_RX:
-		return srv.handle_UNBLACKHOLE_PEER_PORT_TX_RX()
+		return srv.handle_UNBLACKHOLE_PEER_PORT_TX_RX(), nil
 	case rpcpb.Operation_DELAY_PEER_PORT_TX_RX:
-		return srv.handle_DELAY_PEER_PORT_TX_RX()
+		return srv.handle_DELAY_PEER_PORT_TX_RX(), nil
 	case rpcpb.Operation_UNDELAY_PEER_PORT_TX_RX:
-		return srv.handle_UNDELAY_PEER_PORT_TX_RX()
+		return srv.handle_UNDELAY_PEER_PORT_TX_RX(), nil
 
 	default:
 		msg := fmt.Sprintf("operation not found (%v)", req.Operation)
@@ -719,7 +719,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.
 	}, nil
 }
 
-func (srv *Server) handle_BLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
+func (srv *Server) handle_BLACKHOLE_PEER_PORT_TX_RX() *rpcpb.Response {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("blackholing", zap.Int("peer-port", port))
 		px.BlackholeTx()
@@ -729,10 +729,10 @@ func (srv *Server) handle_BLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "blackholed peer port tx/rx",
-	}, nil
+	}
 }
 
-func (srv *Server) handle_UNBLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
+func (srv *Server) handle_UNBLACKHOLE_PEER_PORT_TX_RX() *rpcpb.Response {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("unblackholing", zap.Int("peer-port", port))
 		px.UnblackholeTx()
@@ -742,10 +742,10 @@ func (srv *Server) handle_UNBLACKHOLE_PEER_PORT_TX_RX() (*rpcpb.Response, error)
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "unblackholed peer port tx/rx",
-	}, nil
+	}
 }
 
-func (srv *Server) handle_DELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
+func (srv *Server) handle_DELAY_PEER_PORT_TX_RX() *rpcpb.Response {
 	lat := time.Duration(srv.Tester.UpdatedDelayLatencyMs) * time.Millisecond
 	rv := time.Duration(srv.Tester.DelayLatencyMsRv) * time.Millisecond
 
@@ -767,10 +767,10 @@ func (srv *Server) handle_DELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "delayed peer port tx/rx",
-	}, nil
+	}
 }
 
-func (srv *Server) handle_UNDELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
+func (srv *Server) handle_UNDELAY_PEER_PORT_TX_RX() *rpcpb.Response {
 	for port, px := range srv.advertisePeerPortToProxy {
 		srv.lg.Info("undelaying", zap.Int("peer-port", port))
 		px.UndelayTx()
@@ -780,5 +780,5 @@ func (srv *Server) handle_UNDELAY_PEER_PORT_TX_RX() (*rpcpb.Response, error) {
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "undelayed peer port tx/rx",
-	}, nil
+	}
 }
