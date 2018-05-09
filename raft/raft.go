@@ -1279,6 +1279,12 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
+func (r *raft) initialized() bool {
+	// empty 'prs' and 'learnerPrs' means that
+	// this peer is newly created by conf change
+	return len(r.prs) > 0 || len(r.learnerPrs) > 0
+}
+
 // restore recovers the state machine from a snapshot. It restores the log and the
 // configuration of state machine.
 func (r *raft) restore(s pb.Snapshot) bool {
@@ -1292,8 +1298,9 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		return false
 	}
 
-	// The normal peer can't become learner.
-	if !r.isLearner {
+	if r.initialized() && // 1. empty learner (just restored) should accept snapshot
+		// 2. prevent normal peer from becoming learner from snapshot
+		!r.isLearner {
 		for _, id := range s.Metadata.ConfState.Learners {
 			if id == r.id {
 				r.logger.Errorf("%x can't become learner when restores snapshot [index: %d, term: %d]", r.id, s.Metadata.Index, s.Metadata.Term)
