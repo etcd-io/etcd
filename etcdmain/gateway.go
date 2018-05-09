@@ -106,8 +106,8 @@ func startGateway(cmd *cobra.Command, args []string) {
 	srvs.Endpoints = stripSchema(srvs.Endpoints)
 	if len(srvs.SRVs) == 0 {
 		for _, ep := range srvs.Endpoints {
-			h, p, err := net.SplitHostPort(ep)
-			if err != nil {
+			h, p, serr := net.SplitHostPort(ep)
+			if serr != nil {
 				fmt.Printf("error parsing endpoint %q", ep)
 				os.Exit(1)
 			}
