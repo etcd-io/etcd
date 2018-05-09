@@ -171,7 +171,7 @@ func (_ passwordStore) HashPassword(password string) (string, error) {
 }
 
 func (s *store) AllUsers() ([]string, error) {
-	resp, err := s.requestResource("/users/", false, false)
+	resp, err := s.requestResource("/users/", false)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
@@ -245,7 +245,7 @@ func (s *store) DeleteUser(name string) error {
 	if s.AuthEnabled() && name == "root" {
 		return authErr(http.StatusForbidden, "Cannot delete root user while auth is enabled.")
 	}
-	_, err := s.deleteResource("/users/" + name)
+	err := s.deleteResource("/users/" + name)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
@@ -293,7 +293,7 @@ func (s *store) UpdateUser(user User) (User, error) {
 
 func (s *store) AllRoles() ([]string, error) {
 	nodes := []string{RootRoleName}
-	resp, err := s.requestResource("/roles/", false, false)
+	resp, err := s.requestResource("/roles/", false)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
@@ -338,7 +338,7 @@ func (s *store) DeleteRole(name string) error {
 	if name == RootRoleName {
 		return authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", name)
 	}
-	_, err := s.deleteResource("/roles/" + name)
+	err := s.deleteResource("/roles/" + name)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
@@ -696,7 +696,7 @@ func attachRootRole(u User) User {
 }
 
 func (s *store) getUser(name string, quorum bool) (User, error) {
-	resp, err := s.requestResource("/users/"+name, false, quorum)
+	resp, err := s.requestResource("/users/"+name, quorum)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
@@ -721,7 +721,7 @@ func (s *store) getRole(name string, quorum bool) (Role, error) {
 	if name == RootRoleName {
 		return rootRole, nil
 	}
-	resp, err := s.requestResource("/roles/"+name, false, quorum)
+	resp, err := s.requestResource("/roles/"+name, quorum)
 	if err != nil {
 		if e, ok := err.(*v2error.Error); ok {
 			if e.ErrorCode == v2error.EcodeKeyNotFound {
