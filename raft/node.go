@@ -382,8 +382,8 @@ func (n *node) run(r *raft) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
 
-			r.msgs = nil
-			r.readStates = nil
+			r.msgs = r.msgs[len(rd.Messages):]
+			r.readStates = r.readStates[len(rd.ReadStates):]
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
