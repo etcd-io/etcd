@@ -639,13 +639,13 @@ func TestKVRestore(t *testing.T) {
 			kvss = append(kvss, r.KVs)
 		}
 
-		keysBefore := readGaugeInt(&keysGauge)
+		keysBefore := readGaugeInt(keysGauge)
 		s.Close()
 
 		// ns should recover the the previous state from backend.
 		ns := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 
-		if keysRestore := readGaugeInt(&keysGauge); keysBefore != keysRestore {
+		if keysRestore := readGaugeInt(keysGauge); keysBefore != keysRestore {
 			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
 		}
 
@@ -664,9 +664,9 @@ func TestKVRestore(t *testing.T) {
 	}
 }
 
-func readGaugeInt(g *prometheus.Gauge) int {
+func readGaugeInt(g prometheus.Gauge) int {
 	ch := make(chan prometheus.Metric, 1)
-	keysGauge.Collect(ch)
+	g.Collect(ch)
 	m := <-ch
 	mm := &dto.Metric{}
 	m.Write(mm)

@@ -54,6 +54,7 @@ func newRunnerStresser(
 	return &runnerStresser{
 		stype:              stype,
 		etcdClientEndpoint: ep,
+		lg:                 lg,
 		cmdStr:             cmdStr,
 		args:               args,
 		rl:                 rl,

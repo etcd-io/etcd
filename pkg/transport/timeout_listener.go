@@ -32,7 +32,7 @@ func NewTimeoutListener(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
 	}
-	if ln, err = wrapTLS(addr, scheme, tlsinfo, ln); err != nil {
+	if ln, err = wrapTLS(scheme, tlsinfo, ln); err != nil {
 		return nil, err
 	}
 	return ln, nil

@@ -41,7 +41,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	for i := range clus.Members {
 		if oldLeadIdx != i {
 			go func(m *member) {
-				idc <- checkLeaderTransition(t, m, oldLeadID)
+				idc <- checkLeaderTransition(m, oldLeadID)
 			}(clus.Members[i])
 		}
 	}

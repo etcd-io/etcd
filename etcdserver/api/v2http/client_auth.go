@@ -228,11 +228,11 @@ func writeNoAuth(lg *zap.Logger, w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAuth(mux *http.ServeMux, sh *authHandler) {
-	mux.HandleFunc(authPrefix+"/roles", capabilityHandler(api.AuthCapability, sh.baseRoles))
-	mux.HandleFunc(authPrefix+"/roles/", capabilityHandler(api.AuthCapability, sh.handleRoles))
-	mux.HandleFunc(authPrefix+"/users", capabilityHandler(api.AuthCapability, sh.baseUsers))
-	mux.HandleFunc(authPrefix+"/users/", capabilityHandler(api.AuthCapability, sh.handleUsers))
-	mux.HandleFunc(authPrefix+"/enable", capabilityHandler(api.AuthCapability, sh.enableDisable))
+	mux.HandleFunc(authPrefix+"/roles", authCapabilityHandler(sh.baseRoles))
+	mux.HandleFunc(authPrefix+"/roles/", authCapabilityHandler(sh.handleRoles))
+	mux.HandleFunc(authPrefix+"/users", authCapabilityHandler(sh.baseUsers))
+	mux.HandleFunc(authPrefix+"/users/", authCapabilityHandler(sh.handleUsers))
+	mux.HandleFunc(authPrefix+"/enable", authCapabilityHandler(sh.enableDisable))
 }
 
 func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {

@@ -155,7 +155,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				plog.Errorf("error writing event (%v)", err)
 			}
 		}
-		reportRequestCompleted(rr, resp, startTime)
+		reportRequestCompleted(rr, startTime)
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()

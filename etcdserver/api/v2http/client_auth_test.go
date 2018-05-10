@@ -438,8 +438,8 @@ func TestGetUserGrantedWithNonexistingRole(t *testing.T) {
 	}
 }
 
-func mustAuthRequest(method, username, password string) *http.Request {
-	req, err := http.NewRequest(method, "path", strings.NewReader(""))
+func mustAuthRequest(username, password string) *http.Request {
+	req, err := http.NewRequest(http.MethodGet, "path", strings.NewReader(""))
 	if err != nil {
 		panic("Cannot make auth request: " + err.Error())
 	}
@@ -447,8 +447,8 @@ func mustAuthRequest(method, username, password string) *http.Request {
 	return req
 }
 
-func unauthedRequest(method string) *http.Request {
-	req, err := http.NewRequest(method, "path", strings.NewReader(""))
+func unauthedRequest() *http.Request {
+	req, err := http.NewRequest(http.MethodGet, "path", strings.NewReader(""))
 	if err != nil {
 		panic("Cannot make request: " + err.Error())
 	}
@@ -484,7 +484,7 @@ func TestPrefixAccess(t *testing.T) {
 	}{
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "root", "good"),
+			req: mustAuthRequest("root", "good"),
 			store: &mockAuthStore{
 				users: map[string]*v2auth.User{
 					"root": {
@@ -506,7 +506,7 @@ func TestPrefixAccess(t *testing.T) {
 		},
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "user", "good"),
+			req: mustAuthRequest("user", "good"),
 			store: &mockAuthStore{
 				users: map[string]*v2auth.User{
 					"user": {
@@ -534,7 +534,7 @@ func TestPrefixAccess(t *testing.T) {
 		},
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "user", "good"),
+			req: mustAuthRequest("user", "good"),
 			store: &mockAuthStore{
 				users: map[string]*v2auth.User{
 					"user": {
@@ -562,7 +562,7 @@ func TestPrefixAccess(t *testing.T) {
 		},
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "user", "bad"),
+			req: mustAuthRequest("user", "bad"),
 			store: &mockAuthStore{
 				users: map[string]*v2auth.User{
 					"user": {
@@ -590,7 +590,7 @@ func TestPrefixAccess(t *testing.T) {
 		},
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "user", "good"),
+			req: mustAuthRequest("user", "good"),
 			store: &mockAuthStore{
 				users:   map[string]*v2auth.User{},
 				err:     errors.New("Not the user"),
@@ -659,7 +659,7 @@ func TestPrefixAccess(t *testing.T) {
 		// check access for multiple roles
 		{
 			key: "/foo",
-			req: mustAuthRequest("GET", "user", "good"),
+			req: mustAuthRequest("user", "good"),
 			store: &mockAuthStore{
 				users: map[string]*v2auth.User{
 					"user": {
@@ -815,20 +815,20 @@ func TestUserFromClientCertificate(t *testing.T) {
 	}{
 		{
 			// non tls request
-			req:        unauthedRequest("GET"),
+			req:        unauthedRequest(),
 			userExists: false,
 			store:      witherror,
 		},
 		{
 			// cert with cn of existing user
-			req:        tlsAuthedRequest(unauthedRequest("GET"), "user"),
+			req:        tlsAuthedRequest(unauthedRequest(), "user"),
 			userExists: true,
 			username:   "user",
 			store:      noerror,
 		},
 		{
 			// cert with cn of non-existing user
-			req:        tlsAuthedRequest(unauthedRequest("GET"), "otheruser"),
+			req:        tlsAuthedRequest(unauthedRequest(), "otheruser"),
 			userExists: false,
 			store:      witherror,
 		},
@@ -871,30 +871,30 @@ func TestUserFromBasicAuth(t *testing.T) {
 		{
 			// valid user, valid pass
 			username:   "user",
-			req:        mustAuthRequest("GET", "user", "password"),
+			req:        mustAuthRequest("user", "password"),
 			userExists: true,
 		},
 		{
 			// valid user, bad pass
 			username:   "user",
-			req:        mustAuthRequest("GET", "user", "badpass"),
+			req:        mustAuthRequest("user", "badpass"),
 			userExists: false,
 		},
 		{
 			// valid user, no pass
 			username:   "user",
-			req:        mustAuthRequest("GET", "user", ""),
+			req:        mustAuthRequest("user", ""),
 			userExists: false,
 		},
 		{
 			// missing user
 			username:   "missing",
-			req:        mustAuthRequest("GET", "missing", "badpass"),
+			req:        mustAuthRequest("missing", "badpass"),
 			userExists: false,
 		},
 		{
 			// no basic auth
-			req:        unauthedRequest("GET"),
+			req:        unauthedRequest(),
 			userExists: false,
 		},
 	}

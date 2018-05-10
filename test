@@ -479,6 +479,18 @@ function unused_pass {
 	fi
 }
 
+function unparam_pass {
+	if which unparam >/dev/null; then
+		unparamResult=$(unparam "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${unparamResult}" ]; then
+			echo -e "unparam checking failed:\\n${unparamResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping unparam..."
+	fi
+}
+
 function staticcheck_pass {
 	if which staticcheck >/dev/null; then
 		staticcheckResult=$(staticcheck "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
@@ -601,6 +613,7 @@ function fmt_pass {
 			govet_shadow \
 			gosimple \
 			unused \
+			unparam \
 			staticcheck \
 			unconvert \
 			ineffassign \

@@ -56,7 +56,7 @@ func NewGetCommand() *cobra.Command {
 
 // getCommandFunc executes the "get" command.
 func getCommandFunc(cmd *cobra.Command, args []string) {
-	key, opts := getGetOp(cmd, args)
+	key, opts := getGetOp(args)
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).Get(ctx, key, opts...)
 	cancel()
@@ -74,7 +74,7 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	display.Get(*resp)
 }
 
-func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
+func getGetOp(args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("range command needs arguments."))
 	}

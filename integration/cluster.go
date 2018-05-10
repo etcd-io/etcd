@@ -450,10 +450,10 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	return -1
 }
 
-func (c *cluster) WaitNoLeader(t *testing.T) { c.waitNoLeader(t, c.Members) }
+func (c *cluster) WaitNoLeader() { c.waitNoLeader(c.Members) }
 
 // waitNoLeader waits until given members lose leader.
-func (c *cluster) waitNoLeader(t *testing.T, membs []*member) {
+func (c *cluster) waitNoLeader(membs []*member) {
 	noLeader := false
 	for !noLeader {
 		noLeader = true
@@ -992,7 +992,7 @@ func (m *member) Stop(t *testing.T) {
 }
 
 // checkLeaderTransition waits for leader transition, returning the new leader ID.
-func checkLeaderTransition(t *testing.T, m *member, oldLead uint64) uint64 {
+func checkLeaderTransition(m *member, oldLead uint64) uint64 {
 	interval := time.Duration(m.s.Cfg.TickMs) * time.Millisecond
 	for m.s.Lead() == 0 || (m.s.Lead() == oldLead) {
 		time.Sleep(interval)

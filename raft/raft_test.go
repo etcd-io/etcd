@@ -1182,7 +1182,7 @@ func TestCommit(t *testing.T) {
 		storage.Append(tt.logs)
 		storage.hardState = pb.HardState{Term: tt.smTerm}
 
-		sm := newTestRaft(1, []uint64{1}, 5, 1, storage)
+		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
 		for j := 0; j < len(tt.matches); j++ {
 			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
 		}
@@ -2733,7 +2733,7 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 
 	storage := NewMemoryStorage()
-	sm := newTestLearnerRaft(3, []uint64{1, 2}, []uint64{3}, 10, 1, storage)
+	sm := newTestLearnerRaft(3, []uint64{1, 2}, []uint64{3}, 8, 2, storage)
 	if ok := sm.restore(s); !ok {
 		t.Error("restore fail, want succeed")
 	}
@@ -4070,16 +4070,16 @@ func (nw *network) drop(from, to uint64, perc float64) {
 }
 
 func (nw *network) cut(one, other uint64) {
-	nw.drop(one, other, 1)
-	nw.drop(other, one, 1)
+	nw.drop(one, other, 2.0) // always drop
+	nw.drop(other, one, 2.0) // always drop
 }
 
 func (nw *network) isolate(id uint64) {
 	for i := 0; i < len(nw.peers); i++ {
 		nid := uint64(i) + 1
 		if nid != id {
-			nw.drop(id, nid, 1.0)
-			nw.drop(nid, id, 1.0)
+			nw.drop(id, nid, 1.0) // always drop
+			nw.drop(nid, id, 1.0) // always drop
 		}
 	}
 }

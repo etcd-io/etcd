@@ -65,7 +65,7 @@ will store the content of the file to <key>.
 
 // putCommandFunc executes the "put" command.
 func putCommandFunc(cmd *cobra.Command, args []string) {
-	key, value, opts := getPutOp(cmd, args)
+	key, value, opts := getPutOp(args)
 
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).Put(ctx, key, value, opts...)
@@ -76,7 +76,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	display.Put(*resp)
 }
 
-func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpOption) {
+func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	if len(args) == 0 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
 	}

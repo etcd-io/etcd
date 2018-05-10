@@ -28,9 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	txnInteractive bool
-)
+var txnInteractive bool
 
 // NewTxnCommand returns the cobra command for "txn".
 func NewTxnCommand() *cobra.Command {
@@ -129,17 +127,17 @@ func parseRequestUnion(line string) (*clientv3.Op, error) {
 
 	put := NewPutCommand()
 	put.Run = func(cmd *cobra.Command, args []string) {
-		key, value, opts := getPutOp(cmd, args)
+		key, value, opts := getPutOp(args)
 		opc <- clientv3.OpPut(key, value, opts...)
 	}
 	get := NewGetCommand()
 	get.Run = func(cmd *cobra.Command, args []string) {
-		key, opts := getGetOp(cmd, args)
+		key, opts := getGetOp(args)
 		opc <- clientv3.OpGet(key, opts...)
 	}
 	del := NewDelCommand()
 	del.Run = func(cmd *cobra.Command, args []string) {
-		key, opts := getDelOp(cmd, args)
+		key, opts := getDelOp(args)
 		opc <- clientv3.OpDelete(key, opts...)
 	}
 	cmds := &cobra.Command{SilenceErrors: true}

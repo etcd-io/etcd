@@ -251,7 +251,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 		t.Fatal(err)
 	}
 
-	if err := etcdctlSet(epc1, "foo1", "bar"); err != nil {
+	if err := etcdctlSet(epc1, "foo1", "bar1"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -276,7 +276,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	epc2 := setupEtcdctlTest(t, &cfg2, false)
 
 	// check if backup went through correctly
-	if err := etcdctlGet(epc2, "foo1", "bar", false); err != nil {
+	if err := etcdctlGet(epc2, "foo1", "bar1", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -292,10 +292,10 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	}
 
 	// check if it can serve client requests
-	if err := etcdctlSet(epc2, "foo2", "bar"); err != nil {
+	if err := etcdctlSet(epc2, "foo2", "bar2"); err != nil {
 		t.Fatal(err)
 	}
-	if err := etcdctlGet(epc2, "foo2", "bar", false); err != nil {
+	if err := etcdctlGet(epc2, "foo2", "bar2", false); err != nil {
 		t.Fatal(err)
 	}
 

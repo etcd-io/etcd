@@ -968,7 +968,7 @@ func authTestSnapshot(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	fpath := "test.snapshot"
+	fpath := "test-auth.snapshot"
 	defer os.RemoveAll(fpath)
 
 	// ordinary user cannot save a snapshot

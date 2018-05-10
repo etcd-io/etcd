@@ -493,9 +493,9 @@ func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Respons
 
 	m, secure := clus.Members[idx], false
 	for _, cu := range m.Etcd.AdvertiseClientURLs {
-		u, err := url.Parse(cu)
-		if err != nil {
-			return nil, err
+		u, perr := url.Parse(cu)
+		if perr != nil {
+			return nil, perr
 		}
 		if u.Scheme == "https" { // TODO: handle unix
 			secure = true
