@@ -88,13 +88,16 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		}
 	}
 
+	ctx, close := context.WithTimeout(context.TODO(), RequestWaitTimeout)
+	defer close()
+
 	// small quota machine should reject put
-	if _, err := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
+	if _, err := kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("past-quota instance should reject put")
 	}
 
 	// large quota machine should reject put
-	if _, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
+	if _, err := kvc1.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("past-quota instance should reject put")
 	}
 

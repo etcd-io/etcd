@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/clientv3/balancer/picker"
 	"github.com/coreos/etcd/clientv3/balancer/resolver/endpoint"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
@@ -45,13 +46,15 @@ var (
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
 
 	roundRobinBalancerName = fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String())
+	logger                 *zap.Logger
 )
 
 func init() {
+	logger = zap.NewNop() // zap.NewExample()
 	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
 		Name:   roundRobinBalancerName,
-		Logger: zap.NewNop(), // zap.NewExample(),
+		Logger: logger,
 	})
 }
 
@@ -263,6 +266,18 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 		opts = append(opts, grpc.WithInsecure())
 	}
 
+	// Interceptor retry and backoff.
+	// TODO: Replace all of clientv3/retry.go with interceptor based retry, or with
+	// https://github.com/grpc/proposal/blob/master/A6-client-retries.md#retry-policy
+	// once it is available.
+	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
+	opts = append(opts,
+		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
+		// Streams that are safe to retry are enabled individually.
+		grpc.WithStreamInterceptor(c.streamClientInterceptor(logger, withMax(0), rrBackoff)),
+		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(logger, withMax(defaultUnaryMaxRetries), rrBackoff)),
+	)
+
 	return opts, nil
 }
 
@@ -386,14 +401,14 @@ func newClient(cfg *Config) (*Client, error) {
 
 	ctx, cancel := context.WithCancel(baseCtx)
 	client := &Client{
-		conn:     nil,
-		cfg:      *cfg,
-		creds:    creds,
-		ctx:      ctx,
-		cancel:   cancel,
-		mu:       new(sync.Mutex),
-		callOpts: defaultCallOpts,
+		conn:   nil,
+		cfg:    *cfg,
+		creds:  creds,
+		ctx:    ctx,
+		cancel: cancel,
+		mu:     new(sync.Mutex),
 	}
+
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
@@ -459,6 +474,22 @@ func newClient(cfg *Config) (*Client, error) {
 
 	go client.autoSync()
 	return client, nil
+}
+
+// roundRobinQuorumBackoff retries against quorum between each backoff.
+// This is intended for use with a round robin load balancer.
+func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFraction float64) backoffFunc {
+	return func(attempt uint) time.Duration {
+		// after each round robin across quorum, backoff for our wait between duration
+		n := uint(len(c.Endpoints()))
+		quorum := (n/2 + 1)
+		if attempt%quorum == 0 {
+			logger.Info("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
+			return backoffutils.JitterUp(waitBetween, jitterFraction)
+		}
+		logger.Info("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
+		return 0
+	}
 }
 
 func (c *Client) checkVersion() (err error) {

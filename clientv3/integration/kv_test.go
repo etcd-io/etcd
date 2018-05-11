@@ -438,15 +438,12 @@ func TestKVGetErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, cli)
-
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != nil && err != context.Canceled && err != grpc.ErrClientConnClosing && !isServerUnavailable(err) {
-			t.Fatalf("expected %v, %v or server unavailable, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
+		if err != nil && err != context.Canceled && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
 
@@ -689,8 +686,6 @@ func TestKVGetRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		// TODO: Remove wait once the new grpc load balancer provides retry.
-		integration.WaitClientV3(t, kv)
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
@@ -741,8 +736,6 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		// TODO: Remove wait once the new grpc load balancer provides retry.
-		integration.WaitClientV3(t, kv)
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
@@ -800,7 +793,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(isServerUnavailable(err) || isCanceled(err) || isClientTimeout(err)) {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 }
@@ -822,7 +815,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// grpc finds out the original connection is down due to the member shutdown.
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(isServerUnavailable(err) || isCanceled(err) || isClientTimeout(err)) {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 
@@ -830,7 +823,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
-	if err != nil && !(isServerUnavailable(err) || isCanceled(err) || isClientTimeout(err)) {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err) || isUnavailable(err)) {
 		t.Fatal(err)
 	}
 }

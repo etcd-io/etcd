@@ -83,7 +83,9 @@ func TestDialTLSNoConfig(t *testing.T) {
 
 	// TODO: this should not be required when we set grpc.WithBlock()
 	if c != nil {
-		_, err = c.KV.Get(context.Background(), "/")
+		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestWaitTimeout)
+		_, err = c.KV.Get(ctx, "/")
+		cancel()
 	}
 	if !isClientTimeout(err) {
 		t.Fatalf("expected dial timeout error, got %v", err)
@@ -156,9 +158,6 @@ func TestSwitchSetEndpoints(t *testing.T) {
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	cli.SetEndpoints(eps...)
-
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, cli)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -79,9 +79,6 @@ func TestTxnWriteFail(t *testing.T) {
 			t.Fatalf("timed out waiting for txn fail")
 		case <-txnc:
 		}
-		// TODO: Remove wait once the new grpc load balancer provides retry.
-		integration.WaitClientV3(t, kv)
-
 		// and ensure the put didn't take
 		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
 		if gerr != nil {

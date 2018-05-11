@@ -186,9 +186,6 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 	// isolate leader
 	clus.Members[lead].InjectPartition(t, clus.Members[(lead+1)%3], clus.Members[(lead+2)%3])
 
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, cli)
-
 	// expects balancer to round robin to leader within two attempts
 	for i := 0; i < 2; i++ {
 		ctx, cancel := context.WithTimeout(context.TODO(), timeout)

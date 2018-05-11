@@ -32,6 +32,17 @@ const (
 	nonRepeatable
 )
 
+func (rp retryPolicy) String() string {
+	switch rp {
+	case repeatable:
+		return "repeatable"
+	case nonRepeatable:
+		return "nonRepeatable"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 type rpcFunc func(ctx context.Context) error
 type retryRPCFunc func(context.Context, rpcFunc, retryPolicy) error
 type retryStopErrFunc func(error) bool
@@ -78,8 +89,6 @@ func isNonRepeatableStopError(err error) bool {
 	return desc != "there is no address available" && desc != "there is no connection available"
 }
 
-// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-/*
 func (c *Client) newRetryWrapper() retryRPCFunc {
 	return func(rpcCtx context.Context, f rpcFunc, rp retryPolicy) error {
 		var isStop retryStopErrFunc
@@ -90,21 +99,14 @@ func (c *Client) newRetryWrapper() retryRPCFunc {
 			isStop = isNonRepeatableStopError
 		}
 		for {
-			if err := readyWait(rpcCtx, c.ctx, c.balancer.ConnectNotify()); err != nil {
-				return err
-			}
-			pinned := c.balancer.Pinned()
 			err := f(rpcCtx)
 			if err == nil {
 				return nil
 			}
-			lg.Lvl(4).Infof("clientv3/retry: error %q on pinned endpoint %q", err.Error(), pinned)
+			lg.Lvl(4).Infof("clientv3/retry: error %q", err.Error())
 
 			if s, ok := status.FromError(err); ok && (s.Code() == codes.Unavailable || s.Code() == codes.DeadlineExceeded || s.Code() == codes.Internal) {
-				// mark this before endpoint switch is triggered
-				c.balancer.HostPortError(pinned, err)
-				c.balancer.Next()
-				lg.Lvl(4).Infof("clientv3/retry: switching from %q due to error %q", pinned, err.Error())
+				lg.Lvl(4).Infof("clientv3/retry: retrying due to error %q", err.Error())
 			}
 
 			if isStop(err) {
@@ -112,23 +114,21 @@ func (c *Client) newRetryWrapper() retryRPCFunc {
 			}
 		}
 	}
-}*/
+}
 
-/*
 func (c *Client) newAuthRetryWrapper(retryf retryRPCFunc) retryRPCFunc {
 	return func(rpcCtx context.Context, f rpcFunc, rp retryPolicy) error {
 		for {
-			pinned := c.balancer.Pinned()
 			err := retryf(rpcCtx, f, rp)
 			if err == nil {
 				return nil
 			}
-			lg.Lvl(4).Infof("clientv3/auth-retry: error %q on pinned endpoint %q", err.Error(), pinned)
+			lg.Lvl(4).Infof("clientv3/auth-retry: error %q", err.Error())
 			// always stop retry on etcd errors other than invalid auth token
 			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(rpcCtx)
 				if gterr != nil {
-					lg.Lvl(4).Infof("clientv3/auth-retry: cannot retry due to error %q(%q) on pinned endpoint %q", err.Error(), gterr.Error(), pinned)
+					lg.Lvl(4).Infof("clientv3/auth-retry: cannot retry due to error %q(%q)", err.Error(), gterr.Error())
 					return err // return the original error for simplicity
 				}
 				continue
@@ -136,7 +136,7 @@ func (c *Client) newAuthRetryWrapper(retryf retryRPCFunc) retryRPCFunc {
 			return err
 		}
 	}
-}*/
+}
 
 type retryKVClient struct {
 	kc     pb.KVClient
@@ -145,16 +145,14 @@ type retryKVClient struct {
 
 // RetryKVClient implements a KVClient.
 func RetryKVClient(c *Client) pb.KVClient {
-	return pb.NewKVClient(c.conn)
-	// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-	/*return &retryKVClient{
+	return &retryKVClient{
 		kc:     pb.NewKVClient(c.conn),
 		retryf: c.newAuthRetryWrapper(c.newRetryWrapper()),
-	}*/
+	}
 }
 func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (resp *pb.RangeResponse, err error) {
 	err = rkv.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rkv.kc.Range(rctx, in, opts...)
+		resp, err = rkv.kc.Range(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -200,17 +198,15 @@ type retryLeaseClient struct {
 
 // RetryLeaseClient implements a LeaseClient.
 func RetryLeaseClient(c *Client) pb.LeaseClient {
-	return pb.NewLeaseClient(c.conn)
-	// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-	/*return &retryLeaseClient{
+	return &retryLeaseClient{
 		lc:     pb.NewLeaseClient(c.conn),
 		retryf: c.newAuthRetryWrapper(c.newRetryWrapper()),
-	}*/
+	}
 }
 
 func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (resp *pb.LeaseTimeToLiveResponse, err error) {
 	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.lc.LeaseTimeToLive(rctx, in, opts...)
+		resp, err = rlc.lc.LeaseTimeToLive(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -218,7 +214,7 @@ func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTi
 
 func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (resp *pb.LeaseLeasesResponse, err error) {
 	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.lc.LeaseLeases(rctx, in, opts...)
+		resp, err = rlc.lc.LeaseLeases(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -226,7 +222,7 @@ func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeases
 
 func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
 	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.lc.LeaseGrant(rctx, in, opts...)
+		resp, err = rlc.lc.LeaseGrant(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -235,7 +231,7 @@ func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRe
 
 func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts ...grpc.CallOption) (resp *pb.LeaseRevokeResponse, err error) {
 	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rlc.lc.LeaseRevoke(rctx, in, opts...)
+		resp, err = rlc.lc.LeaseRevoke(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -243,7 +239,7 @@ func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevoke
 
 func (rlc *retryLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (stream pb.Lease_LeaseKeepAliveClient, err error) {
 	err = rlc.retryf(ctx, func(rctx context.Context) error {
-		stream, err = rlc.lc.LeaseKeepAlive(rctx, opts...)
+		stream, err = rlc.lc.LeaseKeepAlive(rctx, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return stream, err
@@ -256,17 +252,15 @@ type retryClusterClient struct {
 
 // RetryClusterClient implements a ClusterClient.
 func RetryClusterClient(c *Client) pb.ClusterClient {
-	return pb.NewClusterClient(c.conn)
-	// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-	/*return &retryClusterClient{
+	return &retryClusterClient{
 		cc:     pb.NewClusterClient(c.conn),
 		retryf: c.newRetryWrapper(),
-	}*/
+	}
 }
 
 func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
 	err = rcc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rcc.cc.MemberList(rctx, in, opts...)
+		resp, err = rcc.cc.MemberList(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -303,17 +297,15 @@ type retryMaintenanceClient struct {
 
 // RetryMaintenanceClient implements a Maintenance.
 func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClient {
-	return pb.NewMaintenanceClient(conn)
-	// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-	/*return &retryMaintenanceClient{
+	return &retryMaintenanceClient{
 		mc:     pb.NewMaintenanceClient(conn),
 		retryf: c.newRetryWrapper(),
-	}*/
+	}
 }
 
 func (rmc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmRequest, opts ...grpc.CallOption) (resp *pb.AlarmResponse, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rmc.mc.Alarm(rctx, in, opts...)
+		resp, err = rmc.mc.Alarm(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -321,7 +313,7 @@ func (rmc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmReques
 
 func (rmc *retryMaintenanceClient) Status(ctx context.Context, in *pb.StatusRequest, opts ...grpc.CallOption) (resp *pb.StatusResponse, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rmc.mc.Status(rctx, in, opts...)
+		resp, err = rmc.mc.Status(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -329,7 +321,7 @@ func (rmc *retryMaintenanceClient) Status(ctx context.Context, in *pb.StatusRequ
 
 func (rmc *retryMaintenanceClient) Hash(ctx context.Context, in *pb.HashRequest, opts ...grpc.CallOption) (resp *pb.HashResponse, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rmc.mc.Hash(rctx, in, opts...)
+		resp, err = rmc.mc.Hash(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -337,7 +329,7 @@ func (rmc *retryMaintenanceClient) Hash(ctx context.Context, in *pb.HashRequest,
 
 func (rmc *retryMaintenanceClient) HashKV(ctx context.Context, in *pb.HashKVRequest, opts ...grpc.CallOption) (resp *pb.HashKVResponse, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rmc.mc.HashKV(rctx, in, opts...)
+		resp, err = rmc.mc.HashKV(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -345,7 +337,7 @@ func (rmc *retryMaintenanceClient) HashKV(ctx context.Context, in *pb.HashKVRequ
 
 func (rmc *retryMaintenanceClient) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (stream pb.Maintenance_SnapshotClient, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		stream, err = rmc.mc.Snapshot(rctx, in, opts...)
+		stream, err = rmc.mc.Snapshot(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return stream, err
@@ -353,7 +345,7 @@ func (rmc *retryMaintenanceClient) Snapshot(ctx context.Context, in *pb.Snapshot
 
 func (rmc *retryMaintenanceClient) MoveLeader(ctx context.Context, in *pb.MoveLeaderRequest, opts ...grpc.CallOption) (resp *pb.MoveLeaderResponse, err error) {
 	err = rmc.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rmc.mc.MoveLeader(rctx, in, opts...)
+		resp, err = rmc.mc.MoveLeader(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -374,17 +366,15 @@ type retryAuthClient struct {
 
 // RetryAuthClient implements a AuthClient.
 func RetryAuthClient(c *Client) pb.AuthClient {
-	return pb.NewAuthClient(c.conn)
-	// TODO: Remove retry logic entirely now that we're using the new grpc load balancer interface?
-	/*return &retryAuthClient{
+	return &retryAuthClient{
 		ac:     pb.NewAuthClient(c.conn),
 		retryf: c.newRetryWrapper(),
-	}*/
+	}
 }
 
 func (rac *retryAuthClient) UserList(ctx context.Context, in *pb.AuthUserListRequest, opts ...grpc.CallOption) (resp *pb.AuthUserListResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rac.ac.UserList(rctx, in, opts...)
+		resp, err = rac.ac.UserList(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -392,7 +382,7 @@ func (rac *retryAuthClient) UserList(ctx context.Context, in *pb.AuthUserListReq
 
 func (rac *retryAuthClient) UserGet(ctx context.Context, in *pb.AuthUserGetRequest, opts ...grpc.CallOption) (resp *pb.AuthUserGetResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rac.ac.UserGet(rctx, in, opts...)
+		resp, err = rac.ac.UserGet(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -400,7 +390,7 @@ func (rac *retryAuthClient) UserGet(ctx context.Context, in *pb.AuthUserGetReque
 
 func (rac *retryAuthClient) RoleGet(ctx context.Context, in *pb.AuthRoleGetRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGetResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rac.ac.RoleGet(rctx, in, opts...)
+		resp, err = rac.ac.RoleGet(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err
@@ -408,7 +398,7 @@ func (rac *retryAuthClient) RoleGet(ctx context.Context, in *pb.AuthRoleGetReque
 
 func (rac *retryAuthClient) RoleList(ctx context.Context, in *pb.AuthRoleListRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleListResponse, err error) {
 	err = rac.retryf(ctx, func(rctx context.Context) error {
-		resp, err = rac.ac.RoleList(rctx, in, opts...)
+		resp, err = rac.ac.RoleList(rctx, in, append(opts, withRetryPolicy(repeatable))...)
 		return err
 	}, repeatable)
 	return resp, err

@@ -869,9 +869,6 @@ func TestLeasingTxnCancel(t *testing.T) {
 	}
 	clus.Members[0].Stop(t)
 
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, clus.Client(1))
-
 	// wait for leader election, if any
 	if _, err = clus.Client(1).Get(context.TODO(), "abc"); err != nil {
 		t.Fatal(err)
@@ -1536,9 +1533,6 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 		}
 	}
 
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, lkv)
-
 	lresp, lerr := lkv.Get(context.TODO(), "k")
 	if lerr != nil {
 		t.Fatal(lerr)
@@ -1820,9 +1814,6 @@ func TestLeasingTxnOwnerPutBranch(t *testing.T) {
 	// lkv shouldn't need to call out to server for updated leased keys
 	clus.Members[0].Stop(t)
 
-	// TODO: Remove wait once the new grpc load balancer provides retry.
-	integration.WaitClientV3(t, clus.Client(1))
-
 	for i := 0; i < n; i++ {
 		k := fmt.Sprintf("tree/%d", i)
 		lkvResp, err := lkv.Get(context.TODO(), k)
@@ -1994,7 +1985,7 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 
 			select {
 			case err := <-errc:
-				if !(err == ctx.Err() || isServerUnavailable(err)) {
+				if err != ctx.Err() {
 					t.Errorf("#%d: expected %v of server unavailable, got %v", i, ctx.Err(), err)
 				}
 			case <-time.After(5 * time.Second):
@@ -2025,7 +2016,7 @@ func waitForExpireAck(t *testing.T, kv clientv3.KV) {
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 		_, err := kv.Get(ctx, "abc")
 		cancel()
-		if err == ctx.Err() || isServerUnavailable(err) {
+		if err == ctx.Err() {
 			return
 		} else if err != nil {
 			t.Logf("current error: %v", err)

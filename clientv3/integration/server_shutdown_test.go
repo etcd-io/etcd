@@ -17,7 +17,6 @@ package integration
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -352,11 +351,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		}
 		cancel()
 		if err != nil {
-			if linearizable && isServerUnavailable(err) {
-				t.Logf("TODO: FIX THIS after balancer rewrite! %v %v", reflect.TypeOf(err), err)
-			} else {
-				t.Fatalf("expected linearizable=true and a server unavailable error, but got linearizable=%t and '%v'", linearizable, err)
-			}
+			t.Fatalf("unexpected error: %v", err)
 		}
 	}()
 
@@ -402,18 +397,6 @@ func isClientTimeout(err error) bool {
 	return code == codes.DeadlineExceeded || ev.Message() == transport.ErrConnClosing.Desc
 }
 
-func isServerUnavailable(err error) bool {
-	if err == nil {
-		return false
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	code := ev.Code()
-	return code == codes.Unavailable
-}
-
 func isCanceled(err error) bool {
 	if err == nil {
 		return false
@@ -427,4 +410,19 @@ func isCanceled(err error) bool {
 	}
 	code := ev.Code()
 	return code == codes.Canceled
+}
+
+func isUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Unavailable
 }
