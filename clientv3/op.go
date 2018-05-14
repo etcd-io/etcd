@@ -26,9 +26,7 @@ const (
 	tTxn
 )
 
-var (
-	noPrefixEnd = []byte{0}
-)
+var noPrefixEnd = []byte{0}
 
 // Op represents an Operation that kv can execute.
 type Op struct {
@@ -77,8 +75,15 @@ type Op struct {
 
 // accessors / mutators
 
-func (op Op) IsTxn() bool              { return op.t == tTxn }
-func (op Op) Txn() ([]Cmp, []Op, []Op) { return op.cmps, op.thenOps, op.elseOps }
+// IsTxn returns true if the "Op" type is transaction.
+func (op Op) IsTxn() bool {
+	return op.t == tTxn
+}
+
+// Txn returns the comparison(if) operations, "then" operations, and "else" operations.
+func (op Op) Txn() ([]Cmp, []Op, []Op) {
+	return op.cmps, op.thenOps, op.elseOps
+}
 
 // KeyBytes returns the byte slice holding the Op's key.
 func (op Op) KeyBytes() []byte { return op.key }
@@ -205,12 +210,14 @@ func (op Op) isWrite() bool {
 	return op.t != tRange
 }
 
+// OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	return ret
 }
 
+// OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
 	ret := Op{t: tDeleteRange, key: []byte(key)}
 	ret.applyOpts(opts)
@@ -239,6 +246,7 @@ func OpDelete(key string, opts ...OpOption) Op {
 	return ret
 }
 
+// OpPut returns "put" operation based on given key-value and operation options.
 func OpPut(key, val string, opts ...OpOption) Op {
 	ret := Op{t: tPut, key: []byte(key), val: []byte(val)}
 	ret.applyOpts(opts)
@@ -267,6 +275,7 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	return ret
 }
 
+// OpTxn returns "txn" operation based on given transaction conditions.
 func OpTxn(cmps []Cmp, thenOps []Op, elseOps []Op) Op {
 	return Op{t: tTxn, cmps: cmps, thenOps: thenOps, elseOps: elseOps}
 }
