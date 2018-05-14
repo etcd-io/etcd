@@ -24,8 +24,8 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/etcdserver/v2error"
-	"github.com/coreos/etcd/etcdserver/v2store"
+	"github.com/coreos/etcd/etcdserver/api/v2error"
+	"github.com/coreos/etcd/etcdserver/api/v2store"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 

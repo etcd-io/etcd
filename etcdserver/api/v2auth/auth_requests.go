@@ -20,8 +20,8 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v2error"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/v2error"
 
 	"go.uber.org/zap"
 )

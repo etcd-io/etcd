@@ -2359,6 +2359,11 @@
             "$ref": "#/definitions/WatchCreateRequestFilterType"
           }
         },
+        "fragment": {
+          "description": "fragment enables splitting large revisions into multiple watch responses.",
+          "type": "boolean",
+          "format": "boolean"
+        },
         "key": {
           "description": "key is the key to register for watching.",
           "type": "string",
@@ -2429,6 +2434,11 @@
           "items": {
             "$ref": "#/definitions/mvccpbEvent"
           }
+        },
+        "fragment": {
+          "description": "framgment is true if large watch response was split over multiple responses.",
+          "type": "boolean",
+          "format": "boolean"
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"

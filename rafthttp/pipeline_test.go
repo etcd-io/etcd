@@ -24,13 +24,13 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
-
-	"github.com/coreos/etcd/etcdserver/stats"
+	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
+
+	"go.uber.org/zap"
 )
 
 // TestPipelineSend tests that pipeline could send data using roundtripper

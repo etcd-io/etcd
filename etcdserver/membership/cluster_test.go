@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/v2store"
+	"github.com/coreos/etcd/etcdserver/api/v2store"
 	"github.com/coreos/etcd/pkg/mock/mockstore"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"

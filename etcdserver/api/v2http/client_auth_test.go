@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/v2auth"
+	"github.com/coreos/etcd/etcdserver/api/v2auth"
 
 	"go.uber.org/zap"
 )

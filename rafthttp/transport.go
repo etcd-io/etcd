@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/stats"
+	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
