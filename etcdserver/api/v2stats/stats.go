@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package stats defines a standard interface for etcd cluster statistics.
-package stats
+// Package v2stats defines a standard interface for etcd cluster statistics.
+package v2stats
 
 import "github.com/coreos/pkg/capnslog"
 
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/stats")
-)
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/stats")
 
 type Stats interface {
 	// SelfStats returns the struct representing statistics of this server

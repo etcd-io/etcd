@@ -21,7 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/coreos/etcd/etcdserver/v2error"
+	"github.com/coreos/etcd/etcdserver/api/v2error"
 )
 
 // A watcherHub contains all subscribed watchers

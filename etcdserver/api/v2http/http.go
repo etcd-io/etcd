@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/api/v2auth"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/etcdserver/v2auth"
 	"github.com/coreos/etcd/pkg/logutil"
 
 	"github.com/coreos/pkg/capnslog"

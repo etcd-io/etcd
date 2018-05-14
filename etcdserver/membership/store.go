@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/coreos/etcd/etcdserver/v2store"
+	"github.com/coreos/etcd/etcdserver/api/v2store"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
 
