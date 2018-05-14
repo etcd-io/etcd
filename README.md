@@ -150,6 +150,12 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issues.
 
+## Reporting a security vulnerability
+
+Due to their public nature, GitHub and mailing lists are NOT appropriate places for reporting vulnerabilities. Please refer to CoreOS's [security disclosure][disclosure] process when reporting issues that may be security related.
+
+[disclosure]: https://coreos.com/security/disclosure/
+
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
