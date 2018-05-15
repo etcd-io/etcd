@@ -24,25 +24,25 @@ import (
 
 func TestIndexGet(t *testing.T) {
 	ti := newTreeIndex(zap.NewExample())
-	ti.Put([]byte("foo"), revision{main: 2})
-	ti.Put([]byte("foo"), revision{main: 4})
-	ti.Tombstone([]byte("foo"), revision{main: 6})
+	ti.Put([]byte("foo"), Revision{Main: 2})
+	ti.Put([]byte("foo"), Revision{Main: 4})
+	ti.Tombstone([]byte("foo"), Revision{Main: 6})
 
 	tests := []struct {
 		rev int64
 
-		wrev     revision
-		wcreated revision
+		wrev     Revision
+		wcreated Revision
 		wver     int64
 		werr     error
 	}{
-		{0, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{1, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{2, revision{main: 2}, revision{main: 2}, 1, nil},
-		{3, revision{main: 2}, revision{main: 2}, 1, nil},
-		{4, revision{main: 4}, revision{main: 2}, 2, nil},
-		{5, revision{main: 4}, revision{main: 2}, 2, nil},
-		{6, revision{}, revision{}, 0, ErrRevisionNotFound},
+		{0, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{1, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{2, Revision{Main: 2}, Revision{Main: 2}, 1, nil},
+		{3, Revision{Main: 2}, Revision{Main: 2}, 1, nil},
+		{4, Revision{Main: 4}, Revision{Main: 2}, 2, nil},
+		{5, Revision{Main: 4}, Revision{Main: 2}, 2, nil},
+		{6, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 	}
 	for i, tt := range tests {
 		rev, created, ver, err := ti.Get([]byte("foo"), tt.rev)
@@ -63,7 +63,7 @@ func TestIndexGet(t *testing.T) {
 
 func TestIndexRange(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
-	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}}
 
 	ti := newTreeIndex(zap.NewExample())
 	for i := range allKeys {
@@ -74,7 +74,7 @@ func TestIndexRange(t *testing.T) {
 	tests := []struct {
 		key, end []byte
 		wkeys    [][]byte
-		wrevs    []revision
+		wrevs    []Revision
 	}{
 		// single key that not found
 		{
@@ -122,9 +122,9 @@ func TestIndexRange(t *testing.T) {
 
 func TestIndexTombstone(t *testing.T) {
 	ti := newTreeIndex(zap.NewExample())
-	ti.Put([]byte("foo"), revision{main: 1})
+	ti.Put([]byte("foo"), Revision{Main: 1})
 
-	err := ti.Tombstone([]byte("foo"), revision{main: 2})
+	err := ti.Tombstone([]byte("foo"), Revision{Main: 2})
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
@@ -133,7 +133,7 @@ func TestIndexTombstone(t *testing.T) {
 	if err != ErrRevisionNotFound {
 		t.Errorf("get error = %v, want nil", err)
 	}
-	err = ti.Tombstone([]byte("foo"), revision{main: 3})
+	err = ti.Tombstone([]byte("foo"), Revision{Main: 3})
 	if err != ErrRevisionNotFound {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
@@ -141,7 +141,7 @@ func TestIndexTombstone(t *testing.T) {
 
 func TestIndexRangeSince(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
-	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}, {Main: 4}, {Main: 5}, {Main: 6}}
 
 	ti := newTreeIndex(zap.NewExample())
 	for i := range allKeys {
@@ -151,7 +151,7 @@ func TestIndexRangeSince(t *testing.T) {
 	atRev := int64(1)
 	tests := []struct {
 		key, end []byte
-		wrevs    []revision
+		wrevs    []Revision
 	}{
 		// single key that not found
 		{
@@ -159,15 +159,15 @@ func TestIndexRangeSince(t *testing.T) {
 		},
 		// single key that found
 		{
-			[]byte("foo"), nil, []revision{{main: 1}, {main: 6}},
+			[]byte("foo"), nil, []Revision{{Main: 1}, {Main: 6}},
 		},
 		// range keys, return first member
 		{
-			[]byte("foo"), []byte("foo1"), []revision{{main: 1}, {main: 6}},
+			[]byte("foo"), []byte("foo1"), []Revision{{Main: 1}, {Main: 6}},
 		},
 		// range keys, return first two members
 		{
-			[]byte("foo"), []byte("foo2"), []revision{{main: 1}, {main: 2}, {main: 5}, {main: 6}},
+			[]byte("foo"), []byte("foo2"), []Revision{{Main: 1}, {Main: 2}, {Main: 5}, {Main: 6}},
 		},
 		// range keys, return all members
 		{
@@ -175,11 +175,11 @@ func TestIndexRangeSince(t *testing.T) {
 		},
 		// range keys, return last two members
 		{
-			[]byte("foo1"), []byte("fop"), []revision{{main: 2}, {main: 3}, {main: 4}, {main: 5}},
+			[]byte("foo1"), []byte("fop"), []Revision{{Main: 2}, {Main: 3}, {Main: 4}, {Main: 5}},
 		},
 		// range keys, return last member
 		{
-			[]byte("foo2"), []byte("fop"), []revision{{main: 3}, {main: 4}},
+			[]byte("foo2"), []byte("fop"), []Revision{{Main: 3}, {Main: 4}},
 		},
 		// range keys, return nothing
 		{
@@ -199,21 +199,21 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	tests := []struct {
 		key     []byte
 		remove  bool
-		rev     revision
-		created revision
+		rev     Revision
+		created Revision
 		ver     int64
 	}{
-		{[]byte("foo"), false, revision{main: 1}, revision{main: 1}, 1},
-		{[]byte("foo1"), false, revision{main: 2}, revision{main: 2}, 1},
-		{[]byte("foo2"), false, revision{main: 3}, revision{main: 3}, 1},
-		{[]byte("foo2"), false, revision{main: 4}, revision{main: 3}, 2},
-		{[]byte("foo"), false, revision{main: 5}, revision{main: 1}, 2},
-		{[]byte("foo1"), false, revision{main: 6}, revision{main: 2}, 2},
-		{[]byte("foo1"), true, revision{main: 7}, revision{}, 0},
-		{[]byte("foo2"), true, revision{main: 8}, revision{}, 0},
-		{[]byte("foo"), true, revision{main: 9}, revision{}, 0},
-		{[]byte("foo"), false, revision{10, 0}, revision{10, 0}, 1},
-		{[]byte("foo1"), false, revision{10, 1}, revision{10, 1}, 1},
+		{[]byte("foo"), false, Revision{Main: 1}, Revision{Main: 1}, 1},
+		{[]byte("foo1"), false, Revision{Main: 2}, Revision{Main: 2}, 1},
+		{[]byte("foo2"), false, Revision{Main: 3}, Revision{Main: 3}, 1},
+		{[]byte("foo2"), false, Revision{Main: 4}, Revision{Main: 3}, 2},
+		{[]byte("foo"), false, Revision{Main: 5}, Revision{Main: 1}, 2},
+		{[]byte("foo1"), false, Revision{Main: 6}, Revision{Main: 2}, 2},
+		{[]byte("foo1"), true, Revision{Main: 7}, Revision{}, 0},
+		{[]byte("foo2"), true, Revision{Main: 8}, Revision{}, 0},
+		{[]byte("foo"), true, Revision{Main: 9}, Revision{}, 0},
+		{[]byte("foo"), false, Revision{Main: 10, Sub: 0}, Revision{Main: 10, Sub: 0}, 1},
+		{[]byte("foo1"), false, Revision{Main: 10, Sub: 1}, Revision{Main: 10, Sub: 1}, 1},
 	}
 
 	// Continuous Compact and Keep
@@ -233,7 +233,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		}
 		wti := &treeIndex{tree: btree.New(32)}
 		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
+			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
 				if tt.remove {
 					wti.Tombstone(tt.key, tt.rev)
 				} else {
@@ -263,7 +263,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		}
 		wti := &treeIndex{tree: btree.New(32)}
 		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
+			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
 				if tt.remove {
 					wti.Tombstone(tt.key, tt.rev)
 				} else {
@@ -277,7 +277,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	}
 }
 
-func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
+func restore(ti *treeIndex, key []byte, created, modified Revision, ver int64) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
@@ -289,5 +289,5 @@ func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(ti.lg, modified.main, modified.sub)
+	okeyi.put(ti.lg, modified.Main, modified.Sub)
 }

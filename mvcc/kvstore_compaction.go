@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
+func (s *store) scheduleCompaction(compactMainRev int64, keep map[Revision]struct{}) bool {
 	totalStart := time.Now()
 	defer dbCompactionTotalDurations.Observe(float64(time.Since(totalStart) / time.Millisecond))
 	keyCompactions := 0
@@ -31,9 +31,9 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
 	batchsize := int64(10000)
-	last := make([]byte, 8+1+8)
+	last := NewRevBytes()
 	for {
-		var rev revision
+		var rev Revision
 
 		start := time.Now()
 		tx := s.b.BatchTx()
@@ -41,7 +41,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 
 		keys, _ := tx.UnsafeRange(keyBucketName, last, end, batchsize)
 		for _, key := range keys {
-			rev = bytesToRev(key)
+			rev = BytesToRev(key)
 			if _, ok := keep[rev]; !ok {
 				tx.UnsafeDelete(keyBucketName, key)
 				keyCompactions++
@@ -49,8 +49,8 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		}
 
 		if len(keys) < int(batchsize) {
-			rbytes := make([]byte, 8+1+8)
-			revToBytes(revision{main: compactMainRev}, rbytes)
+			rbytes := NewRevBytes()
+			RevToBytes(Revision{Main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
 			if s.lg != nil {
@@ -66,7 +66,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		}
 
 		// update last
-		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
+		RevToBytes(Revision{Main: rev.Main, Sub: rev.Sub + 1}, last)
 		tx.Unlock()
 		dbCompactionPauseDurations.Observe(float64(time.Since(start) / time.Millisecond))
 

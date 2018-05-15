@@ -25,22 +25,22 @@ import (
 // bytes slice. Moreover, the lexicographical order of its byte slice representation
 // follows the order of (main, sub).
 func TestRevision(t *testing.T) {
-	tests := []revision{
+	tests := []Revision{
 		// order in (main, sub)
 		{},
-		{main: 1, sub: 0},
-		{main: 1, sub: 1},
-		{main: 2, sub: 0},
-		{main: math.MaxInt64, sub: math.MaxInt64},
+		{Main: 1, Sub: 0},
+		{Main: 1, Sub: 1},
+		{Main: 2, Sub: 0},
+		{Main: math.MaxInt64, Sub: math.MaxInt64},
 	}
 
 	bs := make([][]byte, len(tests))
 	for i, tt := range tests {
-		b := newRevBytes()
-		revToBytes(tt, b)
+		b := NewRevBytes()
+		RevToBytes(tt, b)
 		bs[i] = b
 
-		if grev := bytesToRev(b); !reflect.DeepEqual(grev, tt) {
+		if grev := BytesToRev(b); !reflect.DeepEqual(grev, tt) {
 			t.Errorf("#%d: revision = %+v, want %+v", i, grev, tt)
 		}
 	}

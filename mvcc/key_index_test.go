@@ -30,43 +30,43 @@ func TestKeyIndexGet(t *testing.T) {
 	//    {{8, 0}[1], {10, 0}[2], {12, 0}(t)[3]}
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 	ki := newTestKeyIndex()
-	ki.compact(zap.NewExample(), 4, make(map[revision]struct{}))
+	ki.compact(zap.NewExample(), 4, make(map[Revision]struct{}))
 
 	tests := []struct {
 		rev int64
 
-		wmod   revision
-		wcreat revision
+		wmod   Revision
+		wcreat Revision
 		wver   int64
 		werr   error
 	}{
-		{17, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{16, revision{}, revision{}, 0, ErrRevisionNotFound},
+		{17, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{16, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 
 		// get on generation 3
-		{15, revision{14, 1}, revision{14, 0}, 2, nil},
-		{14, revision{14, 1}, revision{14, 0}, 2, nil},
+		{15, Revision{14, 1}, Revision{14, 0}, 2, nil},
+		{14, Revision{14, 1}, Revision{14, 0}, 2, nil},
 
-		{13, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{12, revision{}, revision{}, 0, ErrRevisionNotFound},
+		{13, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{12, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 
 		// get on generation 2
-		{11, revision{10, 0}, revision{8, 0}, 2, nil},
-		{10, revision{10, 0}, revision{8, 0}, 2, nil},
-		{9, revision{8, 0}, revision{8, 0}, 1, nil},
-		{8, revision{8, 0}, revision{8, 0}, 1, nil},
+		{11, Revision{10, 0}, Revision{8, 0}, 2, nil},
+		{10, Revision{10, 0}, Revision{8, 0}, 2, nil},
+		{9, Revision{8, 0}, Revision{8, 0}, 1, nil},
+		{8, Revision{8, 0}, Revision{8, 0}, 1, nil},
 
-		{7, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{6, revision{}, revision{}, 0, ErrRevisionNotFound},
+		{7, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{6, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 
 		// get on generation 1
-		{5, revision{4, 0}, revision{2, 0}, 2, nil},
-		{4, revision{4, 0}, revision{2, 0}, 2, nil},
+		{5, Revision{4, 0}, Revision{2, 0}, 2, nil},
+		{4, Revision{4, 0}, Revision{2, 0}, 2, nil},
 
-		{3, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{2, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{1, revision{}, revision{}, 0, ErrRevisionNotFound},
-		{0, revision{}, revision{}, 0, ErrRevisionNotFound},
+		{3, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{2, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{1, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{0, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 	}
 
 	for i, tt := range tests {
@@ -88,13 +88,13 @@ func TestKeyIndexGet(t *testing.T) {
 
 func TestKeyIndexSince(t *testing.T) {
 	ki := newTestKeyIndex()
-	ki.compact(zap.NewExample(), 4, make(map[revision]struct{}))
+	ki.compact(zap.NewExample(), 4, make(map[Revision]struct{}))
 
-	allRevs := []revision{{4, 0}, {6, 0}, {8, 0}, {10, 0}, {12, 0}, {14, 1}, {16, 0}}
+	allRevs := []Revision{{4, 0}, {6, 0}, {8, 0}, {10, 0}, {12, 0}, {14, 1}, {16, 0}}
 	tests := []struct {
 		rev int64
 
-		wrevs []revision
+		wrevs []Revision
 	}{
 		{17, nil},
 		{16, allRevs[6:]},
@@ -130,8 +130,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		modified:    revision{5, 0},
-		generations: []generation{{created: revision{5, 0}, ver: 1, revs: []revision{{main: 5}}}},
+		modified:    Revision{5, 0},
+		generations: []generation{{created: Revision{5, 0}, ver: 1, revs: []Revision{{Main: 5}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -141,8 +141,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki = &keyIndex{
 		key:         []byte("foo"),
-		modified:    revision{7, 0},
-		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}},
+		modified:    Revision{7, 0},
+		generations: []generation{{created: Revision{5, 0}, ver: 2, revs: []Revision{{Main: 5}, {Main: 7}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -151,12 +151,12 @@ func TestKeyIndexPut(t *testing.T) {
 
 func TestKeyIndexRestore(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.restore(zap.NewExample(), revision{5, 0}, revision{7, 0}, 2)
+	ki.restore(zap.NewExample(), Revision{5, 0}, Revision{7, 0}, 2)
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		modified:    revision{7, 0},
-		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 7}}}},
+		modified:    Revision{7, 0},
+		generations: []generation{{created: Revision{5, 0}, ver: 2, revs: []Revision{{Main: 7}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -174,8 +174,8 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		modified:    revision{7, 0},
-		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}, {}},
+		modified:    Revision{7, 0},
+		generations: []generation{{created: Revision{5, 0}, ver: 2, revs: []Revision{{Main: 5}, {Main: 7}}}, {}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -190,10 +190,10 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	wki = &keyIndex{
 		key:      []byte("foo"),
-		modified: revision{15, 0},
+		modified: Revision{15, 0},
 		generations: []generation{
-			{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}},
-			{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 9}, {main: 15}}},
+			{created: Revision{5, 0}, ver: 2, revs: []Revision{{Main: 5}, {Main: 7}}},
+			{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 9}, {Main: 15}}},
 			{},
 		},
 	}
@@ -212,241 +212,241 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		compact int64
 
 		wki *keyIndex
-		wam map[revision]struct{}
+		wam map[Revision]struct{}
 	}{
 		{
 			1,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{2, 0}, ver: 3, revs: []Revision{{Main: 2}, {Main: 4}, {Main: 6}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 		{
 			2,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{2, 0}, ver: 3, revs: []Revision{{Main: 2}, {Main: 4}, {Main: 6}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 2}: {},
+			map[Revision]struct{}{
+				{Main: 2}: {},
 			},
 		},
 		{
 			3,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{2, 0}, ver: 3, revs: []Revision{{Main: 2}, {Main: 4}, {Main: 6}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 2}: {},
+			map[Revision]struct{}{
+				{Main: 2}: {},
 			},
 		},
 		{
 			4,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{2, 0}, ver: 3, revs: []Revision{{Main: 4}, {Main: 6}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 4}: {},
+			map[Revision]struct{}{
+				{Main: 4}: {},
 			},
 		},
 		{
 			5,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{2, 0}, ver: 3, revs: []Revision{{Main: 4}, {Main: 6}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 4}: {},
+			map[Revision]struct{}{
+				{Main: 4}: {},
 			},
 		},
 		{
 			6,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 		{
 			7,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 		{
 			8,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 8}: {},
+			map[Revision]struct{}{
+				{Main: 8}: {},
 			},
 		},
 		{
 			9,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 8}, {Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 8}: {},
+			map[Revision]struct{}{
+				{Main: 8}: {},
 			},
 		},
 		{
 			10,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 10}: {},
+			map[Revision]struct{}{
+				{Main: 10}: {},
 			},
 		},
 		{
 			11,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{8, 0}, ver: 3, revs: []Revision{{Main: 10}, {Main: 12}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 10}: {},
+			map[Revision]struct{}{
+				{Main: 10}: {},
 			},
 		},
 		{
 			12,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 		{
 			13,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14}, {Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 		{
 			14,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 14, sub: 1}: {},
+			map[Revision]struct{}{
+				{Main: 14, Sub: 1}: {},
 			},
 		},
 		{
 			15,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
-					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
+					{created: Revision{14, 0}, ver: 3, revs: []Revision{{Main: 14, Sub: 1}, {Main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{
-				{main: 14, sub: 1}: {},
+			map[Revision]struct{}{
+				{Main: 14, Sub: 1}: {},
 			},
 		},
 		{
 			16,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: Revision{16, 0},
 				generations: []generation{
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[Revision]struct{}{},
 		},
 	}
 
 	// Continuous Compaction and finding Keep
 	ki := newTestKeyIndex()
 	for i, tt := range tests {
-		am := make(map[revision]struct{})
+		am := make(map[Revision]struct{})
 		kiclone := cloneKeyIndex(ki)
 		ki.keep(tt.compact, am)
 		if !reflect.DeepEqual(ki, kiclone) {
@@ -455,7 +455,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		if !reflect.DeepEqual(am, tt.wam) {
 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 		}
-		am = make(map[revision]struct{})
+		am = make(map[Revision]struct{})
 		ki.compact(zap.NewExample(), tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
@@ -469,7 +469,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	ki = newTestKeyIndex()
 	for i, tt := range tests {
 		if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
-			am := make(map[revision]struct{})
+			am := make(map[Revision]struct{})
 			kiclone := cloneKeyIndex(ki)
 			ki.keep(tt.compact, am)
 			if !reflect.DeepEqual(ki, kiclone) {
@@ -478,7 +478,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			if !reflect.DeepEqual(am, tt.wam) {
 				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 			}
-			am = make(map[revision]struct{})
+			am = make(map[Revision]struct{})
 			ki.compact(zap.NewExample(), tt.compact, am)
 			if !reflect.DeepEqual(ki, tt.wki) {
 				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
@@ -493,7 +493,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	// Once Compaction and finding Keep
 	for i, tt := range tests {
 		ki := newTestKeyIndex()
-		am := make(map[revision]struct{})
+		am := make(map[Revision]struct{})
 		ki.keep(tt.compact, am)
 		if !reflect.DeepEqual(ki, kiClone) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiClone)
@@ -501,7 +501,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		if !reflect.DeepEqual(am, tt.wam) {
 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 		}
-		am = make(map[revision]struct{})
+		am = make(map[Revision]struct{})
 		ki.compact(zap.NewExample(), tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
@@ -524,7 +524,7 @@ func cloneGeneration(g *generation) *generation {
 	if g.revs == nil {
 		return &generation{g.ver, g.created, nil}
 	}
-	tmp := make([]revision, len(g.revs))
+	tmp := make([]Revision, len(g.revs))
 	copy(tmp, g.revs)
 	return &generation{g.ver, g.created, tmp}
 }
@@ -534,18 +534,18 @@ func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
 	ki.put(zap.NewExample(), 1, 0)
 	ki.put(zap.NewExample(), 2, 0)
-	am := make(map[revision]struct{})
+	am := make(map[Revision]struct{})
 	ki.compact(zap.NewExample(), 3, am)
 
 	wki := &keyIndex{
 		key:      []byte("foo"),
-		modified: revision{2, 0},
+		modified: Revision{2, 0},
 		generations: []generation{
-			{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
+			{created: Revision{1, 0}, ver: 2, revs: []Revision{{Main: 2}}},
 		},
 	}
-	wam := map[revision]struct{}{
-		{main: 2}: {},
+	wam := map[Revision]struct{}{
+		{Main: 2}: {},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -570,9 +570,9 @@ func TestKeyIndexIsEmpty(t *testing.T) {
 		{
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{2, 0},
+				modified: Revision{2, 0},
 				generations: []generation{
-					{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
+					{created: Revision{1, 0}, ver: 2, revs: []Revision{{Main: 2}}},
 				},
 			},
 			false,
@@ -642,7 +642,7 @@ func TestGenerationIsEmpty(t *testing.T) {
 	}{
 		{nil, true},
 		{&generation{}, true},
-		{&generation{revs: []revision{{main: 1}}}, false},
+		{&generation{revs: []Revision{{Main: 1}}}, false},
 	}
 	for i, tt := range tests {
 		g := tt.g.isEmpty()
@@ -655,19 +655,19 @@ func TestGenerationIsEmpty(t *testing.T) {
 func TestGenerationWalk(t *testing.T) {
 	g := &generation{
 		ver:     3,
-		created: revision{2, 0},
-		revs:    []revision{{main: 2}, {main: 4}, {main: 6}},
+		created: Revision{2, 0},
+		revs:    []Revision{{Main: 2}, {Main: 4}, {Main: 6}},
 	}
 	tests := []struct {
-		f  func(rev revision) bool
+		f  func(rev Revision) bool
 		wi int
 	}{
-		{func(rev revision) bool { return rev.main >= 7 }, 2},
-		{func(rev revision) bool { return rev.main >= 6 }, 1},
-		{func(rev revision) bool { return rev.main >= 5 }, 1},
-		{func(rev revision) bool { return rev.main >= 4 }, 0},
-		{func(rev revision) bool { return rev.main >= 3 }, 0},
-		{func(rev revision) bool { return rev.main >= 2 }, -1},
+		{func(rev Revision) bool { return rev.Main >= 7 }, 2},
+		{func(rev Revision) bool { return rev.Main >= 6 }, 1},
+		{func(rev Revision) bool { return rev.Main >= 5 }, 1},
+		{func(rev Revision) bool { return rev.Main >= 4 }, 0},
+		{func(rev Revision) bool { return rev.Main >= 3 }, 0},
+		{func(rev Revision) bool { return rev.Main >= 2 }, -1},
 	}
 	for i, tt := range tests {
 		idx := g.walk(tt.f)

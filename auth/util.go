@@ -12,10 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package snapshot
+package auth
 
-// initIndex implements ConsistentIndexGetter so the snapshot won't block
-// the new raft instance by waiting for a future raft index.
-type initIndex int
+import (
+	"encoding/binary"
+	"fmt"
+)
 
-func (i *initIndex) ConsistentIndex() uint64 { return uint64(*i) }
+const revBytesLen = 8
+
+// RevToBytes encodes uint64 auth store revision in big-endian binary format.
+func RevToBytes(n uint64) []byte {
+	bytes := make([]byte, revBytesLen)
+	binary.BigEndian.PutUint64(bytes, n)
+	return bytes
+}
+
+// BytesToRev decodes big-endian binary format auth store revision to uint64.
+func BytesToRev(d []byte) uint64 {
+	if len(d) != revBytesLen {
+		panic(fmt.Errorf("auth store revision must be 8-byte, got %d", len(d)))
+	}
+	return binary.BigEndian.Uint64(d)
+}

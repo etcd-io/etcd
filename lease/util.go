@@ -12,10 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package snapshot
+package lease
 
-// initIndex implements ConsistentIndexGetter so the snapshot won't block
-// the new raft instance by waiting for a future raft index.
-type initIndex int
+import (
+	"encoding/binary"
+	"fmt"
+)
 
-func (i *initIndex) ConsistentIndex() uint64 { return uint64(*i) }
+const idBytesLen = 8
+
+// IDToBytes encodes int64 lease ID in big-endian binary format.
+func IDToBytes(n int64) []byte {
+	bytes := make([]byte, idBytesLen)
+	binary.BigEndian.PutUint64(bytes, uint64(n))
+	return bytes
+}
+
+// BytesToID decodes big-endian binary format lease ID to int64.
+func BytesToID(d []byte) int64 {
+	if len(d) != idBytesLen {
+		panic(fmt.Errorf("lease ID must be 8-byte, got %d", len(d)))
+	}
+	return int64(binary.BigEndian.Uint64(d))
+}

@@ -135,19 +135,19 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	}
 
 	kvs := make([]mvccpb.KeyValue, limit)
-	revBytes := newRevBytes()
+	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
-		revToBytes(revpair, revBytes)
+		RevToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
 		if len(vs) != 1 {
 			if tr.s.lg != nil {
 				tr.s.lg.Fatal(
 					"range failed to find revision pair",
-					zap.Int64("revision-main", revpair.main),
-					zap.Int64("revision-sub", revpair.sub),
+					zap.Int64("revision-main", revpair.Main),
+					zap.Int64("revision-sub", revpair.Sub),
 				)
 			} else {
-				plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+				plog.Fatalf("range cannot find rev (%d,%d)", revpair.Main, revpair.Sub)
 			}
 		}
 		if err := kvs[i].Unmarshal(vs[0]); err != nil {
@@ -173,13 +173,13 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	// get its previous leaseID
 	_, created, ver, err := tw.s.kvindex.Get(key, rev)
 	if err == nil {
-		c = created.main
+		c = created.Main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 	}
 
-	ibytes := newRevBytes()
-	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := Revision{Main: rev, Sub: int64(len(tw.changes))}
+	RevToBytes(idxRev, ibytes)
 
 	ver = ver + 1
 	kv := mvccpb.KeyValue{
@@ -237,7 +237,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	rrev := tw.beginRev
 	if len(tw.changes) > 0 {
-		rrev += 1
+		rrev++
 	}
 	keys, _ := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {
@@ -250,9 +250,9 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 }
 
 func (tw *storeTxnWrite) delete(key []byte) {
-	ibytes := newRevBytes()
-	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := Revision{Main: tw.beginRev + 1, Sub: int64(len(tw.changes))}
+	RevToBytes(idxRev, ibytes)
 
 	if tw.storeTxnRead.s != nil && tw.storeTxnRead.s.lg != nil {
 		ibytes = appendMarkTombstone(tw.storeTxnRead.s.lg, ibytes)

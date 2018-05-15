@@ -338,9 +338,9 @@ func (s *watchableStore) syncWatchers() int {
 	compactionRev := s.store.compactMainRev
 
 	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
-	minBytes, maxBytes := newRevBytes(), newRevBytes()
-	revToBytes(revision{main: minRev}, minBytes)
-	revToBytes(revision{main: curRev + 1}, maxBytes)
+	minBytes, maxBytes := NewRevBytes(), NewRevBytes()
+	RevToBytes(Revision{Main: minRev}, minBytes)
+	RevToBytes(Revision{Main: curRev + 1}, maxBytes)
 
 	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
 	// values are actual key-value pairs in backend.
@@ -424,7 +424,7 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 		if isTombstone(revs[i]) {
 			ty = mvccpb.DELETE
 			// patch in mod revision so watchers won't skip
-			kv.ModRevision = bytesToRev(revs[i]).main
+			kv.ModRevision = BytesToRev(revs[i]).Main
 		}
 		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
 	}

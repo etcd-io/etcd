@@ -16,7 +16,6 @@ package lease
 
 import (
 	"container/heap"
-	"encoding/binary"
 	"errors"
 	"math"
 	"sort"
@@ -268,7 +267,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
-	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
+	le.b.BatchTx().UnsafeDelete(leaseBucketName, IDToBytes(int64(l.ID)))
 
 	txn.End()
 	return nil
@@ -578,7 +577,7 @@ func (le *lessor) initAndRecover() {
 	tx.Lock()
 
 	tx.UnsafeCreateBucket(leaseBucketName)
-	_, vs := tx.UnsafeRange(leaseBucketName, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
+	_, vs := tx.UnsafeRange(leaseBucketName, IDToBytes(0), IDToBytes(math.MaxInt64), 0)
 	// TODO: copy vs and do decoding outside tx lock if lock contention becomes an issue.
 	for i := range vs {
 		var lpb leasepb.Lease
@@ -626,7 +625,7 @@ func (l *Lease) expired() bool {
 }
 
 func (l *Lease) persistTo(b backend.Backend) {
-	key := int64ToBytes(int64(l.ID))
+	key := IDToBytes(int64(l.ID))
 
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl}
 	val, err := lpb.Marshal()
@@ -682,12 +681,6 @@ func (l *Lease) Remaining() time.Duration {
 
 type LeaseItem struct {
 	Key string
-}
-
-func int64ToBytes(n int64) []byte {
-	bytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(bytes, uint64(n))
-	return bytes
 }
 
 // FakeLessor is a fake implementation of Lessor interface.

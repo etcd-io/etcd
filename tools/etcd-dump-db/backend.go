@@ -15,10 +15,10 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"path/filepath"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -47,8 +47,6 @@ func getBuckets(dbPath string) (buckets []string, err error) {
 	return buckets, err
 }
 
-// TODO: import directly from packages, rather than copy&paste
-
 type decoder func(k, v []byte)
 
 var decoders = map[string]decoder{
@@ -56,36 +54,25 @@ var decoders = map[string]decoder{
 	"lease": leaseDecoder,
 }
 
-type revision struct {
-	main int64
-	sub  int64
-}
-
-func bytesToRev(bytes []byte) revision {
-	return revision{
-		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
-		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
-	}
-}
-
 func keyDecoder(k, v []byte) {
-	rev := bytesToRev(k)
+	rev := mvcc.BytesToRev(k)
 	var kv mvccpb.KeyValue
 	if err := kv.Unmarshal(v); err != nil {
 		panic(err)
 	}
-	fmt.Printf("rev=%+v, value=[key %q | val %q | created %d | mod %d | ver %d]\n", rev, string(kv.Key), string(kv.Value), kv.CreateRevision, kv.ModRevision, kv.Version)
-}
-
-func bytesToLeaseID(bytes []byte) int64 {
-	if len(bytes) != 8 {
-		panic(fmt.Errorf("lease ID must be 8-byte"))
-	}
-	return int64(binary.BigEndian.Uint64(bytes))
+	fmt.Printf("rev=[main %d | sub %d], value=[key %q | val %q | created %d | mod %d | ver %d]\n",
+		rev.Main,
+		rev.Sub,
+		string(kv.Key),
+		string(kv.Value),
+		kv.CreateRevision,
+		kv.ModRevision,
+		kv.Version,
+	)
 }
 
 func leaseDecoder(k, v []byte) {
-	leaseID := bytesToLeaseID(k)
+	leaseID := lease.BytesToID(k)
 	var lpb leasepb.Lease
 	if err := lpb.Unmarshal(v); err != nil {
 		panic(err)
