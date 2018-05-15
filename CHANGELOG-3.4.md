@@ -212,6 +212,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 - Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
 
+Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+
 ### Package `embed`
 
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.

@@ -77,12 +77,14 @@ easier.
 When you want to debug etcd without stopping it, you can enable debug logging at runtime.
 etcd exposes logging configuration at `/config/local/log`.
 
+**`/config/local/log` endpoint is being deprecated in v3.5.**
+
 ```
 $ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'
-$ # debug logging enabled
-$
+# debug logging enabled
+
 $ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"INFO"}'
-$ # debug logging disabled
+# debug logging disabled
 ```
 
 #### Debugging Variables
