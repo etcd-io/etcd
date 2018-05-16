@@ -12,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows
+// +build windows
 
 package embed
 
 import (
 	"os"
 
-	"github.com/coreos/etcd/pkg/logutil"
-
 	"go.uber.org/zap/zapcore"
 )
 
-// use stderr as fallback
-func getZapWriteSyncer() zapcore.WriteSyncer {
-	return zapcore.AddSync(logutil.NewJournaldWriter(os.Stderr))
+func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
+	return zapcore.AddSync(os.Stderr), nil
 }

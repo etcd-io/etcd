@@ -24,9 +24,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func TestNewJournaldWriter(t *testing.T) {
+func TestNewJournalWriter(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	syncer := zapcore.AddSync(NewJournaldWriter(buf))
+	jw, err := NewJournalWriter(buf)
+	if err != nil {
+		t.Skip(err)
+	}
+
+	syncer := zapcore.AddSync(jw)
+
 	cr := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 		syncer,
@@ -36,7 +42,7 @@ func TestNewJournaldWriter(t *testing.T) {
 	lg := zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 	defer lg.Sync()
 
-	lg.Info("TestNewJournaldWriter")
+	lg.Info("TestNewJournalWriter")
 	if buf.String() == "" {
 		// check with "journalctl -f"
 		t.Log("sent logs successfully to journald")

@@ -12,16 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build windows
-
-package embed
-
-import (
-	"os"
-
-	"go.uber.org/zap/zapcore"
-)
-
-func getZapWriteSyncer() zapcore.WriteSyncer {
-	return zapcore.AddSync(os.Stderr)
-}
+// Package systemd provides utility functions for systemd.
+package systemd

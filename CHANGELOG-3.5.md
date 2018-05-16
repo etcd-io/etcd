@@ -13,7 +13,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.4.0...v3.5.0) and [
   - Deprecated [`/v3beta`](https://github.com/coreos/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 - **`etcd --log-output` flag has been deprecated.** Use **`etcd --log-outputs`** instead.
-- **`etcd --logger=capnslog` flag has been deprecated.** Now, **`etcd --logger=zap`** is the default.
+- **`etcd --logger=zap`** is now the default.
+- **`etcd --logger=capnslog` flag has been deprecated.**
+- **`etcd --logger=zap --log-outputs=default` flag value is not supported.**.
+  - Use `etcd --log-outputs=systemd/journal` to send logs to the local systemd journal.
+  - Previously, if etcd parent process ID (`ppid`) is 1 (e.g. run with systemd), `--logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
+  - However, even with `ppid` 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
+  - To avoid this problem, systemd journal logging must be configured manually.
+- **`etcd --log-outputs=stderr`** is now the default.
 - **`etcd --log-package-levels` flag for `capnslog` has been deprecated.** Now, **`etcd --logger=zap`** is the default.
 - **`[CLIENT-URL]/config/local/log` endpoint has been deprecated, as is `etcd --log-package-levels` flag.**
   - `curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'` won't work.
