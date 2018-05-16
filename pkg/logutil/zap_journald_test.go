@@ -26,7 +26,13 @@ import (
 
 func TestNewJournaldWriter(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	syncer := zapcore.AddSync(NewJournaldWriter(buf))
+	jw, err := NewJournaldWriter(buf)
+	if err != nil {
+		t.Skip(err)
+	}
+
+	syncer := zapcore.AddSync(jw)
+
 	cr := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 		syncer,
