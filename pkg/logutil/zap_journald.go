@@ -82,7 +82,6 @@ func (w *journaldWriter) Write(p []byte) (int, error) {
 		"SYSLOG_IDENTIFIER": filepath.Base(os.Args[0]),
 	})
 	if err != nil {
-		fmt.Println("FAILED TO WRITE TO JOURNALD", err, string(p))
 		return w.Writer.Write(p)
 	}
 	return 0, nil
