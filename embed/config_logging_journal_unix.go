@@ -14,37 +14,22 @@
 
 // +build !windows
 
-package logutil
+package embed
 
 import (
-	"bytes"
-	"testing"
+	"fmt"
+	"os"
 
-	"go.uber.org/zap"
+	"github.com/coreos/etcd/pkg/logutil"
+
 	"go.uber.org/zap/zapcore"
 )
 
-func TestNewJournaldWriter(t *testing.T) {
-	buf := bytes.NewBuffer(nil)
-	jw, err := NewJournaldWriter(buf)
+// use stderr as fallback
+func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
+	jw, err := logutil.NewJournalWriter(os.Stderr)
 	if err != nil {
-		t.Skip(err)
+		return nil, fmt.Errorf("can't find journal (%v)", err)
 	}
-
-	syncer := zapcore.AddSync(jw)
-
-	cr := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		syncer,
-		zap.NewAtomicLevelAt(zap.InfoLevel),
-	)
-
-	lg := zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
-	defer lg.Sync()
-
-	lg.Info("TestNewJournaldWriter")
-	if buf.String() == "" {
-		// check with "journalctl -f"
-		t.Log("sent logs successfully to journald")
-	}
+	return zapcore.AddSync(jw), nil
 }

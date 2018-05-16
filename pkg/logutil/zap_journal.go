@@ -30,16 +30,16 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// NewJournaldWriter wraps "io.Writer" to redirect log output
+// NewJournalWriter wraps "io.Writer" to redirect log output
 // to the local systemd journal. If journald send fails, it fails
 // back to writing to the original writer.
 // The decode overhead is only <30µs per write.
 // Reference: https://github.com/coreos/pkg/blob/master/capnslog/journald_formatter.go
-func NewJournaldWriter(wr io.Writer) (io.Writer, error) {
-	return &journaldWriter{Writer: wr}, systemd.DialJournal()
+func NewJournalWriter(wr io.Writer) (io.Writer, error) {
+	return &journalWriter{Writer: wr}, systemd.DialJournal()
 }
 
-type journaldWriter struct {
+type journalWriter struct {
 	io.Writer
 }
 
@@ -50,7 +50,7 @@ type logLine struct {
 	Caller string `json:"caller"`
 }
 
-func (w *journaldWriter) Write(p []byte) (int, error) {
+func (w *journalWriter) Write(p []byte) (int, error) {
 	line := &logLine{}
 	if err := json.NewDecoder(bytes.NewReader(p)).Decode(line); err != nil {
 		return 0, err
