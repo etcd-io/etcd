@@ -225,7 +225,11 @@ func (cfg *Config) setupLogging() error {
 			}
 
 			// use stderr as fallback
-			syncer := getZapWriteSyncer()
+			syncer, lerr := getJournalWriteSyncer()
+			if lerr != nil {
+				return lerr
+			}
+
 			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
 			if cfg.Debug {
 				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)

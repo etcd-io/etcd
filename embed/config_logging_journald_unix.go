@@ -17,6 +17,7 @@
 package embed
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/coreos/etcd/pkg/logutil"
@@ -25,6 +26,10 @@ import (
 )
 
 // use stderr as fallback
-func getZapWriteSyncer() zapcore.WriteSyncer {
-	return zapcore.AddSync(logutil.NewJournaldWriter(os.Stderr))
+func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
+	jw, err := logutil.NewJournaldWriter(os.Stderr)
+	if err != nil {
+		return nil, fmt.Errorf("can't find journald (%v)", err)
+	}
+	return zapcore.AddSync(jw), nil
 }

@@ -22,6 +22,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func getZapWriteSyncer() zapcore.WriteSyncer {
-	return zapcore.AddSync(os.Stderr)
+func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
+	return zapcore.AddSync(os.Stderr), nil
 }
