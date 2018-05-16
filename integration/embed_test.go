@@ -55,7 +55,6 @@ func TestEmbedEtcd(t *testing.T) {
 		tests[i].cfg.Logger = "zap"
 		tests[i].cfg.LogOutputs = []string{"/dev/null"}
 		tests[i].cfg.Debug = false
-
 	}
 
 	tests[0].cfg.Durl = "abc"
