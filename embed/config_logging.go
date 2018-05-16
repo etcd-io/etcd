@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"sort"
 	"sync"
-	"syscall"
 
 	"github.com/coreos/etcd/pkg/logutil"
 
@@ -112,13 +111,13 @@ func (cfg *Config) setupLogging() error {
 		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
 		output := cfg.LogOutputs[0]
 		switch output {
-		case "stdout":
-			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
-		case "stderr":
+		case StdErrLogOutput:
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
+		case StdOutLogOutput:
+			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 		case DefaultLogOutput:
 		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, "stdout", "stderr")`, output, DefaultLogOutput)
+			plog.Panicf(`unknown log-output %q (only supports %q, %q, %q)`, output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
 		}
 
 	case "zap":
@@ -147,30 +146,24 @@ func (cfg *Config) setupLogging() error {
 			OutputPaths:      make([]string, 0),
 			ErrorOutputPaths: make([]string, 0),
 		}
+
 		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
-		isJournald := false
+		isJournal := false
 		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
-				if syscall.Getppid() == 1 {
-					// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-					// where "NewDefaultFormatter" returns "NewJournaldFormatter"
-					// specify 'stdout' or 'stderr' to override this redirects
-					// when syscall.Getppid() == 1
-					isJournald = true
-					break
-				}
+				return errors.New("'--log-outputs=default' is not supported for v3.4 during zap logger migraion (use 'journal', 'stderr', 'stdout', etc.)")
 
-				outputPaths["stderr"] = struct{}{}
-				errOutputPaths["stderr"] = struct{}{}
+			case JournalLogOutput:
+				isJournal = true
 
-			case "stderr":
-				outputPaths["stderr"] = struct{}{}
-				errOutputPaths["stderr"] = struct{}{}
+			case StdErrLogOutput:
+				outputPaths[StdErrLogOutput] = struct{}{}
+				errOutputPaths[StdErrLogOutput] = struct{}{}
 
-			case "stdout":
-				outputPaths["stdout"] = struct{}{}
-				errOutputPaths["stdout"] = struct{}{}
+			case StdOutLogOutput:
+				outputPaths[StdOutLogOutput] = struct{}{}
+				errOutputPaths[StdOutLogOutput] = struct{}{}
 
 			default:
 				outputPaths[v] = struct{}{}
@@ -178,7 +171,7 @@ func (cfg *Config) setupLogging() error {
 			}
 		}
 
-		if !isJournald {
+		if !isJournal {
 			for v := range outputPaths {
 				lcfg.OutputPaths = append(lcfg.OutputPaths, v)
 			}
@@ -219,7 +212,7 @@ func (cfg *Config) setupLogging() error {
 			if len(cfg.LogOutputs) > 1 {
 				for _, v := range cfg.LogOutputs {
 					if v != DefaultLogOutput {
-						return fmt.Errorf("running as a systemd unit but other '--log-output' values (%q) are configured with 'default'; override 'default' value with something else", cfg.LogOutputs)
+						return fmt.Errorf("running with systemd/journal but other '--log-outputs' values (%q) are configured with 'default'; override 'default' value with something else", cfg.LogOutputs)
 					}
 				}
 			}

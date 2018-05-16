@@ -59,6 +59,9 @@ const (
 	DefaultListenClientURLs = "http://localhost:2379"
 
 	DefaultLogOutput = "default"
+	JournalLogOutput = "systemd/journal"
+	StdErrLogOutput  = "stderr"
+	StdOutLogOutput  = "stdout"
 
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
