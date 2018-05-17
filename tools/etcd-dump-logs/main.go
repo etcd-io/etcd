@@ -36,9 +36,9 @@ import (
 func main() {
 	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
 	index := flag.Uint64("start-index", 0, "The index to start dumping")
-	entrytype := flag.String("entry-type", "", `If set, filters output by entry type. Must be one or more than one of: 
-	ConfigChange, Normal, Request, InternalRaftRequest, 
-	IRRRange, IRRPut, IRRDeleteRange, IRRTxn, 
+	entrytype := flag.String("entry-type", "", `If set, filters output by entry type. Must be one or more than one of:
+	ConfigChange, Normal, Request, InternalRaftRequest,
+	IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
 	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`)
 
 	flag.Parse()
@@ -68,7 +68,7 @@ func main() {
 			ss := raftsnap.New(zap.NewExample(), snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
-			snapshot, err = raftsnap.Read(filepath.Join(snapDir(dataDir), *snapfile))
+			snapshot, err = raftsnap.Read(zap.NewExample(), filepath.Join(snapDir(dataDir), *snapfile))
 		}
 
 		switch err {
@@ -269,9 +269,9 @@ func evaluateEntrytypeFlag(entrytype string) []EntryFilter {
 		if f, ok := validRequest[et]; ok {
 			filters = append(filters, f...)
 		} else {
-			log.Printf(`[%+v] is not a valid entry-type, ignored. 
-Please set entry-type to one or more of the following: 
-ConfigChange, Normal, Request, InternalRaftRequest, 
+			log.Printf(`[%+v] is not a valid entry-type, ignored.
+Please set entry-type to one or more of the following:
+ConfigChange, Normal, Request, InternalRaftRequest,
 IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
 IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`, et)
 		}
