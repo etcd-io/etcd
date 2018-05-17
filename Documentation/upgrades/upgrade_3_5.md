@@ -19,14 +19,14 @@ v3.4 defaults to `--logger=zap` in order to support multiple log outputs and str
 **`etcd --logger=capnslog` has been deprecated in v3.5**, and now `--logger=zap` is the default.
 
 ```diff
--etcd --logger capnslog
-+etcd --logger zap --log-outputs stderr
+-etcd --logger=capnslog
++etcd --logger=zap --log-outputs=stderr
 
 +# to write logs to stderr and a.log file at the same time
-+etcd --logger zap --log-outputs stderr,a.log
++etcd --logger=zap --log-outputs=stderr,a.log
 ```
 
-TODO(add more monitoring guides); v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5.**
+TODO(add more monitoring guides); v3.4 adds `etcd --logger=zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5.**
 
 #### Deprecated in `etcd --log-output`
 
@@ -35,8 +35,8 @@ v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/
 **`etcd --log-output` has been deprecated in v3.5.**
 
 ```diff
--etcd --log-output stderr
-+etcd --log-outputs stderr
+-etcd --log-output=stderr
++etcd --log-outputs=stderr
 ```
 
 #### Deprecated `etcd --log-package-levels`
@@ -47,7 +47,7 @@ Now, **`etcd --logger=zap`** is the default.
 
 ```diff
 -etcd --log-package-levels 'etcdmain=CRITICAL,etcdserver=DEBUG'
-+etcd --logger=zap
++etcd --logger=zap --log-outputs=stderr
 ```
 
 #### Deprecated `[CLIENT-URL]/config/local/log`

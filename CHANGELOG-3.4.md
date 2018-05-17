@@ -172,7 +172,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
   - `etcd --logger=zap --log-outputs=default` is not supported when `--logger=zap`.
-    - Use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
+    - Instead, use `--logger=zap --log-outputs=stderr`.
+    - Or, use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
     - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
     - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
     - To avoid this problem, systemd journal logging must be configured manually.
@@ -215,7 +216,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 - Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
 
-Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
 
 ### Package `embed`
 
