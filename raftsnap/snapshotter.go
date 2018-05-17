@@ -105,7 +105,7 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 	}
 	var snap *raftpb.Snapshot
 	for _, name := range names {
-		if snap, err = loadSnap(s.dir, name); err == nil {
+		if snap, err = loadSnap(s.lg, s.dir, name); err == nil {
 			break
 		}
 	}
@@ -115,9 +115,9 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 	return snap, nil
 }
 
-func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
+func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
 	fpath := filepath.Join(dir, name)
-	snap, err := Read(fpath)
+	snap, err := Read(lg, fpath)
 	if err != nil {
 		renameBroken(fpath)
 	}
@@ -125,38 +125,66 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 }
 
 // Read reads the snapshot named by snapname and returns the snapshot.
-func Read(snapname string) (*raftpb.Snapshot, error) {
+func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
 	b, err := ioutil.ReadFile(snapname)
 	if err != nil {
-		plog.Errorf("cannot read file %v: %v", snapname, err)
+		if lg != nil {
+			lg.Warn("failed to read snapshot file", zap.String("path", snapname), zap.Error(err))
+		} else {
+			plog.Errorf("cannot read file %v: %v", snapname, err)
+		}
 		return nil, err
 	}
 
 	if len(b) == 0 {
-		plog.Errorf("unexpected empty snapshot")
+		if lg != nil {
+			lg.Warn("failed to read empty snapshot file", zap.String("path", snapname))
+		} else {
+			plog.Errorf("unexpected empty snapshot")
+		}
 		return nil, ErrEmptySnapshot
 	}
 
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
-		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		if lg != nil {
+			lg.Warn("failed to unmarshal snappb.Snapshot", zap.String("path", snapname), zap.Error(err))
+		} else {
+			plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		}
 		return nil, err
 	}
 
 	if len(serializedSnap.Data) == 0 || serializedSnap.Crc == 0 {
-		plog.Errorf("unexpected empty snapshot")
+		if lg != nil {
+			lg.Warn("failed to read empty snapshot data", zap.String("path", snapname))
+		} else {
+			plog.Errorf("unexpected empty snapshot")
+		}
 		return nil, ErrEmptySnapshot
 	}
 
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
-		plog.Errorf("corrupted snapshot file %v: crc mismatch", snapname)
+		if lg != nil {
+			lg.Warn("found corrupted snapshot file",
+				zap.String("path", snapname),
+				zap.Uint32("prev-crc", serializedSnap.Crc),
+				zap.Uint32("new-crc", crc),
+			)
+		} else {
+			plog.Errorf("corrupted snapshot file %v: crc mismatch", snapname)
+		}
 		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
 	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
-		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		if lg != nil {
+			lg.Warn("failed to unmarshal raftpb.Snapshot", zap.String("path", snapname), zap.Error(err))
+		} else {
+			plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		}
 		return nil, err
 	}
 	return &snap, nil
@@ -174,7 +202,7 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	snaps := checkSuffix(names)
+	snaps := checkSuffix(s.lg, names)
 	if len(snaps) == 0 {
 		return nil, ErrNoSnapshot
 	}
@@ -182,7 +210,7 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	return snaps, nil
 }
 
-func checkSuffix(names []string) []string {
+func checkSuffix(lg *zap.Logger, names []string) []string {
 	snaps := []string{}
 	for i := range names {
 		if strings.HasSuffix(names[i], snapSuffix) {
@@ -191,7 +219,11 @@ func checkSuffix(names []string) []string {
 			// If we find a file which is not a snapshot then check if it's
 			// a vaild file. If not throw out a warning.
 			if _, ok := validFiles[names[i]]; !ok {
-				plog.Warningf("skipped unexpected non snapshot file %v", names[i])
+				if lg != nil {
+					lg.Warn("found unexpected non-snapshot file; skipping", zap.String("path", names[i]))
+				} else {
+					plog.Warningf("skipped unexpected non snapshot file %v", names[i])
+				}
 			}
 		}
 	}
