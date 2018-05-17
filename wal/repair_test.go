@@ -49,6 +49,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(p)
+
 	// create WAL
 	w, err := Create(zap.NewExample(), p, nil)
 	defer func() {
@@ -90,7 +91,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 
 	// repair the wal
 	if ok := Repair(zap.NewExample(), p); !ok {
-		t.Fatalf("fix = %t, want %t", ok, true)
+		t.Fatalf("'Repair' returned '%v', want 'true'", ok)
 	}
 
 	// read it back
@@ -183,4 +184,58 @@ func TestRepairWriteTearMiddle(t *testing.T) {
 		ents[i][0].Data = dat
 	}
 	testRepair(t, ents, corruptf, 1)
+}
+
+func TestRepairFailDeleteDir(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(zap.NewExample(), p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldSegmentSizeBytes := SegmentSizeBytes
+	SegmentSizeBytes = 64
+	defer func() {
+		SegmentSizeBytes = oldSegmentSizeBytes
+	}()
+	for _, es := range makeEnts(50) {
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, serr := w.tail().Seek(0, io.SeekCurrent)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	w.Close()
+
+	f, err := openLast(zap.NewExample(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if terr := f.Truncate(20); terr != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = w.ReadAll()
+	if err != io.ErrUnexpectedEOF {
+		t.Fatalf("err = %v, want error %v", err, io.ErrUnexpectedEOF)
+	}
+	w.Close()
+
+	os.RemoveAll(p)
+	if Repair(zap.NewExample(), p) {
+		t.Fatal("expect 'Repair' fail on unexpected directory deletion")
+	}
 }

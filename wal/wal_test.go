@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -82,6 +83,39 @@ func TestNew(t *testing.T) {
 	e.flush()
 	if !bytes.Equal(gd, wb.Bytes()) {
 		t.Errorf("data = %v, want %v", gd, wb.Bytes())
+	}
+}
+
+func TestCreateFailFromPollutedDir(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	ioutil.WriteFile(filepath.Join(p, "test.wal"), []byte("data"), os.ModeTemporary)
+
+	_, err = Create(zap.NewExample(), p, []byte("data"))
+	if err != os.ErrExist {
+		t.Fatalf("expected %v, got %v", os.ErrExist, err)
+	}
+}
+
+func TestCreateFailFromNoSpaceLeft(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	oldSegmentSizeBytes := SegmentSizeBytes
+	defer func() {
+		SegmentSizeBytes = oldSegmentSizeBytes
+	}()
+	SegmentSizeBytes = math.MaxInt64
+
+	_, err = Create(zap.NewExample(), p, []byte("data"))
+	if err == nil { // no space left on device
+		t.Fatalf("expected error 'no space left on device', got nil")
 	}
 }
 
@@ -359,7 +393,7 @@ func TestSearchIndex(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		idx, ok := searchIndex(tt.names, tt.index)
+		idx, ok := searchIndex(zap.NewExample(), tt.names, tt.index)
 		if idx != tt.widx {
 			t.Errorf("#%d: idx = %d, want %d", i, idx, tt.widx)
 		}
@@ -380,7 +414,7 @@ func TestScanWalName(t *testing.T) {
 		{"0000000000000000-0000000000000000.snap", 0, 0, false},
 	}
 	for i, tt := range tests {
-		s, index, err := parseWalName(tt.str)
+		s, index, err := parseWALName(tt.str)
 		if g := err == nil; g != tt.wok {
 			t.Errorf("#%d: ok = %v, want %v", i, g, tt.wok)
 		}
@@ -583,7 +617,7 @@ func TestReleaseLockTo(t *testing.T) {
 	}
 	for i, l := range w.locks {
 		var lockIndex uint64
-		_, lockIndex, err = parseWalName(filepath.Base(l.Name()))
+		_, lockIndex, err = parseWALName(filepath.Base(l.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -601,7 +635,7 @@ func TestReleaseLockTo(t *testing.T) {
 	if len(w.locks) != 1 {
 		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 1)
 	}
-	_, lockIndex, err := parseWalName(filepath.Base(w.locks[0].Name()))
+	_, lockIndex, err := parseWALName(filepath.Base(w.locks[0].Name()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -800,5 +834,34 @@ func TestOpenOnTornWrite(t *testing.T) {
 	wEntries := (clobberIdx - 1) + overwriteEntries
 	if len(ents) != wEntries {
 		t.Fatalf("expected len(ents) = %d, got %d", wEntries, len(ents))
+	}
+}
+
+func TestRenameFail(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	oldSegmentSizeBytes := SegmentSizeBytes
+	defer func() {
+		SegmentSizeBytes = oldSegmentSizeBytes
+	}()
+	SegmentSizeBytes = math.MaxInt64
+
+	tp, terr := ioutil.TempDir(os.TempDir(), "waltest")
+	if terr != nil {
+		t.Fatal(terr)
+	}
+	os.RemoveAll(tp)
+
+	w := &WAL{
+		lg:  zap.NewExample(),
+		dir: p,
+	}
+	w2, werr := w.renameWAL(tp)
+	if w2 != nil || werr == nil { // os.Rename should fail from 'no such file or directory'
+		t.Fatalf("expected error, got %v", werr)
 	}
 }
