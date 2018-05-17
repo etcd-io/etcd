@@ -94,7 +94,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.11.1`**](TODO).
-- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go) to [**`v1.1.1`**](https://github.com/ugorji/go/releases/tag/v1.1.1), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
+- Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`v1.1.1`**](https://github.com/ugorji/go/releases/tag/v1.1.1), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
 - Upgrade [`github.com/soheilhy/cmux`](https://github.com/soheilhy/cmux/releases) from [**`v0.1.3`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.3) to [**`v0.1.4`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.4).
 - Upgrade [`github.com/google/btree`](https://github.com/google/btree/releases) from [**`google/btree@925471ac9`**](https://github.com/google/btree/commit/925471ac9e2131377a91e1595defec898166fe49) to [**`google/btree@e89373fe6`**](https://github.com/google/btree/commit/e89373fe6b4a7413d7acd6da1725b83ef713e6e4).
 - Upgrade [`github.com/spf13/cobra`](https://github.com/spf13/cobra/releases) from [**`spf13/cobra@1c44ec8d3`**](https://github.com/spf13/cobra/commit/1c44ec8d3f1552cac48999f9306da23c4d8a288b) to [**`spf13/cobra@cd30c2a7e`**](https://github.com/spf13/cobra/commit/cd30c2a7e91a1d63fd9a0027accf18a681e9d50b).
