@@ -33,15 +33,15 @@ Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/p
 **`etcd --log-output`** will be deprecated in v3.5. **`etcd --logger=capnslog` will be deprecated in v3.5**.
 
 ```diff
--etcd --log-output stderr
-+etcd --log-outputs stderr
+-etcd --log-output=stderr
++etcd --log-outputs=stderr
 
 +# to write logs to stderr and a.log file at the same time
-+# only "--logger zap" supports multiple writers
-+etcd --logger zap --log-outputs stderr,a.log
++# only "--logger=zap" supports multiple writers
++etcd --logger=zap --log-outputs=stderr,a.log
 ```
 
-v3.4 adds `etcd --logger zap` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.
+v3.4 adds `etcd --logger=zap --log-outputs=stderr` support for structured logging and multiple log outputs. Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts. **`etcd --logger=capnslog` will be deprecated in v3.5**.
 
 #### Changed `log-outputs` field type in `etcd --config-file` to `[]string`
 
@@ -67,7 +67,7 @@ cfg := &embed.Config{Debug: false}
 
 #### v3.5 deprecates `capnslog`
 
-**v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+**v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
 
 #### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
