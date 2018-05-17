@@ -32,7 +32,7 @@ Creating a user is as easy as
 $ etcdctl user add myusername
 ```
 
-Creating a new user will prompt for a new password. The password can be supplied from standard input when an option `--interactive=false` is given.
+Creating a new user will prompt for a new password. The password can be supplied from standard input when an option `--interactive=false` is given. `--new-user-password` can also be used for supplying the password.
 
 Roles can be granted and revoked for a user with:
 
@@ -156,6 +156,13 @@ The password can be taken from a prompt:
 ```
 $ etcdctl --user user get foo
 ```
+
+The password can also be taken from a command line flag `--password`:
+
+```
+$ etcdctl --user user --password password get foo
+```
+
 
 Otherwise, all `etcdctl` commands remain the same. Users and roles can still be created and modified, but require authentication by a user with the root role.
 

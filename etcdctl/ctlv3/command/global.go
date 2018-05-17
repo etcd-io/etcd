@@ -53,7 +53,8 @@ type GlobalFlags struct {
 	OutputFormat string
 	IsHex        bool
 
-	User string
+	User     string
+	Password string
 
 	Debug bool
 }
@@ -341,6 +342,10 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
+	passwordFlag, err := cmd.Flags().GetString("password")
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
 
 	if userFlag == "" {
 		return nil
@@ -348,16 +353,21 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 
 	var cfg authCfg
 
-	splitted := strings.SplitN(userFlag, ":", 2)
-	if len(splitted) < 2 {
-		cfg.username = userFlag
-		cfg.password, err = speakeasy.Ask("Password: ")
-		if err != nil {
-			ExitWithError(ExitError, err)
+	if passwordFlag == "" {
+		splitted := strings.SplitN(userFlag, ":", 2)
+		if len(splitted) < 2 {
+			cfg.username = userFlag
+			cfg.password, err = speakeasy.Ask("Password: ")
+			if err != nil {
+				ExitWithError(ExitError, err)
+			}
+		} else {
+			cfg.username = splitted[0]
+			cfg.password = splitted[1]
 		}
 	} else {
-		cfg.username = splitted[0]
-		cfg.password = splitted[1]
+		cfg.username = userFlag
+		cfg.password = passwordFlag
 	}
 
 	return &cfg
