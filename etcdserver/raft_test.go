@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/rafthttp"
 
 	"go.uber.org/zap"
 )
@@ -161,7 +160,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
-		transport:   rafthttp.NewNopTransporter(),
+		transport:   newNopTransporter(),
 	})
 	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
 	srv.r.start(nil)
@@ -189,7 +188,7 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
-		transport:   rafthttp.NewNopTransporter(),
+		transport:   newNopTransporter(),
 	})
 	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
 
