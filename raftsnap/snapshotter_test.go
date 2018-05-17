@@ -78,7 +78,7 @@ func TestBadCRC(t *testing.T) {
 	// fake a crc mismatch
 	crcTable = crc32.MakeTable(crc32.Koopman)
 
-	_, err = Read(filepath.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
+	_, err = Read(zap.NewExample(), filepath.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
 	if err == nil || err != ErrCRCMismatch {
 		t.Errorf("err = %v, want %v", err, ErrCRCMismatch)
 	}
@@ -203,7 +203,7 @@ func TestEmptySnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = Read(filepath.Join(dir, "1.snap"))
+	_, err = Read(zap.NewExample(), filepath.Join(dir, "1.snap"))
 	if err != ErrEmptySnapshot {
 		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
 	}
