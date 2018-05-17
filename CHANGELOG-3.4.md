@@ -3,7 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.3.md).
 
 
-## v3.4.0 (TBD 2018-07)
+## v3.4.0 (TBD 2018-08)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
@@ -170,17 +170,17 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and multiple log outputs](https://github.com/coreos/etcd/issues/9438) in server-side.
   - **`etcd --logger=capnslog` will be deprecated in v3.5**.
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
-  - e.g. `--logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
-  - e.g. `--logger=zap --log-outputs=default` is not supported when `--logger=zap`.
-    - Use `etcd --log-outputs=systemd/journal` to send logs to the local systemd journal.
-    - Previously, if etcd parent process ID (`ppid`) is 1 (e.g. run with systemd), `--logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
-    - However, even with `ppid` 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
+  - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
+  - `etcd --logger=zap --log-outputs=default` is not supported when `--logger=zap`.
+    - Use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
+    - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
+    - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
     - To avoid this problem, systemd journal logging must be configured manually.
-  - e.g. `--logger=zap --log-outputs=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`. Use this to override journald log redirects.
-  - e.g. `--logger=zap --log-outputs=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` Use this to override journald log redirects.
-  - e.g. `--logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
-  - e.g. `--logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `stdout`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
-  - e.g. `--logger=zap --log-outputs=/dev/null` will discard all server logs.
+  - `etcd --logger=zap --log-outputs=stderr` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stderr`. Use this to override journald log redirects.
+  - `etcd --logger=zap --log-outputs=stdout` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to `os.Stdout` Use this to override journald log redirects.
+  - `etcd --logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
+  - `etcd --logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/coreos/etcd/pull/9579) and outputs to `os.Stderr`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
+  - `etcd --logger=zap --log-outputs=/dev/null` will discard all server logs.
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/coreos/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
