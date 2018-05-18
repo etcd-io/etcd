@@ -39,13 +39,6 @@ import (
 )
 
 const (
-	// Number of entries for slow follower to catch-up after compacting
-	// the raft storage entries.
-	// We expect the follower has a millisecond level latency with the leader.
-	// The max throughput is around 10K. Keep a 5K entries is enough for helping
-	// follower to catch up.
-	numberOfCatchUpEntries = 5000
-
 	// The max throughput of etcd will not exceed 100MB/s (100K * 1KB value).
 	// Assuming the RTT is around 10ms, 1MB max size is large enough.
 	maxSizePerMsg = 1 * 1024 * 1024

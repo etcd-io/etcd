@@ -40,10 +40,21 @@ type ServerConfig struct {
 	DataDir        string
 	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
 	// rather than the dataDir/member/wal.
-	DedicatedWALDir     string
-	SnapCount           uint64
-	MaxSnapFiles        uint
-	MaxWALFiles         uint
+	DedicatedWALDir string
+
+	SnapshotCount uint64
+
+	// SnapshotCatchUpEntries is the number of entries for a slow follower
+	// to catch-up after compacting the raft storage entries.
+	// We expect the follower has a millisecond level latency with the leader.
+	// The max throughput is around 10K. Keep a 5K entries is enough for helping
+	// follower to catch up.
+	// WARNING: only change this for tests. Always use "DefaultSnapshotCatchUpEntries"
+	SnapshotCatchUpEntries uint64
+
+	MaxSnapFiles uint
+	MaxWALFiles  uint
+
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
 	NewCluster          bool
@@ -273,7 +284,7 @@ func (c *ServerConfig) print(initial bool) {
 		}
 		plog.Infof("heartbeat = %dms", c.TickMs)
 		plog.Infof("election = %dms", c.ElectionTicks*int(c.TickMs))
-		plog.Infof("snapshot count = %d", c.SnapCount)
+		plog.Infof("snapshot count = %d", c.SnapshotCount)
 		if len(c.DiscoveryURL) != 0 {
 			plog.Infof("discovery URL= %s", c.DiscoveryURL)
 			if len(c.DiscoveryProxy) != 0 {
@@ -302,7 +313,8 @@ func (c *ServerConfig) print(initial bool) {
 			zap.Int("election-tick-ms", c.ElectionTicks),
 			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond)),
 			zap.Bool("initial-election-tick-advance", c.InitialElectionTickAdvance),
-			zap.Uint64("snapshot-count", c.SnapCount),
+			zap.Uint64("snapshot-count", c.SnapshotCount),
+			zap.Uint64("snapshot-catchup-entries", c.SnapshotCatchUpEntries),
 			zap.Strings("advertise-client-urls", c.getACURLs()),
 			zap.Strings("initial-advertise-peer-urls", c.getAPURLs()),
 			zap.Bool("initial", initial),
