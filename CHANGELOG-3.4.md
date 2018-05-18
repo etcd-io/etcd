@@ -199,6 +199,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Server now returns `rpctypes.ErrLeaseTTLTooLarge` to client, when the requested `TTL` is larger than *9,000,000,000 seconds* (which is >285 years).
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
+- Allow [non-WAL files in `--wal-dir` directory](https://github.com/coreos/etcd/pull/9743).
+  - Previously, existing files such as [`lost+found`](https://github.com/coreos/etcd/issues/7287) in WAL directory prevents etcd server boot.
 
 ### API
 
