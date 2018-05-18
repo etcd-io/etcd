@@ -28,7 +28,7 @@ var errBadWALName = errors.New("bad wal name")
 
 // Exist returns true if there are any files in a given directory.
 func Exist(dir string) bool {
-	names, err := fileutil.ReadDir(dir)
+	names, err := fileutil.ReadDir(dir, fileutil.WithExt(".wal"))
 	if err != nil {
 		return false
 	}
