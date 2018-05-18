@@ -111,12 +111,23 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	Name         string `json:"name"`
-	Dir          string `json:"data-dir"`
-	WalDir       string `json:"wal-dir"`
-	SnapCount    uint64 `json:"snapshot-count"`
-	MaxSnapFiles uint   `json:"max-snapshots"`
-	MaxWalFiles  uint   `json:"max-wals"`
+	Name   string `json:"name"`
+	Dir    string `json:"data-dir"`
+	WalDir string `json:"wal-dir"`
+
+	SnapshotCount uint64 `json:"snapshot-count"`
+
+	// SnapshotCatchUpEntries is the number of entries for a slow follower
+	// to catch-up after compacting the raft storage entries.
+	// We expect the follower has a millisecond level latency with the leader.
+	// The max throughput is around 10K. Keep a 5K entries is enough for helping
+	// follower to catch up.
+	// WARNING: only change this for tests.
+	// Always use "DefaultSnapshotCatchUpEntries"
+	SnapshotCatchUpEntries uint64
+
+	MaxSnapFiles uint `json:"max-snapshots"`
+	MaxWalFiles  uint `json:"max-wals"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
@@ -342,7 +353,9 @@ func NewConfig() *Config {
 
 		Name: DefaultName,
 
-		SnapCount:       etcdserver.DefaultSnapCount,
+		SnapshotCount:          etcdserver.DefaultSnapshotCount,
+		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+
 		MaxTxnOps:       DefaultMaxTxnOps,
 		MaxRequestBytes: DefaultMaxRequestBytes,
 
