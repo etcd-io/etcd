@@ -242,7 +242,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	defer os.RemoveAll(backupDir)
 
 	etcdCfg := configNoTLS
-	etcdCfg.snapCount = snapCount
+	etcdCfg.snapshotCount = snapCount
 	epc1 := setupEtcdctlTest(t, &etcdCfg, false)
 
 	// v3 put before v2 set so snapshot happens after v3 operations to confirm

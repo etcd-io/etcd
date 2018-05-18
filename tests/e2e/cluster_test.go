@@ -108,7 +108,7 @@ type etcdProcessClusterConfig struct {
 
 	metricsURLScheme string
 
-	snapCount int // default is 10000
+	snapshotCount int // default is 10000
 
 	clientTLS             clientConnType
 	clientCertAuthEnabled bool
@@ -175,8 +175,8 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 	if cfg.execPath == "" {
 		cfg.execPath = binPath
 	}
-	if cfg.snapCount == 0 {
-		cfg.snapCount = etcdserver.DefaultSnapshotCount
+	if cfg.snapshotCount == 0 {
+		cfg.snapshotCount = etcdserver.DefaultSnapshotCount
 	}
 
 	etcdCfgs := make([]*etcdServerProcessConfig, cfg.clusterSize)
@@ -217,7 +217,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			"--initial-advertise-peer-urls", purl.String(),
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
-			"--snapshot-count", fmt.Sprintf("%d", cfg.snapCount),
+			"--snapshot-count", fmt.Sprintf("%d", cfg.snapshotCount),
 		}
 		args = addV2Args(args)
 		if cfg.forceNewCluster {
