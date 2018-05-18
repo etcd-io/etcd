@@ -176,7 +176,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		cfg.execPath = binPath
 	}
 	if cfg.snapCount == 0 {
-		cfg.snapCount = etcdserver.DefaultSnapCount
+		cfg.snapCount = etcdserver.DefaultSnapshotCount
 	}
 
 	etcdCfgs := make([]*etcdServerProcessConfig, cfg.clusterSize)
