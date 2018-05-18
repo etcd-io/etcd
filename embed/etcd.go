@@ -163,7 +163,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PeerURLs:                   cfg.APUrls,
 		DataDir:                    cfg.Dir,
 		DedicatedWALDir:            cfg.WalDir,
-		SnapCount:                  cfg.SnapCount,
+		SnapshotCount:              cfg.SnapshotCount,
 		MaxSnapFiles:               cfg.MaxSnapFiles,
 		MaxWALFiles:                cfg.MaxWalFiles,
 		InitialPeerURLsMap:         urlsmap,

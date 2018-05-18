@@ -90,6 +90,30 @@ if err != nil {
 }
 ```
 
+#### Changed `embed.Config.SnapCount` to `embed.Config.SnapshotCount`
+
+To be consistent with the flag name `etcd --snapshot-count`, `embed.Config.SnapCount` field has been renamed to `embed.Config.SnapshotCount`:
+
+```diff
+import "github.com/coreos/etcd/embed"
+
+cfg := embed.NewConfig()
+-cfg.SnapCount = 100000
++cfg.SnapshotCount = 100000
+```
+
+#### Changed `etcdserver.ServerConfig.SnapCount` to `etcdserver.ServerConfig.SnapshotCount`
+
+To be consistent with the flag name `etcd --snapshot-count`, `etcdserver.ServerConfig.SnapCount` field has been renamed to `etcdserver.ServerConfig.SnapshotCount`:
+
+```diff
+import "github.com/coreos/etcd/etcdserver"
+
+srvcfg := etcdserver.ServerConfig{
+-  SnapCount: 100000,
++  SnapshotCount: 100000,
+```
+
 #### Changed function signature in package `wal`
 
 Changed `wal` function signatures to support structured logger.

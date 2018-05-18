@@ -160,7 +160,7 @@ func (e *Etcd) EmbedConfig() (cfg *embed.Config, err error) {
 	cfg.ClusterState = e.InitialClusterState
 	cfg.InitialClusterToken = e.InitialClusterToken
 
-	cfg.SnapCount = uint64(e.SnapshotCount)
+	cfg.SnapshotCount = uint64(e.SnapshotCount)
 	cfg.QuotaBackendBytes = e.QuotaBackendBytes
 
 	cfg.PreVote = e.PreVote

@@ -251,7 +251,7 @@ func testIssue2746(t *testing.T, members int) {
 	c := NewCluster(t, members)
 
 	for _, m := range c.Members {
-		m.SnapCount = 10
+		m.SnapshotCount = 10
 	}
 
 	c.Launch(t)

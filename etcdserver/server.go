@@ -64,7 +64,14 @@ import (
 )
 
 const (
-	DefaultSnapCount = 100000
+	DefaultSnapshotCount = 100000
+
+	// DefaultSnapshotCatchUpEntries is the number of entries for a slow follower
+	// to catch-up after compacting the raft storage entries.
+	// We expect the follower has a millisecond level latency with the leader.
+	// The max throughput is around 10K. Keep a 5K entries is enough for helping
+	// follower to catch up.
+	DefaultSnapshotCatchUpEntries uint64 = 5000
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
@@ -703,14 +710,30 @@ func (s *EtcdServer) Start() {
 // This function is just used for testing.
 func (s *EtcdServer) start() {
 	lg := s.getLogger()
-	if s.Cfg.SnapCount == 0 {
-		if lg != nil {
 
+	if s.Cfg.SnapshotCount == 0 {
+		if lg != nil {
+			lg.Info(
+				"updating snapshot-count to default",
+				zap.Uint64("given-snapshot-count", s.Cfg.SnapshotCount),
+				zap.Uint64("updated-snapshot-count", DefaultSnapshotCount),
+			)
 		} else {
-			plog.Infof("set snapshot count to default %d", DefaultSnapCount)
+			plog.Infof("set snapshot count to default %d", DefaultSnapshotCount)
 		}
-		s.Cfg.SnapCount = DefaultSnapCount
+		s.Cfg.SnapshotCount = DefaultSnapshotCount
 	}
+	if s.Cfg.SnapshotCatchUpEntries == 0 {
+		if lg != nil {
+			lg.Info(
+				"updating snapshot catch-up entries to default",
+				zap.Uint64("given-snapshot-catchup-entries", s.Cfg.SnapshotCatchUpEntries),
+				zap.Uint64("updated-snapshot-catchup-entries", DefaultSnapshotCatchUpEntries),
+			)
+		}
+		s.Cfg.SnapshotCatchUpEntries = DefaultSnapshotCatchUpEntries
+	}
+
 	s.w = wait.New()
 	s.applyWait = wait.NewTimeList()
 	s.done = make(chan struct{})
@@ -743,6 +766,7 @@ func (s *EtcdServer) start() {
 			plog.Infof("starting server... [version: %v, cluster version: to_be_decided]", version.Version)
 		}
 	}
+
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -1058,7 +1082,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			"applying snapshot",
 			zap.Uint64("current-snapshot-index", ep.snapi),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-snapshot-index", apply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
 		)
 	} else {
 		plog.Infof("applying snapshot at index %d...", ep.snapi)
@@ -1069,7 +1094,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 				"applied snapshot",
 				zap.Uint64("current-snapshot-index", ep.snapi),
 				zap.Uint64("current-applied-index", ep.appliedi),
-				zap.Uint64("incoming-snapshot-index", apply.snapshot.Metadata.Index),
+				zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
+				zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
 			)
 		} else {
 			plog.Infof("finished applying incoming snapshot at index %d", ep.snapi)
@@ -1083,6 +1109,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 				zap.Uint64("current-snapshot-index", ep.snapi),
 				zap.Uint64("current-applied-index", ep.appliedi),
 				zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
+				zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
 			)
 		} else {
 			plog.Panicf("snapshot index [%d] should > appliedi[%d] + 1",
@@ -1304,7 +1331,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
-	if ep.appliedi-ep.snapi <= s.Cfg.SnapCount {
+	if ep.appliedi-ep.snapi <= s.Cfg.SnapshotCount {
 		return
 	}
 
@@ -1314,7 +1341,7 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 			zap.String("local-member-id", s.ID().String()),
 			zap.Uint64("local-member-applied-index", ep.appliedi),
 			zap.Uint64("local-member-snapshot-index", ep.snapi),
-			zap.Uint64("local-member-snapshot-count", s.Cfg.SnapCount),
+			zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
 		)
 	} else {
 		plog.Infof("start to snapshot (applied: %d, lastsnap: %d)", ep.appliedi, ep.snapi)
@@ -2132,9 +2159,10 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 
 		// keep some in memory log entries for slow followers.
 		compacti := uint64(1)
-		if snapi > numberOfCatchUpEntries {
-			compacti = snapi - numberOfCatchUpEntries
+		if snapi > s.Cfg.SnapshotCatchUpEntries {
+			compacti = snapi - s.Cfg.SnapshotCatchUpEntries
 		}
+
 		err = s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.
