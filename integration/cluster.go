@@ -117,17 +117,25 @@ func init() {
 }
 
 type ClusterConfig struct {
-	Size                  int
-	PeerTLS               *transport.TLSInfo
-	ClientTLS             *transport.TLSInfo
-	DiscoveryURL          string
-	UseGRPC               bool
-	QuotaBackendBytes     int64
-	MaxTxnOps             uint
-	MaxRequestBytes       uint
+	Size      int
+	PeerTLS   *transport.TLSInfo
+	ClientTLS *transport.TLSInfo
+
+	DiscoveryURL string
+
+	UseGRPC bool
+
+	QuotaBackendBytes int64
+
+	MaxTxnOps              uint
+	MaxRequestBytes        uint
+	SnapshotCount          uint64
+	SnapshotCatchUpEntries uint64
+
 	GRPCKeepAliveMinTime  time.Duration
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
+
 	// SkipCreatingClient to skip creating clients for each member.
 	SkipCreatingClient bool
 
@@ -269,6 +277,8 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			quotaBackendBytes:        c.cfg.QuotaBackendBytes,
 			maxTxnOps:                c.cfg.MaxTxnOps,
 			maxRequestBytes:          c.cfg.MaxRequestBytes,
+			snapshotCount:            c.cfg.SnapshotCount,
+			snapshotCatchUpEntries:   c.cfg.SnapshotCatchUpEntries,
 			grpcKeepAliveMinTime:     c.cfg.GRPCKeepAliveMinTime,
 			grpcKeepAliveInterval:    c.cfg.GRPCKeepAliveInterval,
 			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
@@ -550,6 +560,8 @@ type memberConfig struct {
 	quotaBackendBytes        int64
 	maxTxnOps                uint
 	maxRequestBytes          uint
+	snapshotCount            uint64
+	snapshotCatchUpEntries   uint64
 	grpcKeepAliveMinTime     time.Duration
 	grpcKeepAliveInterval    time.Duration
 	grpcKeepAliveTimeout     time.Duration
@@ -611,6 +623,14 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.MaxRequestBytes = mcfg.maxRequestBytes
 	if m.MaxRequestBytes == 0 {
 		m.MaxRequestBytes = embed.DefaultMaxRequestBytes
+	}
+	m.SnapshotCount = etcdserver.DefaultSnapshotCount
+	if mcfg.snapshotCount != 0 {
+		m.SnapshotCount = mcfg.snapshotCount
+	}
+	m.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
+	if mcfg.snapshotCatchUpEntries != 0 {
+		m.SnapshotCatchUpEntries = mcfg.snapshotCatchUpEntries
 	}
 	m.AuthToken = "simple"              // for the purpose of integration testing, simple token is enough
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
