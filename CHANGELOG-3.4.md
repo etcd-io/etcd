@@ -189,6 +189,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
   - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
   - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
+  - A node gets network partitioned with a watcher on a future revision, and falls behind receiving a leader snapshot after partition gets removed. When applying this snapshot, etcd watch storage moves current synced watchers to unsynced since sync watchers might have become stale during network partition. And reset synced watcher group to restart watcher routines. Previously, there was a bug when moving from synced watcher group to unsynced, thus client would miss events when the watcher was requested to the network-partitioned node.
+
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
   - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.

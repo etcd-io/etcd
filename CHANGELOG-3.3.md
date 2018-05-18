@@ -128,6 +128,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.3.1) and [
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
   - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
   - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
+  - A node gets network partitioned with a watcher on a future revision, and falls behind receiving a leader snapshot after partition gets removed. When applying this snapshot, etcd watch storage moves current synced watchers to unsynced since sync watchers might have become stale during network partition. And reset synced watcher group to restart watcher routines. Previously, there was a bug when moving from synced watcher group to unsynced, thus client would miss events when the watcher was requested to the network-partitioned node.
 
 ### Go
 
