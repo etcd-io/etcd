@@ -128,7 +128,7 @@ func TestEtcd(t *testing.T) {
 	expc.InitialCluster = "s1=https://127.0.0.1:13800,s2=https://127.0.0.1:23800,s3=https://127.0.0.1:33800"
 	expc.ClusterState = "new"
 	expc.InitialClusterToken = "tkn"
-	expc.SnapCount = 10000
+	expc.SnapshotCount = 10000
 	expc.QuotaBackendBytes = 10740000000
 	expc.PreVote = true
 	expc.ExperimentalInitialCorruptCheck = true
