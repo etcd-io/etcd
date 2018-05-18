@@ -23,7 +23,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
 )
 
 // TestWatchFragmentDisable ensures that large watch
@@ -79,6 +78,7 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 				fmt.Sprint("foo", i),
 				strings.Repeat("a", 1024*1024),
 			)
+			fmt.Println("[DEBUG] Put error:", err)
 			errc <- err
 		}(i)
 	}
@@ -117,7 +117,8 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 			t.Fatalf("unexpected error %v", ws.Err())
 		}
 
-	case <-time.After(testutil.RequestTimeout):
-		t.Fatalf("took too long to receive events")
+	// case <-time.After(testutil.RequestTimeout):
+	case <-time.After(time.Minute):
+		t.Fatal("[DEBUG] took too long to receive events fragment, exceedRecvLimit:", fragment, exceedRecvLimit)
 	}
 }
