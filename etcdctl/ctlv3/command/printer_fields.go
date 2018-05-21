@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/snapshot"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/snapshot"
 )
 
 type fieldsPrinter struct{ printer }

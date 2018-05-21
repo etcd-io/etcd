@@ -18,7 +18,7 @@ import (
 	"os"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/snapshot"
+	"github.com/coreos/etcd/clientv3/snapshot"
 
 	"github.com/olekukonko/tablewriter"
 )

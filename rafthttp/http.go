@@ -23,10 +23,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 
 	humanize "github.com/dustin/go-humanize"
@@ -168,13 +168,13 @@ type snapshotHandler struct {
 	lg          *zap.Logger
 	tr          Transporter
 	r           Raft
-	snapshotter *raftsnap.Snapshotter
+	snapshotter *snap.Snapshotter
 
 	localID types.ID
 	cid     types.ID
 }
 
-func newSnapshotHandler(t *Transport, r Raft, snapshotter *raftsnap.Snapshotter, cid types.ID) http.Handler {
+func newSnapshotHandler(t *Transport, r Raft, snapshotter *snap.Snapshotter, cid types.ID) http.Handler {
 	return &snapshotHandler{
 		lg:          t.Logger,
 		tr:          t,

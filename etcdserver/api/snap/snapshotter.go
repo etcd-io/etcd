@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raftsnap
+package snap
 
 import (
 	"errors"
@@ -25,19 +25,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap/snappb"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap/snappb"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
 
-const (
-	snapSuffix = ".snap"
-)
+const snapSuffix = ".snap"
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
@@ -82,20 +80,29 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	d, err := snap.Marshal()
 	if err != nil {
 		return err
-	} else {
-		marshallingDurations.Observe(float64(time.Since(start)) / float64(time.Second))
 	}
 
-	err = pioutil.WriteAndSyncFile(filepath.Join(s.dir, fname), d, 0666)
-	if err == nil {
-		saveDurations.Observe(float64(time.Since(start)) / float64(time.Second))
-	} else {
-		err1 := os.Remove(filepath.Join(s.dir, fname))
-		if err1 != nil {
-			plog.Errorf("failed to remove broken snapshot file %s", filepath.Join(s.dir, fname))
+	marshallingDurations.Observe(float64(time.Since(start)) / float64(time.Second))
+
+	spath := filepath.Join(s.dir, fname)
+	err = pioutil.WriteAndSyncFile(spath, d, 0666)
+	if err != nil {
+		if s.lg != nil {
+			s.lg.Warn("failed to write a snap file", zap.String("path", spath), zap.Error(err))
 		}
+		rerr := os.Remove(spath)
+		if rerr != nil {
+			if s.lg != nil {
+				s.lg.Warn("failed to remove a broken snap file", zap.String("path", spath), zap.Error(err))
+			} else {
+				plog.Errorf("failed to remove broken snapshot file %s", spath)
+			}
+		}
+		return err
 	}
-	return err
+
+	saveDurations.Observe(float64(time.Since(start)) / float64(time.Second))
+	return nil
 }
 
 func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
@@ -119,7 +126,21 @@ func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
 	fpath := filepath.Join(dir, name)
 	snap, err := Read(lg, fpath)
 	if err != nil {
-		renameBroken(fpath)
+		brokenPath := fpath + ".broken"
+		if lg != nil {
+			lg.Warn("failed to read a snap file", zap.String("path", fpath), zap.Error(err))
+		}
+		if rerr := os.Rename(fpath, brokenPath); rerr != nil {
+			if lg != nil {
+				lg.Warn("failed to rename a broken snap file", zap.String("path", fpath), zap.String("broken-path", brokenPath), zap.Error(rerr))
+			} else {
+				plog.Warningf("cannot rename broken snapshot file %v to %v: %v", fpath, brokenPath, rerr)
+			}
+		} else {
+			if lg != nil {
+				lg.Warn("renamed to a broken snap file", zap.String("path", fpath), zap.String("broken-path", brokenPath))
+			}
+		}
 	}
 	return snap, err
 }
@@ -129,7 +150,7 @@ func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
 	b, err := ioutil.ReadFile(snapname)
 	if err != nil {
 		if lg != nil {
-			lg.Warn("failed to read snapshot file", zap.String("path", snapname), zap.Error(err))
+			lg.Warn("failed to read a snap file", zap.String("path", snapname), zap.Error(err))
 		} else {
 			plog.Errorf("cannot read file %v: %v", snapname, err)
 		}
@@ -167,7 +188,7 @@ func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
 		if lg != nil {
-			lg.Warn("found corrupted snapshot file",
+			lg.Warn("snap file is corrupt",
 				zap.String("path", snapname),
 				zap.Uint32("prev-crc", serializedSnap.Crc),
 				zap.Uint32("new-crc", crc),
@@ -220,7 +241,7 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 			// a vaild file. If not throw out a warning.
 			if _, ok := validFiles[names[i]]; !ok {
 				if lg != nil {
-					lg.Warn("found unexpected non-snapshot file; skipping", zap.String("path", names[i]))
+					lg.Warn("found unexpected non-snap file; skipping", zap.String("path", names[i]))
 				} else {
 					plog.Warningf("skipped unexpected non snapshot file %v", names[i])
 				}
@@ -228,11 +249,4 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 		}
 	}
 	return snaps
-}
-
-func renameBroken(path string) {
-	brokenPath := path + ".broken"
-	if err := os.Rename(path, brokenPath); err != nil {
-		plog.Warningf("cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
-	}
 }

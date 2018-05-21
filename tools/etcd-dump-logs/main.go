@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 
@@ -65,10 +65,10 @@ func main() {
 		walsnap.Index = *index
 	} else {
 		if *snapfile == "" {
-			ss := raftsnap.New(zap.NewExample(), snapDir(dataDir))
+			ss := snap.New(zap.NewExample(), snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
-			snapshot, err = raftsnap.Read(zap.NewExample(), filepath.Join(snapDir(dataDir), *snapfile))
+			snapshot, err = snap.Read(zap.NewExample(), filepath.Join(snapDir(dataDir), *snapfile))
 		}
 
 		switch err {
@@ -77,7 +77,7 @@ func main() {
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
 				walsnap.Term, walsnap.Index, nodes)
-		case raftsnap.ErrNoSnapshot:
+		case snap.ErrNoSnapshot:
 			fmt.Printf("Snapshot:\nempty\n")
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)

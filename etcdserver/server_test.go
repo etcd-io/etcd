@@ -30,6 +30,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -48,7 +49,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/raftsnap"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -1036,7 +1036,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		Cfg:         ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:           *r,
 		v2store:     st,
-		snapshotter: raftsnap.New(zap.NewExample(), snapdir),
+		snapshotter: snap.New(zap.NewExample(), snapdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
@@ -1167,7 +1167,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		Cfg:         ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:           *r,
 		v2store:     st,
-		snapshotter: raftsnap.New(zap.NewExample(), testdir),
+		snapshotter: snap.New(zap.NewExample(), testdir),
 		cluster:     cl,
 		SyncTicker:  &time.Ticker{},
 	}
@@ -1738,7 +1738,7 @@ func newNopTransporter() rafthttp.Transporter {
 func (s *nopTransporter) Start() error                        { return nil }
 func (s *nopTransporter) Handler() http.Handler               { return nil }
 func (s *nopTransporter) Send(m []raftpb.Message)             {}
-func (s *nopTransporter) SendSnapshot(m raftsnap.Message)     {}
+func (s *nopTransporter) SendSnapshot(m snap.Message)         {}
 func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
 func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
 func (s *nopTransporter) RemovePeer(id types.ID)              {}
@@ -1752,18 +1752,18 @@ func (s *nopTransporter) Resume()                             {}
 
 type snapTransporter struct {
 	nopTransporter
-	snapDoneC chan raftsnap.Message
+	snapDoneC chan snap.Message
 	snapDir   string
 }
 
-func newSnapTransporter(snapDir string) (rafthttp.Transporter, <-chan raftsnap.Message) {
-	ch := make(chan raftsnap.Message, 1)
+func newSnapTransporter(snapDir string) (rafthttp.Transporter, <-chan snap.Message) {
+	ch := make(chan snap.Message, 1)
 	tr := &snapTransporter{snapDoneC: ch, snapDir: snapDir}
 	return tr, ch
 }
 
-func (s *snapTransporter) SendSnapshot(m raftsnap.Message) {
-	ss := raftsnap.New(zap.NewExample(), s.snapDir)
+func (s *snapTransporter) SendSnapshot(m snap.Message) {
+	ss := snap.New(zap.NewExample(), s.snapDir)
 	ss.SaveDBFrom(m.ReadCloser, m.Snapshot.Metadata.Index+1)
 	m.CloseWithError(nil)
 	s.snapDoneC <- m

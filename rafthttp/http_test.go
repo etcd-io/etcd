@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 
 	"go.uber.org/zap"
@@ -358,7 +358,7 @@ func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 
 type fakePeer struct {
 	msgs     []raftpb.Message
-	snapMsgs []raftsnap.Message
+	snapMsgs []snap.Message
 	peerURLs types.URLs
 	connc    chan *outgoingConn
 	paused   bool
@@ -379,7 +379,7 @@ func (pr *fakePeer) send(m raftpb.Message) {
 	pr.msgs = append(pr.msgs, m)
 }
 
-func (pr *fakePeer) sendSnap(m raftsnap.Message) {
+func (pr *fakePeer) sendSnap(m snap.Message) {
 	if pr.paused {
 		return
 	}
