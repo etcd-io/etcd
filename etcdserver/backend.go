@@ -19,11 +19,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 
 	"go.uber.org/zap"
 )
@@ -40,7 +40,7 @@ func newBackend(cfg ServerConfig) backend.Backend {
 }
 
 // openSnapshotBackend renames a snapshot db to the current etcd db and opens it.
-func openSnapshotBackend(cfg ServerConfig, ss *raftsnap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
+func openSnapshotBackend(cfg ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find database snapshot file (%v)", err)
@@ -95,5 +95,5 @@ func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot ra
 		return oldbe, nil
 	}
 	oldbe.Close()
-	return openSnapshotBackend(cfg, raftsnap.New(cfg.Logger, cfg.SnapDir()), snapshot)
+	return openSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot)
 }

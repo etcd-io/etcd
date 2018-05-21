@@ -17,11 +17,11 @@ package etcdserver
 import (
 	"io"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 
@@ -40,10 +40,10 @@ type Storage interface {
 
 type storage struct {
 	*wal.WAL
-	*raftsnap.Snapshotter
+	*snap.Snapshotter
 }
 
-func NewStorage(w *wal.WAL, s *raftsnap.Snapshotter) Storage {
+func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
 	return &storage{w, s}
 }
 

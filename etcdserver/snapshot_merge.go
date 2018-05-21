@@ -17,9 +17,9 @@ package etcdserver
 import (
 	"io"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -28,7 +28,7 @@ import (
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),
 // a snapshot of v2 store inside raft.Snapshot as []byte, a snapshot of v3 KV in the top level message
 // as ReadCloser.
-func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) raftsnap.Message {
+func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) snap.Message {
 	// get a snapshot of v2 store as []byte
 	clone := s.v2store.Clone()
 	d, err := clone.SaveNoCopy()
@@ -58,7 +58,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi 
 	}
 	m.Snapshot = snapshot
 
-	return *raftsnap.NewMessage(m, rc, dbsnap.Size())
+	return *snap.NewMessage(m, rc, dbsnap.Size())
 }
 
 func newSnapshotReaderCloser(lg *zap.Logger, snapshot backend.Snapshot) io.ReadCloser {

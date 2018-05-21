@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api"
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
@@ -53,7 +54,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/raftsnap"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 
@@ -219,7 +219,7 @@ type EtcdServer struct {
 	cluster *membership.RaftCluster
 
 	v2store     v2store.Store
-	snapshotter *raftsnap.Snapshotter
+	snapshotter *snap.Snapshotter
 
 	applyV2 ApplierV2
 
@@ -312,7 +312,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			plog.Fatalf("create snapshot directory error: %v", err)
 		}
 	}
-	ss := raftsnap.New(cfg.Logger, cfg.SnapDir())
+	ss := snap.New(cfg.Logger, cfg.SnapDir())
 
 	bepath := cfg.backendPath()
 	beExist := fileutil.Exist(bepath)
@@ -417,7 +417,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			}
 		}
 		snapshot, err = ss.Load()
-		if err != nil && err != raftsnap.ErrNoSnapshot {
+		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
 		if snapshot != nil {
@@ -1838,7 +1838,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 }
 
-func (s *EtcdServer) sendMergedSnap(merged raftsnap.Message) {
+func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	atomic.AddInt64(&s.inflightSnapshots, 1)
 
 	lg := s.getLogger()
