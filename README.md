@@ -64,6 +64,7 @@ If etcd is installed using the [pre-built release binaries][github-release], run
 ```sh
 /tmp/etcd-download-test/etcd
 ```
+
 The etcd command can be simply run as such if it is moved to the system path as below:
 
 ```sh
@@ -71,7 +72,7 @@ mv /tmp/etcd-download-test/etcd /usr/local/bin/
 etcd
 ```
 
-If etcd is [build from the master branch][dl-build], run it as below:
+If etcd is [built from the master branch][dl-build], run it as below:
 
 ```sh
 ./bin/etcd
