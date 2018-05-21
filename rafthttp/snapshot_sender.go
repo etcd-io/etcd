@@ -22,11 +22,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/pkg/httputil"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raftsnap"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -66,7 +66,7 @@ func newSnapshotSender(tr *Transport, picker *urlPicker, to types.ID, status *pe
 
 func (s *snapshotSender) stop() { close(s.stopc) }
 
-func (s *snapshotSender) send(merged raftsnap.Message) {
+func (s *snapshotSender) send(merged snap.Message) {
 	m := merged.Message
 
 	body := createSnapBody(s.tr.Logger, merged)
@@ -177,7 +177,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-func createSnapBody(lg *zap.Logger, merged raftsnap.Message) io.ReadCloser {
+func createSnapBody(lg *zap.Logger, merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
