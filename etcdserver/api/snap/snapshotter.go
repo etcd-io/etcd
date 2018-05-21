@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raftsnap
+package snap
 
 import (
 	"errors"
@@ -25,11 +25,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/snap/snappb"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/raftsnap/snappb"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"

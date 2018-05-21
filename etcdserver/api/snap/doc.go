@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package raftsnap handles Raft nodes' states with snapshots.
+// Package snap handles Raft nodes' states with snapshots.
 // The snapshot logic is internal to etcd server and raft package.
-package raftsnap
+package snap
