@@ -29,7 +29,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/alarm"
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver/api"
@@ -39,6 +38,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
+	"github.com/coreos/etcd/etcdserver/api/v3alarm"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
@@ -234,7 +234,7 @@ type EtcdServer struct {
 	bemu       sync.Mutex
 	be         backend.Backend
 	authStore  auth.AuthStore
-	alarmStore *alarm.AlarmStore
+	alarmStore *v3alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -2362,7 +2362,7 @@ func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
 	s.applyV3 = s.newApplierV3()
-	as, err := alarm.NewAlarmStore(s)
+	as, err := v3alarm.NewAlarmStore(s)
 	if err != nil {
 		return err
 	}

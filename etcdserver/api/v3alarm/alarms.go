@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package alarm manages health status alarms in etcd.
-package alarm
+// Package v3alarm manages health status alarms in etcd.
+package v3alarm
 
 import (
 	"sync"
