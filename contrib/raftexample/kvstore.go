@@ -21,7 +21,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/coreos/etcd/raftsnap"
+	"github.com/coreos/etcd/etcdserver/api/snap"
 )
 
 // a key-value store backed by raft
@@ -29,7 +29,7 @@ type kvstore struct {
 	proposeC    chan<- string // channel for proposing updates
 	mu          sync.RWMutex
 	kvStore     map[string]string // current committed key-value pairs
-	snapshotter *raftsnap.Snapshotter
+	snapshotter *snap.Snapshotter
 }
 
 type kv struct {
@@ -37,7 +37,7 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(snapshotter *raftsnap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
+func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
 	// replay log into key-value map
 	s.readCommits(commitC, errorC)
@@ -67,7 +67,7 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			// done replaying log; new data incoming
 			// OR signaled to load snapshot
 			snapshot, err := s.snapshotter.Load()
-			if err == raftsnap.ErrNoSnapshot {
+			if err == snap.ErrNoSnapshot {
 				return
 			}
 			if err != nil {
