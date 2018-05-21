@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package compactor implements automated policies for compacting etcd's mvcc storage.
-package compactor
+// Package v3compactor implements automated policies for compacting etcd's mvcc storage.
+package v3compactor
