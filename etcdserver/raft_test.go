@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	"github.com/coreos/etcd/pkg/mock/mockstorage"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"

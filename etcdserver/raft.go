@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/contention"
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/pbutil"

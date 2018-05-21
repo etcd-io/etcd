@@ -30,10 +30,10 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"

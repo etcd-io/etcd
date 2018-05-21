@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 

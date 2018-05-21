@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/auth"
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
