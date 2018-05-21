@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package discovery provides an implementation of the cluster discovery that
-// is used by etcd.
-package discovery
+// Package v2discovery provides an implementation of the cluster discovery that
+// is used by etcd with v2 client.
+package v2discovery
 
 import (
 	"context"

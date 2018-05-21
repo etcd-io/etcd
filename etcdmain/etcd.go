@@ -26,10 +26,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/api/v2discovery"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/osutil"
@@ -170,7 +170,7 @@ func startEtcdOrProxyV2() {
 		shouldProxy := cfg.isProxy()
 		if !shouldProxy {
 			stopped, errc, err = startEtcd(&cfg.ec)
-			if derr, ok := err.(*etcdserver.DiscoveryError); ok && derr.Err == discovery.ErrFullCluster {
+			if derr, ok := err.(*etcdserver.DiscoveryError); ok && derr.Err == v2discovery.ErrFullCluster {
 				if cfg.shouldFallbackToProxy() {
 					if lg != nil {
 						lg.Warn(
@@ -197,7 +197,7 @@ func startEtcdOrProxyV2() {
 	if err != nil {
 		if derr, ok := err.(*etcdserver.DiscoveryError); ok {
 			switch derr.Err {
-			case discovery.ErrDuplicateID:
+			case v2discovery.ErrDuplicateID:
 				if lg != nil {
 					lg.Warn(
 						"member has been registered with discovery service",
@@ -218,7 +218,7 @@ func startEtcdOrProxyV2() {
 					plog.Infof("or use a new discovery token if the previous bootstrap failed.")
 				}
 
-			case discovery.ErrDuplicateName:
+			case v2discovery.ErrDuplicateName:
 				if lg != nil {
 					lg.Warn(
 						"member with duplicated name has already been registered",
@@ -426,7 +426,7 @@ func startProxy(cfg *config) error {
 
 		if cfg.ec.Durl != "" {
 			var s string
-			s, err = discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
+			s, err = v2discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
 			if err != nil {
 				return err
 			}

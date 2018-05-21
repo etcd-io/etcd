@@ -32,9 +32,9 @@ import (
 	"github.com/coreos/etcd/alarm"
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
-	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/snap"
+	"github.com/coreos/etcd/etcdserver/api/v2discovery"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
@@ -375,7 +375,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		if cfg.ShouldDiscover() {
 			var str string
-			str, err = discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, &DiscoveryError{Op: "join", Err: err}
 			}
