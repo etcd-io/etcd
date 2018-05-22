@@ -33,7 +33,7 @@ func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, clien
 	var protoReq v3lockpb.LockRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -46,7 +46,7 @@ func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	var protoReq v3lockpb.UnlockRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
