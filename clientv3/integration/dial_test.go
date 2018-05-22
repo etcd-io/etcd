@@ -83,7 +83,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 
 	// TODO: this should not be required when we set grpc.WithBlock()
 	if c != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestWaitTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		_, err = c.KV.Get(ctx, "/")
 		cancel()
 	}

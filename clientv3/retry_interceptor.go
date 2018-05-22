@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -57,10 +58,17 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 				if ctx.Err() != nil {
 					// its the context deadline or cancellation.
 					return lastErr
-				} else {
-					// its the callCtx deadline or cancellation, in which case try again.
-					continue
 				}
+				// its the callCtx deadline or cancellation, in which case try again.
+				continue
+			}
+			if callOpts.retryAuth && rpctypes.Error(lastErr) == rpctypes.ErrInvalidAuthToken {
+				gterr := c.getToken(ctx)
+				if gterr != nil {
+					logger.Info("retry failed to fetch new auth token", zap.Error(gterr))
+					return lastErr // return the original error for simplicity
+				}
+				continue
 			}
 			if !isRetriable(lastErr, callOpts) {
 				return lastErr
@@ -97,6 +105,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 			return nil, err
 		}
 		retryingStreamer := &serverStreamingRetryingStream{
+			client:       c,
 			ClientStream: newStreamer,
 			callOpts:     callOpts,
 			ctx:          ctx,
@@ -113,6 +122,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 // a new ClientStream according to the retry policy.
 type serverStreamingRetryingStream struct {
 	grpc.ClientStream
+	client        *Client
 	bufferedSends []interface{} // single messsage that the client can sen
 	receivedGood  bool          // indicates whether any prior receives were successful
 	wasClosedSend bool          // indicates that CloseSend was closed
@@ -198,10 +208,18 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 	if isContextError(err) {
 		if s.ctx.Err() != nil {
 			return false, err
-		} else {
-			// its the callCtx deadline or cancellation, in which case try again.
-			return true, err
 		}
+		// its the callCtx deadline or cancellation, in which case try again.
+		return true, err
+	}
+	if s.callOpts.retryAuth && rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
+		gterr := s.client.getToken(s.ctx)
+		if gterr != nil {
+			logger.Info("retry failed to fetch new auth token", zap.Error(gterr))
+			return false, err // return the original error for simplicity
+		}
+		return true, err
+
 	}
 	return isRetriable(err, s.callOpts), err
 
@@ -278,6 +296,7 @@ var (
 		retryPolicy: nonRepeatable,
 		max:         0, // disabed
 		backoffFunc: backoffLinearWithJitter(50*time.Millisecond /*jitter*/, 0.10),
+		retryAuth:   true,
 	}
 )
 
@@ -293,6 +312,13 @@ type backoffFunc func(attempt uint) time.Duration
 func withRetryPolicy(rp retryPolicy) retryOption {
 	return retryOption{applyFunc: func(o *options) {
 		o.retryPolicy = rp
+	}}
+}
+
+// withAuthRetry sets enables authentication retries.
+func withAuthRetry(retryAuth bool) retryOption {
+	return retryOption{applyFunc: func(o *options) {
+		o.retryAuth = retryAuth
 	}}
 }
 
@@ -314,6 +340,7 @@ type options struct {
 	retryPolicy retryPolicy
 	max         uint
 	backoffFunc backoffFunc
+	retryAuth   bool
 }
 
 // retryOption is a grpc.CallOption that is local to clientv3's retry interceptor.
