@@ -16,6 +16,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"go.uber.org/zap"
@@ -93,4 +94,9 @@ func TestJWTBad(t *testing.T) {
 		t.Fatalf("expeceted failure on missing private key")
 	}
 	opts["priv-key"] = jwtPrivKey
+}
+
+// testJWTOpts is useful for passing to NewTokenProvider which requires a string.
+func testJWTOpts() string {
+	return fmt.Sprintf("%s,pub-key=%s,priv-key=%s,sign-method=RS256", tokenTypeJWT, jwtPubKey, jwtPrivKey)
 }
