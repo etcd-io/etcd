@@ -33,7 +33,7 @@ func request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, client
 	var protoReq etcdserverpb.RangeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -46,7 +46,7 @@ func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client e
 	var protoReq etcdserverpb.PutRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -59,7 +59,7 @@ func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, 
 	var protoReq etcdserverpb.DeleteRangeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -72,7 +72,7 @@ func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client e
 	var protoReq etcdserverpb.TxnRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -85,7 +85,7 @@ func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, clie
 	var protoReq etcdserverpb.CompactionRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -104,7 +104,7 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
 		var protoReq etcdserverpb.WatchRequest
-		err = dec.Decode(&protoReq)
+		err := dec.Decode(&protoReq)
 		if err == io.EOF {
 			return err
 		}
@@ -112,7 +112,7 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 			grpclog.Printf("Failed to decode request: %v", err)
 			return err
 		}
-		if err = stream.Send(&protoReq); err != nil {
+		if err := stream.Send(&protoReq); err != nil {
 			grpclog.Printf("Failed to send request: %v", err)
 			return err
 		}
@@ -150,7 +150,7 @@ func request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler
 	var protoReq etcdserverpb.LeaseGrantRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -163,7 +163,7 @@ func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -176,7 +176,7 @@ func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -195,7 +195,7 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
 		var protoReq etcdserverpb.LeaseKeepAliveRequest
-		err = dec.Decode(&protoReq)
+		err := dec.Decode(&protoReq)
 		if err == io.EOF {
 			return err
 		}
@@ -203,7 +203,7 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 			grpclog.Printf("Failed to decode request: %v", err)
 			return err
 		}
-		if err = stream.Send(&protoReq); err != nil {
+		if err := stream.Send(&protoReq); err != nil {
 			grpclog.Printf("Failed to send request: %v", err)
 			return err
 		}
@@ -241,7 +241,7 @@ func request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Mars
 	var protoReq etcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -254,7 +254,7 @@ func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Mars
 	var protoReq etcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -267,7 +267,7 @@ func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -280,7 +280,7 @@ func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -293,7 +293,7 @@ func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.MemberAddRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -306,7 +306,7 @@ func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marsh
 	var protoReq etcdserverpb.MemberRemoveRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -319,7 +319,7 @@ func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marsh
 	var protoReq etcdserverpb.MemberUpdateRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -332,7 +332,7 @@ func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshal
 	var protoReq etcdserverpb.MemberListRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -345,7 +345,7 @@ func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.AlarmRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -358,7 +358,7 @@ func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshal
 	var protoReq etcdserverpb.StatusRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -371,7 +371,7 @@ func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Mar
 	var protoReq etcdserverpb.DefragmentRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -384,7 +384,7 @@ func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler
 	var protoReq etcdserverpb.HashRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -397,7 +397,7 @@ func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshal
 	var protoReq etcdserverpb.HashKVRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -410,7 +410,7 @@ func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marsh
 	var protoReq etcdserverpb.SnapshotRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -431,7 +431,7 @@ func request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Mar
 	var protoReq etcdserverpb.MoveLeaderRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -444,7 +444,7 @@ func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler,
 	var protoReq etcdserverpb.AuthEnableRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -457,7 +457,7 @@ func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler
 	var protoReq etcdserverpb.AuthDisableRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -470,7 +470,7 @@ func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshale
 	var protoReq etcdserverpb.AuthenticateRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -483,7 +483,7 @@ func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 	var protoReq etcdserverpb.AuthUserAddRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -496,7 +496,7 @@ func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 	var protoReq etcdserverpb.AuthUserGetRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -509,7 +509,7 @@ func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, c
 	var protoReq etcdserverpb.AuthUserListRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -522,7 +522,7 @@ func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 	var protoReq etcdserverpb.AuthUserDeleteRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -535,7 +535,7 @@ func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Ma
 	var protoReq etcdserverpb.AuthUserChangePasswordRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -548,7 +548,7 @@ func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshal
 	var protoReq etcdserverpb.AuthUserGrantRoleRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -561,7 +561,7 @@ func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marsha
 	var protoReq etcdserverpb.AuthUserRevokeRoleRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -574,7 +574,7 @@ func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 	var protoReq etcdserverpb.AuthRoleAddRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -587,7 +587,7 @@ func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 	var protoReq etcdserverpb.AuthRoleGetRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -600,7 +600,7 @@ func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, c
 	var protoReq etcdserverpb.AuthRoleListRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -613,7 +613,7 @@ func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 	var protoReq etcdserverpb.AuthRoleDeleteRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -626,7 +626,7 @@ func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.M
 	var protoReq etcdserverpb.AuthRoleGrantPermissionRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -639,7 +639,7 @@ func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.
 	var protoReq etcdserverpb.AuthRoleRevokePermissionRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
