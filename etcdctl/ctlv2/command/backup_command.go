@@ -23,9 +23,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/membership"
 	"github.com/coreos/etcd/etcdserver/api/snap"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"

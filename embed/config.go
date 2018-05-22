@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3compactor"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/srv"
@@ -94,7 +94,7 @@ var (
 	// If "AutoCompactionMode" is CompactorModePeriodic and
 	// "AutoCompactionRetention" is "1h", it automatically compacts
 	// compacts storage every hour.
-	CompactorModePeriodic = compactor.ModePeriodic
+	CompactorModePeriodic = v3compactor.ModePeriodic
 
 	// CompactorModeRevision is revision-based compaction mode
 	// for "Config.AutoCompactionMode" field.
@@ -102,7 +102,7 @@ var (
 	// "AutoCompactionRetention" is "1000", it compacts log on
 	// revision 5000 when the current revision is 6000.
 	// This runs every 5-minute if enough of logs have proceeded.
-	CompactorModeRevision = compactor.ModeRevision
+	CompactorModeRevision = v3compactor.ModeRevision
 )
 
 func init() {

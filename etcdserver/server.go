@@ -29,17 +29,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/alarm"
 	"github.com/coreos/etcd/auth"
-	"github.com/coreos/etcd/compactor"
-	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api"
+	"github.com/coreos/etcd/etcdserver/api/membership"
+	"github.com/coreos/etcd/etcdserver/api/rafthttp"
 	"github.com/coreos/etcd/etcdserver/api/snap"
+	"github.com/coreos/etcd/etcdserver/api/v2discovery"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
 	"github.com/coreos/etcd/etcdserver/api/v2store"
+	"github.com/coreos/etcd/etcdserver/api/v3alarm"
+	"github.com/coreos/etcd/etcdserver/api/v3compactor"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
@@ -53,7 +54,6 @@ import (
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 
@@ -234,14 +234,14 @@ type EtcdServer struct {
 	bemu       sync.Mutex
 	be         backend.Backend
 	authStore  auth.AuthStore
-	alarmStore *alarm.AlarmStore
+	alarmStore *v3alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
 	SyncTicker *time.Ticker
 	// compactor is used to auto-compact the KV.
-	compactor compactor.Compactor
+	compactor v3compactor.Compactor
 
 	// peerRt used to send requests (version, lease) to peers.
 	peerRt   http.RoundTripper
@@ -375,7 +375,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		if cfg.ShouldDiscover() {
 			var str string
-			str, err = discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, &DiscoveryError{Op: "join", Err: err}
 			}
@@ -568,7 +568,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, tp, int(cfg.BcryptCost))
 	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
+		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {
 			return nil, err
 		}
@@ -2362,7 +2362,7 @@ func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
 	s.applyV3 = s.newApplierV3()
-	as, err := alarm.NewAlarmStore(s)
+	as, err := v3alarm.NewAlarmStore(s)
 	if err != nil {
 		return err
 	}
