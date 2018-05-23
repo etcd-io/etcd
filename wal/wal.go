@@ -590,7 +590,7 @@ func (w *WAL) sync() error {
 			plog.Warningf("sync duration of %v, expected less than %v", took, warnSyncDuration)
 		}
 	}
-	syncDurations.Observe(took.Seconds())
+	walFsyncSec.Observe(took.Seconds())
 
 	return err
 }
