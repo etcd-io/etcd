@@ -122,6 +122,7 @@ func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 				} else {
 					plog.Warningf("failed to receive lease keepalive request from gRPC stream (%q)", err.Error())
 				}
+				streamFailures.WithLabelValues("receive", "lease-keepalive").Inc()
 			}
 			return err
 		}
@@ -160,6 +161,7 @@ func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 				} else {
 					plog.Warningf("failed to send lease keepalive response to gRPC stream (%q)", err.Error())
 				}
+				streamFailures.WithLabelValues("send", "lease-keepalive").Inc()
 			}
 			return err
 		}
