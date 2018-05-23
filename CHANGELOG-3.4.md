@@ -102,6 +102,33 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - `"github.com/coreos/etcd/rafthttp"` to `"github.com/coreos/etcd/etcdserver/api/rafthttp"`.
   - `"github.com/coreos/etcd/snap"` to `"github.com/coreos/etcd/etcdserver/api/snap"`.
   - `"github.com/coreos/etcd/store"` to `"github.com/coreos/etcd/etcdserver/api/v2store"`.
+- Promote all [`etcd_debugging_*` Prometheus metrics to `etcd_*`](https://github.com/coreos/etcd/pull/9764).
+  - `etcd_debugging_*` has been marked as experimental.
+  - `etcd_debugging_mvcc_range_total` to `etcd_mvcc_range_total`.
+  - `etcd_debugging_mvcc_put_total` to `etcd_mvcc_put_total`.
+  - `etcd_debugging_mvcc_delete_total` to `etcd_mvcc_delete_total`.
+  - `etcd_debugging_mvcc_txn_total` to `etcd_mvcc_txn_total`.
+  - `etcd_debugging_mvcc_keys_total` to `etcd_mvcc_keys_total`.
+  - `etcd_debugging_mvcc_watch_stream_total` to `etcd_mvcc_watch_stream_total`.
+  - `etcd_debugging_mvcc_watcher_total` to `etcd_mvcc_watcher_total`.
+  - `etcd_debugging_mvcc_slow_watcher_total` to `etcd_mvcc_slow_watcher_total`.
+  - `etcd_debugging_mvcc_events_total` to `etcd_mvcc_events_total`.
+  - `etcd_debugging_mvcc_pending_events_total` to `etcd_mvcc_pending_events_total`.
+  - `etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds` to `etcd_mvcc_index_compaction_pause_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds` to `etcd_mvcc_db_compaction_pause_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_total_duration_milliseconds` to `etcd_mvcc_db_compaction_total_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_keys_total` to `etcd_mvcc_db_compaction_keys_total`.
+  - `etcd_debugging_mvcc_db_total_size_in_bytes` to `etcd_mvcc_db_total_size_in_bytes`.
+  - `etcd_debugging_mvcc_db_total_size_in_use_in_bytes` to `etcd_mvcc_db_total_size_in_use_in_bytes`.
+  - `etcd_debugging_snap_save_marshalling_duration_seconds` to `etcd_snap_save_marshalling_duration_seconds`.
+  - `etcd_debugging_snap_save_total_duration_seconds` to `etcd_snap_save_total_duration_seconds`.
+  - `etcd_debugging_server_lease_expired_total` to `etcd_debugging_server_lease_expired_total`.
+  - v2 store `etcd_debugging_store_reads_total` to `etcd_store_reads_total`.
+  - v2 store `etcd_debugging_store_writes_total` to `etcd_store_writes_total`.
+  - v2 store `etcd_debugging_store_reads_failed_total` to `etcd_store_reads_failed_total`.
+  - v2 store `etcd_debugging_store_expires_total` to `etcd_store_expires_total`.
+  - v2 store `etcd_debugging_store_watch_requests_total` to `etcd_store_watch_requests_total`.
+  - v2 store `etcd_debugging_store_watchers` to `etcd_store_watchers`.
 
 ### Dependency
 
@@ -118,6 +145,33 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Metrics, Monitoring
 
+- Promote all [`etcd_debugging_*` Prometheus metrics to `etcd_*`](https://github.com/coreos/etcd/pull/9764).
+  - `etcd_debugging_*` has been marked as experimental.
+  - `etcd_debugging_mvcc_range_total` to `etcd_mvcc_range_total`.
+  - `etcd_debugging_mvcc_put_total` to `etcd_mvcc_put_total`.
+  - `etcd_debugging_mvcc_delete_total` to `etcd_mvcc_delete_total`.
+  - `etcd_debugging_mvcc_txn_total` to `etcd_mvcc_txn_total`.
+  - `etcd_debugging_mvcc_keys_total` to `etcd_mvcc_keys_total`.
+  - `etcd_debugging_mvcc_watch_stream_total` to `etcd_mvcc_watch_stream_total`.
+  - `etcd_debugging_mvcc_watcher_total` to `etcd_mvcc_watcher_total`.
+  - `etcd_debugging_mvcc_slow_watcher_total` to `etcd_mvcc_slow_watcher_total`.
+  - `etcd_debugging_mvcc_events_total` to `etcd_mvcc_events_total`.
+  - `etcd_debugging_mvcc_pending_events_total` to `etcd_mvcc_pending_events_total`.
+  - `etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds` to `etcd_mvcc_index_compaction_pause_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds` to `etcd_mvcc_db_compaction_pause_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_total_duration_milliseconds` to `etcd_mvcc_db_compaction_total_duration_milliseconds`.
+  - `etcd_debugging_mvcc_db_compaction_keys_total` to `etcd_mvcc_db_compaction_keys_total`.
+  - `etcd_debugging_mvcc_db_total_size_in_bytes` to `etcd_mvcc_db_total_size_in_bytes`.
+  - `etcd_debugging_mvcc_db_total_size_in_use_in_bytes` to `etcd_mvcc_db_total_size_in_use_in_bytes`.
+  - `etcd_debugging_snap_save_marshalling_duration_seconds` to `etcd_snap_save_marshalling_duration_seconds`.
+  - `etcd_debugging_snap_save_total_duration_seconds` to `etcd_snap_save_total_duration_seconds`.
+  - `etcd_debugging_server_lease_expired_total` to `etcd_debugging_server_lease_expired_total`.
+  - v2 store `etcd_debugging_store_reads_total` to `etcd_store_reads_total`.
+  - v2 store `etcd_debugging_store_writes_total` to `etcd_store_writes_total`.
+  - v2 store `etcd_debugging_store_reads_failed_total` to `etcd_store_reads_failed_total`.
+  - v2 store `etcd_debugging_store_expires_total` to `etcd_store_expires_total`.
+  - v2 store `etcd_debugging_store_watch_requests_total` to `etcd_store_watch_requests_total`.
+  - v2 store `etcd_debugging_store_watchers` to `etcd_store_watchers`.
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
