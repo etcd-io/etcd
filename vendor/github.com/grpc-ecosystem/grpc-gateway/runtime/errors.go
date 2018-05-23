@@ -1,10 +1,10 @@
 package runtime
 
 import (
+	"context"
 	"io"
 	"net/http"
 
-	"context"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -38,7 +38,7 @@ func HTTPStatusFromCode(code codes.Code) int {
 	case codes.ResourceExhausted:
 		return http.StatusTooManyRequests
 	case codes.FailedPrecondition:
-		return http.StatusBadRequest
+		return http.StatusPreconditionFailed
 	case codes.Aborted:
 		return http.StatusConflict
 	case codes.OutOfRange:

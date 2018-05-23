@@ -111,8 +111,8 @@
     "runtime/internal",
     "utilities"
   ]
-  revision = "74ba57806b9706edc6e2c9e5854ced57a9cd5ba0"
-  version = "v1.4.0"
+  revision = "92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
+  version = "v1.4.1"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
