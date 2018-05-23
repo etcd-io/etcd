@@ -31,7 +31,7 @@ type remote struct {
 
 func startRemote(tr *Transport, urls types.URLs, id types.ID) *remote {
 	picker := newURLPicker(urls)
-	status := newPeerStatus(tr.Logger, id)
+	status := newPeerStatus(tr.Logger, tr.ID, id)
 	pipeline := &pipeline{
 		peerID: id,
 		tr:     tr,

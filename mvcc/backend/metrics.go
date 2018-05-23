@@ -17,7 +17,7 @@ package backend
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	commitDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	commitSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
 		Name:      "backend_commit_duration_seconds",
@@ -28,7 +28,7 @@ var (
 		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 
-	defragDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	defragSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
 		Name:      "backend_defrag_duration_seconds",
@@ -40,7 +40,7 @@ var (
 		Buckets: prometheus.ExponentialBuckets(.1, 2, 13),
 	})
 
-	snapshotDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	snapshotTransferSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
 		Name:      "backend_snapshot_duration_seconds",
@@ -53,7 +53,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(commitDurations)
-	prometheus.MustRegister(defragDurations)
-	prometheus.MustRegister(snapshotDurations)
+	prometheus.MustRegister(commitSec)
+	prometheus.MustRegister(defragSec)
+	prometheus.MustRegister(snapshotTransferSec)
 }

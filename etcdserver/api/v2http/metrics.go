@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2error"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,20 +44,23 @@ var (
 			Help:      "Counter of handle failures of requests (non-watches), by method (GET/PUT etc.) and code (400, 500 etc.).",
 		}, []string{"method", "code"})
 
-	successfulEventsHandlingTime = prometheus.NewHistogramVec(
+	successfulEventsHandlingSec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
 			Subsystem: "http",
 			Name:      "successful_duration_seconds",
 			Help:      "Bucketed histogram of processing time (s) of successfully handled requests (non-watches), by method (GET/PUT etc.).",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 13),
+
+			// lowest bucket start of upper bound 0.0005 sec (0.5 ms) with factor 2
+			// highest bucket start of 0.0005 sec * 2^12 == 2.048 sec
+			Buckets: prometheus.ExponentialBuckets(0.0005, 2, 13),
 		}, []string{"method"})
 )
 
 func init() {
 	prometheus.MustRegister(incomingEvents)
 	prometheus.MustRegister(failedEvents)
-	prometheus.MustRegister(successfulEventsHandlingTime)
+	prometheus.MustRegister(successfulEventsHandlingSec)
 }
 
 func reportRequestReceived(request etcdserverpb.Request) {
@@ -65,7 +69,7 @@ func reportRequestReceived(request etcdserverpb.Request) {
 
 func reportRequestCompleted(request etcdserverpb.Request, startTime time.Time) {
 	method := methodFromRequest(request)
-	successfulEventsHandlingTime.WithLabelValues(method).Observe(time.Since(startTime).Seconds())
+	successfulEventsHandlingSec.WithLabelValues(method).Observe(time.Since(startTime).Seconds())
 }
 
 func reportRequestFailed(request etcdserverpb.Request, err error) {

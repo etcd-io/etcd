@@ -32,14 +32,15 @@ type failureType struct {
 
 type peerStatus struct {
 	lg     *zap.Logger
+	local  types.ID
 	id     types.ID
 	mu     sync.Mutex // protect variables below
 	active bool
 	since  time.Time
 }
 
-func newPeerStatus(lg *zap.Logger, id types.ID) *peerStatus {
-	return &peerStatus{lg: lg, id: id}
+func newPeerStatus(lg *zap.Logger, local, id types.ID) *peerStatus {
+	return &peerStatus{lg: lg, local: local, id: id}
 }
 
 func (s *peerStatus) activate() {
@@ -53,6 +54,8 @@ func (s *peerStatus) activate() {
 		}
 		s.active = true
 		s.since = time.Now()
+
+		activePeers.WithLabelValues(s.local.String(), s.id.String()).Inc()
 	}
 }
 
@@ -69,8 +72,12 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 		}
 		s.active = false
 		s.since = time.Time{}
+
+		activePeers.WithLabelValues(s.local.String(), s.id.String()).Dec()
+		disconnectedPeers.WithLabelValues(s.local.String(), s.id.String()).Inc()
 		return
 	}
+
 	if s.lg != nil {
 		s.lg.Debug("peer deactivated again", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
 	}

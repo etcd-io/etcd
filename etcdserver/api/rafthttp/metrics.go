@@ -17,6 +17,24 @@ package rafthttp
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
+	activePeers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "active_peers",
+		Help:      "The current number of active peer connections.",
+	},
+		[]string{"Local", "Remote"},
+	)
+
+	disconnectedPeers = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "disconnected_peers_total",
+		Help:      "The total number of disconnected peers.",
+	},
+		[]string{"Local", "Remote"},
+	)
+
 	sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -53,21 +71,26 @@ var (
 		[]string{"From"},
 	)
 
-	rtts = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	rttSec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
 		Name:      "peer_round_trip_time_seconds",
 		Help:      "Round-Trip-Time histogram between peers.",
-		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 14),
+
+		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
+		// highest bucket start of 0.0001 sec * 2^15 == 3.2768 sec
+		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 16),
 	},
 		[]string{"To"},
 	)
 )
 
 func init() {
+	prometheus.MustRegister(activePeers)
+	prometheus.MustRegister(disconnectedPeers)
 	prometheus.MustRegister(sentBytes)
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(sentFailures)
 	prometheus.MustRegister(recvFailures)
-	prometheus.MustRegister(rtts)
+	prometheus.MustRegister(rttSec)
 }
