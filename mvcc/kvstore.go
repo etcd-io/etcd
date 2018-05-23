@@ -163,12 +163,18 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 }
 
 func (s *store) Hash() (hash uint32, revision int64, err error) {
+	start := time.Now()
+
 	s.b.ForceCommit()
 	h, err := s.b.Hash(DefaultIgnores)
+
+	hashDurations.Observe(time.Since(start).Seconds())
 	return h, s.currentRev, err
 }
 
 func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev int64, err error) {
+	start := time.Now()
+
 	s.mu.RLock()
 	s.revMu.RLock()
 	compactRev, currentRev = s.compactMainRev, s.currentRev
@@ -213,7 +219,10 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 		h.Write(v)
 		return nil
 	})
-	return h.Sum32(), currentRev, compactRev, err
+	hash = h.Sum32()
+
+	hashRevDurations.Observe(time.Since(start).Seconds())
+	return hash, currentRev, compactRev, err
 }
 
 func (s *store) Compact(rev int64) (<-chan struct{}, error) {
