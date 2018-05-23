@@ -17,6 +17,24 @@ package rafthttp
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
+	activePeers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "active_peers",
+		Help:      "The current number of active peer connections.",
+	},
+		[]string{"Local", "Remote"},
+	)
+
+	disconnectedPeers = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "disconnected_peers_total",
+		Help:      "The total number of disconnected peers.",
+	},
+		[]string{"Local", "Remote"},
+	)
+
 	sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -68,6 +86,8 @@ var (
 )
 
 func init() {
+	prometheus.MustRegister(activePeers)
+	prometheus.MustRegister(disconnectedPeers)
 	prometheus.MustRegister(sentBytes)
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(sentFailures)

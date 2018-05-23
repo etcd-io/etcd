@@ -109,7 +109,7 @@ func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.FileInfo) {
 	defer srv.Close()
 
 	picker := mustNewURLPicker(t, []string{srv.URL})
-	snapsend := newSnapshotSender(tr, picker, types.ID(1), newPeerStatus(zap.NewExample(), types.ID(1)))
+	snapsend := newSnapshotSender(tr, picker, types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)))
 	defer snapsend.stop()
 
 	snapsend.send(*sm)

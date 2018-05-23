@@ -137,7 +137,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		}
 	}()
 
-	status := newPeerStatus(t.Logger, peerID)
+	status := newPeerStatus(t.Logger, t.ID, peerID)
 	picker := newURLPicker(urls)
 	errorc := t.ErrorC
 	r := t.Raft
