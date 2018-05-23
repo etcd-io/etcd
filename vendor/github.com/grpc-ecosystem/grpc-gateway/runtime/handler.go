@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"net/textproto"
 
+	"context"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/any"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime/internal"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
@@ -42,7 +43,7 @@ func ForwardResponseStream(ctx context.Context, mux *ServeMux, marshaler Marshal
 	if d, ok := marshaler.(Delimited); ok {
 		delimiter = d.Delimiter()
 	} else {
-	    delimiter = []byte("\n")
+		delimiter = []byte("\n")
 	}
 
 	var wroteHeader bool
@@ -169,16 +170,21 @@ func handleForwardResponseStreamError(wroteHeader bool, marshaler Marshaler, w h
 func streamChunk(result proto.Message, err error) map[string]proto.Message {
 	if err != nil {
 		grpcCode := codes.Unknown
+		grpcMessage := err.Error()
+		var grpcDetails []*any.Any
 		if s, ok := status.FromError(err); ok {
 			grpcCode = s.Code()
+			grpcMessage = s.Message()
+			grpcDetails = s.Proto().GetDetails()
 		}
 		httpCode := HTTPStatusFromCode(grpcCode)
 		return map[string]proto.Message{
 			"error": &internal.StreamError{
 				GrpcCode:   int32(grpcCode),
 				HttpCode:   int32(httpCode),
-				Message:    err.Error(),
+				Message:    grpcMessage,
 				HttpStatus: http.StatusText(httpCode),
+				Details:    grpcDetails,
 			},
 		}
 	}
