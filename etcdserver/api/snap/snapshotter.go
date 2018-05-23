@@ -81,11 +81,14 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-
-	marshallingDurations.Observe(float64(time.Since(start)) / float64(time.Second))
+	snapMarshallingSec.Observe(time.Since(start).Seconds())
 
 	spath := filepath.Join(s.dir, fname)
+
+	fsyncStart := time.Now()
 	err = pioutil.WriteAndSyncFile(spath, d, 0666)
+	snapFsyncSec.Observe(time.Since(fsyncStart).Seconds())
+
 	if err != nil {
 		if s.lg != nil {
 			s.lg.Warn("failed to write a snap file", zap.String("path", spath), zap.Error(err))
@@ -101,7 +104,7 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 		return err
 	}
 
-	saveDurations.Observe(float64(time.Since(start)) / float64(time.Second))
+	snapSaveSec.Observe(time.Since(start).Seconds())
 	return nil
 }
 
