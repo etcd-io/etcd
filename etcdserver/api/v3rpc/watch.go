@@ -183,6 +183,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 				} else {
 					plog.Warningf("failed to receive watch request from gRPC stream (%q)", rerr.Error())
 				}
+				streamFailures.WithLabelValues("receive", "watch").Inc()
 			}
 			errc <- rerr
 		}
@@ -416,6 +417,7 @@ func (sws *serverWatchStream) sendLoop() {
 					} else {
 						plog.Warningf("failed to send watch response to gRPC stream (%q)", serr.Error())
 					}
+					streamFailures.WithLabelValues("send", "watch").Inc()
 				}
 				return
 			}
@@ -445,6 +447,7 @@ func (sws *serverWatchStream) sendLoop() {
 					} else {
 						plog.Warningf("failed to send watch control response to gRPC stream (%q)", err.Error())
 					}
+					streamFailures.WithLabelValues("send", "watch").Inc()
 				}
 				return
 			}
@@ -473,6 +476,7 @@ func (sws *serverWatchStream) sendLoop() {
 							} else {
 								plog.Warningf("failed to send pending watch response to gRPC stream (%q)", err.Error())
 							}
+							streamFailures.WithLabelValues("send", "watch").Inc()
 						}
 						return
 					}
