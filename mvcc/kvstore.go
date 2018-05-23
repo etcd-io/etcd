@@ -150,9 +150,66 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 }
 
 func (s *store) Hash() (hash uint32, revision int64, err error) {
+	start := time.Now()
+
 	s.b.ForceCommit()
 	h, err := s.b.Hash(DefaultIgnores)
+
+	hashDurations.Observe(time.Since(start).Seconds())
 	return h, s.currentRev, err
+}
+
+func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev int64, err error) {
+	start := time.Now()
+
+	s.mu.RLock()
+	s.revMu.RLock()
+	compactRev, currentRev = s.compactMainRev, s.currentRev
+	s.revMu.RUnlock()
+
+	if rev > 0 && rev <= compactRev {
+		s.mu.RUnlock()
+		return 0, 0, compactRev, ErrCompacted
+	} else if rev > 0 && rev > currentRev {
+		s.mu.RUnlock()
+		return 0, currentRev, 0, ErrFutureRev
+	}
+
+	if rev == 0 {
+		rev = currentRev
+	}
+	keep := s.kvindex.Keep(rev)
+
+	tx := s.b.ReadTx()
+	tx.Lock()
+	defer tx.Unlock()
+	s.mu.RUnlock()
+
+	upper := revision{main: rev + 1}
+	lower := revision{main: compactRev + 1}
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+
+	h.Write(keyBucketName)
+	err = tx.UnsafeForEach(keyBucketName, func(k, v []byte) error {
+		kr := bytesToRev(k)
+		if !upper.GreaterThan(kr) {
+			return nil
+		}
+		// skip revisions that are scheduled for deletion
+		// due to compacting; don't skip if there isn't one.
+		if lower.GreaterThan(kr) && len(keep) > 0 {
+			if _, ok := keep[kr]; !ok {
+				return nil
+			}
+		}
+		h.Write(k)
+		h.Write(v)
+		return nil
+	})
+	hash = h.Sum32()
+
+	hashRevDurations.Observe(time.Since(start).Seconds())
+	return hash, currentRev, compactRev, err
 }
 
 func (s *store) Compact(rev int64) (<-chan struct{}, error) {
