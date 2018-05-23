@@ -79,7 +79,7 @@ var (
 		Help:      "The total number of failed proposals seen.",
 	})
 	leaseExpired = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd_debugging",
+		Namespace: "etcd",
 		Subsystem: "server",
 		Name:      "lease_expired_total",
 		Help:      "The total number of expired leases.",
