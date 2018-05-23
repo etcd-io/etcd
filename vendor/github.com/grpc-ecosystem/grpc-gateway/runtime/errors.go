@@ -4,14 +4,17 @@ import (
 	"io"
 	"net/http"
 
+	"context"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
 )
 
 // HTTPStatusFromCode converts a gRPC error code into the corresponding HTTP response status.
+// See: https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
 func HTTPStatusFromCode(code codes.Code) int {
 	switch code {
 	case codes.OK:
@@ -23,7 +26,7 @@ func HTTPStatusFromCode(code codes.Code) int {
 	case codes.InvalidArgument:
 		return http.StatusBadRequest
 	case codes.DeadlineExceeded:
-		return http.StatusRequestTimeout
+		return http.StatusGatewayTimeout
 	case codes.NotFound:
 		return http.StatusNotFound
 	case codes.AlreadyExists:
@@ -33,9 +36,9 @@ func HTTPStatusFromCode(code codes.Code) int {
 	case codes.Unauthenticated:
 		return http.StatusUnauthorized
 	case codes.ResourceExhausted:
-		return http.StatusForbidden
+		return http.StatusTooManyRequests
 	case codes.FailedPrecondition:
-		return http.StatusPreconditionFailed
+		return http.StatusBadRequest
 	case codes.Aborted:
 		return http.StatusConflict
 	case codes.OutOfRange:
@@ -63,11 +66,12 @@ var (
 )
 
 type errorBody struct {
-	Error string `protobuf:"bytes,1,name=error" json:"error"`
-	Code  int32  `protobuf:"varint,2,name=code" json:"code"`
+	Error   string     `protobuf:"bytes,1,name=error" json:"error"`
+	Code    int32      `protobuf:"varint,2,name=code" json:"code"`
+	Details []*any.Any `protobuf:"bytes,3,rep,name=details" json:"details,omitempty"`
 }
 
-//Make this also conform to proto.Message for builtin JSONPb Marshaler
+// Make this also conform to proto.Message for builtin JSONPb Marshaler
 func (e *errorBody) Reset()         { *e = errorBody{} }
 func (e *errorBody) String() string { return proto.CompactTextString(e) }
 func (*errorBody) ProtoMessage()    {}
@@ -92,6 +96,17 @@ func DefaultHTTPError(ctx context.Context, mux *ServeMux, marshaler Marshaler, w
 	body := &errorBody{
 		Error: s.Message(),
 		Code:  int32(s.Code()),
+	}
+
+	for _, detail := range s.Details() {
+		if det, ok := detail.(proto.Message); ok {
+			a, err := ptypes.MarshalAny(det)
+			if err != nil {
+				grpclog.Printf("Failed to marshal any: %v", err)
+			} else {
+				body.Details = append(body.Details, a)
+			}
+		}
 	}
 
 	buf, merr := marshaler.Marshal(body)

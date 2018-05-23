@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/base64"
 	"strconv"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -59,6 +60,16 @@ func Uint32(val string) (uint32, error) {
 		return 0, err
 	}
 	return uint32(i), nil
+}
+
+// Bytes converts the given string representation of a byte sequence into a slice of bytes
+// A bytes sequence is encoded in URL-safe base64 without padding
+func Bytes(val string) ([]byte, error) {
+	b, err := base64.StdEncoding.DecodeString(val)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 // Timestamp converts the given RFC3339 formatted string into a timestamp.Timestamp.
