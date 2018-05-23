@@ -170,6 +170,30 @@ var (
 	// overridden by mvcc initialization
 	reportDbTotalSizeInUseInBytesMu sync.RWMutex
 	reportDbTotalSizeInUseInBytes   func() float64 = func() float64 { return 0 }
+
+	hashDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "mvcc",
+		Name:      "hash_duration_seconds",
+		Help:      "The latency distribution of storage hash operation.",
+
+		// 100 MB usually takes 100 ms, so start with 10 MB of 10 ms
+		// lowest bucket start of upper bound 0.01 sec (10 ms) with factor 2
+		// highest bucket start of 0.01 sec * 2^14 == 163.84 sec
+		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
+	})
+
+	hashRevDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "mvcc",
+		Name:      "hash_rev_duration_seconds",
+		Help:      "The latency distribution of storage hash by revision operation.",
+
+		// 100 MB usually takes 100 ms, so start with 10 MB of 10 ms
+		// lowest bucket start of upper bound 0.01 sec (10 ms) with factor 2
+		// highest bucket start of 0.01 sec * 2^14 == 163.84 sec
+		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
+	})
 )
 
 func init() {
@@ -189,6 +213,8 @@ func init() {
 	prometheus.MustRegister(dbCompactionKeysCounter)
 	prometheus.MustRegister(dbTotalSize)
 	prometheus.MustRegister(dbTotalSizeInUse)
+	prometheus.MustRegister(hashDurations)
+	prometheus.MustRegister(hashRevDurations)
 }
 
 // ReportEventReceived reports that an event is received.
