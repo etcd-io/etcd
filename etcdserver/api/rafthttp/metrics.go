@@ -53,7 +53,7 @@ var (
 		[]string{"From"},
 	)
 
-	rtts = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	rttSec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
 		Name:      "peer_round_trip_time_seconds",
@@ -72,5 +72,5 @@ func init() {
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(sentFailures)
 	prometheus.MustRegister(recvFailures)
-	prometheus.MustRegister(rtts)
+	prometheus.MustRegister(rttSec)
 }
