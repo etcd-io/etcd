@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -238,7 +239,7 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 	minRev := int64(math.MaxInt64)
 	for w := range wg.watchers {
 		if w.minRev > curRev {
-			panic("watcher current revision should not exceed current revision")
+			panic(fmt.Errorf("watcher minimum revision %d should not exceed current revision %d", w.minRev, curRev))
 		}
 		if w.minRev < compactRev {
 			select {
