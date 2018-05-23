@@ -220,7 +220,7 @@ func (t *batchTx) commit(stop bool) {
 		err := t.tx.Commit()
 		// gofail: var afterCommit struct{}
 
-		commitDurations.Observe(time.Since(start).Seconds())
+		commitSec.Observe(time.Since(start).Seconds())
 		atomic.AddInt64(&t.backend.commits, 1)
 
 		t.pending = 0
