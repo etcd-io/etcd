@@ -121,7 +121,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
-- Increase [`etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
+- Increase [`etcd_mvcc_index_compaction_pause_duration_milliseconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 1.024 seconds or more.
   - Now, highest buckets collect 1.024 seconds, 2.048 seconds, and 4.096 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
@@ -131,7 +131,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
-- Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
+- Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
 - Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
   - Let's say `"7339c4e5e833c029"` server `/metrics` returns `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`. This indicates that the local node `"7339c4e5e833c029"` currently has two active remote peers `"729934363faa4a24"` and `"b548c2511513015"` in a 3-node cluster. If the node `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
 - Add [`etcd_network_disconnected_peers_total`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
@@ -140,7 +140,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
   - e.g. `etcd_network_server_stream_failures_total{API="watch",Type="receive"} 1`
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
-- Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
+- Fix [`etcd_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
 - Fix [race conditions in v2 server stat collecting](https://github.com/coreos/etcd/pull/9562).
 
 ### Security, Authentication
