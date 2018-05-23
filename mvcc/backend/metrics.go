@@ -22,7 +22,10 @@ var (
 		Subsystem: "disk",
 		Name:      "backend_commit_duration_seconds",
 		Help:      "The latency distributions of commit called by backend.",
-		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
+
+		// lowest bucket start of upper bound 0.001 sec (1 ms) with factor 2
+		// highest bucket start of 0.001 sec * 2^13 == 8.192 sec
+		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 )
 
