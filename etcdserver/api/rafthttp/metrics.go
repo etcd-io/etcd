@@ -58,7 +58,10 @@ var (
 		Subsystem: "network",
 		Name:      "peer_round_trip_time_seconds",
 		Help:      "Round-Trip-Time histogram between peers.",
-		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 14),
+
+		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
+		// highest bucket start of 0.0001 sec * 2^15 == 3.2768 sec
+		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 16),
 	},
 		[]string{"To"},
 	)
