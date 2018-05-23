@@ -293,7 +293,7 @@ func (r *raftNode) sendMessages(ms []raftpb.Message) {
 				// TODO: limit request rate.
 				plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v)", r.heartbeat, exceed)
 				plog.Warningf("server is likely overloaded")
-				heartbeatFailures.Inc()
+				heartbeatSendFailures.Inc()
 			}
 		}
 	}
