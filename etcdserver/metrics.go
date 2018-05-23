@@ -42,11 +42,11 @@ var (
 		Name:      "leader_changes_seen_total",
 		Help:      "The number of leader changes seen.",
 	})
-	heartbeatFailures = prometheus.NewCounter(prometheus.CounterOpts{
+	heartbeatSendFailures = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
-		Name:      "heartbeat_failures_total",
-		Help:      "The total number of heartbeat send failures (likely overloaded from slow disk).",
+		Name:      "heartbeat_send_failures_total",
+		Help:      "The total number of leader heartbeat send failures (likely overloaded from slow disk).",
 	})
 	slowApplies = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
@@ -97,7 +97,7 @@ func init() {
 	prometheus.MustRegister(hasLeader)
 	prometheus.MustRegister(isLeader)
 	prometheus.MustRegister(leaderChanges)
-	prometheus.MustRegister(heartbeatFailures)
+	prometheus.MustRegister(heartbeatSendFailures)
 	prometheus.MustRegister(slowApplies)
 	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)

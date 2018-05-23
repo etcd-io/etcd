@@ -368,7 +368,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 				// TODO: limit request rate.
 				if r.lg != nil {
 					r.lg.Warn(
-						"failed to send out heartbeat; took too long, server is overloaded likely from slow disk",
+						"leader failed to send out heartbeat on time; took too long, leader is overloaded likely from slow disk",
 						zap.Duration("heartbeat-interval", r.heartbeat),
 						zap.Duration("expected-duration", 2*r.heartbeat),
 						zap.Duration("exceeded-duration", exceed),
@@ -377,7 +377,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 					plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v)", r.heartbeat, exceed)
 					plog.Warningf("server is likely overloaded")
 				}
-				heartbeatFailures.Inc()
+				heartbeatSendFailures.Inc()
 			}
 		}
 	}
