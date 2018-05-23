@@ -132,6 +132,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
+- Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
+  - Let's say `"7339c4e5e833c029"` server `/metrics` returns `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`. This indicates that the local node `"7339c4e5e833c029"` currently has two active remote peers `"729934363faa4a24"` and `"b548c2511513015"` in a 3-node cluster. If the node `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
+- Add [`etcd_network_disconnected_peers_total`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
+  - If a remote peer `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` server `/metrics` would return `etcd_network_disconnected_peers_total{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`, while active peer metrics will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
 - Add [`etcd_network_server_stream_failures_total`](https://github.com/coreos/etcd/pull/9760) Prometheus metric.
   - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
   - e.g. `etcd_network_server_stream_failures_total{API="watch",Type="receive"} 1`
