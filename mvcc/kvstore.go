@@ -335,9 +335,14 @@ func init() {
 func (s *store) Hash() (uint32, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	start := time.Now()
+
 	s.b.ForceCommit()
 
 	h, err := s.b.Hash(DefaultIgnores)
+
+	hashDurations.Observe(time.Since(start).Seconds())
 	rev := s.currentRev.main
 	return h, rev, err
 }
