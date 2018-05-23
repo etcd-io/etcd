@@ -28,6 +28,18 @@ var (
 		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 
+	defragDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "disk",
+		Name:      "backend_defrag_duration_seconds",
+		Help:      "The latency distribution of backend defragmentation.",
+
+		// 100 MB usually takes 1 sec, so start with 10 MB of 100 ms
+		// lowest bucket start of upper bound 0.1 sec (100 ms) with factor 2
+		// highest bucket start of 0.1 sec * 2^12 == 409.6 sec
+		Buckets: prometheus.ExponentialBuckets(.01, 2, 13),
+	})
+
 	snapshotDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
@@ -42,5 +54,6 @@ var (
 
 func init() {
 	prometheus.MustRegister(commitDurations)
+	prometheus.MustRegister(defragDurations)
 	prometheus.MustRegister(snapshotDurations)
 }
