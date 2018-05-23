@@ -151,6 +151,8 @@ OK
 
 The metric `etcd_debugging_mvcc_db_total_size_in_use_in_bytes` indicates the actual database usage after a history compaction, while `etcd_debugging_mvcc_db_total_size_in_bytes` shows the database size including free space waiting for defragmentation. The latter increases only when the former is close to it, meaning when both of these metrics are close to the quota, a history compaction is required to avoid triggering the space quota.
 
+`etcd_debugging_mvcc_db_total_size_in_use_in_bytes` is renamed to `etcd_mvcc_db_total_size_in_use_in_bytes` from v3.4.
+
 ## Snapshot backup
 
 Snapshotting the `etcd` cluster on a regular basis serves as a durable backup for an etcd keyspace. By taking periodic snapshots of an etcd member's backend database, an `etcd` cluster can be recovered to a point in time with a known good state.
