@@ -30,7 +30,7 @@ func TestMetricDbSizeBoot(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	v, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
+	v, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	expected := numPuts * len(putreq.Value)
-	beforeDefrag, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
+	beforeDefrag, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	if bv < expected {
 		t.Fatalf("expected db size greater than %d, got %d", expected, bv)
 	}
-	beforeDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	beforeDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	afterCompactionInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	afterCompactionInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	// defrag should give freed space back to fs
 	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
 
-	afterDefrag, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
+	afterDefrag, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 		t.Fatalf("expected less than %d, got %d after defrag", bv, av)
 	}
 
-	afterDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	afterDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
