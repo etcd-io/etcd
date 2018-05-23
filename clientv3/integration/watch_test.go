@@ -887,7 +887,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 	}
 
 	// get max watches; proxy tests have leadership watches, so total may be >numWatches
-	maxWatches, _ := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	maxWatches, _ := cluster.Members[0].Metric("etcd_mvcc_watcher_total")
 
 	// cancel all and wait for cancels to propagate to etcd server
 	for i := 0; i < numWatches; i++ {
@@ -895,7 +895,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 
-	minWatches, err := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	minWatches, err := cluster.Members[0].Metric("etcd_mvcc_watcher_total")
 	if err != nil {
 		t.Fatal(err)
 	}
