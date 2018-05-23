@@ -101,33 +101,39 @@ var (
 			Help:      "Total number of pending events to be sent.",
 		})
 
-	indexCompactionPauseDurations = prometheus.NewHistogram(
+	indexCompactionPauseMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "index_compaction_pause_duration_milliseconds",
 			Help:      "Bucketed histogram of index compaction pause duration.",
-			// 0.5ms -> 1second
-			Buckets: prometheus.ExponentialBuckets(0.5, 2, 12),
+
+			// lowest bucket start of upper bound 0.5 ms with factor 2
+			// highest bucket start of 0.5 ms * 2^13 == 4.096 sec
+			Buckets: prometheus.ExponentialBuckets(0.5, 2, 14),
 		})
 
-	dbCompactionPauseDurations = prometheus.NewHistogram(
+	dbCompactionPauseMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "db_compaction_pause_duration_milliseconds",
 			Help:      "Bucketed histogram of db compaction pause duration.",
-			// 1ms -> 4second
+
+			// lowest bucket start of upper bound 1 ms with factor 2
+			// highest bucket start of 1 ms * 2^12 == 4.096 sec
 			Buckets: prometheus.ExponentialBuckets(1, 2, 13),
 		})
 
-	dbCompactionTotalDurations = prometheus.NewHistogram(
+	dbCompactionTotalMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "db_compaction_total_duration_milliseconds",
 			Help:      "Bucketed histogram of db compaction total duration.",
-			// 100ms -> 800second
+
+			// lowest bucket start of upper bound 100 ms with factor 2
+			// highest bucket start of 100 ms * 2^13 == 8.192 sec
 			Buckets: prometheus.ExponentialBuckets(100, 2, 14),
 		})
 
@@ -169,9 +175,9 @@ var (
 	)
 	// overridden by mvcc initialization
 	reportDbTotalSizeInUseInBytesMu sync.RWMutex
-	reportDbTotalSizeInUseInBytes   func() float64 = func() float64 { return 0 }
+	reportDbTotalSizeInUseInBytes   = func() float64 { return 0 }
 
-	hashDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	hashSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "mvcc",
 		Name:      "hash_duration_seconds",
@@ -183,7 +189,7 @@ var (
 		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
 	})
 
-	hashRevDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	hashRevSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "mvcc",
 		Name:      "hash_rev_duration_seconds",
@@ -207,14 +213,14 @@ func init() {
 	prometheus.MustRegister(slowWatcherGauge)
 	prometheus.MustRegister(totalEventsCounter)
 	prometheus.MustRegister(pendingEventsGauge)
-	prometheus.MustRegister(indexCompactionPauseDurations)
-	prometheus.MustRegister(dbCompactionPauseDurations)
-	prometheus.MustRegister(dbCompactionTotalDurations)
+	prometheus.MustRegister(indexCompactionPauseMs)
+	prometheus.MustRegister(dbCompactionPauseMs)
+	prometheus.MustRegister(dbCompactionTotalMs)
 	prometheus.MustRegister(dbCompactionKeysCounter)
 	prometheus.MustRegister(dbTotalSize)
 	prometheus.MustRegister(dbTotalSizeInUse)
-	prometheus.MustRegister(hashDurations)
-	prometheus.MustRegister(hashRevDurations)
+	prometheus.MustRegister(hashSec)
+	prometheus.MustRegister(hashRevSec)
 }
 
 // ReportEventReceived reports that an event is received.

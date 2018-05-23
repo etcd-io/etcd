@@ -168,7 +168,7 @@ func (s *store) Hash() (hash uint32, revision int64, err error) {
 	s.b.ForceCommit()
 	h, err := s.b.Hash(DefaultIgnores)
 
-	hashDurations.Observe(time.Since(start).Seconds())
+	hashSec.Observe(time.Since(start).Seconds())
 	return h, s.currentRev, err
 }
 
@@ -221,7 +221,7 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	})
 	hash = h.Sum32()
 
-	hashRevDurations.Observe(time.Since(start).Seconds())
+	hashRevSec.Observe(time.Since(start).Seconds())
 	return hash, currentRev, compactRev, err
 }
 
@@ -274,7 +274,7 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 
 	s.fifoSched.Schedule(j)
 
-	indexCompactionPauseDurations.Observe(float64(time.Since(start) / time.Millisecond))
+	indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 	return ch, nil
 }
 
