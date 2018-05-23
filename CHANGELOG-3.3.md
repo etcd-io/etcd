@@ -3,6 +3,21 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md).
 
 
+## [v3.3.6](https://github.com/coreos/etcd/releases/tag/v3.3.6) (TBD 2018-06)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.5...v3.3.6) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### etcd server
+
+- Allow [empty auth token](https://github.com/coreos/etcd/pull/9369).
+  - Previously, when auth token is an empty string, it returns [`failed to initialize the etcd server: auth: invalid auth options` error](https://github.com/coreos/etcd/issues/9349).
+- Fix [auth storage panic on server lease revoke routine with JWT token](https://github.com/coreos/etcd/issues/9695).
+
+### Go
+
+- Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).
+
+
 ## [v3.3.5](https://github.com/coreos/etcd/releases/tag/v3.3.5) (2018-05-09)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.4...v3.3.5) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
