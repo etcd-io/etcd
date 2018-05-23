@@ -119,6 +119,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 ### Metrics, Monitoring
 
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
+- Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
 - Add [`etcd_network_server_stream_failures_total`](https://github.com/coreos/etcd/pull/9760) Prometheus metric.
   - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
