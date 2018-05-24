@@ -303,8 +303,15 @@ func TestLeaderElectionPreVote(t *testing.T) {
 
 func testLeaderElection(t *testing.T, preVote bool) {
 	var cfg func(*Config)
+	candState := StateType(StateCandidate)
+	candTerm := uint64(1)
 	if preVote {
 		cfg = preVoteConfig
+		// In pre-vote mode, an election that fails to complete
+		// leaves the node in pre-candidate state without advancing
+		// the term.
+		candState = StatePreCandidate
+		candTerm = 0
 	}
 	tests := []struct {
 		*network
@@ -313,8 +320,8 @@ func testLeaderElection(t *testing.T, preVote bool) {
 	}{
 		{newNetworkWithConfig(cfg, nil, nil, nil), StateLeader, 1},
 		{newNetworkWithConfig(cfg, nil, nil, nopStepper), StateLeader, 1},
-		{newNetworkWithConfig(cfg, nil, nopStepper, nopStepper), StateCandidate, 1},
-		{newNetworkWithConfig(cfg, nil, nopStepper, nopStepper, nil), StateCandidate, 1},
+		{newNetworkWithConfig(cfg, nil, nopStepper, nopStepper), candState, candTerm},
+		{newNetworkWithConfig(cfg, nil, nopStepper, nopStepper, nil), candState, candTerm},
 		{newNetworkWithConfig(cfg, nil, nopStepper, nopStepper, nil, nil), StateLeader, 1},
 
 		// three logs further along than 0, but in the same term so rejections
@@ -327,23 +334,11 @@ func testLeaderElection(t *testing.T, preVote bool) {
 	for i, tt := range tests {
 		tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		sm := tt.network.peers[1].(*raft)
-		var expState StateType
-		var expTerm uint64
-		if tt.state == StateCandidate && preVote {
-			// In pre-vote mode, an election that fails to complete
-			// leaves the node in pre-candidate state without advancing
-			// the term.
-			expState = StatePreCandidate
-			expTerm = 0
-		} else {
-			expState = tt.state
-			expTerm = tt.expTerm
+		if sm.state != tt.state {
+			t.Errorf("#%d: state = %s, want %s", i, sm.state, tt.state)
 		}
-		if sm.state != expState {
-			t.Errorf("#%d: state = %s, want %s", i, sm.state, expState)
-		}
-		if g := sm.Term; g != expTerm {
-			t.Errorf("#%d: term = %d, want %d", i, g, expTerm)
+		if g := sm.Term; g != tt.expTerm {
+			t.Errorf("#%d: term = %d, want %d", i, g, tt.expTerm)
 		}
 	}
 }
