@@ -109,9 +109,19 @@ func TestV3AuthRevision(t *testing.T) {
 // TestV3AuthWithLeaseRevokeWithRoot ensures that granted leases
 // with root user be revoked after TTL.
 func TestV3AuthWithLeaseRevokeWithRoot(t *testing.T) {
+	testV3AuthWithLeaseRevokeWithRoot(t, ClusterConfig{Size: 1})
+}
+
+// TestV3AuthWithLeaseRevokeWithRootJWT creates a lease with a JWT-token enabled cluster.
+// And tests if server is able to revoke expiry lease item.
+func TestV3AuthWithLeaseRevokeWithRootJWT(t *testing.T) {
+	testV3AuthWithLeaseRevokeWithRoot(t, ClusterConfig{Size: 1, AuthToken: defaultTokenJWT})
+}
+
+func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
 	defer testutil.AfterTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ccfg)
 	defer clus.Terminate(t)
 
 	api := toGRPC(clus.Client(0))

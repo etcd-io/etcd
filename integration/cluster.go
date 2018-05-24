@@ -107,6 +107,8 @@ var (
 		ClientCertAuth: true,
 	}
 
+	defaultTokenJWT = "jwt,pub-key=./fixtures/server.crt,priv-key=./fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
+
 	lg = zap.NewNop()
 )
 
@@ -122,6 +124,8 @@ type ClusterConfig struct {
 	ClientTLS *transport.TLSInfo
 
 	DiscoveryURL string
+
+	AuthToken string
 
 	UseGRPC bool
 
@@ -272,6 +276,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 	m := mustNewMember(t,
 		memberConfig{
 			name:                     c.name(rand.Int()),
+			authToken:                c.cfg.AuthToken,
 			peerTLS:                  c.cfg.PeerTLS,
 			clientTLS:                c.cfg.ClientTLS,
 			quotaBackendBytes:        c.cfg.QuotaBackendBytes,
@@ -557,6 +562,7 @@ type memberConfig struct {
 	name                     string
 	peerTLS                  *transport.TLSInfo
 	clientTLS                *transport.TLSInfo
+	authToken                string
 	quotaBackendBytes        int64
 	maxTxnOps                uint
 	maxRequestBytes          uint
@@ -632,7 +638,13 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	if mcfg.snapshotCatchUpEntries != 0 {
 		m.SnapshotCatchUpEntries = mcfg.snapshotCatchUpEntries
 	}
-	m.AuthToken = "simple"              // for the purpose of integration testing, simple token is enough
+
+	// for the purpose of integration testing, simple token is enough
+	m.AuthToken = "simple"
+	if mcfg.authToken != "" {
+		m.AuthToken = mcfg.authToken
+	}
+
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
 	m.grpcServerOpts = []grpc.ServerOption{}
