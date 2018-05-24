@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !cluster_proxy
-
 package integration
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -35,7 +34,10 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,
 	})
-	defer clus.Terminate(t)
+	defer func() {
+		os.Unsetenv("CLUSTER_DEBUG")
+		clus.Terminate(t)
+	}()
 
 	// spawn a watcher before shutdown, and put it in synced watcher
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -44,11 +46,18 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	if errW != nil {
 		t.Fatal(errW)
 	}
+
+	os.Setenv("CLUSTER_DEBUG", "1")
+	fmt.Println("wStream.Send 1")
 	if err := wStream.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5}}}); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
+	fmt.Println("wStream.Send 2")
+
+	fmt.Println("wStream.Recv 1")
 	wresp, errR := wStream.Recv()
+	fmt.Println("wStream.Recv 2", errR)
 	if errR != nil {
 		t.Errorf("wStream.Recv error: %v", errR)
 	}
@@ -64,7 +73,9 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	// to trigger snapshot from the leader to the stopped follower
 	for i := 0; i < 15; i++ {
+		fmt.Println(i, "kvc.Put 1")
 		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		fmt.Println(i, "kvc.Put 2", err)
 		if err != nil {
 			t.Errorf("#%d: couldn't put key (%v)", i, err)
 		}
@@ -82,7 +93,9 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// between synced and unsynced watchers
 	errc := make(chan error)
 	go func() {
+		fmt.Println("go wStream.Recv() 1")
 		cresp, cerr := wStream.Recv()
+		fmt.Println("go wStream.Recv() 2", cerr)
 		if cerr != nil {
 			errc <- cerr
 			return
