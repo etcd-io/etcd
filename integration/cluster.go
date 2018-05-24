@@ -981,7 +981,7 @@ func WaitClientV3(t *testing.T, kv clientv3.KV) {
 	var err error
 	for time.Now().Before(timeout) {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		_, err := kv.Get(ctx, "/")
+		_, err = kv.Get(ctx, "/")
 		cancel()
 		if err == nil {
 			return

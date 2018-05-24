@@ -1948,6 +1948,6 @@ func waitForRestart(t *testing.T, kvc pb.KVClient) {
 		}
 	}
 	if err != nil {
-		t.Fatal("timed out waiting for restart: %v", err)
+		t.Fatalf("timed out waiting for restart: %v", err)
 	}
 }
