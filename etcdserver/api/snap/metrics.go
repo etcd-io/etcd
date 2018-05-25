@@ -18,7 +18,7 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	snapMarshallingSec = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "etcd_debugging",
+		Namespace: "etcd",
 		Subsystem: "snap",
 		Name:      "save_marshalling_duration_seconds",
 		Help:      "The marshalling cost distributions of save called by snapshot.",
@@ -29,7 +29,7 @@ var (
 	})
 
 	snapSaveSec = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "etcd_debugging",
+		Namespace: "etcd",
 		Subsystem: "snap",
 		Name:      "save_total_duration_seconds",
 		Help:      "The total latency distributions of save called by snapshot.",
