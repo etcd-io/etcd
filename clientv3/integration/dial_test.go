@@ -79,6 +79,9 @@ func TestDialTLSNoConfig(t *testing.T) {
 		DialTimeout: time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer c.Close()
 
 	// TODO: this should not be required when we set grpc.WithBlock()
