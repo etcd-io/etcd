@@ -44,6 +44,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - **Remove `etcd --ca-file` flag**, instead [use `--trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--ca-file` has been deprecated since v2.1).
 - **Remove `etcd --peer-ca-file` flag**, instead [use `--peer-trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--peer-ca-file` has been deprecated since v2.1).
 - **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/coreos/etcd/pull/9470) (`CAFile` has been deprecated since v2.1).
+- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
+  - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
 - Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
@@ -222,6 +224,9 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - "unsynced" watcher restore operation was not correctly populating its underlying watcher group.
   - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
   - A node gets network partitioned with a watcher on a future revision, and falls behind receiving a leader snapshot after partition gets removed. When applying this snapshot, etcd watch storage moves current synced watchers to unsynced since sync watchers might have become stale during network partition. And reset synced watcher group to restart watcher routines. Previously, there was a bug when moving from synced watcher group to unsynced, thus client would miss events when the watcher was requested to the network-partitioned node.
+- Fix [`mvcc` server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
+  - Previously, if a watcher is requested with a future revision to the network-partitioned node, and the partitioned node receives a leader snapshot that is still more up-to-date than the local storage state but whose last revision is still lower than watch revision, then the restore operation on the watcher was triggering server-side panic.
+  - Now, this server panic has been fixed.
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
   - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
@@ -298,6 +303,13 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
 - Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
+
+### gRPC proxy
+
+- Fix [etcd server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
+  - Previously, if a watcher is requested with a future revision to the network-partitioned node, and the partitioned node receives a leader snapshot that is still more up-to-date than the local storage state but whose last revision is still lower than watch revision, then the restore operation on the watcher was triggering server-side panic.
+  - gRPC proxy does this to detect a leader loss with a key `"proxy-namespace__lostleader"` and a watch revision `"int64(math.MaxInt64 - 2)"`.
+  - Now, this server panic has been fixed.
 
 ### gRPC gateway
 
