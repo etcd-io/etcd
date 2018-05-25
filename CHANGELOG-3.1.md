@@ -10,8 +10,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.15...v3.1.16) and
 ### etcd server
 
 - Fix [`mvcc` server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
-  - Previously, if a watcher is requested with a future revision to the network-partitioned node, and the partitioned node receives a leader snapshot that is still more up-to-date than the local storage state but whose last revision is still lower than watch revision, then the restore operation on the watcher was triggering server-side panic.
-  - Now, this server panic has been fixed.
+  - Let's assume that a watcher is requested with a future revision X and sent to node A, which shortly becomes isolated from a network partition. Meanwhile, cluster makes progress and when the partition gets removed, the leader sends a snapshot to node A. Previously, if the snapshot's latest revision is still lower than the watch revision X, etcd server panicked during snapshot restore operation.
+  - Now, this server-side panic has been fixed.
 
 ### Go
 

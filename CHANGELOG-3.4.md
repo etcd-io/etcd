@@ -120,12 +120,16 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Metrics, Monitoring
 
+- Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
+  - Let's say `"7339c4e5e833c029"` server `/metrics` returns `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`. This indicates that the local node `"7339c4e5e833c029"` currently has two active remote peers `"729934363faa4a24"` and `"b548c2511513015"` in a 3-node cluster. If the node `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
+- Add [`etcd_network_disconnected_peers_total`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
+  - If a remote peer `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` server `/metrics` would return `etcd_network_disconnected_peers_total{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`, while active peer metrics will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
+- Add [`etcd_network_server_stream_failures_total`](https://github.com/coreos/etcd/pull/9760) Prometheus metric.
+  - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
+  - e.g. `etcd_network_server_stream_failures_total{API="watch",Type="receive"} 1`
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
-- Increase [`etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
-  - Previously, highest bucket only collects requests taking 1.024 seconds or more.
-  - Now, highest buckets collect 1.024 seconds, 2.048 seconds, and 4.096 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
@@ -134,14 +138,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
-- Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
-  - Let's say `"7339c4e5e833c029"` server `/metrics` returns `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`. This indicates that the local node `"7339c4e5e833c029"` currently has two active remote peers `"729934363faa4a24"` and `"b548c2511513015"` in a 3-node cluster. If the node `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
-- Add [`etcd_network_disconnected_peers_total`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
-  - If a remote peer `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` server `/metrics` would return `etcd_network_disconnected_peers_total{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`, while active peer metrics will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
-- Add [`etcd_network_server_stream_failures_total`](https://github.com/coreos/etcd/pull/9760) Prometheus metric.
-  - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
-  - e.g. `etcd_network_server_stream_failures_total{API="watch",Type="receive"} 1`
-- Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
+- Add [`etcd_debugging_lease_granted_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
+- Add [`etcd_debugging_lease_revoked_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
+- Add [`etcd_debugging_lease_renewed_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
+- Add [`etcd_debugging_lease_ttl_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
+- Increase [`etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
+  - Previously, highest bucket only collects requests taking 1.024 seconds or more.
+  - Now, highest buckets collect 1.024 seconds, 2.048 seconds, and 4.096 seconds or more.
+- Fix missing [`etcd_network_peer_sent_failures_total`](https://github.com/coreos/etcd/pull/9437) Prometheus metric count.
 - Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
 - Fix [race conditions in v2 server stat collecting](https://github.com/coreos/etcd/pull/9562).
 
@@ -225,8 +229,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Which possibly causes [missing events from "unsynced" watchers](https://github.com/coreos/etcd/issues/9086).
   - A node gets network partitioned with a watcher on a future revision, and falls behind receiving a leader snapshot after partition gets removed. When applying this snapshot, etcd watch storage moves current synced watchers to unsynced since sync watchers might have become stale during network partition. And reset synced watcher group to restart watcher routines. Previously, there was a bug when moving from synced watcher group to unsynced, thus client would miss events when the watcher was requested to the network-partitioned node.
 - Fix [`mvcc` server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
-  - Previously, if a watcher is requested with a future revision to the network-partitioned node, and the partitioned node receives a leader snapshot that is still more up-to-date than the local storage state but whose last revision is still lower than watch revision, then the restore operation on the watcher was triggering server-side panic.
-  - Now, this server panic has been fixed.
+  - Let's assume that a watcher is requested with a future revision X and sent to node A, which shortly becomes isolated from a network partition. Meanwhile, cluster makes progress and when the partition gets removed, the leader sends a snapshot to node A. Previously, if the snapshot's latest revision is still lower than the watch revision X, etcd server panicked during snapshot restore operation.
+  - Now, this server-side panic has been fixed.
 - Fix [server panic on invalid Election Proclaim/Resign HTTP(S) requests](https://github.com/coreos/etcd/pull/9379).
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
   - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
@@ -307,9 +311,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### gRPC proxy
 
 - Fix [etcd server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
-  - Previously, if a watcher is requested with a future revision to the network-partitioned node, and the partitioned node receives a leader snapshot that is still more up-to-date than the local storage state but whose last revision is still lower than watch revision, then the restore operation on the watcher was triggering server-side panic.
-  - gRPC proxy does this to detect a leader loss with a key `"proxy-namespace__lostleader"` and a watch revision `"int64(math.MaxInt64 - 2)"`.
-  - Now, this server panic has been fixed.
+  - Let's assume that a watcher is requested with a future revision X and sent to node A, which shortly becomes isolated from a network partition. Meanwhile, cluster makes progress and when the partition gets removed, the leader sends a snapshot to node A. Previously, if the snapshot's latest revision is still lower than the watch revision X, etcd server panicked during snapshot restore operation.
+  - Especially, gRPC proxy was affected, since it detects a leader loss with a key `"proxy-namespace__lostleader"` and a watch revision `"int64(math.MaxInt64 - 2)"`.
+  - Now, this server-side panic has been fixed.
 
 ### gRPC gateway
 
