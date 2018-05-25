@@ -233,6 +233,8 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	heap.Push(&le.leaseHeap, item)
 	l.persistTo(le.b)
 
+	leaseTotalTTLs.Observe(float64(l.ttl))
+	leaseGranted.Inc()
 	return l, nil
 }
 
@@ -271,6 +273,8 @@ func (le *lessor) Revoke(id LeaseID) error {
 	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
 
 	txn.End()
+
+	leaseRevoked.Inc()
 	return nil
 }
 
@@ -315,6 +319,8 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	l.refresh(0)
 	item := &LeaseWithTime{id: l.ID, expiration: l.expiry.UnixNano()}
 	heap.Push(&le.leaseHeap, item)
+
+	leaseRenewed.Inc()
 	return l.ttl, nil
 }
 
