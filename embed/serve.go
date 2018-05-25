@@ -220,8 +220,8 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 	ctx := sctx.ctx
 
 	addr := sctx.addr
-	// explictly define unix network for gRPC socket support
 	if network := sctx.network; network == "unix" {
+		// explicitly define unix network for gRPC socket support
 		addr = fmt.Sprintf("%s://%s", network, addr)
 	}
 
