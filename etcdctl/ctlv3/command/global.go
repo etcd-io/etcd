@@ -394,6 +394,11 @@ func endpointsFromCmd(cmd *cobra.Command) ([]string, error) {
 	// If domain discovery returns no endpoints, check endpoints flag
 	if len(eps) == 0 {
 		eps, err = cmd.Flags().GetStringSlice("endpoints")
+		if err == nil {
+			for i, ip := range eps {
+				eps[i] = strings.TrimSpace(ip)
+			}
+		}
 	}
 	return eps, err
 }
