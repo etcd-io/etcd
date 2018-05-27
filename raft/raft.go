@@ -72,8 +72,8 @@ const (
 var ErrProposalDropped = errors.New("raft proposal dropped")
 
 // lockedRand is a small wrapper around rand.Rand to provide
-// synchronization. Only the methods needed by the code are exposed
-// (e.g. Intn).
+// synchronization among multiple raft groups. Only the methods needed
+// by the code are exposed (e.g. Intn).
 type lockedRand struct {
 	mu   sync.Mutex
 	rand *rand.Rand
