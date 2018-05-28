@@ -17,6 +17,7 @@ package e2e
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 
@@ -64,6 +65,8 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 }
 
 func TestV2CurlIssue5182(t *testing.T) {
+	os.Setenv("ETCDCTL_API", "2")
+	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
 	epc := setupEtcdctlTest(t, &configNoTLS, false)

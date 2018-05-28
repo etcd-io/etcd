@@ -41,6 +41,7 @@ func TestCtlV3Migrate(t *testing.T) {
 		keys[i] = fmt.Sprintf("foo_%d", i)
 		vals[i] = fmt.Sprintf("bar_%d", i)
 	}
+	os.Setenv("ETCDCTL_API", "2")
 	for i := range keys {
 		if err := etcdctlSet(epc, keys[i], vals[i]); err != nil {
 			t.Fatal(err)
@@ -52,8 +53,7 @@ func TestCtlV3Migrate(t *testing.T) {
 		t.Fatalf("error closing etcd processes (%v)", err)
 	}
 
-	os.Setenv("ETCDCTL_API", "3")
-	defer os.Unsetenv("ETCDCTL_API")
+	os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
 		cfg:         configNoTLS,

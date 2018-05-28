@@ -18,7 +18,14 @@ package ctlv3
 
 import "github.com/coreos/etcd/etcdctl/ctlv3/command"
 
-func Start() {
+func Start(apiv string) {
+	if apiv == "" {
+		rootCmd.Short += "\n\n" +
+			"WARNING:\n" +
+			"        Environment variable ETCDCTL_API is not set; defaults to etcdctl v3.\n" +
+			"        Set environment variable ETCDCTL_API=2 to use v2 API or ETCDCTL_API=3 to use v3 API."
+
+	}
 	rootCmd.SetUsageFunc(usageFunc)
 	// Make help just show the usage
 	rootCmd.SetHelpTemplate(`{{.UsageString}}`)

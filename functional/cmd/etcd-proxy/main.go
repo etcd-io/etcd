@@ -64,8 +64,8 @@ $ make build-etcd-proxy
 $ ./bin/etcd-proxy --help
 $ ./bin/etcd-proxy --from localhost:23790 --to localhost:2379 --http-port 2378 --verbose
 
-$ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:2379 put foo bar
-$ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
+$ ./bin/etcdctl --endpoints localhost:2379 put foo bar
+$ ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 		flag.PrintDefaults()
 	}
 
