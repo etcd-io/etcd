@@ -14,6 +14,25 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 Highlighted breaking changes in 3.4.
 
+#### Make `ETCDCTL_API=3 etcdctl` default
+
+`ETCDCTL_API=3` is now the default.
+
+```diff
+./bin/etcdctl set foo bar
+Error: unknown command "set" for "etcdctl"
+
+-./bin/etcdctl set foo bar
++ETCDCTL_API=2 ./bin/etcdctl set foo bar
+bar
+
+ETCDCTL_API=3 ./bin/etcdctl put foo bar
+OK
+
+-ETCDCTL_API=3 ./bin/etcdctl put foo bar
++./bin/etcdctl put foo bar
+```
+
 #### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
 
 `--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
