@@ -55,36 +55,6 @@ groups:
       description: on etcd instance {{ $labels.instance }} gRPC requests to {{ $labels.grpc_method
         }} are slow
       summary: slow gRPC requests
-  - alert: HighNumberOfFailedHTTPRequests
-    expr: 100 * (sum(rate(etcd_http_failed_total{job="etcd"}[5m])) BY (method) / sum(rate(etcd_http_received_total{job="etcd"}[5m]))
-      BY (method)) > 1
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd
-        instance {{ $labels.instance }}'
-      summary: a high number of HTTP requests are failing
-  - alert: HighNumberOfFailedHTTPRequests
-    expr: 100 * (sum(rate(etcd_http_failed_total{job="etcd"}[5m])) BY (method) / sum(rate(etcd_http_received_total{job="etcd"}[5m]))
-      BY (method)) > 5
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd
-        instance {{ $labels.instance }}'
-      summary: a high number of HTTP requests are failing
-  - alert: HTTPRequestsSlow
-    expr: histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m]))
-      > 0.15
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      description: on etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method
-        }} are slow
-      summary: slow HTTP requests
   - record: instance:fd_utilization
     expr: process_open_fds / process_max_fds
   - alert: FdExhaustionClose
