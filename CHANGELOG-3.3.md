@@ -13,7 +13,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.5...v3.3.6) and [
   - Previously, when auth token is an empty string, it returns [`failed to initialize the etcd server: auth: invalid auth options` error](https://github.com/coreos/etcd/issues/9349).
 - Fix [auth storage panic on server lease revoke routine with JWT token](https://github.com/coreos/etcd/issues/9695).
 - Fix [`mvcc` server panic from restore operation](https://github.com/coreos/etcd/pull/9775).
-  - Let's assume that a watcher is requested with a future revision X and sent to node A, which shortly becomes isolated from a network partition. Meanwhile, cluster makes progress and when the partition gets removed, the leader sends a snapshot to node A. Previously, if the snapshot's latest revision is still lower than the watch revision X, etcd server panicked during snapshot restore operation.
+  - Let's assume that a watcher had been requested with a future revision X and sent to node A that became network-partitioned thereafter. Meanwhile, cluster makes progress. Then when the partition gets removed, the leader sends a snapshot to node A. Previously if the snapshot's latest revision is still lower than the watch revision X,  **etcd server panicked** during snapshot restore operation.
   - Now, this server-side panic has been fixed.
 
 ### Go
