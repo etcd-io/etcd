@@ -300,6 +300,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### etcdctl v3
 
+- Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/coreos/etcd/issues/9600).
+  - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
+  - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
 - Add [`--password`](https://github.com/coreos/etcd/pull/9730) flag.
   - To support [`:` character in user name](https://github.com/coreos/etcd/issues/9691).
   - e.g. `etcdctl --user user --password password get foo`
