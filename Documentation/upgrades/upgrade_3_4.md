@@ -19,18 +19,18 @@ Highlighted breaking changes in 3.4.
 `ETCDCTL_API=3` is now the default.
 
 ```diff
-./bin/etcdctl set foo bar
+etcdctl set foo bar
 Error: unknown command "set" for "etcdctl"
 
--./bin/etcdctl set foo bar
-+ETCDCTL_API=2 ./bin/etcdctl set foo bar
+-etcdctl set foo bar
++ETCDCTL_API=2 etcdctl set foo bar
 bar
 
-ETCDCTL_API=3 ./bin/etcdctl put foo bar
+ETCDCTL_API=3 etcdctl put foo bar
 OK
 
--ETCDCTL_API=3 ./bin/etcdctl put foo bar
-+./bin/etcdctl put foo bar
+-ETCDCTL_API=3 etcdctl put foo bar
++etcdctl put foo bar
 ```
 
 #### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
