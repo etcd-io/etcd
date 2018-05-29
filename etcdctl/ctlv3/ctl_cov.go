@@ -23,9 +23,16 @@ import (
 	"github.com/coreos/etcd/etcdctl/ctlv3/command"
 )
 
-func Start() {
+func Start(apiv string) {
 	// ETCDCTL_ARGS=etcdctl_test arg1 arg2...
 	// SetArgs() takes arg1 arg2...
+	if apiv == "" {
+		rootCmd.Short += "\n\n" +
+			"WARNING:\n" +
+			"        Environment variable ETCDCTL_API is not set; defaults to etcdctl v3.\n" +
+			"        Set environment variable ETCDCTL_API=2 to use v2 API or ETCDCTL_API=3 to use v3 API."
+
+	}
 	rootCmd.SetArgs(strings.Split(os.Getenv("ETCDCTL_ARGS"), "\xe7\xcd")[1:])
 	os.Unsetenv("ETCDCTL_ARGS")
 	if err := rootCmd.Execute(); err != nil {
