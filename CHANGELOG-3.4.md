@@ -300,6 +300,10 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### etcdctl v3
 
+- Add [`--password`](https://github.com/coreos/etcd/pull/9730) flag.
+  - To support [`:` character in user name](https://github.com/coreos/etcd/issues/9691).
+  - e.g. `etcdctl --user user --password password get foo`
+- Add [`user add --new-user-password`](https://github.com/coreos/etcd/pull/9730) flag.
 - Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
 - Add [`check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
 - Add [`check perf --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9330) flags.
