@@ -167,5 +167,7 @@ $ etcdctl --user user --password password get foo
 Otherwise, all `etcdctl` commands remain the same. Users and roles can still be created and modified, but require authentication by a user with the root role.
 
 ## Using TLS Common Name
+As of version v3.2 if an etcd server is launched with the option `--client-cert-auth=true`, the field of Common Name (CN) in the client's TLS cert will be used as an etcd user. In this case, the common name authenticates the user and the client does not need a password. Note that if both of 1. `--client-cert-auth=true` is passed and CN is provided by the client, and 2. username and password are provided by the client, the username and password based authentication is prioritized.
 
-If an etcd server is launched with the option `--client-cert-auth=true`, the field of Common Name (CN) in the client's TLS cert will be used as an etcd user. In this case, the common name authenticates the user and the client does not need a password. Note that if both of 1. `--client-cert-auth=true` is passed and CN is provided by the client, and 2. username and password are provided by the client, the username and password based authentication is prioritized.
+As of version v3.3 if an etcd server is launched with the option `--peer-cert-allowed-cn` filtering of CN inter-peer connections is enabled.  Nodes can only join the etcd cluster if their CN match the allowed one.
+See [etcd security page](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
