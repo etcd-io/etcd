@@ -96,12 +96,9 @@ type watchStream struct {
 	watchable watchable
 	ch        chan WatchResponse
 
-	mu sync.Mutex // guards fields below it
-	// nextID is the ID pre-allocated for next new watcher in this stream
-	nextID   WatchID
+	mu       sync.Mutex // guards fields below it
 	closed   bool
-	cancels  map[WatchID]cancelFunc
-	watchers map[WatchID]*watcher
+	watchers map[WatchID]struct{}
 }
 
 // Watch creates a new watcher in the stream and returns its WatchID.
@@ -118,20 +115,11 @@ func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ..
 		return -1, ErrEmptyWatcherRange
 	}
 
-	if id == AutoWatchID {
-		for ws.watchers[ws.nextID] != nil {
-			ws.nextID++
-		}
-		id = ws.nextID
-		ws.nextID++
-	} else if _, ok := ws.watchers[id]; ok {
-		return -1, ErrWatcherDuplicateID
+	id, werr := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+	if werr != nil {
+		return -1, werr
 	}
-
-	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
-
-	ws.cancels[id] = c
-	ws.watchers[id] = w
+	ws.watchers[id] = struct{}{}
 	return id, nil
 }
 
@@ -141,26 +129,13 @@ func (ws *watchStream) Chan() <-chan WatchResponse {
 
 func (ws *watchStream) Cancel(id WatchID) error {
 	ws.mu.Lock()
-	cancel, ok := ws.cancels[id]
-	w := ws.watchers[id]
-	ok = ok && !ws.closed
+	dok, err := ws.watchable.cancelByID(id)
+	dok = dok && !ws.closed
+	delete(ws.watchers, id)
 	ws.mu.Unlock()
-
-	if !ok {
-		return ErrWatcherNotExist
+	if !dok {
+		return err
 	}
-	cancel()
-
-	ws.mu.Lock()
-	// The watch isn't removed until cancel so that if Close() is called,
-	// it will wait for the cancel. Otherwise, Close() could close the
-	// watch channel while the store is still posting events.
-	if ww := ws.watchers[id]; ww == w {
-		delete(ws.cancels, id)
-		delete(ws.watchers, id)
-	}
-	ws.mu.Unlock()
-
 	return nil
 }
 
@@ -168,9 +143,10 @@ func (ws *watchStream) Close() {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
-	for _, cancel := range ws.cancels {
-		cancel()
+	for id := range ws.watchers {
+		ws.watchable.cancelByID(id)
 	}
+	ws.watchers = make(map[WatchID]struct{})
 	ws.closed = true
 	close(ws.ch)
 	watchStreamGauge.Dec()
@@ -183,11 +159,5 @@ func (ws *watchStream) Rev() int64 {
 }
 
 func (ws *watchStream) RequestProgress(id WatchID) {
-	ws.mu.Lock()
-	w, ok := ws.watchers[id]
-	ws.mu.Unlock()
-	if !ok {
-		return
-	}
-	ws.watchable.progress(w)
+	ws.watchable.progress(id)
 }

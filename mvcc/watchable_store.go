@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+
 	"go.uber.org/zap"
 )
 
@@ -37,9 +38,10 @@ var (
 )
 
 type watchable interface {
-	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
-	progress(w *watcher)
+	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (WatchID, error)
+	progress(id WatchID)
 	rev() int64
+	cancelByID(id WatchID) (bool, error)
 }
 
 type watchableStore struct {
@@ -60,6 +62,12 @@ type watchableStore struct {
 	// The key of the map is the key that the watcher watches on.
 	synced watcherGroup
 
+	// nextID is the ID pre-allocated for next new watcher
+	// should be unique globally
+	nextID   WatchID
+	watchers map[WatchID]*watcher
+	cancels  map[WatchID]cancelFunc
+
 	stopc chan struct{}
 	wg    sync.WaitGroup
 }
@@ -78,6 +86,9 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig Co
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
+		nextID:   0,
+		watchers: make(map[WatchID]*watcher),
+		cancels:  make(map[WatchID]cancelFunc),
 		stopc:    make(chan struct{}),
 	}
 	s.store.ReadView = &readView{s}
@@ -103,12 +114,11 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	return &watchStream{
 		watchable: s,
 		ch:        make(chan WatchResponse, chanBufLen),
-		cancels:   make(map[WatchID]cancelFunc),
-		watchers:  make(map[WatchID]*watcher),
+		watchers:  make(map[WatchID]struct{}),
 	}
 }
 
-func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (WatchID, error) {
 	wa := &watcher{
 		key:    key,
 		end:    end,
@@ -120,6 +130,26 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 	s.mu.Lock()
 	s.revMu.RLock()
+
+	if id == AutoWatchID {
+		advanced := false
+		for !advanced {
+			if _, ok := s.watchers[s.nextID]; !ok {
+				// good to use "nextID"
+				advanced = true
+			} else {
+				s.nextID++
+			}
+		}
+		id = s.nextID
+		s.nextID++
+	} else if _, ok := s.watchers[id]; ok {
+		s.revMu.RUnlock()
+		s.mu.Unlock()
+		return -1, ErrWatcherDuplicateID
+	}
+	wa.id = id
+
 	synced := startRev > s.store.currentRev || startRev == 0
 	if synced {
 		wa.minRev = s.store.currentRev + 1
@@ -133,12 +163,18 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 		slowWatcherGauge.Inc()
 		s.unsynced.add(wa)
 	}
+
+	s.watchers[id] = wa
+	s.cancels[id] = func() {
+		s.cancelWatcher(wa)
+	}
+
 	s.revMu.RUnlock()
 	s.mu.Unlock()
 
 	watcherGauge.Inc()
 
-	return wa, func() { s.cancelWatcher(wa) }
+	return wa.id, nil
 }
 
 // cancelWatcher removes references of the watcher from the watchableStore
@@ -182,6 +218,37 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 	watcherGauge.Dec()
 	wa.ch = nil
 	s.mu.Unlock()
+}
+
+// cancelByID cancels a watcher by its ID.
+// It returns 'true' if watcher had existed and been deleted.
+func (s *watchableStore) cancelByID(id WatchID) (bool, error) {
+	s.mu.RLock()
+	w, wok := s.watchers[id]
+	if !wok {
+		s.mu.RUnlock()
+		return false, ErrWatcherNotExist
+	}
+	cancel, cok := s.cancels[id]
+	if !cok {
+		s.mu.RUnlock()
+		return false, ErrWatcherNotExist
+	}
+	s.mu.RUnlock()
+
+	cancel()
+
+	s.mu.Lock()
+	// The watch isn't removed until cancel so that if Close() is called,
+	// it will wait for the cancel. Otherwise, Close() could close the
+	// watch channel while the store is still posting events.
+	if ww := s.watchers[id]; ww == w {
+		delete(s.watchers, id)
+		delete(s.cancels, id)
+	}
+	s.mu.Unlock()
+
+	return true, nil
 }
 
 func (s *watchableStore) Restore(b backend.Backend) error {
@@ -477,10 +544,14 @@ func (s *watchableStore) addVictim(victim watcherBatch) {
 
 func (s *watchableStore) rev() int64 { return s.store.Rev() }
 
-func (s *watchableStore) progress(w *watcher) {
+func (s *watchableStore) progress(id WatchID) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	w, ok := s.watchers[id]
+	if !ok {
+		return
+	}
 	if _, ok := s.synced.watchers[w]; ok {
 		w.send(WatchResponse{WatchID: w.id, Revision: s.rev()})
 		// If the ch is full, this watcher is receiving events.
