@@ -70,6 +70,10 @@ type Watcher interface {
 
 type WatchResponse struct {
 	Header pb.ResponseHeader
+
+	// ID is the registered watch ID.
+	ID int64
+
 	Events []*Event
 
 	// CompactRevision is the minimum revision the watcher may receive.
@@ -403,8 +407,10 @@ func (w *watchGrpcStream) closeSubstream(ws *watcherStream) {
 	}
 	// close subscriber's channel
 	if closeErr := w.closeErr; closeErr != nil && ws.initReq.ctx.Err() == nil {
-		go w.sendCloseSubstream(ws, &WatchResponse{closeErr: w.closeErr})
+		go w.sendCloseSubstream(ws, &WatchResponse{ID: ws.id, closeErr: w.closeErr})
 	} else if ws.outc != nil {
+		// TODO: propagate context errors to client?
+		// ws.outc <- WatchResponse{ID: ws.id, Canceled: true, closeErr: ws.initReq.ctx.Err()}
 		close(ws.outc)
 	}
 	if ws.id != -1 {
@@ -599,9 +605,9 @@ func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 	for i, ev := range pbresp.Events {
 		events[i] = (*Event)(ev)
 	}
-	// TODO: return watch ID?
 	wr := &WatchResponse{
 		Header:          *pbresp.Header,
+		ID:              pbresp.WatchId,
 		Events:          events,
 		CompactRevision: pbresp.CompactRevision,
 		Created:         pbresp.Created,

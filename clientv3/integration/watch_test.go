@@ -853,6 +853,28 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 	}
 }
 
+// TestWatchIDs tests subsequent watchers have unique watch IDs.
+func TestWatchIDs(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	cli := cluster.RandClient()
+
+	numWatches := int64(10)
+	for id := int64(0); id < numWatches; id++ {
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
+		ww := cli.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		wresp := <-ww
+		cancel()
+		if wresp.Err() != nil {
+			t.Fatal(wresp.Err())
+		}
+		if id != wresp.ID {
+			t.Fatalf("expected watch ID %d, got %d", id, wresp.ID)
+		}
+	}
+}
+
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
