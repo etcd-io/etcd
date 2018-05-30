@@ -61,7 +61,7 @@ etcd_disk_backend_commit_duration_seconds_bucket{le="0.016"} 406464
 
 ## Health Check
 
-In addtion to responding to the `/metrics` endpoint, any locations specified by `--listen-metrics-urls` will also respond to the `/health` endpoint. This can be useful if the standard endpoint is configured with mutual (client) TLS authentation, but a load balancer or monitoring service still needs access to the health check.
+Since v3.3.0, in addition to responding to the `/metrics` endpoint, any locations specified by `--listen-metrics-urls` will also respond to the `/health` endpoint. This can be useful if the standard endpoint is configured with mutual (client) TLS authentication, but a load balancer or monitoring service still needs access to the health check.
 
 ## Prometheus
 
