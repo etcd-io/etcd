@@ -14,7 +14,7 @@
 
 // Every change should be reflected on help.go as well.
 
-package etcdmain
+package app
 
 import (
 	"flag"
