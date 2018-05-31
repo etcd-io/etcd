@@ -155,11 +155,11 @@ main() {
     gsutil -m cp ./release/*.aci gs://etcd/${RELEASE_VERSION}/
     gsutil -m acl ch -u allUsers:R -r gs://etcd/${RELEASE_VERSION}/
   fi
-  
+
     # Push images.
   if [ "${NO_DOCKER_PUSH}" == 1 ]; then
     echo "Skipping docker push. --no-docker-push flat is set."
-  else    
+  else
     read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     for i in {1..5}; do
@@ -176,11 +176,11 @@ main() {
     fi
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 
-    docker tag quay.io/coreos/etcd:${RELEASE_VERSION} quay.io/coreos/etcd:v${MINOR_VERSION}
-    docker push quay.io/coreos/etcd:v${MINOR_VERSION}
-    
-    gcloud docker -- tag gcr.io/etcd-development/etcd:${RELEASE_VERSION} gcr.io/etcd-development/etcd:v${MINOR_VERSION}
-    gcloud docker -- push gcr.io/etcd-development/etcd:v${MINOR_VERSION}
+    # TODO: upload minor versions: v3.1, v3.2, v3.3, etc.
+    # docker tag quay.io/coreos/etcd:${RELEASE_VERSION} quay.io/coreos/etcd:v${MINOR_VERSION}
+    # docker push quay.io/coreos/etcd:v${MINOR_VERSION}
+    # gcloud docker -- tag gcr.io/etcd-development/etcd:${RELEASE_VERSION} gcr.io/etcd-development/etcd:v${MINOR_VERSION}
+    # gcloud docker -- push gcr.io/etcd-development/etcd:v${MINOR_VERSION}
   fi
 
   # TODO: test
@@ -204,7 +204,7 @@ main() {
     [[ "${confirm,,}" == "y" ]] || exit 1
     git push
   fi
-  
+
   # TODO: signing process
   echo ""
   echo "WARNING: The release has not been signed and published to github. This must be done manually."
