@@ -168,8 +168,10 @@ main() {
     done
     gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 
+    docker push quay.io/coreos/etcd:${RELEASE_VERSION}
+    gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}
     if [ "${MINOR_VERSION}" != "3.1" ]; then
-      for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
+      for TARGET_ARCH in "-arm64" "-ppc64le"; do
         docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
         gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
       done
@@ -208,7 +210,6 @@ main() {
   # TODO: signing process
   echo ""
   echo "WARNING: The release has not been signed and published to github. This must be done manually."
-  echo "WARNING: version/version.go has not been updated to ${RELEASE_VERSION}+git. This must be done manually."
   echo ""
   echo "Success."
   exit 0
