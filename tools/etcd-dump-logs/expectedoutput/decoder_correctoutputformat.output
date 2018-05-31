@@ -1,0 +1,44 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data	decoder_status	decoded_data
+   1	         1	conf	method=ConfChangeAddNode id=2	ERROR	jhjaajjjahjbbbjj
+   2	         2	conf	method=ConfChangeRemoveNode id=2	ERROR	jhjbajjaahjbbbjj
+   2	         3	conf	method=ConfChangeUpdateNode id=2	ERROR	jhjcajjbahjbbbjj
+   2	         4	conf	method=ConfChangeAddLearnerNode id=3	ERROR	jhjdajjcahjcbbjj
+   3	         5	norm	noop	OK	jhjjabjjaajfbfgjfagdfhcjbbahgbbbfhfegibbcabbfhffbbbcbbfhfibbcaebbbgiffbbedgdbhjacbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   3	         6	norm	method=QGET path="/path1"	OK	jhjaabjdeadgdeedaajfbfgjfagdfhcabbacgbbbcjbbcabbcabbbcbbcbbbcaebbbccbbedgdbhjjcbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   3	         7	norm	method=SYNC time="1969-12-31 16:00:00.000000001 -0800 PST"	OK	jhjbabjdeceidedcaajfbfgjfagdfhcbbbacgbbbcjbbcabbcabbbcbbcbbbcaebbbccbbedgdbhjjcbjjchjjdjjjdhjbejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   3	         8	norm	method=DELETE path="/path3"	OK	jhjcabjfdddedcdeeddeaajfbfgjfagdfhccbbahgbbbfhfegibbcabbfhffbbbcbbfhfibbcaebbbgiffbbedgdbhjjcbjjchjjdjjadhjbejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   3	         9	norm	method=RANDOM path="/path4/superlong/path/path/path/path/path/path/path/path/path/pa"..."path/path/path/path/path/path/path/path/path/path/path/path/path" val="{\"hey\":\"ho\",\"hi\":[\"yo\"]}"	OK	jhjdabjfebdadedddfddaaafjabfgjfagdfhcdbfgcgegjfegbfcfffefgbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbfgjfagdfhbbahgbbbfhfegibbcabbfhffbbbcbbfhfibbcaebbbgiffbbedgdbhjjcbjjchjjdjjjdhjbejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   4	        10	norm	ID:5 range:<key:"1" range_end:"hi" limit:6 revision:1 sort_order:ASCEND max_mod_revision:20000 max_create_revision:20000 > 	OK	jhjeaaaejajacaabjbfhfiahjfbjjabhjaehajicjafhajicja
+   5	        11	norm	ID:6 put:<key:"foo1" value:"bar1" lease:1 ignore_lease:true > 	OK	jhjfbbajjajdffffffcaabjdfbfagbcaahjacjja
+   6	        12	norm	ID:7 delete_range:<key:"0" range_end:"9" prev_kv:true > 	OK	jhjgbajhjajacjabjaciahja
+   7	        13	norm	ID:8 txn:<success:<request_delete_range:<key:"a" range_end:"b" > > failure:<request_delete_range:<key:"a" range_end:"b" > > > 	OK	jhjhcbadabjhaajfjajafaabjafbaajhaajfjajafaabjafb
+   8	        14	norm	ID:9 compaction:<physical:true > 	ERROR	jhjicajbajja
+   9	        15	norm	ID:10 lease_grant:<TTL:1 ID:1 > 	ERROR	jhjadbjdjhjaajja
+  10	        16	norm	ID:11 lease_revoke:<ID:2 > 	ERROR	jhjbdajbjhjb
+  11	        17	norm	ID:12 alarm:<action:3 memberID:4 alarm:5 > 	OK	jhjcebjfjhjcajjdahje
+  12	        18	norm	ID:13 auth_enable:<> 	ERROR	jhjdcbcejj
+  13	        19	norm	ID:14 auth_disable:<> 	ERROR	jhjeiacfjj
+  14	        20	norm	ID:15 authenticate:<name:"myname" password:"password" simple_token:"token" > 	OK	jhjfabcfaijajffdgifefafdfeabjhgjfagcgcggffgbfdaajegdfffbfefe
+  15	        21	norm	ID:16 auth_user_add:<name:"name1" password:"pass1" > 	OK	jhajebddjejajefefafdfecaabjegjfagcgcca
+  16	        22	norm	ID:17 auth_user_delete:<name:"name1" > 	OK	jhaaeaddjgjajefefafdfeca
+  17	        23	norm	ID:18 auth_user_get:<name:"name1" > 	OK	jhabfbddjgjajefefafdfeca
+  18	        24	norm	ID:19 auth_user_change_password:<name:"name1" password:"pass2" > 	OK	jhacfaddjejajefefafdfecaabjegjfagcgccb
+  19	        25	norm	ID:20 auth_user_grant_role:<user:"user1" role:"role1" > 	OK	jhadhbdejejajegegcfegbcaabjegbfffcfeca
+  20	        26	norm	ID:21 auth_user_revoke_role:<name:"user2" role:"role2" > 	OK	jhaehadejejajegegcfegbcbabjegbfffcfecb
+  21	        27	norm	ID:22 auth_user_list:<> 	ERROR	jhafibdejj
+  22	        28	norm	ID:23 auth_role_list:<> 	ERROR	jhagiadejj
+  23	        29	norm	ID:24 auth_role_add:<name:"role2" > 	OK	jhahhbdbjgjajegbfffcfecb
+  24	        30	norm	ID:25 auth_role_delete:<role:"role1" > 	OK	jhaihadbjgjajegbfffcfeca
+  25	        31	norm	ID:26 auth_role_get:<role:"role3" > 	OK	jhaaibdbjgjajegbfffcfecc
+  26	        32	norm	ID:27 auth_role_grant_permission:<name:"role3" perm:<permType:WRITE key:"Keys" range_end:"RangeEnd" > > 	OK	jhabiadbabjajegbfffcfeccababjhjaabjddbfegigcaajhebfafefgfedefefd
+  27	        33	norm	ID:28 auth_role_revoke_permission:<role:"role3" key:"key" range_end:"rangeend" > 	OK	jhacabdbafjajegbfffcfeccabjcfbfegiaajhgbfafefgfefefefd
+  27	        34	norm	???	ERROR	cf
+
+Entry types () count is : 34

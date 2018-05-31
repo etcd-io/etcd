@@ -45,6 +45,9 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		t.Skipf("%q does not exist", dumpLogsBinary)
 	}
 
+	decoder_correctoutputformat := filepath.Join(binDir, "/testdecoder/decoder_correctoutputformat.sh")
+	decoder_wrongoutputformat := filepath.Join(binDir, "/testdecoder/decoder_wrongoutputformat.sh")
+
 	p, err := ioutil.TempDir(os.TempDir(), "etcddumplogstest")
 	if err != nil {
 		t.Fatal(err)
@@ -102,6 +105,8 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		{"lease grant entry-type", []string{"-entry-type", "IRRLeaseGrant", p}, "expectedoutput/listIRRLeaseGrant.output"},
 		{"lease revoke entry-type", []string{"-entry-type", "IRRLeaseRevoke", p}, "expectedoutput/listIRRLeaseRevoke.output"},
 		{"confchange and txn entry-type", []string{"-entry-type", "ConfigChange,IRRCompaction", p}, "expectedoutput/listConfigChangeIRRCompaction.output"},
+		{"decoder_correctoutputformat", []string{"-stream-decoder", decoder_correctoutputformat, p}, "expectedoutput/decoder_correctoutputformat.output"},
+		{"decoder_wrongoutputformat", []string{"-stream-decoder", decoder_wrongoutputformat, p}, "expectedoutput/decoder_wrongoutputformat.output"},
 	}
 
 	for _, argtest := range argtests {

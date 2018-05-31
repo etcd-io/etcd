@@ -15,9 +15,15 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -40,6 +46,9 @@ func main() {
 	ConfigChange, Normal, Request, InternalRaftRequest,
 	IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
 	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`)
+	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process 
+	hex encoded lines of binary input (from etcd-dump-logs) 
+	and output a hex encoded line of binary for each input line`)
 
 	flag.Parse()
 
@@ -101,8 +110,14 @@ func main() {
 
 	fmt.Printf("WAL entries:\n")
 	fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
-	fmt.Printf("%4s\t%10s\ttype\tdata\n", "term", "index")
-	listEntriesType(*entrytype, ents)
+
+	fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
+	if *streamdecoder != "" {
+		fmt.Printf("\tdecoder_status\tdecoded_data")
+	}
+	fmt.Println()
+
+	listEntriesType(*entrytype, *streamdecoder, ents)
 }
 
 func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
@@ -203,12 +218,12 @@ type EntryPrinter func(e raftpb.Entry)
 func printInternalRaftRequest(entry raftpb.Entry) {
 	var rr etcdserverpb.InternalRaftRequest
 	if err := rr.Unmarshal(entry.Data); err == nil {
-		fmt.Printf("%4d\t%10d\tnorm\t%s\n", entry.Term, entry.Index, rr.String())
+		fmt.Printf("%4d\t%10d\tnorm\t%s", entry.Term, entry.Index, rr.String())
 	}
 }
 
 func printUnknownNormal(entry raftpb.Entry) {
-	fmt.Printf("%4d\t%10d\tnorm\t???\n", entry.Term, entry.Index)
+	fmt.Printf("%4d\t%10d\tnorm\t???", entry.Term, entry.Index)
 }
 
 func printConfChange(entry raftpb.Entry) {
@@ -216,9 +231,9 @@ func printConfChange(entry raftpb.Entry) {
 	fmt.Printf("\tconf")
 	var r raftpb.ConfChange
 	if err := r.Unmarshal(entry.Data); err != nil {
-		fmt.Printf("\t???\n")
+		fmt.Printf("\t???")
 	} else {
-		fmt.Printf("\tmethod=%s id=%s\n", r.Type, types.ID(r.NodeID))
+		fmt.Printf("\tmethod=%s id=%s", r.Type, types.ID(r.NodeID))
 	}
 }
 
@@ -228,13 +243,13 @@ func printRequest(entry raftpb.Entry) {
 		fmt.Printf("%4d\t%10d\tnorm", entry.Term, entry.Index)
 		switch r.Method {
 		case "":
-			fmt.Printf("\tnoop\n")
+			fmt.Printf("\tnoop")
 		case "SYNC":
-			fmt.Printf("\tmethod=SYNC time=%q\n", time.Unix(0, r.Time))
+			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time))
 		case "QGET", "DELETE":
-			fmt.Printf("\tmethod=%s path=%s\n", r.Method, excerpt(r.Path, 64, 64))
+			fmt.Printf("\tmethod=%s path=%s", r.Method, excerpt(r.Path, 64, 64))
 		default:
-			fmt.Printf("\tmethod=%s path=%s val=%s\n", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+			fmt.Printf("\tmethod=%s path=%s val=%s", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
 		}
 	}
 }
@@ -281,13 +296,33 @@ IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`, et)
 }
 
 //  listEntriesType filters and prints entries based on the entry-type flag,
-func listEntriesType(entrytype string, ents []raftpb.Entry) {
+func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry) {
 	entryFilters := evaluateEntrytypeFlag(entrytype)
 	printerMap := map[string]EntryPrinter{"InternalRaftRequest": printInternalRaftRequest,
 		"Request":       printRequest,
 		"ConfigChange":  printConfChange,
 		"UnknownNormal": printUnknownNormal}
+	var stderr bytes.Buffer
+	args := strings.Split(streamdecoder, " ")
+	cmd := exec.Command(args[0], args[1:]...)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Panic(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Panic(err)
+	}
+	cmd.Stderr = &stderr
+	if streamdecoder != "" {
+		err = cmd.Start()
+		if err != nil {
+			log.Panic(err)
+		}
+	}
+
 	cnt := 0
+
 	for _, e := range ents {
 		passed := false
 		currtype := ""
@@ -301,7 +336,55 @@ func listEntriesType(entrytype string, ents []raftpb.Entry) {
 		if passed {
 			printer := printerMap[currtype]
 			printer(e)
+			if streamdecoder == "" {
+				fmt.Println()
+				continue
+			}
+
+			// if decoder is set, pass the e.Data to stdin and read the stdout from decoder
+			io.WriteString(stdin, hex.EncodeToString(e.Data))
+			io.WriteString(stdin, "\n")
+			outputReader := bufio.NewReader(stdout)
+			decoderoutput, currerr := outputReader.ReadString('\n')
+			if currerr != nil {
+				fmt.Println(currerr)
+				return
+			}
+
+			decoder_status, decoded_data := parseDecoderOutput(decoderoutput)
+
+			fmt.Printf("\t%s\t%s", decoder_status, decoded_data)
 		}
 	}
+
+	stdin.Close()
+	err = cmd.Wait()
+	if streamdecoder != "" {
+		if err != nil {
+			log.Panic(err)
+		}
+		if stderr.String() != "" {
+			os.Stderr.WriteString("decoder stderr: " + stderr.String())
+		}
+	}
+
 	fmt.Printf("\nEntry types (%s) count is : %d", entrytype, cnt)
+}
+
+func parseDecoderOutput(decoderoutput string) (string, string) {
+	var decoder_status string
+	var decoded_data string
+	output := strings.Split(decoderoutput, "|")
+	switch len(output) {
+	case 1:
+		decoder_status = "decoder output format is not right, print output anyway"
+		decoded_data = decoderoutput
+	case 2:
+		decoder_status = output[0]
+		decoded_data = output[1]
+	default:
+		decoder_status = output[0] + "(*WARNING: data might contain deliminator used by etcd-dump-logs)"
+		decoded_data = strings.Join(output[1:], "")
+	}
+	return decoder_status, decoded_data
 }
