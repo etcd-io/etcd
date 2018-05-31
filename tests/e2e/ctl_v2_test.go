@@ -265,9 +265,11 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 
 	// v3 put before v2 set so snapshot happens after v3 operations to confirm
 	// v3 data is preserved after snapshot.
+	os.Setenv("ETCDCTL_API", "3")
 	if err := ctlV3Put(ctlCtx{t: t, epc: epc1}, "v3key", "123", ""); err != nil {
 		t.Fatal(err)
 	}
+	os.Setenv("ETCDCTL_API", "2")
 
 	if err := etcdctlSet(epc1, "foo1", "bar1"); err != nil {
 		t.Fatal(err)
@@ -298,6 +300,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 		t.Fatal(err)
 	}
 
+	os.Setenv("ETCDCTL_API", "3")
 	ctx2 := ctlCtx{t: t, epc: epc2}
 	if v3 {
 		if err := ctlV3Get(ctx2, []string{"v3key"}, kv{"v3key", "123"}); err != nil {
@@ -308,6 +311,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 			t.Fatal(err)
 		}
 	}
+	os.Setenv("ETCDCTL_API", "2")
 
 	// check if it can serve client requests
 	if err := etcdctlSet(epc2, "foo2", "bar2"); err != nil {
