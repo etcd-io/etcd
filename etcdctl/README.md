@@ -256,7 +256,7 @@ RPC: Txn
 <Txn> ::= <CMP>* "\n" <THEN> "\n" <ELSE> "\n"
 <CMP> ::= (<CMPCREATE>|<CMPMOD>|<CMPVAL>|<CMPVER>|<CMPLEASE>) "\n"
 <CMPOP> ::= "<" | "=" | ">"
-<CMPCREATE> := ("c"|"create")"("<KEY>")" <REVISION>
+<CMPCREATE> := ("c"|"create")"("<KEY>")" <CMPOP> <REVISION>
 <CMPMOD> ::= ("m"|"mod")"("<KEY>")" <CMPOP> <REVISION>
 <CMPVAL> ::= ("val"|"value")"("<KEY>")" <CMPOP> <VALUE>
 <CMPVER> ::= ("ver"|"version")"("<KEY>")" <CMPOP> <VERSION>
