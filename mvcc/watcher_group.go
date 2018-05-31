@@ -239,7 +239,15 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 	minRev := int64(math.MaxInt64)
 	for w := range wg.watchers {
 		if w.minRev > curRev {
-			panic(fmt.Errorf("watcher minimum revision %d should not exceed current revision %d", w.minRev, curRev))
+			// after network partition, possibly choosing future revision watcher from restore operation
+			// with watch key "proxy-namespace__lostleader" and revision "math.MaxInt64 - 2"
+			// do not panic when such watcher had been moved from "synced" watcher during restore operation
+			if !w.restore {
+				panic(fmt.Errorf("watcher minimum revision %d should not exceed current revision %d", w.minRev, curRev))
+			}
+
+			// mark 'restore' done, since it's chosen
+			w.restore = false
 		}
 		if w.minRev < compactRev {
 			select {
