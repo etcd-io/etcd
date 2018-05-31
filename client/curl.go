@@ -60,6 +60,17 @@ func printcURL(req *http.Request) error {
 		command += fmt.Sprintf(" -d %q", string(b))
 	}
 
+	http_proxy := os.Getenv("http_proxy")
+	https_proxy := os.Getenv("https_proxy")
+
+	fmt.Fprintln(os.Stderr, "\ncURL may be using your shell environment variables for http_proxy and https_proxy.")
+	fmt.Fprintln(os.Stderr, "If you are receiving strange errors such as:")
+	fmt.Fprintln(os.Stderr, "- TLS handshake errors")
+	fmt.Fprintln(os.Stderr, "- etcd cluster is unavailable or misconfigured")
+	fmt.Fprintln(os.Stderr, "make sure your proxy settings here are un/configured correctly.")
+
+	fmt.Fprintf(os.Stderr, "\nhttp_proxy: %s\n", http_proxy)
+	fmt.Fprintf(os.Stderr, "https_proxy: %s\n\n", https_proxy)
 	fmt.Fprintf(os.Stderr, "cURL Command: %s\n", command)
 
 	// reset body
