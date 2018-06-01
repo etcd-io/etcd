@@ -577,6 +577,11 @@ func (w *watchGrpcStream) run() {
 			return
 
 		case ws := <-w.closingc:
+			// request to garbage collect cancelled watcher in watch storage backend
+			wc.Send(&pb.WatchRequest{
+				RequestUnion: &pb.WatchRequest_CancelRequest{
+					CancelRequest: &pb.WatchCancelRequest{WatchId: ws.id},
+				}})
 			w.closeSubstream(ws)
 			delete(closing, ws)
 			// no more watchers on this stream, shutdown
