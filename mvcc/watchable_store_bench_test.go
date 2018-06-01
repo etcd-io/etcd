@@ -65,9 +65,19 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	}
 }
 
-// BenchmarkWatchableStoreWatchSyncPut benchmarks the case of
+// BenchmarkWatchableStoreWatchPutSync benchmarks the case of
 // many synced watchers receiving a Put notification.
-func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
+func BenchmarkWatchableStoreWatchPutSync(b *testing.B) {
+	benchmarkWatchableStoreWatchPut(b, true)
+}
+
+// BenchmarkWatchableStoreWatchPutUnsync benchmarks the case of
+// many unsynced watchers receiving a Put notification.
+func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
+	benchmarkWatchableStoreWatchPut(b, false)
+}
+
+func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 	defer cleanup(s, be, tmpPath)
@@ -75,12 +85,17 @@ func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
 	k := []byte("testkey")
 	v := []byte("testval")
 
+	rev := int64(0)
+	if !synced {
+		// non-0 value to keep watchers in unsynced
+		rev = 1
+	}
+
 	w := s.NewWatchStream()
 	defer w.Close()
 	watchIDs := make([]WatchID, b.N)
 	for i := range watchIDs {
-		// non-0 value to keep watchers in unsynced
-		watchIDs[i], _ = w.Watch(0, k, nil, 1)
+		watchIDs[i], _ = w.Watch(0, k, nil, rev)
 	}
 
 	b.ResetTimer()
