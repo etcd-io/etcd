@@ -42,7 +42,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -302,6 +302,9 @@ func stopServers(ctx context.Context, ss *servers) {
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
+	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.PeerSelfCert(); err != nil {
 		plog.Fatalf("could not get certs (%v)", err)
 	}
@@ -387,6 +390,9 @@ func (e *Etcd) servePeers() (err error) {
 }
 
 func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
+	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.ClientSelfCert(); err != nil {
 		plog.Fatalf("could not get certs (%v)", err)
 	}
