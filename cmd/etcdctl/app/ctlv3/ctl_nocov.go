@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// etcdctl is a command line application that controls etcd.
-package main
+// +build !cov
 
-import (
-	"fmt"
-	"os"
+package ctlv3
 
-	"github.com/coreos/etcd/etcdctl/ctlv2"
-	"github.com/coreos/etcd/etcdctl/ctlv3"
-)
+import "github.com/coreos/etcd/cmd/etcdctl/app/ctlv3/command"
 
-const (
-	apiEnv = "ETCDCTL_API"
-)
-
-func main() {
-	apiv := os.Getenv(apiEnv)
-	// unset apiEnv to avoid side-effect for future env and flag parsing.
-	os.Unsetenv(apiEnv)
-	if len(apiv) == 0 || apiv == "3" {
-		ctlv3.Start()
-		return
+func Start() {
+	rootCmd.SetUsageFunc(usageFunc)
+	// Make help just show the usage
+	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
+	if err := rootCmd.Execute(); err != nil {
+		command.ExitWithError(command.ExitError, err)
 	}
-
-	if apiv == "2" {
-		ctlv2.Start()
-		return
-	}
-
-	fmt.Fprintln(os.Stderr, "unsupported API version", apiv)
-	os.Exit(1)
 }

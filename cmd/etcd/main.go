@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !cov
+// Package main is a simple wrapper of the real etcd entrypoint package
+// (located at github.com/coreos/etcd/etcdmain) to ensure that etcd is still
+// "go getable"; e.g. `go get github.com/coreos/etcd` works as expected and
+// builds a binary in $GOBIN/etcd
+//
+// This package should NOT be extended or modified in any way; to modify the
+// etcd binary, work in the `github.com/coreos/etcd/etcdmain` package.
+//
+package main
 
-package ctlv3
+import "github.com/coreos/etcd/cmd/etcd/app"
 
-import "github.com/coreos/etcd/etcdctl/ctlv3/command"
-
-func Start() {
-	rootCmd.SetUsageFunc(usageFunc)
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
-	if err := rootCmd.Execute(); err != nil {
-		command.ExitWithError(command.ExitError, err)
-	}
+func main() {
+	app.Main()
 }

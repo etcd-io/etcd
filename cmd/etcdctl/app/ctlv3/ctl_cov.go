@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,5 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package etcdmain contains the main entry point for the etcd binary.
-package etcdmain
+// +build cov
+
+package ctlv3
+
+import (
+	"os"
+	"strings"
+
+	"github.com/coreos/etcd/cmd/etcdctl/app/ctlv3/command"
+)
+
+func Start() {
+	// ETCDCTL_ARGS=etcdctl_test arg1 arg2...
+	// SetArgs() takes arg1 arg2...
+	rootCmd.SetArgs(strings.Split(os.Getenv("ETCDCTL_ARGS"), "\xe7\xcd")[1:])
+	os.Unsetenv("ETCDCTL_ARGS")
+	if err := rootCmd.Execute(); err != nil {
+		command.ExitWithError(command.ExitError, err)
+	}
+}
