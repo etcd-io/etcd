@@ -72,6 +72,11 @@ type TLSInfo struct {
 	// connection will be closed immediately afterwards.
 	HandshakeFailure func(*tls.Conn, error)
 
+	// CipherSuites is a list of supported cipher suites.
+	// If empty, Go auto-populates it by default.
+	// Note that cipher suites are prioritized in the given order.
+	CipherSuites []uint16
+
 	selfCert bool
 
 	// parseFunc exists to simplify testing. Typically, parseFunc
@@ -176,6 +181,10 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	cfg := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		ServerName: info.ServerName,
+	}
+
+	if len(info.CipherSuites) > 0 {
+		cfg.CipherSuites = info.CipherSuites
 	}
 
 	if info.AllowedCN != "" {
