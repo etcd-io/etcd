@@ -375,6 +375,9 @@ func stopServers(ctx context.Context, ss *servers) {
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
+	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.PeerSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
@@ -384,7 +387,11 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	}
 	if !cfg.PeerTLSInfo.Empty() {
 		if cfg.logger != nil {
-			cfg.logger.Info("starting with peer TLS", zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)))
+			cfg.logger.Info(
+				"starting with peer TLS",
+				zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)),
+				zap.Strings("cipher-suites", cfg.CipherSuites),
+			)
 		} else {
 			plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
 		}
@@ -505,6 +512,9 @@ func (e *Etcd) servePeers() (err error) {
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
+	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.ClientSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
@@ -623,6 +633,7 @@ func (e *Etcd) serveClients() (err error) {
 			e.cfg.logger.Info(
 				"starting with client TLS",
 				zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)),
+				zap.Strings("cipher-suites", e.cfg.CipherSuites),
 			)
 		} else {
 			plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
