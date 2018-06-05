@@ -96,7 +96,7 @@ var checkDatascaleCfgMap = map[string]checkDatascaleCfg{
 	},
 	"xl": {
 		// xl tries to hit the upper bound aggressively which is 3 versions of 1M objects (3M in total)
-		limit:   30000000,
+		limit:   3000000,
 		kvSize:  1024,
 		clients: 1000,
 	},
