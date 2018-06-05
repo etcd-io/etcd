@@ -156,6 +156,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
 
+- Support TLS cipher suite whitelisting.
+  - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
+  - TLS handshake fails when client hello is requested with invalid cipher suites.
+  - Add [`etcd --client-cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
+  - Add [`etcd --peer-cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
+  - If empty, Go auto-populates the list.
 - Add [`etcd --host-whitelist`](https://github.com/coreos/etcd/pull/9372) flag, [`etcdserver.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), and [`embed.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), to prevent ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attack.
   - Any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to [DNS rebinding attacks (CVE-2018-5702)](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2).
   - Client origin enforce policy works as follow:
@@ -166,7 +172,6 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - When specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
   - e.g. `etcd --host-whitelist example.com`, then the server will reject all HTTP requests whose Host field is not `example.com` (also rejects requests to `"localhost"`).
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
-- Support [TLS cipher suite lists](TODO).
 - Support [`ttl` field for `etcd` Authentication JWT token](https://github.com/coreos/etcd/pull/8302).
   - e.g. `etcd --auth-token jwt,pub-key=<pub key path>,priv-key=<priv key path>,sign-method=<sign method>,ttl=5m`.
 - Allow empty token provider in [`etcdserver.ServerConfig.AuthToken`](https://github.com/coreos/etcd/pull/9369).
@@ -207,6 +212,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
+- Support TLS cipher suite whitelisting.
+  - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
+  - TLS handshake fails when client hello is requested with invalid cipher suites.
+  - Add [`etcd --cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
+  - If empty, Go auto-populates the list.
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 - Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
   - **`etcd --log-output` will be deprecated in v3.5**.
@@ -271,6 +281,10 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### Package `embed`
 
+- Add [`embed.Config.CipherSuites`](https://github.com/coreos/etcd/pull/9801) to specify a list of supported cipher suites for TLS handshake between client/server  and peers.
+  - If empty, Go auto-populates the list.
+  - Both `embed.Config.ClientTLSInfo.CipherSuites` and `embed.Config.CipherSuites` cannot be non-empty at the same time.
+  - If not empty, specify either `embed.Config.ClientTLSInfo.CipherSuites` or `embed.Config.CipherSuites`.
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/coreos/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
 - Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
