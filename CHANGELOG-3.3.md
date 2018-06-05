@@ -15,6 +15,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.7) and [
   - Add [`etcd --cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
   - If empty, Go auto-populates the list.
 
+### etcdctl v3
+
+- Fix [`move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
+
 ### Go
 
 - Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).

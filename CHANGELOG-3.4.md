@@ -331,6 +331,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
 - Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
+- Fix [`move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
 
 ### gRPC proxy
 

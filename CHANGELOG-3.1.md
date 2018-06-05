@@ -3,6 +3,22 @@
 Previous change logs can be found at [CHANGELOG-3.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.0.md).
 
 
+## [v3.1.17](https://github.com/coreos/etcd/releases/tag/v3.1.17) (TBD 2018-06)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.1.16...v3.1.17) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).**
+
+### etcd server
+
+- Fix [v3 snapshot recovery](https://github.com/coreos/etcd/issues/7628).
+  - A follower receives a leader snapshot and persists to `[SNAPSHOT-INDEX].snap.db` file on disk.
+  - Server now [ensures that incoming snapshot be persisted on disk](https://github.com/coreos/etcd/pull/7876) before loading it.
+  - Otherwise, index mismatch could happen, triggering server-side panic (e.g. newer WAL entry with outdated snapshot index).
+
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
+
+
 ## [v3.1.16](https://github.com/coreos/etcd/releases/tag/v3.1.16) (2018-05-31)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.15...v3.1.16) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).**
