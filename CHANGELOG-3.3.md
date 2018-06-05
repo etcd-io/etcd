@@ -3,6 +3,23 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md).
 
 
+## [v3.3.7](https://github.com/coreos/etcd/releases/tag/v3.3.7) (TBD 2018-06)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.7) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### etcd server
+
+- Support TLS cipher suite whitelisting.
+  - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
+  - TLS handshake fails when client hello is requested with invalid cipher suites.
+  - Add [`etcd --cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
+  - If empty, Go auto-populates the list.
+
+### Go
+
+- Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).
+
+
 ## [v3.3.6](https://github.com/coreos/etcd/releases/tag/v3.3.6) (2018-05-31)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.5...v3.3.6) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**

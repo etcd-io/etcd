@@ -142,6 +142,8 @@ Security:
     Peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
   --peer-crl-file ''
     Path to the peer certificate revocation list file.
+  --cipher-suites ''
+    Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).
   --cors '*'
     Comma-separated whitelist of origins for CORS, or cross-origin resource sharing, (empty or * means allow all).
   --host-whitelist '*'
