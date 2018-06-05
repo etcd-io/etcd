@@ -17,7 +17,6 @@ package command
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
@@ -53,16 +52,12 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 	var leaderCli *clientv3.Client
 	var leaderID uint64
 	for _, ep := range eps {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{ep},
-			DialTimeout: 3 * time.Second,
-		})
-		if err != nil {
-			ExitWithError(ExitError, err)
-		}
-		resp, err := cli.Status(ctx, ep)
-		if err != nil {
-			ExitWithError(ExitError, err)
+		cfg := clientConfigFromCmd(cmd)
+		cfg.endpoints = []string{ep}
+		cli := cfg.mustClient()
+		resp, serr := cli.Status(ctx, ep)
+		if serr != nil {
+			ExitWithError(ExitError, serr)
 		}
 
 		if resp.Header.GetMemberId() == resp.Leader {
