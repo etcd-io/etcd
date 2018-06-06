@@ -160,6 +160,8 @@ security flags:
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--peer-crl-file ''
 		path to the peer certificate revocation list file.
+	--cipher-suites ''
+		comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).
 
 logging flags
 

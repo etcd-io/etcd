@@ -190,6 +190,8 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
 
+	fs.Var(flags.NewStringsValueV2(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
+
 	// logging
 	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
@@ -274,6 +276,8 @@ func (cfg *config) configFromCmdLine() error {
 		}
 		cfg.ec.ListenMetricsUrls = []url.URL(u)
 	}
+
+	cfg.ec.CipherSuites = flags.StringsFromFlagV2(cfg.cf.flagSet, "cipher-suites")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
 	cfg.cp.Fallback = cfg.cf.fallback.String()
