@@ -21,6 +21,7 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/clientv3"
 )
 
 var (
@@ -48,6 +49,7 @@ func NewUserCommand() *cobra.Command {
 var (
 	passwordInteractive bool
 	passwordFromFlag    string
+	noPassword          bool
 )
 
 func newUserAddCommand() *cobra.Command {
@@ -59,6 +61,7 @@ func newUserAddCommand() *cobra.Command {
 
 	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "Read password from stdin instead of interactive terminal")
 	cmd.Flags().StringVar(&passwordFromFlag, "new-user-password", "", "Supply password from the command line flag")
+	cmd.Flags().BoolVar(&noPassword, "no-password", false, "Create a user without password (CN based auth only)")
 
 	return &cmd
 }
@@ -128,28 +131,37 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	var password string
 	var user string
 
-	if passwordFromFlag != "" {
-		user = args[0]
-		password = passwordFromFlag
-	} else {
-		splitted := strings.SplitN(args[0], ":", 2)
-		if len(splitted) < 2 {
-			user = args[0]
-			if !passwordInteractive {
-				fmt.Scanf("%s", &password)
-			} else {
-				password = readPasswordInteractive(args[0])
-			}
-		} else {
-			user = splitted[0]
-			password = splitted[1]
-			if len(user) == 0 {
-				ExitWithError(ExitBadArgs, fmt.Errorf("empty user name is not allowed"))
-			}
-		}
+	options := &clientv3.UserAddOptions{
+		NoPassword: false,
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserAdd(context.TODO(), user, password)
+	if !noPassword {
+		if passwordFromFlag != "" {
+			user = args[0]
+			password = passwordFromFlag
+		} else {
+			splitted := strings.SplitN(args[0], ":", 2)
+			if len(splitted) < 2 {
+				user = args[0]
+				if !passwordInteractive {
+					fmt.Scanf("%s", &password)
+				} else {
+					password = readPasswordInteractive(args[0])
+				}
+			} else {
+				user = splitted[0]
+				password = splitted[1]
+				if len(user) == 0 {
+					ExitWithError(ExitBadArgs, fmt.Errorf("empty user name is not allowed"))
+				}
+			}
+		}
+	} else {
+		user = args[0]
+		options.NoPassword = true
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.UserAddWithOptions(context.TODO(), user, password, options)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

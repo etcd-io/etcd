@@ -52,6 +52,8 @@ const (
 	PermReadWrite = authpb.READWRITE
 )
 
+type UserAddOptions authpb.UserAddOptions
+
 type Auth interface {
 	// AuthEnable enables auth of an etcd cluster.
 	AuthEnable(ctx context.Context) (*AuthEnableResponse, error)
@@ -61,6 +63,9 @@ type Auth interface {
 
 	// UserAdd adds a new user to an etcd cluster.
 	UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error)
+
+	// UserAddWithOptions adds a new user to an etcd cluster with some options.
+	UserAddWithOptions(ctx context.Context, name string, password string, opt *UserAddOptions) (*AuthUserAddResponse, error)
 
 	// UserDelete deletes a user from an etcd cluster.
 	UserDelete(ctx context.Context, name string) (*AuthUserDeleteResponse, error)
@@ -123,7 +128,12 @@ func (auth *authClient) AuthDisable(ctx context.Context) (*AuthDisableResponse, 
 }
 
 func (auth *authClient) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
-	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password}, auth.callOpts...)
+	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password, Options: &authpb.UserAddOptions{NoPassword: false}}, auth.callOpts...)
+	return (*AuthUserAddResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *authClient) UserAddWithOptions(ctx context.Context, name string, password string, options *UserAddOptions) (*AuthUserAddResponse, error) {
+	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password, Options: (*authpb.UserAddOptions)(options)}, auth.callOpts...)
 	return (*AuthUserAddResponse)(resp), toErr(ctx, err)
 }
 
