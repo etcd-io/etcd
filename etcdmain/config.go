@@ -191,6 +191,8 @@ func newConfig() *config {
 	fs.StringVar(&cfg.PeerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
 	fs.BoolVar(&cfg.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 
+	fs.Var(flags.NewStringsValueV2(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
+
 	// logging
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
@@ -265,6 +267,8 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ClusterState = cfg.clusterState.String()
 	cfg.Fallback = cfg.fallback.String()
 	cfg.Proxy = cfg.proxy.String()
+
+	cfg.CipherSuites = flags.StringsFromFlagV2(cfg.FlagSet, "cipher-suites")
 
 	// disable default advertise-client-urls if lcurls is set
 	missingAC := flags.IsSet(cfg.FlagSet, "listen-client-urls") && !flags.IsSet(cfg.FlagSet, "advertise-client-urls")
