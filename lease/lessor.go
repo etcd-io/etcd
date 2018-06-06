@@ -335,7 +335,6 @@ func (le *lessor) unsafeLeases() []*Lease {
 	for _, l := range le.leaseMap {
 		leases = append(leases, l)
 	}
-	sort.Sort(leasesByExpiry(leases))
 	return leases
 }
 
@@ -343,6 +342,7 @@ func (le *lessor) Leases() []*Lease {
 	le.mu.RLock()
 	ls := le.unsafeLeases()
 	le.mu.RUnlock()
+	sort.Sort(leasesByExpiry(ls))
 	return ls
 }
 
@@ -366,6 +366,7 @@ func (le *lessor) Promote(extend time.Duration) {
 
 	// adjust expiries in case of overlap
 	leases := le.unsafeLeases()
+	sort.Sort(leasesByExpiry(leases))
 
 	baseWindow := leases[0].Remaining()
 	nextWindow := baseWindow + time.Second
