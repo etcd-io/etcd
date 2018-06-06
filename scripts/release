@@ -87,10 +87,10 @@ main() {
       fi
       echo "Updating version from ${source_version} to ${VERSION} in version/version.go"
       sed -i "s/${source_version}/${VERSION}/g" version/version.go
-      echo "Building etcd with updated version"
-      ./build
     fi
-
+    
+    echo "Building etcd and checking --version output"
+    ./build
     local etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
       echo "Wrong etcd version in version/version.go. Expected ${etcd_version} but got ${VERSION}. Aborting."
