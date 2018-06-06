@@ -17,6 +17,7 @@ package e2e
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"path"
 	"strconv"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/version"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
@@ -389,4 +391,46 @@ type campaignResponse struct {
 		Rev   string `json:"rev,omitempty"`
 		Lease string `json:"lease,omitempty"`
 	} `json:"leader,omitempty"`
+}
+
+func TestV3CurlCipherSuitesValid(t *testing.T)    { testV3CurlCipherSuites(t, true) }
+func TestV3CurlCipherSuitesMismatch(t *testing.T) { testV3CurlCipherSuites(t, false) }
+func testV3CurlCipherSuites(t *testing.T, valid bool) {
+	cc := configClientTLS
+	cc.clusterSize = 1
+	cc.cipherSuites = []string{
+		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+		"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+		"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+		"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+	}
+	testFunc := cipherSuiteTestValid
+	if !valid {
+		testFunc = cipherSuiteTestMismatch
+	}
+	testCtl(t, testFunc, withCfg(cc))
+}
+
+func cipherSuiteTestValid(cx ctlCtx) {
+	if err := cURLGet(cx.epc, cURLReq{
+		endpoint:         "/metrics",
+		expected:         fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version),
+		metricsURLScheme: cx.cfg.metricsURLScheme,
+		ciphers:          "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+	}); err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
+	}
+}
+
+func cipherSuiteTestMismatch(cx ctlCtx) {
+	if err := cURLGet(cx.epc, cURLReq{
+		endpoint:         "/metrics",
+		expected:         "alert handshake failure",
+		metricsURLScheme: cx.cfg.metricsURLScheme,
+		ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+	}); err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
+	}
 }

@@ -112,6 +112,8 @@ type etcdProcessClusterConfig struct {
 	isClientAutoTLS       bool
 	isClientCRL           bool
 
+	cipherSuites []string
+
 	forceNewCluster     bool
 	initialToken        string
 	quotaBackendBytes   int64
@@ -294,6 +296,10 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 
 	if cfg.isClientCRL {
 		args = append(args, "--client-crl-file", crlPath, "--client-cert-auth")
+	}
+
+	if len(cfg.cipherSuites) > 0 {
+		args = append(args, "--cipher-suites", strings.Join(cfg.cipherSuites, ","))
 	}
 
 	return args
