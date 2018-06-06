@@ -127,6 +127,8 @@ type cURLReq struct {
 
 	value    string
 	expected string
+
+	ciphers string
 }
 
 // cURLPrefixArgs builds the beginning of a curl command for a given key
@@ -154,6 +156,10 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 	}
 	if req.timeout != 0 {
 		cmdArgs = append(cmdArgs, "-m", fmt.Sprintf("%d", req.timeout))
+	}
+
+	if req.ciphers != "" {
+		cmdArgs = append(cmdArgs, "--ciphers", req.ciphers)
 	}
 
 	switch method {

@@ -179,6 +179,8 @@ type etcdProcessClusterConfig struct {
 	initialToken          string
 	quotaBackendBytes     int64
 	noStrictReconfig      bool
+
+	cipherSuites []string
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -384,6 +386,11 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 			args = append(args, tlsPeerArgs...)
 		}
 	}
+
+	if len(cfg.cipherSuites) > 0 {
+		args = append(args, "--cipher-suites", strings.Join(cfg.cipherSuites, ","))
+	}
+
 	return args
 }
 
