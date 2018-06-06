@@ -10,9 +10,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.16...v3.1.17) and
 ### etcd server
 
 - Fix [v3 snapshot recovery](https://github.com/coreos/etcd/issues/7628).
-  - A follower receives a leader snapshot and persists to `[SNAPSHOT-INDEX].snap.db` file on disk.
-  - Server now [ensures that incoming snapshot be persisted on disk](https://github.com/coreos/etcd/pull/7876) before loading it.
-  - Otherwise, index mismatch could happen, triggering server-side panic (e.g. newer WAL entry with outdated snapshot index).
+  - A follower receives a leader snapshot to be persisted as a `[SNAPSHOT-INDEX].snap.db` file on disk.
+  - Now, server [ensures that the incoming snapshot be persisted on disk before loading it](https://github.com/coreos/etcd/pull/7876).
+  - Otherwise, index mismatch happens and triggers server-side panic (e.g. newer WAL entry with outdated snapshot index).
 
 ### Go
 

@@ -7,7 +7,7 @@ Previous change logs can be found at [CHANGELOG-3.1](https://github.com/coreos/e
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.21...v3.2.22) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
-### etcd server
+### Security, Authentication
 
 - Support TLS cipher suite whitelisting.
   - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).

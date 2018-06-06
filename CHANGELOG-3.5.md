@@ -16,7 +16,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.4.0...v3.5.0) and [
 - **`etcd --logger=zap --log-outputs=stderr`** is now the default.
 - **`etcd --logger=capnslog` flag has been deprecated.**
 - **`etcd --logger=zap --log-outputs=default` flag value is not supported.**.
-  - Instead, use `--logger=zap --log-outputs=stderr`.
+  - Instead, use `etcd --logger=zap --log-outputs=stderr`.
   - Or, use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
   - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
   - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.

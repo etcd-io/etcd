@@ -23,14 +23,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [Raft Pre-Vote feature](https://github.com/coreos/etcd/pull/9352) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
 - Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9485).
-  - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
-  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=24h` automatically `Compact` with 24-hour retention windown for every 2.4-hour. Now, `Compact` happens for every 1-hour.
-  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. Now, `Compact` happens for every 30-minute.
-  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=24h`).
+  - e.g. `etcd --auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. Previously, `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h` automatically `Compact` with 24-hour retention windown for every 2.4-hour. Now, `Compact` happens for every 1-hour.
+  - e.g. Previously, `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. Now, `Compact` happens for every 30-minute.
+  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h`).
   - For every compaction period or 1-hour, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every given compaction period or hour.
-  - For instance, when hourly writes are 100 and `--auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
-  - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
+  - For instance, when hourly writes are 100 and `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
+  - Futhermore, when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 - Improve [lease expire/revoke operation performance](https://github.com/coreos/etcd/pull/9418), address [lease scalability issue](https://github.com/coreos/etcd/issues/9496).
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/coreos/etcd/pull/9229).
 - Make etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop in [v3 applier](https://github.com/coreos/etcd/pull/9549) and [v2 applier](https://github.com/coreos/etcd/pull/9558).
@@ -76,8 +76,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - **`etcd --log-output`** will be deprecated in v3.5.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
-  - Now that `--log-outputs` accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type.
-  - Previously, `--config-file etcd.config.yaml` can have `log-outputs: default` field, now must be `log-outputs: [default]`.
+  - Now that `etcd --log-outputs` accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type.
+  - Previously, `etcd --config-file etcd.config.yaml` can have `log-outputs: default` field, now must be `log-outputs: [default]`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/coreos/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/coreos/etcd/pull/9155).
@@ -182,35 +182,35 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### etcd server
 
-- Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
-  - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
+- Add [`etcd --initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
+  - By default, `etcd --initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
   - This benefits the case of larger election ticks. For instance, cross datacenter deployment may require longer election timeout of 10-second. If true, local node does not need wait up to 10-second. Instead, forwards its election ticks to 8-second, and have only 2-second left before leader election.
   - Major assumptions are that: cluster has no active leader thus advancing ticks enables faster leader election. Or cluster already has an established leader, and rejoining follower is likely to receive heartbeats from the leader after tick advance and before election timeout.
   - However, when network from leader to rejoining follower is congested, and the follower does not receive leader heartbeat within left election ticks, disruptive election has to happen thus affecting cluster availabilities.
-  - Now, this can be disabled by setting `--initial-election-tick-advance=false`.
-  - Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make tradeoffs by configuring `--initial-election-tick-advance` at the cost of slow initial bootstrap.
+  - Now, this can be disabled by setting `etcd --initial-election-tick-advance=false`.
+  - Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make tradeoffs by configuring `etcd --initial-election-tick-advance` at the cost of slow initial bootstrap.
   - If single-node, it advances ticks regardless.
   - Address [disruptive rejoining follower node](https://github.com/coreos/etcd/issues/9333).
-- Add [`--pre-vote`](https://github.com/coreos/etcd/pull/9352) flag to enable to run an additional Raft election phase.
+- Add [`etcd --pre-vote`](https://github.com/coreos/etcd/pull/9352) flag to enable to run an additional Raft election phase.
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
-  - `--pre-vote=false` by default.
-  - v3.5 will enable `--pre-vote=true` by default.
-- [`--initial-corrupt-check`](TODO) flag is now stable (`--experimental-initial-corrupt-check`haisbeen  deprecated).
-  - `--initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`--corrupt-check-time`](TODO) flag is now stable (`--experimental-corrupt-check-time`haisbeen  deprecated).
-  - `--corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- [`--enable-v2v3`](TODO) flag is now stable.
-  - `--experimental-enable-v2v3` has been deprecated.
+  - `etcd --pre-vote=false` by default.
+  - v3.5 will enable `etcd --pre-vote=true` by default.
+- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check`haisbeen  deprecated).
+  - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
+- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time`haisbeen  deprecated).
+  - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
+- [`etcd --enable-v2v3`](TODO) flag is now stable.
+  - `etcd --experimental-enable-v2v3` has been deprecated.
   - Added [more v2v3 integration tests](https://github.com/coreos/etcd/pull/9634).
-  - `--enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
-  - `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
-  - `--enable-v2=false --enable-v2v3=''` to disable v2 API server.
-  - `--enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - `etcd --enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
+  - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+  - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
+  - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
   - Automatically [create parent directory if it does not exist](https://github.com/coreos/etcd/pull/9626) (fix [issue#9609](https://github.com/coreos/etcd/issues/9609)).
-  - v4.0 will configure `--enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
-- Add [`--discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
+  - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+- Add [`etcd --discovery-srv-name`](https://github.com/coreos/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
-  - If `--discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
+  - If `etcd --discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
   - Useful for operating multiple etcd clusters under the same domain.
 - Support TLS cipher suite whitelisting.
   - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
@@ -220,7 +220,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
 - Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
   - **`etcd --log-output` will be deprecated in v3.5**.
-- Add [`--logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and multiple log outputs](https://github.com/coreos/etcd/issues/9438) in server-side.
+- Add [`etcd --logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and multiple log outputs](https://github.com/coreos/etcd/issues/9438) in server-side.
   - **`etcd --logger=capnslog` will be deprecated in v3.5**.
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
@@ -317,21 +317,21 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/coreos/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
-- Add [`--password`](https://github.com/coreos/etcd/pull/9730) flag.
+- Add [`etcdctl --password`](https://github.com/coreos/etcd/pull/9730) flag.
   - To support [`:` character in user name](https://github.com/coreos/etcd/issues/9691).
   - e.g. `etcdctl --user user --password password get foo`
-- Add [`user add --new-user-password`](https://github.com/coreos/etcd/pull/9730) flag.
-- Add [`check datascale`](https://github.com/coreos/etcd/pull/9185) command.
-- Add [`check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
-- Add [`check perf --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9330) flags.
-- Add [`defrag --cluster`](https://github.com/coreos/etcd/pull/9390) flag.
+- Add [`etcdctl user add --new-user-password`](https://github.com/coreos/etcd/pull/9730) flag.
+- Add [`etcdctl check datascale`](https://github.com/coreos/etcd/pull/9185) command.
+- Add [`etcdctl check datascale --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9351) flags.
+- Add [`etcdctl check perf --auto-compact, --auto-defrag`](https://github.com/coreos/etcd/pull/9330) flags.
+- Add [`etcdctl defrag --cluster`](https://github.com/coreos/etcd/pull/9390) flag.
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
-- Add [`endpoint health --write-out` support](https://github.com/coreos/etcd/pull/9540).
+- Add [`etcdctl endpoint health --write-out` support](https://github.com/coreos/etcd/pull/9540).
   - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
-- Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
+- Fix [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
-- Fix [`move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
+- Fix [`etcdctl move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
 
 ### gRPC proxy
 
@@ -363,6 +363,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### Tooling
 
 - Add [`etcd-dump-logs --entry-type`](https://github.com/coreos/etcd/pull/9628) flag to support WAL log filtering by entry type.
+- Add [`etcd-dump-logs --stream-decoder`](https://github.com/coreos/etcd/pull/9790) flag to support custom decoder.
 
 ### Go
 

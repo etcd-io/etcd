@@ -3,11 +3,11 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md).
 
 
-## [v3.3.7](https://github.com/coreos/etcd/releases/tag/v3.3.7) (TBD 2018-06)
+## [v3.3.7](https://github.com/coreos/etcd/releases/tag/v3.3.7) (2018-06-06)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.7) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### etcd server
+### Security, Authentication
 
 - Support TLS cipher suite whitelisting.
   - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
@@ -17,7 +17,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.7) and [
 
 ### etcdctl v3
 
-- Fix [`move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
+- Fix [`etcdctl move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
 
 ### Go
 
@@ -48,7 +48,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.4...v3.3.5) and [
 
 ### etcdctl v3
 
-- Fix [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
+- Fix [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
 
 ### Go
@@ -75,8 +75,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
 
 ### etcd server
 
-- Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
-  - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
+- Add [`etcd --initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
+  - By default, `etcd --initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
   - This benefits the case of larger election ticks. For instance, cross datacenter deployment may require longer election timeout of 10-second. If true, local node does not need wait up to 10-second. Instead, forwards its election ticks to 8-second, and have only 2-second left before leader election.
   - Major assumptions are that: cluster has no active leader thus advancing ticks enables faster leader election. Or cluster already has an established leader, and rejoining follower is likely to receive heartbeats from the leader after tick advance and before election timeout.
   - However, when network from leader to rejoining follower is congested, and the follower does not receive leader heartbeat within left election ticks, disruptive election has to happen thus affecting cluster availabilities.
@@ -133,8 +133,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.1...v3.3.2) and [
   - Previously, wrong-formatted HTTP requests to Election API could trigger panic in etcd server.
   - e.g. `curl -L http://localhost:2379/v3/election/proclaim -X POST -d '{"value":""}'`, `curl -L http://localhost:2379/v3/election/resign -X POST -d '{"value":""}'`.
 - Fix [revision-based compaction retention parsing](https://github.com/coreos/etcd/pull/9339).
-  - Previously, `--auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
-  - Now, `--auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
+  - Previously, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` was [translated to revision retention 3600000000000](https://github.com/coreos/etcd/issues/9337).
+  - Now, `etcd --auto-compaction-mode revision --auto-compaction-retention 1` is correctly parsed as revision retention 1.
 - Prevent [overflow by large `TTL` values for `Lease` `Grant`](https://github.com/coreos/etcd/pull/9399).
   - `TTL` parameter to `Grant` request is unit of second.
   - Leases with too large `TTL` values exceeding `math.MaxInt64` [expire in unexpected ways](https://github.com/coreos/etcd/issues/9374).
@@ -264,36 +264,36 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### etcd server
 
-- Add [`--experimental-initial-corrupt-check`](https://github.com/coreos/etcd/pull/8554) flag to [check cluster database hashes before serving client/peer traffic](https://github.com/coreos/etcd/issues/8313).
-  - `--experimental-initial-corrupt-check=false` by default.
+- Add [`etcd --experimental-initial-corrupt-check`](https://github.com/coreos/etcd/pull/8554) flag to [check cluster database hashes before serving client/peer traffic](https://github.com/coreos/etcd/issues/8313).
+  - `etcd --experimental-initial-corrupt-check=false` by default.
   - v3.4 will enable `--initial-corrupt-check=true` by default.
-- Add [`--experimental-corrupt-check-time`](https://github.com/coreos/etcd/pull/8420) flag to [raise corrupt alarm monitoring](https://github.com/coreos/etcd/issues/7125).
-  - `--experimental-corrupt-check-time=0s` disabled by default.
-- Add [`--experimental-enable-v2v3`](https://github.com/coreos/etcd/pull/8407) flag to [emulate v2 API with v3](https://github.com/coreos/etcd/issues/6925).
-  - `--experimental-enable-v2v3=false` by default.
-- Add [`--max-txn-ops`](https://github.com/coreos/etcd/pull/7976) flag to [configure maximum number operations in transaction](https://github.com/coreos/etcd/issues/7826).
-- Add [`--max-request-bytes`](https://github.com/coreos/etcd/pull/7968) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
+- Add [`etcd --experimental-corrupt-check-time`](https://github.com/coreos/etcd/pull/8420) flag to [raise corrupt alarm monitoring](https://github.com/coreos/etcd/issues/7125).
+  - `etcd --experimental-corrupt-check-time=0s` disabled by default.
+- Add [`etcd --experimental-enable-v2v3`](https://github.com/coreos/etcd/pull/8407) flag to [emulate v2 API with v3](https://github.com/coreos/etcd/issues/6925).
+  - `etcd --experimental-enable-v2v3=false` by default.
+- Add [`etcd --max-txn-ops`](https://github.com/coreos/etcd/pull/7976) flag to [configure maximum number operations in transaction](https://github.com/coreos/etcd/issues/7826).
+- Add [`etcd --max-request-bytes`](https://github.com/coreos/etcd/pull/7968) flag to [configure maximum client request size](https://github.com/coreos/etcd/issues/7923).
   - If not configured, it defaults to 1.5 MiB.
-- Add [`--client-crl-file`, `--peer-crl-file`](https://github.com/coreos/etcd/pull/8124) flags for [Certificate revocation list](https://github.com/coreos/etcd/issues/4034).
-- Add [`--peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
-- Add [`--listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` and `/health` endpoints.
+- Add [`etcd --client-crl-file`, `--peer-crl-file`](https://github.com/coreos/etcd/pull/8124) flags for [Certificate revocation list](https://github.com/coreos/etcd/issues/4034).
+- Add [`etcd --peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN-based auth for inter-peer connection](https://github.com/coreos/etcd/issues/8262).
+- Add [`etcd --listen-metrics-urls`](https://github.com/coreos/etcd/pull/8242) flag for additional `/metrics` and `/health` endpoints.
   - Support [additional (non) TLS `/metrics` endpoints for a TLS-enabled cluster](https://github.com/coreos/etcd/pull/8282).
-  - e.g. `--listen-metrics-urls=https://localhost:2378,http://localhost:9379` to serve `/metrics` and `/health` on secure port 2378 and insecure port 9379.
+  - e.g. `etcd --listen-metrics-urls=https://localhost:2378,http://localhost:9379` to serve `/metrics` and `/health` on secure port 2378 and insecure port 9379.
   - Useful for [bypassing critical APIs when monitoring etcd](https://github.com/coreos/etcd/issues/8060).
-- Add [`--auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
-- Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
-  - Now that `--auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type.
-  - Previously, `--config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`.
+- Add [`etcd --auto-compaction-mode`](https://github.com/coreos/etcd/pull/8123) flag to [support revision-based compaction](https://github.com/coreos/etcd/issues/8098).
+- Change `etcd --auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
+  - Now that `etcd --auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type.
+  - Previously, `etcd --config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`.
   - If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `--auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
-  - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
-  - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown, for every 7.2-hour.
-  - e.g. `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown, for every 3-minute.
+  - e.g. `etcd --auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. `etcd --auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown, for every 7.2-hour.
+  - e.g. `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown, for every 3-minute.
   - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=10h`).
   - For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every 1/10 of given compaction period.
   - For instance, when hourly writes are 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2.x, v3.3.0, v3.3.1, and v3.3.2 compact revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are 1000, v3.3.0, v3.3.1, and v3.3.2 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
   - Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
-- Add [`--grpc-keepalive-min-time`, `--grpc-keepalive-interval`, `--grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
+- Add [`etcd --grpc-keepalive-min-time`, `etcd --grpc-keepalive-interval`, `etcd --grpc-keepalive-timeout`](https://github.com/coreos/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/coreos/etcd/pull/8272) when [alarm (e.g. `NOSPACE`) is raised or there's no leader](https://github.com/coreos/etcd/issues/8207).
   - Define [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct with JSON encoder.
   - Note that `"health"` field is [`string` type, not `bool`](https://github.com/coreos/etcd/pull/9143).
@@ -305,7 +305,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Warn on [empty hosts in advertise URLs](https://github.com/coreos/etcd/pull/8384).
   - Address [advertise client URLs accepts empty hosts](https://github.com/coreos/etcd/issues/8379).
   - etcd v3.4 will exit on this error.
-    - e.g. `--advertise-client-urls=http://:2379`.
+    - e.g. `etcd --advertise-client-urls=http://:2379`.
 - Warn on [shadowed environment variables](https://github.com/coreos/etcd/pull/8385).
   - Address [error on shadowed environment variables](https://github.com/coreos/etcd/issues/8380).
   - etcd v3.4 will exit on this error.
@@ -341,22 +341,22 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### etcdctl v3
 
-- Add [`--discovery-srv`](https://github.com/coreos/etcd/pull/8462) flag.
-- Add [`--keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
-- Add [`lease list`](https://github.com/coreos/etcd/pull/8358) command.
-- Add [`lease keep-alive --once`](https://github.com/coreos/etcd/pull/8775) flag.
+- Add [`etcdctl --discovery-srv`](https://github.com/coreos/etcd/pull/8462) flag.
+- Add [`etcdctl --keepalive-time`, `--keepalive-timeout`](https://github.com/coreos/etcd/pull/8663) flags.
+- Add [`etcdctl lease list`](https://github.com/coreos/etcd/pull/8358) command.
+- Add [`etcdctl lease keep-alive --once`](https://github.com/coreos/etcd/pull/8775) flag.
 - Make [`lease timetolive LEASE_ID`](https://github.com/coreos/etcd/issues/9028) on expired lease print [`lease LEASE_ID already expired`](https://github.com/coreos/etcd/pull/9047).
   - <=3.2 prints `lease LEASE_ID granted with TTL(0s), remaining(-1s)`.
-- Add [`snapshot restore --wal-dir`](https://github.com/coreos/etcd/pull/9124) flag.
-- Add [`defrag --data-dir`](https://github.com/coreos/etcd/pull/8367) flag.
-- Add [`move-leader`](https://github.com/coreos/etcd/pull/8153) command.
-- Add [`endpoint hashkv`](https://github.com/coreos/etcd/pull/8351) command.
-- Add [`endpoint --cluster`](https://github.com/coreos/etcd/pull/8143) flag, equivalent to [v2 `etcdctl cluster-health`](https://github.com/coreos/etcd/issues/8117).
-- Make `endpoint health` command terminate with [non-zero exit code on unhealthy status](https://github.com/coreos/etcd/pull/8342).
-- Add [`lock --ttl`](https://github.com/coreos/etcd/pull/8370) flag.
-- Support [`watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/8919), equivalent to [v2 `etcdctl exec-watch`](https://github.com/coreos/etcd/issues/8814).
-  - Make `watch -- [exec-command]` set environmental variables [`ETCD_WATCH_REVISION`, `ETCD_WATCH_EVENT_TYPE`, `ETCD_WATCH_KEY`, `ETCD_WATCH_VALUE`](https://github.com/coreos/etcd/pull/9142) for each event.
-- Support [`watch` with environmental variables `ETCDCTL_WATCH_KEY` and `ETCDCTL_WATCH_RANGE_END`](https://github.com/coreos/etcd/pull/9142).
+- Add [`etcdctl snapshot restore --wal-dir`](https://github.com/coreos/etcd/pull/9124) flag.
+- Add [`etcdctl defrag --data-dir`](https://github.com/coreos/etcd/pull/8367) flag.
+- Add [`etcdctl move-leader`](https://github.com/coreos/etcd/pull/8153) command.
+- Add [`etcdctl endpoint hashkv`](https://github.com/coreos/etcd/pull/8351) command.
+- Add [`etcdctl endpoint --cluster`](https://github.com/coreos/etcd/pull/8143) flag, equivalent to [v2 `etcdctl cluster-health`](https://github.com/coreos/etcd/issues/8117).
+- Make `etcdctl endpoint health` command terminate with [non-zero exit code on unhealthy status](https://github.com/coreos/etcd/pull/8342).
+- Add [`etcdctl lock --ttl`](https://github.com/coreos/etcd/pull/8370) flag.
+- Support [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/8919), equivalent to [v2 `etcdctl exec-watch`](https://github.com/coreos/etcd/issues/8814).
+  - Make `etcdctl watch -- [exec-command]` set environmental variables [`ETCD_WATCH_REVISION`, `ETCD_WATCH_EVENT_TYPE`, `ETCD_WATCH_KEY`, `ETCD_WATCH_VALUE`](https://github.com/coreos/etcd/pull/9142) for each event.
+- Support [`etcdctl watch` with environmental variables `ETCDCTL_WATCH_KEY` and `ETCDCTL_WATCH_RANGE_END`](https://github.com/coreos/etcd/pull/9142).
 - Enable [`clientv3.WithRequireLeader(context.Context)` for `watch`](https://github.com/coreos/etcd/pull/8672) command.
 - Print [`"del"` instead of `"delete"`](https://github.com/coreos/etcd/pull/8297) in `txn` interactive mode.
 - Print [`ETCD_INITIAL_ADVERTISE_PEER_URLS` in `member add`](https://github.com/coreos/etcd/pull/8332).
@@ -367,7 +367,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 
 ### etcdctl v2
 
-- Add [`backup --with-v3`](https://github.com/coreos/etcd/pull/8479) flag.
+- Add [`etcdctl backup --with-v3`](https://github.com/coreos/etcd/pull/8479) flag.
 
 ### gRPC Proxy
 
