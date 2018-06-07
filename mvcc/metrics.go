@@ -146,7 +146,7 @@ var (
 		})
 
 	dbTotalSize = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd_debugging",
+		Namespace: "etcd",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
 		Help:      "Total size of the underlying database physically allocated in bytes.",
@@ -159,10 +159,27 @@ var (
 	)
 	// overridden by mvcc initialization
 	reportDbTotalSizeInBytesMu sync.RWMutex
-	reportDbTotalSizeInBytes   func() float64 = func() float64 { return 0 }
+	reportDbTotalSizeInBytes   = func() float64 { return 0 }
+
+	// TODO: remove this in v3.5
+	dbTotalSizeDebugging = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "mvcc",
+		Name:      "db_total_size_in_bytes",
+		Help:      "Total size of the underlying database physically allocated in bytes.",
+	},
+		func() float64 {
+			reportDbTotalSizeInBytesDebuggingMu.RLock()
+			defer reportDbTotalSizeInBytesDebuggingMu.RUnlock()
+			return reportDbTotalSizeInBytesDebugging()
+		},
+	)
+	// overridden by mvcc initialization
+	reportDbTotalSizeInBytesDebuggingMu sync.RWMutex
+	reportDbTotalSizeInBytesDebugging   = func() float64 { return 0 }
 
 	dbTotalSizeInUse = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd_debugging",
+		Namespace: "etcd",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_use_in_bytes",
 		Help:      "Total size of the underlying database logically in use in bytes.",
@@ -218,6 +235,7 @@ func init() {
 	prometheus.MustRegister(dbCompactionTotalMs)
 	prometheus.MustRegister(dbCompactionKeysCounter)
 	prometheus.MustRegister(dbTotalSize)
+	prometheus.MustRegister(dbTotalSizeDebugging)
 	prometheus.MustRegister(dbTotalSizeInUse)
 	prometheus.MustRegister(hashSec)
 	prometheus.MustRegister(hashRevSec)
