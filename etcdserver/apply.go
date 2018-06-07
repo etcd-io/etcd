@@ -107,7 +107,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 }
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
-	defer warnOfExpensiveRequest(time.Now(), r)
+	defer warnOfExpensiveRequest(time.Now(), &pb.InternalRaftStringer{Request: r})
 
 	ar := &applyResult{}
 
