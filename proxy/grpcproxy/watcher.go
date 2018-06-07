@@ -112,8 +112,10 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		Created:         wr.Created,
 		CompactRevision: wr.CompactRevision,
 		Canceled:        wr.Canceled,
-		WatchId:         w.id,
 		Events:          events,
+
+		// broadcast original watch ID to coalesced watch streams
+		WatchId: wr.ID,
 	})
 }
 
