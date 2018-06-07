@@ -71,6 +71,12 @@ var (
 		Name:      "slow_read_indexes_total",
 		Help:      "The total number of pending read indexes not in sync with leader's or timed out read index requests.",
 	})
+	quotaBackendBytes = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "quota_backend_bytes",
+		Help:      "Current backend storage quota size in bytes.",
+	})
 	currentVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -89,6 +95,7 @@ func init() {
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
 	prometheus.MustRegister(slowReadIndex)
+	prometheus.MustRegister(quotaBackendBytes)
 	prometheus.MustRegister(currentVersion)
 
 	currentVersion.With(prometheus.Labels{

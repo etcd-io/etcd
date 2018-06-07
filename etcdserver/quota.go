@@ -50,15 +50,20 @@ const (
 )
 
 func NewBackendQuota(s *EtcdServer) Quota {
+	quotaBackendBytes.Set(float64(s.Cfg.QuotaBackendBytes))
+
 	if s.Cfg.QuotaBackendBytes < 0 {
 		// disable quotas if negative
 		plog.Warningf("disabling backend quota")
 		return &passthroughQuota{}
 	}
+
 	if s.Cfg.QuotaBackendBytes == 0 {
+		quotaBackendBytes.Set(float64(backend.DefaultQuotaBytes))
 		// use default size if no quota size given
 		return &backendQuota{s, backend.DefaultQuotaBytes}
 	}
+
 	if s.Cfg.QuotaBackendBytes > backend.MaxQuotaBytes {
 		plog.Warningf("backend quota %v exceeds maximum quota %v; using maximum", s.Cfg.QuotaBackendBytes, backend.MaxQuotaBytes)
 		return &backendQuota{s, backend.MaxQuotaBytes}
