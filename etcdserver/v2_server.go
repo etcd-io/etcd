@@ -123,8 +123,3 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 	return Response{}, ErrUnknownMethod
 }
-
-func (r *RequestV2) String() string {
-	rpb := pb.Request(*r)
-	return rpb.String()
-}
