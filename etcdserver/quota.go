@@ -62,6 +62,7 @@ const (
 
 func NewBackendQuota(s *EtcdServer, name string) Quota {
 	lg := s.getLogger()
+	quotaBackendBytes.Set(float64(s.Cfg.QuotaBackendBytes))
 
 	if s.Cfg.QuotaBackendBytes < 0 {
 		// disable quotas if negative
@@ -87,6 +88,7 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 				zap.String("quota-size", humanize.Bytes(uint64(DefaultQuotaBytes))),
 			)
 		}
+		quotaBackendBytes.Set(float64(DefaultQuotaBytes))
 		return &backendQuota{s, DefaultQuotaBytes}
 	}
 
