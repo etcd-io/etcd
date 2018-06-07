@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver"
+
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -143,5 +145,23 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	}
 	if adiu > av {
 		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
+	}
+}
+
+func TestMetricQuotaBackendBytes(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	qs, err := clus.Members[0].Metric("etcd_server_quota_backend_bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qv, err := strconv.ParseFloat(qs, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(qv) != etcdserver.DefaultQuotaBytes {
+		t.Fatalf("expected %d, got %f", etcdserver.DefaultQuotaBytes, qv)
 	}
 }
