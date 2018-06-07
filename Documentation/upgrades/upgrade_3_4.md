@@ -47,6 +47,19 @@ OK
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
+#### Promote `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to `etcd_mvcc_db_total_size_in_bytes`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_db_total_size_in_bytes` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_db_total_size_in_bytes
++etcd_mvcc_db_total_size_in_bytes
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we will promote more metrics.
+
 #### Deprecating `etcd --log-output` flag (now `--log-outputs`)
 
 Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. **`etcd --logger=capnslog` does not support multiple log outputs.**
