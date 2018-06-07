@@ -323,6 +323,9 @@ func (s *store) restore() error {
 	reportDbTotalSizeInBytesMu.Lock()
 	reportDbTotalSizeInBytes = func() float64 { return float64(b.Size()) }
 	reportDbTotalSizeInBytesMu.Unlock()
+	reportDbTotalSizeInBytesDebuggingMu.Lock()
+	reportDbTotalSizeInBytesDebugging = func() float64 { return float64(b.Size()) }
+	reportDbTotalSizeInBytesDebuggingMu.Unlock()
 	reportDbTotalSizeInUseInBytesMu.Lock()
 	reportDbTotalSizeInUseInBytes = func() float64 { return float64(b.SizeInUse()) }
 	reportDbTotalSizeInUseInBytesMu.Unlock()
