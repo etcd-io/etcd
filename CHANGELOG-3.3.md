@@ -81,7 +81,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
   - Major assumptions are that: cluster has no active leader thus advancing ticks enables faster leader election. Or cluster already has an established leader, and rejoining follower is likely to receive heartbeats from the leader after tick advance and before election timeout.
   - However, when network from leader to rejoining follower is congested, and the follower does not receive leader heartbeat within left election ticks, disruptive election has to happen thus affecting cluster availabilities.
   - Now, this can be disabled by setting `--initial-election-tick-advance=false`.
-  - Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make tradeoffs by configuring `--initial-election-tick-advance` at the cost of slow initial bootstrap.
+  - Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make tradeoffs by configuring `etcd --initial-election-tick-advance` at the cost of slow initial bootstrap.
   - If single-node, it advances ticks regardless.
   - Address [disruptive rejoining follower node](https://github.com/coreos/etcd/issues/9333).
 
@@ -105,14 +105,14 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 - Adjust [periodic compaction retention window](https://github.com/coreos/etcd/pull/9485).
-  - e.g. `--auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
-  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown for every 7.2-hour. **Now, `Compact` happens, for every 1-hour but still with 72-hour retention window.**
-  - e.g. Previously, `--auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. **Now, `Compact` happens, for every 30-minute but still with 30-minute retention window.**
-  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=24h`).
+  - e.g. `etcd --auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
+  - e.g. Previously, `etcd --auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown for every 7.2-hour. **Now, `Compact` happens, for every 1-hour but still with 72-hour retention window.**
+  - e.g. Previously, `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown for every 3-minute. **Now, `Compact` happens, for every 30-minute but still with 30-minute retention window.**
+  - Periodic compactor keeps recording latest revisions for every compaction period when given period is less than 1-hour, or for every 1-hour when given compaction period is greater than 1-hour (e.g. 1-hour when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h`).
   - For every compaction period or 1-hour, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every given compaction period or hour.
-  - For instance, when hourly writes are 100 and `--auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
-  - Futhermore, when `--auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
+  - For instance, when hourly writes are 100 and `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
+  - Futhermore, when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 
 ### Metrics, Monitoring
 
@@ -193,10 +193,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - [Rate limit](https://github.com/coreos/etcd/pull/8099) and [randomize](https://github.com/coreos/etcd/pull/8101) lease revoke on restart or leader elections.
   - Prevent [spikes in Raft proposal rate](https://github.com/coreos/etcd/issues/8096).
 - Support `clientv3` balancer failover under [network faults/partitions](https://github.com/coreos/etcd/issues/8711).
-- Better warning on [mismatched `--initial-cluster`](https://github.com/coreos/etcd/pull/8083) flag.
-  - etcd compares `--initial-advertise-peer-urls` against corresponding `--initial-cluster` URLs with forward-lookup.
-  - If resolved IP addresses of `--initial-advertise-peer-urls` and `--initial-cluster` do not match (e.g. [due to DNS error](https://github.com/coreos/etcd/pull/9210)), etcd will exit with errors.
-    - v3.2 error: `--initial-cluster must include s1=https://s1.test:2380 given --initial-advertise-peer-urls=https://s1.test:2380`.
+- Better warning on [mismatched `etcd --initial-cluster`](https://github.com/coreos/etcd/pull/8083) flag.
+  - etcd compares `etcd --initial-advertise-peer-urls` against corresponding `etcd --initial-cluster` URLs with forward-lookup.
+  - If resolved IP addresses of `etcd --initial-advertise-peer-urls` and `etcd --initial-cluster` do not match (e.g. [due to DNS error](https://github.com/coreos/etcd/pull/9210)), etcd will exit with errors.
+    - v3.2 error: `etcd --initial-cluster must include s1=https://s1.test:2380 given --initial-advertise-peer-urls=https://s1.test:2380`.
     - v3.3 error: `failed to resolve https://s1.test:2380 to match --initial-cluster=s1=https://s1.test:2380 (failed to resolve "https://s1.test:2380" (error ...))`.
 
 ### Breaking Changes
@@ -212,10 +212,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3alpha` with [`/v3beta`](https://github.com/coreos/etcd/pull/8880).
   - To deprecate [`/v3alpha`](https://github.com/coreos/etcd/issues/8125) in v3.4.
   - In v3.3, `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` still works as a fallback to `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'`, but `curl -L http://localhost:2379/v3alpha/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` won't work in v3.4. Use `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
-- Change `--auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
-  - Now that `--auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type.
+- Change `etcd --auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
+  - Now that `etcd --auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type.
   - Previously, `--config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`.
-  - If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `--auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
+  - If configured as `etcd --auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `etcd --auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
 
 ### Dependency
 
@@ -284,11 +284,11 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Change `etcd --auto-compaction-retention` flag to [accept string values](https://github.com/coreos/etcd/pull/8563) with [finer granularity](https://github.com/coreos/etcd/issues/8503).
   - Now that `etcd --auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type.
   - Previously, `etcd --config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`.
-  - If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `--auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
+  - If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `etcd --auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
   - e.g. `etcd --auto-compaction-mode=revision --auto-compaction-retention=1000` automatically `Compact` on `"latest revision" - 1000` every 5-minute (when latest revision is 30000, compact on revision 29000).
   - e.g. `etcd --auto-compaction-mode=periodic --auto-compaction-retention=72h` automatically `Compact` with 72-hour retention windown, for every 7.2-hour.
   - e.g. `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` automatically `Compact` with 30-minute retention windown, for every 3-minute.
-  - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `--auto-compaction-mode=periodic --auto-compaction-retention=10h`).
+  - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=10h`).
   - For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every 1/10 of given compaction period.
   - For instance, when hourly writes are 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2.x, v3.3.0, v3.3.1, and v3.3.2 compact revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are 1000, v3.3.0, v3.3.1, and v3.3.2 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.

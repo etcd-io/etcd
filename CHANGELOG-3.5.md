@@ -26,6 +26,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.4.0...v3.5.0) and [
 - **`[CLIENT-URL]/config/local/log` endpoint has been deprecated, as is `etcd --log-package-levels` flag.**
   - `curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'` won't work.
   - Please use `etcd --logger=zap --log-outputs=stderr` instead.
+- Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric. Instead, use `etcd_mvcc_db_total_size_in_bytes`.
+
+### Metrics, Monitoring
+
+- Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric. Instead, use `etcd_mvcc_db_total_size_in_bytes`.
 
 ### gRPC gateway
 

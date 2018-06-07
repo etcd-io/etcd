@@ -70,8 +70,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and
 
 ### etcd server
 
-- Add [`--initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
-  - By default, `--initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
+- Add [`etcd --initial-election-tick-advance`](https://github.com/coreos/etcd/pull/9591) flag to configure initial election tick fast-forward.
+  - By default, `etcd --initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
   - This benefits the case of larger election ticks. For instance, cross datacenter deployment may require longer election timeout of 10-second. If true, local node does not need wait up to 10-second. Instead, forwards its election ticks to 8-second, and have only 2-second left before leader election.
   - Major assumptions are that: cluster has no active leader thus advancing ticks enables faster leader election. Or cluster already has an established leader, and rejoining follower is likely to receive heartbeats from the leader after tick advance and before election timeout.
   - However, when network from leader to rejoining follower is congested, and the follower does not receive leader heartbeat within left election ticks, disruptive election has to happen thus affecting cluster availabilities.
@@ -511,9 +511,9 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - client "embedded" in the server.
 - Logging, monitoring
   - Server warns large snapshot operations.
-- Add `--enable-v2` flag to enable v2 API server.
-  - `--enable-v2=true` by default.
-- Add `--auth-token` flag.
+- Add `etcd --enable-v2` flag to enable v2 API server.
+  - `etcd --enable-v2=true` by default.
+- Add `etcd --auth-token` flag.
 - v3.2 compactor runs [every hour](https://github.com/coreos/etcd/pull/7875).
   - Compactor only supports periodic compaction.
   - Compactor continues to record latest revisions every 5-minute.
@@ -535,7 +535,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 ### etcdctl v3
 
 - Add `check perf` command.
-- Add `--from-key` flag to role grant-permission command.
+- Add `etcdctl --from-key` flag to role grant-permission command.
 - `lock` command takes an optional command to execute.
 
 ### gRPC Proxy

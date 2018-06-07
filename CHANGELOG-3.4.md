@@ -44,9 +44,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/coreos/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
-- **Remove `etcd --ca-file` flag**, instead [use `--trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--ca-file` has been deprecated since v2.1).
-- **Remove `etcd --peer-ca-file` flag**, instead [use `--peer-trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`--peer-ca-file` has been deprecated since v2.1).
-- **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/coreos/etcd/pull/9470) (`CAFile` has been deprecated since v2.1).
+- **Remove `etcd --ca-file` flag**, instead [use `etcd --trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`etcd --ca-file` flag has been marked deprecated since v2.1).
+- **Remove `etcd --peer-ca-file` flag**, instead [use `etcd --peer-trusted-ca-file`](https://github.com/coreos/etcd/pull/9470) (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
+- **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/coreos/etcd/pull/9470) (`CAFile` field has been marked deprecated since v2.1).
 - Deprecate `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
 - Deprecate [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
@@ -67,12 +67,13 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/coreos/etcd/pull/9433).
+- Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
 - Rename `etcdserver.ServerConfig.SnapCount` field to `etcdserver.ServerConfig.SnapshotCount`, to be consistent with the flag name `etcd --snapshot-count`.
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/coreos/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/coreos/etcd/pull/9490).
 - Remove [`embed.Config.SetupLogging`](https://github.com/coreos/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/coreos/etcd/pull/9572).
-- Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+- Rename [`etcd --log-output` to `etcd --log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
   - **`etcd --log-output`** will be deprecated in v3.5.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
@@ -95,7 +96,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Previously, `Repair(dirpath string) bool`, now `Repair(lg *zap.Logger, dirpath string) bool`.
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
 - Remove [`pkg/cors` package](https://github.com/coreos/etcd/pull/9490).
-- Change [`--experimental-enable-v2v3`](TODO) flag to `--enable-v2v3`; v2 storage emulation is now stable.
+- Change [`etcd --experimental-enable-v2v3`](TODO) flag to `etcd --enable-v2v3`; v2 storage emulation is now stable.
 - Move internal packages to `etcdserver`.
   - `"github.com/coreos/etcd/alarm"` to `"github.com/coreos/etcd/etcdserver/api/v3alarm"`.
   - `"github.com/coreos/etcd/compactor"` to `"github.com/coreos/etcd/etcdserver/api/v3compactor"`.
@@ -110,7 +111,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Dependency
 
-- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.12.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.12.0).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.12.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.12.1).
 - Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.1.0`**](https://github.com/golang/protobuf/releases/tag/v1.1.0).
 - Upgrade [`github.com/gogo/protobuf`](https://github.com/gogo/protobuf/releases) from [**`v0.5`**](https://github.com/gogo/protobuf/releases/tag/v0.5) to [**`v1.0.0`**](https://github.com/gogo/protobuf/releases/tag/v1.0.0).
 - Upgrade [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`v1.1.1`**](https://github.com/ugorji/go/releases/tag/v1.1.1), and [regenerate v2 `client`](https://github.com/coreos/etcd/pull/9494).
@@ -135,12 +136,15 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.
+  - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
 - Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_snap_fsync_duration_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
 - Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
-- Add [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
+- Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
+- Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric (renamed from [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9819)).
 - Add [`etcd_debugging_lease_granted_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_revoked_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_renewed_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
@@ -218,14 +222,14 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Add [`etcd --cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
   - If empty, Go auto-populates the list.
 - Support [`etcd --cors`](https://github.com/coreos/etcd/pull/9490) in v3 HTTP requests (gRPC gateway).
-- Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+- Rename [`etcd --log-output` to `etcd --log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
   - **`etcd --log-output` will be deprecated in v3.5**.
 - Add [`etcd --logger`](https://github.com/coreos/etcd/pull/9572) flag to support [structured logger and multiple log outputs](https://github.com/coreos/etcd/issues/9438) in server-side.
   - **`etcd --logger=capnslog` will be deprecated in v3.5**.
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
-  - `etcd --logger=zap --log-outputs=default` is not supported when `--logger=zap`.
-    - Instead, use `--logger=zap --log-outputs=stderr`.
+  - `etcd --logger=zap --log-outputs=default` is not supported when `etcd --logger=zap`.
+    - Instead, use `etcd --logger=zap --log-outputs=stderr`.
     - Or, use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
     - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
     - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/coreos/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
@@ -256,7 +260,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
   - Server now returns `rpctypes.ErrLeaseTTLTooLarge` to client, when the requested `TTL` is larger than *9,000,000,000 seconds* (which is >285 years).
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/coreos/etcd/pull/9347).
-- Allow [non-WAL files in `--wal-dir` directory](https://github.com/coreos/etcd/pull/9743).
+- Allow [non-WAL files in `etcd --wal-dir` directory](https://github.com/coreos/etcd/pull/9743).
   - Previously, existing files such as [`lost+found`](https://github.com/coreos/etcd/issues/7287) in WAL directory prevent etcd server boot.
   - Now, WAL directory that contains only `lost+found` or a file that's not suffixed with `.wal` is considered non-initialized.
 
@@ -328,9 +332,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add ["raft applied index" field to `endpoint status`](https://github.com/coreos/etcd/pull/9176).
 - Add ["errors" field to `endpoint status`](https://github.com/coreos/etcd/pull/9206).
 - Add [`etcdctl endpoint health --write-out` support](https://github.com/coreos/etcd/pull/9540).
-  - Previously, [`endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
+  - Previously, [`etcdctl endpoint health --write-out json` did not work](https://github.com/coreos/etcd/issues/9532).
 - Fix [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
-  - Previously,  `ETCDCTL_API=3 ./bin/etcdctl watch foo -- echo watch event received` panicked.
+  - Previously,  `ETCDCTL_API=3 etcdctl watch foo -- echo watch event received` panicked.
 - Fix [`etcdctl move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
 
 ### gRPC proxy
