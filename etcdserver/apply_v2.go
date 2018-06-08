@@ -107,7 +107,7 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 // applyV2Request interprets r as a call to store.X and returns a Response interpreted
 // from store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
-	defer warnOfExpensiveRequest(time.Now(), r)
+	defer warnOfExpensiveRequest(time.Now(), r, nil, nil)
 
 	switch r.Method {
 	case "POST":
