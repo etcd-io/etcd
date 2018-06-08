@@ -92,3 +92,6 @@ jitter
 WithMax
 ServerStreams
 BidiStreams
+transientFailure
+BackoffFunc
+CallOptions
