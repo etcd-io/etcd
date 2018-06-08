@@ -70,7 +70,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 				}
 				continue
 			}
-			if !isRetriable(lastErr, callOpts) {
+			if !isSafeRetry(lastErr, callOpts) {
 				return lastErr
 			}
 		}
@@ -221,7 +221,7 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 		return true, err
 
 	}
-	return isRetriable(err, s.callOpts), err
+	return isSafeRetry(err, s.callOpts), err
 
 }
 
@@ -261,15 +261,16 @@ func waitRetryBackoff(attempt uint, ctx context.Context, callOpts *options) erro
 	return nil
 }
 
-func isRetriable(err error, callOpts *options) bool {
+// isSafeRetry returns "true", if request is safe for retry with the given error.
+func isSafeRetry(err error, callOpts *options) bool {
 	if isContextError(err) {
 		return false
 	}
 	switch callOpts.retryPolicy {
 	case repeatable:
-		return !isRepeatableStopError(err)
+		return isSafeRetryImmutableRPC(err)
 	case nonRepeatable:
-		return !isNonRepeatableStopError(err)
+		return isSafeRetryMutableRPC(err)
 	default:
 		logger.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
 		return false

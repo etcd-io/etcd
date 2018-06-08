@@ -47,46 +47,52 @@ type rpcFunc func(ctx context.Context) error
 type retryRPCFunc func(context.Context, rpcFunc, retryPolicy) error
 type retryStopErrFunc func(error) bool
 
+// isSafeRetryImmutableRPC returns "true" when an immutable request is safe for retry.
+//
 // immutable requests (e.g. Get) should be retried unless it's
 // an obvious server-side error (e.g. rpctypes.ErrRequestTooLarge).
 //
-// "isRepeatableStopError" returns "true" when an immutable request
-// is interrupted by server-side or gRPC-side error and its status
-// code is not transient (!= codes.Unavailable).
-//
-// Returning "true" means retry should stop, since client cannot
+// Returning "false" means retry should stop, since client cannot
 // handle itself even with retries.
-func isRepeatableStopError(err error) bool {
+func isSafeRetryImmutableRPC(err error) bool {
 	eErr := rpctypes.Error(err)
-	// always stop retry on etcd errors
 	if serverErr, ok := eErr.(rpctypes.EtcdError); ok && serverErr.Code() != codes.Unavailable {
-		return true
+		// interrupted by non-transient server-side or gRPC-side error
+		// client cannot handle itself (e.g. rpctypes.ErrCompacted)
+		return false
 	}
 	// only retry if unavailable
 	ev, ok := status.FromError(err)
 	if !ok {
+		// all errors from RPC is typed "grpc/status.(*statusError)"
+		// (ref. https://github.com/grpc/grpc-go/pull/1782)
+		//
+		// if the error type is not "grpc/status.(*statusError)",
+		// it could be from "Dial"
+		// TODO: do not retry for now
+		// ref. https://github.com/grpc/grpc-go/issues/1581
 		return false
 	}
-	return ev.Code() != codes.Unavailable
+	return ev.Code() == codes.Unavailable
 }
 
+// isSafeRetryMutableRPC returns "true" when a mutable request is safe for retry.
+//
 // mutable requests (e.g. Put, Delete, Txn) should only be retried
 // when the status code is codes.Unavailable when initial connection
-// has not been established (no pinned endpoint).
+// has not been established (no endpoint is up).
 //
-// "isNonRepeatableStopError" returns "true" when a mutable request
-// is interrupted by non-transient error that client cannot handle itself,
-// or transient error while the connection has already been established
-// (pinned endpoint exists).
-//
-// Returning "true" means retry should stop, otherwise it violates
+// Returning "false" means retry should stop, otherwise it violates
 // write-at-most-once semantics.
-func isNonRepeatableStopError(err error) bool {
+func isSafeRetryMutableRPC(err error) bool {
 	if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
-		return true
+		// not safe for mutable RPCs
+		// e.g. interrupted by non-transient error that client cannot handle itself,
+		// or transient error while the connection has already been established
+		return false
 	}
 	desc := rpctypes.ErrorDesc(err)
-	return desc != "there is no address available" && desc != "there is no connection available"
+	return desc == "there is no address available" || desc == "there is no connection available"
 }
 
 type retryKVClient struct {
