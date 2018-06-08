@@ -22,6 +22,8 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc"
 )
 
 func TestTLSClientCipherSuitesValid(t *testing.T)    { testTLSCipherSuites(t, true) }
@@ -57,6 +59,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	cli, cerr := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         cc,
 	})
 	if cli != nil {
