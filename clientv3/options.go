@@ -23,9 +23,9 @@ import (
 
 var (
 	// client-side handling retrying of request failures where data was not written to the wire or
-	// where server indicates it did not process the data. gPRC default is default is "FailFast(true)"
+	// where server indicates it did not process the data. gRPC default is default is "FailFast(true)"
 	// but for etcd we default to "FailFast(false)" to minimize client request error responses due to
-	// transident failures.
+	// transient failures.
 	defaultFailFast = grpc.FailFast(false)
 
 	// client-side request send limit, gRPC default is math.MaxInt32

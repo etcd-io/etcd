@@ -123,7 +123,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 type serverStreamingRetryingStream struct {
 	grpc.ClientStream
 	client        *Client
-	bufferedSends []interface{} // single messsage that the client can sen
+	bufferedSends []interface{} // single message that the client can sen
 	receivedGood  bool          // indicates whether any prior receives were successful
 	wasClosedSend bool          // indicates that CloseSend was closed
 	ctx           context.Context
@@ -294,7 +294,7 @@ func contextErrToGrpcErr(err error) error {
 var (
 	defaultOptions = &options{
 		retryPolicy: nonRepeatable,
-		max:         0, // disabed
+		max:         0, // disable
 		backoffFunc: backoffLinearWithJitter(50*time.Millisecond /*jitter*/, 0.10),
 		retryAuth:   true,
 	}

@@ -135,11 +135,10 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	pb.RegisterKVServer(svr, &mockKVServer{})
 	ms.Servers[idx].GrpcServer = svr
 
+	ms.wg.Add(1)
 	go func(svr *grpc.Server, l net.Listener) {
-		ms.wg.Add(1)
 		svr.Serve(l)
 	}(ms.Servers[idx].GrpcServer, ms.Servers[idx].ln)
-
 	return nil
 }
 

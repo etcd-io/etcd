@@ -24,9 +24,7 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-const (
-	scheme = "endpoint"
-)
+const scheme = "endpoint"
 
 var (
 	targetPrefix = fmt.Sprintf("%s://", scheme)
@@ -42,8 +40,8 @@ func init() {
 }
 
 type builder struct {
+	mu             sync.RWMutex
 	resolverGroups map[string]*ResolverGroup
-	sync.RWMutex
 }
 
 // NewResolverGroup creates a new ResolverGroup with the given id.
@@ -54,41 +52,41 @@ func NewResolverGroup(id string) (*ResolverGroup, error) {
 // ResolverGroup keeps all endpoints of resolvers using a common endpoint://<id>/ target
 // up-to-date.
 type ResolverGroup struct {
+	mu        sync.RWMutex
 	id        string
 	endpoints []string
 	resolvers []*Resolver
-	sync.RWMutex
 }
 
 func (e *ResolverGroup) addResolver(r *Resolver) {
-	e.Lock()
+	e.mu.Lock()
 	addrs := epsToAddrs(e.endpoints...)
 	e.resolvers = append(e.resolvers, r)
-	e.Unlock()
+	e.mu.Unlock()
 	r.cc.NewAddress(addrs)
 }
 
 func (e *ResolverGroup) removeResolver(r *Resolver) {
-	e.Lock()
+	e.mu.Lock()
 	for i, er := range e.resolvers {
 		if er == r {
 			e.resolvers = append(e.resolvers[:i], e.resolvers[i+1:]...)
 			break
 		}
 	}
-	e.Unlock()
+	e.mu.Unlock()
 }
 
 // SetEndpoints updates the endpoints for ResolverGroup. All registered resolver are updated
 // immediately with the new endpoints.
 func (e *ResolverGroup) SetEndpoints(endpoints []string) {
 	addrs := epsToAddrs(endpoints...)
-	e.Lock()
+	e.mu.Lock()
 	e.endpoints = endpoints
 	for _, r := range e.resolvers {
 		r.cc.NewAddress(addrs)
 	}
-	e.Unlock()
+	e.mu.Unlock()
 }
 
 // Target constructs a endpoint target using the endpoint id of the ResolverGroup.
@@ -121,7 +119,7 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 		return nil, fmt.Errorf("failed to build resolver: %v", err)
 	}
 	r := &Resolver{
-		endpointId: id,
+		endpointID: id,
 		cc:         cc,
 	}
 	es.addResolver(r)
@@ -129,24 +127,24 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 }
 
 func (b *builder) newResolverGroup(id string) (*ResolverGroup, error) {
-	b.RLock()
-	es, ok := b.resolverGroups[id]
-	b.RUnlock()
-	if !ok {
-		es = &ResolverGroup{id: id}
-		b.Lock()
-		b.resolverGroups[id] = es
-		b.Unlock()
-	} else {
+	b.mu.RLock()
+	_, ok := b.resolverGroups[id]
+	b.mu.RUnlock()
+	if ok {
 		return nil, fmt.Errorf("Endpoint already exists for id: %s", id)
 	}
+
+	es := &ResolverGroup{id: id}
+	b.mu.Lock()
+	b.resolverGroups[id] = es
+	b.mu.Unlock()
 	return es, nil
 }
 
 func (b *builder) getResolverGroup(id string) (*ResolverGroup, error) {
-	b.RLock()
+	b.mu.RLock()
 	es, ok := b.resolverGroups[id]
-	b.RUnlock()
+	b.mu.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf("ResolverGroup not found for id: %s", id)
 	}
@@ -154,9 +152,9 @@ func (b *builder) getResolverGroup(id string) (*ResolverGroup, error) {
 }
 
 func (b *builder) close(id string) {
-	b.Lock()
+	b.mu.Lock()
 	delete(b.resolverGroups, id)
-	b.Unlock()
+	b.mu.Unlock()
 }
 
 func (r *builder) Scheme() string {
@@ -165,7 +163,7 @@ func (r *builder) Scheme() string {
 
 // Resolver provides a resolver for a single etcd cluster, identified by name.
 type Resolver struct {
-	endpointId string
+	endpointID string
 	cc         resolver.ClientConn
 	sync.RWMutex
 }
@@ -182,15 +180,18 @@ func epsToAddrs(eps ...string) (addrs []resolver.Address) {
 func (*Resolver) ResolveNow(o resolver.ResolveNowOption) {}
 
 func (r *Resolver) Close() {
-	es, err := bldr.getResolverGroup(r.endpointId)
+	es, err := bldr.getResolverGroup(r.endpointID)
 	if err != nil {
 		return
 	}
 	es.removeResolver(r)
 }
 
-// Parse endpoint parses a endpoint of the form (http|https)://<host>*|(unix|unixs)://<path>) and returns a
-// protocol ('tcp' or 'unix'), host (or filepath if a unix socket) and scheme (http, https, unix, unixs).
+// ParseEndpoint endpoint parses an endpoint of the form
+// (http|https)://<host>*|(unix|unixs)://<path>)
+// and returns a protocol ('tcp' or 'unix'),
+// host (or filepath if a unix socket),
+// scheme (http, https, unix, unixs).
 func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	proto = "tcp"
 	host = endpoint
