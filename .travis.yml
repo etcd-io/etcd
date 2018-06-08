@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.10.2
+- 1.10.3
 - tip
 
 notifications:
@@ -65,7 +65,7 @@ matrix:
     env: TARGET=linux-arm64-build
   - go: tip
     env: TARGET=linux-ppc64le-build
-  - go: 1.10.2
+  - go: 1.10.3
     env: TARGET=linux-amd64-fmt-unit-go-tip
 
 before_install:
