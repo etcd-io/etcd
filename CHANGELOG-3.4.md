@@ -3,7 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.3.md).
 
 
-## v3.4.0 (TBD 2018-08)
+## v3.4.0 (TBD 2018-09)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
@@ -11,8 +11,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 - Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
-- Improve [slow requests warning logging](https://github.com/coreos/etcd/pull/9288).
-  - e.g. `etcdserver: read-only range request "key:\"\\000\" range_end:\"\\000\" " took too long [3.389041388s] to execute`
+- Improve [slow request apply warning log](https://github.com/coreos/etcd/pull/9288).
+  - e.g. `request "header:<ID:7587830746365689092 > put:<key:\"a\" value_size:14 >" took too long (59.798µs) to execute`.
+  - Redact [request value field](https://github.com/coreos/etcd/pull/9822).
 - Improve [TLS setup error logging](https://github.com/coreos/etcd/pull/9518) to help debug [TLS-enabled cluster configuring issues](https://github.com/coreos/etcd/issues/9400).
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/coreos/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
@@ -372,5 +373,5 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### Go
 
 - Require *Go 1.10+*.
-- Compile with [*Go 1.10.2*](https://golang.org/doc/devel/release.html#go1.10).
+- Compile with [*Go 1.10.3*](https://golang.org/doc/devel/release.html#go1.10).
 
