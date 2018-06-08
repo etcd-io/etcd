@@ -122,8 +122,6 @@ func (as *requestOpStringer) String() string {
 	switch op := as.Op.Request.(type) {
 	case *RequestOp_RequestPut:
 		return fmt.Sprintf("request_put:<%s>", newLoggablePutRequest(op.RequestPut).String())
-	case *RequestOp_RequestTxn:
-		return fmt.Sprintf("request_txn:<%s>", newLoggableTxnRequest(op.RequestTxn).String())
 	default:
 		// nothing to redact
 	}
@@ -138,7 +136,6 @@ type loggableValueCompare struct {
 	Target    Compare_CompareTarget `protobuf:"varint,2,opt,name=target,proto3,enum=etcdserverpb.Compare_CompareTarget"`
 	Key       []byte                `protobuf:"bytes,3,opt,name=key,proto3"`
 	ValueSize int                   `protobuf:"bytes,7,opt,name=value_size,proto3"`
-	RangeEnd  []byte                `protobuf:"bytes,64,opt,name=range_end,proto3"`
 }
 
 func newLoggableValueCompare(c *Compare, cv *Compare_Value) *loggableValueCompare {
@@ -147,7 +144,6 @@ func newLoggableValueCompare(c *Compare, cv *Compare_Value) *loggableValueCompar
 		c.Target,
 		c.Key,
 		len(cv.Value),
-		c.RangeEnd,
 	}
 }
 
@@ -159,12 +155,10 @@ func (*loggableValueCompare) ProtoMessage()    {}
 // size field.
 // To preserve proto encoding of the key bytes, a faked out proto type is used here.
 type loggablePutRequest struct {
-	Key         []byte `protobuf:"bytes,1,opt,name=key,proto3"`
-	ValueSize   int    `protobuf:"varint,2,opt,name=value_size,proto3"`
-	Lease       int64  `protobuf:"varint,3,opt,name=lease,proto3"`
-	PrevKv      bool   `protobuf:"varint,4,opt,name=prev_kv,proto3"`
-	IgnoreValue bool   `protobuf:"varint,5,opt,name=ignore_value,proto3"`
-	IgnoreLease bool   `protobuf:"varint,6,opt,name=ignore_lease,proto3"`
+	Key       []byte `protobuf:"bytes,1,opt,name=key,proto3"`
+	ValueSize int    `protobuf:"varint,2,opt,name=value_size,proto3"`
+	Lease     int64  `protobuf:"varint,3,opt,name=lease,proto3"`
+	PrevKv    bool   `protobuf:"varint,4,opt,name=prev_kv,proto3"`
 }
 
 func newLoggablePutRequest(request *PutRequest) *loggablePutRequest {
@@ -173,8 +167,6 @@ func newLoggablePutRequest(request *PutRequest) *loggablePutRequest {
 		len(request.Value),
 		request.Lease,
 		request.PrevKv,
-		request.IgnoreValue,
-		request.IgnoreLease,
 	}
 }
 
