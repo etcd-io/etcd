@@ -401,12 +401,13 @@ func newClient(cfg *Config) (*Client, error) {
 
 	ctx, cancel := context.WithCancel(baseCtx)
 	client := &Client{
-		conn:   nil,
-		cfg:    *cfg,
-		creds:  creds,
-		ctx:    ctx,
-		cancel: cancel,
-		mu:     new(sync.Mutex),
+		conn:     nil,
+		cfg:      *cfg,
+		creds:    creds,
+		ctx:      ctx,
+		cancel:   cancel,
+		mu:       new(sync.Mutex),
+		callOpts: defaultCallOpts,
 	}
 
 	if cfg.Username != "" && cfg.Password != "" {
