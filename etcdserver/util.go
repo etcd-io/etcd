@@ -109,7 +109,8 @@ func warnOfExpensiveRequest(now time.Time, reqStringer fmt.Stringer, respMsg pro
 	warnOfExpensiveGenericRequest(now, reqStringer, "", resp, err)
 }
 
-func warnOfExpensiveReadOnlyTxnRequest(now time.Time, reqStringer fmt.Stringer, txnResponse *pb.TxnResponse, err error) {
+func warnOfExpensiveReadOnlyTxnRequest(now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
+	reqStringer := pb.NewLoggableTxnRequest(r)
 	var resp string
 	if !isNil(txnResponse) {
 		var resps []string
