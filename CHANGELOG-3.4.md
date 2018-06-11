@@ -12,8 +12,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
 - Improve [slow request apply warning log](https://github.com/coreos/etcd/pull/9288).
-  - e.g. `request "header:<ID:7587830746365689092 > put:<key:\"a\" value_size:14 >" took too long (59.798µs) to execute`.
+  - e.g. `read-only range request "key:\"/a\" range_end:\"/b\" " with result "range_response_count:3 size:96" took too long (97.966µs) to execute`.
   - Redact [request value field](https://github.com/coreos/etcd/pull/9822).
+  - Provide [response size](https://github.com/coreos/etcd/pull/9826).
 - Improve [TLS setup error logging](https://github.com/coreos/etcd/pull/9518) to help debug [TLS-enabled cluster configuring issues](https://github.com/coreos/etcd/issues/9400).
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/coreos/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
