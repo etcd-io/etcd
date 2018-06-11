@@ -64,7 +64,7 @@ func (as *InternalRaftStringer) String() string {
 	case as.Request.Txn != nil:
 		return fmt.Sprintf("header:<%s> txn:<%s>",
 			as.Request.Header.String(),
-			newLoggableTxnRequest(as.Request.Txn).String(),
+			NewLoggableTxnRequest(as.Request.Txn).String(),
 		)
 	default:
 		// nothing to redact
@@ -78,7 +78,7 @@ type txnRequestStringer struct {
 	Request *TxnRequest
 }
 
-func newLoggableTxnRequest(request *TxnRequest) *txnRequestStringer {
+func NewLoggableTxnRequest(request *TxnRequest) *txnRequestStringer {
 	return &txnRequestStringer{request}
 }
 
