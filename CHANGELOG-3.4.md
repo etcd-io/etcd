@@ -147,6 +147,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
 - Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric (renamed from [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9819)).
+- Add [`etcd_debugging_disk_backend_commit_rebalance_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.
+- Add [`etcd_debugging_disk_backend_commit_spill_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.
+- Add [`etcd_debugging_disk_backend_commit_write_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.
 - Add [`etcd_debugging_lease_granted_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_revoked_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_renewed_total`](https://github.com/coreos/etcd/pull/9778) Prometheus metric.
