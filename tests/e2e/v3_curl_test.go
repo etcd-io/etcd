@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"testing"
 
-	"go.etcd.io/coreos/etcd/auth/authpb"
+	"go.etcd.io/etcd/auth/authpb"
 	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"

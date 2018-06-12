@@ -66,6 +66,9 @@ func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsername, withCfg(configClientTLSCertAuth))
 }
 func TestCtlV3AuthJWTExpire(t *testing.T) { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
+func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
+	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(configClientTLSCertAuth))
+}
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -1041,7 +1044,7 @@ func authTestEndpointHealth(cx ctlCtx) {
 	}
 }
 
-func authTestCertCNAndUsername(cx ctlCtx) {
+func certCNAndUsername(cx ctlCtx, noPassword bool) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -1049,8 +1052,14 @@ func authTestCertCNAndUsername(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
-		cx.t.Fatal(err)
+	if noPassword {
+		if err := ctlV3User(cx, []string{"add", "example.com", "--no-password"}, "User example.com created", []string{""}); err != nil {
+			cx.t.Fatal(err)
+		}
+	} else {
+		if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
+			cx.t.Fatal(err)
+		}
 	}
 	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), "Role test-role-cn created"); err != nil {
 		cx.t.Fatal(err)
@@ -1091,6 +1100,14 @@ func authTestCertCNAndUsername(cx ctlCtx) {
 	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
 		cx.t.Error(err)
 	}
+}
+
+func authTestCertCNAndUsername(cx ctlCtx) {
+	certCNAndUsername(cx, false)
+}
+
+func authTestCertCNAndUsernameNoPassword(cx ctlCtx) {
+	certCNAndUsername(cx, true)
 }
 
 func authTestJWTExpire(cx ctlCtx) {
