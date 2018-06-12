@@ -138,7 +138,6 @@ func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, reqStrin
 }
 
 func warnOfExpensiveGenericRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, prefix string, resp string, err error) {
-	// TODO: add metrics
 	d := time.Since(now)
 	if d > warnApplyDuration {
 		if lg != nil {
