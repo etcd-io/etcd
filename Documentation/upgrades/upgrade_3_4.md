@@ -198,7 +198,23 @@ curl -L http://localhost:2379/v3/kv/put \
 
 Requests to `/v3beta` endpoints will redirect to `/v3`, and `/v3beta` will be removed in 3.5 release.
 
+#### Deprecated container image tags
 
+`latest` and minor version images tags are deprecated:
+
+```diff
+-docker pull gcr.io/etcd-development/etcd:latest
++docker pull gcr.io/etcd-development/etcd:v3.4.0
+
+-docker pull gcr.io/etcd-development/etcd:v3.4
++docker pull gcr.io/etcd-development/etcd:v3.4.0
+
+-docker pull gcr.io/etcd-development/etcd:v3.4
++docker pull gcr.io/etcd-development/etcd:v3.4.1
+
+-docker pull gcr.io/etcd-development/etcd:v3.4
++docker pull gcr.io/etcd-development/etcd:v3.4.2
+```
 
 ### Server upgrade checklists
 
