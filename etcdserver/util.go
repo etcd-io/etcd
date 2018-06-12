@@ -111,7 +111,8 @@ func warnOfExpensiveRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Strin
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "", resp, err)
 }
 
-func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, txnResponse *pb.TxnResponse, err error) {
+func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
+	reqStringer := pb.NewLoggableTxnRequest(r)
 	var resp string
 	if !isNil(txnResponse) {
 		var resps []string
