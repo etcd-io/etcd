@@ -19,8 +19,6 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -28,7 +26,7 @@ import (
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/raft"
-
+	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 )
 
@@ -82,20 +80,26 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	var resp *pb.RangeResponse
+	var err error
+	defer func(start time.Time) {
+		warnOfExpensiveReadOnlyRangeRequest(start, r, resp, err)
+	}(time.Now())
+
 	if !r.Serializable {
-		err := s.linearizableReadNotify(ctx)
+		err = s.linearizableReadNotify(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	var resp *pb.RangeResponse
-	var err error
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
+
 	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
-		return nil, serr
+		err = serr
+		return nil, err
 	}
 	return resp, err
 }
@@ -129,12 +133,18 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		chk := func(ai *auth.AuthInfo) error {
 			return checkTxnAuth(s.authStore, ai, r)
 		}
+
+		defer func(start time.Time) {
+			warnOfExpensiveReadOnlyTxnRequest(start, r, resp, err)
+		}(time.Now())
+
 		get := func() { resp, err = s.applyV3Base.Txn(r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
 		return resp, err
 	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
