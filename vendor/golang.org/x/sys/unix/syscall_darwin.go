@@ -13,7 +13,7 @@
 package unix
 
 import (
-	errorspkg "errors"
+	"errors"
 	"syscall"
 	"unsafe"
 )
@@ -36,6 +36,7 @@ func Getwd() (string, error) {
 	return "", ENOTSUP
 }
 
+// SockaddrDatalink implements the Sockaddr interface for AF_LINK type sockets.
 type SockaddrDatalink struct {
 	Len    uint8
 	Family uint8
@@ -54,7 +55,7 @@ func nametomib(name string) (mib []_C_int, err error) {
 
 	// NOTE(rsc): It seems strange to set the buffer to have
 	// size CTL_MAXNAME+2 but use only CTL_MAXNAME
-	// as the size.  I don't know why the +2 is here, but the
+	// as the size. I don't know why the +2 is here, but the
 	// kernel uses +2 for its own implementation of this function.
 	// I am scared that if we don't include the +2 here, the kernel
 	// will silently write 2 words farther than we specify
@@ -74,18 +75,6 @@ func nametomib(name string) (mib []_C_int, err error) {
 		return nil, err
 	}
 	return buf[0 : n/siz], nil
-}
-
-func direntIno(buf []byte) (uint64, bool) {
-	return readInt(buf, unsafe.Offsetof(Dirent{}.Ino), unsafe.Sizeof(Dirent{}.Ino))
-}
-
-func direntReclen(buf []byte) (uint64, bool) {
-	return readInt(buf, unsafe.Offsetof(Dirent{}.Reclen), unsafe.Sizeof(Dirent{}.Reclen))
-}
-
-func direntNamlen(buf []byte) (uint64, bool) {
-	return readInt(buf, unsafe.Offsetof(Dirent{}.Namlen), unsafe.Sizeof(Dirent{}.Namlen))
 }
 
 //sys   ptrace(request int, pid int, addr uintptr, data uintptr) (err error)
@@ -109,7 +98,7 @@ type attrList struct {
 
 func getAttrList(path string, attrList attrList, attrBuf []byte, options uint) (attrs [][]byte, err error) {
 	if len(attrBuf) < 4 {
-		return nil, errorspkg.New("attrBuf too small")
+		return nil, errors.New("attrBuf too small")
 	}
 	attrList.bitmapCount = attrBitMapCount
 
@@ -145,12 +134,12 @@ func getAttrList(path string, attrList attrList, attrBuf []byte, options uint) (
 	for i := uint32(0); int(i) < len(dat); {
 		header := dat[i:]
 		if len(header) < 8 {
-			return attrs, errorspkg.New("truncated attribute header")
+			return attrs, errors.New("truncated attribute header")
 		}
 		datOff := *(*int32)(unsafe.Pointer(&header[0]))
 		attrLen := *(*uint32)(unsafe.Pointer(&header[4]))
 		if datOff < 0 || uint32(datOff)+attrLen > uint32(len(dat)) {
-			return attrs, errorspkg.New("truncated results; attrBuf too small")
+			return attrs, errors.New("truncated results; attrBuf too small")
 		}
 		end := uint32(datOff) + attrLen
 		attrs = append(attrs, dat[datOff:end])
@@ -185,6 +174,119 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 		err = e1
 	}
 	return
+}
+
+func xattrPointer(dest []byte) *byte {
+	// It's only when dest is set to NULL that the OS X implementations of
+	// getxattr() and listxattr() return the current sizes of the named attributes.
+	// An empty byte array is not sufficient. To maintain the same behaviour as the
+	// linux implementation, we wrap around the system calls and pass in NULL when
+	// dest is empty.
+	var destp *byte
+	if len(dest) > 0 {
+		destp = &dest[0]
+	}
+	return destp
+}
+
+//sys	getxattr(path string, attr string, dest *byte, size int, position uint32, options int) (sz int, err error)
+
+func Getxattr(path string, attr string, dest []byte) (sz int, err error) {
+	return getxattr(path, attr, xattrPointer(dest), len(dest), 0, 0)
+}
+
+func Lgetxattr(link string, attr string, dest []byte) (sz int, err error) {
+	return getxattr(link, attr, xattrPointer(dest), len(dest), 0, XATTR_NOFOLLOW)
+}
+
+//sys  setxattr(path string, attr string, data *byte, size int, position uint32, options int) (err error)
+
+func Setxattr(path string, attr string, data []byte, flags int) (err error) {
+	// The parameters for the OS X implementation vary slightly compared to the
+	// linux system call, specifically the position parameter:
+	//
+	//  linux:
+	//      int setxattr(
+	//          const char *path,
+	//          const char *name,
+	//          const void *value,
+	//          size_t size,
+	//          int flags
+	//      );
+	//
+	//  darwin:
+	//      int setxattr(
+	//          const char *path,
+	//          const char *name,
+	//          void *value,
+	//          size_t size,
+	//          u_int32_t position,
+	//          int options
+	//      );
+	//
+	// position specifies the offset within the extended attribute. In the
+	// current implementation, only the resource fork extended attribute makes
+	// use of this argument. For all others, position is reserved. We simply
+	// default to setting it to zero.
+	return setxattr(path, attr, xattrPointer(data), len(data), 0, flags)
+}
+
+func Lsetxattr(link string, attr string, data []byte, flags int) (err error) {
+	return setxattr(link, attr, xattrPointer(data), len(data), 0, flags|XATTR_NOFOLLOW)
+}
+
+//sys removexattr(path string, attr string, options int) (err error)
+
+func Removexattr(path string, attr string) (err error) {
+	// We wrap around and explicitly zero out the options provided to the OS X
+	// implementation of removexattr, we do so for interoperability with the
+	// linux variant.
+	return removexattr(path, attr, 0)
+}
+
+func Lremovexattr(link string, attr string) (err error) {
+	return removexattr(link, attr, XATTR_NOFOLLOW)
+}
+
+//sys	listxattr(path string, dest *byte, size int, options int) (sz int, err error)
+
+func Listxattr(path string, dest []byte) (sz int, err error) {
+	return listxattr(path, xattrPointer(dest), len(dest), 0)
+}
+
+func Llistxattr(link string, dest []byte) (sz int, err error) {
+	return listxattr(link, xattrPointer(dest), len(dest), XATTR_NOFOLLOW)
+}
+
+func setattrlistTimes(path string, times []Timespec, flags int) error {
+	_p0, err := BytePtrFromString(path)
+	if err != nil {
+		return err
+	}
+
+	var attrList attrList
+	attrList.bitmapCount = ATTR_BIT_MAP_COUNT
+	attrList.CommonAttr = ATTR_CMN_MODTIME | ATTR_CMN_ACCTIME
+
+	// order is mtime, atime: the opposite of Chtimes
+	attributes := [2]Timespec{times[1], times[0]}
+	options := 0
+	if flags&AT_SYMLINK_NOFOLLOW != 0 {
+		options |= FSOPT_NOFOLLOW
+	}
+	_, _, e1 := Syscall6(
+		SYS_SETATTRLIST,
+		uintptr(unsafe.Pointer(_p0)),
+		uintptr(unsafe.Pointer(&attrList)),
+		uintptr(unsafe.Pointer(&attributes)),
+		uintptr(unsafe.Sizeof(attributes)),
+		uintptr(options),
+		0,
+	)
+	if e1 != 0 {
+		return e1
+	}
+	return nil
 }
 
 func utimensat(dirfd int, path string, times *[2]Timespec, flags int) error {
@@ -239,6 +341,52 @@ func IoctlGetTermios(fd int, req uint) (*Termios, error) {
 	return &value, err
 }
 
+func Uname(uname *Utsname) error {
+	mib := []_C_int{CTL_KERN, KERN_OSTYPE}
+	n := unsafe.Sizeof(uname.Sysname)
+	if err := sysctl(mib, &uname.Sysname[0], &n, nil, 0); err != nil {
+		return err
+	}
+
+	mib = []_C_int{CTL_KERN, KERN_HOSTNAME}
+	n = unsafe.Sizeof(uname.Nodename)
+	if err := sysctl(mib, &uname.Nodename[0], &n, nil, 0); err != nil {
+		return err
+	}
+
+	mib = []_C_int{CTL_KERN, KERN_OSRELEASE}
+	n = unsafe.Sizeof(uname.Release)
+	if err := sysctl(mib, &uname.Release[0], &n, nil, 0); err != nil {
+		return err
+	}
+
+	mib = []_C_int{CTL_KERN, KERN_VERSION}
+	n = unsafe.Sizeof(uname.Version)
+	if err := sysctl(mib, &uname.Version[0], &n, nil, 0); err != nil {
+		return err
+	}
+
+	// The version might have newlines or tabs in it, convert them to
+	// spaces.
+	for i, b := range uname.Version {
+		if b == '\n' || b == '\t' {
+			if i == len(uname.Version)-1 {
+				uname.Version[i] = 0
+			} else {
+				uname.Version[i] = ' '
+			}
+		}
+	}
+
+	mib = []_C_int{CTL_HW, HW_MACHINE}
+	n = unsafe.Sizeof(uname.Machine)
+	if err := sysctl(mib, &uname.Machine[0], &n, nil, 0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /*
  * Exposed directly
  */
@@ -264,6 +412,7 @@ func IoctlGetTermios(fd int, req uint) (*Termios, error) {
 //sys	Flock(fd int, how int) (err error)
 //sys	Fpathconf(fd int, name int) (val int, err error)
 //sys	Fstat(fd int, stat *Stat_t) (err error) = SYS_FSTAT64
+//sys	Fstatat(fd int, path string, stat *Stat_t, flags int) (err error) = SYS_FSTATAT64
 //sys	Fstatfs(fd int, stat *Statfs_t) (err error) = SYS_FSTATFS64
 //sys	Fsync(fd int) (err error)
 //sys	Ftruncate(fd int, length int64) (err error)
@@ -377,17 +526,12 @@ func IoctlGetTermios(fd int, req uint) (*Termios, error) {
 // Searchfs
 // Delete
 // Copyfile
-// Poll
 // Watchevent
 // Waitevent
 // Modwatch
-// Getxattr
 // Fgetxattr
-// Setxattr
 // Fsetxattr
-// Removexattr
 // Fremovexattr
-// Listxattr
 // Flistxattr
 // Fsctl
 // Initgroups
