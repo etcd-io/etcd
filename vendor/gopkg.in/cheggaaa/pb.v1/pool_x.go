@@ -5,18 +5,25 @@ package pb
 import "fmt"
 
 func (p *Pool) print(first bool) bool {
+	p.m.Lock()
+	defer p.m.Unlock()
 	var out string
 	if !first {
-		out = fmt.Sprintf("\033[%dA", len(p.bars))
+		out = fmt.Sprintf("\033[%dA", p.lastBarsCount)
 	}
 	isFinished := true
 	for _, bar := range p.bars {
-		if !bar.isFinish {
+		if !bar.IsFinished() {
 			isFinished = false
 		}
 		bar.Update()
 		out += fmt.Sprintf("\r%s\n", bar.String())
 	}
-	fmt.Print(out)
+	if p.Output != nil {
+		fmt.Fprint(p.Output, out)
+	} else {
+		fmt.Print(out)
+	}
+	p.lastBarsCount = len(p.bars)
 	return isFinished
 }

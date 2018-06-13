@@ -13,12 +13,13 @@ import (
 	"io"
 	"log"
 	"reflect"
-	"sort"
 	"strings"
 	"unicode"
 
+	"golang.org/x/text/collate"
 	"golang.org/x/text/internal/gen"
 	"golang.org/x/text/internal/ucd"
+	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/rangetable"
 )
 
@@ -37,8 +38,9 @@ func getVersions() []string {
 		log.Fatal(bootstrapMessage)
 	}
 
+	c := collate.New(language.Und, collate.Numeric)
 	versions := strings.Split(*versionList, ",")
-	sort.Strings(versions)
+	c.SortStrings(versions)
 
 	// Ensure that at least the current version is included.
 	for _, v := range versions {
@@ -48,7 +50,7 @@ func getVersions() []string {
 	}
 
 	versions = append(versions, gen.UnicodeVersion())
-	sort.Strings(versions)
+	c.SortStrings(versions)
 	return versions
 }
 
@@ -93,7 +95,7 @@ func main() {
 
 	fmt.Fprintf(w, "// Total size %d bytes (%d KiB)\n", size, size/1024)
 
-	gen.WriteGoFile("tables.go", "rangetable", w.Bytes())
+	gen.WriteVersionedGoFile("tables.go", "rangetable", w.Bytes())
 }
 
 func print(w io.Writer, rt *unicode.RangeTable) {
