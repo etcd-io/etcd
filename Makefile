@@ -20,12 +20,16 @@ clean:
 	rm -f ./codecov
 	rm -rf ./agent-*
 	rm -rf ./covdir
+	rm -f ./*.coverprofile
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/*.etcd
+	rm -rf ./default.etcd
+	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./gopath
 	rm -rf ./gopath.proto
 	rm -rf ./release
+	rm -f ./snapshot/localhost:*
 	rm -f ./integration/127.0.0.1:* ./integration/localhost:*
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
@@ -46,7 +50,8 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.10.1
+# GO_VERSION ?= 1.10.3
+GO_VERSION ?= 1.9.6
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -61,16 +66,16 @@ endif
 
 # Example:
 #   GO_VERSION=1.8.7 make build-docker-test
-#   GO_VERSION=1.9.5 make build-docker-test
+#   GO_VERSION=1.9.7 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 #   GO_VERSION=1.8.7 make push-docker-test
-#   GO_VERSION=1.9.5 make push-docker-test
+#   GO_VERSION=1.9.7 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
-#   GO_VERSION=1.9.5 make pull-docker-test
+#   GO_VERSION=1.9.7 make pull-docker-test
 #   make pull-docker-test
 
 build-docker-test:
