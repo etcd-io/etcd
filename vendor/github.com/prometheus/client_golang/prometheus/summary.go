@@ -36,10 +36,7 @@ const quantileLabel = "quantile"
 //
 // A typical use-case is the observation of request latencies. By default, a
 // Summary provides the median, the 90th and the 99th percentile of the latency
-// as rank estimations. However, the default behavior will change in the
-// upcoming v0.10 of the library. There will be no rank estiamtions at all by
-// default. For a sane transition, it is recommended to set the desired rank
-// estimations explicitly.
+// as rank estimations.
 //
 // Note that the rank estimations cannot be aggregated in a meaningful way with
 // the Prometheus query language (i.e. you cannot average or add them). If you
@@ -57,9 +54,6 @@ type Summary interface {
 }
 
 // DefObjectives are the default Summary quantile values.
-//
-// Deprecated: DefObjectives will not be used as the default objectives in
-// v0.10 of the library. The default Summary will have no quantiles then.
 var (
 	DefObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}
 
@@ -81,10 +75,8 @@ const (
 )
 
 // SummaryOpts bundles the options for creating a Summary metric. It is
-// mandatory to set Name and Help to a non-empty string. While all other fields
-// are optional and can safely be left at their zero value, it is recommended to
-// explicitly set the Objectives field to the desired value as the default value
-// will change in the upcoming v0.10 of the library.
+// mandatory to set Name and Help to a non-empty string. All other fields are
+// optional and can safely be left at their zero value.
 type SummaryOpts struct {
 	// Namespace, Subsystem, and Name are components of the fully-qualified
 	// name of the Summary (created by joining these components with
@@ -121,15 +113,9 @@ type SummaryOpts struct {
 	ConstLabels Labels
 
 	// Objectives defines the quantile rank estimates with their respective
-	// absolute error. If Objectives[q] = e, then the value reported for q
-	// will be the φ-quantile value for some φ between q-e and q+e.  The
-	// default value is DefObjectives. It is used if Objectives is left at
-	// its zero value (i.e. nil). To create a Summary without Objectives,
-	// set it to an empty map (i.e. map[float64]float64{}).
-	//
-	// Deprecated: Note that the current value of DefObjectives is
-	// deprecated. It will be replaced by an empty map in v0.10 of the
-	// library. Please explicitly set Objectives to the desired value.
+	// absolute error. If Objectives[q] = e, then the value reported
+	// for q will be the φ-quantile value for some φ between q-e and q+e.
+	// The default value is DefObjectives.
 	Objectives map[float64]float64
 
 	// MaxAge defines the duration for which an observation stays relevant
@@ -197,7 +183,7 @@ func newSummary(desc *Desc, opts SummaryOpts, labelValues ...string) Summary {
 		}
 	}
 
-	if opts.Objectives == nil {
+	if len(opts.Objectives) == 0 {
 		opts.Objectives = DefObjectives
 	}
 
@@ -404,11 +390,12 @@ func (s quantSort) Less(i, j int) bool {
 // (e.g. HTTP request latencies, partitioned by status code and method). Create
 // instances with NewSummaryVec.
 type SummaryVec struct {
-	*metricVec
+	*MetricVec
 }
 
 // NewSummaryVec creates a new SummaryVec based on the provided SummaryOpts and
-// partitioned by the given label names.
+// partitioned by the given label names. At least one label name must be
+// provided.
 func NewSummaryVec(opts SummaryOpts, labelNames []string) *SummaryVec {
 	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
@@ -417,60 +404,30 @@ func NewSummaryVec(opts SummaryOpts, labelNames []string) *SummaryVec {
 		opts.ConstLabels,
 	)
 	return &SummaryVec{
-		metricVec: newMetricVec(desc, func(lvs ...string) Metric {
+		MetricVec: newMetricVec(desc, func(lvs ...string) Metric {
 			return newSummary(desc, opts, lvs...)
 		}),
 	}
 }
 
-// GetMetricWithLabelValues returns the Summary for the given slice of label
-// values (same order as the VariableLabels in Desc). If that combination of
-// label values is accessed for the first time, a new Summary is created.
-//
-// It is possible to call this method without using the returned Summary to only
-// create the new Summary but leave it at its starting value, a Summary without
-// any observations.
-//
-// Keeping the Summary for later use is possible (and should be considered if
-// performance is critical), but keep in mind that Reset, DeleteLabelValues and
-// Delete can be used to delete the Summary from the SummaryVec. In that case, the
-// Summary will still exist, but it will not be exported anymore, even if a
-// Summary with the same label values is created later. See also the CounterVec
-// example.
-//
-// An error is returned if the number of label values is not the same as the
-// number of VariableLabels in Desc.
-//
-// Note that for more than one label value, this method is prone to mistakes
-// caused by an incorrect order of arguments. Consider GetMetricWith(Labels) as
-// an alternative to avoid that type of mistake. For higher label numbers, the
-// latter has a much more readable (albeit more verbose) syntax, but it comes
-// with a performance overhead (for creating and processing the Labels map).
-// See also the GaugeVec example.
-func (m *SummaryVec) GetMetricWithLabelValues(lvs ...string) (Observer, error) {
-	metric, err := m.metricVec.getMetricWithLabelValues(lvs...)
+// GetMetricWithLabelValues replaces the method of the same name in
+// MetricVec. The difference is that this method returns a Summary and not a
+// Metric so that no type conversion is required.
+func (m *SummaryVec) GetMetricWithLabelValues(lvs ...string) (Summary, error) {
+	metric, err := m.MetricVec.GetMetricWithLabelValues(lvs...)
 	if metric != nil {
-		return metric.(Observer), err
+		return metric.(Summary), err
 	}
 	return nil, err
 }
 
-// GetMetricWith returns the Summary for the given Labels map (the label names
-// must match those of the VariableLabels in Desc). If that label map is
-// accessed for the first time, a new Summary is created. Implications of
-// creating a Summary without using it and keeping the Summary for later use are
-// the same as for GetMetricWithLabelValues.
-//
-// An error is returned if the number and names of the Labels are inconsistent
-// with those of the VariableLabels in Desc.
-//
-// This method is used for the same purpose as
-// GetMetricWithLabelValues(...string). See there for pros and cons of the two
-// methods.
-func (m *SummaryVec) GetMetricWith(labels Labels) (Observer, error) {
-	metric, err := m.metricVec.getMetricWith(labels)
+// GetMetricWith replaces the method of the same name in MetricVec. The
+// difference is that this method returns a Summary and not a Metric so that no
+// type conversion is required.
+func (m *SummaryVec) GetMetricWith(labels Labels) (Summary, error) {
+	metric, err := m.MetricVec.GetMetricWith(labels)
 	if metric != nil {
-		return metric.(Observer), err
+		return metric.(Summary), err
 	}
 	return nil, err
 }
@@ -479,15 +436,15 @@ func (m *SummaryVec) GetMetricWith(labels Labels) (Observer, error) {
 // GetMetricWithLabelValues would have returned an error. By not returning an
 // error, WithLabelValues allows shortcuts like
 //     myVec.WithLabelValues("404", "GET").Observe(42.21)
-func (m *SummaryVec) WithLabelValues(lvs ...string) Observer {
-	return m.metricVec.withLabelValues(lvs...).(Observer)
+func (m *SummaryVec) WithLabelValues(lvs ...string) Summary {
+	return m.MetricVec.WithLabelValues(lvs...).(Summary)
 }
 
 // With works as GetMetricWith, but panics where GetMetricWithLabels would have
 // returned an error. By not returning an error, With allows shortcuts like
 //     myVec.With(Labels{"code": "404", "method": "GET"}).Observe(42.21)
-func (m *SummaryVec) With(labels Labels) Observer {
-	return m.metricVec.with(labels).(Observer)
+func (m *SummaryVec) With(labels Labels) Summary {
+	return m.MetricVec.With(labels).(Summary)
 }
 
 type constSummary struct {
@@ -548,8 +505,8 @@ func NewConstSummary(
 	quantiles map[float64]float64,
 	labelValues ...string,
 ) (Metric, error) {
-	if err := validateLabelValues(labelValues, len(desc.variableLabels)); err != nil {
-		return nil, err
+	if len(desc.variableLabels) != len(labelValues) {
+		return nil, errInconsistentCardinality
 	}
 	return &constSummary{
 		desc:       desc,

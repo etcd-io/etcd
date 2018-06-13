@@ -162,7 +162,8 @@
     "prometheus",
     "prometheus/promhttp"
   ]
-  revision = "5cec1d0429b02e4323e042eb04dafdb079ddf568"
+  revision = "c5b7fccd204277076155f10851dad72b76a49317"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/prometheus/client_model"
