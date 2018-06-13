@@ -19,8 +19,6 @@ TEST_OPTS="PASSES='build grpcproxy'" bash tests/semaphore.test.bash
 TEST_OPTS="coverage" bash tests/semaphore.test.bash
 COMMENT
 
-TEST_SUFFIX=$(date +%s | base64 | head -c 15)
-
 if [ -z "${TEST_OPTS}" ]; then
 	TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.7"
 fi
@@ -30,13 +28,7 @@ fi
 
 echo "Running tests with" ${TEST_OPTS}
 if [ "${TEST_OPTS}" == "coverage" ]; then
-  make docker-test-coverage
+  sudo HOST_TMP_DIR=/tmp make docker-test-coverage
 else
-  docker run \
-    --rm \
-    --volume=`pwd`:/go/src/github.com/coreos/etcd \
-    gcr.io/etcd-development/etcd-test:go1.10.3 \
-    /bin/bash -c "${TEST_OPTS} ./test 2>&1 | tee test-${TEST_SUFFIX}.log"
-
-  ! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-${TEST_SUFFIX}.log
+  sudo HOST_TMP_DIR=/tmp TEST_OPTS="${TEST_OPTS}" make docker-test
 fi
