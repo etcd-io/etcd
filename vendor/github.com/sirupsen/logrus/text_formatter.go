@@ -3,14 +3,10 @@ package logrus
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -65,16 +61,7 @@ type TextFormatter struct {
 
 func (f *TextFormatter) init(entry *Entry) {
 	if entry.Logger != nil {
-		f.isTerminal = f.checkIfTerminal(entry.Logger.Out)
-	}
-}
-
-func (f *TextFormatter) checkIfTerminal(w io.Writer) bool {
-	switch v := w.(type) {
-	case *os.File:
-		return terminal.IsTerminal(int(v.Fd()))
-	default:
-		return false
+		f.isTerminal = checkIfTerminal(entry.Logger.Out)
 	}
 }
 
