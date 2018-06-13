@@ -7,6 +7,11 @@ Previous change logs can be found at [CHANGELOG-3.1](https://github.com/coreos/e
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.22...v3.2.23) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
+### Metrics, Monitoring
+
+- Add [`etcd_server_version`](https://github.com/coreos/etcd/pull/8960) Prometheus metric.
+  - To replace [Kubernetes `etcd-version-monitor`](https://github.com/coreos/etcd/issues/8948).
+
 ### Improved
 
 - Improve [slow request apply warning log](https://github.com/coreos/etcd/pull/9288).
