@@ -75,7 +75,7 @@ func terminalWidth() (width int, err error) {
 	if e != 0 {
 		return 0, error(e)
 	}
-	return int(info.dwSize.X), nil
+	return int(info.dwSize.X) - 1, nil
 }
 
 func getCursorPos() (pos coordinates, err error) {
@@ -102,7 +102,7 @@ var echoLockMutex sync.Mutex
 
 var oldState word
 
-func lockEcho() (quit chan int, err error) {
+func lockEcho() (shutdownCh chan struct{}, err error) {
 	echoLockMutex.Lock()
 	defer echoLockMutex.Unlock()
 	if echoLocked {
@@ -124,6 +124,8 @@ func lockEcho() (quit chan int, err error) {
 		err = fmt.Errorf("Can't set terminal settings: %v", e)
 		return
 	}
+
+	shutdownCh = make(chan struct{})
 	return
 }
 

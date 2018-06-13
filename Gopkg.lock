@@ -358,8 +358,8 @@
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
   packages = ["."]
-  revision = "226d21d43a305fac52b3a104ef83e721b15275e0"
-  version = "v1.0.2"
+  revision = "2af8bbdea9e99e83b3ac400d8f6b6d1b8cbbf338"
+  version = "v1.0.25"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
