@@ -102,7 +102,8 @@
 [[projects]]
   name = "github.com/grpc-ecosystem/go-grpc-prometheus"
   packages = ["."]
-  revision = "0dafe0d496ea71181bf2dd039e7e3f44b6bd11a7"
+  revision = "c225b8c3b01faf2899099b768856a9e916e5087b"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/grpc-ecosystem/grpc-gateway"
