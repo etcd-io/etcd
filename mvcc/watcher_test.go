@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+
 	"go.uber.org/zap"
 )
 
@@ -32,7 +33,8 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil))
+	st := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := WatchableKV(st)
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -42,6 +44,12 @@ func TestWatcherWatchID(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		id, _ := w.Watch(0, []byte("foo"), nil, 0)
+
+		// expect 1 watch ID
+		if _, ok := st.watchers[id]; !ok || len(st.watchers) != 1 {
+			t.Errorf("#%d: expected watch ID %d creation, but cannot find", i, id)
+		}
+
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -64,6 +72,7 @@ func TestWatcherWatchID(t *testing.T) {
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
 		id, _ := w.Watch(0, []byte("foo2"), nil, 1)
+
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -99,7 +108,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	}{
 		{1, 1, nil},
 		{1, 0, ErrWatcherDuplicateID},
-		{0, 0, nil},
+		{0, 0, nil}, // let server generate watch ID
 		{0, 2, nil},
 	}
 
@@ -252,7 +261,8 @@ func TestWatchDeleteRange(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil))
+	st := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := WatchableKV(st)
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -280,7 +290,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 		}
 	}
 
-	if l := len(w.(*watchStream).cancels); l != 0 {
+	if l := len(st.cancels); l != 0 {
 		t.Errorf("cancels = %d, want 0", l)
 	}
 }
@@ -298,6 +308,9 @@ func TestWatcherRequestProgress(t *testing.T) {
 		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
+		nextID:   0,
+		watchers: make(map[WatchID]*watcher),
+		cancels:  make(map[WatchID]cancelFunc),
 	}
 
 	defer func() {

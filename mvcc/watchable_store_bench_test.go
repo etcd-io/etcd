@@ -113,6 +113,53 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	}
 }
 
+func BenchmarkWatchableStoreMultiplexWatchPutSynced(b *testing.B) {
+	benchmarkWatchableStoreMultiplexWatchPut(b, true)
+}
+
+func BenchmarkWatchableStoreMultiplexWatchPutUnsynced(b *testing.B) {
+	benchmarkWatchableStoreMultiplexWatchPut(b, false)
+}
+
+// benchmarkWatchableStoreMultiplexWatchPut tests watch event creation
+// and notification when multiple watchers are multiplexed over one single stream.
+func benchmarkWatchableStoreMultiplexWatchPut(b *testing.B, synced bool) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
+	defer cleanup(s, be, tmpPath)
+
+	k := []byte("testkey")
+	v := []byte("testval")
+
+	rev := int64(0)
+	if !synced {
+		// non-0 value to keep watchers in unsynced
+		rev = 1
+	}
+
+	streams := make([]WatchStream, b.N)
+	defer func() {
+		for _, w := range streams {
+			w.Close()
+		}
+	}()
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	// each called when a client requests watcher
+	for i := range streams {
+		streams[i] = s.NewWatchStream()
+		streams[i].Watch(0, k, nil, rev)
+	}
+
+	// trigger watchers
+	s.Put(k, v, lease.NoLease)
+	for _, w := range streams {
+		<-w.Chan()
+	}
+}
+
 // Benchmarks on cancel function performance for unsynced watchers
 // in a WatchableStore. It creates k*N watchers to populate unsynced
 // with a reasonably large number of watchers. And measures the time it
@@ -135,6 +182,10 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
 		synced: newWatcherGroup(),
+
+		nextID:   0,
+		watchers: make(map[WatchID]*watcher),
+		cancels:  make(map[WatchID]cancelFunc),
 	}
 
 	defer func() {

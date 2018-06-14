@@ -853,6 +853,82 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 	}
 }
 
+// TestWatchIDs tests subsequent watchers have unique watch IDs.
+func TestWatchIDs(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	cli := cluster.RandClient()
+
+	numWatches := int64(10)
+	for id := int64(0); id < numWatches; id++ {
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
+		ww := cli.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		wresp := <-ww
+		cancel()
+		if wresp.Err() != nil {
+			t.Fatal(wresp.Err())
+		}
+		if id != wresp.ID {
+			t.Fatalf("expected watch ID %d, got %d", id, wresp.ID)
+		}
+	}
+}
+
+// TestWatchCancelOnClient tests watch cancel operation from client-side.
+func TestWatchCancelOnClient(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+	numWatches := 10
+
+	// The grpc proxy starts watches to detect leadership after the proxy server
+	// returns as started; to avoid racing on the proxy's internal watches, wait
+	// until require leader watches get create responses to ensure the leadership
+	// watches have started.
+	for {
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
+		ww := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		wresp := <-ww
+		cancel()
+		if wresp.Err() == nil {
+			break
+		}
+	}
+
+	// gRPC proxy creates a watcher with "__lostleader" suffix
+	w1, werr1 := cluster.Members[0].GetWatcherTotal()
+	if werr1 != nil {
+		t.Fatal(werr1)
+	}
+	for i := 0; i < numWatches; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+		w := client.Watch(ctx, fmt.Sprintf("%d", i))
+
+		// cancel watch operation from client-side
+		cancel()
+
+		wresp, ok := <-w
+		if ok {
+			t.Fatalf("#%d: expected closed channel, got watch channel open %v", i, ok)
+		}
+
+		// TODO: propagate context error before closing channel?
+		if wresp.Err() != nil {
+			t.Fatalf("#%d: expected nil error on watch cancellation, got %v", i, wresp.Err())
+		}
+	}
+	w2, werr2 := cluster.Members[0].GetWatcherTotal()
+	if werr2 != nil {
+		t.Fatal(werr2)
+	}
+
+	if w1 < w2 {
+		t.Fatalf("expected watchers to be canceled, got %d != %d", w1, w2)
+	}
+}
+
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})

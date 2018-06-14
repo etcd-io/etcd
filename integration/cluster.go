@@ -27,6 +27,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1123,6 +1124,15 @@ func (m *member) Metric(metricName string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// GetWatcherTotal gets the number of watchers.
+func (m *member) GetWatcherTotal() (int64, error) {
+	ws, err := m.Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		return -1, err
+	}
+	return strconv.ParseInt(ws, 10, 64)
 }
 
 // InjectPartition drops connections from m to others, vice versa.
