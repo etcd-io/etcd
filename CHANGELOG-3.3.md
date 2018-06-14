@@ -13,6 +13,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.8) and [
   - e.g. `read-only range request "key:\"/a\" range_end:\"/b\" " with result "range_response_count:3 size:96" took too long (97.966µs) to execute`.
   - Redact [request value field](https://github.com/coreos/etcd/pull/9822).
   - Provide [response size](https://github.com/coreos/etcd/pull/9826).
+- Add [backoff on watch retries on transient errors](https://github.com/coreos/etcd/pull/9840).
 
 ### Go
 
