@@ -70,7 +70,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 				}
 				continue
 			}
-			if !isSafeRetry(lastErr, callOpts) {
+			if !isSafeRetry(c.lg, lastErr, callOpts) {
 				return lastErr
 			}
 		}
@@ -215,14 +215,13 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 	if s.callOpts.retryAuth && rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 		gterr := s.client.getToken(s.ctx)
 		if gterr != nil {
-			logger.Info("retry failed to fetch new auth token", zap.Error(gterr))
+			s.client.lg.Info("retry failed to fetch new auth token", zap.Error(gterr))
 			return false, err // return the original error for simplicity
 		}
 		return true, err
 
 	}
-	return isSafeRetry(err, s.callOpts), err
-
+	return isSafeRetry(s.client.lg, err, s.callOpts), err
 }
 
 func (s *serverStreamingRetryingStream) reestablishStreamAndResendBuffer(callCtx context.Context) (grpc.ClientStream, error) {
@@ -262,7 +261,7 @@ func waitRetryBackoff(attempt uint, ctx context.Context, callOpts *options) erro
 }
 
 // isSafeRetry returns "true", if request is safe for retry with the given error.
-func isSafeRetry(err error, callOpts *options) bool {
+func isSafeRetry(lg *zap.Logger, err error, callOpts *options) bool {
 	if isContextError(err) {
 		return false
 	}
@@ -272,7 +271,7 @@ func isSafeRetry(err error, callOpts *options) bool {
 	case nonRepeatable:
 		return isSafeRetryMutableRPC(err)
 	default:
-		logger.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
+		lg.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
 		return false
 	}
 }

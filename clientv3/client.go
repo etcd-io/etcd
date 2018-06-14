@@ -46,15 +46,16 @@ var (
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
 
 	roundRobinBalancerName = fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String())
-	logger                 *zap.Logger
 )
 
 func init() {
-	logger = zap.NewNop() // zap.NewExample()
 	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
 		Name:   roundRobinBalancerName,
-		Logger: logger,
+
+		// TODO: configure from clientv3.Config
+		Logger: zap.NewNop(),
+		// Logger: zap.NewExample(),
 	})
 }
 
@@ -86,6 +87,8 @@ type Client struct {
 	tokenCred *authTokenCredential
 
 	callOpts []grpc.CallOption
+
+	lg *zap.Logger
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -274,8 +277,8 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 	opts = append(opts,
 		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
 		// Streams that are safe to retry are enabled individually.
-		grpc.WithStreamInterceptor(c.streamClientInterceptor(logger, withMax(0), rrBackoff)),
-		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(logger, withMax(defaultUnaryMaxRetries), rrBackoff)),
+		grpc.WithStreamInterceptor(c.streamClientInterceptor(c.lg, withMax(0), rrBackoff)),
+		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(c.lg, withMax(defaultUnaryMaxRetries), rrBackoff)),
 	)
 
 	return opts, nil
@@ -410,6 +413,16 @@ func newClient(cfg *Config) (*Client, error) {
 		callOpts: defaultCallOpts,
 	}
 
+	lcfg := DefaultLogConfig
+	if cfg.LogConfig != nil {
+		lcfg = *cfg.LogConfig
+	}
+	var err error
+	client.lg, err = lcfg.Build()
+	if err != nil {
+		return nil, err
+	}
+
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
@@ -434,7 +447,6 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// Prepare a 'endpoint://<unique-client-id>/' resolver for the client and create a endpoint target to pass
 	// to dial so the client knows to use this resolver.
-	var err error
 	client.resolverGroup, err = endpoint.NewResolverGroup(fmt.Sprintf("client-%s", strconv.FormatInt(time.Now().UnixNano(), 36)))
 	if err != nil {
 		client.cancel()
@@ -485,10 +497,10 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 		n := uint(len(c.Endpoints()))
 		quorum := (n/2 + 1)
 		if attempt%quorum == 0 {
-			logger.Info("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
+			c.lg.Info("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
 			return backoffutils.JitterUp(waitBetween, jitterFraction)
 		}
-		logger.Info("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
+		c.lg.Info("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
 		return 0
 	}
 }
