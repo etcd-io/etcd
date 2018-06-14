@@ -22,6 +22,8 @@ defragment
 defragmenting
 deleter
 dev
+/dev/null
+dev/null
 errClientDisconnected
 etcd
 gRPC
