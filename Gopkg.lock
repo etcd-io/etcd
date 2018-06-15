@@ -343,6 +343,7 @@
     "balancer",
     "balancer/base",
     "balancer/roundrobin",
+    "channelz",
     "codes",
     "connectivity",
     "credentials",
@@ -365,8 +366,8 @@
     "tap",
     "transport"
   ]
-  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
-  version = "v1.11.3"
+  revision = "7a6a684ca69eb4cae85ad0a484f2e531598c047b"
+  version = "v1.12.2"
 
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
