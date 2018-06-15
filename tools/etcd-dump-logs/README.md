@@ -1,6 +1,6 @@
 ### etcd-dump-logs
 
-etcd-dump-logs inspects etcd db files.
+etcd-dump-logs dumps the log from data directory.
 
 ```
 Usage:
