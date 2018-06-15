@@ -1,8 +1,8 @@
 
-Welcome to etcd's documentation!
-================================
+etcd Documentation
+==================
 
-* :ref:`client-architecture`: etcd Architecture.
+* :ref:`client-architecture`: Describes etcd client components.
 
 .. toctree::
    :maxdepth: 2
