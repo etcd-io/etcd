@@ -614,6 +614,26 @@ func canceledByCaller(stopCtx context.Context, err error) bool {
 	return err == context.Canceled || err == context.DeadlineExceeded
 }
 
+// IsConnCanceled returns true, if error is from a closed gRPC connection.
+// ref. https://github.com/grpc/grpc-go/pull/1854
+func IsConnCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	// >= gRPC v1.10.x
+	s, ok := status.FromError(err)
+	if ok {
+		// connection is canceled or server has already closed the connection
+		return s.Code() == codes.Canceled || s.Message() == "transport is closing"
+	}
+	// >= gRPC v1.10.x
+	if err == context.Canceled {
+		return true
+	}
+	// <= gRPC v1.7.x returns 'errors.New("grpc: the client connection is closing")'
+	return strings.Contains(err.Error(), "grpc: the client connection is closing")
+}
+
 func getHost(ep string) string {
 	url, uerr := url.Parse(ep)
 	if uerr != nil || !strings.Contains(ep, "://") {
