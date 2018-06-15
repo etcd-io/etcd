@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,13 +50,18 @@ var (
 )
 
 func init() {
+	lg := zap.NewNop()
+	if os.Getenv("ETCD_CLIENT_DEBUG") != "" {
+		var err error
+		lg, err = zap.NewProductionConfig().Build() // info level logging
+		if err != nil {
+			panic(err)
+		}
+	}
 	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
 		Name:   roundRobinBalancerName,
-
-		// TODO: configure from clientv3.Config
-		Logger: zap.NewNop(),
-		// Logger: zap.NewExample(),
+		Logger: lg,
 	})
 }
 

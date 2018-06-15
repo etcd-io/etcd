@@ -76,7 +76,7 @@ type Config struct {
 
 	// LogConfig configures client-side logger.
 	// If nil, use the default logger.
-	// TODO: configure balancer and gRPC logger
+	// TODO: configure gRPC logger
 	LogConfig *zap.Config
 }
 
