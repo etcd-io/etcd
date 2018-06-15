@@ -620,6 +620,10 @@ func (s *EtcdServer) getLogger() *zap.Logger {
 	return l
 }
 
+func tickToDur(ticks int, tickMs uint) string {
+	return fmt.Sprintf("%v", time.Duration(ticks)*time.Duration(tickMs)*time.Millisecond)
+}
+
 func (s *EtcdServer) adjustTicks() {
 	lg := s.getLogger()
 	clusterN := len(s.cluster.Members())
@@ -632,7 +636,9 @@ func (s *EtcdServer) adjustTicks() {
 				"started as single-node; fast-forwarding election ticks",
 				zap.String("local-member-id", s.ID().String()),
 				zap.Int("forward-ticks", ticks),
+				zap.String("forward-duration", tickToDur(ticks, s.Cfg.TickMs)),
 				zap.Int("election-ticks", s.Cfg.ElectionTicks),
+				zap.String("election-timeout", tickToDur(s.Cfg.ElectionTicks, s.Cfg.TickMs)),
 			)
 		} else {
 			plog.Infof("%s as single-node; fast-forwarding %d ticks (election ticks %d)", s.ID(), ticks, s.Cfg.ElectionTicks)
@@ -677,7 +683,9 @@ func (s *EtcdServer) adjustTicks() {
 					"initialized peer connections; fast-forwarding election ticks",
 					zap.String("local-member-id", s.ID().String()),
 					zap.Int("forward-ticks", ticks),
+					zap.String("forward-duration", tickToDur(ticks, s.Cfg.TickMs)),
 					zap.Int("election-ticks", s.Cfg.ElectionTicks),
+					zap.String("election-timeout", tickToDur(s.Cfg.ElectionTicks, s.Cfg.TickMs)),
 					zap.Int("active-remote-members", peerN),
 				)
 			} else {
