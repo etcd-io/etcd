@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.9.6
+- 1.9.7
 
 notifications:
   on_success: never
