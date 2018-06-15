@@ -4,7 +4,7 @@
 [![Coverage](https://codecov.io/gh/coreos/etcd/branch/master/graph/badge.svg)](https://codecov.io/gh/coreos/etcd)
 [![Build Status Travis](https://img.shields.io/travis/coreos/etcdlabs.svg?style=flat-square&&branch=master)](https://travis-ci.org/coreos/etcd)
 [![Build Status Semaphore](https://semaphoreci.com/api/v1/coreos/etcd/branches/master/shields_badge.svg)](https://semaphoreci.com/coreos/etcd)
-<img src="https://readthedocs.org/projects/etcd/badge/?version=latest&style=flat-square">
+[![Docs](https://readthedocs.org/projects/etcd/badge/?version=latest&style=flat-square)](https://etcd.readthedocs.io/en/latest/?badge=latest)
 [![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/coreos/etcd)
 [![Releases](https://img.shields.io/github/release/coreos/etcd/all.svg?style=flat-square)](https://github.com/coreos/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/coreos/etcd.svg?style=flat-square)](https://github.com/coreos/etcd/blob/master/LICENSE)
