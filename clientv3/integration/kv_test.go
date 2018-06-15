@@ -442,7 +442,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != nil && err != context.Canceled && err != grpc.ErrClientConnClosing {
+		if !clientv3.IsConnCanceled(err) {
 			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
@@ -474,7 +474,7 @@ func TestKVNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != context.Canceled && err != grpc.ErrClientConnClosing {
+		if !clientv3.IsConnCanceled(err) {
 			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)

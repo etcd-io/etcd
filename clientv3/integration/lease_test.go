@@ -292,7 +292,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Grant(context.TODO(), 5)
-		if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
+		if !clientv3.IsConnCanceled(err) {
 			// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
 			// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
 			t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
@@ -367,8 +367,9 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := cli.Grant(context.TODO(), 5); err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+		_, err := cli.Grant(context.TODO(), 5)
+		if !clientv3.IsConnCanceled(err) {
+			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -399,8 +400,9 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := cli.Revoke(context.TODO(), leaseID); err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+		_, err := cli.Revoke(context.TODO(), leaseID)
+		if !clientv3.IsConnCanceled(err) {
+			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
