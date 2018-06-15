@@ -510,6 +510,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	}
 	cr.mu.Unlock()
 
+	// gofail: labelRaftDropHeartbeat:
 	for {
 		m, err := dec.decode()
 		if err != nil {
@@ -519,6 +520,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			return err
 		}
 
+		// gofail-go: var raftDropHeartbeat struct{}
+		// continue labelRaftDropHeartbeat
 		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
 
 		cr.mu.Lock()
