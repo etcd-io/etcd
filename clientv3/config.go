@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -72,4 +73,27 @@ type Config struct {
 	// Context is the default client context; it can be used to cancel grpc dial out and
 	// other operations that do not have an explicit context.
 	Context context.Context
+
+	// LogConfig configures client-side logger.
+	// If nil, use the default logger.
+	// TODO: configure gRPC logger
+	LogConfig *zap.Config
+}
+
+// DefaultLogConfig is the default client logging configuration.
+// Default log level is "Warn". Use "zap.InfoLevel" for debugging.
+// Use "/dev/null" for output paths, to discard all logs.
+var DefaultLogConfig = zap.Config{
+	Level:       zap.NewAtomicLevelAt(zap.WarnLevel),
+	Development: false,
+	Sampling: &zap.SamplingConfig{
+		Initial:    100,
+		Thereafter: 100,
+	},
+	Encoding:      "json",
+	EncoderConfig: zap.NewProductionEncoderConfig(),
+
+	// Use "/dev/null" to discard all
+	OutputPaths:      []string{"stderr"},
+	ErrorOutputPaths: []string{"stderr"},
 }

@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
 	"google.golang.org/grpc"
 )
 
@@ -216,8 +215,8 @@ func (auth *authenticator) close() {
 	auth.conn.Close()
 }
 
-func newAuthenticator(endpoint string, opts []grpc.DialOption, c *Client) (*authenticator, error) {
-	conn, err := grpc.Dial(endpoint, opts...)
+func newAuthenticator(ctx context.Context, target string, opts []grpc.DialOption, c *Client) (*authenticator, error) {
+	conn, err := grpc.DialContext(ctx, target, opts...)
 	if err != nil {
 		return nil, err
 	}

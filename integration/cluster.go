@@ -536,6 +536,7 @@ type member struct {
 	PeerTLSInfo *transport.TLSInfo
 	// ClientTLSInfo enables client TLS when set
 	ClientTLSInfo *transport.TLSInfo
+	DialOptions   []grpc.DialOption
 
 	raftHandler   *testutil.PauseableHandler
 	s             *etcdserver.EtcdServer
@@ -733,6 +734,7 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:          []string{m.grpcAddr},
 		DialTimeout:        5 * time.Second,
+		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: m.clientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: m.clientMaxCallRecvMsgSize,
 	}
@@ -743,6 +745,9 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 			return nil, err
 		}
 		cfg.TLS = tls
+	}
+	if m.DialOptions != nil {
+		cfg.DialOptions = append(cfg.DialOptions, m.DialOptions...)
 	}
 	return newClientV3(cfg)
 }
@@ -950,6 +955,13 @@ func (m *member) Launch() error {
 }
 
 func (m *member) WaitOK(t *testing.T) {
+	m.WaitStarted(t)
+	for m.s.Leader() == 0 {
+		time.Sleep(tickDuration)
+	}
+}
+
+func (m *member) WaitStarted(t *testing.T) {
 	cc := MustNewHTTPClient(t, []string{m.URL()}, m.ClientTLSInfo)
 	kapi := client.NewKeysAPI(cc)
 	for {
@@ -962,8 +974,22 @@ func (m *member) WaitOK(t *testing.T) {
 		cancel()
 		break
 	}
-	for m.s.Leader() == 0 {
+}
+
+func WaitClientV3(t *testing.T, kv clientv3.KV) {
+	timeout := time.Now().Add(requestTimeout)
+	var err error
+	for time.Now().Before(timeout) {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err = kv.Get(ctx, "/")
+		cancel()
+		if err == nil {
+			return
+		}
 		time.Sleep(tickDuration)
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for client: %v", err)
 	}
 }
 

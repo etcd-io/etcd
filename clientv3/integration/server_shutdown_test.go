@@ -17,7 +17,6 @@ package integration
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +28,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
@@ -105,7 +105,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -338,14 +338,20 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		defer close(donec)
 		ctx, cancel := context.WithTimeout(context.TODO(), clientTimeout)
 		readyc <- struct{}{}
-		_, err := cli.Get(ctx, "abc", gops...)
+
+		// TODO: The new grpc load balancer will not pin to an endpoint
+		// as intended by this test. But it will round robin member within
+		// two attempts.
+		// Remove retry loop once the new grpc load balancer provides retry.
+		for i := 0; i < 2; i++ {
+			_, err = cli.Get(ctx, "abc", gops...)
+			if err == nil {
+				break
+			}
+		}
 		cancel()
 		if err != nil {
-			if linearizable && strings.Contains(err.Error(), "context deadline exceeded") {
-				t.Logf("TODO: FIX THIS after balancer rewrite! %v %v", reflect.TypeOf(err), err)
-			} else {
-				t.Fatal(err)
-			}
+			t.Fatalf("unexpected error: %v", err)
 		}
 	}()
 
@@ -372,4 +378,51 @@ func isServerCtxTimeout(err error) bool {
 	}
 	code := ev.Code()
 	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
+}
+
+// In grpc v1.11.3+ dial timeouts can error out with transport.ErrConnClosing. Previously dial timeouts
+// would always error out with context.DeadlineExceeded.
+func isClientTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.DeadlineExceeded {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.DeadlineExceeded || ev.Message() == transport.ErrConnClosing.Desc
+}
+
+func isCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled
+}
+
+func isUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Unavailable
 }

@@ -90,7 +90,7 @@ func TestTxnWriteFail(t *testing.T) {
 	}()
 
 	select {
-	case <-time.After(2 * clus.Members[1].ServerConfig.ReqTimeout()):
+	case <-time.After(5 * clus.Members[1].ServerConfig.ReqTimeout()):
 		t.Fatalf("timed out waiting for get")
 	case <-getc:
 	}

@@ -135,6 +135,15 @@
 		]
 	},
 	{
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/grpc-ecosystem/go-grpc-prometheus",
 		"licenses": [
 			{

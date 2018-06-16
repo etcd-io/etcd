@@ -442,7 +442,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != nil && err != context.Canceled && err != grpc.ErrClientConnClosing {
+		if !clientv3.IsConnCanceled(err) {
 			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
@@ -474,7 +474,7 @@ func TestKVNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != context.Canceled && err != grpc.ErrClientConnClosing {
+		if !clientv3.IsConnCanceled(err) {
 			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
@@ -708,9 +708,10 @@ func TestKVGetRetry(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	clus.Members[fIdx].Restart(t)
+	clus.Members[fIdx].WaitOK(t)
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fatalf("timed out waiting for get")
 	case <-donec:
 	}
@@ -750,7 +751,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	clus.Members[0].Restart(t)
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fatalf("timed out waiting for get")
 	case <-donec:
 	}
@@ -792,7 +793,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 }
@@ -814,14 +815,15 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// grpc finds out the original connection is down due to the member shutdown.
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 
+	ctx, cancel = context.WithTimeout(context.TODO(), time.Second)
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err) || isUnavailable(err)) {
 		t.Fatal(err)
 	}
 }
@@ -906,7 +908,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10 * 1024 * 1024,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 		{
 			maxRequestBytesServer:  10 * 1024 * 1024,
@@ -920,7 +922,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10*1024*1024 + 5,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 	}
 	for i, test := range tests {
@@ -940,7 +942,7 @@ func TestKVLargeRequests(t *testing.T) {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}
 		} else if err != nil && !strings.HasPrefix(err.Error(), test.expectError.Error()) {
-			t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
+			t.Errorf("#%d: expected error starting with '%s', got '%s'", i, test.expectError.Error(), err.Error())
 		}
 
 		// put request went through, now expects large response back

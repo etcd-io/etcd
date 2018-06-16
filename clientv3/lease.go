@@ -466,7 +466,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 // resetRecv opens a new lease stream and starts sending keep alive requests.
 func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
 	sctx, cancel := context.WithCancel(l.stopCtx)
-	stream, err := l.remote.LeaseKeepAlive(sctx, l.callOpts...)
+	stream, err := l.remote.LeaseKeepAlive(sctx, append(l.callOpts, withMax(0))...)
 	if err != nil {
 		cancel()
 		return nil, err

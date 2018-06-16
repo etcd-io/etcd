@@ -43,6 +43,8 @@ func NewOrderViolationSwitchEndpointClosure(c clientv3.Client) OrderViolationFun
 		// set available endpoints back to all endpoints in to ensure
 		// the client has access to all the endpoints.
 		c.SetEndpoints(eps...)
+		// give enough time for operation
+		time.Sleep(1 * time.Second)
 		violationCount++
 		return nil
 	}

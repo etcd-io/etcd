@@ -17,11 +17,13 @@ package integration
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+	"google.golang.org/grpc"
 )
 
 func TestUserError(t *testing.T) {
@@ -68,7 +70,11 @@ func TestUserErrorAuth(t *testing.T) {
 	}
 
 	// wrong id or password
-	cfg := clientv3.Config{Endpoints: authapi.Endpoints()}
+	cfg := clientv3.Config{
+		Endpoints:   authapi.Endpoints(),
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
 	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)

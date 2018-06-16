@@ -87,11 +87,20 @@
 //	go func() { cli.Close() }()
 //	_, err := kvc.Get(ctx, "a")
 //	if err != nil {
+//		// with etcd clientv3 <= v3.3
 //		if err == context.Canceled {
 //			// grpc balancer calls 'Get' with an inflight client.Close
 //		} else if err == grpc.ErrClientConnClosing {
 //			// grpc balancer calls 'Get' after client.Close.
 //		}
+//		// with etcd clientv3 >= v3.4
+//		if clientv3.IsConnCanceled(err) {
+//			// gRPC client connection is closed
+//		}
 //	}
+//
+// The grpc load balancer is registered statically and is shared across etcd clients.
+// To enable detailed load balancer logging, set the ETCD_CLIENT_DEBUG environment
+// variable.  E.g. "ETCD_CLIENT_DEBUG=1".
 //
 package clientv3

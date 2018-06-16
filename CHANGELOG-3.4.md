@@ -9,7 +9,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Improved
 
-- Rewrite [client balancer](TODO) with [new gRPC balancer interface](TODO).
+- Rewrite [client balancer](https://github.com/coreos/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/coreos/etcd/issues/9106).
 - Add [backoff on watch retries on transient errors](https://github.com/coreos/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/coreos/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/coreos/etcd/issues/9246).
 - Improve [slow request apply warning log](https://github.com/coreos/etcd/pull/9288).
