@@ -1,8 +1,11 @@
 # etcd/clientv3
 
+[![Docs](https://readthedocs.org/projects/etcd/badge/?version=latest&style=flat-square)](https://etcd.readthedocs.io/en/latest/?badge=latest)
 [![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/coreos/etcd/clientv3)
 
 `etcd/clientv3` is the official Go etcd client for v3.
+
+See https://etcd.readthedocs.io/en/latest for latest client architecture.
 
 ## Install
 
