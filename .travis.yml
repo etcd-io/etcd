@@ -114,7 +114,9 @@ script:
             && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build"
         ;;
       linux-amd64-grpcproxy)
-        sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
+        docker run --rm \
+          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
+          /bin/bash -c "GOARCH=amd64 PASSES='build grpcproxy' ./test"
         ;;
       linux-amd64-coverage)
         sudo HOST_TMP_DIR=/tmp make docker-test-coverage
