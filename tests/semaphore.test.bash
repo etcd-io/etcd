@@ -12,12 +12,6 @@ sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.7" 
 
 # 386-e2e
 sudo HOST_TMP_DIR=/tmp TEST_OPTS="GOARCH=386 PASSES='build e2e'" make docker-test
-
-# amd64-unit
-sudo HOST_TMP_DIR=/tmp TEST_OPTS="GOARCH=amd64 PASSES='unit'" make docker-test
-
-# 386-unit
-sudo HOST_TMP_DIR=/tmp TEST_OPTS="GOARCH=386 PASSES='unit'" make docker-test
 COMMENT
 
 sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.7" make docker-test
