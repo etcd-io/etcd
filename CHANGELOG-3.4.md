@@ -178,8 +178,7 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Support TLS cipher suite whitelisting.
   - To block [weak cipher suites](https://github.com/coreos/etcd/issues/8320).
   - TLS handshake fails when client hello is requested with invalid cipher suites.
-  - Add [`etcd --client-cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
-  - Add [`etcd --peer-cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
+  - Add [`etcd --cipher-suites`](https://github.com/coreos/etcd/pull/9801) flag.
   - If empty, Go auto-populates the list.
 - Add [`etcd --host-whitelist`](https://github.com/coreos/etcd/pull/9372) flag, [`etcdserver.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), and [`embed.Config.HostWhitelist`](https://github.com/coreos/etcd/pull/9372), to prevent ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attack.
   - Any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to [DNS rebinding attacks (CVE-2018-5702)](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2).
