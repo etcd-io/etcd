@@ -20,18 +20,20 @@ env:
   - TARGET=linux-amd64-integration-2-cpu
   - TARGET=linux-amd64-integration-4-cpu
   - TARGET=linux-amd64-functional
-  - TARGET=linux-amd64-unit
   - TARGET=all-build
+  - TARGET=linux-amd64-grpcproxy
+  - TARGET=linux-amd64-coverage
   - TARGET=linux-amd64-fmt-unit-go-tip
-  - TARGET=linux-386-unit
 
 matrix:
   fast_finish: true
   allow_failures:
+  - go: 1.10.3
+    env: TARGET=linux-amd64-grpcproxy
+  - go: 1.10.3
+    env: TARGET=linux-amd64-coverage
   - go: tip
     env: TARGET=linux-amd64-fmt-unit-go-tip
-  - go: 1.10.3
-    env: TARGET=linux-386-unit
   exclude:
   - go: tip
     env: TARGET=linux-amd64-fmt
@@ -47,10 +49,12 @@ matrix:
     env: TARGET=linux-amd64-unit
   - go: tip
     env: TARGET=all-build
+  - go: tip
+    env: TARGET=linux-amd64-grpcproxy
+  - go: tip
+    env: TARGET=linux-amd64-coverage
   - go: 1.10.3
     env: TARGET=linux-amd64-fmt-unit-go-tip
-  - go: tip
-    env: TARGET=linux-386-unit
 
 before_install:
 - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
@@ -87,11 +91,6 @@ script:
           --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
         ;;
-      linux-amd64-unit)
-        docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='unit' ./test"
-        ;;
       all-build)
         docker run --rm \
           --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
@@ -103,12 +102,13 @@ script:
             && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
             && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build"
         ;;
+      linux-amd64-grpcproxy)
+        sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
+        ;;
+      linux-amd64-coverage)
+        sudo HOST_TMP_DIR=/tmp make docker-test-coverage
+        ;;
       linux-amd64-fmt-unit-go-tip)
         GOARCH=amd64 PASSES='fmt unit' ./test
-        ;;
-      linux-386-unit)
-        docker run --rm \
-          --volume=`pwd`:/go/src/github.com/coreos/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=386 PASSES='unit' ./test"
         ;;
     esac
