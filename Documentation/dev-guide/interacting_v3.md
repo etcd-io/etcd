@@ -355,6 +355,26 @@ foo         # key
 bar_latest  # value of foo key after modification
 ```
 
+## Watch progress
+
+Applications may want to check the progress of a watch to determine how up-to-date the watch stream is. For example, if a watch is used to update a cache, it can be useful to know if the cache is stale compared to the revision from a quorum read. 
+
+Progress requests can be issued using the "progress" command in interactive watch session to ask the etcd server to send a progress notify update in the watch stream:
+
+```bash
+$ etcdctl watch -i
+$ watch a
+$ progress
+progress notify: 1
+# in another terminal: etcdctl put x 0
+# in another terminal: etcdctl put y 1
+$ progress
+progress notify: 3
+```
+
+Note: The revision number in the progress notify response is the revision from the local etcd server node that the watch stream is connected to. If this node is partitioned and not part of quorum, this progress notify revision might be lower than 
+than the revision returned by a quorum read against a non-partitioned etcd server node.
+
 ## Compacted revisions
 
 As we mentioned, etcd keeps revisions so that applications can read past versions of keys. However, to avoid accumulating an unbounded amount of history, it is important to compact past revisions. After compacting, etcd removes historical revisions, releasing resources for future use. All superseded data with revisions before the compacted revision will be unavailable.
