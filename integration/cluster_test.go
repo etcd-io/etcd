@@ -135,10 +135,17 @@ func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	}()
 
 	os.Setenv("CLUSTER_DEBUG", "1")
+	now := time.Now()
 	for i := 0; i < 3; i++ {
+		fmt.Println(time.Now(), "AddMember start 1", i)
 		c.AddMember(t)
+		fmt.Println(time.Now(), "AddMember start 2", i)
 	}
+	fmt.Println(time.Now(), "took", time.Since(now))
+
+	fmt.Println(time.Now(), "clusterMustProgress 1")
 	clusterMustProgress(t, c.Members)
+	fmt.Println(time.Now(), "clusterMustProgress 2")
 }
 
 func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
@@ -526,9 +533,12 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 		mcc := MustNewHTTPClient(t, []string{u}, nil)
 		mkapi := client.NewKeysAPI(mcc)
 		mctx, mcancel := context.WithTimeout(context.Background(), requestTimeout)
+		fmt.Println(i, "watcher 1")
 		if _, err := mkapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(mctx); err != nil {
+			fmt.Println(i, "watcher 2", err)
 			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
+		fmt.Println(i, "watcher 3")
 		mcancel()
 	}
 }
