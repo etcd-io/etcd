@@ -129,8 +129,12 @@ func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	defer testutil.AfterTest(t)
 	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
 	c.Launch(t)
-	defer c.Terminate(t)
+	defer func() {
+		os.Unsetenv("CLUSTER_DEBUG")
+		c.Terminate(t)
+	}()
 
+	os.Setenv("CLUSTER_DEBUG", "1")
 	for i := 0; i < 3; i++ {
 		c.AddMember(t)
 	}
