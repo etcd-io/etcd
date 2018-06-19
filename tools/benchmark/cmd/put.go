@@ -21,11 +21,13 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/report"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -51,6 +53,8 @@ var (
 
 	compactInterval   time.Duration
 	compactIndexDelta int64
+
+	checkHashkv bool
 )
 
 func init() {
@@ -64,6 +68,7 @@ func init() {
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
+	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "Check hashkv")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -126,6 +131,11 @@ func putFunc(cmd *cobra.Command, args []string) {
 	close(r.Results())
 	bar.Finish()
 	fmt.Println(<-rc)
+
+	// Check hashkv
+	if checkHashkv {
+		hashKV(cmd, clients)
+	}
 }
 
 func compactKV(clients []*v3.Client) {
@@ -149,4 +159,40 @@ func max(n1, n2 int64) int64 {
 		return n1
 	}
 	return n2
+}
+
+func hashKV(cmd *cobra.Command, clients []*v3.Client) {
+	var epHashKVRev int64
+	eps, err := cmd.Flags().GetStringSlice("endpoints")
+	if err != nil {
+		panic(err)
+	}
+	for i, ip := range eps {
+		eps[i] = strings.TrimSpace(ip)
+	}
+	st := time.Now()
+	var results string
+	ctx, cancel := context.WithCancel(context.Background())
+	clients[0].HashKV(ctx, eps[0], epHashKVRev)
+	host := eps[0]
+
+	resphash, errhash := clients[0].HashKV(ctx, host, epHashKVRev)
+	respstatus, errstatus := clients[0].Status(ctx, host)
+	cancel()
+	if errhash != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, errhash)
+		panic(err)
+	}
+	results += fmt.Sprintf("\nHaskKV Summary:\n")
+	results += fmt.Sprintf("  HashKV: %v\n", resphash.Hash)
+	results += fmt.Sprintf("  Endpoint: %v\n", host)
+	results += fmt.Sprintf("  Time taken to get hashkv: %v\n", time.Since(st).String())
+
+	// Get the db size
+	if errstatus != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, errstatus)
+		panic(err)
+	}
+	results += fmt.Sprintf("  DB size: %s", humanize.Bytes(uint64(respstatus.DbSize)))
+	fmt.Println(results)
 }
