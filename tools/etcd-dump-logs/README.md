@@ -30,7 +30,7 @@ Flags:
 ```
 #### etcd-dump-logs -entry-type <ENTRY_TYPE_NAME(S)> [data dir]
 
-Lists all the interested entries from WAL log.
+Filter entries by type from WAL log.
 
 ```
 $ etcd-dump-logs -entry-type IRRTxn /tmp/datadir
@@ -65,9 +65,31 @@ Entry types (ConfigChange,IRRCompaction) count is : 5
 ```
 #### etcd-dump-logs -stream-decoder <EXECUTABLE_DECODER> [data dir]
 
-Decode each entry based on logic in the passed decoder. Decoded status and decoded data are listed in separated tab/columns in the ouput. For parsing purpose, the output from decoder are expected to be in format of "<DECODING_STATUS>|<DECODED_DATA". Please refer to [decoder_correctoutputformat.sh] as an example.
+Decode each entry based on logic in the passed decoder. Decoder status and decoded data are listed in separated tab/columns in the ouput. For parsing purpose, the output from decoder are expected to be in format of "<DECODER_STATUS>|<DECODED_DATA>". Please refer to [decoder_correctoutputformat.sh] as an example.
 
 However, if the decoder output format is not as expected, "decoder_status" will be "decoder output format is not right, print output anyway", and all output from decoder will be considered as "decoded_data"
+
+
+```
+$ etcd-dump-logs -stream-decoder decoder_correctoutputformat.sh  /tmp/datadir
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data	decoder_status	decoded_data
+   1	         1	conf	method=ConfChangeAddNode id=2	ERROR	jhjaajjjahjbbbjj
+   3	         2	norm	noop	OK	jhjjabjjaajfbfgjfagdfhcjbbahgbbbfhfegibbcabbfhffbbbcbbfhfibbcaebbbgiffbbedgdbhjacbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   3	         3	norm	method=QGET path="/path1"	OK	jhjaabjdeadgdeedaajfbfgjfagdfhcabbacgbbbcjbbcabbcabbbcbbcbbbcaebbbccbbedgdbhjjcbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
+   7	         4	norm	ID:8 txn:<success:<request_delete_range:<key:"a" range_end:"b" > > failure:<request_delete_range:<key:"a" range_end:"b" > > > 	OK	jhjhcbadabjhaajfjajafaabjafbaajhaajfjajafaabjafb
+   8	         5	norm	ID:9 compaction:<physical:true > 	ERROR	jhjicajbajja
+   9	         6	norm	ID:10 lease_grant:<TTL:1 ID:1 > 	ERROR	jhjadbjdjhjaajja
+  12	         7	norm	ID:13 auth_enable:<> 	ERROR	jhjdcbcejj
+  27	         8	norm	???	ERROR	cf
+Entry types () count is : 8
+```
 
 ```
 $ etcd-dump-logs -stream-decoder decoder_wrongoutputformat.sh  /tmp/datadir
@@ -89,24 +111,6 @@ term	     index	type	data	decoder_status	decoded_data
   27	         8	norm	???	decoder output format is not right, print output anyway	cf
 Entry types () count is : 8
 
-$ etcd-dump-logs -stream-decoder decoder_wrongoutputformat.sh  /tmp/datadir
-Snapshot:
-empty
-Start dupmping log entries from snapshot.
-WAL metadata:
-nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
-WAL entries:
-lastIndex=34
-term	     index	type	data	decoder_status	decoded_data
-   1	         1	conf	method=ConfChangeAddNode id=2	ERROR	jhjaajjjahjbbbjj
-   3	         2	norm	noop	OK	jhjjabjjaajfbfgjfagdfhcjbbahgbbbfhfegibbcabbfhffbbbcbbfhfibbcaebbbgiffbbedgdbhjacbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
-   3	         3	norm	method=QGET path="/path1"	OK	jhjaabjdeadgdeedaajfbfgjfagdfhcabbacgbbbcjbbcabbcabbbcbbcbbbcaebbbccbbedgdbhjjcbjjchjjdjjjdhjiejjjehjafjjjfhjjgjjjghjahjjajjhhjajj
-   7	         4	norm	ID:8 txn:<success:<request_delete_range:<key:"a" range_end:"b" > > failure:<request_delete_range:<key:"a" range_end:"b" > > > 	OK	jhjhcbadabjhaajfjajafaabjafbaajhaajfjajafaabjafb
-   8	         5	norm	ID:9 compaction:<physical:true > 	ERROR	jhjicajbajja
-   9	         6	norm	ID:10 lease_grant:<TTL:1 ID:1 > 	ERROR	jhjadbjdjhjaajja
-  12	         7	norm	ID:13 auth_enable:<> 	ERROR	jhjdcbcejj
-  27	         8	norm	???	ERROR	cf
-Entry types () count is : 8
 ```
 ####  etcd-dump-logs -start-index <INDEX NUMBER> [data dir]
 
