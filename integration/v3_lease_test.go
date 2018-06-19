@@ -306,13 +306,14 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 	defer cancel()
 	errc := make(chan error)
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 5; i++ {
 		for j := 0; j < 3; j++ {
 			go func(i int) { errc <- stresser(ctx, toGRPC(clus.Client(i)).Lease) }(j)
 		}
 	}
 
-	for i := 0; i < 90; i++ {
+	// small set for CI machines
+	for i := 0; i < 15; i++ {
 		if err := <-errc; err != nil {
 			t.Fatal(err)
 		}
