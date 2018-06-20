@@ -50,13 +50,19 @@ type Watcher interface {
 	// and "WatchResponse" from this closed channel has zero events and nil "Err()".
 	// The context "ctx" MUST be canceled, as soon as watcher is no longer being used,
 	// to release the associated resources.
-	// If the context is "context.Background/TODO", returned "WatchChan" will not be closed
-	// and wait until events happen, except when server returns a non-recoverable error.
-	// For example, when context passed with "WithRequireLeader" and the connected server
-	// has no leader, error "etcdserver: no leader" is returned, and then "WatchChan" is
-	// closed with non-nil "Err()".
-	// Otherwise, as long as the context has not been canceled or timed out, watch will
-	// retry on other recoverable errors forever until reconnected.
+	//
+	// If the context is "context.Background/TODO", returned "WatchChan" will
+	// not be closed and block until event is triggered, except when server
+	// returns a non-recoverable error (e.g. ErrCompacted).
+	// For example, when context passed with "WithRequireLeader" and the
+	// connected server has no leader (e.g. due to network partition),
+	// error "etcdserver: no leader" (ErrNoLeader) will be returned,
+	// and then "WatchChan" is closed with non-nil "Err()".
+	// In order to prevent a watch stream being stuck in a partitioned node,
+	// make sure to wrap context with "WithRequireLeader".
+	//
+	// Otherwise, as long as the context has not been canceled or timed out,
+	// watch will retry on other recoverable errors forever until reconnected.
 	//
 	// TODO: explicitly set context error in the last "WatchResponse" message and close channel?
 	// Currently, client contexts are overwritten with "valCtx" that never closes.
