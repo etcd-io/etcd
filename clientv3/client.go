@@ -245,8 +245,8 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 	}
 	opts = append(opts, dopts...)
 
-	f := func(dialEp string, t time.Duration) (net.Conn, error) {
-		proto, host, _ := endpoint.ParseEndpoint(dialEp)
+	f := func(_ string, t time.Duration) (net.Conn, error) {
+		proto, host, _ := endpoint.ParseEndpoint(ep)
 		if host == "" && ep != "" {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial
