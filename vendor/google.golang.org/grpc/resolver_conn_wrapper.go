@@ -65,8 +65,8 @@ func parseTarget(target string) (ret resolver.Target) {
 }
 
 // newCCResolverWrapper parses cc.target for scheme and gets the resolver
-// builder for this scheme. It then builds the resolver and starts the
-// monitoring goroutine for it.
+// builder for this scheme and builds the resolver. The monitoring goroutine
+// for it is not started yet and can be created by calling start().
 //
 // If withResolverBuilder dial option is set, the specified resolver will be
 // used instead.
@@ -148,7 +148,7 @@ func (ccr *ccResolverWrapper) NewAddress(addrs []resolver.Address) {
 }
 
 // NewServiceConfig is called by the resolver implemenetion to send service
-// configs to gPRC.
+// configs to gRPC.
 func (ccr *ccResolverWrapper) NewServiceConfig(sc string) {
 	select {
 	case <-ccr.scCh:

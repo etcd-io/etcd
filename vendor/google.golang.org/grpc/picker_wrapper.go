@@ -25,9 +25,9 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/channelz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/internal/channelz"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
@@ -233,6 +233,8 @@ func (bp *pickerWrapper) close() {
 	close(bp.blockingCh)
 }
 
+const stickinessKeyCountLimit = 1000
+
 type stickyStoreEntry struct {
 	acw  *acBalancerWrapper
 	addr resolver.Address
@@ -243,12 +245,12 @@ type stickyStore struct {
 	// curMDKey is check before every get/put to avoid races. The operation will
 	// abort immediately when the given mdKey is different from the curMDKey.
 	curMDKey string
-	store    map[string]*stickyStoreEntry
+	store    *linkedMap
 }
 
 func newStickyStore() *stickyStore {
 	return &stickyStore{
-		store: make(map[string]*stickyStoreEntry),
+		store: newLinkedMap(),
 	}
 }
 
@@ -256,7 +258,7 @@ func newStickyStore() *stickyStore {
 func (ss *stickyStore) reset(newMDKey string) {
 	ss.mu.Lock()
 	ss.curMDKey = newMDKey
-	ss.store = make(map[string]*stickyStoreEntry)
+	ss.store.clear()
 	ss.mu.Unlock()
 }
 
@@ -269,9 +271,12 @@ func (ss *stickyStore) put(mdKey, stickyKey string, acw *acBalancerWrapper) {
 		return
 	}
 	// TODO(stickiness): limit the total number of entries.
-	ss.store[stickyKey] = &stickyStoreEntry{
+	ss.store.put(stickyKey, &stickyStoreEntry{
 		acw:  acw,
 		addr: acw.getAddrConn().getCurAddr(),
+	})
+	if ss.store.len() > stickinessKeyCountLimit {
+		ss.store.removeOldest()
 	}
 }
 
@@ -283,18 +288,18 @@ func (ss *stickyStore) get(mdKey, stickyKey string) (transport.ClientTransport, 
 	if mdKey != ss.curMDKey {
 		return nil, false
 	}
-	entry, ok := ss.store[stickyKey]
+	entry, ok := ss.store.get(stickyKey)
 	if !ok {
 		return nil, false
 	}
 	ac := entry.acw.getAddrConn()
 	if ac.getCurAddr() != entry.addr {
-		delete(ss.store, stickyKey)
+		ss.store.remove(stickyKey)
 		return nil, false
 	}
 	t, ok := ac.getReadyTransport()
 	if !ok {
-		delete(ss.store, stickyKey)
+		ss.store.remove(stickyKey)
 		return nil, false
 	}
 	return t, true
