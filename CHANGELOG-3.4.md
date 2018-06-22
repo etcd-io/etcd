@@ -114,7 +114,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Dependency
 
-- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.12.2`**](https://github.com/grpc/grpc-go/releases/tag/v1.12.2).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.13.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.13.0).
 - Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.1.0`**](https://github.com/golang/protobuf/releases/tag/v1.1.0).
 - Upgrade [`golang.org/x/crypto`](https://github.com/golang/crypto) from [**`crypto@9419663f5`**](https://github.com/golang/crypto/commit/9419663f5a44be8b34ca85f08abc5fe1be11f8a3) to [**`crypto@8ac0e0d97`**](https://github.com/golang/crypto/commit/8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9).
 - Upgrade [`golang.org/x/net`](https://github.com/golang/net) from [**`net@66aacef3d`**](https://github.com/golang/net/commit/66aacef3dd8a676686c7ae3716979581e8b03c47) to [**`net@db08ff08e`**](https://github.com/golang/net/commit/db08ff08e8622530d9ed3a0e8ac279f6d4c02196).
