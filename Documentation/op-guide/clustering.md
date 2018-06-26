@@ -342,8 +342,8 @@ etcdserver: discovery token ignored since a cluster has already been initialized
 ### DNS discovery
 
 DNS [SRV records][rfc-srv] can be used as a discovery mechanism.
-The `-discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
-The following DNS SRV records are looked up in the listed order:
+The `--discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
+Setting `--discovery-srv example.com` causes DNS SRV records to be looked up in the listed order:
 
 * _etcd-server-ssl._tcp.example.com
 * _etcd-server._tcp.example.com
@@ -356,6 +356,12 @@ To help clients discover the etcd cluster, the following DNS SRV records are loo
 * _etcd-client-ssl._tcp.example.com
 
 If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over SSL/TLS.
+
+If etcd is using TLS, the discovery SRV record (e.g. `example.com`) must be included in the SSL certificate DNS SAN along with the hostname, or clustering will fail with log messages like the following:
+
+```
+[...] rejected connection from "10.0.1.11:53162" (error "remote error: tls: bad certificate", ServerName "example.com")
+```
 
 If etcd is using TLS without a custom certificate authority, the discovery domain (e.g., example.com) must match the SRV record domain (e.g., infra1.example.com). This is to mitigate attacks that forge SRV records to point to a different domain; the domain would have a valid certificate under PKI but be controlled by an unknown third party.
 
