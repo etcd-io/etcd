@@ -694,19 +694,13 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
-	ents, err := r.raftLog.entries(r.raftLog.committed+1, noLimit)
-	if err != nil {
-		r.logger.Panicf("unexpected error getting uncommitted entries (%v)", err)
-	}
 
 	// Conservatively set the pendingConfIndex to the last index in the
 	// log. There may or may not be a pending config change, but it's
 	// safe to delay any future proposals until we commit all our
 	// pending log entries, and scanning the entire tail of the log
 	// could be expensive.
-	if len(ents) > 0 {
-		r.pendingConfIndex = ents[len(ents)-1].Index
-	}
+	r.pendingConfIndex = r.raftLog.lastIndex()
 
 	r.appendEntry(pb.Entry{Data: nil})
 	r.logger.Infof("%x became leader at term %d", r.id, r.Term)
