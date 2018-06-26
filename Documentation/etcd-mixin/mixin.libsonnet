@@ -231,7 +231,7 @@
 
   grafanaDashboards+:: {
     'etcd.json': {
-      id: 6,
+      uid: std.md5('etcd.json'),
       title: 'etcd',
       description: 'etcd sample Grafana dashboard with Prometheus',
       tags: [],
