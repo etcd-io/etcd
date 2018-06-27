@@ -1,8 +1,8 @@
 .. _client-architecture:
 
 
-etcd Client Architecture
-########################
+Client Architecture
+###################
 
 
 Introduction
