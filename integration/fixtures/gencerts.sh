@@ -25,6 +25,15 @@ cfssl gencert \
 mv server.pem server.crt
 mv server-key.pem server.key.insecure
 
+# generate DNS: localhost, IP: 127.0.0.1, CN: example.com certificates (ECDSA)
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  ./server-ca-csr-ecdsa.json | cfssljson --bare ./server-ecdsa
+mv server-ecdsa.pem server-ecdsa.crt
+mv server-ecdsa-key.pem server-ecdsa.key.insecure
+
 # generate IP: 127.0.0.1, CN: example.com certificates
 cfssl gencert \
   --ca ./ca.crt \

@@ -66,6 +66,10 @@ var (
 	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
 	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
 	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
+	ErrInvalidAuthMethod    = errors.New("auth: invalid auth signature method")
+	ErrMissingKey           = errors.New("auth: missing key data")
+	ErrKeyMismatch          = errors.New("auth: public and private keys don't match")
+	ErrVerifyOnly           = errors.New("auth: token signing attempted with verify-only key")
 )
 
 const (
