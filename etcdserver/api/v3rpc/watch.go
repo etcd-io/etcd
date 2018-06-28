@@ -317,7 +317,13 @@ func (sws *serverWatchStream) recvLoop() error {
 					sws.mu.Unlock()
 				}
 			}
-
+		case *pb.WatchRequest_ProgressRequest:
+			if uv.ProgressRequest != nil {
+				sws.ctrlStream <- &pb.WatchResponse{
+					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId: -1, // response is not associated with any WatchId and will be broadcast to all watch channels
+				}
+			}
 		default:
 			// we probably should not shutdown the entire stream when
 			// receive an valid command.

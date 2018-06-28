@@ -39,6 +39,7 @@
 		WatchRequest
 		WatchCreateRequest
 		WatchCancelRequest
+		WatchProgressRequest
 		WatchResponse
 		LeaseGrantRequest
 		LeaseGrantResponse

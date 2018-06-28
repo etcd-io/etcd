@@ -2195,7 +2195,7 @@
           "format": "uint64"
         },
         "revision": {
-          "description": "revision is the key-value store revision when the request was applied.",
+          "description": "revision is the key-value store revision when the request was applied.\nFor watch progress responses, the header.revision indicates progress. All future events\nrecieved in this stream are guaranteed to have a higher revision number than the\nheader.revision number.",
           "type": "string",
           "format": "int64"
         }
@@ -2396,6 +2396,10 @@
         }
       }
     },
+    "etcdserverpbWatchProgressRequest": {
+      "description": "Requests the a watch stream progress status be sent in the watch response stream as soon as\npossible.",
+      "type": "object"
+    },
     "etcdserverpbWatchRequest": {
       "type": "object",
       "properties": {
@@ -2404,6 +2408,9 @@
         },
         "create_request": {
           "$ref": "#/definitions/etcdserverpbWatchCreateRequest"
+        },
+        "progress_request": {
+          "$ref": "#/definitions/etcdserverpbWatchProgressRequest"
         }
       }
     },

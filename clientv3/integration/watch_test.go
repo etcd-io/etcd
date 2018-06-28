@@ -582,6 +582,78 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	}
 }
 
+func TestWatchRequestProgress(t *testing.T) {
+	testCases := []struct {
+		name     string
+		watchers []string
+	}{
+		{"0-watcher", []string{}},
+		{"1-watcher", []string{"/"}},
+		{"2-watcher", []string{"/", "/"}},
+	}
+
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			defer testutil.AfterTest(t)
+
+			watchTimeout := 3 * time.Second
+
+			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
+
+			wc := clus.RandClient()
+
+			var watchChans []clientv3.WatchChan
+
+			for _, prefix := range c.watchers {
+				watchChans = append(watchChans, wc.Watch(context.Background(), prefix, clientv3.WithPrefix()))
+			}
+
+			_, err := wc.Put(context.Background(), "/a", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, rch := range watchChans {
+				select {
+				case resp := <-rch: // wait for notification
+					if len(resp.Events) != 1 {
+						t.Fatalf("resp.Events expected 1, got %d", len(resp.Events))
+					}
+				case <-time.After(watchTimeout):
+					t.Fatalf("watch response expected in %v, but timed out", watchTimeout)
+				}
+			}
+
+			// put a value not being watched to increment revision
+			_, err = wc.Put(context.Background(), "x", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = wc.RequestProgress(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// verify all watch channels receive a progress notify
+			for _, rch := range watchChans {
+				select {
+				case resp := <-rch:
+					if !resp.IsProgressNotify() {
+						t.Fatalf("expected resp.IsProgressNotify() == true")
+					}
+					if resp.Header.Revision != 3 {
+						t.Fatalf("resp.Header.Revision expected 3, got %d", resp.Header.Revision)
+					}
+				case <-time.After(watchTimeout):
+					t.Fatalf("progress response expected in %v, but timed out", watchTimeout)
+				}
+			}
+		})
+	}
+}
+
 func TestWatchEventType(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
