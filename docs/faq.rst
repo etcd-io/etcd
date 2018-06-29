@@ -15,8 +15,8 @@ What is etcd?
 etcd is a consistent distributed key-value store. Mainly used as a separate coordination service, in distributed systems. And designed to hold small amounts of data that can fit entirely in memory.
 
 
-How do you pronounce etcd?
---------------------------
+How to pronounce etcd?
+----------------------
 
 etcd is pronounced ``/etˈ-sē-dē/`` or ``/etˈ-see-dee/``, and means distributed ``etc`` directory.
 
