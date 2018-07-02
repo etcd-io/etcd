@@ -725,8 +725,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 	var rs raft.ReadState
 
 	for {
-		ctx := make([]byte, 8)
-		binary.BigEndian.PutUint64(ctx, s.reqIDGen.Next())
+		ctxToSend := make([]byte, 8)
+		id1 := s.reqIDGen.Next()
+		binary.BigEndian.PutUint64(ctxToSend, id1)
 
 		select {
 		case <-s.readwaitc:
@@ -742,7 +743,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readMu.Unlock()
 
 		cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-		if err := s.r.ReadIndex(cctx, ctx); err != nil {
+		if err := s.r.ReadIndex(cctx, ctxToSend); err != nil {
 			cancel()
 			if err == raft.ErrStopped {
 				return
@@ -760,16 +761,22 @@ func (s *EtcdServer) linearizableReadLoop() {
 		for !timeout && !done {
 			select {
 			case rs = <-s.r.readStateC:
-				done = bytes.Equal(rs.RequestCtx, ctx)
+				done = bytes.Equal(rs.RequestCtx, ctxToSend)
 				if !done {
 					// a previous request might time out. now we should ignore the response of it and
 					// continue waiting for the response of the current requests.
-					plog.Warningf("ignored out-of-date read index response (want %v, got %v)", rs.RequestCtx, ctx)
+					id2 := uint64(0)
+					if len(rs.RequestCtx) == 8 {
+						id2 = binary.BigEndian.Uint64(rs.RequestCtx)
+					}
+					plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
 				}
+
 			case <-time.After(s.Cfg.ReqTimeout()):
 				plog.Warningf("timed out waiting for read index response")
 				nr.notify(ErrTimeout)
 				timeout = true
+
 			case <-s.stopping:
 				return
 			}
