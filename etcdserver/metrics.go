@@ -71,6 +71,12 @@ var (
 		Name:      "lease_expired_total",
 		Help:      "The total number of expired leases.",
 	})
+	slowReadIndex = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "slow_read_indexes_total",
+		Help:      "The total number of pending read indexes not in sync with leader's or timed out read index requests.",
+	})
 	currentVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -89,6 +95,7 @@ func init() {
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
 	prometheus.MustRegister(leaseExpired)
+	prometheus.MustRegister(slowReadIndex)
 	prometheus.MustRegister(currentVersion)
 
 	currentVersion.With(prometheus.Labels{
