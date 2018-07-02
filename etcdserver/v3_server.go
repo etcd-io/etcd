@@ -689,6 +689,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 					} else {
 						plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
 					}
+					slowReadIndex.Inc()
 				}
 			case <-time.After(s.Cfg.ReqTimeout()):
 				if lg != nil {
@@ -698,6 +699,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 				}
 				nr.notify(ErrTimeout)
 				timeout = true
+				slowReadIndex.Inc()
 			case <-s.stopping:
 				return
 			}
