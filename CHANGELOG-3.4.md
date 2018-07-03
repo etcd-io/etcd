@@ -20,6 +20,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/coreos/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
   - Now, periodic commit operation does not block concurrent read transactions, thus improves long-running read transaction performance.
+- Improve [Raft Read Index timeout warning messages](https://github.com/coreos/etcd/pull/9897).
 - Adjust [election timeout on server restart](https://github.com/coreos/etcd/pull/9415) to reduce [disruptive rejoining servers](https://github.com/coreos/etcd/issues/9333).
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
@@ -147,6 +148,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
+- Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.

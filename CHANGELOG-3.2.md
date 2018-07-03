@@ -6,9 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.1](https://github.com/coreos/e
 
 ### gRPC Proxy
 
-* Add [flags for specifying TLS for connecting to proxy](https://github.com/coreos/etcd/pull/9894/files):
-  - Add `cert-file` and `key-file` and `trusted-ca-file` flags.
-* Add [`--metrics-addr` flag for specifying metrics listen address](https://github.com/coreos/etcd/pull/9894/files).
+- Add [flags for specifying TLS for connecting to proxy](https://github.com/coreos/etcd/pull/9894):
+  - Add `grpc-proxy start --cert-file`, `grpc-proxy start --key-file` and `grpc-proxy start --trusted-ca-file` flags.
+- Add [`grpc-proxy start --metrics-addr` flag for specifying a separate metrics listen address](https://github.com/coreos/etcd/pull/9894).
 
 ## [v3.2.23](https://github.com/coreos/etcd/releases/tag/v3.2.23) (2018-06-15)
 
