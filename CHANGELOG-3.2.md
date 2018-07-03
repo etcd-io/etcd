@@ -12,6 +12,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.23...v3.2.24) and
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 
 ### gRPC Proxy
@@ -34,6 +36,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.22...v3.2.23) and
 - Add [backoff on watch retries on transient errors](https://github.com/coreos/etcd/pull/9840).
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_server_version`](https://github.com/coreos/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/coreos/etcd/issues/8948).
@@ -97,6 +101,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/coreos/etcd/pull/9557) Prometheus metric.
 - Fix [race conditions in v2 server stat collecting](https://github.com/coreos/etcd/pull/9562).
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
@@ -136,6 +142,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.17...v3.2.18) and
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
 
@@ -380,6 +388,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6) and [
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Fix `etcd_debugging_mvcc_keys_total` inconsistency.
 
 ### Go
@@ -402,6 +412,8 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - [Server supports reverse-lookup on wildcard DNS `SAN`](https://github.com/coreos/etcd/pull/8281). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server first reverse-lookups the remote IP address to get a list of names mapping to that address (e.g. `nslookup IPADDR`). Then accepts the connection if those names have a matching name with peer cert's DNS names (either by exact or wildcard match). If none is matched, server forward-lookups each DNS entry in peer cert (e.g. look up `example.default.svc` when the entry is `*.example.default.svc`), and accepts connection only when the host's resolved addresses have the matching IP address with the peer's remote IP address. For example, peer B's CSR (with `cfssl`) SAN field is `["*.example.default.svc", "*.example.default.svc.cluster.local"]` when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A reverse-lookup the IP `10.138.0.2` to get the list of host names. And either exact or wildcard match the host names with peer B's cert DNS names in Subject Alternative Name (SAN) field. If none of reverse/forward lookups worked, it returns an error `"tls: "10.138.0.2" does not match any of DNSNames ["*.example.default.svc","*.example.default.svc.cluster.local"]`. See [issue#8268](https://github.com/coreos/etcd/issues/8268) for more detail.
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix unreachable `/metrics` endpoint when `--enable-v2=false`.
 
@@ -498,6 +510,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1) and [
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Fix backend database size debugging metrics.
 
 ### Go
@@ -531,6 +545,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) to [**`v1.2.0`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.2.0).
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add `etcd_debugging_server_lease_expired_total` metrics.
 

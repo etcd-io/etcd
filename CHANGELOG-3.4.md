@@ -138,6 +138,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
   - Let's say `"7339c4e5e833c029"` server `/metrics` returns `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 1`. This indicates that the local node `"7339c4e5e833c029"` currently has two active remote peers `"729934363faa4a24"` and `"b548c2511513015"` in a 3-node cluster. If the node `"b548c2511513015"` is down, the local node `"7339c4e5e833c029"` will show `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="729934363faa4a24"} 1` and `etcd_network_active_peers{Local="7339c4e5e833c029",Remote="b548c2511513015"} 0`.
 - Add [`etcd_network_disconnected_peers_total`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
@@ -148,18 +150,27 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
-- Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+- Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
-- Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
+  - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
+  - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
+  - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
+  - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
+- Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
+  - Renamed from [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9819).
+  - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
+  - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
+  - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
+  - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
+  - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
 - Add [`etcd_snap_fsync_duration_seconds`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.
 - Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
-- Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
-- Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric (renamed from [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9819)).
 - Add [`etcd_debugging_disk_backend_commit_rebalance_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.
 - Add [`etcd_debugging_disk_backend_commit_spill_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.
 - Add [`etcd_debugging_disk_backend_commit_write_duration_seconds`](https://github.com/coreos/etcd/pull/9834) Prometheus metric.

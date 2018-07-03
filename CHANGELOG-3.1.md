@@ -13,6 +13,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.18...v3.1.19) and
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 
 
@@ -21,6 +23,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.18...v3.1.19) and
 See [code changes](https://github.com/coreos/etcd/compare/v3.1.17...v3.1.18) and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.1 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_1.md).**
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_server_version`](https://github.com/coreos/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/coreos/etcd/issues/8948).
@@ -82,6 +86,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.13...v3.1.14) and
 
 ### Metrics, Monitoring
 
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
 
 ### etcd server
@@ -112,6 +118,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.12...v3.1.13) and
   - Now, when etcd restarts, it adjusts election ticks with more than one tick left, thus more time for leader to prevent disruptive restart.
 
 ### Metrics, Monitoring
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add missing [`etcd_network_peer_sent_failures_total` count](https://github.com/coreos/etcd/pull/9437).
 
