@@ -135,7 +135,7 @@ var (
 		Namespace: "etcd_debugging",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
-		Help:      "Total size of the underlying database in bytes.",
+		Help:      "Total size of the underlying database physically allocated in bytes. Use etcd_mvcc_db_total_size_in_bytes",
 	},
 		func() float64 {
 			reportDbTotalSizeInBytesMu.RLock()
@@ -147,7 +147,7 @@ var (
 		Namespace: "etcd",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
-		Help:      "Total size of the underlying database in bytes.",
+		Help:      "Total size of the underlying database physically allocated in bytes.",
 	},
 		func() float64 {
 			reportDbTotalSizeInBytesMu.RLock()
@@ -158,6 +158,22 @@ var (
 	// overridden by mvcc initialization
 	reportDbTotalSizeInBytesMu sync.RWMutex
 	reportDbTotalSizeInBytes   = func() float64 { return 0 }
+
+	dbTotalSizeInUse = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "mvcc",
+		Name:      "db_total_size_in_use_in_bytes",
+		Help:      "Total size of the underlying database logically in use in bytes.",
+	},
+		func() float64 {
+			reportDbTotalSizeInUseInBytesMu.RLock()
+			defer reportDbTotalSizeInUseInBytesMu.RUnlock()
+			return reportDbTotalSizeInUseInBytes()
+		},
+	)
+	// overridden by mvcc initialization
+	reportDbTotalSizeInUseInBytesMu sync.RWMutex
+	reportDbTotalSizeInUseInBytes   = func() float64 { return 0 }
 )
 
 func init() {
@@ -176,6 +192,7 @@ func init() {
 	prometheus.MustRegister(dbCompactionTotalDurations)
 	prometheus.MustRegister(dbTotalSizeDebugging)
 	prometheus.MustRegister(dbTotalSize)
+	prometheus.MustRegister(dbTotalSizeInUse)
 }
 
 // ReportEventReceived reports that an event is received.
