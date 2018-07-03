@@ -4,11 +4,22 @@ Previous change logs can be found at [CHANGELOG-3.1](https://github.com/coreos/e
 
 ## [v3.2.24](https://github.com/coreos/etcd/releases/tag/v3.2.24) (TBD 2018-07)
 
+See [code changes](https://github.com/coreos/etcd/compare/v3.2.23...v3.2.24) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+
+### Improved
+
+- Improve [Raft Read Index timeout warning messages](https://github.com/coreos/etcd/pull/9897).
+
+### Metrics, Monitoring
+
+- Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
+
 ### gRPC Proxy
 
 - Add [flags for specifying TLS for connecting to proxy](https://github.com/coreos/etcd/pull/9894):
   - Add `grpc-proxy start --cert-file`, `grpc-proxy start --key-file` and `grpc-proxy start --trusted-ca-file` flags.
 - Add [`grpc-proxy start --metrics-addr` flag for specifying a separate metrics listen address](https://github.com/coreos/etcd/pull/9894).
+
 
 ## [v3.2.23](https://github.com/coreos/etcd/releases/tag/v3.2.23) (2018-06-15)
 

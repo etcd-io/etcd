@@ -3,9 +3,22 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md).
 
 
+## [v3.3.9](https://github.com/coreos/etcd/releases/tag/v3.3.9) (TBD 2018-07)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.8...v3.3.9) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### Improved
+
+- Improve [Raft Read Index timeout warning messages](https://github.com/coreos/etcd/pull/9897).
+
+### Metrics, Monitoring
+
+- Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
+
+
 ## [v3.3.8](https://github.com/coreos/etcd/releases/tag/v3.3.8) (2018-06-15)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.3.6...v3.3.8) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.7...v3.3.8) and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
 ### Improved
 
