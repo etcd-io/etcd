@@ -174,7 +174,10 @@ func (t *batchTx) commit(stop bool) {
 			//
 			// Check if db is nil to prevent this panic
 			if t.tx.DB() != nil {
-				atomic.StoreInt64(&t.backend.size, t.tx.Size())
+				size := t.tx.Size()
+				db := t.backend.db
+				atomic.StoreInt64(&t.backend.size, size)
+				atomic.StoreInt64(&t.backend.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
 			}
 			return
 		}
@@ -202,5 +205,9 @@ func (t *batchTx) commit(stop bool) {
 	if err != nil {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
-	atomic.StoreInt64(&t.backend.size, t.tx.Size())
+
+	size := t.tx.Size()
+	db := t.backend.db
+	atomic.StoreInt64(&t.backend.size, size)
+	atomic.StoreInt64(&t.backend.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
 }

@@ -217,9 +217,6 @@ func (s *store) txnEnd(txnID int64) error {
 	}
 	s.currentRev.sub = 0
 
-	dbSize := float64(s.b.Size())
-	dbTotalSizeDebugging.Set(dbSize)
-	dbTotalSize.Set(dbSize)
 	s.mu.Unlock()
 	return nil
 }
@@ -376,6 +373,13 @@ func (s *store) Restore(b backend.Backend) error {
 }
 
 func (s *store) restore() error {
+	reportDbTotalSizeInBytesMu.Lock()
+	reportDbTotalSizeInBytes = func() float64 { return float64(s.b.Size()) }
+	reportDbTotalSizeInBytesMu.Unlock()
+	reportDbTotalSizeInUseInBytesMu.Lock()
+	reportDbTotalSizeInUseInBytes = func() float64 { return float64(s.b.SizeInUse()) }
+	reportDbTotalSizeInUseInBytesMu.Unlock()
+
 	min, max := newRevBytes(), newRevBytes()
 	revToBytes(revision{main: 1}, min)
 	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
