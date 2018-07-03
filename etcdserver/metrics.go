@@ -78,6 +78,12 @@ var (
 		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals seen.",
 	})
+	slowReadIndex = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "slow_read_indexes_total",
+		Help:      "The total number of pending read indexes not in sync with leader's or timed out read index requests.",
+	})
 	leaseExpired = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "server",
@@ -109,6 +115,7 @@ func init() {
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
+	prometheus.MustRegister(slowReadIndex)
 	prometheus.MustRegister(leaseExpired)
 	prometheus.MustRegister(quotaBackendBytes)
 	prometheus.MustRegister(currentVersion)
