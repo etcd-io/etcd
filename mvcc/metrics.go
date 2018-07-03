@@ -129,11 +129,17 @@ var (
 			Buckets: prometheus.ExponentialBuckets(100, 2, 14),
 		})
 
-	dbTotalSize = prometheus.NewGauge(prometheus.GaugeOpts{
+	dbTotalSizeDebugging = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
-		Help:      "Total size of the underlying database in bytes.",
+		Help:      "Total size of the underlying database physically allocated in bytes. Use etcd_mvcc_db_total_size_in_bytes",
+	})
+	dbTotalSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "mvcc",
+		Name:      "db_total_size_in_bytes",
+		Help:      "Total size of the underlying database physically allocated in bytes.",
 	})
 )
 
@@ -151,6 +157,7 @@ func init() {
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionTotalDurations)
+	prometheus.MustRegister(dbTotalSizeDebugging)
 	prometheus.MustRegister(dbTotalSize)
 }
 
