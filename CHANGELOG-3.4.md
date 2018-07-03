@@ -160,8 +160,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
+- Add [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819) Prometheus metric.
+  - Renamed from [`etcd_debugging_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
 - Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
-  - Renamed from [`etcd_debugging_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9819).
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
