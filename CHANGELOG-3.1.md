@@ -16,6 +16,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.18...v3.1.19) and
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
+- Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.
 
 
 ## [v3.1.18](https://github.com/coreos/etcd/releases/tag/v3.1.18) (2018-06-15)
