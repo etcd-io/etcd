@@ -175,7 +175,7 @@ func (t *batchTx) commit(stop bool) {
 			// Check if db is nil to prevent this panic
 			if t.tx.DB() != nil {
 				size := t.tx.Size()
-				db := t.backend.db
+				db := t.tx.DB()
 				atomic.StoreInt64(&t.backend.size, size)
 				atomic.StoreInt64(&t.backend.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
 			}
