@@ -1189,9 +1189,9 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	accepted := 0
 	for k := 1; k <= 101; k++ {
 		idx++
-		ch := s.w.Register(uint64(idx))
-		req := &pb.Request{Method: "QGET", ID: uint64(idx)}
-		ent := raftpb.Entry{Index: uint64(idx), Data: pbutil.MustMarshal(req)}
+		ch := s.w.Register(idx)
+		req := &pb.Request{Method: "QGET", ID: idx}
+		ent := raftpb.Entry{Index: idx, Data: pbutil.MustMarshal(req)}
 		ready := raft.Ready{Entries: []raftpb.Entry{ent}}
 		n.readyc <- ready
 
