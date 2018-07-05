@@ -303,7 +303,7 @@ func TestLeaderElectionPreVote(t *testing.T) {
 
 func testLeaderElection(t *testing.T, preVote bool) {
 	var cfg func(*Config)
-	candState := StateType(StateCandidate)
+	candState := StateCandidate
 	candTerm := uint64(1)
 	if preVote {
 		cfg = preVoteConfig
@@ -1675,7 +1675,7 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.Term != tt.wterm {
 				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.Term, tt.wterm)
 			}
-			if uint64(sm.raftLog.lastIndex()) != tt.windex {
+			if sm.raftLog.lastIndex() != tt.windex {
 				t.Errorf("#%d.%d index = %v , want %v", i, j, sm.raftLog.lastIndex(), tt.windex)
 			}
 			if uint64(len(sm.raftLog.allEntries())) != tt.windex {
