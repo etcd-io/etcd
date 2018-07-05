@@ -309,6 +309,9 @@ See [security doc](https://github.com/coreos/etcd/blob/master/Documentation/op-g
 - Add [`errors` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9206) for server-side error.
   - e.g. `"etcdserver: no leader", "NOSPACE", "CORRUPT"`
 - Add [`dbSizeInUse` field to `etcdserverpb.StatusResponse`](https://github.com/coreos/etcd/pull/9256) for actual DB size after compaction.
+- Add [`WatchRequest.WatchProgressRequest`](https://github.com/coreos/etcd/pull/9869).
+  - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
+  - Think of it as `WithProgressNotify` that can be triggered manually.
 
 Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
 
@@ -344,6 +347,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Useful when client-side has limited bandwidths.
   - For example, watch response contains 10 events, where each event is 1 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB. Then, server will send 10 separate fragmented events to the client.
   - For example, watch response contains 5 events, where each event is 2 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB and `clientv3.Config.MaxCallRecvMsgSize` is 1 MiB. Then, server will try to send 5 separate fragmented events to the client, and the client will error with `"code = ResourceExhausted desc = grpc: received message larger than max (...)"`.
+- Add [`Watcher.RequestProgress` method](https://github.com/coreos/etcd/pull/9869).
+  - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
+  - Think of it as `WithProgressNotify` that can be triggered manually.
 
 ### etcdctl v3
 
@@ -365,6 +371,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Fix [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/coreos/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 etcdctl watch foo -- echo watch event received` panicked.
 - Fix [`etcdctl move-leader` command for TLS-enabled endpoints](https://github.com/coreos/etcd/pull/9807).
+- Add [`progress` command to `etcdctl watch --interactive`](https://github.com/coreos/etcd/pull/9869).
+  - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
+  - Think of it as `WithProgressNotify` that can be triggered manually.
 
 ### gRPC proxy
 

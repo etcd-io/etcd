@@ -36,6 +36,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Add `grpc-proxy start --cert-file`, `grpc-proxy start --key-file` and `grpc-proxy start --trusted-ca-file` flags.
 - Add [`grpc-proxy start --metrics-addr` flag for specifying a separate metrics listen address](https://github.com/coreos/etcd/pull/9894).
 
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
+
 
 ## [v3.2.23](https://github.com/coreos/etcd/releases/tag/v3.2.23) (2018-06-15)
 

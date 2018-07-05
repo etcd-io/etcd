@@ -31,6 +31,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
 
+### Go
+
+- Compile with [*Go 1.9.7*](https://golang.org/doc/devel/release.html#go1.9).
+
 
 ## [v3.3.8](https://github.com/coreos/etcd/releases/tag/v3.3.8) (2018-06-15)
 
