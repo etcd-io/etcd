@@ -227,7 +227,7 @@ func TestWatchDeleteRange(t *testing.T) {
 	}
 
 	w := s.NewWatchStream()
-	from, to := []byte(testKeyPrefix), []byte(fmt.Sprintf("%s_%d", testKeyPrefix, 99))
+	from, to := testKeyPrefix, []byte(fmt.Sprintf("%s_%d", testKeyPrefix, 99))
 	w.Watch(0, from, to, 0)
 
 	s.DeleteRange(from, to)
