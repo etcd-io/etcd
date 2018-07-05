@@ -237,7 +237,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	rrev := tw.beginRev
 	if len(tw.changes) > 0 {
-		rrev += 1
+		rrev++
 	}
 	keys, _ := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {

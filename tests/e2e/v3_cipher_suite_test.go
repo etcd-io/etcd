@@ -55,12 +55,19 @@ func cipherSuiteTestValid(cx ctlCtx) {
 }
 
 func cipherSuiteTestMismatch(cx ctlCtx) {
-	if err := cURLGet(cx.epc, cURLReq{
-		endpoint:         "/metrics",
-		expected:         "alert handshake failure",
-		metricsURLScheme: cx.cfg.metricsURLScheme,
-		ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-	}); err != nil {
+	var err error
+	for _, exp := range []string{"alert handshake failure", "failed setting cipher list"} {
+		err = cURLGet(cx.epc, cURLReq{
+			endpoint:         "/metrics",
+			expected:         exp,
+			metricsURLScheme: cx.cfg.metricsURLScheme,
+			ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+		})
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 }

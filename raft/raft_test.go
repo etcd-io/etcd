@@ -303,7 +303,7 @@ func TestLeaderElectionPreVote(t *testing.T) {
 
 func testLeaderElection(t *testing.T, preVote bool) {
 	var cfg func(*Config)
-	candState := StateType(StateCandidate)
+	candState := StateCandidate
 	candTerm := uint64(1)
 	if preVote {
 		cfg = preVoteConfig
@@ -1675,7 +1675,7 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.Term != tt.wterm {
 				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.Term, tt.wterm)
 			}
-			if uint64(sm.raftLog.lastIndex()) != tt.windex {
+			if sm.raftLog.lastIndex() != tt.windex {
 				t.Errorf("#%d.%d index = %v , want %v", i, j, sm.raftLog.lastIndex(), tt.windex)
 			}
 			if uint64(len(sm.raftLog.allEntries())) != tt.windex {
@@ -2304,10 +2304,10 @@ func TestReadOnlyOptionLease(t *testing.T) {
 // when it commits at least one log entry at it term.
 func TestReadOnlyForNewLeader(t *testing.T) {
 	nodeConfigs := []struct {
-		id            uint64
-		committed     uint64
-		applied       uint64
-		compact_index uint64
+		id           uint64
+		committed    uint64
+		applied      uint64
+		compactIndex uint64
 	}{
 		{1, 1, 1, 0},
 		{2, 2, 2, 2},
@@ -2318,8 +2318,8 @@ func TestReadOnlyForNewLeader(t *testing.T) {
 		storage := NewMemoryStorage()
 		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}})
 		storage.SetHardState(pb.HardState{Term: 1, Commit: c.committed})
-		if c.compact_index != 0 {
-			storage.Compact(c.compact_index)
+		if c.compactIndex != 0 {
+			storage.Compact(c.compactIndex)
 		}
 		cfg := newTestConfig(c.id, []uint64{1, 2, 3}, 10, 1, storage)
 		cfg.Applied = c.applied

@@ -282,11 +282,11 @@ func TestCompactionSideEffects(t *testing.T) {
 	lastTerm := lastIndex
 	storage := NewMemoryStorage()
 	for i = 1; i <= unstableIndex; i++ {
-		storage.Append([]pb.Entry{{Term: uint64(i), Index: uint64(i)}})
+		storage.Append([]pb.Entry{{Term: i, Index: i}})
 	}
 	raftLog := newLog(storage, raftLogger)
 	for i = unstableIndex; i < lastIndex; i++ {
-		raftLog.append(pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
+		raftLog.append(pb.Entry{Term: i + 1, Index: i + 1})
 	}
 
 	ok := raftLog.maybeCommit(lastIndex, lastTerm)
