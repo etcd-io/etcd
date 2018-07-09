@@ -357,7 +357,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetID(types.ID(0), existingCluster.ID())
 		cl.SetStore(st)
 		cl.SetBackend(be)
-		cfg.Print()
 		id, n, s, w = startNode(cfg, cl, nil)
 		cl.SetID(id, existingCluster.ID())
 
@@ -393,7 +392,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		cl.SetStore(st)
 		cl.SetBackend(be)
-		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 		cl.SetID(id, cl.ID())
 
@@ -457,8 +455,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				)
 			}
 		}
-
-		cfg.Print()
 
 		if !cfg.ForceNewCluster {
 			id, cl, n, s, w = restartNode(cfg, snapshot)
