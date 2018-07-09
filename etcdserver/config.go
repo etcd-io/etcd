@@ -266,71 +266,6 @@ func (c *ServerConfig) peerDialTimeout() time.Duration {
 	return time.Second + time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
-func (c *ServerConfig) PrintWithInitial() { c.print(true) }
-
-func (c *ServerConfig) Print() { c.print(false) }
-
-func (c *ServerConfig) print(initial bool) {
-	// TODO: remove this after dropping "capnslog"
-	if c.Logger == nil {
-		plog.Infof("name = %s", c.Name)
-		if c.ForceNewCluster {
-			plog.Infof("force new cluster")
-		}
-		plog.Infof("data dir = %s", c.DataDir)
-		plog.Infof("member dir = %s", c.MemberDir())
-		if c.DedicatedWALDir != "" {
-			plog.Infof("dedicated WAL dir = %s", c.DedicatedWALDir)
-		}
-		plog.Infof("heartbeat = %dms", c.TickMs)
-		plog.Infof("election = %dms", c.ElectionTicks*int(c.TickMs))
-		plog.Infof("snapshot count = %d", c.SnapshotCount)
-		if len(c.DiscoveryURL) != 0 {
-			plog.Infof("discovery URL= %s", c.DiscoveryURL)
-			if len(c.DiscoveryProxy) != 0 {
-				plog.Infof("discovery proxy = %s", c.DiscoveryProxy)
-			}
-		}
-		plog.Infof("advertise client URLs = %s", c.ClientURLs)
-		if initial {
-			plog.Infof("initial advertise peer URLs = %s", c.PeerURLs)
-			plog.Infof("initial cluster = %s", c.InitialPeerURLsMap)
-		}
-	} else {
-		state := "new"
-		if !c.NewCluster {
-			state = "existing"
-		}
-		c.Logger.Info(
-			"server configuration",
-			zap.String("name", c.Name),
-			zap.String("data-dir", c.DataDir),
-			zap.String("member-dir", c.MemberDir()),
-			zap.String("dedicated-wal-dir", c.DedicatedWALDir),
-			zap.Bool("force-new-cluster", c.ForceNewCluster),
-			zap.String("heartbeat-interval", fmt.Sprintf("%v", time.Duration(c.TickMs)*time.Millisecond)),
-			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond)),
-			zap.Bool("initial-election-tick-advance", c.InitialElectionTickAdvance),
-			zap.Uint64("snapshot-count", c.SnapshotCount),
-			zap.Uint64("snapshot-catchup-entries", c.SnapshotCatchUpEntries),
-			zap.Strings("advertise-client-urls", c.getACURLs()),
-			zap.Strings("initial-advertise-peer-urls", c.getAPURLs()),
-			zap.Bool("initial", initial),
-			zap.String("initial-cluster", c.InitialPeerURLsMap.String()),
-			zap.String("initial-cluster-state", state),
-			zap.String("initial-cluster-token", c.InitialClusterToken),
-			zap.Bool("pre-vote", c.PreVote),
-			zap.Bool("initial-corrupt-check", c.InitialCorruptCheck),
-			zap.String("corrupt-check-time-interval", c.CorruptCheckTime.String()),
-			zap.String("auto-compaction-mode", c.AutoCompactionMode),
-			zap.Duration("auto-compaction-retention", c.AutoCompactionRetention),
-			zap.String("auto-compaction-interval", c.AutoCompactionRetention.String()),
-			zap.String("discovery-url", c.DiscoveryURL),
-			zap.String("discovery-proxy", c.DiscoveryProxy),
-		)
-	}
-}
-
 func checkDuplicateURL(urlsmap types.URLsMap) bool {
 	um := make(map[string]bool)
 	for _, urls := range urlsmap {
@@ -353,19 +288,3 @@ func (c *ServerConfig) bootstrapTimeout() time.Duration {
 }
 
 func (c *ServerConfig) backendPath() string { return filepath.Join(c.SnapDir(), "db") }
-
-func (c *ServerConfig) getAPURLs() (ss []string) {
-	ss = make([]string, len(c.PeerURLs))
-	for i := range c.PeerURLs {
-		ss[i] = c.PeerURLs[i].String()
-	}
-	return ss
-}
-
-func (c *ServerConfig) getACURLs() (ss []string) {
-	ss = make([]string, len(c.ClientURLs))
-	for i := range c.ClientURLs {
-		ss[i] = c.ClientURLs[i].String()
-	}
-	return ss
-}

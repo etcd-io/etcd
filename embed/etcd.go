@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"runtime"
 	"sort"
 	"strconv"
 	"sync"
@@ -39,6 +40,7 @@ import (
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -164,6 +166,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DataDir:                    cfg.Dir,
 		DedicatedWALDir:            cfg.WalDir,
 		SnapshotCount:              cfg.SnapshotCount,
+		SnapshotCatchUpEntries:     cfg.SnapshotCatchUpEntries,
 		MaxSnapFiles:               cfg.MaxSnapFiles,
 		MaxWALFiles:                cfg.MaxWalFiles,
 		InitialPeerURLsMap:         urlsmap,
@@ -196,33 +199,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
 	}
+	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
-	}
-
-	if len(e.cfg.CORS) > 0 {
-		ss := make([]string, 0, len(e.cfg.CORS))
-		for v := range e.cfg.CORS {
-			ss = append(ss, v)
-		}
-		sort.Strings(ss)
-		if e.cfg.logger != nil {
-			e.cfg.logger.Info("configured CORS", zap.Strings("cors", ss))
-		} else {
-			plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
-		}
-	}
-	if len(e.cfg.HostWhitelist) > 0 {
-		ss := make([]string, 0, len(e.cfg.HostWhitelist))
-		for v := range e.cfg.HostWhitelist {
-			ss = append(ss, v)
-		}
-		sort.Strings(ss)
-		if e.cfg.logger != nil {
-			e.cfg.logger.Info("configured host whitelist", zap.Strings("hosts", ss))
-		} else {
-			plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
-		}
 	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
@@ -263,6 +242,94 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	serving = true
 	return e, nil
+}
+
+func print(lg *zap.Logger, ec Config, sc etcdserver.ServerConfig, memberInitialized bool) {
+	// TODO: remove this after dropping "capnslog"
+	if lg == nil {
+		plog.Infof("name = %s", ec.Name)
+		if sc.ForceNewCluster {
+			plog.Infof("force new cluster")
+		}
+		plog.Infof("data dir = %s", sc.DataDir)
+		plog.Infof("member dir = %s", sc.MemberDir())
+		if sc.DedicatedWALDir != "" {
+			plog.Infof("dedicated WAL dir = %s", sc.DedicatedWALDir)
+		}
+		plog.Infof("heartbeat = %dms", sc.TickMs)
+		plog.Infof("election = %dms", sc.ElectionTicks*int(sc.TickMs))
+		plog.Infof("snapshot count = %d", sc.SnapshotCount)
+		if len(sc.DiscoveryURL) != 0 {
+			plog.Infof("discovery URL= %s", sc.DiscoveryURL)
+			if len(sc.DiscoveryProxy) != 0 {
+				plog.Infof("discovery proxy = %s", sc.DiscoveryProxy)
+			}
+		}
+		plog.Infof("advertise client URLs = %s", sc.ClientURLs)
+		if memberInitialized {
+			plog.Infof("initial advertise peer URLs = %s", sc.PeerURLs)
+			plog.Infof("initial cluster = %s", sc.InitialPeerURLsMap)
+		}
+	} else {
+		cors := make([]string, 0, len(ec.CORS))
+		for v := range ec.CORS {
+			cors = append(cors, v)
+		}
+		sort.Strings(cors)
+
+		hss := make([]string, 0, len(ec.HostWhitelist))
+		for v := range ec.HostWhitelist {
+			hss = append(hss, v)
+		}
+		sort.Strings(hss)
+
+		quota := ec.QuotaBackendBytes
+		if quota == 0 {
+			quota = etcdserver.DefaultQuotaBytes
+		}
+
+		lg.Info(
+			"starting an etcd server",
+			zap.String("etcd-version", version.Version),
+			zap.String("git-sha", version.GitSHA),
+			zap.String("go-version", runtime.Version()),
+			zap.String("go-os", runtime.GOOS),
+			zap.String("go-arch", runtime.GOARCH),
+			zap.Int("max-cpu-set", runtime.GOMAXPROCS(0)),
+			zap.Int("max-cpu-available", runtime.NumCPU()),
+			zap.Bool("member-initialized", memberInitialized),
+			zap.String("name", sc.Name),
+			zap.String("data-dir", sc.DataDir),
+			zap.String("wal-dir", ec.WalDir),
+			zap.String("wal-dir-dedicated", sc.DedicatedWALDir),
+			zap.String("member-dir", sc.MemberDir()),
+			zap.Bool("force-new-cluster", sc.ForceNewCluster),
+			zap.String("heartbeat-interval", fmt.Sprintf("%v", time.Duration(sc.TickMs)*time.Millisecond)),
+			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(sc.ElectionTicks*int(sc.TickMs))*time.Millisecond)),
+			zap.Bool("initial-election-tick-advance", sc.InitialElectionTickAdvance),
+			zap.Uint64("snapshot-count", sc.SnapshotCount),
+			zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
+			zap.Strings("initial-advertise-peer-urls", ec.getAPURLs()),
+			zap.Strings("listen-peer-urls", ec.getLPURLs()),
+			zap.Strings("advertise-client-urls", ec.getACURLs()),
+			zap.Strings("listen-client-urls", ec.getLCURLs()),
+			zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
+			zap.Strings("cors", cors),
+			zap.Strings("host-whitelist", hss),
+			zap.String("initial-cluster", sc.InitialPeerURLsMap.String()),
+			zap.String("initial-cluster-state", ec.ClusterState),
+			zap.String("initial-cluster-token", sc.InitialClusterToken),
+			zap.Int64("quota-size-bytes", quota),
+			zap.Bool("pre-vote", sc.PreVote),
+			zap.Bool("initial-corrupt-check", sc.InitialCorruptCheck),
+			zap.String("corrupt-check-time-interval", sc.CorruptCheckTime.String()),
+			zap.String("auto-compaction-mode", sc.AutoCompactionMode),
+			zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
+			zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
+			zap.String("discovery-url", sc.DiscoveryURL),
+			zap.String("discovery-proxy", sc.DiscoveryProxy),
+		)
+	}
 }
 
 // Config returns the current configuration.

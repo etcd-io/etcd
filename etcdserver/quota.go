@@ -66,7 +66,7 @@ var (
 	// only log once
 	quotaLogOnce sync.Once
 
-	defaultQuotaSize = humanize.Bytes(uint64(DefaultQuotaBytes))
+	DefaultQuotaSize = humanize.Bytes(uint64(DefaultQuotaBytes))
 	maxQuotaSize     = humanize.Bytes(uint64(MaxQuotaBytes))
 )
 
@@ -99,7 +99,7 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 					"enabled backend quota with default value",
 					zap.String("quota-name", name),
 					zap.Int64("quota-size-bytes", DefaultQuotaBytes),
-					zap.String("quota-size", defaultQuotaSize),
+					zap.String("quota-size", DefaultQuotaSize),
 				)
 			}
 		})
