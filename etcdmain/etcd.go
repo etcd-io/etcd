@@ -78,27 +78,17 @@ func startEtcdOrProxyV2() {
 		os.Exit(1)
 	}
 
-	maxProcs, cpus := runtime.GOMAXPROCS(0), runtime.NumCPU()
-
 	lg := cfg.ec.GetLogger()
-	if lg != nil {
-		lg.Info(
-			"starting etcd",
-			zap.String("etcd-version", version.Version),
-			zap.String("git-sha", version.GitSHA),
-			zap.String("go-version", runtime.Version()),
-			zap.String("go-os", runtime.GOOS),
-			zap.String("go-arch", runtime.GOARCH),
-			zap.Int("max-cpu-set", maxProcs),
-			zap.Int("max-cpu-available", cpus),
-		)
-	} else {
+
+	if lg == nil {
+		// TODO: remove in 3.5
 		plog.Infof("etcd Version: %s\n", version.Version)
 		plog.Infof("Git SHA: %s\n", version.GitSHA)
 		plog.Infof("Go Version: %s\n", runtime.Version())
 		plog.Infof("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", maxProcs, cpus)
+		plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", runtime.GOMAXPROCS(0), runtime.NumCPU())
 	}
+
 	defer func() {
 		logger := cfg.ec.GetLogger()
 		if logger != nil {
