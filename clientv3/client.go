@@ -247,10 +247,10 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 
 	f := func(dialEp string, t time.Duration) (net.Conn, error) {
 		proto, host, _ := endpoint.ParseEndpoint(dialEp)
-		if host == "" && ep != "" {
+		if host != ep {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial
-			proto, host, _ = endpoint.ParseEndpoint(ep)
+			host = ep
 		}
 		if proto == "" {
 			return nil, fmt.Errorf("unknown scheme for %q", host)
