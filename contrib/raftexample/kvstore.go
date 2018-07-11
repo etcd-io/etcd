@@ -39,8 +39,6 @@ type kv struct {
 
 func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
-	// replay log into key-value map
-	s.readCommits(commitC, errorC)
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
@@ -68,7 +66,7 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			// OR signaled to load snapshot
 			snapshot, err := s.snapshotter.Load()
 			if err == snap.ErrNoSnapshot {
-				return
+				continue
 			}
 			if err != nil {
 				log.Panic(err)

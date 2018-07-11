@@ -50,7 +50,6 @@ type raftNode struct {
 	waldir      string   // path to WAL directory
 	snapdir     string   // path to snapshot directory
 	getSnapshot func() ([]byte, error)
-	lastIndex   uint64 // index of log at start
 
 	confState     raftpb.ConfState
 	snapshotIndex uint64
@@ -71,7 +70,7 @@ type raftNode struct {
 	httpdonec chan struct{} // signals http server shutdown complete
 }
 
-var defaultSnapshotCount uint64 = 10000
+var defaultSnapshotCount uint64 = 100
 
 // newRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
@@ -175,15 +174,6 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 
 		// after commit, update appliedIndex
 		rc.appliedIndex = ents[i].Index
-
-		// special nil commit to signal replay has finished
-		if ents[i].Index == rc.lastIndex {
-			select {
-			case rc.commitC <- nil:
-			case <-rc.stopc:
-				return false
-			}
-		}
 	}
 	return true
 }
@@ -240,12 +230,9 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 
 	// append to storage so raft starts at the right place in log
 	rc.raftStorage.Append(ents)
-	// send nil once lastIndex is published so client knows commit channel is current
-	if len(ents) > 0 {
-		rc.lastIndex = ents[len(ents)-1].Index
-	} else {
-		rc.commitC <- nil
-	}
+
+	// send nil so client knows commit channel is current
+	rc.commitC <- nil
 	return w
 }
 
@@ -338,16 +325,21 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
 		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d] + 1", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
-	rc.commitC <- nil // trigger kvstore to load snapshot
 
 	rc.confState = snapshotToSave.Metadata.ConfState
 	rc.snapshotIndex = snapshotToSave.Metadata.Index
 	rc.appliedIndex = snapshotToSave.Metadata.Index
+
+	rc.commitC <- nil // trigger kvstore to load snapshot
 }
 
-var snapshotCatchUpEntriesN uint64 = 10000
+var snapshotCatchUpEntriesN uint64 = 100
 
 func (rc *raftNode) maybeTriggerSnapshot() {
+	if rc.getSnapshot == nil {
+		return
+	}
+
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
 		return
 	}
@@ -357,7 +349,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	if err != nil {
 		log.Panic(err)
 	}
-	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, data)
+	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex-1, &rc.confState, data)
 	if err != nil {
 		panic(err)
 	}
