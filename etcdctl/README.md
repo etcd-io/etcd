@@ -968,7 +968,8 @@ A new etcd data directory initialized with the snapshot.
 #### Example
 
 Save a snapshot, restore into a new 3 node cluster, and start the cluster:
-```
+
+```bash
 ./etcdctl snapshot save snapshot.db
 
 # restore members
@@ -1444,7 +1445,7 @@ The approximate total number of keys transferred to the destination cluster, upd
 
 #### Examples
 
-```
+```bash
 ./etcdctl make-mirror mirror.example.com:2379
 # 10
 # 18
@@ -1496,7 +1497,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Example
 
-```
+```bash
 ./etcdctl migrate --data-dir=/var/etcd --transformer=k8s-transformer
 # finished transforming keys
 ```
