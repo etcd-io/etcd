@@ -45,6 +45,9 @@
 		LeaseGrantResponse
 		LeaseRevokeRequest
 		LeaseRevokeResponse
+		LeaseCheckpoint
+		LeaseCheckpointRequest
+		LeaseCheckpointResponse
 		LeaseKeepAliveRequest
 		LeaseKeepAliveResponse
 		LeaseTimeToLiveRequest

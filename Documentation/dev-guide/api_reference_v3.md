@@ -476,6 +476,31 @@ Empty field.
 
 
 
+##### message `LeaseCheckpoint` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the lease ID to checkpoint. | int64 |
+| remaining_TTL | Remaining_TTL is the remaining time until expiry of the lease. | int64 |
+
+
+
+##### message `LeaseCheckpointRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| checkpoints |  | (slice of) LeaseCheckpoint |
+
+
+
+##### message `LeaseCheckpointResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
 ##### message `LeaseGrantRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
@@ -903,6 +928,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | ID |  | int64 |
 | TTL |  | int64 |
+| RemainingTTL |  | int64 |
 
 
 
