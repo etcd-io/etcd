@@ -34,7 +34,7 @@ func TestLeaseQueue(t *testing.T) {
 			exp = time.Now().UnixNano()
 		}
 		le.leaseMap[LeaseID(i)] = &Lease{ID: LeaseID(i)}
-		heap.Push(&le.leaseHeap, &LeaseWithTime{id: LeaseID(i), expiration: exp})
+		heap.Push(&le.leaseHeap, &LeaseWithTime{id: LeaseID(i), time: exp})
 	}
 
 	// first element must be front

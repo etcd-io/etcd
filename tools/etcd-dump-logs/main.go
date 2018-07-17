@@ -45,7 +45,7 @@ func main() {
 	entrytype := flag.String("entry-type", "", `If set, filters output by entry type. Must be one or more than one of:
 	ConfigChange, Normal, Request, InternalRaftRequest,
 	IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
-	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`)
+	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`)
 	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process 
 	hex encoded lines of binary input (from etcd-dump-logs) 
 	and output a hex encoded line of binary for each input line`)
@@ -203,6 +203,11 @@ func passIRRLeaseRevoke(entry raftpb.Entry) (bool, string) {
 	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
 }
 
+func passIRRLeaseCheckpoint(entry raftpb.Entry) (bool, string) {
+	var rr etcdserverpb.InternalRaftRequest
+	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
+}
+
 func passRequest(entry raftpb.Entry) (bool, string) {
 	var rr1 etcdserverpb.Request
 	var rr2 etcdserverpb.InternalRaftRequest
@@ -272,6 +277,7 @@ func evaluateEntrytypeFlag(entrytype string) []EntryFilter {
 		"IRRCompaction":       {passIRRCompaction},
 		"IRRLeaseGrant":       {passIRRLeaseGrant},
 		"IRRLeaseRevoke":      {passIRRLeaseRevoke},
+		"IRRLeaseCheckpoint":  {passIRRLeaseCheckpoint},
 	}
 	filters := make([]EntryFilter, 0)
 	if len(entrytypelist) == 0 {
@@ -288,7 +294,7 @@ func evaluateEntrytypeFlag(entrytype string) []EntryFilter {
 Please set entry-type to one or more of the following:
 ConfigChange, Normal, Request, InternalRaftRequest,
 IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
-IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke`, et)
+IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`, et)
 		}
 	}
 
