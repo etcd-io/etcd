@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"go.uber.org/zap"
 )
 
 // NoLease is a special LeaseID representing the absence of a lease.
@@ -144,23 +145,30 @@ type lessor struct {
 	stopC chan struct{}
 	// doneC is a channel whose closure indicates that the lessor is stopped.
 	doneC chan struct{}
+
+	lg *zap.Logger
 }
 
-func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
-	return newLessor(b, minLeaseTTL)
+type LessorConfig struct {
+	MinLeaseTTL int64
 }
 
-func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
+func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) Lessor {
+	return newLessor(lg, b, cfg)
+}
+
+func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) *lessor {
 	l := &lessor{
 		leaseMap:    make(map[LeaseID]*Lease),
 		itemMap:     make(map[LeaseItem]LeaseID),
 		leaseHeap:   make(LeaseQueue, 0),
 		b:           b,
-		minLeaseTTL: minLeaseTTL,
+		minLeaseTTL: cfg.MinLeaseTTL,
 		// expiredC is a small buffered chan to avoid unnecessary blocking.
 		expiredC: make(chan []*Lease, 16),
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),
+		lg:       lg,
 	}
 	l.initAndRecover()
 

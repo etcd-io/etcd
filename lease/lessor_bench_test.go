@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/mvcc/backend"
+	"go.uber.org/zap"
 )
 
 func BenchmarkLessorFindExpired1(b *testing.B)       { benchmarkLessorFindExpired(1, b) }
@@ -54,8 +55,9 @@ func BenchmarkLessorRevoke100000(b *testing.B)  { benchmarkLessorRevoke(100000, 
 func BenchmarkLessorRevoke1000000(b *testing.B) { benchmarkLessorRevoke(1000000, b) }
 
 func benchmarkLessorFindExpired(size int, b *testing.B) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	defer cleanup(be, tmpPath)
 	le.Promote(0)
@@ -71,8 +73,9 @@ func benchmarkLessorFindExpired(size int, b *testing.B) {
 }
 
 func benchmarkLessorGrant(size int, b *testing.B) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	defer cleanup(be, tmpPath)
 	for i := 0; i < size; i++ {
@@ -85,8 +88,9 @@ func benchmarkLessorGrant(size int, b *testing.B) {
 }
 
 func benchmarkLessorRevoke(size int, b *testing.B) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	defer cleanup(be, tmpPath)
 	for i := 0; i < size; i++ {
@@ -102,8 +106,9 @@ func benchmarkLessorRevoke(size int, b *testing.B) {
 }
 
 func benchmarkLessorRenew(size int, b *testing.B) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	defer cleanup(be, tmpPath)
 	for i := 0; i < size; i++ {

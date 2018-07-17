@@ -373,7 +373,7 @@ func (s *v3Manager) saveDB() error {
 	be := backend.NewDefaultBackend(dbpath)
 
 	// a lessor never timeouts leases
-	lessor := lease.NewLessor(be, math.MaxInt64)
+	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
 
 	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit))
 	txn := mvs.Write()
