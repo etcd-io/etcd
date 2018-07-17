@@ -25,7 +25,9 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3LeasePrmote ensures the newly elected leader can promote itself
@@ -220,6 +222,56 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 		_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
+}
+
+// TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
+// across leader elections.
+func TestV3LeaseCheckpoint(t *testing.T) {
+	var ttl int64 = 300
+	leaseInterval := 2 * time.Second
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, LeaseCheckpointInterval: leaseInterval})
+	defer clus.Terminate(t)
+
+	// create lease
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := toGRPC(clus.RandClient())
+	lresp, err := c.Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: ttl})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wait for a checkpoint to occur
+	time.Sleep(leaseInterval + 1*time.Second)
+
+	// Force a leader election
+	leaderId := clus.WaitLeader(t)
+	leader := clus.Members[leaderId]
+	leader.Stop(t)
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+	leader.Restart(t)
+	newLeaderId := clus.WaitLeader(t)
+	c2 := toGRPC(clus.Client(newLeaderId))
+
+	time.Sleep(250 * time.Millisecond)
+
+	// Check the TTL of the new leader
+	var ttlresp *pb.LeaseTimeToLiveResponse
+	for i := 0; i < 10; i++ {
+		if ttlresp, err = c2.Lease.LeaseTimeToLive(ctx, &pb.LeaseTimeToLiveRequest{ID: lresp.ID}); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	expectedTTL := ttl - int64(leaseInterval.Seconds())
+	if ttlresp.TTL < expectedTTL-1 || ttlresp.TTL > expectedTTL {
+		t.Fatalf("expected lease to be checkpointed after restart such that %d < TTL <%d, but got TTL=%d", expectedTTL-1, expectedTTL, ttlresp.TTL)
+	}
 }
 
 // TestV3LeaseExists creates a lease on a random client and confirms it exists in the cluster.

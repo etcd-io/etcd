@@ -15,6 +15,7 @@
 package lease
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
 	"go.uber.org/zap"
 )
@@ -473,6 +475,62 @@ func TestLessorMaxTTL(t *testing.T) {
 	_, err := le.Grant(1, MaxLeaseTTL+1)
 	if err != ErrLeaseTTLTooLarge {
 		t.Fatalf("grant unexpectedly succeeded")
+	}
+}
+
+func TestLessorCheckpointScheduling(t *testing.T) {
+	lg := zap.NewNop()
+
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL, CheckpointInterval: 1 * time.Second})
+	le.minLeaseTTL = 1
+	checkpointedC := make(chan struct{})
+	le.SetCheckpointer(func(ctx context.Context, lc *pb.LeaseCheckpointRequest) {
+		close(checkpointedC)
+		if len(lc.Checkpoints) != 1 {
+			t.Errorf("expected 1 checkpoint but got %d", len(lc.Checkpoints))
+		}
+		c := lc.Checkpoints[0]
+		if c.Remaining_TTL != 1 {
+			t.Errorf("expected checkpoint to be called with Remaining_TTL=%d but got %d", 1, c.Remaining_TTL)
+		}
+	})
+	defer le.Stop()
+	le.Promote(0)
+
+	_, err := le.Grant(1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO: Is there any way to avoid doing this wait? Lease TTL granularity is in seconds.
+	select {
+	case <-checkpointedC:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected checkpointer to be called, but it was not")
+	}
+}
+
+func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer le.Stop()
+	l, err := le.Grant(1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	le.Checkpoint(l.ID, 5)
+	le.Promote(0)
+	remaining := l.Remaining().Seconds()
+	if !(remaining > 4 && remaining < 5) {
+		t.Fatalf("expected expiry to be less than 1s in the future, but got %f seconds", remaining)
 	}
 }
 
