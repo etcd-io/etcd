@@ -11,6 +11,10 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.8...v3.3.9) and [
 
 - Improve [Raft Read Index timeout warning messages](https://github.com/coreos/etcd/pull/9897).
 
+### Security, Authentication
+
+- Compile with [*Go 1.10.3*](https://golang.org/doc/devel/release.html#go1.10) to support [crypto/x509 "Name Constraints"](https://github.com/coreos/etcd/issues/9912).
+
 ### Metrics, Monitoring
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
@@ -33,7 +37,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Go
 
-- Compile with [*Go 1.9.7*](https://golang.org/doc/devel/release.html#go1.9).
+- Compile with [*Go 1.10.3*](https://golang.org/doc/devel/release.html#go1.10).
 
 
 ## [v3.3.8](https://github.com/coreos/etcd/releases/tag/v3.3.8) (2018-06-15)
