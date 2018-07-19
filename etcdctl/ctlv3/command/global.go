@@ -15,10 +15,10 @@
 package command
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -243,15 +243,16 @@ func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeo
 	return cfg, nil
 }
 
-func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
+func argOrStdin(args []string, stdin *os.File, i int) (string, error) {
 	if i < len(args) {
 		return args[i], nil
 	}
-	bytes, err := ioutil.ReadAll(stdin)
-	if string(bytes) == "" || err != nil {
+	reader := bufio.NewReader(stdin)
+	value, err := reader.ReadString('\n')
+	if err != nil {
 		return "", errors.New("no available argument and stdin")
 	}
-	return string(bytes), nil
+	return value, nil
 }
 
 func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
