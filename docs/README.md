@@ -1,9 +1,9 @@
 
 #### etcd Documentation
 
-This is an official etcd documentation https://etcd.readthedocs.io/en/latest.
+This is official etcd documentation.
 
-Working in progress...
+Please visit https://etcd.readthedocs.io/en/latest for latest builds.
 
 #### Install and build
 
@@ -12,7 +12,8 @@ Working in progress...
 pip install sphinx sphinx-autobuild
 pip install sphinx_rtd_theme
 
+make help
 make html
 ```
 
-And open `_build/html/index.html` for preview.
+And open `_build/html/index.html` file for preview.

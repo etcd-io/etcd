@@ -2,7 +2,7 @@
 etcd Documentation
 ==================
 
-This is an official etcd documentation.
+This is official etcd documentation.
 
 Still working in progress...
 
