@@ -186,18 +186,6 @@ var (
 		// highest bucket start of 0.01 sec * 2^14 == 163.84 sec
 		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
 	})
-
-	hashRevDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "etcd",
-		Subsystem: "mvcc",
-		Name:      "hash_rev_duration_seconds",
-		Help:      "The latency distribution of storage hash by revision operation.",
-
-		// 100 MB usually takes 100 ms, so start with 10 MB of 10 ms
-		// lowest bucket start of upper bound 0.01 sec (10 ms) with factor 2
-		// highest bucket start of 0.01 sec * 2^14 == 163.84 sec
-		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
-	})
 )
 
 func init() {
