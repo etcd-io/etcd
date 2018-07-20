@@ -291,6 +291,8 @@ func (b *backend) Defrag() error {
 }
 
 func (b *backend) defrag() error {
+	now := time.Now()
+	
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
@@ -353,6 +355,9 @@ func (b *backend) defrag() error {
 	db := b.db
 	atomic.StoreInt64(&b.size, size)
 	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
+
+	took := time.Since(now)
+	defragDurations.Observe(took.Seconds())
 
 	return nil
 }
