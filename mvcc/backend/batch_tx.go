@@ -136,15 +136,15 @@ func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 // Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
 	t.Lock()
-	defer t.Unlock()
 	t.commit(false)
+	t.Unlock()
 }
 
 // CommitAndStop commits the previous tx and do not create a new one.
 func (t *batchTx) CommitAndStop() {
 	t.Lock()
-	defer t.Unlock()
 	t.commit(true)
+	t.Unlock()
 }
 
 func (t *batchTx) Unlock() {
@@ -163,9 +163,11 @@ func (t *batchTx) commit(stop bool) {
 			return
 		}
 		start := time.Now()
+
 		// gofail: var beforeCommit struct{}
 		err = t.tx.Commit()
 		// gofail: var afterCommit struct{}
+
 		commitDurations.Observe(time.Since(start).Seconds())
 		atomic.AddInt64(&t.backend.commits, 1)
 
