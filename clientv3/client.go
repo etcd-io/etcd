@@ -229,13 +229,8 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 	return creds
 }
 
-// dialSetupOpts gives the dial opts prior to any authentication
-func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
-	_, ep, err := endpoint.ParseTarget(target)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse target: %v", err)
-	}
-
+// dialSetupOpts gives the dial opts prior to any authentication.
+func (c *Client) dialSetupOpts(scheme string, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:    c.cfg.DialKeepAliveTime,
@@ -245,16 +240,9 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 	}
 	opts = append(opts, dopts...)
 
+	// Provide a net dialer that supports cancelation and timeout.
 	f := func(dialEp string, t time.Duration) (net.Conn, error) {
 		proto, host, _ := endpoint.ParseEndpoint(dialEp)
-		if host == "" && ep != "" {
-			// dialing an endpoint not in the balancer; use
-			// endpoint passed into dial
-			proto, host, _ = endpoint.ParseEndpoint(ep)
-		}
-		if proto == "" {
-			return nil, fmt.Errorf("unknown scheme for %q", host)
-		}
 		select {
 		case <-c.ctx.Done():
 			return nil, c.ctx.Err()
@@ -266,7 +254,7 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 	opts = append(opts, grpc.WithDialer(f))
 
 	creds := c.creds
-	if _, _, scheme := endpoint.ParseEndpoint(ep); len(scheme) != 0 {
+	if len(scheme) != 0 {
 		creds = c.processCreds(scheme)
 	}
 	if creds != nil {
@@ -291,8 +279,9 @@ func (c *Client) dialSetupOpts(target string, dopts ...grpc.DialOption) (opts []
 }
 
 // Dial connects to a single endpoint using the client's config.
-func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
-	return c.dial(endpoint)
+func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
+	_, _, scheme := endpoint.ParseEndpoint(ep)
+	return c.dial(endpoint.DirectTarget(ep), scheme)
 }
 
 func (c *Client) getToken(ctx context.Context) error {
@@ -303,9 +292,9 @@ func (c *Client) getToken(ctx context.Context) error {
 		ep := c.cfg.Endpoints[i]
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		_, host, _ := endpoint.ParseEndpoint(ep)
+		_, host, scheme := endpoint.ParseEndpoint(ep)
 		target := c.resolverGroup.Target(host)
-		dOpts, err = c.dialSetupOpts(target, c.cfg.DialOptions...)
+		dOpts, err = c.dialSetupOpts(scheme, c.cfg.DialOptions...)
 		if err != nil {
 			err = fmt.Errorf("failed to configure auth dialer: %v", err)
 			continue
@@ -333,13 +322,17 @@ func (c *Client) getToken(ctx context.Context) error {
 	return err
 }
 
-func (c *Client) dial(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	// We pass a target to DialContext of the form: endpoint://<clusterName>/<host-part> that
-	// does not include scheme (http/https/unix/unixs) or path parts.
-	_, host, _ := endpoint.ParseEndpoint(ep)
+// dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
+// of the provided endpoint determines the scheme used for all endpoints of the client connection.
+func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	_, host, scheme := endpoint.ParseEndpoint(ep)
 	target := c.resolverGroup.Target(host)
+	return c.dial(target, scheme, dopts...)
+}
 
-	opts, err := c.dialSetupOpts(target, dopts...)
+// dial configures and dials any grpc balancer target.
+func (c *Client) dial(target string, scheme string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts, err := c.dialSetupOpts(scheme, dopts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure dialer: %v", err)
 	}
@@ -467,7 +460,7 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// Use an provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dial(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
+	conn, err := client.dialWithBalancer(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
 	if err != nil {
 		client.cancel()
 		client.resolverGroup.Close()
