@@ -19,6 +19,11 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.8...v3.3.9) and [
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
+- Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9940) Prometheus metric.
+- Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9940) Prometheus metric.
+- Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/coreos/etcd/pull/9940) Prometheus metric.
+- Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/coreos/etcd/pull/9940) Prometheus metric.
+- Add [`etcd_mvcc_hash_rev_duration_seconds`](https://github.com/coreos/etcd/pull/9940) Prometheus metric.
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
