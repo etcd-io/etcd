@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/golang/protobuf/proto"
-	"github.com/gogo/protobuf/plugin/stringer"
 )
 
 // isConnectedToQuorumSince checks whether the local member is connected to the
