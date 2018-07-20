@@ -206,7 +206,6 @@ func init() {
 	prometheus.MustRegister(dbTotalSize)
 	prometheus.MustRegister(dbTotalSizeInUse)
 	prometheus.MustRegister(hashDurations)
-	prometheus.MustRegister(hashRevDurations)
 }
 
 // ReportEventReceived reports that an event is received.
