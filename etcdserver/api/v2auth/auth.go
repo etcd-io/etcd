@@ -160,12 +160,12 @@ func NewStore(lg *zap.Logger, server doer, timeout time.Duration) Store {
 // passwordStore implements PasswordStore using bcrypt to hash user passwords
 type passwordStore struct{}
 
-func (_ passwordStore) CheckPassword(user User, password string) bool {
+func (passwordStore) CheckPassword(user User, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	return err == nil
 }
 
-func (_ passwordStore) HashPassword(password string) (string, error) {
+func (passwordStore) HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hash), err
 }
