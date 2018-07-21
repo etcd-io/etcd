@@ -39,7 +39,7 @@ func TestV3ClientMetrics(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	var (
-		addr string = "localhost:27989"
+		addr = "localhost:27989"
 		ln   net.Listener
 		err  error
 	)

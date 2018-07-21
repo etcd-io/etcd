@@ -46,7 +46,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 		}
 		var lastErr error
 		for attempt := uint(0); attempt < callOpts.max; attempt++ {
-			if err := waitRetryBackoff(attempt, ctx, callOpts); err != nil {
+			if err := waitRetryBackoff(ctx, attempt, callOpts); err != nil {
 				return err
 			}
 			lastErr = invoker(ctx, method, req, reply, cc, grpcOpts...)
@@ -173,7 +173,7 @@ func (s *serverStreamingRetryingStream) RecvMsg(m interface{}) error {
 	}
 	// We start off from attempt 1, because zeroth was already made on normal SendMsg().
 	for attempt := uint(1); attempt < s.callOpts.max; attempt++ {
-		if err := waitRetryBackoff(attempt, s.ctx, s.callOpts); err != nil {
+		if err := waitRetryBackoff(s.ctx, attempt, s.callOpts); err != nil {
 			return err
 		}
 		newStream, err := s.reestablishStreamAndResendBuffer(s.ctx)
@@ -243,8 +243,8 @@ func (s *serverStreamingRetryingStream) reestablishStreamAndResendBuffer(callCtx
 	return newStream, nil
 }
 
-func waitRetryBackoff(attempt uint, ctx context.Context, callOpts *options) error {
-	var waitTime time.Duration = 0
+func waitRetryBackoff(ctx context.Context, attempt uint, callOpts *options) error {
+	waitTime := time.Duration(0)
 	if attempt > 0 {
 		waitTime = callOpts.backoffFunc(attempt)
 	}
