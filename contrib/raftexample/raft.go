@@ -393,7 +393,7 @@ func (rc *raftNode) serveChannels() {
 
 	// send proposals over raft
 	go func() {
-		var confChangeCount uint64 = 0
+		confChangeCount := uint64(0)
 
 		for rc.proposeC != nil && rc.confChangeC != nil {
 			select {
@@ -409,7 +409,7 @@ func (rc *raftNode) serveChannels() {
 				if !ok {
 					rc.confChangeC = nil
 				} else {
-					confChangeCount += 1
+					confChangeCount++
 					cc.ID = confChangeCount
 					rc.node.ProposeConfChange(context.TODO(), cc)
 				}

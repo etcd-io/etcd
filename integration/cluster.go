@@ -68,8 +68,8 @@ const (
 
 	clusterName  = "etcd"
 	basePort     = 21000
-	UrlScheme    = "unix"
-	UrlSchemeTLS = "unixs"
+	URLScheme    = "unix"
+	URLSchemeTLS = "unixs"
 )
 
 var (
@@ -77,7 +77,7 @@ var (
 
 	// integration test uses unique ports, counting up, to listen for each
 	// member, ensuring restarted members can listen on the same port again.
-	localListenCount int64 = 0
+	localListenCount = int64(0)
 
 	testTLSInfo = transport.TLSInfo{
 		KeyFile:        "./fixtures/server.key.insecure",
@@ -157,9 +157,9 @@ type cluster struct {
 
 func schemeFromTLSInfo(tls *transport.TLSInfo) string {
 	if tls == nil {
-		return UrlScheme
+		return URLScheme
 	}
-	return UrlSchemeTLS
+	return URLSchemeTLS
 }
 
 func (c *cluster) fillClusterForMembers() error {
