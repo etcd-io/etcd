@@ -81,12 +81,12 @@ func (x *intervalNode) color() rbcolor {
 	return x.c
 }
 
-func (n *intervalNode) height() int {
-	if n == nil {
+func (x *intervalNode) height() int {
+	if x == nil {
 		return 0
 	}
-	ld := n.left.height()
-	rd := n.right.height()
+	ld := x.left.height()
+	rd := x.right.height()
 	if ld < rd {
 		return rd + 1
 	}
