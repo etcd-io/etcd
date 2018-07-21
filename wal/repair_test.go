@@ -153,10 +153,7 @@ func TestRepairWriteTearLast(t *testing.T) {
 		if terr := f.Truncate(1024); terr != nil {
 			return terr
 		}
-		if terr := f.Truncate(offset); terr != nil {
-			return terr
-		}
-		return nil
+		return f.Truncate(offset)
 	}
 	testRepair(t, makeEnts(50), corruptf, 40)
 }

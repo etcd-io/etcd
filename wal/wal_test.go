@@ -273,7 +273,7 @@ func TestSaveWithCut(t *testing.T) {
 	const EntrySize int = 500
 	SegmentSizeBytes = 2 * 1024
 	defer func() { SegmentSizeBytes = restoreLater }()
-	var index uint64 = 0
+	index := uint64(0)
 	for totalSize := 0; totalSize < int(SegmentSizeBytes); totalSize += EntrySize {
 		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
 		if err = w.Save(state, ents); err != nil {
