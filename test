@@ -511,6 +511,18 @@ function staticcheck_pass {
 	fi
 }
 
+function revive_pass {
+	if which revive >/dev/null; then
+		reviveResult=$(revive -config ./tests/revive.toml -exclude "vendor/..." ./... 2>&1 || true)
+		if [ -n "${reviveResult}" ]; then
+			echo -e "revive checking failed:\\n${reviveResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping revive..."
+	fi
+}
+
 function unconvert_pass {
 	if which unconvert >/dev/null; then
 		unconvertResult=$(unconvert -v "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
@@ -615,6 +627,7 @@ function fmt_pass {
 			unused \
 			unparam \
 			staticcheck \
+			revive \
 			unconvert \
 			ineffassign \
 			nakedret \
