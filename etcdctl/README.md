@@ -81,6 +81,19 @@ Insert '--' for workaround:
 ./etcdctl put -- <key> <value>
 ```
 
+Providing \<value\> in a new line after using `carriage return` is not supported and etcdctl may hang in that case. For example, following case is not supported:
+
+```bash
+./etcdctl put <key>\r
+<value>
+```
+
+A \<value\> can have multiple lines or spaces but it must be provided with a double-quote as demonstrated below:
+
+```bash
+./etcdctl put foo "bar1 2 3"
+```
+
 ### GET [options] \<key\> [range_end]
 
 GET gets the key or a range of keys [key, range_end) if range_end is given.
