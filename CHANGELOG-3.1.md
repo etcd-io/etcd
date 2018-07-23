@@ -15,6 +15,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.18...v3.1.19) and
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
+- Add [`etcd_server_go_version`](https://github.com/coreos/etcd/pull/9957) Prometheus metric.
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/coreos/etcd/pull/9820) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
@@ -30,6 +31,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
+
+### client v3
+
+- Fix [lease keepalive interval updates when response queue is full](https://github.com/coreos/etcd/pull/9952).
+  - If `<-chan *clientv3LeaseKeepAliveResponse` from `clientv3.Lease.KeepAlive` was never consumed or channel is full, client was [sending keepalive request every 500ms](https://github.com/coreos/etcd/issues/9911) instead of expected rate of every "TTL / 3" duration.
 
 ### Go
 

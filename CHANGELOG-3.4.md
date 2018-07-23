@@ -151,6 +151,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
+- Add [`etcd_server_version`](https://github.com/coreos/etcd/pull/8960) Prometheus metric.
+  - To replace [Kubernetes `etcd-version-monitor`](https://github.com/coreos/etcd/issues/8948).
+- Add [`etcd_server_go_version`](https://github.com/coreos/etcd/pull/9957) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_apply_total`](https://github.com/coreos/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/coreos/etcd/pull/9897) Prometheus metric.
@@ -350,6 +353,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add [`Watcher.RequestProgress` method](https://github.com/coreos/etcd/pull/9869).
   - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
   - Think of it as `WithProgressNotify` that can be triggered manually.
+- Fix [lease keepalive interval updates when response queue is full](https://github.com/coreos/etcd/pull/9952).
+  - If `<-chan *clientv3LeaseKeepAliveResponse` from `clientv3.Lease.KeepAlive` was never consumed or channel is full, client was [sending keepalive request every 500ms](https://github.com/coreos/etcd/issues/9911) instead of expected rate of every "TTL / 3" duration.
 
 ### etcdctl v3
 
