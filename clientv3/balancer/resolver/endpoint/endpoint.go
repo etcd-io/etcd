@@ -157,7 +157,7 @@ func (b *builder) close(id string) {
 	b.mu.Unlock()
 }
 
-func (r *builder) Scheme() string {
+func (b *builder) Scheme() string {
 	return scheme
 }
 

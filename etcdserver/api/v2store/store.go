@@ -216,9 +216,8 @@ func (s *store) Set(nodePath string, dir bool, value string, expireOpts TTLOptio
 		if getErr != nil {
 			err = getErr
 			return nil, err
-		} else {
-			value = n.Value
 		}
+		value = n.Value
 	}
 
 	// Set new value

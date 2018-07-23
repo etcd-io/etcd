@@ -295,7 +295,7 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	}
 	l.mu.Unlock()
 
-	go l.keepAliveCtxCloser(id, ctx, ka.donec)
+	go l.keepAliveCtxCloser(ctx, id, ka.donec)
 	l.firstKeepAliveOnce.Do(func() {
 		go l.recvKeepAliveLoop()
 		go l.deadlineLoop()
@@ -327,7 +327,7 @@ func (l *lessor) Close() error {
 	return nil
 }
 
-func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-chan struct{}) {
+func (l *lessor) keepAliveCtxCloser(ctx context.Context, id LeaseID, donec <-chan struct{}) {
 	select {
 	case <-donec:
 		return

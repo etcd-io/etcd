@@ -472,7 +472,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 
 type fakeCancelContext struct{}
 
-var fakeCancelContextError = errors.New("fake context canceled")
+var errFakeCancelContext = errors.New("fake context canceled")
 
 func (f fakeCancelContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (f fakeCancelContext) Done() <-chan struct{} {
@@ -480,7 +480,7 @@ func (f fakeCancelContext) Done() <-chan struct{} {
 	d <- struct{}{}
 	return d
 }
-func (f fakeCancelContext) Err() error                        { return fakeCancelContextError }
+func (f fakeCancelContext) Err() error                        { return errFakeCancelContext }
 func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
 
 func withTimeout(parent context.Context, timeout time.Duration) (
@@ -512,8 +512,8 @@ func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		if err != fakeCancelContextError {
-			t.Errorf("err = %+v, want %+v", err, fakeCancelContextError)
+		if err != errFakeCancelContext {
+			t.Errorf("err = %+v, want %+v", err, errFakeCancelContext)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("unexpected timeout when waiting for request to fake context canceled")
