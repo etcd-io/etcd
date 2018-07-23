@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	goruntime "runtime"
 	"time"
 
 	"github.com/coreos/etcd/pkg/runtime"
@@ -104,6 +105,13 @@ var (
 		Help:      "Which version is running. 1 for 'server_version' label with current version.",
 	},
 		[]string{"server_version"})
+	currentGoVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "go_version",
+		Help:      "Which Go version server is running with. 1 for 'server_go_version' label with current version.",
+	},
+		[]string{"server_go_version"})
 )
 
 func init() {
@@ -120,9 +128,13 @@ func init() {
 	prometheus.MustRegister(leaseExpired)
 	prometheus.MustRegister(quotaBackendBytes)
 	prometheus.MustRegister(currentVersion)
+	prometheus.MustRegister(currentGoVersion)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
+	}).Set(1)
+	currentGoVersion.With(prometheus.Labels{
+		"server_go_version": goruntime.Version(),
 	}).Set(1)
 }
 
