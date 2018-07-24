@@ -37,6 +37,8 @@ message InternalRaftRequest {
 
   AlarmRequest alarm = 10;
 
+  LeaseCheckpointRequest lease_checkpoint = 11;
+
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
 
@@ -71,4 +73,3 @@ message InternalAuthenticateRequest {
   // simple_token is generated in API layer (etcdserver/v3_server.go)
   string simple_token = 3;
 }
-

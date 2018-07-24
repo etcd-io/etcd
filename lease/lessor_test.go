@@ -15,6 +15,7 @@
 package lease
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,7 +26,9 @@ import (
 	"testing"
 	"time"
 
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"go.uber.org/zap"
 )
 
 const (
@@ -37,11 +40,12 @@ const (
 // The granted lease should have a unique ID with a term
 // that is greater than minLeaseTTL.
 func TestLessorGrant(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.Promote(0)
 
@@ -98,11 +102,12 @@ func TestLessorGrant(t *testing.T) {
 // TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
 // from concurrent map writes on 'itemSet'.
 func TestLeaseConcurrentKeys(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -146,11 +151,12 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 // the backend.
 // The revoked lease cannot be got from Lessor again.
 func TestLessorRevoke(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	var fd *fakeDeleter
 	le.SetRangeDeleter(func() TxnDelete {
@@ -198,11 +204,12 @@ func TestLessorRevoke(t *testing.T) {
 
 // TestLessorRenew ensures Lessor can renew an existing lease.
 func TestLessorRenew(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.Promote(0)
 
@@ -234,12 +241,13 @@ func TestLessorRenew(t *testing.T) {
 func TestLessorRenewExtendPileup(t *testing.T) {
 	oldRevokeRate := leaseRevokeRate
 	defer func() { leaseRevokeRate = oldRevokeRate }()
+	lg := zap.NewNop()
 	leaseRevokeRate = 10
 
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	ttl := int64(10)
 	for i := 1; i <= leaseRevokeRate*10; i++ {
 		if _, err := le.Grant(LeaseID(2*i), ttl); err != nil {
@@ -258,7 +266,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	bcfg.Path = filepath.Join(dir, "be")
 	be = backend.New(bcfg)
 	defer be.Close()
-	le = newLessor(be, minLeaseTTL)
+	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 
 	// extend after recovery should extend expiration on lease pile-up
@@ -283,11 +291,12 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 }
 
 func TestLessorDetach(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -323,11 +332,12 @@ func TestLessorDetach(t *testing.T) {
 // TestLessorRecover ensures Lessor recovers leases from
 // persist backend.
 func TestLessorRecover(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	l1, err1 := le.Grant(1, 10)
 	l2, err2 := le.Grant(2, 20)
@@ -336,7 +346,7 @@ func TestLessorRecover(t *testing.T) {
 	}
 
 	// Create a new lessor with the same backend
-	nle := newLessor(be, minLeaseTTL)
+	nle := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer nle.Stop()
 	nl1 := nle.Lookup(l1.ID)
 	if nl1 == nil || nl1.ttl != l1.ttl {
@@ -350,13 +360,14 @@ func TestLessorRecover(t *testing.T) {
 }
 
 func TestLessorExpire(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
 	testMinTTL := int64(1)
 
-	le := newLessor(be, testMinTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: testMinTTL})
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -402,13 +413,14 @@ func TestLessorExpire(t *testing.T) {
 }
 
 func TestLessorExpireAndDemote(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
 	testMinTTL := int64(1)
 
-	le := newLessor(be, testMinTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: testMinTTL})
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -452,16 +464,73 @@ func TestLessorExpireAndDemote(t *testing.T) {
 }
 
 func TestLessorMaxTTL(t *testing.T) {
+	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(be, minLeaseTTL)
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 
 	_, err := le.Grant(1, MaxLeaseTTL+1)
 	if err != ErrLeaseTTLTooLarge {
 		t.Fatalf("grant unexpectedly succeeded")
+	}
+}
+
+func TestLessorCheckpointScheduling(t *testing.T) {
+	lg := zap.NewNop()
+
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL, CheckpointInterval: 1 * time.Second})
+	le.minLeaseTTL = 1
+	checkpointedC := make(chan struct{})
+	le.SetCheckpointer(func(ctx context.Context, lc *pb.LeaseCheckpointRequest) {
+		close(checkpointedC)
+		if len(lc.Checkpoints) != 1 {
+			t.Errorf("expected 1 checkpoint but got %d", len(lc.Checkpoints))
+		}
+		c := lc.Checkpoints[0]
+		if c.Remaining_TTL != 1 {
+			t.Errorf("expected checkpoint to be called with Remaining_TTL=%d but got %d", 1, c.Remaining_TTL)
+		}
+	})
+	defer le.Stop()
+	le.Promote(0)
+
+	_, err := le.Grant(1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO: Is there any way to avoid doing this wait? Lease TTL granularity is in seconds.
+	select {
+	case <-checkpointedC:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected checkpointer to be called, but it was not")
+	}
+}
+
+func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer le.Stop()
+	l, err := le.Grant(1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	le.Checkpoint(l.ID, 5)
+	le.Promote(0)
+	remaining := l.Remaining().Seconds()
+	if !(remaining > 4 && remaining < 5) {
+		t.Fatalf("expected expiry to be less than 1s in the future, but got %f seconds", remaining)
 	}
 }
 

@@ -14,11 +14,14 @@
 
 package lease
 
-// LeaseWithTime contains lease object with expire information.
+// LeaseWithTime contains lease object with a time.
+// For the lessor's lease heap, time identifies the lease expiration time.
+// For the lessor's lease checkpoint heap, the time identifies the next lease checkpoint time.
 type LeaseWithTime struct {
-	id         LeaseID
-	expiration int64
-	index      int
+	id LeaseID
+	// Unix nanos timestamp.
+	time  int64
+	index int
 }
 
 type LeaseQueue []*LeaseWithTime
@@ -26,7 +29,7 @@ type LeaseQueue []*LeaseWithTime
 func (pq LeaseQueue) Len() int { return len(pq) }
 
 func (pq LeaseQueue) Less(i, j int) bool {
-	return pq[i].expiration < pq[j].expiration
+	return pq[i].time < pq[j].time
 }
 
 func (pq LeaseQueue) Swap(i, j int) {

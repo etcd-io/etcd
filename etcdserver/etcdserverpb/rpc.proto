@@ -776,6 +776,22 @@ message LeaseRevokeResponse {
   ResponseHeader header = 1;
 }
 
+message LeaseCheckpoint {
+    // ID is the lease ID to checkpoint.
+  int64 ID = 1;
+
+  // Remaining_TTL is the remaining time until expiry of the lease.
+  int64 remaining_TTL = 2;
+}
+
+message LeaseCheckpointRequest {
+  repeated LeaseCheckpoint checkpoints = 1;
+}
+
+message LeaseCheckpointResponse {
+  ResponseHeader header = 1;
+}
+
 message LeaseKeepAliveRequest {
   // ID is the lease ID for the lease to keep alive.
   int64 ID = 1;

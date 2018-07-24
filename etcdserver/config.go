@@ -140,6 +140,9 @@ type ServerConfig struct {
 	Debug bool
 
 	ForceNewCluster bool
+
+	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
+	LeaseCheckpointInterval time.Duration
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

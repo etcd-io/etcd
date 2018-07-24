@@ -148,6 +148,8 @@ type ClusterConfig struct {
 
 	// UseIP is true to use only IP for gRPC requests.
 	UseIP bool
+
+	LeaseCheckpointInterval time.Duration
 }
 
 type cluster struct {
@@ -290,6 +292,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
 			useIP: c.cfg.UseIP,
+			leaseCheckpointInterval: c.cfg.LeaseCheckpointInterval,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -575,6 +578,7 @@ type memberConfig struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+	leaseCheckpointInterval  time.Duration
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -665,6 +669,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
+	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
 
 	m.InitialCorruptCheck = true
 

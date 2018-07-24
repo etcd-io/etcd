@@ -58,6 +58,8 @@ type applierV3 interface {
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 
+	LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error)
+
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 
 	Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error)
@@ -130,6 +132,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.LeaseGrant(r.LeaseGrant)
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = a.s.applyV3.LeaseRevoke(r.LeaseRevoke)
+	case r.LeaseCheckpoint != nil:
+		ar.resp, ar.err = a.s.applyV3.LeaseCheckpoint(r.LeaseCheckpoint)
 	case r.Alarm != nil:
 		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
 	case r.Authenticate != nil:
@@ -580,6 +584,16 @@ func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantR
 func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	err := a.s.lessor.Revoke(lease.LeaseID(lc.ID))
 	return &pb.LeaseRevokeResponse{Header: newHeader(a.s)}, err
+}
+
+func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error) {
+	for _, c := range lc.Checkpoints {
+		err := a.s.lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
+		if err != nil {
+			return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, err
+		}
+	}
+	return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, nil
 }
 
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
