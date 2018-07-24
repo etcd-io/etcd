@@ -29,7 +29,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819) Prometheus metric.
   - In addition to [`etcd_debugging_mvcc_db_total_size_in_bytes`](https://github.com/coreos/etcd/pull/9819).
 - Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/coreos/etcd/pull/9256) Prometheus metric.
-  - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
+  - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_server_quota_backend_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
@@ -576,6 +576,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
+- Add [`etcd_disk_backend_snapshot_duration_seconds`](https://github.com/coreos/etcd/pull/7892)
 - Add `etcd_debugging_server_lease_expired_total` metrics.
 
 ### Security, Authentication
