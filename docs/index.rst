@@ -7,20 +7,18 @@ This is official etcd documentation.
 Still working in progress...
 
 * :ref:`set-up`: setting up an etcd cluster.
-* :ref:`operate`: operating an etcd cluster.
 * :ref:`monitor`: monitoring an etcd cluster.
-* :ref:`faq`: frequently asked questions.
 * :ref:`client-architecture`: describes etcd client components.
 
 .. toctree::
    :maxdepth: 3
-   :caption: Set up
+   :caption: Get started
 
    set-up
 
 .. toctree::
    :maxdepth: 3
-   :caption: Operate
+   :caption: Operations
 
    operate
 
