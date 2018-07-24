@@ -2,7 +2,7 @@
 
 Previous change logs can be found at [CHANGELOG-3.1](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.1.md).
 
-## [v3.2.24](https://github.com/coreos/etcd/releases/tag/v3.2.24) (TBD 2018-07)
+## [v3.2.24](https://github.com/coreos/etcd/releases/tag/v3.2.24) (2018-07-24)
 
 See [code changes](https://github.com/coreos/etcd/compare/v3.2.23...v3.2.24) and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/coreos/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
