@@ -99,15 +99,6 @@ func Target(id, endpoint string) string {
 	return fmt.Sprintf("%s://%s/%s", scheme, id, endpoint)
 }
 
-// DirectTarget constructs a direct resolver target to a single endpoint.
-// TODO: It should be possible to use the 'passthrough' resolver instead
-// of a custom resolver for this use case, but TLS connections fail for
-// a reason we haven't been able to determine.
-func DirectTarget(endpoint string) string {
-	_, host, scheme := ParseEndpoint(endpoint)
-	return Target(fmt.Sprintf("direct:%s", scheme), host)
-}
-
 // IsTarget checks if a given target string in an endpoint resolver target.
 func IsTarget(target string) bool {
 	return strings.HasPrefix(target, "endpoint://")
@@ -123,11 +114,6 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 		return nil, fmt.Errorf("'etcd' target scheme requires non-empty authority identifying etcd cluster being routed to")
 	}
 	id := target.Authority
-
-	if isDirectEndpoint(target) {
-		return buildDirectEndpointResolver(target, cc, opts)
-	}
-
 	es, err := b.getResolverGroup(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build resolver: %v", err)
@@ -137,25 +123,6 @@ func (b *builder) Build(target resolver.Target, cc resolver.ClientConn, opts res
 		cc:         cc,
 	}
 	es.addResolver(r)
-	return r, nil
-}
-
-func isDirectEndpoint(target resolver.Target) bool {
-	return strings.HasPrefix(target.Authority, "direct:")
-}
-
-func buildDirectEndpointResolver(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOption) (resolver.Resolver, error) {
-	parts := strings.SplitN(target.Authority, ":", 2)
-	if len(parts) != 2 || parts[0] != "direct" {
-		return nil, fmt.Errorf("'endpoint' resolver authority must be of form 'direct:<scheme>', but got %s", target.Authority)
-	}
-	scheme := parts[1]
-	ep := scheme + "://" + target.Endpoint
-	r := &DirectResolver{
-		endpoint: ep,
-		cc:       cc,
-	}
-	r.cc.NewAddress(epsToAddrs(ep))
 	return r, nil
 }
 
@@ -220,15 +187,6 @@ func (r *Resolver) Close() {
 	es.removeResolver(r)
 }
 
-// DirectResolver provides a resolver for a single etcd endpoint.
-type DirectResolver struct {
-	endpoint string
-	cc       resolver.ClientConn
-}
-
-func (*DirectResolver) ResolveNow(o resolver.ResolveNowOption) {}
-func (*DirectResolver) Close()                                 {}
-
 // ParseEndpoint endpoint parses an endpoint of the form
 // (http|https)://<host>*|(unix|unixs)://<path>)
 // and returns a protocol ('tcp' or 'unix'),
@@ -254,4 +212,29 @@ func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
 		proto, host = "", ""
 	}
 	return proto, host, scheme
+}
+
+// ParseTarget parses a endpoint://<id>/<endpoint> string and returns the parsed id and endpoint.
+// If the target is malformed, an error is returned.
+func ParseTarget(target string) (string, string, error) {
+	noPrefix := strings.TrimPrefix(target, targetPrefix)
+	if noPrefix == target {
+		return "", "", fmt.Errorf("malformed target, %s prefix is required: %s", targetPrefix, target)
+	}
+	parts := strings.SplitN(noPrefix, "/", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("malformed target, expected %s://<id>/<endpoint>, but got %s", scheme, target)
+	}
+	return parts[0], parts[1], nil
+}
+
+// ParseHostPort splits a "<host>:<port>" string into the host and port parts.
+// The port part is optional.
+func ParseHostPort(hostPort string) (host string, port string) {
+	parts := strings.SplitN(hostPort, ":", 2)
+	host = parts[0]
+	if len(parts) > 1 {
+		port = parts[1]
+	}
+	return host, port
 }

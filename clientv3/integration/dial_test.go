@@ -87,7 +87,6 @@ func TestDialTLSNoConfig(t *testing.T) {
 	if !isClientTimeout(err) {
 		t.Fatalf("expected dial timeout error, got %v", err)
 	}
-
 }
 
 // TestDialSetEndpointsBeforeFail ensures SetEndpoints can replace unavailable

@@ -230,7 +230,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(scheme string, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:    c.cfg.DialKeepAliveTime,
@@ -253,10 +253,6 @@ func (c *Client) dialSetupOpts(scheme string, dopts ...grpc.DialOption) (opts []
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
-	creds := c.creds
-	if len(scheme) != 0 {
-		creds = c.processCreds(scheme)
-	}
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
 	} else {
@@ -280,8 +276,12 @@ func (c *Client) dialSetupOpts(scheme string, dopts ...grpc.DialOption) (opts []
 
 // Dial connects to a single endpoint using the client's config.
 func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
-	_, _, scheme := endpoint.ParseEndpoint(ep)
-	return c.dial(endpoint.DirectTarget(ep), scheme)
+	creds := c.directDialCreds(ep)
+	// Use the grpc passthrough resolver to directly dial a single endpoint.
+	// This resolver passes through the 'unix' and 'unixs' endpoints schemes used
+	// by etcd without modification, allowing us to directly dial endpoints and
+	// using the same dial functions that we use for load balancer dialing.
+	return c.dial(fmt.Sprintf("passthrough:///%s", ep), creds)
 }
 
 func (c *Client) getToken(ctx context.Context) error {
@@ -292,9 +292,10 @@ func (c *Client) getToken(ctx context.Context) error {
 		ep := c.cfg.Endpoints[i]
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		_, host, scheme := endpoint.ParseEndpoint(ep)
+		_, host, _ := endpoint.ParseEndpoint(ep)
 		target := c.resolverGroup.Target(host)
-		dOpts, err = c.dialSetupOpts(scheme, c.cfg.DialOptions...)
+		creds := c.dialWithBalancerCreds(ep)
+		dOpts, err = c.dialSetupOpts(creds, c.cfg.DialOptions...)
 		if err != nil {
 			err = fmt.Errorf("failed to configure auth dialer: %v", err)
 			continue
@@ -325,14 +326,15 @@ func (c *Client) getToken(ctx context.Context) error {
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
 // of the provided endpoint determines the scheme used for all endpoints of the client connection.
 func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	_, host, scheme := endpoint.ParseEndpoint(ep)
+	_, host, _ := endpoint.ParseEndpoint(ep)
 	target := c.resolverGroup.Target(host)
-	return c.dial(target, scheme, dopts...)
+	creds := c.dialWithBalancerCreds(ep)
+	return c.dial(target, creds, dopts...)
 }
 
 // dial configures and dials any grpc balancer target.
-func (c *Client) dial(target string, scheme string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(scheme, dopts...)
+func (c *Client) dial(target string, creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts, err := c.dialSetupOpts(creds, dopts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure dialer: %v", err)
 	}
@@ -376,6 +378,34 @@ func (c *Client) dial(target string, scheme string, dopts ...grpc.DialOption) (*
 		return nil, err
 	}
 	return conn, nil
+}
+
+func (c *Client) directDialCreds(ep string) *credentials.TransportCredentials {
+	_, hostPort, scheme := endpoint.ParseEndpoint(ep)
+	creds := c.creds
+	if len(scheme) != 0 {
+		creds = c.processCreds(scheme)
+		if creds != nil {
+			c := *creds
+			clone := c.Clone()
+			// Set the server name must to the endpoint hostname without port since grpc
+			// otherwise attempts to check if x509 cert is valid for the full endpoint
+			// including the scheme and port, which fails.
+			host, _ := endpoint.ParseHostPort(hostPort)
+			clone.OverrideServerName(host)
+			creds = &clone
+		}
+	}
+	return creds
+}
+
+func (c *Client) dialWithBalancerCreds(ep string) *credentials.TransportCredentials {
+	_, _, scheme := endpoint.ParseEndpoint(ep)
+	creds := c.creds
+	if len(scheme) != 0 {
+		creds = c.processCreds(scheme)
+	}
+	return creds
 }
 
 // WithRequireLeader requires client requests to only succeed

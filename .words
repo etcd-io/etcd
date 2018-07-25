@@ -30,6 +30,7 @@ gRPC
 goroutine
 goroutines
 healthcheck
+hostname
 iff
 inflight
 keepalive
