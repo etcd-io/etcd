@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -28,7 +29,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var txnInteractive bool
+var (
+	txnInteractive bool
+	cmdMatcher     = regexp.MustCompile(`([^( ]+)\("([^"]+)"\) ([^ ]+) "([^"]+)"[ ]?(.*)$`)
+)
 
 // NewTxnCommand returns the cobra command for "txn".
 func NewTxnCommand() *cobra.Command {
@@ -153,31 +157,21 @@ func parseRequestUnion(line string) (*clientv3.Op, error) {
 }
 
 func parseCompare(line string) (*clientv3.Cmp, error) {
-	var (
-		key string
-		op  string
-		val string
-	)
-
-	lparenSplit := strings.SplitN(line, "(", 2)
-	if len(lparenSplit) != 2 {
+	matches := cmdMatcher.FindAllStringSubmatch(line, -1)
+	if len(matches) < 1 || len(matches[0]) < 6 {
 		return nil, fmt.Errorf("malformed comparison: %s", line)
 	}
 
-	target := lparenSplit[0]
-	n, serr := fmt.Sscanf(lparenSplit[1], "%q) %s %q", &key, &op, &val)
-	if n != 3 {
-		return nil, fmt.Errorf("malformed comparison: %s; got %s(%q) %s %q", line, target, key, op, val)
-	}
-	if serr != nil {
-		return nil, fmt.Errorf("malformed comparison: %s (%v)", line, serr)
-	}
-
 	var (
-		v   int64
-		err error
-		cmp clientv3.Cmp
+		target = matches[0][1]
+		key    = matches[0][2]
+		op     = matches[0][3]
+		val    = matches[0][4]
+		v      int64
+		err    error
+		cmp    clientv3.Cmp
 	)
+
 	switch target {
 	case "ver", "version":
 		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
@@ -197,6 +191,15 @@ func parseCompare(line string) (*clientv3.Cmp, error) {
 		cmp = clientv3.Compare(clientv3.Cmp{Target: pb.Compare_LEASE}, op, val)
 	default:
 		return nil, fmt.Errorf("malformed comparison: %s (unknown target %s)", line, target)
+	}
+
+	if matches[0][5] != "" {
+		for _, optional := range strings.Split(matches[0][5], " ") {
+			switch optional {
+			case "prefix":
+				cmp = cmp.WithPrefix()
+			}
+		}
 	}
 
 	if err != nil {
