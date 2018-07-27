@@ -76,7 +76,7 @@ type maintenance struct {
 func NewMaintenance(c *Client) Maintenance {
 	api := &maintenance{
 		dial: func(endpoint string) (pb.MaintenanceClient, func(), error) {
-			conn, err := c.dial(endpoint)
+			conn, err := c.Dial(endpoint)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to dial endpoint %s with maintenance client: %v", endpoint, err)
 			}

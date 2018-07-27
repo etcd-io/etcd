@@ -72,10 +72,12 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err := cli.Status(context.Background(), ep)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		resp, err := cli.Status(ctx, ep)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("failed to get status from endpoint %s: %v", ep, err)
 		}
+		cancel()
 		cli.Close()
 
 		if resp.Header.GetMemberId() == resp.Leader {

@@ -25,7 +25,9 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
@@ -191,5 +193,49 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	_, err = io.Copy(ioutil.Discard, rc2)
 	if err != nil && !isClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
+	}
+}
+
+func TestMaintenanceStatus(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.WaitLeader(t)
+
+	eps := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		eps[i] = clus.Members[i].GRPCAddr()
+	}
+
+	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	prevID, leaderFound := uint64(0), false
+	for i := 0; i < 3; i++ {
+		resp, err := cli.Status(context.TODO(), eps[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if prevID == 0 {
+			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
+			continue
+		}
+		if prevID == resp.Header.MemberId {
+			t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
+		}
+		if leaderFound && resp.Header.MemberId == resp.Leader {
+			t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
+		}
+		if !leaderFound {
+			leaderFound = resp.Header.MemberId == resp.Leader
+		}
+	}
+	if !leaderFound {
+		t.Fatal("no leader found")
 	}
 }
