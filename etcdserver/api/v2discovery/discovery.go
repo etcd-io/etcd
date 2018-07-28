@@ -275,7 +275,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	var nodes []*client.Node
 	// append non-config keys to nodes
 	for _, n := range resp.Node.Nodes {
-		if !(path.Base(n.Key) == path.Base(configKey)) {
+		if path.Base(n.Key) != path.Base(configKey) {
 			nodes = append(nodes, n)
 		}
 	}
