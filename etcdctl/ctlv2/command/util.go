@@ -270,12 +270,12 @@ func isConnectionError(err error) bool {
 			return true
 		}
 		return isConnectionError(t.Err)
-	case net.Error:
-		if t.Timeout() {
-			return true
-		}
 	case syscall.Errno:
 		if t == syscall.ECONNREFUSED {
+			return true
+		}
+	case net.Error:
+		if t.Timeout() {
 			return true
 		}
 	}
