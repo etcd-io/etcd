@@ -47,7 +47,7 @@ func newKV(kv v3.KV, key, val string, leaseID v3.LeaseID) (*RemoteKV, error) {
 func newUniqueKV(kv v3.KV, prefix string, val string) (*RemoteKV, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
-		rev, err := putNewKV(kv, newKey, val, 0)
+		rev, err := putNewKV(kv, newKey, val, v3.NoLease)
 		if err == nil {
 			return &RemoteKV{kv, newKey, rev, val}, nil
 		}
