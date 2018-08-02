@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"go.uber.org/zap"
@@ -138,6 +139,25 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[0].Value))
 			}
 		}
+	}
+}
+
+// TestSnapshotFilePermissions ensures that the snapshot is saved with
+// the correct file permissions.
+func TestSnapshotFilePermissions(t *testing.T) {
+	expectedFileMode := os.FileMode(fileutil.PrivateFileMode)
+	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
+	dbPath := createSnapshotFile(t, kvs)
+	defer os.RemoveAll(dbPath)
+
+	dbInfo, err := os.Stat(dbPath)
+	if err != nil {
+		t.Fatalf("failed to get test snapshot file status: %v", err)
+	}
+	actualFileMode := dbInfo.Mode()
+
+	if expectedFileMode != actualFileMode {
+		t.Fatalf("expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
 	}
 }
 
