@@ -1,4 +1,4 @@
-# server version: etcd_server_version{server_version="3.2.23"}
+# server version: etcd_server_version{server_version="3.2.24"}
 
 # name: "etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds"
 # description: "Bucketed histogram of db compaction pause duration."
@@ -42,7 +42,7 @@ etcd_debugging_mvcc_db_compaction_total_duration_milliseconds_sum
 etcd_debugging_mvcc_db_compaction_total_duration_milliseconds_count
 
 # name: "etcd_debugging_mvcc_db_total_size_in_bytes"
-# description: "Total size of the underlying database in bytes."
+# description: "Total size of the underlying database physically allocated in bytes. Use etcd_mvcc_db_total_size_in_bytes"
 # type: "gauge"
 etcd_debugging_mvcc_db_total_size_in_bytes
 
@@ -209,6 +209,26 @@ etcd_disk_backend_commit_duration_seconds_bucket{le="+Inf"}
 etcd_disk_backend_commit_duration_seconds_sum
 etcd_disk_backend_commit_duration_seconds_count
 
+# name: "etcd_disk_backend_defrag_duration_seconds"
+# description: "The latency distribution of backend defragmentation."
+# type: "histogram"
+etcd_disk_backend_defrag_duration_seconds_bucket{le="0.1"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="0.2"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="0.4"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="0.8"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="1.6"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="3.2"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="6.4"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="12.8"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="25.6"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="51.2"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="102.4"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="204.8"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="409.6"}
+etcd_disk_backend_defrag_duration_seconds_bucket{le="+Inf"}
+etcd_disk_backend_defrag_duration_seconds_sum
+etcd_disk_backend_defrag_duration_seconds_count
+
 # name: "etcd_disk_backend_snapshot_duration_seconds"
 # description: "The latency distribution of backend snapshots."
 # type: "histogram"
@@ -279,6 +299,38 @@ etcd_grpc_proxy_events_coalescing_total
 # type: "gauge"
 etcd_grpc_proxy_watchers_coalescing_total
 
+# name: "etcd_mvcc_db_total_size_in_bytes"
+# description: "Total size of the underlying database physically allocated in bytes."
+# type: "gauge"
+etcd_mvcc_db_total_size_in_bytes
+
+# name: "etcd_mvcc_db_total_size_in_use_in_bytes"
+# description: "Total size of the underlying database logically in use in bytes."
+# type: "gauge"
+etcd_mvcc_db_total_size_in_use_in_bytes
+
+# name: "etcd_mvcc_hash_duration_seconds"
+# description: "The latency distribution of storage hash operation."
+# type: "histogram"
+etcd_mvcc_hash_duration_seconds_bucket{le="0.01"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.02"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.04"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.08"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.16"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.32"}
+etcd_mvcc_hash_duration_seconds_bucket{le="0.64"}
+etcd_mvcc_hash_duration_seconds_bucket{le="1.28"}
+etcd_mvcc_hash_duration_seconds_bucket{le="2.56"}
+etcd_mvcc_hash_duration_seconds_bucket{le="5.12"}
+etcd_mvcc_hash_duration_seconds_bucket{le="10.24"}
+etcd_mvcc_hash_duration_seconds_bucket{le="20.48"}
+etcd_mvcc_hash_duration_seconds_bucket{le="40.96"}
+etcd_mvcc_hash_duration_seconds_bucket{le="81.92"}
+etcd_mvcc_hash_duration_seconds_bucket{le="163.84"}
+etcd_mvcc_hash_duration_seconds_bucket{le="+Inf"}
+etcd_mvcc_hash_duration_seconds_sum
+etcd_mvcc_hash_duration_seconds_count
+
 # name: "etcd_network_client_grpc_received_bytes_total"
 # description: "The total number of bytes received from grpc clients."
 # type: "counter"
@@ -320,10 +372,20 @@ etcd_network_peer_round_trip_time_seconds_sum{To="REMOTE_PEER_NODE_ID"}
 # type: "counter"
 etcd_network_peer_sent_bytes_total{To="REMOTE_PEER_NODE_ID"}
 
+# name: "etcd_server_go_version"
+# description: "Which Go version server is running with. 1 for 'server_go_version' label with current version."
+# type: "gauge"
+etcd_server_go_version{server_go_version="go1.8.7"}
+
 # name: "etcd_server_has_leader"
 # description: "Whether or not a leader exists. 1 is existence, 0 is not."
 # type: "gauge"
 etcd_server_has_leader
+
+# name: "etcd_server_heartbeat_send_failures_total"
+# description: "The total number of leader heartbeat send failures (likely overloaded from slow disk)."
+# type: "counter"
+etcd_server_heartbeat_send_failures_total
 
 # name: "etcd_server_is_leader"
 # description: "Whether or not this member is a leader. 1 if is, 0 otherwise."
@@ -355,10 +417,25 @@ etcd_server_proposals_failed_total
 # type: "gauge"
 etcd_server_proposals_pending
 
+# name: "etcd_server_quota_backend_bytes"
+# description: "Current backend storage quota size in bytes."
+# type: "gauge"
+etcd_server_quota_backend_bytes
+
+# name: "etcd_server_slow_apply_total"
+# description: "The total number of slow apply requests (likely overloaded from slow disk)."
+# type: "counter"
+etcd_server_slow_apply_total
+
+# name: "etcd_server_slow_read_indexes_total"
+# description: "The total number of pending read indexes not in sync with leader's or timed out read index requests."
+# type: "counter"
+etcd_server_slow_read_indexes_total
+
 # name: "etcd_server_version"
 # description: "Which version is running. 1 for 'server_version' label with current version."
 # type: "gauge"
-etcd_server_version{server_version="3.2.23"}
+etcd_server_version{server_version="3.2.24"}
 
 # name: "go_gc_duration_seconds"
 # description: "A summary of the GC invocation durations."
