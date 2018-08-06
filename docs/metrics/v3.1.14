@@ -1,4 +1,4 @@
-# server version: etcd_server_version{server_version="3.1.18"}
+# server version: unknown
 
 # name: "etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds"
 # description: "Bucketed histogram of db compaction pause duration."
@@ -321,11 +321,6 @@ etcd_server_proposals_failed_total
 # type: "gauge"
 etcd_server_proposals_pending
 
-# name: "etcd_server_version"
-# description: "Which version is running. 1 for 'server_version' label with current version."
-# type: "gauge"
-etcd_server_version{server_version="3.1.18"}
-
 # name: "go_gc_duration_seconds"
 # description: "A summary of the GC invocation durations."
 # type: "summary"
@@ -461,8 +456,8 @@ go_memstats_sys_bytes
 # description: "Total number of RPCs completed on the server, regardless of success or failure."
 # type: "counter"
 # gRPC codes: 
+#  - "Canceled"
 #  - "OK"
-#  - "Unavailable"
 grpc_server_handled_total{grpc_code="CODE",grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Put",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"}

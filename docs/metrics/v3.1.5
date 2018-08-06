@@ -1,4 +1,4 @@
-# server version: etcd_server_version{server_version="3.1.18"}
+# server version: unknown
 
 # name: "etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds"
 # description: "Bucketed histogram of db compaction pause duration."
@@ -291,11 +291,6 @@ etcd_network_peer_sent_bytes_total{To="REMOTE_PEER_NODE_ID"}
 # type: "gauge"
 etcd_server_has_leader
 
-# name: "etcd_server_is_leader"
-# description: "Whether or not this member is a leader. 1 if is, 0 otherwise."
-# type: "gauge"
-etcd_server_is_leader
-
 # name: "etcd_server_leader_changes_seen_total"
 # description: "The number of leader changes seen."
 # type: "counter"
@@ -320,11 +315,6 @@ etcd_server_proposals_failed_total
 # description: "The current number of pending proposals to commit."
 # type: "gauge"
 etcd_server_proposals_pending
-
-# name: "etcd_server_version"
-# description: "Which version is running. 1 for 'server_version' label with current version."
-# type: "gauge"
-etcd_server_version{server_version="3.1.18"}
 
 # name: "go_gc_duration_seconds"
 # description: "A summary of the GC invocation durations."

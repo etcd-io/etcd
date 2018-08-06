@@ -70,7 +70,26 @@ v3.2
 v3.1
 ====
 
-Download: :download:`v3.1.18 <metrics/v3.1.18>`.
+- :download:`v3.1.19 <metrics/v3.1.19>`
+- :download:`v3.1.18 <metrics/v3.1.18>`
+- :download:`v3.1.17 <metrics/v3.1.17>`
+- :download:`v3.1.16 <metrics/v3.1.16>`
+- :download:`v3.1.15 <metrics/v3.1.15>`
+- :download:`v3.1.14 <metrics/v3.1.14>`
+- :download:`v3.1.13 <metrics/v3.1.13>`
+- :download:`v3.1.12 <metrics/v3.1.12>`
+- :download:`v3.1.11 <metrics/v3.1.11>`
+- :download:`v3.1.10 <metrics/v3.1.10>`
+- :download:`v3.1.9 <metrics/v3.1.9>`
+- :download:`v3.1.8 <metrics/v3.1.8>`
+- :download:`v3.1.7 <metrics/v3.1.7>`
+- :download:`v3.1.6 <metrics/v3.1.6>`
+- :download:`v3.1.5 <metrics/v3.1.5>`
+- :download:`v3.1.4 <metrics/v3.1.4>`
+- :download:`v3.1.3 <metrics/v3.1.3>`
+- :download:`v3.1.2 <metrics/v3.1.2>`
+- :download:`v3.1.1 <metrics/v3.1.1>`
+- :download:`v3.1.0 <metrics/v3.1.0>`
 
-.. literalinclude:: metrics/v3.1.18
+.. literalinclude:: metrics/v3.1.19
   :language: BASH
