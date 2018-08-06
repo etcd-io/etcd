@@ -559,6 +559,15 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	}
 	if hardSt := r.hardState(); !isHardStateEqual(hardSt, prevHardSt) {
 		rd.HardState = hardSt
+		// If we hit a size limit when loadaing CommittedEntries, clamp
+		// our HardState.Commit to what we're actually returning. This is
+		// also used as our cursor to resume for the next Ready batch.
+		if len(rd.CommittedEntries) > 0 {
+			lastCommit := rd.CommittedEntries[len(rd.CommittedEntries)-1]
+			if rd.HardState.Commit > lastCommit.Index {
+				rd.HardState.Commit = lastCommit.Index
+			}
+		}
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
