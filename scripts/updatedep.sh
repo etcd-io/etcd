@@ -16,5 +16,3 @@ else
   # shellcheck disable=SC2086
   dep ensure -v -update $1
 fi
-
-dep prune
