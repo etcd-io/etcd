@@ -20,7 +20,7 @@ Glossary
 
 *clientv3-grpc1.7*: Official client implementation, with `grpc-go v1.7.x <https://github.com/grpc/grpc-go/releases/tag/v1.7.0>`_, which is used in latest etcd v3.2 and v3.3.
 
-*clientv3-grpc1.13*: Official client implementation, with `grpc-go v1.13.x <https://github.com/grpc/grpc-go/releases/tag/v1.13.0>`_, which is used in latest etcd v3.4.
+*clientv3-grpc1.14*: Official client implementation, with `grpc-go v1.14.x <https://github.com/grpc/grpc-go/releases/tag/v1.14.0>`_, which is used in latest etcd v3.4.
 
 *Balancer*: etcd client load balancer that implements retry and failover mechanism. etcd client should automatically balance loads between multiple endpoints.
 
@@ -127,21 +127,21 @@ clientv3-grpc1.7: Balancer Limitation
 Upstream gRPC Go had already migrated to new balancer interface. For example, ``clientv3-grpc1.7`` underlying balancer implementation uses new gRPC balancer and tries to be consistent with old balancer behaviors. While its compatibility has been maintained reasonably well, etcd client still `suffered from subtle breaking changes <https://github.com/grpc/grpc-go/issues/1649>`_. Furthermore, gRPC maintainer recommends to `not rely on the old balancer interface <https://github.com/grpc/grpc-go/issues/1942#issuecomment-375368665>`_. In general, to get better support from upstream, it is best to be in sync with latest gRPC releases. And new features, such as retry policy, may not be backported to gRPC 1.7 branch. Thus, both etcd server and client must migrate to latest gRPC versions.
 
 
-clientv3-grpc1.13: Balancer Overview
+clientv3-grpc1.14: Balancer Overview
 ------------------------------------
 
 ``clientv3-grpc1.7`` is so tightly coupled with old gRPC interface, that every single gRPC dependency upgrade broke client behavior. Majority of development and debugging efforts were devoted to fixing those client behavior changes. As a result, its implementation has become overly complicated with bad assumptions on server connectivities.
 
-The primary goal of ``clientv3-grpc1.13`` is to simplify balancer failover logic; rather than maintaining a list of unhealthy endpoints, which may be stale, simply roundrobin to the next endpoint whenever client gets disconnected from the current endpoint. It does not assume endpoint status. Thus, no more complicated status tracking is needed (see *Figure 8* and above). Upgrading to ``clientv3-grpc1.13`` should be no issue; all changes were internal while keeping all the backward compatibilities.
+The primary goal of ``clientv3-grpc1.14`` is to simplify balancer failover logic; rather than maintaining a list of unhealthy endpoints, which may be stale, simply roundrobin to the next endpoint whenever client gets disconnected from the current endpoint. It does not assume endpoint status. Thus, no more complicated status tracking is needed (see *Figure 8* and above). Upgrading to ``clientv3-grpc1.14`` should be no issue; all changes were internal while keeping all the backward compatibilities.
 
-Internally, when given multiple endpoints, ``clientv3-grpc1.13`` creates multiple sub-connections (one sub-connection per each endpoint), while ``clientv3-grpc1.7`` creates only one connection to a pinned endpoint (see *Figure 9*). For instance, in 5-node cluster, ``clientv3-grpc1.13`` balancer would require 5 TCP connections, while ``clientv3-grpc1.7`` only requires one. By preserving the pool of TCP connections, ``clientv3-grpc1.13`` may consume more resources but provide more flexible load balancer with better failover performance. The default balancing policy is round robin but can be easily extended to support other types of balancers (e.g. power of two, pick leader, etc.). ``clientv3-grpc1.13`` uses gRPC resolver group and implements balancer picker policy, in order to delegate complex balancing work to upstream gRPC. On the other hand, ``clientv3-grpc1.7`` manually handles each gRPC connection and balancer failover, which complicates the implementation. ``clientv3-grpc1.13`` implements retry in the gRPC interceptor chain that automatically handles gRPC internal errors and enables more advanced retry policies like backoff, while ``clientv3-grpc1.7`` manually interprets gRPC errors for retries.
+Internally, when given multiple endpoints, ``clientv3-grpc1.14`` creates multiple sub-connections (one sub-connection per each endpoint), while ``clientv3-grpc1.7`` creates only one connection to a pinned endpoint (see *Figure 9*). For instance, in 5-node cluster, ``clientv3-grpc1.14`` balancer would require 5 TCP connections, while ``clientv3-grpc1.7`` only requires one. By preserving the pool of TCP connections, ``clientv3-grpc1.14`` may consume more resources but provide more flexible load balancer with better failover performance. The default balancing policy is round robin but can be easily extended to support other types of balancers (e.g. power of two, pick leader, etc.). ``clientv3-grpc1.14`` uses gRPC resolver group and implements balancer picker policy, in order to delegate complex balancing work to upstream gRPC. On the other hand, ``clientv3-grpc1.7`` manually handles each gRPC connection and balancer failover, which complicates the implementation. ``clientv3-grpc1.14`` implements retry in the gRPC interceptor chain that automatically handles gRPC internal errors and enables more advanced retry policies like backoff, while ``clientv3-grpc1.7`` manually interprets gRPC errors for retries.
 
 .. image:: img/client-architecture-balancer-figure-09.png
     :align: center
     :alt: client-architecture-balancer-figure-09
 
 
-clientv3-grpc1.13: Balancer Limitation
+clientv3-grpc1.14: Balancer Limitation
 --------------------------------------
 
 Improvements can be made by caching the status of each endpoint. For instance, balancer can ping each server in advance to maintain a list of healthy candidates, and use this information when doing round-robin. Or when disconnected, balancer can prioritize healthy endpoints. This may complicate the balancer implementation, thus can be addressed in later versions.

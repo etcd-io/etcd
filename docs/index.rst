@@ -9,6 +9,7 @@ Still working in progress...
 * :ref:`set-up`: setting up an etcd cluster.
 * :ref:`operate`: operating an etcd cluster.
 * :ref:`client-architecture`: describes etcd client components.
+* :ref:`client-feature-matrix`: compares client features.
 
 .. toctree::
    :maxdepth: 3
@@ -33,3 +34,9 @@ Still working in progress...
    :caption: Architecture
 
    client-architecture
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+
+   client-feature-matrix
