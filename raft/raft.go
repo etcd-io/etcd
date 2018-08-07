@@ -441,22 +441,35 @@ func (r *raft) getProgress(id uint64) *Progress {
 	return r.learnerPrs[id]
 }
 
-// sendAppend sends RPC, with entries to the given peer.
+// sendAppend sends an append RPC with new entries (if any) and the
+// current commit index to the given peer.
 func (r *raft) sendAppend(to uint64) {
+	r.maybeSendAppend(to, true)
+}
+
+// maybeSendAppend sends an append RPC with new entries to the given peer,
+// if necessary. Returns true if a message was sent. The sendIfEmpty
+// argument controls whether messages with no entries will be sent
+// ("empty" messages are useful to convey updated Commit indexes, but
+// are undesirable when we're sending multiple messages in a batch).
+func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 	pr := r.getProgress(to)
 	if pr.IsPaused() {
-		return
+		return false
 	}
 	m := pb.Message{}
 	m.To = to
 
 	term, errt := r.raftLog.term(pr.Next - 1)
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
+	if len(ents) == 0 && !sendIfEmpty {
+		return false
+	}
 
 	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
 		if !pr.RecentActive {
 			r.logger.Debugf("ignore sending snapshot to %x since it is not recently active", to)
-			return
+			return false
 		}
 
 		m.Type = pb.MsgSnap
@@ -464,7 +477,7 @@ func (r *raft) sendAppend(to uint64) {
 		if err != nil {
 			if err == ErrSnapshotTemporarilyUnavailable {
 				r.logger.Debugf("%x failed to send snapshot to %x because snapshot is temporarily unavailable", r.id, to)
-				return
+				return false
 			}
 			panic(err) // TODO(bdarnell)
 		}
@@ -498,6 +511,7 @@ func (r *raft) sendAppend(to uint64) {
 		}
 	}
 	r.send(m)
+	return true
 }
 
 // sendHeartbeat sends an empty MsgApp
@@ -1020,9 +1034,17 @@ func stepLeader(r *raft, m pb.Message) error {
 				if r.maybeCommit() {
 					r.bcastAppend()
 				} else if oldPaused {
-					// update() reset the wait state on this node. If we had delayed sending
-					// an update before, send it now.
+					// If we were paused before, this node may be missing the
+					// latest commit index, so send it.
 					r.sendAppend(m.From)
+				}
+				// We've updated flow control information above, which may
+				// allow us to send multiple (size-limited) in-flight messages
+				// at once (such as when transitioning from probe to
+				// replicate, or when freeTo() covers multiple messages). If
+				// we have more entries to send, send as many messages as we
+				// can (without sending empty messages for the commit index)
+				for r.maybeSendAppend(m.From, false) {
 				}
 				// Transfer leadership is in progress.
 				if m.From == r.leadTransferee && pr.Match == r.raftLog.lastIndex() {
