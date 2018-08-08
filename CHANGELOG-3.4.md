@@ -139,6 +139,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Metrics, Monitoring
 
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#latest) for all metrics per release.
+
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_network_active_peers`](https://github.com/coreos/etcd/pull/9762) Prometheus metric.

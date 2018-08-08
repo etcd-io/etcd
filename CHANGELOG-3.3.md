@@ -17,6 +17,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.8...v3.3.9) and [
 
 ### Metrics, Monitoring
 
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_server_go_version`](https://github.com/coreos/etcd/pull/9957) Prometheus metric.
@@ -127,6 +129,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.3...v3.3.4) and [
 
 ### Metrics, Monitoring
 
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_server_is_leader`](https://github.com/coreos/etcd/pull/9587) Prometheus metric.
@@ -182,6 +186,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.2...v3.3.3) and [
   - Futhermore, when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 
 ### Metrics, Monitoring
+
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -296,6 +302,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.3.0) and [
 - Upgrade [`golang.org/x/crypto/bcrypt`](https://github.com/golang/crypto) to [**`golang/crypto@6c586e17d`**](https://github.com/golang/crypto/commit/6c586e17d90a7d08bbbc4069984180dce3b04117).
 
 ### Metrics, Monitoring
+
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
