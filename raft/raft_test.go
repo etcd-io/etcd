@@ -20,6 +20,7 @@ import (
 	"math"
 	"math/rand"
 	"reflect"
+	"strings"
 	"testing"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -290,6 +291,74 @@ func TestProgressPaused(t *testing.T) {
 	ms := r.readMessages()
 	if len(ms) != 1 {
 		t.Errorf("len(ms) = %d, want 1", len(ms))
+	}
+}
+
+func TestProgressFlowControl(t *testing.T) {
+	cfg := newTestConfig(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	cfg.MaxInflightMsgs = 3
+	cfg.MaxSizePerMsg = 2048
+	r := newRaft(cfg)
+	r.becomeCandidate()
+	r.becomeLeader()
+
+	// Throw away all the messages relating to the initial election.
+	r.readMessages()
+
+	// While node 2 is in probe state, propose a bunch of entries.
+	r.prs[2].becomeProbe()
+	blob := []byte(strings.Repeat("a", 1000))
+	for i := 0; i < 10; i++ {
+		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: blob}}})
+	}
+
+	ms := r.readMessages()
+	// First append has two entries: the empty entry to confirm the
+	// election, and the first proposal (only one proposal gets sent
+	// because we're in probe state).
+	if len(ms) != 1 || ms[0].Type != pb.MsgApp {
+		t.Fatalf("expected 1 MsgApp, got %v", ms)
+	}
+	if len(ms[0].Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(ms[0].Entries))
+	}
+	if len(ms[0].Entries[0].Data) != 0 || len(ms[0].Entries[1].Data) != 1000 {
+		t.Fatalf("unexpected entry sizes: %v", ms[0].Entries)
+	}
+
+	// When this append is acked, we change to replicate state and can
+	// send multiple messages at once.
+	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: ms[0].Entries[1].Index})
+	ms = r.readMessages()
+	if len(ms) != 3 {
+		t.Fatalf("expected 3 messages, got %d", len(ms))
+	}
+	for i, m := range ms {
+		if m.Type != pb.MsgApp {
+			t.Errorf("%d: expected MsgApp, got %s", i, m.Type)
+		}
+		if len(m.Entries) != 2 {
+			t.Errorf("%d: expected 2 entries, got %d", i, len(m.Entries))
+		}
+	}
+
+	// Ack all three of those messages together and get the last two
+	// messages (containing three entries).
+	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: ms[2].Entries[1].Index})
+	ms = r.readMessages()
+	if len(ms) != 2 {
+		t.Fatalf("expected 2 messages, got %d", len(ms))
+	}
+	for i, m := range ms {
+		if m.Type != pb.MsgApp {
+			t.Errorf("%d: expected MsgApp, got %s", i, m.Type)
+		}
+	}
+	if len(ms[0].Entries) != 2 {
+		t.Errorf("%d: expected 2 entries, got %d", 0, len(ms[0].Entries))
+	}
+	if len(ms[1].Entries) != 1 {
+		t.Errorf("%d: expected 1 entry, got %d", 1, len(ms[1].Entries))
 	}
 }
 
