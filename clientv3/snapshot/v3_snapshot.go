@@ -102,7 +102,7 @@ func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string
 	defer os.RemoveAll(partpath)
 
 	var f *os.File
-	f, err = os.Create(partpath)
+	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 	if err != nil {
 		return fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
