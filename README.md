@@ -1,3 +1,8 @@
+
+
+**WARNING**: etcd will be transferred from https://github.com/coreos to https://github.com/etcd-io, on 5PM PST, Mon, August 27, 2018. See https://github.com/coreos/etcd/issues/9965 for detailed timeline.
+
+
 # etcd
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/coreos/etcd?style=flat-square)](https://goreportcard.com/report/github.com/coreos/etcd)
