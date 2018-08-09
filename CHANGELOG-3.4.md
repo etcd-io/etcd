@@ -114,6 +114,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
   - `"github.com/coreos/etcd/rafthttp"` to `"github.com/coreos/etcd/etcdserver/api/rafthttp"`.
   - `"github.com/coreos/etcd/snap"` to `"github.com/coreos/etcd/etcdserver/api/snap"`.
   - `"github.com/coreos/etcd/store"` to `"github.com/coreos/etcd/etcdserver/api/v2store"`.
+- Change [snapshot file permissions](https://github.com/coreos/etcd/pull/9977): On Linux, the snapshot file changes from readable by all (mode 0644) to readable by the user only (mode 0600).
 
 ### Dependency
 
@@ -358,6 +359,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Think of it as `WithProgressNotify` that can be triggered manually.
 - Fix [lease keepalive interval updates when response queue is full](https://github.com/coreos/etcd/pull/9952).
   - If `<-chan *clientv3LeaseKeepAliveResponse` from `clientv3.Lease.KeepAlive` was never consumed or channel is full, client was [sending keepalive request every 500ms](https://github.com/coreos/etcd/issues/9911) instead of expected rate of every "TTL / 3" duration.
+- Change [snapshot file permissions](https://github.com/coreos/etcd/pull/9977): On Linux, the snapshot file changes from readable by all (mode 0644) to readable by the user only (mode 0600).
 
 ### etcdctl v3
 
