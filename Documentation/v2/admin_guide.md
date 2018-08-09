@@ -239,13 +239,13 @@ This command will rewrite some of the metadata contained in the backup (specific
 
 #### Restoring a backup
 
-To restore a backup using the procedure created above, start etcd with the `-force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
+To restore a backup using the procedure created above, start etcd with the `--force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
 
 ```sh
     etcd \
       -data-dir=%backup_data_dir% \
       [-wal-dir=%backup_wal_dir%] \
-      -force-new-cluster \
+      --force-new-cluster \
       ...
 ```
 
