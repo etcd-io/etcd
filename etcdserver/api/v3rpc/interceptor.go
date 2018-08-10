@@ -78,8 +78,8 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 		remote = peerInfo.Addr.String()
 	}
 	var responseType string = info.FullMethod
-	var reqCount, respCount int64 = 0, 0
-	var reqSize, respSize int = 0, 0
+	var reqCount, respCount int64
+	var reqSize, respSize int
 	var reqContent string
 	switch _resp := resp.(type) {
 	case *pb.RangeResponse:
@@ -152,15 +152,14 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
 	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
 	if lg == nil {
-		plog.Debugf(
-			"start time = %v, " +
-			"time spent = %v, " +
-			"remote = %s, " +
-			"response type = %s, " +
-			"request count = %d, " +
-			"request size = %d, " +
-			"response count = %d, " +
-			"response size = %d, " +
+		plog.Debugf("start time = %v, "+
+			"time spent = %v, "+
+			"remote = %s, "+
+			"response type = %s, "+
+			"request count = %d, "+
+			"request size = %d, "+
+			"response count = %d, "+
+			"response size = %d, "+
 			"request content = %s",
 			startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent,
 		)
