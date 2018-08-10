@@ -1,5 +1,4 @@
-// +build go1.7
-// +build !go1.8
+// +build go1.7,!go1.8
 
 /*
  *

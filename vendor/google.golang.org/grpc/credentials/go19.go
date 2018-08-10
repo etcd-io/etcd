@@ -1,3 +1,5 @@
+// +build go1.9,!appengine
+
 /*
  *
  * Copyright 2018 gRPC authors.
@@ -16,22 +18,18 @@
  *
  */
 
-package grpc
+package credentials
 
 import (
-	"os"
-	"strings"
+	"errors"
+	"syscall"
 )
 
-const (
-	envConfigPrefix        = "GRPC_GO_"
-	envConfigStickinessStr = envConfigPrefix + "STICKINESS"
-)
-
-var (
-	envConfigStickinessOn bool
-)
-
-func init() {
-	envConfigStickinessOn = strings.EqualFold(os.Getenv(envConfigStickinessStr), "on")
+// implements the syscall.Conn interface
+func (c tlsConn) SyscallConn() (syscall.RawConn, error) {
+	conn, ok := c.rawConn.(syscall.Conn)
+	if !ok {
+		return nil, errors.New("RawConn does not implement syscall.Conn")
+	}
+	return conn.SyscallConn()
 }
