@@ -135,7 +135,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
