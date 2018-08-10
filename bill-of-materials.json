@@ -337,6 +337,33 @@
 		]
 	},
 	{
+		"project": "go.uber.org/atomic",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "go.uber.org/multierr",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "go.uber.org/zap",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
 		"project": "golang.org/x/crypto",
 		"licenses": [
 			{

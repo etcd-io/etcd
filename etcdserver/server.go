@@ -1741,7 +1741,3 @@ func (s *EtcdServer) goAttach(f func()) {
 func (s *EtcdServer) Alarms() []*pb.AlarmMember {
 	return s.alarmStore.Get(pb.AlarmType_NONE)
 }
-
-func (s *EtcdServer) Logger() *zap.Logger {
-	return s.lg
-}
