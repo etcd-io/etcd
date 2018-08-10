@@ -1,3 +1,5 @@
+// +build linux,go1.9,!appengine
+
 /*
  *
  * Copyright 2018 gRPC authors.
@@ -16,7 +18,22 @@
  *
  */
 
-package grpc
+package channelz
 
-// Version is the current grpc version.
-const Version = "1.14.0"
+import (
+	"syscall"
+)
+
+// GetSocketOption gets the socket option info of the conn.
+func GetSocketOption(socket interface{}) *SocketOptionData {
+	c, ok := socket.(syscall.Conn)
+	if !ok {
+		return nil
+	}
+	data := &SocketOptionData{}
+	if rawConn, err := c.SyscallConn(); err == nil {
+		rawConn.Control(data.Getsockopt)
+		return data
+	}
+	return nil
+}

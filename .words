@@ -102,3 +102,4 @@ BackoffFunc
 CallOptions
 
 __lostleader
+ErrConnClosing

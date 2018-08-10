@@ -16,7 +16,20 @@
  *
  */
 
-package grpc
+// Package envconfig contains grpc settings configured by environment variables.
+package envconfig
 
-// Version is the current grpc version.
-const Version = "1.14.0"
+import (
+	"os"
+	"strings"
+)
+
+const (
+	prefix   = "GRPC_GO_"
+	retryStr = prefix + "RETRY"
+)
+
+var (
+	// Retry is set if retry is explicitly enabled via "GRPC_GO_RETRY=on".
+	Retry = strings.EqualFold(os.Getenv(retryStr), "on")
+)

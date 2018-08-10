@@ -28,7 +28,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/transport"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
@@ -394,7 +393,7 @@ func isClientTimeout(err error) bool {
 		return false
 	}
 	code := ev.Code()
-	return code == codes.DeadlineExceeded || ev.Message() == transport.ErrConnClosing.Desc
+	return code == codes.DeadlineExceeded
 }
 
 func isCanceled(err error) bool {

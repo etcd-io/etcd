@@ -427,7 +427,7 @@
   revision = "32ee49c4dd805befd833990acba36cb75042378c"
 
 [[projects]]
-  digest = "1:1a9c0243b6fc4ccd431b2ac2eb964b453db89e0465bab46a718695f8a7f25bfb"
+  digest = "1:047efbc3c9a51f3002b0002f92543857d372654a676fb6b01931982cd80467dd"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -445,7 +445,9 @@
     "internal",
     "internal/backoff",
     "internal/channelz",
+    "internal/envconfig",
     "internal/grpcrand",
+    "internal/transport",
     "keepalive",
     "metadata",
     "naming",
@@ -456,7 +458,6 @@
     "stats",
     "status",
     "tap",
-    "transport",
   ]
   pruneopts = "UT"
   revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
@@ -537,7 +538,6 @@
     "google.golang.org/grpc/resolver/dns",
     "google.golang.org/grpc/resolver/passthrough",
     "google.golang.org/grpc/status",
-    "google.golang.org/grpc/transport",
     "gopkg.in/cheggaaa/pb.v1",
     "gopkg.in/yaml.v2",
   ]

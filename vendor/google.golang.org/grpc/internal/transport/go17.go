@@ -1,4 +1,4 @@
-// +build go1.6,!go1.7
+// +build go1.7
 
 /*
  *
@@ -21,31 +21,33 @@
 package transport
 
 import (
+	"context"
 	"net"
 	"net/http"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	"golang.org/x/net/context"
+	netctx "golang.org/x/net/context"
 )
 
 // dialContext connects to the address on the named network.
 func dialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	return (&net.Dialer{Cancel: ctx.Done()}).Dial(network, address)
+	return (&net.Dialer{}).DialContext(ctx, network, address)
 }
 
-// ContextErr converts the error from context package into a StreamError.
-func ContextErr(err error) StreamError {
+// ContextErr converts the error from context package into a status error.
+func ContextErr(err error) error {
 	switch err {
-	case context.DeadlineExceeded:
-		return streamErrorf(codes.DeadlineExceeded, "%v", err)
-	case context.Canceled:
-		return streamErrorf(codes.Canceled, "%v", err)
+	case context.DeadlineExceeded, netctx.DeadlineExceeded:
+		return status.Error(codes.DeadlineExceeded, err.Error())
+	case context.Canceled, netctx.Canceled:
+		return status.Error(codes.Canceled, err.Error())
 	}
-	return streamErrorf(codes.Internal, "Unexpected error from context packet: %v", err)
+	return status.Errorf(codes.Internal, "Unexpected error from context packet: %v", err)
 }
 
-// contextFromRequest returns a background context.
+// contextFromRequest returns a context from the HTTP Request.
 func contextFromRequest(r *http.Request) context.Context {
-	return context.Background()
+	return r.Context()
 }
