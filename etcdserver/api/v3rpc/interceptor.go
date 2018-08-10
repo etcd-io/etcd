@@ -56,8 +56,7 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 			}
 		}
 
-		resp, err := handler(ctx, req)
-		return resp, err
+		return handler(ctx, req)
 	}
 }
 
@@ -210,8 +209,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 			}
 		}
 
-		err := handler(srv, ss)
-		return err
+		return handler(srv, ss)
 	}
 }
 
