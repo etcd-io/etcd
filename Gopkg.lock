@@ -129,9 +129,12 @@
   revision = "4201258b820c74ac8e6922fc9e6b52f71fe46f8d"
 
 [[projects]]
-  digest = "1:f11ab206621794e7021bbb6d1bb26e82fd12a8893740805db14bdce4b4abe566"
+  digest = "1:d4fb49314d7f792a14c72f094f8fcb9ecfdf7a4c3e2186efb1f3d3a88806a844"
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  packages = ["util/backoffutils"]
+  packages = [
+    ".",
+    "util/backoffutils",
+  ]
   pruneopts = "UT"
   revision = "c250d6563d4d4c20252cd865923440e829844f4e"
   version = "v1.0.0"
@@ -498,6 +501,7 @@
     "github.com/golang/groupcache/lru",
     "github.com/golang/protobuf/proto",
     "github.com/google/btree",
+    "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",

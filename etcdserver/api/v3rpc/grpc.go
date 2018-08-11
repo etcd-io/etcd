@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -40,8 +41,15 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOptio
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
 	}
-	opts = append(opts, grpc.UnaryInterceptor(newUnaryInterceptor(s)))
-	opts = append(opts, grpc.StreamInterceptor(newStreamInterceptor(s)))
+	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+		newLogUnaryInterceptor(s),
+		newUnaryInterceptor(s),
+		grpc_prometheus.UnaryServerInterceptor,
+	)))
+	opts = append(opts, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+		newStreamInterceptor(s),
+		grpc_prometheus.StreamServerInterceptor,
+	)))
 	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
 	opts = append(opts, grpc.MaxConcurrentStreams(maxStreams))
