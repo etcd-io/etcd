@@ -4055,6 +4055,10 @@ type network struct {
 	storage map[uint64]*MemoryStorage
 	dropm   map[connem]float64
 	ignorem map[pb.MessageType]bool
+
+	// msgHook is called for each message sent. It may inspect the
+	// message and return true to send it or false to drop it.
+	msgHook func(pb.Message) bool
 }
 
 // newNetwork initializes a network from peers.
@@ -4170,6 +4174,11 @@ func (nw *network) filter(msgs []pb.Message) []pb.Message {
 		default:
 			perc := nw.dropm[connem{m.From, m.To}]
 			if n := rand.Float64(); n < perc {
+				continue
+			}
+		}
+		if nw.msgHook != nil {
+			if !nw.msgHook(m) {
 				continue
 			}
 		}
