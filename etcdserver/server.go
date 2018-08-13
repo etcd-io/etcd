@@ -60,6 +60,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 	humanize "github.com/dustin/go-humanize"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -511,6 +512,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		forceVersionC:    make(chan struct{}),
 		AccessController: &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 	}
+	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
 
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
