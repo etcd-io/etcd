@@ -68,7 +68,7 @@ func init() {
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
-	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "Check hashkv")
+	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -132,7 +132,6 @@ func putFunc(cmd *cobra.Command, args []string) {
 	bar.Finish()
 	fmt.Println(<-rc)
 
-	// Check hashkv
 	if checkHashkv {
 		hashKV(cmd, clients)
 	}
@@ -162,7 +161,6 @@ func max(n1, n2 int64) int64 {
 }
 
 func hashKV(cmd *cobra.Command, clients []*v3.Client) {
-	var epHashKVRev int64
 	eps, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		panic(err)
@@ -170,29 +168,25 @@ func hashKV(cmd *cobra.Command, clients []*v3.Client) {
 	for i, ip := range eps {
 		eps[i] = strings.TrimSpace(ip)
 	}
-	st := time.Now()
-	var results string
-	ctx, cancel := context.WithCancel(context.Background())
-	clients[0].HashKV(ctx, eps[0], epHashKVRev)
 	host := eps[0]
 
-	resphash, errhash := clients[0].HashKV(ctx, host, epHashKVRev)
-	respstatus, errstatus := clients[0].Status(ctx, host)
-	cancel()
-	if errhash != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, errhash)
+	st := time.Now()
+	clients[0].HashKV(context.Background(), eps[0], 0)
+	rh, eh := clients[0].HashKV(context.Background(), host, 0)
+	if eh != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, eh)
 		panic(err)
 	}
-	results += fmt.Sprintf("\nHaskKV Summary:\n")
-	results += fmt.Sprintf("  HashKV: %v\n", resphash.Hash)
-	results += fmt.Sprintf("  Endpoint: %v\n", host)
-	results += fmt.Sprintf("  Time taken to get hashkv: %v\n", time.Since(st).String())
+	rt, es := clients[0].Status(context.Background(), host)
+	if es != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, es)
+		panic(err)
+	}
 
-	// Get the db size
-	if errstatus != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, errstatus)
-		panic(err)
-	}
-	results += fmt.Sprintf("  DB size: %s", humanize.Bytes(uint64(respstatus.DbSize)))
-	fmt.Println(results)
+	rs := "HaskKV Summary:\n"
+	rs += fmt.Sprintf("\tHashKV: %d\n", rh.Hash)
+	rs += fmt.Sprintf("\tEndpoint: %s\n", host)
+	rs += fmt.Sprintf("\tTime taken to get hashkv: %v\n", time.Since(st))
+	rs += fmt.Sprintf("\tDB size: %s", humanize.Bytes(uint64(rt.DbSize)))
+	fmt.Println(rs)
 }
