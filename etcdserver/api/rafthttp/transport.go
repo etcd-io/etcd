@@ -317,7 +317,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 	}
 	fs := t.LeaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t, urls, id, fs)
-	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us)
+	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us, RoundTripperNameSnapshot, rttSec)
 
 	if t.Logger != nil {
 		t.Logger.Info(
@@ -389,7 +389,7 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 	t.peers[id].update(urls)
 
 	t.pipelineProber.Remove(id.String())
-	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us)
+	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us, RoundTripperNameSnapshot, rttSec)
 
 	if t.Logger != nil {
 		t.Logger.Info(
