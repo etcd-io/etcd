@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 
@@ -150,7 +151,10 @@ func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error)
 	if watchPrevKey {
 		opts = append(opts, clientv3.WithPrevKV())
 	}
-	return c.Watch(clientv3.WithRequireLeader(context.Background()), key, opts...), nil
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	return c.Watch(clientv3.WithRequireLeader(ctx), key, opts...), nil
 }
 
 func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) {

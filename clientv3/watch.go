@@ -331,6 +331,9 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	case reqc <- wr:
 		ok = true
 	case <-wr.ctx.Done():
+		if wr.ctx.Err() != nil {
+			closeCh <- WatchResponse{Canceled: true, closeErr: wr.ctx.Err()}
+		}
 	case <-donec:
 		if wgs.closeErr != nil {
 			closeCh <- WatchResponse{closeErr: wgs.closeErr}
@@ -346,6 +349,9 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 		case ret := <-wr.retc:
 			return ret
 		case <-ctx.Done():
+			if wr.ctx.Err() != nil {
+				closeCh <- WatchResponse{Canceled: true, closeErr: wr.ctx.Err()}
+			}
 		case <-donec:
 			if wgs.closeErr != nil {
 				closeCh <- WatchResponse{closeErr: wgs.closeErr}
