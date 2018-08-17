@@ -95,7 +95,7 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string, roundTrip
 					plog.Warningf("the clock difference against peer %s is too high [%v > %v]", id, s.ClockDiff(), time.Second)
 				}
 			}
-			rttSecProm.WithLabelValues(id).Observe(s.SRTT().Seconds())
+			rttSecProm.WithLabelValues(roundTripperName, id).Observe(s.SRTT().Seconds())
 
 		case <-s.StopNotify():
 			return

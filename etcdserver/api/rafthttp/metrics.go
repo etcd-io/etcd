@@ -143,7 +143,7 @@ var (
 		// highest bucket start of 0.0001 sec * 2^15 == 3.2768 sec
 		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 16),
 	},
-		[]string{"To"},
+		[]string{"ConnectionType", "To"},
 	)
 )
 
