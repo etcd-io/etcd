@@ -17,8 +17,14 @@ package rafthttp
 import (
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/xiang90/probing"
 	"go.uber.org/zap"
+)
+
+const (
+	// RoundTripperNameSnapshot is the name of round-tripper that sends merged snapshot message.
+	RoundTripperNameSnapshot = "ROUND_TRIPPER_SNAPSHOT"
 )
 
 var (
@@ -29,7 +35,7 @@ var (
 	statusErrorInterval      = 5 * time.Second
 )
 
-func addPeerToProber(lg *zap.Logger, p probing.Prober, id string, us []string) {
+func addPeerToProber(lg *zap.Logger, p probing.Prober, id string, us []string, roundTripperName string, rttSecProm *prometheus.HistogramVec) {
 	hus := make([]string, len(us))
 	for i := range us {
 		hus[i] = us[i] + ProbingPrefix
@@ -47,10 +53,10 @@ func addPeerToProber(lg *zap.Logger, p probing.Prober, id string, us []string) {
 		return
 	}
 
-	go monitorProbingStatus(lg, s, id)
+	go monitorProbingStatus(lg, s, id, roundTripperName, rttSecProm)
 }
 
-func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string) {
+func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string, roundTripperName string, rttSecProm *prometheus.HistogramVec) {
 	// set the first interval short to log error early.
 	interval := statusErrorInterval
 	for {
@@ -60,6 +66,7 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string) {
 				if lg != nil {
 					lg.Warn(
 						"prober detected unhealthy status",
+						zap.String("round-tripper-name", roundTripperName),
 						zap.String("remote-peer-id", id),
 						zap.Duration("rtt", s.SRTT()),
 						zap.Error(s.Err()),
@@ -75,6 +82,7 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string) {
 				if lg != nil {
 					lg.Warn(
 						"prober found high clock drift",
+						zap.String("round-tripper-name", roundTripperName),
 						zap.String("remote-peer-id", id),
 						zap.Duration("clock-drift", s.SRTT()),
 						zap.Duration("rtt", s.ClockDiff()),
@@ -84,7 +92,7 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string) {
 					plog.Warningf("the clock difference against peer %s is too high [%v > %v]", id, s.ClockDiff(), time.Second)
 				}
 			}
-			rttSec.WithLabelValues(id).Observe(s.SRTT().Seconds())
+			rttSecProm.WithLabelValues(id).Observe(s.SRTT().Seconds())
 
 		case <-s.StopNotify():
 			return
