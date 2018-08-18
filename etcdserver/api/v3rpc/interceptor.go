@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/raft"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -64,7 +65,11 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
-		defer logUnaryRequestStats(ctx, s.Logger(), info, startTime, req, resp)
+		lg := s.Logger()
+		if (lg != nil && lg.Core().Enabled(zap.DebugLevel)) || // using zap logger and debug level is enabled
+			(lg == nil && plog.LevelAt(capnslog.DEBUG)) { // or, using capnslog and debug level is enabled
+			defer logUnaryRequestStats(ctx, lg, info, startTime, req, resp)
+		}
 		return resp, err
 	}
 }
