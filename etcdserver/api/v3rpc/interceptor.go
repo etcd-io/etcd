@@ -93,7 +93,7 @@ func logUnaryRequestStats(ctx context.Context, info *grpc.UnaryServerInfo, start
 			reqContent = _req.String()
 		}
 		if _resp != nil {
-			respCount = _resp.GetCount()
+			respCount = _resp.Count
 			respSize = _resp.Size()
 		}
 	case *pb.PutResponse:
@@ -116,13 +116,13 @@ func logUnaryRequestStats(ctx context.Context, info *grpc.UnaryServerInfo, start
 			reqContent = _req.String()
 		}
 		if _resp != nil {
-			respCount = _resp.GetDeleted()
+			respCount = _resp.Deleted
 			respSize = _resp.Size()
 		}
 	case *pb.TxnResponse:
 		_req, ok := req.(*pb.TxnRequest)
 		if ok && _resp != nil {
-			if _resp.GetSucceeded() { // determine the 'actual' count and size of request based on success or failure
+			if _resp.Succeeded { // determine the 'actual' count and size of request based on success or failure
 				reqCount = int64(len(_req.GetSuccess()))
 				reqSize = 0
 				for _, r := range _req.GetSuccess() {
