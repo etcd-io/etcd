@@ -201,8 +201,10 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
+			start := time.Now()
 			err := enc.encode(&m)
 			if err == nil {
+				took := time.Since(start)
 				unflushed += m.Size()
 
 				if len(msgc) == 0 || batched > streamBufSize/2 {
@@ -214,6 +216,14 @@ func (cw *streamWriter) run() {
 					batched++
 				}
 
+				// snapshot sends are tracked via separate metrics https://github.com/etcd-io/etcd/pull/9997
+				// heartbeats are tracked via prober https://github.com/etcd-io/etcd/pull/10022
+				// TODO: track other messages?
+				if m.Type == raftpb.MsgProp ||
+					m.Type == raftpb.MsgApp ||
+					m.Type == raftpb.MsgAppResp {
+					raftSendSeconds.WithLabelValues(m.Type.String(), types.ID(m.To).String()).Observe(took.Seconds())
+				}
 				continue
 			}
 
