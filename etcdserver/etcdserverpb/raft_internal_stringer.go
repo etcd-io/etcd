@@ -59,7 +59,7 @@ func (as *InternalRaftStringer) String() string {
 	case as.Request.Put != nil:
 		return fmt.Sprintf("header:<%s> put:<%s>",
 			as.Request.Header.String(),
-			newLoggablePutRequest(as.Request.Put).String(),
+			NewLoggablePutRequest(as.Request.Put).String(),
 		)
 	case as.Request.Txn != nil:
 		return fmt.Sprintf("header:<%s> txn:<%s>",
@@ -121,7 +121,7 @@ func newLoggableRequestOp(op *RequestOp) *requestOpStringer {
 func (as *requestOpStringer) String() string {
 	switch op := as.Op.Request.(type) {
 	case *RequestOp_RequestPut:
-		return fmt.Sprintf("request_put:<%s>", newLoggablePutRequest(op.RequestPut).String())
+		return fmt.Sprintf("request_put:<%s>", NewLoggablePutRequest(op.RequestPut).String())
 	default:
 		// nothing to redact
 	}
@@ -161,7 +161,7 @@ type loggablePutRequest struct {
 	PrevKv    bool   `protobuf:"varint,4,opt,name=prev_kv,proto3"`
 }
 
-func newLoggablePutRequest(request *PutRequest) *loggablePutRequest {
+func NewLoggablePutRequest(request *PutRequest) *loggablePutRequest {
 	return &loggablePutRequest{
 		request.Key,
 		len(request.Value),

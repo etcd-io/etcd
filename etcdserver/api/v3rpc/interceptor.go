@@ -24,10 +24,13 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/pkg/capnslog"
 	prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 )
 
 const (
@@ -40,7 +43,7 @@ type streamsMap struct {
 }
 
 func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if !api.IsCapabilityEnabled(api.V3rpcCapability) {
 			return nil, rpctypes.ErrGRPCNotCapable
 		}
@@ -54,8 +57,114 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 			}
 		}
 
-		return prometheus.UnaryServerInterceptor(ctx, req, info, handler)
+		return logUnaryInterceptor(ctx, req, info, handler)
+		// interceptors are chained manually during backporting, for better readability refer to PR #9990
 	}
+}
+
+// logUnaryInterceptor is a gRPC server-side interceptor that prints info on incoming requests for debugging purpose
+func logUnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	startTime := time.Now()
+	resp, err := prometheus.UnaryServerInterceptor(ctx, req, info, handler)
+	// interceptors are chained manually during backporting, for better readability refer to PR #9990
+	if plog.LevelAt(capnslog.DEBUG) {
+		defer logUnaryRequestStats(ctx, info, startTime, req, resp)
+	}
+	return resp, err
+}
+
+func logUnaryRequestStats(ctx context.Context, info *grpc.UnaryServerInfo, startTime time.Time, req interface{}, resp interface{}) {
+	duration := time.Since(startTime)
+	remote := "No remote client info."
+	peerInfo, ok := peer.FromContext(ctx)
+	if ok {
+		remote = peerInfo.Addr.String()
+	}
+	var responseType string = info.FullMethod
+	var reqCount, respCount int64
+	var reqSize, respSize int
+	var reqContent string
+	switch _resp := resp.(type) {
+	case *pb.RangeResponse:
+		_req, ok := req.(*pb.RangeRequest)
+		if ok {
+			reqCount = 0
+			reqSize = _req.Size()
+			reqContent = _req.String()
+		}
+		if _resp != nil {
+			respCount = _resp.Count
+			respSize = _resp.Size()
+		}
+	case *pb.PutResponse:
+		_req, ok := req.(*pb.PutRequest)
+		if ok {
+			reqCount = 1
+			reqSize = _req.Size()
+			reqContent = pb.NewLoggablePutRequest(_req).String()
+			// redact value field from request content, see PR #9821
+		}
+		if _resp != nil {
+			respCount = 0
+			respSize = _resp.Size()
+		}
+	case *pb.DeleteRangeResponse:
+		_req, ok := req.(*pb.DeleteRangeRequest)
+		if ok {
+			reqCount = 0
+			reqSize = _req.Size()
+			reqContent = _req.String()
+		}
+		if _resp != nil {
+			respCount = _resp.Deleted
+			respSize = _resp.Size()
+		}
+	case *pb.TxnResponse:
+		_req, ok := req.(*pb.TxnRequest)
+		if ok && _resp != nil {
+			if _resp.Succeeded { // determine the 'actual' count and size of request based on success or failure
+				reqCount = int64(len(_req.GetSuccess()))
+				reqSize = 0
+				for _, r := range _req.GetSuccess() {
+					reqSize += r.Size()
+				}
+			} else {
+				reqCount = int64(len(_req.GetFailure()))
+				reqSize = 0
+				for _, r := range _req.GetFailure() {
+					reqSize += r.Size()
+				}
+			}
+			reqContent = pb.NewLoggableTxnRequest(_req).String()
+			// redact value field from request content, see PR #9821
+		}
+		if _resp != nil {
+			respCount = 0
+			respSize = _resp.Size()
+		}
+	default:
+		reqCount = -1
+		reqSize = -1
+		respCount = -1
+		respSize = -1
+	}
+
+	logGenericRequestStats(startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+}
+
+func logGenericRequestStats(startTime time.Time, duration time.Duration, remote string, responseType string,
+	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
+	plog.Debugf("start time = %v, "+
+		"time spent = %v, "+
+		"remote = %s, "+
+		"response type = %s, "+
+		"request count = %d, "+
+		"request size = %d, "+
+		"response count = %d, "+
+		"response size = %d, "+
+		"request content = %s",
+		startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent,
+	)
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {
