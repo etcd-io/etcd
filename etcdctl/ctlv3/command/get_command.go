@@ -76,7 +76,7 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 
 func getGetOp(args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("range command needs arguments."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("get command needs one argument as key and an optional argument as range_end."))
 	}
 
 	if getPrefix && getFromKey {
