@@ -333,7 +333,7 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 	}
 }
 
-func TestFollowersElectioinTimeoutNonconflict(t *testing.T) {
+func TestFollowersElectionTimeoutNonconflict(t *testing.T) {
 	SetLogger(discardLogger)
 	defer SetLogger(defaultLogger)
 	testNonleadersElectionTimeoutNonconflict(t, StateFollower)
