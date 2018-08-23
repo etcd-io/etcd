@@ -71,14 +71,14 @@
 //			// ctx is canceled by another routine
 //		} else if err == context.DeadlineExceeded {
 //			// ctx is attached with a deadline and it exceeded
+//		} else if err == rpctypes.ErrEmptyKey {
+//			// client-side error: key argument is empty
 //		} else if ev, ok := status.FromError(err); ok {
 //			code := ev.Code()
 //			if code == codes.DeadlineExceeded {
 //				// server-side context might have timed-out first (due to clock skew)
 //				// while original client-side context is not timed-out yet
 //			}
-//		} else if verr, ok := err.(*v3rpc.ErrEmptyKey); ok {
-//			// process (verr.Errors)
 //		} else {
 //			// bad cluster endpoints, which are not etcd servers
 //		}
