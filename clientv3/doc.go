@@ -72,7 +72,7 @@
 //		} else if err == context.DeadlineExceeded {
 //			// ctx is attached with a deadline and it exceeded
 //		} else if err == rpctypes.ErrEmptyKey {
-//			// client-side error: key argument is empty
+//			// client-side error: key is not provided
 //		} else if ev, ok := status.FromError(err); ok {
 //			code := ev.Code()
 //			if code == codes.DeadlineExceeded {
