@@ -693,9 +693,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 				}
 			case <-time.After(s.Cfg.ReqTimeout()):
 				if lg != nil {
-					lg.Warn("timed out waiting for read index response", zap.Duration("timeout", s.Cfg.ReqTimeout()))
+					lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
 				} else {
-					plog.Warningf("timed out waiting for read index response")
+					plog.Warningf("timed out waiting for read index response (local node might have slow network)")
 				}
 				nr.notify(ErrTimeout)
 				timeout = true
