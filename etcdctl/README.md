@@ -685,7 +685,7 @@ Prints the member ID of the removed member and the cluster ID.
 
 MEMBER LIST prints the member details for all members associated with an etcd cluster.
 
-RPC: [MemberList][member_list_rpc].
+RPC: MemberList
 
 #### Output
 
@@ -1655,4 +1655,3 @@ backward compatibility for `JSON` format and the format in non-interactive mode.
 [v3key]: ../mvcc/mvccpb/kv.proto#L12-L29
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../mvcc/mvccpb/kv.proto
-[member_list_rpc]: ../etcdserver/etcdserverpb/rpc.proto#L493-L497
