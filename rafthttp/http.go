@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/_output/local/go/src/k8s.io/kubernetes/bazel-kubernetes/external/go_sdk/test/fixedbugs"
 )
 
 const (
