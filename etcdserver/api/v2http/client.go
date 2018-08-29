@@ -76,12 +76,12 @@ func handleV2(lg *zap.Logger, mux *http.ServeMux, server etcdserver.ServerV2, ti
 	}
 
 	mh := &membersHandler{
-		lg:      lg,
-		sec:     sec,
-		server:  server,
-		cluster: server.Cluster(),
-		timeout: timeout,
-		clock:   clockwork.NewRealClock(),
+		lg:                    lg,
+		sec:                   sec,
+		server:                server,
+		cluster:               server.Cluster(),
+		timeout:               timeout,
+		clock:                 clockwork.NewRealClock(),
 		clientCertAuthEnabled: server.ClientCertAuthEnabled(),
 	}
 
