@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # set some environment variables
-ORG_PATH="github.com/coreos"
+ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
@@ -34,10 +34,10 @@ etcd_setup_gopath() {
 		GOPATH=":$GOPATH"
 	fi
 	rm -rf "${etcdGOPATH:?}/"
-	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/github.com/coreos"
+	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/go.etcd.io"
 	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src${GOPATH}
 	ln -s "${CDIR}/vendor" "${etcdGOPATH}/vendor/src"
-	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/github.com/coreos/etcd"
+	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/go.etcd.io/etcd"
 }
 
 toggle_failpoints_default() {
