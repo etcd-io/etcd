@@ -40,9 +40,9 @@ Client Requirements
 
 *Correctness*. Requests may fail in the presence of server faults. However, it never violates consistency guarantees: global ordering properties, never write corrupted data, at-most once semantics for mutable operations, watch never observes partial events, and so on.
 
-*Liveness*. Servers may fail or disconnect briefly. Clients should make progress in either way. Clients should `never deadlock <https://github.com/coreos/etcd/issues/8980>`_ waiting for a server to come back from offline, unless configured to do so. Ideally, clients detect unavailable servers with HTTP/2 ping and failover to other nodes with clear error messages.
+*Liveness*. Servers may fail or disconnect briefly. Clients should make progress in either way. Clients should `never deadlock <https://github.com/etcd-io/etcd/issues/8980>`_ waiting for a server to come back from offline, unless configured to do so. Ideally, clients detect unavailable servers with HTTP/2 ping and failover to other nodes with clear error messages.
 
-*Effectiveness*. Clients should operate effectively with minimum resources: previous TCP connections should be `gracefully closed <https://github.com/coreos/etcd/issues/9212>`_ after endpoint switch. Failover mechanism should effectively predict the next replica to connect, without wastefully retrying on failed nodes.
+*Effectiveness*. Clients should operate effectively with minimum resources: previous TCP connections should be `gracefully closed <https://github.com/etcd-io/etcd/issues/9212>`_ after endpoint switch. Failover mechanism should effectively predict the next replica to connect, without wastefully retrying on failed nodes.
 
 *Portability*. Official client should be clearly documented and its implementation be applicable to other language bindings. Error handling between different language bindings should be consistent. Since etcd is fully committed to gRPC, implementation should be closely aligned with gRPC long-term design goals (e.g. pluggable retry policy should be compatible with `gRPC retry <https://github.com/grpc/proposal/blob/master/A6-client-retries.md>`_). Upgrades between two client versions should be non-disruptive.
 
@@ -110,7 +110,7 @@ Stream RPCs, such as Watch and KeepAlive, are often requested with no timeouts. 
 clientv3-grpc1.7: Balancer Limitation
 -------------------------------------
 
-``clientv3-grpc1.7`` balancer sends HTTP/2 keepalives to detect disconnects from streaming requests. It is a simple gRPC server ping mechanism and does not reason about cluster membership, thus unable to detect network partitions. Since partitioned gRPC server can still respond to client pings, balancer may get stuck with a partitioned node. Ideally, keepalive ping detects partition and triggers endpoint switch, before request time-out (see `issue#8673 <https://github.com/coreos/etcd/issues/8673>`_ and *Figure 7*).
+``clientv3-grpc1.7`` balancer sends HTTP/2 keepalives to detect disconnects from streaming requests. It is a simple gRPC server ping mechanism and does not reason about cluster membership, thus unable to detect network partitions. Since partitioned gRPC server can still respond to client pings, balancer may get stuck with a partitioned node. Ideally, keepalive ping detects partition and triggers endpoint switch, before request time-out (see `issue#8673 <https://github.com/etcd-io/etcd/issues/8673>`_ and *Figure 7*).
 
 .. image:: img/client-architecture-balancer-figure-07.png
     :align: center
@@ -146,6 +146,6 @@ clientv3-grpc1.14: Balancer Limitation
 
 Improvements can be made by caching the status of each endpoint. For instance, balancer can ping each server in advance to maintain a list of healthy candidates, and use this information when doing round-robin. Or when disconnected, balancer can prioritize healthy endpoints. This may complicate the balancer implementation, thus can be addressed in later versions.
 
-Client-side keepalive ping still does not reason about network partitions. Streaming request may get stuck with a partitioned node. Advanced health checking service need to be implemented to understand the cluster membership (see `issue#8673 <https://github.com/coreos/etcd/issues/8673>`_ for more detail).
+Client-side keepalive ping still does not reason about network partitions. Streaming request may get stuck with a partitioned node. Advanced health checking service need to be implemented to understand the cluster membership (see `issue#8673 <https://github.com/etcd-io/etcd/issues/8673>`_ for more detail).
 
 Currently, retry logic is handled manually as an interceptor. This may be simplified via `official gRPC retries <https://github.com/grpc/proposal/blob/master/A6-client-retries.md>`_.
