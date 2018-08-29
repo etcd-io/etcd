@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/flags"
-	"github.com/coreos/etcd/pkg/srv"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/srv"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -133,7 +133,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// WARNING logs contain important information like TLS misconfirugation, but spams
 		// too many routine connection disconnects to turn on by default.
 		//
-		// See https://github.com/coreos/etcd/pull/9623 for background
+		// See https://go.etcd.io/etcd/pull/9623 for background
 		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 

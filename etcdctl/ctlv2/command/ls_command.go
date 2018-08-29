@@ -17,7 +17,7 @@ package command
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/client"
+	"go.etcd.io/etcd/client"
 	"github.com/urfave/cli"
 )
 

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/embed"
+	"go.etcd.io/etcd/embed"
 	"github.com/ghodss/yaml"
 )
 

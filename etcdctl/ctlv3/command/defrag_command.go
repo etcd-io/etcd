@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/backend"
 	"github.com/spf13/cobra"
 )
 
