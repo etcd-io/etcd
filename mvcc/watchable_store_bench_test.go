@@ -19,8 +19,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
 
 	"go.uber.org/zap"
 )
