@@ -25,8 +25,8 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/pkg/capnslog"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

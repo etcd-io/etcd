@@ -22,8 +22,8 @@ import (
 	"sort"
 	"time"
 
-	"go.etcd.io/etcd/pkg/types"
 	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 var (

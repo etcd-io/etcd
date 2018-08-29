@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.etcd.io/etcd/mvcc/backend"
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/mvcc/backend"
 )
 
 var (

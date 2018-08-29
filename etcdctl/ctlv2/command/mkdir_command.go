@@ -18,8 +18,8 @@ import (
 	"errors"
 	"time"
 
-	"go.etcd.io/etcd/client"
 	"github.com/urfave/cli"
+	"go.etcd.io/etcd/client"
 )
 
 // NewMakeDirCommand returns the CLI command for "mkdir".
