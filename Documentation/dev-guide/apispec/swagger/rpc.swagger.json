@@ -20,7 +20,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Authenticate processes an authenticate request.",
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
         "operationId": "Authenticate",
         "parameters": [
           {
@@ -47,7 +47,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "AuthDisable disables authentication.",
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "AuthDisable",
         "parameters": [
           {
@@ -74,7 +74,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "AuthEnable enables authentication.",
+        "summary": "Range gets the keys in the range from the key-value store.",
         "operationId": "AuthEnable",
         "parameters": [
           {
@@ -263,7 +263,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserAdd adds a new user.",
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "UserAdd",
         "parameters": [
           {
@@ -317,7 +317,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserDelete deletes a specified user.",
+        "summary": "MoveLeader requests current leader node to transfer its leadership to transferee.",
         "operationId": "UserDelete",
         "parameters": [
           {
@@ -344,7 +344,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserGet gets detailed user information.",
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
         "operationId": "UserGet",
         "parameters": [
           {
@@ -398,7 +398,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserList gets a list of all users.",
+        "summary": "Snapshot sends a snapshot of the entire backend from a member over a stream to a client.",
         "operationId": "UserList",
         "parameters": [
           {
@@ -452,7 +452,7 @@
         "tags": [
           "Cluster"
         ],
-        "summary": "MemberAdd adds a member into the cluster.",
+        "summary": "Range gets the keys in the range from the key-value store.",
         "operationId": "MemberAdd",
         "parameters": [
           {
@@ -479,7 +479,7 @@
         "tags": [
           "Cluster"
         ],
-        "summary": "MemberList lists all the members in the cluster.",
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "MemberList",
         "parameters": [
           {
@@ -506,7 +506,7 @@
         "tags": [
           "Cluster"
         ],
-        "summary": "MemberRemove removes an existing member from the cluster.",
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "MemberRemove",
         "parameters": [
           {
@@ -533,7 +533,7 @@
         "tags": [
           "Cluster"
         ],
-        "summary": "MemberUpdate updates the member configuration.",
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
         "operationId": "MemberUpdate",
         "parameters": [
           {
@@ -614,7 +614,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseLeases lists all existing leases.",
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
         "operationId": "LeaseLeases2",
         "parameters": [
           {
@@ -641,7 +641,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "LeaseRevoke2",
         "parameters": [
           {
@@ -668,7 +668,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseTimeToLive retrieves lease information.",
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "LeaseTimeToLive2",
         "parameters": [
           {
@@ -776,7 +776,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseGrant creates a lease which expires if the server does not receive a keepAlive\nwithin a given time to live period. All keys attached to the lease will be expired and\ndeleted if the lease expires. Each expired key generates a delete event in the event history.",
+        "summary": "Range gets the keys in the range from the key-value store.",
         "operationId": "LeaseGrant",
         "parameters": [
           {
@@ -803,11 +803,11 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client\nto the server and streaming keep alive responses from the server to the client.",
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
         "operationId": "LeaseKeepAlive",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
@@ -831,7 +831,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseLeases lists all existing leases.",
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
         "operationId": "LeaseLeases",
         "parameters": [
           {
@@ -858,7 +858,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "LeaseRevoke",
         "parameters": [
           {
@@ -885,7 +885,7 @@
         "tags": [
           "Lease"
         ],
-        "summary": "LeaseTimeToLive retrieves lease information.",
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "LeaseTimeToLive",
         "parameters": [
           {
@@ -912,7 +912,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "Alarm activates, deactivates, and queries alarms regarding cluster health.",
+        "summary": "Range gets the keys in the range from the key-value store.",
         "operationId": "Alarm",
         "parameters": [
           {
@@ -939,7 +939,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "Defragment defragments a member's backend database to recover storage space.",
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
         "operationId": "Defragment",
         "parameters": [
           {
@@ -966,7 +966,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "HashKV computes the hash of all MVCC keys up to a given revision.\nIt only iterates \"key\" bucket in backend storage.",
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
         "operationId": "HashKV",
         "parameters": [
           {
@@ -1020,7 +1020,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "Status gets the status of the member.",
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "Status",
         "parameters": [
           {
@@ -1074,11 +1074,11 @@
         "tags": [
           "Watch"
         ],
-        "summary": "Watch watches for events happening or that have happened. Both input and output\nare streams; the input stream is for creating and canceling watchers and the output\nstream sends events. One watch RPC can watch on multiple key ranges, streaming events\nfor several watches at once. The entire event history can be watched starting from the\nlast compaction revision.",
+        "summary": "Range gets the keys in the range from the key-value store.",
         "operationId": "Watch",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
