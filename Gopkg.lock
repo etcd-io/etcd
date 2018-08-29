@@ -317,8 +317,8 @@
   name = "go.etcd.io/bbolt"
   packages = ["."]
   pruneopts = "UT"
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
+  revision = "acbc2c426a444a65e0cbfdcbb3573857bf18b465"
+  version = "v1.3.1-etcd.7"
 
 [[projects]]
   digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"
