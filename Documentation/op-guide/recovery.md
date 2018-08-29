@@ -64,6 +64,6 @@ Now the restored etcd cluster should be available and serving the keyspace given
 
 ## Restoring a cluster from membership mis-reconfiguration with wrong URLs
 
-Previously, etcd panics on [membership mis-reconfiguration with wrong URLs](https://github.com/coreos/etcd/issues/9173) (v3.2.15 or later returns [error early in client-side](https://github.com/coreos/etcd/pull/9174) before etcd server panic).
+Previously, etcd panics on [membership mis-reconfiguration with wrong URLs](https://github.com/etcd-io/etcd/issues/9173) (v3.2.15 or later returns [error early in client-side](https://github.com/etcd-io/etcd/pull/9174) before etcd server panic).
 
 Recommended way is restore from [snapshot](#snapshotting-the-keyspace). `--force-new-cluster` can be used to overwrite cluster membership while keeping existing application data, but is strongly discouraged because it will panic if other members from previous cluster are still alive. Make sure to save snapshot periodically.

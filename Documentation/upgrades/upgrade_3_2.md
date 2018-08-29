@@ -8,7 +8,7 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 ### Upgrade checklists
 
-**NOTE:** When [migrating from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
+**NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
 
 Highlighted breaking changes in 3.2.
 
@@ -16,7 +16,7 @@ Highlighted breaking changes in 3.2.
 
 Higher `--snapshot-count` holds more Raft entries in memory until snapshot, thus causing [recurrent higher memory usage](https://github.com/kubernetes/kubernetes/issues/60589#issuecomment-371977156). Since leader retains latest Raft entries for longer, a slow follower has more time to catch up before leader snapshot. `--snapshot-count` is a tradeoff between higher memory usage and better availabilities of slow followers.
 
-Since v3.2, the default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/coreos/etcd/pull/7160).
+Since v3.2, the default value of `--snapshot-count` has [changed from from 10,000 to 100,000](https://github.com/etcd-io/etcd/pull/7160).
 
 #### Changed gRPC dependency (>=3.2.10)
 
@@ -45,7 +45,7 @@ clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 ##### Deprecated `grpc.ErrClientConnTimeout`
 
-Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.2 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
+Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.2 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/etcd-io/etcd/issues/8504)).
 
 Before
 
@@ -147,7 +147,7 @@ err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received messag
 
 #### Changed raw gRPC client wrappers
 
-3.2.12 or later changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/coreos/etcd/pull/9047).
+3.2.12 or later changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/etcd-io/etcd/pull/9047).
 
 Before and after
 
@@ -170,7 +170,7 @@ Before and after
 
 #### Changed `clientv3.Lease.TimeToLive` API
 
-Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/coreos/etcd/pull/7305)).
+Previously, `clientv3.Lease.TimeToLive` API returned `lease.ErrLeaseNotFound` on non-existent lease ID. 3.2 instead returns TTL=-1 in its response and no error (see [#7305](https://github.com/etcd-io/etcd/pull/7305)).
 
 Before
 
@@ -212,7 +212,7 @@ clientv3yaml.NewConfig
 
 3.2 now rejects domains names for `--listen-peer-urls` and `--listen-client-urls` (3.1 only prints out warnings), since domain name is invalid for network interface binding. Make sure that those URLs are properly formated as `scheme://IP:port`.
 
-See [issue #6336](https://github.com/coreos/etcd/issues/6336) for more contexts.
+See [issue #6336](https://github.com/etcd-io/etcd/issues/6336) for more contexts.
 
 ### Server upgrade checklists
 

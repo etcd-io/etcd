@@ -23,7 +23,7 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
  - `-peer-election-timeout` is replaced by `-election-timeout`.
 
 The documentation of new command line flags can be found at
-https://github.com/coreos/etcd/blob/master/Documentation/v2/configuration.md.
+https://github.com/etcd-io/etcd/blob/master/Documentation/v2/configuration.md.
 
 ## Data Directory Naming
 

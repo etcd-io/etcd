@@ -275,7 +275,7 @@ You can then add more nodes to the cluster and restore resiliency. See the [add 
 
 ### Client Request Timeout
 
-etcd sets different timeouts for various types of client requests. The timeout value is not tunable now, which will be improved soon (https://github.com/coreos/etcd/issues/2038).
+etcd sets different timeouts for various types of client requests. The timeout value is not tunable now, which will be improved soon (https://github.com/etcd-io/etcd/issues/2038).
 
 #### Get requests
 

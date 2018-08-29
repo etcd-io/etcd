@@ -122,12 +122,12 @@ $ etcdctl role remove myrolename
 
 ## Enabling authentication
 
-The minimal steps to enabling auth are as follows. The administrator can set up users and roles before or after enabling authentication, as a matter of preference. 
+The minimal steps to enabling auth are as follows. The administrator can set up users and roles before or after enabling authentication, as a matter of preference.
 
 Make sure the root user is created:
 
 ```
-$ etcdctl user add root 
+$ etcdctl user add root
 Password of root:
 ```
 
@@ -170,4 +170,4 @@ Otherwise, all `etcdctl` commands remain the same. Users and roles can still be 
 As of version v3.2 if an etcd server is launched with the option `--client-cert-auth=true`, the field of Common Name (CN) in the client's TLS cert will be used as an etcd user. In this case, the common name authenticates the user and the client does not need a password. Note that if both of 1. `--client-cert-auth=true` is passed and CN is provided by the client, and 2. username and password are provided by the client, the username and password based authentication is prioritized.
 
 As of version v3.3 if an etcd server is launched with the option `--peer-cert-allowed-cn` filtering of CN inter-peer connections is enabled.  Nodes can only join the etcd cluster if their CN match the allowed one.
-See [etcd security page](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+See [etcd security page](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md) for more details.

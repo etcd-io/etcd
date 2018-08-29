@@ -10,7 +10,7 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 ### Upgrade checklists
 
-**NOTE:** When [migrating from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
+**NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
 
 Highlighted breaking changes in 3.5.
 
@@ -43,7 +43,7 @@ TODO(add more monitoring guides); v3.4 adds `etcd --logger=zap` support for stru
 
 #### Deprecated in `etcd --log-output`
 
-v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs.
+v3.4 renamed [`etcd --log-output` to `--log-outputs`](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
 
 **`etcd --log-output` has been deprecated in v3.5.**
 
