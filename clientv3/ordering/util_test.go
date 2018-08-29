@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestEndpointSwitchResolvesViolation(t *testing.T) {

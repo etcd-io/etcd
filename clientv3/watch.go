@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	v3rpc "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
+	v3rpc "go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -67,7 +67,7 @@ type Watcher interface {
 	// TODO: explicitly set context error in the last "WatchResponse" message and close channel?
 	// Currently, client contexts are overwritten with "valCtx" that never closes.
 	// TODO(v3.4): configure watch retry policy, limit maximum retry number
-	// (see https://github.com/coreos/etcd/issues/8980)
+	// (see https://go.etcd.io/etcd/issues/8980)
 	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
 
 	// RequestProgress requests a progress notify response be sent in all watch channels.

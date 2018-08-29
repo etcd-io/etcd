@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

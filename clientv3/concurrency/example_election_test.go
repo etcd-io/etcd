@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 func ExampleElection_Campaign() {
