@@ -17,7 +17,7 @@ package v2store
 import (
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
 )
 
 // TestEventQueue tests a queue with capacity = 100

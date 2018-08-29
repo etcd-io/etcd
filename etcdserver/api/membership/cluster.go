@@ -27,13 +27,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/netutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/netutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -516,7 +516,7 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://github.com/coreos/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
+		// https://go.etcd.io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
 		if c.lg != nil {
 			c.lg.Debug("number of started member is 1; can accept add member request")
 		} else {
