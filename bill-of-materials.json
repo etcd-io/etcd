@@ -27,15 +27,6 @@
 		]
 	},
 	{
-		"project": "github.com/coreos/etcd",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/coreos/go-semver/semver",
 		"licenses": [
 			{
@@ -310,6 +301,15 @@
 		"licenses": [
 			{
 				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/etcd",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
