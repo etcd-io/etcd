@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/cheggaaa/pb.v1"

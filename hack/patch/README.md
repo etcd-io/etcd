@@ -5,7 +5,7 @@ Handles cherry-picks of PR(s) from etcd master to a stable etcd release branch a
 ## Setup
 
 Set the `UPSTREAM_REMOTE` and `FORK_REMOTE` environment variables.
-`UPSTREAM_REMOTE` should be set to git remote name of `github.com/coreos/etcd`,
+`UPSTREAM_REMOTE` should be set to git remote name of `github.com/etcd-io/etcd`,
 and `FORK_REMOTE` should be set to the git remote name of the forked etcd
 repo (`github.com/${github-username}/etcd`). Use `git remotes -v` to
 look up the git remote names. If etcd has not been forked, create

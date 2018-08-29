@@ -28,15 +28,15 @@ export GOPATH=${PWD}/gopath.proto
 export GOBIN=${PWD}/bin
 export PATH="${GOBIN}:${PATH}"
 
-COREOS_ROOT="${GOPATH}/src/github.com/coreos"
-ETCD_ROOT="${COREOS_ROOT}/etcd"
+ETCD_IO_ROOT="${GOPATH}/src/go.etcd.io"
+ETCD_ROOT="${ETCD_IO_ROOT}/etcd"
 GOGOPROTO_ROOT="${GOPATH}/src/github.com/gogo/protobuf"
 SCHWAG_ROOT="${GOPATH}/src/github.com/hexfusion/schwag"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 GRPC_GATEWAY_ROOT="${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway"
 
 rm -f "${ETCD_ROOT}"
-mkdir -p "${COREOS_ROOT}"
+mkdir -p "${ETCD_IO_ROOT}"
 ln -s "${PWD}" "${ETCD_ROOT}"
 
 # Ensure we have the right version of protoc-gen-gogo by building it every time.
@@ -58,17 +58,17 @@ popd
 
 for dir in ${DIRS}; do
 	pushd "${dir}"
-		protoc --gofast_out=plugins=grpc,import_prefix=github.com/coreos/:. -I=".:${GOGOPROTO_PATH}:${COREOS_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
+		protoc --gofast_out=plugins=grpc,import_prefix=go.etcd.io/:. -I=".:${GOGOPROTO_PATH}:${ETCD_IO_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
 		# shellcheck disable=SC1117
-		sed -i.bak -E 's/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
+		sed -i.bak -E 's/go\.etcd\.io\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
 		# shellcheck disable=SC1117
-		sed -i.bak -E 's/github\.com\/coreos\/(errors|fmt|io)/\1/g' ./*.pb.go
+		sed -i.bak -E 's/go\.etcd\.io\/(errors|fmt|io)/\1/g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"gogoproto\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import fmt \"fmt\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
-		sed -i.bak -E 's/import _ \"github\.com\/coreos\/google\/api\"//g' ./*.pb.go
+		sed -i.bak -E 's/import _ \"go\.etcd\.io\/google\/api\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
 		rm -f ./*.bak
@@ -83,7 +83,7 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	protoc -I. \
 	    -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
 	    -I"${GOGOPROTO_PATH}" \
-	    -I"${COREOS_ROOT}" \
+	    -I"${ETCD_IO_ROOT}" \
 	    --grpc-gateway_out=logtostderr=true:. \
 	    --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
 	    ${protobase}.proto
@@ -100,7 +100,7 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	sed -i.bak -E "s/New[A-Za-z]*Client/${pkg}.&/" ${gwfile}
 	# darwin doesn't like newlines in sed...
 	# shellcheck disable=SC1117
-	sed -i.bak -E "s|import \(|& \"github.com/coreos/etcd/${pkgpath}\"|" ${gwfile}
+	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/${pkgpath}\"|" ${gwfile}
 	mkdir -p  "${pkgpath}"/gw/
 	go fmt ${gwfile}
 	mv ${gwfile} "${pkgpath}/gw/"
@@ -120,16 +120,16 @@ popd
 schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
 
 # install protodoc
-# go get -v -u github.com/coreos/protodoc
+# go get -v -u go.etcd.io/protodoc
 #
 # run './scripts/genproto.sh --skip-protodoc'
 # to skip protodoc generation
 #
 if [ "$1" != "--skip-protodoc" ]; then
 	echo "protodoc is auto-generating grpc API reference documentation..."
-	go get -v -u github.com/coreos/protodoc
-	SHA_PROTODOC="4372ee725035a208404e2d5465ba921469decc32"
-	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
+	go get -v -u go.etcd.io/protodoc
+	SHA_PROTODOC="484ab544e116302a9a6021cc7c427d334132e94a"
+	PROTODOC_PATH="${GOPATH}/src/go.etcd.io/protodoc"
 	pushd "${PROTODOC_PATH}"
 		git reset --hard "${SHA_PROTODOC}"
 		go install

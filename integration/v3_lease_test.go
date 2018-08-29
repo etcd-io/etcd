@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -337,14 +337,14 @@ func TestV3LeaseLeases(t *testing.T) {
 
 // TestV3LeaseRenewStress keeps creating lease and renewing it immediately to ensure the renewal goes through.
 // it was oberserved that the immediate lease renewal after granting a lease from follower resulted lease not found.
-// related issue https://github.com/coreos/etcd/issues/6978
+// related issue https://go.etcd.io/etcd/issues/6978
 func TestV3LeaseRenewStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseRenew)
 }
 
 // TestV3LeaseTimeToLiveStress keeps creating lease and retrieving it immediately to ensure the lease can be retrieved.
 // it was oberserved that the immediate lease retrieval after granting a lease from follower resulted lease not found.
-// related issue https://github.com/coreos/etcd/issues/6978
+// related issue https://go.etcd.io/etcd/issues/6978
 func TestV3LeaseTimeToLiveStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseTimeToLive)
 }
@@ -437,7 +437,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 }
 
 // TestV3GetNonExistLease ensures client retrieving nonexistent lease on a follower doesn't result node panic
-// related issue https://github.com/coreos/etcd/issues/6537
+// related issue https://go.etcd.io/etcd/issues/6537
 func TestV3GetNonExistLease(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})

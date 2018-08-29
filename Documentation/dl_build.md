@@ -26,7 +26,7 @@ To build a vendored `etcd` from the `master` branch via `go get`:
 # GOPATH should be set
 $ echo $GOPATH
 /Users/example/go
-$ go get -v github.com/coreos/etcd
+$ go get -v go.etcd.io/etcd
 ```
 
 ## Test the installation

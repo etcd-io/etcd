@@ -102,7 +102,7 @@ compile-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker run \
 	  --rm \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
 	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
 
@@ -158,7 +158,7 @@ docker-test:
 	docker run \
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
 	  /bin/bash -c "$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
@@ -172,7 +172,7 @@ docker-test-coverage:
 	docker run \
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log

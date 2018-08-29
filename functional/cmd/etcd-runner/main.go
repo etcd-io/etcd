@@ -16,7 +16,7 @@
 // against a fault injected cluster.
 package main
 
-import "github.com/coreos/etcd/functional/runner"
+import "go.etcd.io/etcd/functional/runner"
 
 func main() {
 	runner.Start()

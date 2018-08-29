@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 func TestEtcd(t *testing.T) {

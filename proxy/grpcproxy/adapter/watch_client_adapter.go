@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"google.golang.org/grpc"
 )
 

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/client"
 	"github.com/urfave/cli"
+	"go.etcd.io/etcd/client"
 )
 
 const (

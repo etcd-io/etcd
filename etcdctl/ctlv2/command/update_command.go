@@ -19,8 +19,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/client"
 	"github.com/urfave/cli"
+	"go.etcd.io/etcd/client"
 )
 
 // NewUpdateCommand returns the CLI command for "update".

@@ -27,14 +27,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v3compactor"
-	"github.com/coreos/etcd/pkg/flags"
-	"github.com/coreos/etcd/pkg/netutil"
-	"github.com/coreos/etcd/pkg/srv"
-	"github.com/coreos/etcd/pkg/tlsutil"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/netutil"
+	"go.etcd.io/etcd/pkg/srv"
+	"go.etcd.io/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
@@ -162,7 +162,7 @@ type Config struct {
 	//
 	// If single-node, it advances ticks regardless.
 	//
-	// See https://github.com/coreos/etcd/issues/9333 for more detail.
+	// See https://go.etcd.io/etcd/issues/9333 for more detail.
 	InitialElectionTickAdvance bool `json:"initial-election-tick-advance"`
 
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
@@ -246,7 +246,7 @@ type Config struct {
 	// CVE-2018-5702 reference:
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
 	// - https://github.com/transmission/transmission/pull/468
-	// - https://github.com/coreos/etcd/issues/9353
+	// - https://go.etcd.io/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
 	// UserHandlers is for registering users handlers and only used for

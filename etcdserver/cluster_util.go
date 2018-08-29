@@ -22,9 +22,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"

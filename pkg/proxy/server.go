@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/transport"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -289,8 +289,8 @@ func (s *server) To() string {
 
 // TODO: implement packet reordering from multiple TCP connections
 // buffer packets per connection for awhile, reorder before transmit
-// - https://github.com/coreos/etcd/issues/5614
-// - https://github.com/coreos/etcd/pull/6918#issuecomment-264093034
+// - https://go.etcd.io/etcd/issues/5614
+// - https://go.etcd.io/etcd/pull/6918#issuecomment-264093034
 
 func (s *server) listenAndServe() {
 	defer s.closeWg.Done()

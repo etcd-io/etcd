@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/fileutil"
 )
 
 // TODO: support separate WAL directory

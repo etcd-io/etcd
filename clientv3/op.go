@@ -14,7 +14,7 @@
 
 package clientv3
 
-import pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+import pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 type opType int
 

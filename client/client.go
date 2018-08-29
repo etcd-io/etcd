@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/version"
 )
 
 var (

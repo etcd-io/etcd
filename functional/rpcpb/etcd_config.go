@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 var etcdFields = []string{

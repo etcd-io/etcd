@@ -28,13 +28,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -46,8 +46,8 @@ func main() {
 	ConfigChange, Normal, Request, InternalRaftRequest,
 	IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
 	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`)
-	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process 
-	hex encoded lines of binary input (from etcd-dump-logs) 
+	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process
+	hex encoded lines of binary input (from etcd-dump-logs)
 	and output a hex encoded line of binary for each input line`)
 
 	flag.Parse()

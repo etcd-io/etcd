@@ -18,16 +18,16 @@ package v3alarm
 import (
 	"sync"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/types"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/coreos/pkg/capnslog"
 )
 
 var (
 	alarmBucketName = []byte("alarm")
-	plog            = capnslog.NewPackageLogger("github.com/coreos/etcd", "alarm")
+	plog            = capnslog.NewPackageLogger("go.etcd.io/etcd", "alarm")
 )
 
 type BackendGetter interface {

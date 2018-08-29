@@ -18,7 +18,7 @@ package main
 import (
 	"flag"
 
-	"github.com/coreos/etcd/functional/agent"
+	"go.etcd.io/etcd/functional/agent"
 
 	"go.uber.org/zap"
 )

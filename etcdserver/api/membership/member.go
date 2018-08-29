@@ -22,12 +22,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/membership")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/membership")
 )
 
 // RaftAttributes represents the raft related attributes of an etcd member.

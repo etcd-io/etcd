@@ -17,8 +17,8 @@ package command
 import (
 	"os"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/snapshot"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/snapshot"
 
 	"github.com/olekukonko/tablewriter"
 )

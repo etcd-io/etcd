@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/etcd/embed"
+	"go.etcd.io/etcd/embed"
 
 	"go.uber.org/zap"
 )

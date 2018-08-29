@@ -27,11 +27,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3/balancer"
-	"github.com/coreos/etcd/clientv3/balancer/picker"
-	"github.com/coreos/etcd/clientv3/balancer/resolver/endpoint"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
+	"go.etcd.io/etcd/clientv3/balancer"
+	"go.etcd.io/etcd/clientv3/balancer/picker"
+	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 
 	"google.golang.org/grpc"

@@ -17,7 +17,7 @@ package logutil
 import (
 	"errors"
 
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/raft"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
