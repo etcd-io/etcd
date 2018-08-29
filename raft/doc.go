@@ -23,7 +23,7 @@ For more details on Raft, see "In Search of an Understandable Consensus Algorith
 
 A simple example application, _raftexample_, is also available to help illustrate
 how to use this package in practice:
-https://github.com/coreos/etcd/tree/master/contrib/raftexample
+https://go.etcd.io/etcd/tree/master/contrib/raftexample
 
 Usage
 
