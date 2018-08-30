@@ -19,7 +19,7 @@
 //	// expect dial time-out on ipv4 blackhole
 //	_, err := clientv3.New(clientv3.Config{
 //		Endpoints:   []string{"http://254.0.0.1:12345"},
-//		DialTimeout: 2 * time.Second
+//		DialTimeout: 2 * time.Second,
 //	})
 //
 //	// etcd clientv3 >= v3.2.10, grpc/grpc-go >= v1.7.3
