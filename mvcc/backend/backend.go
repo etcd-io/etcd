@@ -25,9 +25,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/coreos/pkg/capnslog"
 	humanize "github.com/dustin/go-humanize"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 )
 

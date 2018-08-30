@@ -18,14 +18,6 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:6bda4e232607261eeaee45b0a0e8a2ef097bd44e8a44d9b7ca1badb36e523891"
-  name = "github.com/coreos/bbolt"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "48ea1b39c25fc1bab3506fbc712ecbaa842c4d2d"
-  version = "v1.3.1-coreos.6"
-
-[[projects]]
   digest = "1:0ef770954bca104ee99b3b6b7f9b240605ac03517d9f98cbc1893daa03f3c038"
   name = "github.com/coreos/go-semver"
   packages = ["semver"]
@@ -321,6 +313,14 @@
   version = "0.0.1"
 
 [[projects]]
+  digest = "1:c28625428387b63dd7154eb857f51e700465cfbf7c06f619e71f2da33cefe47e"
+  name = "go.etcd.io/bbolt"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "acbc2c426a444a65e0cbfdcbb3573857bf18b465"
+  version = "v1.3.1-etcd.7"
+
+[[projects]]
   digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"
   name = "go.uber.org/atomic"
   packages = ["."]
@@ -487,7 +487,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/bgentry/speakeasy",
-    "github.com/coreos/bbolt",
     "github.com/coreos/go-semver/semver",
     "github.com/coreos/go-systemd/daemon",
     "github.com/coreos/go-systemd/journal",
@@ -519,6 +518,7 @@
     "github.com/ugorji/go/codec",
     "github.com/urfave/cli",
     "github.com/xiang90/probing",
+    "go.etcd.io/bbolt",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
     "golang.org/x/crypto/bcrypt",

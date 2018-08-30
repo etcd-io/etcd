@@ -33,8 +33,8 @@ import (
 	"go.etcd.io/etcd/wal"
 	"go.etcd.io/etcd/wal/walpb"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/urfave/cli"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 )
 

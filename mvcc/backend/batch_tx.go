@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 )
 
