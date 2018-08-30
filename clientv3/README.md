@@ -1,7 +1,7 @@
 # etcd/clientv3
 
 [![Docs](https://readthedocs.org/projects/etcd/badge/?version=latest&style=flat-square)](https://etcd.readthedocs.io/en/latest/?badge=latest)
-[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/coreos/etcd/clientv3)
+[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/go.etcd.io/etcd/clientv3)
 
 `etcd/clientv3` is the official Go etcd client for v3.
 
@@ -10,7 +10,7 @@ See https://etcd.readthedocs.io/en/latest for latest client architecture.
 ## Install
 
 ```bash
-go get github.com/coreos/etcd/clientv3
+go get go.etcd.io/etcd/clientv3
 ```
 
 ## Get started
@@ -50,7 +50,7 @@ For full compatibility, it is recommended to vendor builds using etcd's vendored
 etcd client returns 2 types of errors:
 
 1. context error: canceled or deadline exceeded.
-2. gRPC error: see [api/v3rpc/rpctypes](https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes).
+2. gRPC error: see [api/v3rpc/rpctypes](https://godoc.org/go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes).
 
 Here is the example code to handle client errors:
 
@@ -76,7 +76,7 @@ The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](http
 
 ## Namespacing
 
-The [namespace](https://godoc.org/github.com/coreos/etcd/clientv3/namespace) package provides `clientv3` interface wrappers to transparently isolate client requests to a user-defined prefix.
+The [namespace](https://godoc.org/go.etcd.io/etcd/clientv3/namespace) package provides `clientv3` interface wrappers to transparently isolate client requests to a user-defined prefix.
 
 ## Request size limit
 
@@ -84,4 +84,4 @@ Client request size limit is configurable via `clientv3.Config.MaxCallSendMsgSiz
 
 ## Examples
 
-More code examples can be found at [GoDoc](https://godoc.org/github.com/coreos/etcd/clientv3).
+More code examples can be found at [GoDoc](https://godoc.org/go.etcd.io/etcd/clientv3).
