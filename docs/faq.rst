@@ -14,7 +14,7 @@ etcd is a consistent distributed key-value store. Mainly used as a separate coor
 How to pronounce etcd?
 ======================
 
-etcd is pronounced ``/etˈ-sē-dē/`` or ``/etˈ-see-dee/``, and means distributed ``etc`` directory.
+etcd is pronounced ``/ˈɛtsiːdiː/``, and means distributed ``etc`` directory.
 
 
 Do clients have to send requests to the etcd leader?
