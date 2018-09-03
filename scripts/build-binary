@@ -17,7 +17,7 @@ function setup_env {
 	local ver=${2}
 
 	if [ ! -d "${proj}" ]; then
-		git clone https://github.com/coreos/"${proj}"
+		git clone https://github.com/etcd-io/"${proj}"
 	fi
 
 	pushd "${proj}" >/dev/null
