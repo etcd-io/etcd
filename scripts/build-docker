@@ -15,7 +15,7 @@ if [ -z "${BINARYDIR}" ]; then
 	RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
 	BINARYDIR="${RELEASE}"
 	TARFILE="${RELEASE}.tar.gz"
-	TARURL="https://github.com/coreos/etcd/releases/download/${1}/${TARFILE}"
+	TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
 	if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
 		echo "Failed to download ${TARURL}."
 		exit 1

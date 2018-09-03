@@ -53,7 +53,7 @@ COVER=${COVER:-"-cover"}
 IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|tests/e2e|contrib|functional)"
 
-# all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
+# all github.com/etcd-io/etcd/whatever pkgs that are not auto-generated / tools
 # shellcheck disable=SC1117
 PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|tests/e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
 # pkg1,pkg2,pkg3
@@ -353,7 +353,7 @@ function release_pass {
 	echo "Downloading $file"
 
 	set +e
-	curl --fail -L "https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/$file" -o "/tmp/$file"
+	curl --fail -L "https://github.com/etcd-io/etcd/releases/download/$UPGRADE_VER/$file" -o "/tmp/$file"
 	local result=$?
 	set -e
 	case $result in

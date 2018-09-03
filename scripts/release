@@ -56,7 +56,7 @@ main() {
   if [ ! -d "${reldir}/etcd" ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone git@github.com:coreos/etcd.git --branch "${BRANCH}"
+    git clone git@github.com:etcd-io/etcd.git --branch "${BRANCH}"
   fi
   cd "${reldir}/etcd"
 
@@ -106,7 +106,7 @@ main() {
 
     # Push the version change if it's not already been pushed.
     if [ $(git rev-list --count "origin/${BRANCH}..${BRANCH}") -gt 0 ]; then
-      read -p "Push version bump up to ${VERSION} to github.com/coreos/etcd [y/N]? " confirm
+      read -p "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       git push
     fi
@@ -202,7 +202,7 @@ main() {
     git add version/version.go
     git commit -m "version: bump up to ${VERSION}+git"
     git diff --staged
-    read -p "Push version bump up to ${VERSION}+git to github.com/coreos/etcd [y/N]? " confirm
+    read -p "Push version bump up to ${VERSION}+git to github.com/etcd-io/etcd [y/N]? " confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     git push
   fi
