@@ -109,6 +109,19 @@ func (rd Ready) containsUpdates() bool {
 		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || len(rd.ReadStates) != 0
 }
 
+// appliedCursor extracts from the Ready the highest index the client has
+// applied (once the Ready is confirmed via Advance). If no information is
+// contained in the Ready, returns zero.
+func (rd Ready) appliedCursor() uint64 {
+	if n := len(rd.CommittedEntries); n > 0 {
+		return rd.CommittedEntries[n-1].Index
+	}
+	if index := rd.Snapshot.Metadata.Index; index > 0 {
+		return index
+	}
+	return 0
+}
+
 // Node represents a node in a raft cluster.
 type Node interface {
 	// Tick increments the internal logical clock for the Node by a single tick. Election
@@ -282,6 +295,7 @@ func (n *node) run(r *raft) {
 	var prevLastUnstablei, prevLastUnstablet uint64
 	var havePrevLastUnstablei bool
 	var prevSnapi uint64
+	var applyingToI uint64
 	var rd Ready
 
 	lead := None
@@ -381,13 +395,17 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
+			if index := rd.appliedCursor(); index != 0 {
+				applyingToI = index
+			}
 
 			r.msgs = nil
 			r.readStates = nil
 			advancec = n.advancec
 		case <-advancec:
-			if prevHardSt.Commit != 0 {
-				r.raftLog.appliedTo(prevHardSt.Commit)
+			if applyingToI != 0 {
+				r.raftLog.appliedTo(applyingToI)
+				applyingToI = 0
 			}
 			if havePrevLastUnstablei {
 				r.raftLog.stableTo(prevLastUnstablei, prevLastUnstablet)
@@ -559,15 +577,6 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	}
 	if hardSt := r.hardState(); !isHardStateEqual(hardSt, prevHardSt) {
 		rd.HardState = hardSt
-		// If we hit a size limit when loadaing CommittedEntries, clamp
-		// our HardState.Commit to what we're actually returning. This is
-		// also used as our cursor to resume for the next Ready batch.
-		if len(rd.CommittedEntries) > 0 {
-			lastCommit := rd.CommittedEntries[len(rd.CommittedEntries)-1]
-			if rd.HardState.Commit > lastCommit.Index {
-				rd.HardState.Commit = lastCommit.Index
-			}
-		}
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot

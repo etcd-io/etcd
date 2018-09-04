@@ -47,18 +47,15 @@ func (rn *RawNode) commitReady(rd Ready) {
 	if !IsEmptyHardState(rd.HardState) {
 		rn.prevHardSt = rd.HardState
 	}
-	if rn.prevHardSt.Commit != 0 {
-		// In most cases, prevHardSt and rd.HardState will be the same
-		// because when there are new entries to apply we just sent a
-		// HardState with an updated Commit value. However, on initial
-		// startup the two are different because we don't send a HardState
-		// until something changes, but we do send any un-applied but
-		// committed entries (and previously-committed entries may be
-		// incorporated into the snapshot, even if rd.CommittedEntries is
-		// empty). Therefore we mark all committed entries as applied
-		// whether they were included in rd.HardState or not.
-		rn.raft.raftLog.appliedTo(rn.prevHardSt.Commit)
+
+	// If entries were applied (or a snapshot), update our cursor for
+	// the next Ready. Note that if the current HardState contains a
+	// new Commit index, this does not mean that we're also applying
+	// all of the new entries due to commit pagination by size.
+	if index := rd.appliedCursor(); index > 0 {
+		rn.raft.raftLog.appliedTo(index)
 	}
+
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
 		rn.raft.raftLog.stableTo(e.Index, e.Term)

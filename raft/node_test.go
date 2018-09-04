@@ -17,6 +17,8 @@ package raft
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -925,4 +927,73 @@ func TestCommitPagination(t *testing.T) {
 	}
 	s.Append(rd.Entries)
 	n.Advance()
+}
+
+type ignoreSizeHintMemStorage struct {
+	*MemoryStorage
+}
+
+func (s *ignoreSizeHintMemStorage) Entries(lo, hi uint64, maxSize uint64) ([]raftpb.Entry, error) {
+	return s.MemoryStorage.Entries(lo, hi, math.MaxUint64)
+}
+
+// TestNodeCommitPaginationAfterRestart regression tests a scenario in which the
+// Storage's Entries size limitation is slightly more permissive than Raft's
+// internal one. The original bug was the following:
+//
+// - node learns that index 11 (or 100, doesn't matter) is committed
+// - nextEnts returns index 1..10 in CommittedEntries due to size limiting. However,
+//   index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
+// - Commit index gets bumped to 10
+// - the node persists the HardState, but crashes before applying the entries
+// - upon restart, the storage returns the same entries, but `slice` takes a different code path
+//   (since it is now called with an upper bound of 10) and removes the last entry.
+// - Raft emits a HardState with a regressing commit index.
+//
+// A simpler version of this test would have the storage return a lot less entries than dictated
+// by maxSize (for example, exactly one entry) after the restart, resulting in a larger regression.
+// This wouldn't need to exploit anything about Raft-internal code paths to fail.
+func TestNodeCommitPaginationAfterRestart(t *testing.T) {
+	s := &ignoreSizeHintMemStorage{
+		MemoryStorage: NewMemoryStorage(),
+	}
+	persistedHardState := raftpb.HardState{
+		Term:   1,
+		Vote:   1,
+		Commit: 10,
+	}
+
+	s.hardState = persistedHardState
+	s.ents = make([]raftpb.Entry, 10)
+	var size uint64
+	for i := range s.ents {
+		ent := raftpb.Entry{
+			Term:  1,
+			Index: uint64(i + 1),
+			Type:  raftpb.EntryNormal,
+			Data:  []byte("a"),
+		}
+
+		s.ents[i] = ent
+		size += uint64(ent.Size())
+	}
+
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	// Set a MaxSizePerMsg that would suggest to Raft that the last committed entry should
+	// not be included in the initial rd.CommittedEntries. However, our storage will ignore
+	// this and *will* return it (which is how the Commit index ended up being 10 initially).
+	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
+
+	r := newRaft(cfg)
+	n := newNode()
+	go n.run(r)
+	defer n.Stop()
+
+	rd := readyWithTimeout(&n)
+	if !IsEmptyHardState(rd.HardState) && rd.HardState.Commit < persistedHardState.Commit {
+		t.Errorf("HardState regressed: Commit %d -> %d\nCommitting:\n%+v",
+			persistedHardState.Commit, rd.HardState.Commit,
+			DescribeEntries(rd.CommittedEntries, func(data []byte) string { return fmt.Sprintf("%q", data) }),
+		)
+	}
 }

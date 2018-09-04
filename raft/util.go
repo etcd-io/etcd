@@ -113,6 +113,16 @@ func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
 }
 
+// DescribeEntries calls DescribeEntry for each Entry, adding a newline to
+// each.
+func DescribeEntries(ents []pb.Entry, f EntryFormatter) string {
+	var buf bytes.Buffer
+	for _, e := range ents {
+		_, _ = buf.WriteString(DescribeEntry(e, f) + "\n")
+	}
+	return buf.String()
+}
+
 func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
 	if len(ents) == 0 {
 		return ents

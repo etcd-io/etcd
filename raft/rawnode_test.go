@@ -401,3 +401,82 @@ func TestRawNodeStatus(t *testing.T) {
 		t.Errorf("expected status struct, got nil")
 	}
 }
+
+// TestRawNodeCommitPaginationAfterRestart is the RawNode version of
+// TestNodeCommitPaginationAfterRestart. The anomaly here was even worse as the
+// Raft group would forget to apply entries:
+//
+// - node learns that index 11 is committed
+// - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
+//   exceeds maxBytes), which isn't noticed internally by Raft
+// - Commit index gets bumped to 10
+// - the node persists the HardState, but crashes before applying the entries
+// - upon restart, the storage returns the same entries, but `slice` takes a
+//   different code path and removes the last entry.
+// - Raft does not emit a HardState, but when the app calls Advance(), it bumps
+//   its internal applied index cursor to 10 (when it should be 9)
+// - the next Ready asks the app to apply index 11 (omitting index 10), losing a
+//    write.
+func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
+	s := &ignoreSizeHintMemStorage{
+		MemoryStorage: NewMemoryStorage(),
+	}
+	persistedHardState := raftpb.HardState{
+		Term:   1,
+		Vote:   1,
+		Commit: 10,
+	}
+
+	s.hardState = persistedHardState
+	s.ents = make([]raftpb.Entry, 10)
+	var size uint64
+	for i := range s.ents {
+		ent := raftpb.Entry{
+			Term:  1,
+			Index: uint64(i + 1),
+			Type:  raftpb.EntryNormal,
+			Data:  []byte("a"),
+		}
+
+		s.ents[i] = ent
+		size += uint64(ent.Size())
+	}
+
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	// Set a MaxSizePerMsg that would suggest to Raft that the last committed entry should
+	// not be included in the initial rd.CommittedEntries. However, our storage will ignore
+	// this and *will* return it (which is how the Commit index ended up being 10 initially).
+	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
+
+	s.ents = append(s.ents, raftpb.Entry{
+		Term:  1,
+		Index: uint64(11),
+		Type:  raftpb.EntryNormal,
+		Data:  []byte("boom"),
+	})
+
+	rawNode, err := NewRawNode(cfg, []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for highestApplied := uint64(0); highestApplied != 11; {
+		rd := rawNode.Ready()
+		n := len(rd.CommittedEntries)
+		if n == 0 {
+			t.Fatalf("stopped applying entries at index %d", highestApplied)
+		}
+		if next := rd.CommittedEntries[0].Index; highestApplied != 0 && highestApplied+1 != next {
+			t.Fatalf("attempting to apply index %d after index %d, leaving a gap", next, highestApplied)
+		}
+		highestApplied = rd.CommittedEntries[n-1].Index
+		rawNode.Advance(rd)
+		rawNode.Step(raftpb.Message{
+			Type:   raftpb.MsgHeartbeat,
+			To:     1,
+			From:   1, // illegal, but we get away with it
+			Term:   1,
+			Commit: 11,
+		})
+	}
+}
