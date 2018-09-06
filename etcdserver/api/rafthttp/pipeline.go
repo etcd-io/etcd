@@ -101,8 +101,6 @@ func (p *pipeline) handle() {
 		case m := <-p.msgc:
 			start := time.Now()
 			err := p.post(pbutil.MustMarshal(&m))
-			end := time.Now()
-
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 
@@ -117,9 +115,10 @@ func (p *pipeline) handle() {
 				continue
 			}
 
+			took := time.Since(start)
 			p.status.activate()
 			if m.Type == raftpb.MsgApp && p.followerStats != nil {
-				p.followerStats.Succ(end.Sub(start))
+				p.followerStats.Succ(took)
 			}
 			if isMsgSnap(m) {
 				p.raft.ReportSnapshot(m.To, raft.SnapshotFinish)

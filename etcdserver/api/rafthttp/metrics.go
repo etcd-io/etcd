@@ -133,6 +133,19 @@ var (
 		[]string{"From"},
 	)
 
+	raftSendSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "raft_send_total_duration_seconds",
+		Help:      "Total latency distributions of Raft message sends",
+
+		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
+		// highest bucket start of 0.0001 sec * 2^15 == 3.2768 sec
+		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 16),
+	},
+		[]string{"Type", "To"},
+	)
+
 	rttSec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -162,5 +175,6 @@ func init() {
 	prometheus.MustRegister(snapshotReceiveFailures)
 	prometheus.MustRegister(snapshotReceiveSeconds)
 
+	prometheus.MustRegister(raftSendSeconds)
 	prometheus.MustRegister(rttSec)
 }
