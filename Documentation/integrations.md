@@ -167,4 +167,7 @@
 - [Vitess](http://vitess.io/) - Vitess is a database clustering system for horizontal scaling of MySQL.
 - [lclarkmichalek/etcdhcp](https://github.com/lclarkmichalek/etcdhcp) - DHCP server that uses etcd for persistence and coordination.
 - [openstack/networking-vpp](https://github.com/openstack/networking-vpp) - A networking driver that programs the [FD.io VPP dataplane](https://wiki.fd.io/view/VPP) to provide [OpenStack](https://www.openstack.org/) cloud virtual networking
-- [openstack](https://github.com/openstack/governance/blob/master/reference/base-services.rst) - OpenStack services can rely on etcd as a base service.
+- [OpenStack](https://github.com/openstack/governance/blob/master/reference/base-services.rst) - OpenStack services can rely on etcd as a base service.
+- [CoreDNS](https://github.com/coredns/coredns/tree/master/plugin/etcd) - CoreDNS is a DNS server that chains plugins, part of CNCF and Kubernetes
+- [Uber M3](https://github.com/m3db/m3) - M3: Uber’s Open Source, Large-scale Metrics Platform for Prometheus
+- [Rook](https://github.com/rook/rook) - Storage Orchestration for Kubernetes
