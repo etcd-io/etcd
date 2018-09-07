@@ -292,7 +292,6 @@ func (s *store) Commit() {
 
 func (s *store) Restore(b backend.Backend) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	close(s.stopc)
 	s.fifoSched.Stop()
@@ -305,10 +304,12 @@ func (s *store) Restore(b backend.Backend) error {
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
 
+	s.mu.Unlock()
 	return s.restore()
 }
 
 func (s *store) restore() error {
+	s.mu.Lock()
 	b := s.b
 
 	reportDbTotalSizeInBytesMu.Lock()
@@ -384,6 +385,7 @@ func (s *store) restore() error {
 
 	tx.Unlock()
 
+	s.mu.Unlock()
 	if scheduledCompact != 0 {
 		s.Compact(scheduledCompact)
 		plog.Printf("resume scheduled compaction at %d", scheduledCompact)
