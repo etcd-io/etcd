@@ -139,6 +139,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentI
 	tx.Unlock()
 	s.b.ForceCommit()
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := s.restore(); err != nil {
 		// TODO: return the error instead of panic here?
 		panic("failed to recover store from backend")
@@ -225,21 +227,18 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	return hash, currentRev, compactRev, err
 }
 
-func (s *store) Compact(rev int64) (<-chan struct{}, error) {
-	s.mu.Lock()
+func (s *store) setCompactRev(rev int64) (time.Time, <-chan struct{}, error) {
 	s.revMu.Lock()
 	if rev <= s.compactMainRev {
 		ch := make(chan struct{})
 		f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
 		s.fifoSched.Schedule(f)
-		s.mu.Unlock()
 		s.revMu.Unlock()
-		return ch, ErrCompacted
+		return time.Now(), ch, ErrCompacted
 	}
 	if rev > s.currentRev {
-		s.mu.Unlock()
 		s.revMu.Unlock()
-		return nil, ErrFutureRev
+		return time.Now(), nil, ErrFutureRev
 	}
 
 	start := time.Now()
@@ -256,8 +255,11 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
 
-	s.mu.Unlock()
 	s.revMu.Unlock()
+	return start, nil, nil
+}
+
+func (s *store) compact(rev int64, start time.Time) (<-chan struct{}, error) {
 	keep := s.kvindex.Compact(rev)
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
@@ -276,6 +278,27 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 
 	indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 	return ch, nil
+}
+
+func (s *store) Compact(rev int64) (<-chan struct{}, error) {
+	s.mu.Lock()
+	start, ch, err := s.setCompactRev(rev)
+	if err != nil {
+		s.mu.Unlock()
+		return ch, err
+	}
+	s.mu.Unlock()
+
+	return s.compact(rev, start)
+}
+
+func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
+	start, ch, err := s.setCompactRev(rev)
+	if nil != err {
+		return ch, err
+	}
+
+	return s.compact(rev, start)
 }
 
 // DefaultIgnores is a map of keys to ignore in hash checking.
@@ -302,6 +325,7 @@ func (s *store) Commit() {
 
 func (s *store) Restore(b backend.Backend) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	close(s.stopc)
 	s.fifoSched.Stop()
@@ -313,12 +337,11 @@ func (s *store) Restore(b backend.Backend) error {
 	s.compactMainRev = -1
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
-	s.mu.Unlock()
+
 	return s.restore()
 }
 
 func (s *store) restore() error {
-	s.mu.Lock()
 	b := s.b
 	reportDbTotalSizeInBytesMu.Lock()
 	reportDbTotalSizeInBytes = func() float64 { return float64(b.Size()) }
@@ -413,9 +436,9 @@ func (s *store) restore() error {
 	}
 
 	tx.Unlock()
-	s.mu.Unlock()
+
 	if scheduledCompact != 0 {
-		s.Compact(scheduledCompact)
+		s.compactLockfree(scheduledCompact)
 
 		if s.lg != nil {
 			s.lg.Info(
