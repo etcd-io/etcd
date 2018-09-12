@@ -48,14 +48,18 @@ $ $GOPATH/bin/etcd
 
 ### Setting a key
 
-Run the following:
+If etcd is built without using GOPATH, run the following:
 
 ```
 $ ETCDCTL_API=3 ./bin/etcdctl put foo bar
 OK
 ```
 
-If OK is printed, then etcd is working!
+If etcd is built using GOPATH, run the following:
+```
+$ cd $GOPATH/src/go.etcd.io/etcd/etcdctl && go build . && mv etcdctl $GOPATH/bin && ETCDCTL_API=3 $GOPATH/bin/etcdctl put foo bar
+OK
+```
 
 [github-release]: https://github.com/coreos/etcd/releases/
 [go]: https://golang.org/doc/install
