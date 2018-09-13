@@ -55,8 +55,16 @@ func ResumeElection(s *Session, pfx string, leaderKey string, leaderRev int64) *
 	}
 }
 
-// Campaign puts a value as eligible for the election. It blocks until
-// it is elected, an error occurs, or the context is cancelled.
+// Campaign puts a value as eligible for the election on the prefix
+// key.
+// Multiple sessions can participate in the election for the
+// same prefix, but only one can be the leader at a time.
+//
+// If the context is 'context.TODO()/context.Background()', the Campaign
+// will continue to be blocked for other keys to be deleted, unless server
+// returns a non-recoverable error (e.g. ErrCompacted).
+// Otherwise, until the context is not cancelled or timed-out, Campaign will
+// continue to be blocked until it becomes the leader.
 func (e *Election) Campaign(ctx context.Context, val string) error {
 	s := e.session
 	client := e.session.Client()
