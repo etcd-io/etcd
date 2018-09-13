@@ -15,7 +15,7 @@ For those wanting to try the very latest version, build etcd from the `master` b
 To build `etcd` from the `master` branch without a `GOPATH` using the official `build` script:
 
 ```sh
-$ git clone https://github.com/coreos/etcd.git
+$ git clone https://github.com/etcd-io/etcd.git
 $ cd etcd
 $ ./build
 ```
@@ -57,7 +57,7 @@ OK
 
 If OK is printed, then etcd is working!
 
-[github-release]: https://github.com/coreos/etcd/releases/
+[github-release]: https://github.com/etcd-io/etcd/releases/
 [go]: https://golang.org/doc/install
 [build-script]: ../build
 [cmd-directory]: ../cmd
