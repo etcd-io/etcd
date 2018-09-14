@@ -942,7 +942,10 @@ func (s *EtcdServer) run() {
 				}
 			}
 			if newLeader {
-				s.leaderChanged <- struct{}{}
+				select {
+				case s.leaderChanged <- struct{}{}:
+				default:
+				}
 			}
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
