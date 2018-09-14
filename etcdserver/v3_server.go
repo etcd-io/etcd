@@ -636,6 +636,8 @@ func (s *EtcdServer) linearizableReadLoop() {
 		binary.BigEndian.PutUint64(ctxToSend, id1)
 
 		select {
+		case <-s.leaderChanged:
+			continue
 		case <-s.readwaitc:
 		case <-s.stopping:
 			return
@@ -660,6 +662,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 			} else {
 				plog.Errorf("failed to get read index from raft: %v", err)
 			}
+			readIndexFailed.Inc()
 			nr.notify(err)
 			continue
 		}
@@ -691,6 +694,11 @@ func (s *EtcdServer) linearizableReadLoop() {
 					}
 					slowReadIndex.Inc()
 				}
+			case <-s.leaderChanged:
+				timeout = true
+				readIndexFailed.Inc()
+				// return a retryable error.
+				nr.notify(ErrLeaderChanged)
 			case <-time.After(s.Cfg.ReqTimeout()):
 				if lg != nil {
 					lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))

@@ -1790,7 +1790,6 @@ func TestLeasingTxnOwnerPutBranch(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
 	testutil.AssertNil(t, err)
 	defer closeLKV()

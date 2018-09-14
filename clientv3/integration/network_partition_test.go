@@ -24,6 +24,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 	"google.golang.org/grpc"
@@ -263,5 +264,56 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 		}
 	case <-time.After(integration.RequestWaitTimeout): // enough time to detect leader lost
 		t.Fatal("took too long to detect leader lost")
+	}
+}
+
+func TestDropReadUnderNetworkPartition(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
+	})
+	defer clus.Terminate(t)
+	leaderIndex := clus.WaitLeader(t)
+	// get a follower endpoint
+	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCAddr()}
+	ccfg := clientv3.Config{
+		Endpoints:   eps,
+		DialTimeout: 10 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	cli, err := clientv3.New(ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	// wait for eps[0] to be pinned
+	mustWaitPinReady(t, cli)
+
+	// add other endpoints for later endpoint switch
+	cli.SetEndpoints(eps...)
+	time.Sleep(time.Second * 2)
+	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCAddr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])
+	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), nil)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	_, err = kvc.Get(ctx, "a")
+	cancel()
+	if err != rpctypes.ErrLeaderChanged {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaderChanged, err)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	_, err = kvc.Get(ctx, "a")
+	cancel()
+	if err != nil {
+		t.Fatalf("expected nil, got %v", err)
 	}
 }

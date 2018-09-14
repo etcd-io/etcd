@@ -212,6 +212,8 @@ type EtcdServer struct {
 	stopping chan struct{}
 	// done is closed when all goroutines from start() complete.
 	done chan struct{}
+	// leaderChanged is used to notify the linearizable read loop to drop the old read requests.
+	leaderChanged chan struct{}
 
 	errorc     chan error
 	id         types.ID
@@ -752,6 +754,7 @@ func (s *EtcdServer) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
+	s.leaderChanged = make(chan struct{}, 1)
 	if s.ClusterVersion() != nil {
 		if lg != nil {
 			lg.Info(
@@ -938,7 +941,9 @@ func (s *EtcdServer) run() {
 					s.compactor.Resume()
 				}
 			}
-
+			if newLeader {
+				s.leaderChanged <- struct{}{}
+			}
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
 			if s.stats != nil {
