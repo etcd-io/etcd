@@ -539,6 +539,8 @@ func TestV3LeaseSwitch(t *testing.T) {
 // election timeout after it loses its quorum. And the new leader extends the TTL of
 // the lease to at least TTL + election timeout.
 func TestV3LeaseFailover(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
