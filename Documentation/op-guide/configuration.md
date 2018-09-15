@@ -313,6 +313,9 @@ The security flags help to [build a secure etcd cluster][security].
 ## Logging flags
 
 ### --logger
+
+**DEPRECATED**
+
 + Specify 'zap' for structured logging or 'capnslog'.
 + default: capnslog
 + env variable: ETCD_LOGGER
