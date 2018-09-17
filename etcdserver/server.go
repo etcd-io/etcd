@@ -213,7 +213,8 @@ type EtcdServer struct {
 	// done is closed when all goroutines from start() complete.
 	done chan struct{}
 	// leaderChanged is used to notify the linearizable read loop to drop the old read requests.
-	leaderChanged chan struct{}
+	leaderChanged   chan struct{}
+	leaderChangedMu sync.RWMutex
 
 	errorc     chan error
 	id         types.ID
@@ -754,7 +755,7 @@ func (s *EtcdServer) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
-	s.leaderChanged = make(chan struct{}, 1)
+	s.leaderChanged = make(chan struct{})
 	if s.ClusterVersion() != nil {
 		if lg != nil {
 			lg.Info(
@@ -942,10 +943,11 @@ func (s *EtcdServer) run() {
 				}
 			}
 			if newLeader {
-				select {
-				case s.leaderChanged <- struct{}{}:
-				default:
-				}
+				s.leaderChangedMu.Lock()
+				lc := s.leaderChanged
+				s.leaderChanged = make(chan struct{})
+				s.leaderChangedMu.Unlock()
+				close(lc)
 			}
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
@@ -1694,6 +1696,12 @@ func (s *EtcdServer) setLead(v uint64) {
 
 func (s *EtcdServer) getLead() uint64 {
 	return atomic.LoadUint64(&s.lead)
+}
+
+func (s *EtcdServer) leaderChangedNotify() <-chan struct{} {
+	s.leaderChangedMu.RLock()
+	defer s.leaderChangedMu.RUnlock()
+	return s.leaderChanged
 }
 
 // RaftStatusGetter represents etcd server and Raft progress.

@@ -634,9 +634,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 		ctxToSend := make([]byte, 8)
 		id1 := s.reqIDGen.Next()
 		binary.BigEndian.PutUint64(ctxToSend, id1)
-
+		leaderChangedNotifier := s.leaderChangedNotify()
 		select {
-		case <-s.leaderChanged:
+		case <-leaderChangedNotifier:
 			continue
 		case <-s.readwaitc:
 		case <-s.stopping:
@@ -694,7 +694,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 					}
 					slowReadIndex.Inc()
 				}
-			case <-s.leaderChanged:
+			case <-leaderChangedNotifier:
 				timeout = true
 				readIndexFailed.Inc()
 				// return a retryable error.

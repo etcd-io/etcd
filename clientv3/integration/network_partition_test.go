@@ -303,14 +303,14 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 
 	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])
 	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), nil)
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()
 	if err != rpctypes.ErrLeaderChanged {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaderChanged, err)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()
 	if err != nil {
