@@ -946,8 +946,8 @@ func (s *EtcdServer) run() {
 				s.leaderChangedMu.Lock()
 				lc := s.leaderChanged
 				s.leaderChanged = make(chan struct{})
-				s.leaderChangedMu.Unlock()
 				close(lc)
+				s.leaderChangedMu.Unlock()
 			}
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats

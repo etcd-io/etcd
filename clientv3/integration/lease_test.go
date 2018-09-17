@@ -291,6 +291,9 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	donec := make(chan struct{})
 	go func() {
@@ -302,10 +305,6 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
-
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
 
 	select {
 	case <-time.After(integration.RequestWaitTimeout):
