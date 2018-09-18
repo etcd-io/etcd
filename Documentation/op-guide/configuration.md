@@ -22,13 +22,13 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + This value is referenced as this node's own entries listed in the `--initial-cluster` flag (e.g., `default=http://localhost:2380`). This needs to match the key used in the flag if using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
 ### --data-dir
-+ Path to the data directory.
++ Path to the data directory. If this location does not exist, *etcd* will assume it has the required write permissions and attempt to create it.
 + default: "${name}.etcd"
 + env variable: ETCD_DATA_DIR
 
 ### --wal-dir
-+ Path to the dedicated wal directory. If this flag is set, etcd will write the WAL files to the walDir rather than the dataDir. This allows a dedicated disk to be used, and helps avoid io competition between logging and other IO operations.
-+ default: ""
++ Path to the dedicated wal directory. If this flag is set, etcd will write the WAL files to the walDir rather than the dataDir. This allows a dedicated disk to be used, and helps avoid io competition between logging and other IO operations. Since *etcd* writes folders adjacent to this location, it needs write permissions to the directory that holds the specified location. If this location does not exist, *etcd* will assume it has the required write permissions and attempt to create it.
++ default: "${ETCD_DATA_DIR}/wal"
 + env variable: ETCD_WAL_DIR
 
 ### --snapshot-count
