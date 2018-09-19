@@ -57,6 +57,10 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 	s.Append(rd.Entries)
 	rawNode.Advance(rd)
 
+	if d := rawNode.Ready(); d.MustSync || !IsEmptyHardState(d.HardState) || len(d.Entries) > 0 {
+		t.Fatalf("expected empty hard state with must-sync=false: %#v", d)
+	}
+
 	rawNode.Campaign()
 	proposed := false
 	var (
@@ -329,7 +333,7 @@ func TestRawNodeRestart(t *testing.T) {
 		HardState: emptyState,
 		// commit up to commit index in st
 		CommittedEntries: entries[:st.Commit],
-		MustSync:         true,
+		MustSync:         false,
 	}
 
 	storage := NewMemoryStorage()
@@ -366,7 +370,7 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 		HardState: emptyState,
 		// commit up to commit index in st
 		CommittedEntries: entries,
-		MustSync:         true,
+		MustSync:         false,
 	}
 
 	s := NewMemoryStorage()
