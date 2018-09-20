@@ -89,7 +89,8 @@
 
 **Erlang libraries**
 
-- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
+- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl) - Supports v2
+- [zhongwencool/eetcd](https://github.com/zhongwencool/eetcd) - Supports v3+ (GRPC only)
 
 **.Net Libraries**
 
