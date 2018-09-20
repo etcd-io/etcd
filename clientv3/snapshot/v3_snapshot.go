@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"go.etcd.io/etcd/clientv3"
@@ -166,6 +167,14 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	if err = db.View(func(tx *bolt.Tx) error {
+		// check snapshot file integrity first
+		var dbErrStrings []string
+		for dbErr := range tx.Check() {
+			dbErrStrings = append(dbErrStrings, dbErr.Error())
+		}
+		if len(dbErrStrings) > 0 {
+			return fmt.Errorf("snapshot file integrity check failed. %d errors found.\n"+strings.Join(dbErrStrings, "\n"), len(dbErrStrings))
+		}
 		ds.TotalSize = tx.Size()
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
