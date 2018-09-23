@@ -62,10 +62,19 @@ curl -L http://localhost:2379/v3/kv/put \
 Issue a transaction with `/v3/kv/txn`:
 
 ```bash
+# target CREATE
 curl -L http://localhost:2379/v3/kv/txn \
   -X POST \
   -d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
+```
+
+```bash
+# target VERSION
+curl -L http://localhost:2379/v3/kv/txn \
+  -X POST \
+  -d '{"compare":[{"version":"4","result":"EQUAL","target":"VERSION","key":"Zm9v"}],"success":[{"requestRange":{"key":"Zm9v"}}]}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"6","raft_term":"3"},"succeeded":true,"responses":[{"response_range":{"header":{"revision":"6"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"6","version":"4","value":"YmF6"}],"count":"1"}}]}
 ```
 
 ### Authentication
