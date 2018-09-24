@@ -439,6 +439,11 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	cli := clus.Client(0)
 
 	donec := make(chan struct{})
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+
 	go func() {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
@@ -446,11 +451,6 @@ func TestKVGetErrConnClosed(t *testing.T) {
 			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
-
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
-	clus.TakeClient(0)
 
 	select {
 	case <-time.After(integration.RequestWaitTimeout):

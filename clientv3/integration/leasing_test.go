@@ -1644,6 +1644,7 @@ func TestLeasingReconnectTxn(t *testing.T) {
 			clus.Members[0].DropConnections()
 			time.Sleep(time.Millisecond)
 		}
+		time.Sleep(10 * time.Millisecond)
 	}()
 
 	_, lerr := lkv.Txn(context.TODO()).
