@@ -1056,7 +1056,7 @@ echo ${transferee_id}
 
 ### LOCK [options] \<lockname\> [command arg1 arg2 ...]
 
-LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
+LOCK acquires a distributed mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
 
 #### Options
 
@@ -1064,9 +1064,9 @@ LOCK acquires a distributed named mutex with a given name. Once the lock is acqu
 
 #### Output
 
-Once the lock is acquired, the result for the GET on the unique lock holder key is displayed.
+Once the lock is acquired but no command is given, the result for the GET on the unique lock holder key is displayed.
 
-If a command is given, it will be launched with environment variables `ETCD_LOCK_KEY` and `ETCD_LOCK_REV` set to the lock's holder key and revision.
+If a command is given, it will be executed with environment variables `ETCD_LOCK_KEY` and `ETCD_LOCK_REV` set to the lock's holder key and revision.
 
 #### Example
 
@@ -1082,6 +1082,12 @@ Acquire lock and execute `echo lock acquired`:
 ```bash
 ./etcdctl lock mylock echo lock acquired
 # lock acquired
+```
+
+Acquire lock and execute `etcdctl put` command
+```bash
+./etcdctl lock mylock ./etcdctl put foo bar
+# OK
 ```
 
 #### Remarks
