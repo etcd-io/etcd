@@ -67,9 +67,14 @@ const (
 	campaignTransfer CampaignType = "CampaignTransfer"
 )
 
-// ErrProposalDropped is returned when the proposal is ignored by some cases,
-// so that the proposer can be notified and fail fast.
-var ErrProposalDropped = errors.New("raft proposal dropped")
+var (
+	// ErrProposalDropped is returned when the proposal is ignored by some cases,
+	// so that the proposer can be notified and fail fast.
+	ErrProposalDropped = errors.New("raft proposal dropped")
+	// ErrReadIndexDropped is returned when the index reading message is ignored by some cases,
+	// so that the reader can be notified and fail fast.
+	ErrReadIndexDropped = errors.New("raft read index dropped")
+)
 
 // lockedRand is a small wrapper around rand.Rand to provide
 // synchronization among multiple raft groups. Only the methods needed
@@ -973,7 +978,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		if r.quorum() > 1 {
 			if r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) != r.Term {
 				// Reject read only request when this leader has not committed any log entry at its term.
-				return nil
+				return ErrReadIndexDropped
 			}
 
 			// thinking: use an interally defined context instead of the user given context.
@@ -1157,6 +1162,9 @@ func stepCandidate(r *raft, m pb.Message) error {
 	case pb.MsgProp:
 		r.logger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
 		return ErrProposalDropped
+	case pb.MsgReadIndex:
+		r.logger.Infof("%x no leader at term %d; dropping index reading msg", r.id, r.Term)
+		return ErrReadIndexDropped
 	case pb.MsgApp:
 		r.becomeFollower(m.Term, m.From) // always m.Term == r.Term
 		r.handleAppendEntries(m)
@@ -1232,14 +1240,14 @@ func stepFollower(r *raft, m pb.Message) error {
 	case pb.MsgReadIndex:
 		if r.lead == None {
 			r.logger.Infof("%x no leader at term %d; dropping index reading msg", r.id, r.Term)
-			return nil
+			return ErrReadIndexDropped
 		}
 		m.To = r.lead
 		r.send(m)
 	case pb.MsgReadIndexResp:
 		if len(m.Entries) != 1 {
 			r.logger.Errorf("%x invalid format of MsgReadIndexResp from %x, entries count: %d", r.id, m.From, len(m.Entries))
-			return nil
+			return ErrReadIndexDropped
 		}
 		r.readStates = append(r.readStates, ReadState{Index: m.Index, RequestCtx: m.Entries[0].Data})
 	}
