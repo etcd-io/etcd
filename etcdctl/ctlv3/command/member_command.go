@@ -96,8 +96,17 @@ The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs.
 
 // memberAddCommandFunc executes the "member add" command.
 func memberAddCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("member name not provided."))
+	}
+	if len(args) > 1 {
+		errorstring := "too many arguments"
+		for _, v := range args {
+			if strings.HasPrefix(strings.ToLower(v), "http"){
+				errorstring += ", did you mean \"--peer-urls " + v + "\""
+			}
+		}
+		ExitWithError(ExitBadArgs, fmt.Errorf(errorstring))
 	}
 	newMemberName := args[0]
 
