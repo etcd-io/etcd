@@ -843,7 +843,7 @@ func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler()
 // Process takes a raft message and applies it to the server's raft state
 // machine, respecting any timeout of the given context.
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
-	if s.cluster.IsIDRemoved(types.ID(m.From)) {
+	if s.IsIDRemoved(m.From) {
 		if lg := s.getLogger(); lg != nil {
 			lg.Warn(
 				"rejected Raft message from removed member",
