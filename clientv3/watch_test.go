@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestEvent(t *testing.T) {
@@ -51,5 +52,62 @@ func TestEvent(t *testing.T) {
 		if tt.isModify && !tt.ev.IsModify() {
 			t.Errorf("#%d: event should be Modify event", i)
 		}
+	}
+}
+
+func TestHasResumingWatchers(t *testing.T) {
+	tests := []struct {
+		name                string
+		wgs                 *watchGrpcStream
+		hasResumingWatchers bool
+	}{{
+		name: "nil stream",
+		wgs: &watchGrpcStream{
+			resuming: []*watcherStream{
+				nil,
+			},
+		},
+		hasResumingWatchers: false,
+	}, {
+		name: "non-nil stream",
+		wgs: &watchGrpcStream{
+			resuming: []*watcherStream{
+				{},
+			},
+		},
+		hasResumingWatchers: true,
+	}, {
+		name: "nil stream in the middle",
+		wgs: &watchGrpcStream{
+			resuming: []*watcherStream{
+				{},
+				nil,
+				{},
+			},
+		},
+		hasResumingWatchers: true,
+	}, {
+		name: "nil stream at the head",
+		wgs: &watchGrpcStream{
+			resuming: []*watcherStream{
+				nil,
+				{},
+			},
+		},
+		hasResumingWatchers: true,
+	}, {
+		name: "nil stream at the tail",
+		wgs: &watchGrpcStream{
+			resuming: []*watcherStream{
+				{},
+				nil,
+			},
+		},
+		hasResumingWatchers: true,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.AssertEqual(t, tt.hasResumingWatchers, tt.wgs.hasResumingWatchers())
+		})
 	}
 }

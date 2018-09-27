@@ -635,7 +635,7 @@ func (w *watchGrpcStream) run() {
 			w.closeSubstream(ws)
 			delete(closing, ws)
 			// no more watchers on this stream, shutdown
-			if len(w.substreams)+len(w.resuming) == 0 {
+			if len(w.substreams) == 0 && !w.hasResumingWatchers() {
 				return
 			}
 		}
@@ -950,6 +950,17 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 		}
 	}
 	return ws, nil
+}
+
+// hasResumingWatchers checks if there are any non-nil watchers in the
+// resume queue.
+func (w *watchGrpcStream) hasResumingWatchers() bool {
+	for _, ws := range w.resuming {
+		if ws != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // toPB converts an internal watch request structure to its protobuf WatchRequest structure.
