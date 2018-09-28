@@ -15,6 +15,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -97,21 +98,21 @@ The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs.
 // memberAddCommandFunc executes the "member add" command.
 func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("member name not provided."))
+		ExitWithError(ExitBadArgs, errors.New("member name not provided"))
 	}
 	if len(args) > 1 {
-		errorstring := "too many arguments"
-		for _, v := range args {
-			if strings.HasPrefix(strings.ToLower(v), "http"){
-				errorstring += ", did you mean \"--peer-urls " + v + "\""
+		ev := "too many arguments"
+		for _, s := range args {
+			if strings.HasPrefix(strings.ToLower(s), "http") {
+				ev += fmt.Sprintf(`, did you mean --peer-urls=%s`, s)
 			}
 		}
-		ExitWithError(ExitBadArgs, fmt.Errorf(errorstring))
+		ExitWithError(ExitBadArgs, errors.New(ev))
 	}
 	newMemberName := args[0]
 
 	if len(memberPeerURLs) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("member peer urls not provided."))
+		ExitWithError(ExitBadArgs, errors.New("member peer urls not provided"))
 	}
 
 	urls := strings.Split(memberPeerURLs, ",")
@@ -198,7 +199,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	if len(memberPeerURLs) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("member peer urls not provided."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("member peer urls not provided"))
 	}
 
 	urls := strings.Split(memberPeerURLs, ",")
