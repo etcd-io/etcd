@@ -1273,7 +1273,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	//
 	// Both of `prs` and `learnerPrs` are empty means the peer is new created by
 	// conf change, in which case we should accept snapshots make it as learner.
-	if (r.prs.len() > 0 || r.learnerPrs.len() > 0) && !r.isLearner {
+	if r.initialized() && r.isLearner {
 		for _, id := range s.Metadata.ConfState.Learners {
 			if id == r.id {
 				r.logger.Errorf("%x can't become learner when restores snapshot [index: %d, term: %d]", r.id, s.Metadata.Index, s.Metadata.Term)
