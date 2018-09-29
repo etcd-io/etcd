@@ -48,6 +48,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Update [JWT methods](https://github.com/etcd-io/etcd/pull/9883) to allow for use of any supported signature method/algorithm.
 - Add [Lease checkpointing](https://github.com/etcd-io/etcd/pull/9924) to persist remaining TTLs to the consensus log periodically so that long lived leases progress toward expiry in the presence of leader elections and server restarts.
 - Add [gRPC interceptor for debugging logs](https://github.com/etcd-io/etcd/pull/9990); enable `etcd --debug` flag to see per-request debug information.
+- Add [consistency check in snapshot status](https://github.com/etcd-io/etcd/pull/10109). If consistency check on snapshot file fails, `snapshot status` returns error.
 
 ### Breaking Changes
 
