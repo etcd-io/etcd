@@ -167,6 +167,18 @@ func TestUserAdd(t *testing.T) {
 	}
 }
 
+func TestRecover(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	as.enabled = false
+	as.Recover(as.be)
+
+	if !as.IsAuthEnabled() {
+		t.Fatalf("expected auth enabled got disabled")
+	}
+}
+
 func TestCheckPassword(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
@@ -279,6 +291,73 @@ func TestUserGrant(t *testing.T) {
 	}
 }
 
+func TestHasRole(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// grants a role to the user
+	_, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// checks role reflects correctly
+	hr := as.HasRole("foo", "role-test")
+	if !hr {
+		t.Fatal("expected role granted, got false")
+	}
+
+	// checks non existent role
+	hr = as.HasRole("foo", "non-existent-role")
+	if hr {
+		t.Fatal("expected role not found, got true")
+	}
+
+	// checks non existent user
+	hr = as.HasRole("nouser", "role-test")
+	if hr {
+		t.Fatal("expected user not found got true")
+	}
+}
+
+func TestIsOpPermitted(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// add new role
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// grants a role to the user
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check permission reflected to user
+
+	err = as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestGetUser(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
@@ -298,6 +377,12 @@ func TestGetUser(t *testing.T) {
 	expected := []string{"role-test"}
 	if !reflect.DeepEqual(expected, u.Roles) {
 		t.Errorf("expected %v, got %v", expected, u.Roles)
+	}
+
+	// check non existent user
+	_, err = as.UserGet(&pb.AuthUserGetRequest{Name: "nouser"})
+	if err == nil {
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }
 
