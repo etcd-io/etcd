@@ -48,10 +48,12 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Update [JWT methods](https://github.com/etcd-io/etcd/pull/9883) to allow for use of any supported signature method/algorithm.
 - Add [Lease checkpointing](https://github.com/etcd-io/etcd/pull/9924) to persist remaining TTLs to the consensus log periodically so that long lived leases progress toward expiry in the presence of leader elections and server restarts.
 - Add [gRPC interceptor for debugging logs](https://github.com/etcd-io/etcd/pull/9990); enable `etcd --debug` flag to see per-request debug information.
-- Add [consistency check in snapshot status](https://github.com/etcd-io/etcd/pull/10109). If consistency check on snapshot file fails, `snapshot status` returns error.
+- Add [consistency check in snapshot status](https://github.com/etcd-io/etcd/pull/10109). If consistency check on snapshot file fails, `snapshot status` returns `"snapshot file integrity check failed..."` error.
 
 ### Breaking Changes
 
+- Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
+- Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
 - Move [`"github.com/coreos/etcd"`](https://github.com/etcd-io/etcd/issues/9965) to [`"github.com/etcd-io/etcd"`](https://github.com/etcd-io/etcd/issues/9965).
   - Change import path to `"go.etcd.io/etcd"`.
   - e.g. `import "go.etcd.io/etcd/raft"`.
@@ -179,6 +181,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_apply_total`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/etcd-io/etcd/pull/9897) Prometheus metric.
+- Add [`etcd_server_read_indexes_failed_total`](https://github.com/etcd-io/etcd/pull/10094) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/etcd-io/etcd/pull/9820) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
@@ -240,6 +243,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 ### etcd server
 
+- Add [`rpctypes.ErrLeaderChanged`](https://github.com/etcd-io/etcd/pull/10094).
+  - Now linearizable requests with read index would fail fast when there is a leadership change, instead of waiting until context timeout.
 - Add [`etcd --initial-election-tick-advance`](https://github.com/etcd-io/etcd/pull/9591) flag to configure initial election tick fast-forward.
   - By default, `etcd --initial-election-tick-advance=true`, then local member fast-forwards election ticks to speed up "initial" leader election trigger.
   - This benefits the case of larger election ticks. For instance, cross datacenter deployment may require longer election timeout of 10-second. If true, local node does not need wait up to 10-second. Instead, forwards its election ticks to 8-second, and have only 2-second left before leader election.
@@ -365,6 +370,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### client v3
 
+- Client may receive [`rpctypes.ErrLeaderChanged`](https://github.com/etcd-io/etcd/pull/10094) from server.
+  - Now linearizable requests with read index would fail fast when there is a leadership change, instead of waiting until context timeout.
 - Add [`WithFragment` `OpOption`](https://github.com/etcd-io/etcd/pull/9291) to support [watch events fragmentation](https://github.com/etcd-io/etcd/issues/9294) when the total size of events exceeds `etcd --max-request-bytes` flag value plus gRPC-overhead 512 bytes.
   - Watch fragmentation is disabled by default.
   - The default server-side request bytes limit is `embed.DefaultMaxRequestBytes` which is 1.5 MiB plus gRPC-overhead 512 bytes.
@@ -429,6 +436,12 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/etcd-io/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/etcd-io/etcd/pull/9116).
+- Add [`raft.Ready.CommittedEntries` pagination using `raft.Config.MaxSizePerMsg`](https://github.com/etcd-io/etcd/pull/9982).
+  - This prevents out-of-memory errors if the raft log has become very large and commits all at once.
+  - Fix [correctness bug in CommittedEntries pagination](https://github.com/etcd-io/etcd/pull/10063).
+- Optimize [message send flow control](https://github.com/etcd-io/etcd/pull/9985).
+  - Leader now sends more append entries if it has more non-empty entries to send after updating flow control information.
+  - Now, Raft allows multiple in-flight append messages.
 
 ### Tooling
 
