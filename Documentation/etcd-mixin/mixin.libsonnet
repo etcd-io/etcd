@@ -1236,7 +1236,7 @@
             multi: false,
             name: 'cluster',
             options: [],
-            query: 'label_values(etcd_server_has_leader, job)',
+            query: 'label_values(etcd_server_has_leader{job!="kube-controllers", job!="apiserver"}, job)',
             refresh: 1,
             regex: '',
             sort: 2,
