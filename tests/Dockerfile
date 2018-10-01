@@ -1,21 +1,38 @@
-FROM fedora:28
+FROM ubuntu:18.04
 
-RUN dnf check-update || true \
-  && dnf install --assumeyes \
-  git curl wget mercurial meld gcc gcc-c++ which \
-  gcc automake autoconf dh-autoreconf libtool libtool-ltdl \
-  tar unzip gzip \
-  aspell-devel aspell-en hunspell hunspell-devel hunspell-en hunspell-en-US ShellCheck nc || true \
-  && dnf check-update || true \
-  && dnf upgrade --assumeyes || true \
-  && dnf autoremove --assumeyes || true \
-  && dnf clean all || true \
-  && dnf reinstall which || true
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+RUN apt-get -y update \
+  && apt-get -y install \
+  build-essential \
+  gcc \
+  apt-utils \
+  pkg-config \
+  software-properties-common \
+  apt-transport-https \
+  libssl-dev \
+  sudo \
+  bash \
+  curl \
+  wget \
+  tar \
+  git \
+  netcat \
+  libaspell-dev \
+  libhunspell-dev \
+  hunspell-en-us \
+  aspell-en \
+  shellcheck \
+  && apt-get -y update \
+  && apt-get -y upgrade \
+  && apt-get -y autoremove \
+  && apt-get -y autoclean
 
 ENV GOROOT /usr/local/go
 ENV GOPATH /go
 ENV PATH ${GOPATH}/bin:${GOROOT}/bin:${PATH}
-ENV GO_VERSION 1.10.1
+ENV GO_VERSION 1.10.3
 ENV GO_DOWNLOAD_URL https://storage.googleapis.com/golang
 RUN rm -rf ${GOROOT} \
   && curl -s ${GO_DOWNLOAD_URL}/go${GO_VERSION}.linux-amd64.tar.gz | tar -v -C /usr/local/ -xz \
@@ -27,12 +44,11 @@ WORKDIR ${GOPATH}/src/github.com/coreos/etcd
 
 ADD ./scripts/install-marker.sh /tmp/install-marker.sh
 
-# manually link "goword" dependency
-# ldconfig -v | grep hunspell
-RUN ln -s /lib64/libhunspell-1.6.so /lib64/libhunspell.so
-
 RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u github.com/coreos/license-bill-of-materials \
+  && go get -v -u github.com/mgechev/revive \
+  && go get -v -u github.com/mdempsky/unconvert \
+  && go get -v -u mvdan.cc/unparam \
   && go get -v -u honnef.co/go/tools/cmd/gosimple \
   && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
