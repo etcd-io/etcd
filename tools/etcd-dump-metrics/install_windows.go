@@ -18,6 +18,6 @@ package main
 
 import "errors"
 
-func install(ver, dir string) error {
-	return errors.New("windows install is not supported yet")
+func install(ver, dir string) (string, error) {
+	return "", errors.New("windows install is not supported yet")
 }
