@@ -233,8 +233,9 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
-			Time:    c.cfg.DialKeepAliveTime,
-			Timeout: c.cfg.DialKeepAliveTimeout,
+			Time:                c.cfg.DialKeepAliveTime,
+			Timeout:             c.cfg.DialKeepAliveTimeout,
+			PermitWithoutStream: c.cfg.PermitWithoutStream,
 		}
 		opts = append(opts, grpc.WithKeepaliveParams(params))
 	}
