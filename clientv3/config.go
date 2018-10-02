@@ -78,6 +78,9 @@ type Config struct {
 	// If nil, use the default logger.
 	// TODO: configure gRPC logger
 	LogConfig *zap.Config
+
+	// PermitWithoutStream, if set true, client can send keepalive pings to server without any active streams(RPCs).
+	PermitWithoutStream bool `json:"permit-without-stream"`
 }
 
 // DefaultLogConfig is the default client logging configuration.

@@ -385,6 +385,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Fix [lease keepalive interval updates when response queue is full](https://github.com/etcd-io/etcd/pull/9952).
   - If `<-chan *clientv3LeaseKeepAliveResponse` from `clientv3.Lease.KeepAlive` was never consumed or channel is full, client was [sending keepalive request every 500ms](https://github.com/etcd-io/etcd/issues/9911) instead of expected rate of every "TTL / 3" duration.
 - Change [snapshot file permissions](https://github.com/etcd-io/etcd/pull/9977): On Linux, the snapshot file changes from readable by all (mode 0644) to readable by the user only (mode 0600).
+- Client may choose to send keepalive pings to server using [`PermitWithoutStream`](https://github.com/etcd-io/etcd/pull/10146).
+  - By setting `PermitWithoutStream` to true, client can send keepalive pings to server without any active streams(RPCs). In other words, it allows sending keepalive pings with unary or simple RPC calls.
+  - `PermitWithoutStream` is set to false by default.
 
 ### etcdctl v3
 
