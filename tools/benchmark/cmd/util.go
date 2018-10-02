@@ -96,7 +96,7 @@ func mustCreateConn() *clientv3.Client {
 		Endpoints:   connEndpoints,
 		DialTimeout: dialTimeout,
 	}
-	if !tls.Empty() {
+	if !tls.Empty() || tls.TrustedCAFile != "" {
 		cfgtls, err := tls.ClientConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "bad tls config: %v\n", err)
