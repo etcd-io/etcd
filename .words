@@ -103,3 +103,4 @@ CallOptions
 PermitWithoutStream
 __lostleader
 ErrConnClosing
+unfreed
