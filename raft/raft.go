@@ -1303,7 +1303,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		!r.isLearner {
 		for _, id := range s.Metadata.ConfState.Learners {
 			if id == r.id {
-				r.logger.Errorf("%x can't become learner when restores snapshot [index: %d, term: %d]", r.id, s.Metadata.Index, s.Metadata.Term)
+				r.logger.Errorf("%x can't become learner when restoring snapshot [index: %d, term: %d]", r.id, s.Metadata.Index, s.Metadata.Term)
 				return false
 			}
 		}
