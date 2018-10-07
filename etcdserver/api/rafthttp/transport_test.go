@@ -101,6 +101,7 @@ func TestTransportAdd(t *testing.T) {
 		streamRt:       &roundTripperRecorder{},
 		peers:          make(map[types.ID]Peer),
 		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 
@@ -129,6 +130,7 @@ func TestTransportRemove(t *testing.T) {
 		streamRt:       &roundTripperRecorder{},
 		peers:          make(map[types.ID]Peer),
 		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 	tr.RemovePeer(types.ID(1))
@@ -144,6 +146,7 @@ func TestTransportUpdate(t *testing.T) {
 	tr := &Transport{
 		peers:          map[types.ID]Peer{types.ID(1): peer},
 		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	u := "http://localhost:2380"
 	tr.UpdatePeer(types.ID(1), []string{u})
@@ -163,6 +166,7 @@ func TestTransportErrorc(t *testing.T) {
 		pipelineRt:     newRespRoundTripper(http.StatusForbidden, nil),
 		peers:          make(map[types.ID]Peer),
 		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 	defer tr.Stop()
