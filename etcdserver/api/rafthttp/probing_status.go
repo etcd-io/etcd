@@ -23,6 +23,9 @@ import (
 )
 
 const (
+	// RoundTripperNameRaftMessage is the name of round-tripper that sends
+	// all other Raft messages, other than "snap.Message".
+	RoundTripperNameRaftMessage = "ROUND_TRIPPER_RAFT_MESSAGE"
 	// RoundTripperNameSnapshot is the name of round-tripper that sends merged snapshot message.
 	RoundTripperNameSnapshot = "ROUND_TRIPPER_SNAPSHOT"
 )
