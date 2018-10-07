@@ -2914,6 +2914,44 @@ func TestLearnerReceiveSnapshot(t *testing.T) {
 	}
 }
 
+// TestNormalPeerRejectLearnerSnapshot tests that normal peer should
+// reject leader snapshot where it is added as a learner
+// (e.g. promoted to normal peer, delayed leader snapshot arrives).
+func TestNormalPeerRejectLearnerSnapshot(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1}, 10, 1, NewMemoryStorage())
+
+	nt := newNetwork(n1, n2)
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+
+	setRandomizedElectionTimeout(n1, n1.electionTimeout)
+	for i := 0; i < n1.electionTimeout; i++ {
+		n1.tick()
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
+
+	if n1.state != StateLeader {
+		t.Errorf("peer 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	if n2.isLearner {
+		t.Error("peer 2 state: learner, want false")
+	}
+
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+		},
+	}
+	if n2.restore(s) {
+		t.Fatal("expected normal peer to reject snapshot, but accepted")
+	}
+}
+
 func TestRestoreIgnoreSnapshot(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
 	commit := uint64(1)
