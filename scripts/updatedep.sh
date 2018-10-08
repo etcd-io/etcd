@@ -6,13 +6,10 @@ if ! [[ "$0" =~ scripts/updatedep.sh ]]; then
   exit 255
 fi
 
-go get -v -u github.com/golang/dep/cmd/dep
-
-if [[ -z "$1" ]]; then
-  echo "dep ensure on all packages"
-  dep ensure -v
-else
-  echo "dep update on" "$1"
-  # shellcheck disable=SC2086
-  dep ensure -v -update $1
+if [[ $(go version) != "go version go1.11"* ]]; then
+  echo "expect Go 1.11+, got:" "$(go version)"
+  exit 255
 fi
+
+GO111MODULE=on go mod tidy -v
+GO111MODULE=on go mod vendor -v

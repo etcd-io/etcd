@@ -48,7 +48,7 @@
 //    "attempt", 3,
 //    "backoff", time.Second,
 //  )
-//  sugar.Printf("failed to fetch URL: %s", "http://example.com")
+//  sugar.Infof("failed to fetch URL: %s", "http://example.com")
 //
 // By default, loggers are unbuffered. However, since zap's low-level APIs
 // allow buffering, calling Sync before letting your process exit is a good
