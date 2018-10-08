@@ -492,6 +492,11 @@ etcd_network_peer_round_trip_time_seconds_sum{To="REMOTE_PEER_NODE_ID"}
 # type: "counter"
 etcd_network_peer_sent_bytes_total{To="REMOTE_PEER_NODE_ID"}
 
+# name: "etcd_server_go_version"
+# description: "Which Go version server is running with. 1 for 'server_go_version' label with current version."
+# type: "gauge"
+etcd_server_go_version{server_go_version="go1.11"}
+
 # name: "etcd_server_has_leader"
 # description: "Whether or not a leader exists. 1 is existence, 0 is not."
 # type: "gauge"
@@ -501,6 +506,12 @@ etcd_server_has_leader
 # description: "The total number of leader heartbeat send failures (likely overloaded from slow disk)."
 # type: "counter"
 etcd_server_heartbeat_send_failures_total
+
+# name: "etcd_server_id"
+# description: "Server or member ID in hexadecimal format. 1 for 'server_id' label with current ID."
+# type: "gauge"
+etcd_server_id{server_id="39630988682485d8"}
+etcd_server_id{server_id="40663f34f378b5b"}
 
 # name: "etcd_server_is_leader"
 # description: "Whether or not this member is a leader. 1 if is, 0 otherwise."
@@ -537,6 +548,11 @@ etcd_server_proposals_pending
 # type: "gauge"
 etcd_server_quota_backend_bytes
 
+# name: "etcd_server_read_indexes_failed_total"
+# description: "The total number of failed read indexes seen."
+# type: "counter"
+etcd_server_read_indexes_failed_total
+
 # name: "etcd_server_slow_apply_total"
 # description: "The total number of slow apply requests (likely overloaded from slow disk)."
 # type: "counter"
@@ -551,6 +567,44 @@ etcd_server_slow_read_indexes_total
 # description: "Which version is running. 1 for 'server_version' label with current version."
 # type: "gauge"
 etcd_server_version{server_version="3.3.0+git"}
+
+# name: "etcd_snap_db_fsync_duration_seconds"
+# description: "The latency distributions of fsyncing .snap.db file"
+# type: "histogram"
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.001"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.002"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.004"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.008"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.016"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.032"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.064"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.128"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.256"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="0.512"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="1.024"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="2.048"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="4.096"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="8.192"}
+etcd_snap_db_fsync_duration_seconds_bucket{le="+Inf"}
+etcd_snap_db_fsync_duration_seconds_sum
+etcd_snap_db_fsync_duration_seconds_count
+
+# name: "etcd_snap_db_save_total_duration_seconds"
+# description: "The total latency distributions of v3 snapshot save"
+# type: "histogram"
+etcd_snap_db_save_total_duration_seconds_bucket{le="0.1"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="0.2"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="0.4"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="0.8"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="1.6"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="3.2"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="6.4"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="12.8"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="25.6"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="51.2"}
+etcd_snap_db_save_total_duration_seconds_bucket{le="+Inf"}
+etcd_snap_db_save_total_duration_seconds_sum
+etcd_snap_db_save_total_duration_seconds_count
 
 # name: "etcd_snap_fsync_duration_seconds"
 # description: "The latency distributions of fsync called by snap."
