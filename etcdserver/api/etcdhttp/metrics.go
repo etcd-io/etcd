@@ -44,11 +44,6 @@ func HandlePrometheus(mux *http.ServeMux) {
 	mux.Handle(pathMetrics, promhttp.Handler())
 }
 
-// HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
-}
-
 // NewHealthHandler handles '/health' requests.
 func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
