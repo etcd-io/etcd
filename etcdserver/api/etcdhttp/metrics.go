@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/raft"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -67,6 +68,26 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 	}
 }
 
+var (
+	healthSuccess = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_success",
+		Help:      "The total number of successful health checks",
+	})
+	healthFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_failures",
+		Help:      "The total number of failed health checks",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(healthSuccess)
+	prometheus.MustRegister(healthFailed)
+}
+
 // Health defines etcd server health status.
 // TODO: remove manual parsing in etcdctl cluster-health
 type Health struct {
@@ -96,6 +117,12 @@ func checkHealth(srv etcdserver.ServerV2) Health {
 		if err != nil {
 			h.Health = "false"
 		}
+	}
+
+	if h.Health == "true" {
+		healthSuccess.Inc()
+	} else {
+		healthFailed.Inc()
 	}
 	return h
 }
