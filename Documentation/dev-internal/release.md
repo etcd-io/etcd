@@ -12,6 +12,7 @@ release and for ensuring the stability of the release branch.
 
 | Releases | Manager |
 | -------- | ------- |
+| 3.1 patch (post 3.1.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
 | 3.2 patch (post 3.2.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
 | 3.3 patch (post 3.3.0) | Gyuho Lee [@gyuho](https://github.com/gyuho) |
 
