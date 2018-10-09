@@ -388,6 +388,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Client may choose to send keepalive pings to server using [`PermitWithoutStream`](https://github.com/etcd-io/etcd/pull/10146).
   - By setting `PermitWithoutStream` to true, client can send keepalive pings to server without any active streams(RPCs). In other words, it allows sending keepalive pings with unary or simple RPC calls.
   - `PermitWithoutStream` is set to false by default.
+- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in clientv3/concurrency package.
 
 ### etcdctl v3
 

@@ -32,6 +32,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_network_snapshot_receive_total_duration_seconds`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
 - Add [`etcd_server_id`](https://github.com/etcd-io/etcd/pull/9998) Prometheus metric.
 
+### client v3
+
+- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in clientv3/concurrency package.
+
 
 
 ## [v3.1.19](https://github.com/coreos/etcd/releases/tag/v3.1.19) (2018-07-24)
