@@ -16,14 +16,15 @@ package integration
 
 import (
 	"context"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/etcdserver"
-
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
@@ -163,5 +164,35 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 	}
 	if int64(qv) != etcdserver.DefaultQuotaBytes {
 		t.Fatalf("expected %d, got %f", etcdserver.DefaultQuotaBytes, qv)
+	}
+}
+
+func TestMetricsHealth(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := clus.Members[0].ClientURLs[0]
+	u.Path = "/health"
+	resp, err := tr.RoundTrip(&http.Request{
+		Header: make(http.Header),
+		Method: http.MethodGet,
+		URL:    &u,
+	})
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hv, err := clus.Members[0].Metric("etcd_server_health_success")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hv != "1" {
+		t.Fatalf("expected '1' from /health, got %q", hv)
 	}
 }
