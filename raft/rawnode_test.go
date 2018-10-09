@@ -484,3 +484,64 @@ func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 		})
 	}
 }
+
+// TestRawNodeBoundedLogGrowthWithPartition tests a scenario where a leader is
+// partitioned from a quorum of nodes. It verifies that the leader's log is
+// protected from unbounded growth even as new entries continue to be proposed.
+// This protection is provided by the MaxUncommittedEntriesSize configuration.
+func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
+	const maxEntries = 16
+	data := []byte("testdata")
+	testEntry := raftpb.Entry{Data: data}
+	maxEntrySize := uint64(maxEntries * testEntry.Size())
+
+	s := NewMemoryStorage()
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	cfg.MaxUncommittedEntriesSize = maxEntrySize
+	rawNode, err := NewRawNode(cfg, []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rd := rawNode.Ready()
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+
+	// Become the leader.
+	rawNode.Campaign()
+	for {
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+		if rd.SoftState.Lead == rawNode.raft.id {
+			rawNode.Advance(rd)
+			break
+		}
+		rawNode.Advance(rd)
+	}
+
+	// Simulate a network partition while we make our proposals by never
+	// committing anything. These proposals should not cause the leader's
+	// log to grow indefinitely.
+	for i := 0; i < 1024; i++ {
+		rawNode.Propose(data)
+	}
+
+	// Check the size of leader's uncommitted log tail. It should not exceed the
+	// MaxUncommittedEntriesSize limit.
+	checkUncommitted := func(exp uint64) {
+		t.Helper()
+		if a := rawNode.raft.uncommittedSize; exp != a {
+			t.Fatalf("expected %d uncommitted entry bytes, found %d", exp, a)
+		}
+	}
+	checkUncommitted(maxEntrySize)
+
+	// Recover from the partition. The uncommitted tail of the Raft log should
+	// disappear as entries are committed.
+	rd = rawNode.Ready()
+	if len(rd.CommittedEntries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	}
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	checkUncommitted(0)
+}

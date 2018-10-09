@@ -41,12 +41,13 @@ type node struct {
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 	st := raft.NewMemoryStorage()
 	c := &raft.Config{
-		ID:              id,
-		ElectionTick:    10,
-		HeartbeatTick:   1,
-		Storage:         st,
-		MaxSizePerMsg:   1024 * 1024,
-		MaxInflightMsgs: 256,
+		ID:                        id,
+		ElectionTick:              10,
+		HeartbeatTick:             1,
+		Storage:                   st,
+		MaxSizePerMsg:             1024 * 1024,
+		MaxInflightMsgs:           256,
+		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	rn := raft.StartNode(c, peers)
 	n := &node{
@@ -125,12 +126,13 @@ func (n *node) restart() {
 	// wait for the shutdown
 	<-n.stopc
 	c := &raft.Config{
-		ID:              n.id,
-		ElectionTick:    10,
-		HeartbeatTick:   1,
-		Storage:         n.storage,
-		MaxSizePerMsg:   1024 * 1024,
-		MaxInflightMsgs: 256,
+		ID:                        n.id,
+		ElectionTick:              10,
+		HeartbeatTick:             1,
+		Storage:                   n.storage,
+		MaxSizePerMsg:             1024 * 1024,
+		MaxInflightMsgs:           256,
+		MaxUncommittedEntriesSize: 1 << 30,
 	}
 	n.Node = raft.RestartNode(c)
 	n.start()

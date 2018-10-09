@@ -401,6 +401,7 @@ func (n *node) run(r *raft) {
 
 			r.msgs = nil
 			r.readStates = nil
+			r.reduceUncommittedSize(rd.CommittedEntries)
 			advancec = n.advancec
 		case <-advancec:
 			if applyingToI != 0 {

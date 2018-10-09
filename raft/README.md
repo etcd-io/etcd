@@ -41,6 +41,7 @@ This raft implementation also includes a few optional enhancements:
 - Writing to leader's disk in parallel
 - Internal proposal redirection from followers to leader
 - Automatic stepping down when the leader loses quorum
+- Protection against unbounded log growth when quorum is lost
 
 ## Notable Users
 
