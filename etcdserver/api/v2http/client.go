@@ -76,11 +76,11 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	}
 
 	mh := &membersHandler{
-		sec:     sec,
-		server:  server,
-		cluster: server.Cluster(),
-		timeout: timeout,
-		clock:   clockwork.NewRealClock(),
+		sec:                   sec,
+		server:                server,
+		cluster:               server.Cluster(),
+		timeout:               timeout,
+		clock:                 clockwork.NewRealClock(),
 		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
@@ -346,6 +346,26 @@ func serveVars(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "\n}\n")
 }
 
+var (
+	healthSuccess = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_success",
+		Help:      "The total number of successful health checks",
+	})
+	healthFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_failures",
+		Help:      "The total number of failed health checks",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(healthSuccess)
+	prometheus.MustRegister(healthFailed)
+}
+
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r.Method, "GET") {
@@ -353,16 +373,19 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 		}
 		if uint64(server.Leader()) == raft.None {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			healthFailed.Inc()
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			healthFailed.Inc()
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"health": "true"}`))
+		healthSuccess.Inc()
 	}
 }
 
