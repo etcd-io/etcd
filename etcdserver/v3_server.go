@@ -634,6 +634,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 				return
 			}
 			plog.Errorf("failed to get read index from raft: %v", err)
+			readIndexFailed.Inc()
 			nr.notify(err)
 			continue
 		}
