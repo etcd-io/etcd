@@ -21,6 +21,8 @@ See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) f
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
+- Improve [`etcd_network_peer_round_trip_time_seconds`](https://github.com/etcd-io/etcd/pull/10155) Prometheus metric to track leader heartbeats.
+  - Previously, it only samples the TCP connection for snapshot messages.
 - Display all registered [gRPC metrics at start](https://github.com/etcd-io/etcd/pull/10034).
 - Add [`etcd_snap_db_fsync_duration_seconds_count`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
 - Add [`etcd_snap_db_save_total_duration_seconds_bucket`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
@@ -31,10 +33,13 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_network_snapshot_receive_failures`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
 - Add [`etcd_network_snapshot_receive_total_duration_seconds`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
 - Add [`etcd_server_id`](https://github.com/etcd-io/etcd/pull/9998) Prometheus metric.
+- Add [`etcd_server_health_success`](https://github.com/etcd-io/etcd/pull/10156) Prometheus metric.
+- Add [`etcd_server_health_failures`](https://github.com/etcd-io/etcd/pull/10156) Prometheus metric.
+- Add [`etcd_server_read_indexes_failed_total`](https://github.com/etcd-io/etcd/pull/10094) Prometheus metric.
 
 ### client v3
 
-- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in clientv3/concurrency package.
+- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in `clientv3/concurrency` package.
 
 
 

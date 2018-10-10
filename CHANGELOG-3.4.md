@@ -10,6 +10,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 
 ### Improved
 
+- Add [Raft learner](TODO).
 - Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/etcd-io/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/etcd-io/etcd/issues/9246).
@@ -170,6 +171,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_network_server_stream_failures_total`](https://github.com/etcd-io/etcd/pull/9760) Prometheus metric.
   - e.g. `etcd_network_server_stream_failures_total{API="lease-keepalive",Type="receive"} 1`
   - e.g. `etcd_network_server_stream_failures_total{API="watch",Type="receive"} 1`
+- Improve [`etcd_network_peer_round_trip_time_seconds`](https://github.com/etcd-io/etcd/pull/10155) Prometheus metric to track leader heartbeats.
+  - Previously, it only samples the TCP connection for snapshot messages.
 - Increase [`etcd_network_peer_round_trip_time_seconds`](https://github.com/etcd-io/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 0.8192 seconds or more.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
@@ -178,10 +181,12 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_server_version`](https://github.com/etcd-io/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/etcd-io/etcd/issues/8948).
 - Add [`etcd_server_go_version`](https://github.com/etcd-io/etcd/pull/9957) Prometheus metric.
+- Add [`etcd_server_health_success`](https://github.com/etcd-io/etcd/pull/10156) Prometheus metric.
+- Add [`etcd_server_health_failures`](https://github.com/etcd-io/etcd/pull/10156) Prometheus metric.
+- Add [`etcd_server_read_indexes_failed_total`](https://github.com/etcd-io/etcd/pull/10094) Prometheus metric.
 - Add [`etcd_server_heartbeat_send_failures_total`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_apply_total`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_server_slow_read_indexes_total`](https://github.com/etcd-io/etcd/pull/9897) Prometheus metric.
-- Add [`etcd_server_read_indexes_failed_total`](https://github.com/etcd-io/etcd/pull/10094) Prometheus metric.
 - Add [`etcd_server_quota_backend_bytes`](https://github.com/etcd-io/etcd/pull/9820) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
@@ -388,7 +393,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Client may choose to send keepalive pings to server using [`PermitWithoutStream`](https://github.com/etcd-io/etcd/pull/10146).
   - By setting `PermitWithoutStream` to true, client can send keepalive pings to server without any active streams(RPCs). In other words, it allows sending keepalive pings with unary or simple RPC calls.
   - `PermitWithoutStream` is set to false by default.
-- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in clientv3/concurrency package.
+- Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in `clientv3/concurrency` package.
 
 ### etcdctl v3
 
