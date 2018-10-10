@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.10.3
+- 1.10.4
 
 notifications:
   on_success: never
@@ -23,7 +23,7 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.10.3
+  - go: 1.10.4
     env: TARGET=linux-386-unit
   exclude:
   - go: tip
