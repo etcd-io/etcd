@@ -40,6 +40,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in `clientv3/concurrency` package.
 
+### Go
+
+- Compile with [*Go 1.10.4*](https://golang.org/doc/devel/release.html#go1.10).
+
 
 
 ## [v3.3.9](https://github.com/coreos/etcd/releases/tag/v3.3.9) (2018-07-24)
