@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/version"
+
 	"github.com/coreos/pkg/capnslog"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
@@ -58,6 +59,26 @@ func HandleBasic(mux *http.ServeMux, server *etcdserver.EtcdServer) {
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 }
 
+var (
+	healthSuccess = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_success",
+		Help:      "The total number of successful health checks",
+	})
+	healthFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_failures",
+		Help:      "The total number of failed health checks",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(healthSuccess)
+	prometheus.MustRegister(healthFailed)
+}
+
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r, "GET") {
@@ -65,16 +86,19 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 		}
 		if uint64(server.Leader()) == raft.None {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			healthFailed.Inc()
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			healthFailed.Inc()
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"health": "true"}`))
+		healthSuccess.Inc()
 	}
 }
 
