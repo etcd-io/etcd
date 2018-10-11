@@ -336,7 +336,7 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	defer log.Printf("finished publishing snapshot at index %d", rc.snapshotIndex)
 
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
-		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d] + 1", snapshotToSave.Metadata.Index, rc.appliedIndex)
+		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
 	rc.commitC <- nil // trigger kvstore to load snapshot
 
