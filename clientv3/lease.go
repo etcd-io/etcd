@@ -118,19 +118,18 @@ type Lease interface {
 	// Leases retrieves all leases.
 	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
 
-	// KeepAlive keeps the given lease alive forever. If the keepalive response
-	// posted to the channel is not consumed immediately, the lease client will
-	// continue sending keep alive requests to the etcd server at least every
-	// second until latest response is consumed.
+	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
+	// to the channel are not consumed promptly the channel may become full. When full, the lease
+	// client will continue sending keep alive requests to the etcd server, but will drop responses
+	// until there is capacity on the channel to send more responses.
+	//
+	// If client keep alive loop halts with an unexpected error (e.g. "etcdserver: no leader") or
+	// canceled by the caller (e.g. context.Canceled), KeepAlive returns a ErrKeepAliveHalted error
+	// containing the error reason.
 	//
 	// The returned "LeaseKeepAliveResponse" channel closes if underlying keep
 	// alive stream is interrupted in some way the client cannot handle itself;
-	// given context "ctx" is canceled or timed out. "LeaseKeepAliveResponse"
-	// from this closed channel is nil.
-	//
-	// If client keep alive loop halts with an unexpected error (e.g. "etcdserver:
-	// no leader") or canceled by the caller (e.g. context.Canceled), the error
-	// is returned. Otherwise, it retries.
+	// given context "ctx" is canceled or timed out.
 	//
 	// TODO(v4.0): post errors to last keep alive message before closing
 	// (see https://go.etcd.io/etcd/pull/7866)
