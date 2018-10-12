@@ -48,7 +48,7 @@ curl -L http://localhost:2379/v3/kv/range \
 Use the `/v3/watch` service to watch keys:
 
 ```bash
-curl http://localhost:2379/v3/watch \
+curl -N http://localhost:2379/v3/watch \
   -X POST -d '{"create_request": {"key":"Zm9v"} }' &
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
 
