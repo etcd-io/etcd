@@ -74,7 +74,7 @@ func TestBackendSnapshot(t *testing.T) {
 	nb := New(bcfg)
 	defer cleanup(nb, f.Name())
 
-	newTx := b.BatchTx()
+	newTx := nb.BatchTx()
 	newTx.Lock()
 	ks, _ := newTx.UnsafeRange([]byte("test"), []byte("foo"), []byte("goo"), 0)
 	if len(ks) != 1 {
