@@ -362,6 +362,71 @@ func TestProgressFlowControl(t *testing.T) {
 	}
 }
 
+func TestUncommittedEntryLimit(t *testing.T) {
+	const maxEntries = 16
+	testEntry := pb.Entry{Data: []byte("testdata")}
+	maxEntrySize := maxEntries * testEntry.Size()
+
+	cfg := newTestConfig(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
+	cfg.MaxUncommittedEntriesSize = uint64(maxEntrySize)
+	r := newRaft(cfg)
+	r.becomeCandidate()
+	r.becomeLeader()
+
+	// Set the two followers to the replicate state. Commit to tail of log.
+	const numFollowers = 2
+	r.prs[2].becomeReplicate()
+	r.prs[3].becomeReplicate()
+	r.uncommittedSize = 0
+
+	// Send proposals to r1. The first 5 entries should be appended to the log.
+	propMsg := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{testEntry}}
+	propEnts := make([]pb.Entry, maxEntries)
+	for i := 0; i < maxEntries; i++ {
+		if err := r.Step(propMsg); err != nil {
+			t.Fatalf("proposal resulted in error: %v", err)
+		}
+		propEnts[i] = testEntry
+	}
+
+	// Send one more proposal to r1. It should be rejected.
+	if err := r.Step(propMsg); err != ErrProposalDropped {
+		t.Fatalf("proposal not dropped: %v", err)
+	}
+
+	// Read messages and reduce the uncommitted size as if we had committed
+	// these entries.
+	ms := r.readMessages()
+	if e := maxEntries * numFollowers; len(ms) != e {
+		t.Fatalf("expected %d messages, got %d", e, len(ms))
+	}
+	r.reduceUncommittedSize(propEnts)
+
+	// Send a single large proposal to r1. Should be accepted even though it
+	// pushes us above the limit because we were beneath it before the proposal.
+	propEnts = make([]pb.Entry, 2*maxEntries)
+	for i := range propEnts {
+		propEnts[i] = testEntry
+	}
+	propMsgLarge := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: propEnts}
+	if err := r.Step(propMsgLarge); err != nil {
+		t.Fatalf("proposal resulted in error: %v", err)
+	}
+
+	// Send one more proposal to r1. It should be rejected, again.
+	if err := r.Step(propMsg); err != ErrProposalDropped {
+		t.Fatalf("proposal not dropped: %v", err)
+	}
+
+	// Read messages and reduce the uncommitted size as if we had committed
+	// these entries.
+	ms = r.readMessages()
+	if e := 1 * numFollowers; len(ms) != e {
+		t.Fatalf("expected %d messages, got %d", e, len(ms))
+	}
+	r.reduceUncommittedSize(propEnts)
+}
+
 func TestLeaderElection(t *testing.T) {
 	testLeaderElection(t, false)
 }
