@@ -11,7 +11,7 @@
           {
             alert: 'EtcdInsufficientMembers',
             expr: |||
-              count(up{%(etcd_selector)s} == 0) by (job) > (count(up{%(etcd_selector)s}) by (job) / 2 - 1)
+              sum(up{%(etcd_selector)s} == bool 1) by (job) < ((count(up{%(etcd_selector)s}) by (job) + 1) / 2)
             ||| % $._config,
             'for': '3m',
             labels: {
