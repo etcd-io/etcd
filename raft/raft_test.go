@@ -572,7 +572,7 @@ func TestLeaderCyclePreVote(t *testing.T) {
 
 // testLeaderCycle verifies that each node in a cluster can campaign
 // and be elected in turn. This ensures that elections (including
-// pre-vote) work when not starting from a clean slate (as they do in
+// pre-vote) work when not starting from a clean state (as they do in
 // TestLeaderElection)
 func testLeaderCycle(t *testing.T, preVote bool) {
 	var cfg func(*Config)
