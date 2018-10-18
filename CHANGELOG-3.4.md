@@ -6,7 +6,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.0 (TBD 2019)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
 ### Improved
 
@@ -43,8 +43,8 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v3.4.0) and [
 - Make [Lease `Lookup` non-blocking with concurrent `Grant`/`Revoke`](https://github.com/etcd-io/etcd/pull/9229).
 - Make etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop in [v3 applier](https://github.com/etcd-io/etcd/pull/9549) and [v2 applier](https://github.com/etcd-io/etcd/pull/9558).
   - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/etcd-io/etcd/issues/8975).
-- Add [`snapshot`](https://github.com/etcd-io/etcd/pull/9118) package for easier snapshot workflow (see [`godoc.org/github.com/etcd/clientv3/snapshot`](https://godoc.org/github.com/coreos/etcd/clientv3/snapshot) for more).
-- Improve [functional tester](https://github.com/coreos/etcd/tree/master/functional) coverage: [proxy layer to run network fault tests in CI](https://github.com/etcd-io/etcd/pull/9081), [TLS is enabled both for server and client](https://github.com/etcd-io/etcd/pull/9534), [liveness mode](https://github.com/etcd-io/etcd/issues/9230), [shuffle test sequence](https://github.com/etcd-io/etcd/issues/9381), [membership reconfiguration failure cases](https://github.com/etcd-io/etcd/pull/9564), [disastrous quorum loss and snapshot recover from a seed member](https://github.com/etcd-io/etcd/pull/9565), [embedded etcd](https://github.com/etcd-io/etcd/pull/9572).
+- Add [`snapshot`](https://github.com/etcd-io/etcd/pull/9118) package for easier snapshot workflow (see [`godoc.org/github.com/etcd/clientv3/snapshot`](https://godoc.org/github.com/etcd-io/etcd/clientv3/snapshot) for more).
+- Improve [functional tester](https://github.com/etcd-io/etcd/tree/master/functional) coverage: [proxy layer to run network fault tests in CI](https://github.com/etcd-io/etcd/pull/9081), [TLS is enabled both for server and client](https://github.com/etcd-io/etcd/pull/9534), [liveness mode](https://github.com/etcd-io/etcd/issues/9230), [shuffle test sequence](https://github.com/etcd-io/etcd/issues/9381), [membership reconfiguration failure cases](https://github.com/etcd-io/etcd/pull/9564), [disastrous quorum loss and snapshot recover from a seed member](https://github.com/etcd-io/etcd/pull/9565), [embedded etcd](https://github.com/etcd-io/etcd/pull/9572).
 - Improve [index compaction blocking](https://github.com/etcd-io/etcd/pull/9511) by using a copy on write clone to avoid holding the lock for the traversal of the entire index.
 - Update [JWT methods](https://github.com/etcd-io/etcd/pull/9883) to allow for use of any supported signature method/algorithm.
 - Add [Lease checkpointing](https://github.com/etcd-io/etcd/pull/9924) to persist remaining TTLs to the consensus log periodically so that long lived leases progress toward expiry in the presence of leader elections and server restarts.
@@ -358,8 +358,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - If not empty, specify either `embed.Config.ClientTLSInfo.CipherSuites` or `embed.Config.CipherSuites`.
 - Add [`embed.Config.InitialElectionTickAdvance`](https://github.com/etcd-io/etcd/pull/9591) to enable/disable initial election tick fast-forward.
   - `embed.NewConfig()` would return `*embed.Config` with `InitialElectionTickAdvance` as true by default.
-- Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
-- Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/coreos/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
+- Define [`embed.CompactorModePeriodic`](https://godoc.org/github.com/etcd-io/etcd/embed#pkg-variables) for `compactor.ModePeriodic`.
+- Define [`embed.CompactorModeRevision`](https://godoc.org/github.com/etcd-io/etcd/embed#pkg-variables) for `compactor.ModeRevision`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/etcd-io/etcd/pull/9490).
 - Remove [`embed.Config.SetupLogging`](https://github.com/etcd-io/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/etcd-io/etcd/pull/9572).

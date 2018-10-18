@@ -3,13 +3,14 @@
 Previous change logs can be found at [CHANGELOG-3.x](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.x.md).
 
 
+
 Planned breaking changes.
 
 
 
 ## v4.0.0 (TBD)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v4.0.0) and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v4.0.0) and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md).**
 
 ### Breaking Changes
 
@@ -29,4 +30,4 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.3.0...v4.0.0) and [
 
 ### Go
 
-- Require [*Go 2*](https://blog.golang.org/go2draft).
+- Require [*Go 2*](https://blog.golang.org/go2draft)?

@@ -3,10 +3,12 @@
 Previous change logs can be found at [CHANGELOG-3.1](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.1.md).
 
 
+The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.10+, and 3.3.0+.
 
-## [v3.2.25](https://github.com/coreos/etcd/releases/tag/v3.2.25) (2018-TBD)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.24...v3.2.25) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+## [v3.2.25](https://github.com/etcd-io/etcd/releases/tag/v3.2.25) (2018-10-10)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.24...v3.2.25) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -47,9 +49,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.24](https://github.com/coreos/etcd/releases/tag/v3.2.24) (2018-07-24)
+## [v3.2.24](https://github.com/etcd-io/etcd/releases/tag/v3.2.24) (2018-07-24)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.23...v3.2.24) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.23...v3.2.24) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -99,9 +101,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.23](https://github.com/coreos/etcd/releases/tag/v3.2.23) (2018-06-15)
+## [v3.2.23](https://github.com/etcd-io/etcd/releases/tag/v3.2.23) (2018-06-15)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.22...v3.2.23) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.22...v3.2.23) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -126,9 +128,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.22](https://github.com/coreos/etcd/releases/tag/v3.2.22) (2018-06-06)
+## [v3.2.22](https://github.com/etcd-io/etcd/releases/tag/v3.2.22) (2018-06-06)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.21...v3.2.22) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.21...v3.2.22) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Security, Authentication
 
@@ -144,9 +146,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.21...v3.2.22) and
 
 
 
-## [v3.2.21](https://github.com/coreos/etcd/releases/tag/v3.2.21) (2018-05-31)
+## [v3.2.21](https://github.com/etcd-io/etcd/releases/tag/v3.2.21) (2018-05-31)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.20...v3.2.21) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.20...v3.2.21) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -161,9 +163,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.20...v3.2.21) and
 
 
 
-## [v3.2.20](https://github.com/coreos/etcd/releases/tag/v3.2.20) (2018-05-09)
+## [v3.2.20](https://github.com/etcd-io/etcd/releases/tag/v3.2.20) (2018-05-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.19...v3.2.20) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.19...v3.2.20) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -177,9 +179,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.19...v3.2.20) and
 
 
 
-## [v3.2.19](https://github.com/coreos/etcd/releases/tag/v3.2.19) (2018-04-24)
+## [v3.2.19](https://github.com/etcd-io/etcd/releases/tag/v3.2.19) (2018-04-24)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.18...v3.2.19) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.18...v3.2.19) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Metrics, Monitoring
 
@@ -216,9 +218,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.18](https://github.com/coreos/etcd/releases/tag/v3.2.18) (2018-03-29)
+## [v3.2.18](https://github.com/etcd-io/etcd/releases/tag/v3.2.18) (2018-03-29)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.17...v3.2.18) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.17...v3.2.18) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -240,9 +242,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.17](https://github.com/coreos/etcd/releases/tag/v3.2.17) (2018-03-08)
+## [v3.2.17](https://github.com/etcd-io/etcd/releases/tag/v3.2.17) (2018-03-08)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.16...v3.2.17) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -266,9 +268,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.16...v3.2.17) and
 
 
 
-## [v3.2.16](https://github.com/coreos/etcd/releases/tag/v3.2.16) (2018-02-12)
+## [v3.2.16](https://github.com/etcd-io/etcd/releases/tag/v3.2.16) (2018-02-12)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.15...v3.2.16) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -285,9 +287,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.15...v3.2.16) and
 
 
 
-## [v3.2.15](https://github.com/coreos/etcd/releases/tag/v3.2.15) (2018-01-22)
+## [v3.2.15](https://github.com/etcd-io/etcd/releases/tag/v3.2.15) (2018-01-22)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.14...v3.2.15) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.14...v3.2.15) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -300,9 +302,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.14...v3.2.15) and
 
 
 
-## [v3.2.14](https://github.com/coreos/etcd/releases/tag/v3.2.14) (2018-01-11)
+## [v3.2.14](https://github.com/etcd-io/etcd/releases/tag/v3.2.14) (2018-01-11)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.13...v3.2.14) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.13...v3.2.14) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -318,9 +320,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.13...v3.2.14) and
 
 
 
-## [v3.2.13](https://github.com/coreos/etcd/releases/tag/v3.2.13) (2018-01-02)
+## [v3.2.13](https://github.com/etcd-io/etcd/releases/tag/v3.2.13) (2018-01-02)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.12...v3.2.13) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.12...v3.2.13) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -333,9 +335,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.12...v3.2.13) and
 
 
 
-## [v3.2.12](https://github.com/coreos/etcd/releases/tag/v3.2.12) (2017-12-20)
+## [v3.2.12](https://github.com/etcd-io/etcd/releases/tag/v3.2.12) (2017-12-20)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.11...v3.2.12) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Dependency
 
@@ -348,7 +350,7 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 ### client v3
 
-- Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/etcd-io/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/coreos/etcd/clientv3#Config).
+- Add [`MaxCallSendMsgSize` and `MaxCallRecvMsgSize`](https://github.com/etcd-io/etcd/pull/9047) fields to [`clientv3.Config`](https://godoc.org/github.com/etcd-io/etcd/clientv3#Config).
   - Fix [exceeded response size limit error in client-side](https://github.com/etcd-io/etcd/issues/9043).
   - Address [kubernetes#51099](https://github.com/kubernetes/kubernetes/issues/51099).
     - In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
@@ -361,9 +363,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.11...v3.2.12) and
 
 
 
-## [v3.2.11](https://github.com/coreos/etcd/releases/tag/v3.2.11) (2017-12-05)
+## [v3.2.11](https://github.com/etcd-io/etcd/releases/tag/v3.2.11) (2017-12-05)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.10...v3.2.11) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.10...v3.2.11) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Dependency
 
@@ -390,9 +392,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 
 
-## [v3.2.10](https://github.com/coreos/etcd/releases/tag/v3.2.10) (2017-11-16)
+## [v3.2.10](https://github.com/etcd-io/etcd/releases/tag/v3.2.10) (2017-11-16)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.9...v3.2.10) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.9...v3.2.10) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Dependency
 
@@ -420,9 +422,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 
 
-## [v3.2.9](https://github.com/coreos/etcd/releases/tag/v3.2.9) (2017-10-06)
+## [v3.2.9](https://github.com/etcd-io/etcd/releases/tag/v3.2.9) (2017-10-06)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.8...v3.2.9) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.8...v3.2.9) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Security, Authentication
 
@@ -438,9 +440,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 
 
-## [v3.2.8](https://github.com/coreos/etcd/releases/tag/v3.2.8) (2017-09-29)
+## [v3.2.8](https://github.com/etcd-io/etcd/releases/tag/v3.2.8) (2017-09-29)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.7...v3.2.8) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### client v2
 
@@ -456,9 +458,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.7...v3.2.8) and [
 
 
 
-## [v3.2.7](https://github.com/coreos/etcd/releases/tag/v3.2.7) (2017-09-01)
+## [v3.2.7](https://github.com/etcd-io/etcd/releases/tag/v3.2.7) (2017-09-01)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.6...v3.2.7) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.6...v3.2.7) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Security, Authentication
 
@@ -475,9 +477,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.6...v3.2.7) and [
 
 
 
-## [v3.2.6](https://github.com/coreos/etcd/releases/tag/v3.2.6) (2017-08-21)
+## [v3.2.6](https://github.com/etcd-io/etcd/releases/tag/v3.2.6) (2017-08-21)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.5...v3.2.6) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.5...v3.2.6) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -499,9 +501,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.5](https://github.com/coreos/etcd/releases/tag/v3.2.5) (2017-08-04)
+## [v3.2.5](https://github.com/etcd-io/etcd/releases/tag/v3.2.5) (2017-08-04)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.4...v3.2.5) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.4...v3.2.5) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcdctl v3
 
@@ -535,9 +537,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.4](https://github.com/coreos/etcd/releases/tag/v3.2.4) (2017-07-19)
+## [v3.2.4](https://github.com/etcd-io/etcd/releases/tag/v3.2.4) (2017-07-19)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.3...v3.2.4) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -553,9 +555,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.3...v3.2.4) and [
 
 
 
-## [v3.2.3](https://github.com/coreos/etcd/releases/tag/v3.2.3) (2017-07-14)
+## [v3.2.3](https://github.com/etcd-io/etcd/releases/tag/v3.2.3) (2017-07-14)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.2...v3.2.3) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### client v3
 
@@ -572,9 +574,9 @@ See [code changes](https://github.com/coreos/etcd/compare/v3.2.2...v3.2.3) and [
 
 
 
-## [v3.2.2](https://github.com/coreos/etcd/releases/tag/v3.2.2) (2017-07-07)
+## [v3.2.2](https://github.com/etcd-io/etcd/releases/tag/v3.2.2) (2017-07-07)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.1...v3.2.2) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.1...v3.2.2) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -604,9 +606,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 
 
-## [v3.2.1](https://github.com/coreos/etcd/releases/tag/v3.2.1) (2017-06-23)
+## [v3.2.1](https://github.com/etcd-io/etcd/releases/tag/v3.2.1) (2017-06-23)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.2.0...v3.2.1) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.2.1) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### etcd server
 
@@ -630,9 +632,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 
-## [v3.2.0](https://github.com/coreos/etcd/releases/tag/v3.2.0) (2017-06-09)
+## [v3.2.0](https://github.com/etcd-io/etcd/releases/tag/v3.2.0) (2017-06-09)
 
-See [code changes](https://github.com/coreos/etcd/compare/v3.1.0...v3.2.0) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.0...v3.2.0) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
 ### Improved
 
@@ -668,7 +670,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md) for more details.
 
-- [TLS certificates get reloaded on every client connection](https://github.com/etcd-io/etcd/pull/7829). This is useful when replacing expiry certs without stopping etcd servers; it can be done by overwriting old certs with new ones. Refreshing certs for every connection should not have too much overhead, but can be improved in the future, with caching layer. Example tests can be found [here](https://github.com/coreos/etcd/blob/b041ce5d514a4b4aaeefbffb008f0c7570a18986/integration/v3_grpc_test.go#L1601-L1757).
+- [TLS certificates get reloaded on every client connection](https://github.com/etcd-io/etcd/pull/7829). This is useful when replacing expiry certs without stopping etcd servers; it can be done by overwriting old certs with new ones. Refreshing certs for every connection should not have too much overhead, but can be improved in the future, with caching layer. Example tests can be found [here](https://github.com/etcd-io/etcd/blob/b041ce5d514a4b4aaeefbffb008f0c7570a18986/integration/v3_grpc_test.go#L1601-L1757).
 - [Server denies incoming peer certs with wrong IP `SAN`](https://github.com/etcd-io/etcd/pull/7687). For instance, if peer cert contains any IP addresses in Subject Alternative Name (SAN) field, server authenticates a peer only when the remote IP address matches one of those IP addresses. This is to prevent unauthorized endpoints from joining the cluster.  For example, peer B's CSR (with `cfssl`) SAN field is `["*.example.default.svc", "*.example.default.svc.cluster.local", "10.138.0.27"]` when peer B's actual IP address is `10.138.0.2`, not `10.138.0.27`. When peer B tries to join the cluster, peer A will reject B with the error `x509: certificate is valid for 10.138.0.27, not 10.138.0.2`, because B's remote IP address does not match the one in Subject Alternative Name (SAN) field.
 - [Server resolves TLS `DNSNames` when checking `SAN`](https://github.com/etcd-io/etcd/pull/7767). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server authenticates a peer only when forward-lookups (`dig b.com`) on those DNS names have matching IP with the remote IP address.  For example, peer B's CSR (with `cfssl`) SAN field is `["b.com"]` when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A looks up the incoming host `b.com` to get the list of IP addresses (e.g. `dig b.com`). And rejects B if the list does not contain the IP `10.138.0.2`, with the error `tls: 10.138.0.2 does not match any of DNSNames ["b.com"]`.
 - Auth support JWT token.
