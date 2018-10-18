@@ -616,22 +616,20 @@ func testLeaderElectionOverwriteNewerLogs(t *testing.T, preVote bool) {
 	}
 	// This network represents the results of the following sequence of
 	// events:
-	// - Node 1 won the election in term 1.
-	// - Node 1 replicated a log entry to node 2 but died before sending
-	//   it to other nodes.
-	// - Node 3 won the second election in term 2.
-	// - Node 3 wrote an entry to its logs but died without sending it
-	//   to any other nodes.
+	// - Node 1 starts the first election at term 1 and fails.
+	// - Node 1 starts the second election at term 2 and succeeds.
+	// - Node 1 replicates a log entry to node 2.
+	// - Node 1 replicates two log entries to node 3, 4, 5.
 	//
-	// At this point, nodes 1, 2, and 3 all have uncommitted entries in
+	// Before election, nodes 1, 2, and 3 all have uncommitted entries in
 	// their logs and could win an election at term 3. The winner's log
 	// entry overwrites the losers'. (TestLeaderSyncFollowerLog tests
 	// the case where older log entries are overwritten, so this test
-	// focuses on the case where the newer entries are lost).
+	// focuses on the case where the newer entries at node 3 are lost).
 	n := newNetworkWithConfig(cfg,
-		entsWithConfig(cfg, 1),     // Node 1: Won first election
-		entsWithConfig(cfg, 1),     // Node 2: Got logs from node 1
-		entsWithConfig(cfg, 2),     // Node 3: Won second election
+		entsWithConfig(cfg, 1),     // Node 1: Will start two new elections
+		entsWithConfig(cfg, 1),     // Node 2: Will get a log entry from node 1
+		entsWithConfig(cfg, 2),     // Node 3: Log entry will be lost
 		votedWithConfig(cfg, 3, 2), // Node 4: Voted but didn't get logs
 		votedWithConfig(cfg, 3, 2)) // Node 5: Voted but didn't get logs
 
