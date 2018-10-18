@@ -445,6 +445,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/etcd-io/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
   - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/etcd-io/etcd/pull/9116).
+- Add [`raft.Config.MaxUncommittedEntriesSize`](https://github.com/etcd-io/etcd/pull/10167) to limit the total size of the uncommitted entries in bytes.
+  - Once exceeded, raft returns `raft.ErrProposalDropped` error.
+  - Prevent [unbounded Raft log growth](https://github.com/cockroachdb/cockroach/issues/27772).
 - Add [`raft.Ready.CommittedEntries` pagination using `raft.Config.MaxSizePerMsg`](https://github.com/etcd-io/etcd/pull/9982).
   - This prevents out-of-memory errors if the raft log has become very large and commits all at once.
   - Fix [correctness bug in CommittedEntries pagination](https://github.com/etcd-io/etcd/pull/10063).
