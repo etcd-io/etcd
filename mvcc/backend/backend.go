@@ -399,14 +399,7 @@ func (b *backend) defrag() error {
 			plog.Panicf("cannot open database at %s (%v)", dbp, err)
 		}
 	}
-	b.batchTx.tx, err = b.db.Begin(true)
-	if err != nil {
-		if b.lg != nil {
-			b.lg.Fatal("failed to begin tx", zap.Error(err))
-		} else {
-			plog.Fatalf("cannot begin tx (%s)", err)
-		}
-	}
+	b.batchTx.tx = b.unsafeBegin(true)
 
 	b.readTx.reset()
 	b.readTx.tx = b.unsafeBegin(false)
