@@ -101,6 +101,12 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	return buf.String()
 }
 
+// PayloadSize is the size of the payload of this Entry. Notably, it does not
+// depend on its Index or Term.
+func PayloadSize(e pb.Entry) int {
+	return len(e.Data)
+}
+
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {

@@ -1006,7 +1006,7 @@ func TestNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	const maxEntries = 16
 	data := []byte("testdata")
 	testEntry := raftpb.Entry{Data: data}
-	maxEntrySize := uint64(maxEntries * testEntry.Size())
+	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
 
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
