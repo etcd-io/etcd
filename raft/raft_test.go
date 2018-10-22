@@ -37,6 +37,12 @@ func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
 	return ents
 }
 
+func mustAppendEntry(r *raft, ents ...pb.Entry) {
+	if !r.appendEntry(ents...) {
+		panic("entry unexpectedly dropped")
+	}
+}
+
 type stateMachine interface {
 	Step(m pb.Message) error
 	readMessages() []pb.Message
@@ -363,15 +369,24 @@ func TestProgressFlowControl(t *testing.T) {
 }
 
 func TestUncommittedEntryLimit(t *testing.T) {
-	const maxEntries = 16
+	// Use a relatively large number of entries here to prevent regression of a
+	// bug which computed the size before it was fixed. This test would fail
+	// with the bug, either because we'd get dropped proposals earlier than we
+	// expect them, or because the final tally ends up nonzero. (At the time of
+	// writing, the former).
+	const maxEntries = 1024
 	testEntry := pb.Entry{Data: []byte("testdata")}
-	maxEntrySize := maxEntries * testEntry.Size()
+	maxEntrySize := maxEntries * PayloadSize(testEntry)
 
 	cfg := newTestConfig(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 	cfg.MaxUncommittedEntriesSize = uint64(maxEntrySize)
+	cfg.MaxInflightMsgs = 2 * 1024 // avoid interference
 	r := newRaft(cfg)
 	r.becomeCandidate()
 	r.becomeLeader()
+	if n := r.uncommittedSize; n != 0 {
+		t.Fatalf("expected zero uncommitted size, got %d bytes", n)
+	}
 
 	// Set the two followers to the replicate state. Commit to tail of log.
 	const numFollowers = 2
@@ -401,6 +416,9 @@ func TestUncommittedEntryLimit(t *testing.T) {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
 	r.reduceUncommittedSize(propEnts)
+	if r.uncommittedSize != 0 {
+		t.Fatalf("committed everything, but still tracking %d", r.uncommittedSize)
+	}
 
 	// Send a single large proposal to r1. Should be accepted even though it
 	// pushes us above the limit because we were beneath it before the proposal.
@@ -425,6 +443,9 @@ func TestUncommittedEntryLimit(t *testing.T) {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
 	r.reduceUncommittedSize(propEnts)
+	if n := r.uncommittedSize; n != 0 {
+		t.Fatalf("expected zero uncommitted size, got %d", n)
+	}
 }
 
 func TestLeaderElection(t *testing.T) {
@@ -2585,7 +2606,7 @@ func TestBcastBeat(t *testing.T) {
 	sm.becomeCandidate()
 	sm.becomeLeader()
 	for i := 0; i < 10; i++ {
-		sm.appendEntry(pb.Entry{Index: uint64(i) + 1})
+		mustAppendEntry(sm, pb.Entry{Index: uint64(i) + 1})
 	}
 	// slow follower
 	sm.prs[2].Match, sm.prs[2].Next = 5, 6
@@ -2709,7 +2730,7 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 			// we expect that raft will only send out one msgAPP on the first
 			// loop. After that, the follower is paused until a heartbeat response is
 			// received.
-			r.appendEntry(pb.Entry{Data: []byte("somedata")})
+			mustAppendEntry(r, pb.Entry{Data: []byte("somedata")})
 			r.sendAppend(2)
 			msg := r.readMessages()
 			if len(msg) != 1 {
@@ -2724,7 +2745,7 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 			t.Errorf("paused = %v, want true", r.prs[2].Paused)
 		}
 		for j := 0; j < 10; j++ {
-			r.appendEntry(pb.Entry{Data: []byte("somedata")})
+			mustAppendEntry(r, pb.Entry{Data: []byte("somedata")})
 			r.sendAppend(2)
 			if l := len(r.readMessages()); l != 0 {
 				t.Errorf("len(msg) = %d, want %d", l, 0)
@@ -2771,7 +2792,7 @@ func TestSendAppendForProgressReplicate(t *testing.T) {
 	r.prs[2].becomeReplicate()
 
 	for i := 0; i < 10; i++ {
-		r.appendEntry(pb.Entry{Data: []byte("somedata")})
+		mustAppendEntry(r, pb.Entry{Data: []byte("somedata")})
 		r.sendAppend(2)
 		msgs := r.readMessages()
 		if len(msgs) != 1 {
@@ -2788,7 +2809,7 @@ func TestSendAppendForProgressSnapshot(t *testing.T) {
 	r.prs[2].becomeSnapshot(10)
 
 	for i := 0; i < 10; i++ {
-		r.appendEntry(pb.Entry{Data: []byte("somedata")})
+		mustAppendEntry(r, pb.Entry{Data: []byte("somedata")})
 		r.sendAppend(2)
 		msgs := r.readMessages()
 		if len(msgs) != 0 {
@@ -3182,7 +3203,7 @@ func TestNewLeaderPendingConfig(t *testing.T) {
 	for i, tt := range tests {
 		r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 		if tt.addEntry {
-			r.appendEntry(pb.Entry{Type: pb.EntryNormal})
+			mustAppendEntry(r, pb.Entry{Type: pb.EntryNormal})
 		}
 		r.becomeCandidate()
 		r.becomeLeader()
