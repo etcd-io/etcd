@@ -3,6 +3,8 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md).
 
 
+<hr>
+
 
 ## v3.4.0 (TBD 2019)
 
@@ -448,6 +450,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add [`raft.Config.MaxUncommittedEntriesSize`](https://github.com/etcd-io/etcd/pull/10167) to limit the total size of the uncommitted entries in bytes.
   - Once exceeded, raft returns `raft.ErrProposalDropped` error.
   - Prevent [unbounded Raft log growth](https://github.com/cockroachdb/cockroach/issues/27772).
+  - There was a bug in [PR#10167](https://github.com/etcd-io/etcd/pull/10167) but fixed via [PR#10199](https://github.com/etcd-io/etcd/pull/10199).
 - Add [`raft.Ready.CommittedEntries` pagination using `raft.Config.MaxSizePerMsg`](https://github.com/etcd-io/etcd/pull/9982).
   - This prevents out-of-memory errors if the raft log has become very large and commits all at once.
   - Fix [correctness bug in CommittedEntries pagination](https://github.com/etcd-io/etcd/pull/10063).
@@ -464,4 +467,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 - Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
 - Compile with [*Go 1.11*](https://golang.org/doc/devel/release.html#go1.11).
+
+
+<hr>
 

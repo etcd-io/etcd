@@ -3,9 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.x](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.x.md).
 
 
-
-Planned breaking changes.
-
+<hr>
 
 
 ## v4.0.0 (TBD)
@@ -31,3 +29,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v4.0.0) and 
 ### Go
 
 - Require [*Go 2*](https://blog.golang.org/go2draft)?
+
+
+<hr>
+
