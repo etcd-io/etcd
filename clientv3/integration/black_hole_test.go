@@ -26,7 +26,51 @@ import (
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+func TestServerGRPCKeepAliveTimeout(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:                  2,
+		GRPCKeepAliveInterval: time.Second,
+		GRPCKeepAliveTimeout:  time.Second,
+	})
+	defer clus.Terminate(t)
+
+	eps := []string{clus.Members[0].GRPCAddr()}
+
+	ccfg := clientv3.Config{
+		Endpoints: []string{eps[0]},
+	}
+
+	cli, err := clientv3.New(ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	clus.Members[1].Blackhole()
+	time.Sleep(10 * time.Second)
+	// remove blackhole but connection should be unavailable now
+	clus.Members[1].Unblackhole()
+	if _, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1"); err != nil {
+		ev, ok := status.FromError(err)
+		if !ok {
+			t.Fatal(err)
+		}
+		if ev.Code() != codes.Unavailable {
+			t.Fatal(err)
+		}
+	} else {
+		t.Error("rpc error expected")
+	}
+}
 
 // TestBalancerUnderBlackholeKeepAliveWatch tests when watch discovers it cannot talk to
 // blackholed endpoint, client balancer switches to healthy one.
