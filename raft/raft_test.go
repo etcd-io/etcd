@@ -955,7 +955,7 @@ func TestCommitWithoutNewTermEntry(t *testing.T) {
 	// network recovery
 	tt.recover()
 
-	// elect 1 as the new leader with term 2
+	// elect 2 as the new leader with term 2
 	// after append a ChangeTerm entry from the current term, all entries
 	// should be committed
 	tt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
@@ -2587,7 +2587,7 @@ func TestLeaderAppResp(t *testing.T) {
 }
 
 // When the leader receives a heartbeat tick, it should
-// send a MsgApp with m.Index = 0, m.LogTerm=0 and empty entries.
+// send a MsgHeartbeat with m.Index = 0, m.LogTerm=0 and empty entries.
 func TestBcastBeat(t *testing.T) {
 	offset := uint64(1000)
 	// make a state machine with log.offset = 1000
