@@ -234,7 +234,7 @@ function cov_pass {
 	echo "Running code coverage..."
 	# install gocovmerge before running code coverage from github.com/wadey/gocovmerge
 	# gocovmerge merges coverage files
-	if ! which gocovmerge >/dev/null; then
+	if ! command -v gocovmerge >/dev/null; then
 		echo "gocovmerge not installed"
 		exit 255
 	fi
@@ -369,7 +369,7 @@ function release_pass {
 }
 
 function shellcheck_pass {
-	if which shellcheck >/dev/null; then
+	if command -v shellcheck >/dev/null; then
 		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
@@ -389,7 +389,7 @@ function markdown_you_pass {
 
 function markdown_marker_pass {
 	# TODO: check other markdown files when marker handles headers with '[]'
-	if which marker >/dev/null; then
+	if command -v marker >/dev/null; then
 		markerResult=$(marker --skip-http --root ./Documentation 2>&1 || true)
 		if [ -n "${markerResult}" ]; then
 			echo -e "marker checking failed:\\n${markerResult}"
@@ -401,7 +401,7 @@ function markdown_marker_pass {
 }
 
 function goword_pass {
-	if which goword >/dev/null; then
+	if command -v goword >/dev/null; then
 		# get all go files to process
 		gofiles=$(find "${FMT[@]}" -iname '*.go' 2>/dev/null)
 		# shellcheck disable=SC2206
@@ -456,7 +456,7 @@ function govet_shadow_pass {
 }
 
 function gosimple_pass {
-	if which gosimple >/dev/null; then
+	if command -v gosimple >/dev/null; then
 		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${gosimpleResult}" ]; then
 			echo -e "gosimple checking failed:\\n${gosimpleResult}"
@@ -468,7 +468,7 @@ function gosimple_pass {
 }
 
 function unused_pass {
-	if which unused >/dev/null; then
+	if command -v unused >/dev/null; then
 		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unusedResult}" ]; then
 			echo -e "unused checking failed:\\n${unusedResult}"
@@ -480,7 +480,7 @@ function unused_pass {
 }
 
 function unparam_pass {
-	if which unparam >/dev/null; then
+	if command -v unparam >/dev/null; then
 		unparamResult=$(unparam "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unparamResult}" ]; then
 			echo -e "unparam checking failed:\\n${unparamResult}"
@@ -492,7 +492,7 @@ function unparam_pass {
 }
 
 function staticcheck_pass {
-	if which staticcheck >/dev/null; then
+	if command -v staticcheck >/dev/null; then
 		staticcheckResult=$(staticcheck "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
@@ -512,7 +512,7 @@ function staticcheck_pass {
 }
 
 function revive_pass {
-	if which revive >/dev/null; then
+	if command -v revive >/dev/null; then
 		reviveResult=$(revive -config ./tests/revive.toml -exclude "vendor/..." ./... 2>&1 || true)
 		if [ -n "${reviveResult}" ]; then
 			echo -e "revive checking failed:\\n${reviveResult}"
@@ -524,7 +524,7 @@ function revive_pass {
 }
 
 function unconvert_pass {
-	if which unconvert >/dev/null; then
+	if command -v unconvert >/dev/null; then
 		unconvertResult=$(unconvert -v "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unconvertResult}" ]; then
 			echo -e "unconvert checking failed:\\n${unconvertResult}"
@@ -536,7 +536,7 @@ function unconvert_pass {
 }
 
 function ineffassign_pass {
-	if which ineffassign >/dev/null; then
+	if command -v ineffassign >/dev/null; then
 		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${ineffassignResult}" ]; then
 			echo -e "ineffassign checking failed:\\n${ineffassignResult}"
@@ -548,7 +548,7 @@ function ineffassign_pass {
 }
 
 function nakedret_pass {
-	if which nakedret >/dev/null; then
+	if command -v nakedret >/dev/null; then
 		nakedretResult=$(nakedret "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${nakedretResult}" ]; then
 			echo -e "nakedret checking failed:\\n${nakedretResult}"
@@ -642,7 +642,7 @@ function fmt_pass {
 }
 
 function bom_pass {
-	if ! which license-bill-of-materials >/dev/null; then
+	if ! command -v license-bill-of-materials >/dev/null; then
 		return
 	fi
 	echo "Checking bill of materials..."
