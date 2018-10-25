@@ -28,10 +28,9 @@ package raft
 
 import (
 	"fmt"
-	"testing"
-
 	"reflect"
 	"sort"
+	"testing"
 
 	pb "go.etcd.io/etcd/raft/raftpb"
 )
@@ -104,8 +103,8 @@ func TestStartAsFollower(t *testing.T) {
 }
 
 // TestLeaderBcastBeat tests that if the leader receives a heartbeat tick,
-// it will send a msgApp with m.Index = 0, m.LogTerm=0 and empty entries as
-// heartbeat to all followers.
+// it will send a MsgHeartbeat with m.Index = 0, m.LogTerm=0 and empty entries
+// as heartbeat to all followers.
 // Reference: section 5.2
 func TestLeaderBcastBeat(t *testing.T) {
 	// heartbeat interval
