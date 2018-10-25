@@ -1216,8 +1216,7 @@ func TestProposal(t *testing.T) {
 	for j, tt := range tests {
 		send := func(m pb.Message) {
 			defer func() {
-				// only recover is we expect it to panic so
-				// panics we don't expect go up.
+				// only recover if we expect it to panic (success==false)
 				if !tt.success {
 					e := recover()
 					if e != nil {
@@ -1230,7 +1229,7 @@ func TestProposal(t *testing.T) {
 
 		data := []byte("somedata")
 
-		// promote 0 the leader
+		// promote 1 to become leader
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 
