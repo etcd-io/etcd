@@ -32,16 +32,16 @@ import (
 
 // TestServerGRPCKeepAliveTimeout tests ServerParameters keepalive ping on server-side that
 // after having pinged for keepalive check, the server waits for a duration of Timeout and
-// if no activity is seen even after that the connection is closed. The keepalive takes few
-// seconds to get in impact so typically the the time it takes to close the connection is
-// somewhat higher than specified Timeout value.
+// if no activity is seen even after that the connection is closed on server-side. The keepalive
+// takes few extra seconds to get in impact so typically the time it takes to close the connection
+// is somewhat higher than specified Timeout value.
 func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                  2,
-		GRPCKeepAliveInterval: time.Second,
-		GRPCKeepAliveTimeout:  time.Second,
+		GRPCKeepAliveInterval: 500 * time.Millisecond,
+		GRPCKeepAliveTimeout:  500 * time.Millisecond,
 	})
 	defer clus.Terminate(t)
 
