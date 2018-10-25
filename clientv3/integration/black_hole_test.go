@@ -30,6 +30,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// TestServerGRPCKeepAliveTimeout tests ServerParameters keepalive ping on server-side that
+// after having pinged for keepalive check, the server waits for a duration of Timeout and
+// if no activity is seen even after that the connection is closed. The keepalive takes few
+// seconds to get in impact so typically the the time it takes to close the connection is
+// somewhat higher than specified Timeout value.
 func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
 
@@ -57,18 +62,19 @@ func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 	}
 	clus.Members[1].Blackhole()
 	time.Sleep(10 * time.Second)
-	// remove blackhole but connection should be unavailable now
+	// remove blackhole but by now the keepalive ping should have triggered server to
+	// close server-to-client connection.
 	clus.Members[1].Unblackhole()
-	if _, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1"); err != nil {
-		ev, ok := status.FromError(err)
-		if !ok {
-			t.Fatal(err)
-		}
-		if ev.Code() != codes.Unavailable {
-			t.Fatal(err)
-		}
-	} else {
+	_, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1")
+	if err == nil {
 		t.Error("rpc error expected")
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		t.Fatal(err)
+	}
+	if ev.Code() != codes.Unavailable {
+		t.Fatal(err)
 	}
 }
 
