@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.11.1
+- 1.11.x
 - tip
 
 notifications:
