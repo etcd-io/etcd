@@ -13,7 +13,7 @@ Distributed systems use etcd as a consistent key-value store for configuration m
 
 ## Comparison chart
 
-Perhaps etcd already seems like a good fit, but as with all technological decisions, proceed with caution. Please note this documentation is written by the etcd team. Although the ideal is a disinterested comparison of technology and features, the authors’ expertise and biases obviously favor etcd. Use only as directed.
+Perhaps etcd already seems like a good fit, but as with all technological decisions, proceed with caution. Please note this documentation is written by the etcd team. Although the idea is a disinterested comparison of technology and features, the authors’ expertise and biases obviously favor etcd. Use only as directed.
 
 The table below is a handy quick reference for spotting the differences among etcd and its most popular alternatives at a glance. Further commentary and details for each column are in the sections following the table.
 
