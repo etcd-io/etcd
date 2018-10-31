@@ -129,7 +129,8 @@ type Node interface {
 	Tick()
 	// Campaign causes the Node to transition to candidate state and start campaigning to become leader.
 	Campaign(ctx context.Context) error
-	// Propose proposes that data be appended to the log.
+	// Propose proposes that data be appended to the log. Note that proposals can be lost without
+	// notice, therefore it is user's job to ensure proposal retries.
 	Propose(ctx context.Context, data []byte) error
 	// ProposeConfChange proposes config change.
 	// At most one ConfChange can be in the process of going through consensus.
@@ -174,7 +175,16 @@ type Node interface {
 	Status() Status
 	// ReportUnreachable reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
-	// ReportSnapshot reports the status of the sent snapshot.
+	// ReportSnapshot reports the status of the sent snapshot. The id is the raft ID of the follower
+	// who is meant to receive the snapshot, and the status is SnapshotFinish or SnapshotFailure.
+	// Calling ReportSnapshot with SnapshotFinish is a no-op. But, any failure in applying a
+	// snapshot (for e.g., while streaming it from leader to follower), should be reported to the
+	// leader with SnapshotFailure. When leader sends a snapshot to a follower, it pauses any raft
+	// log probes until the follower can apply the snapshot and advance its state. If the follower
+	// can't do that, for e.g., due to a crash, it could end up in a limbo, never getting any
+	// updates from the leader. Therefore, it is crucial that the application ensures that any
+	// failure in snapshot sending is caught and reported back to the leader; so it can resume raft
+	// log probing in the follower.
 	ReportSnapshot(id uint64, status SnapshotStatus)
 	// Stop performs any necessary termination of the Node.
 	Stop()
