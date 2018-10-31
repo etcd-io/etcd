@@ -60,7 +60,7 @@ infra2.example.com.  300  IN  A  10.0.1.12
 Start the etcd gateway to fetch the endpoints from the DNS SRV entries with the command:
 
 ```bash
-$ etcd gateway --discovery-srv=example.com
+$ etcd gateway start --discovery-srv=example.com
 2016-08-16 11:21:18.867350 I | tcpproxy: ready to proxy client requests to [...]
 ```
 
