@@ -105,7 +105,9 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 	return nil
 }
 
-// Sometimes we need to know that we will wait for a while, before node became leader
+// Sometimes we need to know that we will wait for a while,
+// through notify channel we can get the leader information as soon as possible,
+// without waiting for the ctx timeout
 func (e *Election) CampaignWaitNotify(ctx context.Context, val string, notify chan<- bool) error {
 	s := e.session
 	client := e.session.Client()
