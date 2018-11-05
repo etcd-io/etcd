@@ -63,3 +63,23 @@ func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRe
 		}
 	}
 }
+// Sometimes we need to know that we will wait for a while
+func waitDeletesWaitNotify(ctx context.Context, client *v3.Client, pfx string, maxCreateRev int64, notify chan<- bool) (*pb.ResponseHeader, error) {
+	getOpts := append(v3.WithLastCreate(), v3.WithMaxCreateRev(maxCreateRev))
+	for {
+		resp, err := client.Get(ctx, pfx, getOpts...)
+		if err != nil {
+			return nil, err
+		}
+		if len(resp.Kvs) == 0 {
+			notify <- false
+			return resp.Header, nil
+		} else {
+			notify <- true
+		}
+		lastKey := string(resp.Kvs[0].Key)
+		if err = waitDelete(ctx, client, lastKey, resp.Header.Revision); err != nil {
+			return nil, err
+		}
+	}
+}

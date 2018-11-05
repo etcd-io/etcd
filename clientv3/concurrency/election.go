@@ -105,6 +105,47 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 	return nil
 }
 
+// Sometimes we need to know that we will wait for a while, before node became leader
+func (e *Election) CampaignWaitNotify(ctx context.Context, val string, notify chan<- bool) error {
+	s := e.session
+	client := e.session.Client()
+
+	k := fmt.Sprintf("%s%x", e.keyPrefix, s.Lease())
+	txn := client.Txn(ctx).If(v3.Compare(v3.CreateRevision(k), "=", 0))
+	txn = txn.Then(v3.OpPut(k, val, v3.WithLease(s.Lease())))
+	txn = txn.Else(v3.OpGet(k))
+	resp, err := txn.Commit()
+	if err != nil {
+		return err
+	}
+	e.leaderKey, e.leaderRev, e.leaderSession = k, resp.Header.Revision, s
+	if !resp.Succeeded {
+		kv := resp.Responses[0].GetResponseRange().Kvs[0]
+		e.leaderRev = kv.CreateRevision
+		if string(kv.Value) != val {
+			if err = e.Proclaim(ctx, val); err != nil {
+				e.Resign(ctx)
+				return err
+			}
+		}
+	}
+
+	_, err = waitDeletesWaitNotify(ctx, client, e.keyPrefix, e.leaderRev-1, notify)
+	if err != nil {
+		// clean up in case of context cancel
+		select {
+		case <-ctx.Done():
+			e.Resign(client.Ctx())
+		default:
+			e.leaderSession = nil
+		}
+		return err
+	}
+	e.hdr = resp.Header
+
+	return nil
+}
+
 // Proclaim lets the leader announce a new value without another election.
 func (e *Election) Proclaim(ctx context.Context, val string) error {
 	if e.leaderSession == nil {
