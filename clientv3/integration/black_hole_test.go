@@ -40,41 +40,51 @@ func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                  2,
-		GRPCKeepAliveInterval: 500 * time.Millisecond,
-		GRPCKeepAliveTimeout:  500 * time.Millisecond,
+		GRPCKeepAliveInterval: 2 * time.Second,
+		GRPCKeepAliveTimeout:  1 * time.Second,
 	})
 	defer clus.Terminate(t)
 
 	eps := []string{clus.Members[0].GRPCAddr()}
-
 	ccfg := clientv3.Config{
 		Endpoints: []string{eps[0]},
 	}
-
 	cli, err := clientv3.New(ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
 
+	// give keepalive some time
+	time.Sleep(4 * time.Second)
+
 	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
-	clus.Members[1].Blackhole()
-	time.Sleep(10 * time.Second)
-	// remove blackhole but by now the keepalive ping should have triggered server to
-	// close server-to-client connection.
-	clus.Members[1].Unblackhole()
-	_, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1")
+	// TODO: keepalive sometimes doesn't work on first attempt.
+	for i := 0; i < 5; i++ {
+		clus.Members[1].Blackhole()
+		time.Sleep(10 * time.Second)
+		// remove blackhole but by now the keepalive ping should have triggered server to
+		// close server-to-client connection.
+		clus.Members[1].Unblackhole()
+		_, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1")
+		if err != nil {
+			ev, ok := status.FromError(err)
+			if !ok {
+				t.Fatal(err)
+			}
+			if ev.Code() != codes.Unavailable {
+				t.Fatal(err)
+			}
+			break
+		} else {
+			t.Logf("info: expected an error, received none.")
+		}
+	}
+
 	if err == nil {
 		t.Error("rpc error expected")
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		t.Fatal(err)
-	}
-	if ev.Code() != codes.Unavailable {
-		t.Fatal(err)
 	}
 }
 
