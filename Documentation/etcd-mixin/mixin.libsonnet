@@ -149,33 +149,45 @@
             },
           },
           {
-            record: 'instance:fd_utilization',
-            expr: 'process_open_fds / process_max_fds',
-          },
-          {
-            alert: 'FdExhaustionClose',
+            alert: 'EtcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              predict_linear(instance:fd_utilization{%(etcd_selector)s}[1h], 3600 * 4) > 1
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              BY (method) > 0.01
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              message: '{{ $labels.job }} instance {{ $labels.instance }} will exhaust its file descriptors soon',
+              message: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}',
             },
           },
           {
-            alert: 'FdExhaustionClose',
+            alert: 'EtcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              predict_linear(instance:fd_utilization{%(etcd_selector)s}[10m], 3600) > 1
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              BY (method) > 0.05
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'critical',
             },
             annotations: {
-              description: '{{ $labels.job }} instance {{ $labels.instance }} will exhaust its file descriptors soon',
+              message: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}.',
+            },
+          },
+          {
+            alert: 'EtcdHTTPRequestsSlow',
+            expr: |||
+              histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m]))
+              > 0.15
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              message: 'Etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow.',
             },
           },
         ],
