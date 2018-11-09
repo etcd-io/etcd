@@ -8,6 +8,25 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 
 <hr>
 
+## [v3.3.11](https://github.com/coreos/etcd/releases/tag/v3.3.11) (2018-TBD)
+
+See [code changes](https://github.com/coreos/etcd/compare/v3.3.10...v3.3.11) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### etcdctl v3
+
+- Add [`etcdctl --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
+
+### gRPC Proxy
+
+- Add [`etcd proxy --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
+
+### etcd gateway
+
+- Add [`etcd gateway --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
+
+
+<hr>
+
 
 ## [v3.3.10](https://github.com/etcd-io/etcd/releases/tag/v3.3.10) (2018-10-10)
 
