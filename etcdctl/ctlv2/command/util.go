@@ -86,7 +86,7 @@ func getPeersFlagValue(c *cli.Context) []string {
 }
 
 func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
-	domainstr, insecure := getDiscoveryDomain(c)
+	domainstr, insecure, serviceName := getDiscoveryDomain(c)
 
 	// If we still don't have domain discovery, return nothing
 	if domainstr == "" {
@@ -94,7 +94,7 @@ func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
 	}
 
 	discoverer := client.NewSRVDiscover()
-	eps, err := discoverer.Discover(domainstr)
+	eps, err := discoverer.Discover(domainstr, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
 	return ret, err
 }
 
-func getDiscoveryDomain(c *cli.Context) (domainstr string, insecure bool) {
+func getDiscoveryDomain(c *cli.Context) (domainstr string, insecure bool, serviceName string) {
 	domainstr = c.GlobalString("discovery-srv")
 	// Use an environment variable if nothing was supplied on the
 	// command line
@@ -121,7 +121,11 @@ func getDiscoveryDomain(c *cli.Context) (domainstr string, insecure bool) {
 		domainstr = os.Getenv("ETCDCTL_DISCOVERY_SRV")
 	}
 	insecure = c.GlobalBool("insecure-discovery") || (os.Getenv("ETCDCTL_INSECURE_DISCOVERY") != "")
-	return domainstr, insecure
+	serviceName = c.GlobalString("discovery-srv-name")
+	if serviceName == "" {
+		serviceName = os.Getenv("ETCDCTL_DISCOVERY_SRV_NAME")
+	}
+	return domainstr, insecure, serviceName
 }
 
 func getEndpoints(c *cli.Context) ([]string, error) {
@@ -168,7 +172,7 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		keyfile = os.Getenv("ETCDCTL_KEY_FILE")
 	}
 
-	discoveryDomain, insecure := getDiscoveryDomain(c)
+	discoveryDomain, insecure, _ := getDiscoveryDomain(c)
 	if insecure {
 		discoveryDomain = ""
 	}

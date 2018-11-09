@@ -188,7 +188,7 @@ func TestSRVDiscover(t *testing.T) {
 			return "", nil, errors.New("Unknown service in mock")
 		}
 
-		srvs, err := GetClient("etcd-client", "example.com")
+		srvs, err := GetClient("etcd-client", "example.com", "")
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}
@@ -197,5 +197,42 @@ func TestSRVDiscover(t *testing.T) {
 			t.Errorf("#%d: endpoints = %v, want %v", i, srvs.Endpoints, tt.expected)
 		}
 
+	}
+}
+
+func TestGetSRVService(t *testing.T) {
+	tests := []struct {
+		scheme      string
+		serviceName string
+
+		expected string
+	}{
+		{
+			"https",
+			"",
+			"etcd-client-ssl",
+		},
+		{
+			"http",
+			"",
+			"etcd-client",
+		},
+		{
+			"https",
+			"foo",
+			"etcd-client-ssl-foo",
+		},
+		{
+			"http",
+			"bar",
+			"etcd-client-bar",
+		},
+	}
+
+	for i, tt := range tests {
+		service := GetSRVService("etcd-client", tt.serviceName, tt.scheme)
+		if strings.Compare(service, tt.expected) != 0 {
+			t.Errorf("#%d: service = %s, want %s", i, service, tt.expected)
+		}
 	}
 }
