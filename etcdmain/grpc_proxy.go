@@ -49,14 +49,15 @@ import (
 )
 
 var (
-	grpcProxyListenAddr        string
-	grpcProxyMetricsListenAddr string
-	grpcProxyEndpoints         []string
-	grpcProxyDNSCluster        string
-	grpcProxyInsecureDiscovery bool
-	grpcProxyDataDir           string
-	grpcMaxCallSendMsgSize     int
-	grpcMaxCallRecvMsgSize     int
+	grpcProxyListenAddr            string
+	grpcProxyMetricsListenAddr     string
+	grpcProxyEndpoints             []string
+	grpcProxyDNSCluster            string
+	grpcProxyDNSClusterServiceName string
+	grpcProxyInsecureDiscovery     bool
+	grpcProxyDataDir               string
+	grpcMaxCallSendMsgSize         int
+	grpcMaxCallRecvMsgSize         int
 
 	// tls for connecting to etcd
 
@@ -111,7 +112,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&grpcProxyListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
-	cmd.Flags().StringVar(&grpcProxyDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
+	cmd.Flags().StringVar(&grpcProxyDNSCluster, "discovery-srv", "", "domain name to query for SRV records describing cluster endpoints")
+	cmd.Flags().StringVar(&grpcProxyDNSClusterServiceName, "discovery-srv-name", "", "service name to query when using DNS discovery")
 	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for /metrics requests on an additional interface")
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
@@ -249,7 +251,7 @@ func checkArgs() {
 }
 
 func mustNewClient(lg *zap.Logger) *clientv3.Client {
-	srvs := discoverEndpoints(lg, grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery)
+	srvs := discoverEndpoints(lg, grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery, grpcProxyDNSClusterServiceName)
 	eps := srvs.Endpoints
 	if len(eps) == 0 {
 		eps = grpcProxyEndpoints

@@ -39,14 +39,15 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Insecure           bool
-	InsecureSkipVerify bool
-	InsecureDiscovery  bool
-	Endpoints          []string
-	DialTimeout        time.Duration
-	CommandTimeOut     time.Duration
-	KeepAliveTime      time.Duration
-	KeepAliveTimeout   time.Duration
+	Insecure              bool
+	InsecureSkipVerify    bool
+	InsecureDiscovery     bool
+	Endpoints             []string
+	DialTimeout           time.Duration
+	CommandTimeOut        time.Duration
+	KeepAliveTime         time.Duration
+	KeepAliveTimeout      time.Duration
+	DNSClusterServiceName string
 
 	TLS transport.TLSInfo
 
@@ -75,8 +76,9 @@ type authCfg struct {
 }
 
 type discoveryCfg struct {
-	domain   string
-	insecure bool
+	domain      string
+	insecure    bool
+	serviceName string
 }
 
 var display printer = &simplePrinter{}
@@ -390,10 +392,19 @@ func discoverySrvFromCmd(cmd *cobra.Command) string {
 	return domainStr
 }
 
+func discoveryDNSClusterServiceNameFromCmd(cmd *cobra.Command) string {
+	serviceNameStr, err := cmd.Flags().GetString("discovery-srv-name")
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+	return serviceNameStr
+}
+
 func discoveryCfgFromCmd(cmd *cobra.Command) *discoveryCfg {
 	return &discoveryCfg{
-		domain:   discoverySrvFromCmd(cmd),
-		insecure: insecureDiscoveryFromCmd(cmd),
+		domain:      discoverySrvFromCmd(cmd),
+		insecure:    insecureDiscoveryFromCmd(cmd),
+		serviceName: discoveryDNSClusterServiceNameFromCmd(cmd),
 	}
 }
 
@@ -422,7 +433,7 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 		return []string{}, nil
 	}
 
-	srvs, err := srv.GetClient("etcd-client", discoveryCfg.domain)
+	srvs, err := srv.GetClient("etcd-client", discoveryCfg.domain, discoveryCfg.serviceName)
 	if err != nil {
 		return nil, err
 	}
