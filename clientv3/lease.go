@@ -132,7 +132,7 @@ type Lease interface {
 	// given context "ctx" is canceled or timed out.
 	//
 	// TODO(v4.0): post errors to last keep alive message before closing
-	// (see https://go.etcd.io/etcd/pull/7866)
+	// (see https://github.com/etcd-io/etcd/pull/7866)
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
 	// KeepAliveOnce renews the lease once. The response corresponds to the

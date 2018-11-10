@@ -289,8 +289,8 @@ func (s *server) To() string {
 
 // TODO: implement packet reordering from multiple TCP connections
 // buffer packets per connection for awhile, reorder before transmit
-// - https://go.etcd.io/etcd/issues/5614
-// - https://go.etcd.io/etcd/pull/6918#issuecomment-264093034
+// - https://github.com/etcd-io/etcd/issues/5614
+// - https://github.com/etcd-io/etcd/pull/6918#issuecomment-264093034
 
 func (s *server) listenAndServe() {
 	defer s.closeWg.Done()

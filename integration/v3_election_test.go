@@ -201,7 +201,7 @@ func TestElectionSessionRecampaign(t *testing.T) {
 // TestElectionOnPrefixOfExistingKey checks that a single
 // candidate can be elected on a new key that is a prefix
 // of an existing key. To wit, check for regression
-// of bug #6278. https://go.etcd.io/etcd/issues/6278
+// of bug #6278. https://github.com/etcd-io/etcd/issues/6278
 //
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
