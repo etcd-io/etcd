@@ -412,7 +412,7 @@ func stopServers(ctx context.Context, ss *servers) {
 
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
-	// and https://go.etcd.io/etcd/issues/8916
+	// and https://github.com/etcd-io/etcd/issues/8916
 	if ss.secure {
 		shutdownNow()
 		return

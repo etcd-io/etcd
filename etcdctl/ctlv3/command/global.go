@@ -135,7 +135,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// WARNING logs contain important information like TLS misconfirugation, but spams
 		// too many routine connection disconnects to turn on by default.
 		//
-		// See https://go.etcd.io/etcd/pull/9623 for background
+		// See https://github.com/etcd-io/etcd/pull/9623 for background
 		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 
