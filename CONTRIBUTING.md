@@ -24,7 +24,7 @@ This is a rough outline of what a contributor's workflow looks like:
 - Make commits of logical units.
 - Make sure commit messages are in the proper format (see below).
 - Push changes in a topic branch to a personal fork of the repository.
-- Submit a pull request to coreos/etcd.
+- Submit a pull request to etcd-io/etcd.
 - The PR must receive a LGTM from two maintainers found in the MAINTAINERS file.
 
 Thanks for contributing!
