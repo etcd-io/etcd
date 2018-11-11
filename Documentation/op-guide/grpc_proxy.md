@@ -194,7 +194,7 @@ $ ETCDCTL_API=3 etcdctl --endpoints=localhost:2379 get my-prefix/my-key
 
 ## TLS termination
 
-Terminate TLS from a secure etcd cluster with the grpc proxy by serving an unencrypted local endpoint.
+Terminate TLS from a secure etcd cluster with the gRPC proxy by serving an unencrypted local endpoint.
 
 To try it out, start a single member etcd cluster with client https:
 
@@ -211,7 +211,7 @@ $ ETCDCTL_API=3 etcdctl --endpoints=http://localhost:2379 endpoint status
 $ ETCDCTL_API=3 etcdctl --endpoints=https://localhost:2379 --cert=client.crt --key=client.key --cacert=ca.crt endpoint status
 ```
 
-Next, start a grpc proxy on `localhost:12379` by connecting to the etcd endpoint `https://localhost:2379` using the client certificates:
+Next, start a gRPC proxy on `localhost:12379` by connecting to the etcd endpoint `https://localhost:2379` using the client certificates:
 
 ```sh
 $ etcd grpc-proxy start --endpoints=https://localhost:2379 --listen-addr localhost:12379 --cert client.crt --key client.key --cacert=ca.crt --insecure-skip-tls-verify &
