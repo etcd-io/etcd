@@ -491,7 +491,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	dialEndpoint := cfg.Endpoints[0]
 
-	// Use an provided endpoint target so that for https:// without any tls config given, then
+	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dialWithBalancer(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
 	if err != nil {
