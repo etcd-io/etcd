@@ -894,7 +894,7 @@ func TestAppendPagination(t *testing.T) {
 func TestCommitPagination(t *testing.T) {
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
-	cfg.MaxSizePerMsg = 2048
+	cfg.MaxCommittedSizePerReady = 2048
 	r := newRaft(cfg)
 	n := newNode()
 	go n.run(r)

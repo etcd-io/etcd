@@ -154,6 +154,9 @@ type Config struct {
 	// throughput during normal replication. Note: math.MaxUint64 for unlimited,
 	// 0 for at most one entry per message.
 	MaxSizePerMsg uint64
+	// MaxCommittedSizePerReady limits the size of the committed entries which
+	// can be applied.
+	MaxCommittedSizePerReady uint64
 	// MaxUncommittedEntriesSize limits the aggregate byte size of the
 	// uncommitted entries that may be appended to a leader's log. Once this
 	// limit is exceeded, proposals will begin to return ErrProposalDropped
@@ -222,6 +225,12 @@ func (c *Config) validate() error {
 
 	if c.MaxUncommittedEntriesSize == 0 {
 		c.MaxUncommittedEntriesSize = noLimit
+	}
+
+	// default MaxCommittedSizePerReady to MaxSizePerMsg because they were
+	// previously the same parameter.
+	if c.MaxCommittedSizePerReady == 0 {
+		c.MaxCommittedSizePerReady = c.MaxSizePerMsg
 	}
 
 	if c.MaxInflightMsgs <= 0 {
@@ -316,7 +325,7 @@ func newRaft(c *Config) *raft {
 	if err := c.validate(); err != nil {
 		panic(err.Error())
 	}
-	raftlog := newLogWithSize(c.Storage, c.Logger, c.MaxSizePerMsg)
+	raftlog := newLogWithSize(c.Storage, c.Logger, c.MaxCommittedSizePerReady)
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
