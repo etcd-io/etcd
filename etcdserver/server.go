@@ -768,6 +768,7 @@ func (s *EtcdServer) start() {
 		} else {
 			plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, version.Cluster(s.ClusterVersion().String()))
 		}
+		membership.ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": s.ClusterVersion().String()}).Set(1)
 	} else {
 		if lg != nil {
 			lg.Info(
