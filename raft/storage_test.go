@@ -211,6 +211,11 @@ func TestStorageAppend(t *testing.T) {
 		wentries []pb.Entry
 	}{
 		{
+			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}},
+			nil,
+			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}},
+		},
+		{
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}},
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}},
