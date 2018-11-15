@@ -180,6 +180,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/etcd-io/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_id`](https://github.com/etcd-io/etcd/pull/9998) Prometheus metric.
+- Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/10257) Prometheus metric.
 - Add [`etcd_server_version`](https://github.com/etcd-io/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/etcd-io/etcd/issues/8948).
 - Add [`etcd_server_go_version`](https://github.com/etcd-io/etcd/pull/9957) Prometheus metric.
