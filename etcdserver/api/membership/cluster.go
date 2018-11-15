@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -500,6 +501,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": ver.String()}).Set(1)
 	onSet(c.lg, ver)
 }
 

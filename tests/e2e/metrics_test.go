@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"go.etcd.io/etcd/version"
@@ -43,6 +44,13 @@ func metricsTest(cx ctlCtx) {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
+	}
+	ver := version.Version
+	if strings.HasSuffix(ver, "+git") {
+		ver = strings.Replace(ver, "+git", "", 1)
+	}
+	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, ver), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health":"true"}`, metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
