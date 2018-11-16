@@ -32,9 +32,9 @@ func snapDir(dataDir string) string {
 }
 
 func getBuckets(dbPath string) (buckets []string, err error) {
-	db, derr := bolt.Open(dbPath, 0600, &bolt.Options{})
+	db, derr := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: flockTimeout})
 	if derr != nil {
-		return nil, derr
+		return nil, fmt.Errorf("failed to open bolt DB %v", derr)
 	}
 	defer db.Close()
 
@@ -94,9 +94,9 @@ func leaseDecoder(k, v []byte) {
 }
 
 func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error) {
-	db, derr := bolt.Open(dbPath, 0600, &bolt.Options{})
-	if derr != nil {
-		return derr
+	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: flockTimeout})
+	if err != nil {
+		return fmt.Errorf("failed to open bolt DB %v", err)
 	}
 	defer db.Close()
 
