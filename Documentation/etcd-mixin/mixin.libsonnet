@@ -151,7 +151,7 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
               BY (method) > 0.01
             ||| % $._config,
             'for': '10m',
@@ -165,7 +165,7 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
               BY (method) > 0.05
             ||| % $._config,
             'for': '10m',
