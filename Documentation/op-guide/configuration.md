@@ -310,6 +310,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: none
 + env variable: ETCD_PEER_CERT_ALLOWED_CN
 
+### --cipher-suites
++ Comma-separated list of supported TLS cipher suites between server/client and peers.
++ default: ""
++ env variable: ETCD_CIPHER_SUITES
+
 ## Logging flags
 
 ### --logger
