@@ -750,6 +750,11 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
+	// Followers enter replicate mode when they've been successfully probed
+	// (perhaps after having received a snapshot as a result). The leader is
+	// trivially in this state. Note that r.reset() has initialized this
+	// progress with the last index already.
+	r.prs[r.id].becomeReplicate()
 
 	// Conservatively set the pendingConfIndex to the last index in the
 	// log. There may or may not be a pending config change, but it's

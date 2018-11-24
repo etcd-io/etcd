@@ -267,11 +267,30 @@ func TestProgressResume(t *testing.T) {
 	}
 }
 
+func TestProgressLeader(t *testing.T) {
+	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.prs[2].becomeReplicate()
+
+	// Send proposals to r1. The first 5 entries should be appended to the log.
+	propMsg := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("foo")}}}
+	for i := 0; i < 5; i++ {
+		if pr := r.prs[r.id]; pr.State != ProgressStateReplicate || pr.Match != uint64(i+1) || pr.Next != pr.Match+1 {
+			t.Errorf("unexpected progress %v", pr)
+		}
+		if err := r.Step(propMsg); err != nil {
+			t.Fatalf("proposal resulted in error: %v", err)
+		}
+	}
+}
+
 // TestProgressResumeByHeartbeatResp ensures raft.heartbeat reset progress.paused by heartbeat response.
 func TestProgressResumeByHeartbeatResp(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()
 	r.becomeLeader()
+
 	r.prs[2].Paused = true
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
