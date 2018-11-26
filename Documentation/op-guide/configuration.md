@@ -82,6 +82,16 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_QUOTA_BACKEND_BYTES
 
+### --backend-batch-limit
++ BackendBatchLimit is the maximum operations before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_LIMIT
+
+### --backend-batch-interval
++ BackendBatchInterval is the maximum time before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_INTERVAL
+
 ### --max-txn-ops
 + Maximum number of operations permitted in a transaction.
 + default: 128

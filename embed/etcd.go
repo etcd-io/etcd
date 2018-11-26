@@ -43,7 +43,7 @@ import (
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -181,6 +181,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionRetention:    autoCompactionRetention,
 		AutoCompactionMode:         cfg.AutoCompactionMode,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
+		BackendBatchLimit:          cfg.BackendBatchLimit,
+		BackendBatchInterval:       cfg.BackendBatchInterval,
 		MaxTxnOps:                  cfg.MaxTxnOps,
 		MaxRequestBytes:            cfg.MaxRequestBytes,
 		StrictReconfigCheck:        cfg.StrictReconfigCheck,
