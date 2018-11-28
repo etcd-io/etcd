@@ -306,6 +306,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - `etcd --logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
   - `etcd --logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/etcd-io/etcd/pull/9579) and outputs to `os.Stderr`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - `etcd --logger=zap --log-outputs=/dev/null` will discard all server logs.
+- Add [`etcd --backend-batch-limit`](https://github.com/etcd-io/etcd/pull/10283) flag.
+- Add [`etcd --backend-batch-interval`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/etcd-io/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
@@ -370,6 +372,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
+- Add [`embed.Config.BackendBatchLimit`](https://github.com/etcd-io/etcd/pull/10283) field.
+- Add [`embed.Config.BackendBatchInterval`](https://github.com/etcd-io/etcd/pull/10283) field.
 
 ### Package `integration`
 
