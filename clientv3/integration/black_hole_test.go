@@ -39,15 +39,16 @@ func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
-		Size:                  2,
-		GRPCKeepAliveInterval: 2 * time.Second,
-		GRPCKeepAliveTimeout:  1 * time.Second,
+		Size:                  1,
+		GRPCKeepAliveInterval: 1 * time.Second,
+		GRPCKeepAliveTimeout:  500 * time.Millisecond,
 	})
 	defer clus.Terminate(t)
 
 	eps := []string{clus.Members[0].GRPCAddr()}
 	ccfg := clientv3.Config{
-		Endpoints: []string{eps[0]},
+		Endpoints:   []string{eps[0]},
+		DialTimeout: 12 * time.Second,
 	}
 	cli, err := clientv3.New(ccfg)
 	if err != nil {
@@ -58,17 +59,17 @@ func TestServerGRPCKeepAliveTimeout(t *testing.T) {
 	// give keepalive some time
 	time.Sleep(4 * time.Second)
 
-	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+	if _, err = cli.Put(context.TODO(), "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: keepalive sometimes doesn't work on first attempt.
 	for i := 0; i < 5; i++ {
-		clus.Members[1].Blackhole()
+		clus.Members[0].Blackhole()
 		time.Sleep(10 * time.Second)
 		// remove blackhole but by now the keepalive ping should have triggered server to
 		// close server-to-client connection.
-		clus.Members[1].Unblackhole()
-		_, err = clus.Client(1).Put(context.TODO(), "foo1", "bar1")
+		clus.Members[0].Unblackhole()
+		_, err = cli.Put(context.TODO(), "foo1", "bar1")
 		if err != nil {
 			ev, ok := status.FromError(err)
 			if !ok {
