@@ -5,6 +5,13 @@ Client Architecture
 ###################
 
 
+:Authors:
+    Gyuho Lee (github.com/gyuho, *Amazon.com*),
+    Joe Betz (github.com/jpbetz, *Google Inc.*)
+
+:Version: August 28, 2018
+
+
 Introduction
 ============
 
