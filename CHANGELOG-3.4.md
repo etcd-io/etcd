@@ -425,6 +425,10 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add [`progress` command to `etcdctl watch --interactive`](https://github.com/etcd-io/etcd/pull/9869).
   - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
   - Think of it as `WithProgressNotify` that can be triggered manually.
+- Add [timeout](https://github.com/etcd-io/etcd/pull/10301) to `etcdctl snapshot
+  save`.
+  - User can specify timeout of `etcdctl snapshot save` command using flag
+    `--command-timeout`.
 
 ### gRPC proxy
 
