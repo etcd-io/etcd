@@ -102,8 +102,15 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	sp := snapshot.NewV3(lg)
 	cfg := mustClientCfgFromCmd(cmd)
 
+	// if user does not specify "--command-timeout" flag, there will be no timeout for snapshot save command
+	ctx, cancel := context.WithCancel(context.Background())
+	if isCommandTimeoutFlagSet(cmd) {
+		ctx, cancel = commandCtx(cmd)
+	}
+	defer cancel()
+
 	path := args[0]
-	if err := sp.Save(context.TODO(), *cfg, path); err != nil {
+	if err := sp.Save(ctx, *cfg, path); err != nil {
 		ExitWithError(ExitInterrupted, err)
 	}
 	fmt.Printf("Snapshot saved at %s\n", path)

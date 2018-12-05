@@ -82,6 +82,14 @@ func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), timeOut)
 }
 
+func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
+	commandTimeoutFlag := cmd.Flags().Lookup("command-timeout")
+	if commandTimeoutFlag == nil {
+		panic("expect command-timeout flag to exist")
+	}
+	return commandTimeoutFlag.Changed
+}
+
 // get the process_resident_memory_bytes from <server:2379>/metrics
 func endpointMemoryMetrics(host string) float64 {
 	residentMemoryKey := "process_resident_memory_bytes"
