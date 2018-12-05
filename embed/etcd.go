@@ -506,7 +506,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 				}
 			}
 		}
-		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
+		peers[i] = new(peerListener)
 		peers[i].Listener, err = rafthttp.NewListener(u, &cfg.PeerTLSInfo)
 		if err != nil {
 			return nil, err
