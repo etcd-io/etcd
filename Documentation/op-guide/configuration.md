@@ -339,6 +339,7 @@ The security flags help to [build a secure etcd cluster][security].
 + Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
 + default: default
 + env variable: ETCD_LOG_OUTPUTS
++ 'default' use 'stderr' config for v3.4 during zap logger migraion
 
 ### --debug
 + Drop the default log level to DEBUG for all subpackages.

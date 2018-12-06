@@ -152,7 +152,8 @@ func (cfg *Config) setupLogging() error {
 		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
-				return errors.New("'--log-outputs=default' is not supported for v3.4 during zap logger migraion (use 'journal', 'stderr', 'stdout', etc.)")
+				outputPaths[StdErrLogOutput] = struct{}{}
+				errOutputPaths[StdErrLogOutput] = struct{}{}
 
 			case JournalLogOutput:
 				isJournal = true
