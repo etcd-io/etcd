@@ -17,11 +17,9 @@ package concurrency_test
 import (
 	"context"
 	"log"
-	"testing"
-
-	"time"
-
 	"strings"
+	"testing"
+	"time"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
@@ -36,7 +34,8 @@ func TestResumeElection(t *testing.T) {
 	}
 	defer cli.Close()
 
-	s, err := concurrency.NewSession(cli)
+	var s *concurrency.Session
+	s, err = concurrency.NewSession(cli)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,17 +43,18 @@ func TestResumeElection(t *testing.T) {
 
 	e := concurrency.NewElection(s, prefix)
 
-	// Entire test should never take more than 10 seconds
+	// entire test should never take more than 10 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	// Become leader
-	if err := e.Campaign(ctx, "candidate1"); err != nil {
+	// become leader
+	if err = e.Campaign(ctx, "candidate1"); err != nil {
 		t.Fatalf("Campaign() returned non nil err: %s", err)
 	}
 
-	// Get the leadership details of the current election
-	leader, err := e.Leader(ctx)
+	// get the leadership details of the current election
+	var leader *clientv3.GetResponse
+	leader, err = e.Leader(ctx)
 	if err != nil {
 		t.Fatalf("Leader() returned non nil err: %s", err)
 	}
@@ -83,34 +83,34 @@ func TestResumeElection(t *testing.T) {
 		}
 	}()
 
-	// Wait until observe goroutine is running
+	// wait until observe goroutine is running
 	<-respChan
 
-	// Put some random data to generate a change event, this put should be
+	// put some random data to generate a change event, this put should be
 	// ignored by Observe() because it is not under the election prefix.
 	_, err = cli.Put(ctx, "foo", "bar")
 	if err != nil {
 		t.Fatalf("Put('foo') returned non nil err: %s", err)
 	}
 
-	// Resign as leader
+	// resign as leader
 	if err := e.Resign(ctx); err != nil {
 		t.Fatalf("Resign() returned non nil err: %s", err)
 	}
 
-	// Elect a different candidate
+	// elect a different candidate
 	if err := e.Campaign(ctx, "candidate2"); err != nil {
 		t.Fatalf("Campaign() returned non nil err: %s", err)
 	}
 
-	// Wait for observed leader change
+	// wait for observed leader change
 	resp := <-respChan
 
 	kv := resp.Kvs[0]
 	if !strings.HasPrefix(string(kv.Key), prefix) {
-		t.Errorf("expected observed election to have prefix '%s' got '%s'", prefix, string(kv.Key))
+		t.Errorf("expected observed election to have prefix '%s' got %q", prefix, string(kv.Key))
 	}
 	if string(kv.Value) != "candidate2" {
-		t.Errorf("expected new leader to be 'candidate1' got '%s'", string(kv.Value))
+		t.Errorf("expected new leader to be 'candidate1' got %q", string(kv.Value))
 	}
 }
