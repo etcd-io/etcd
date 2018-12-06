@@ -338,7 +338,7 @@ The security flags help to [build a secure etcd cluster][security].
 ### --log-outputs
 + Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
 + default: default
-+ env variable: ETCD_LOG_OUTPUT
++ env variable: ETCD_LOG_OUTPUTS
 
 ### --debug
 + Drop the default log level to DEBUG for all subpackages.
