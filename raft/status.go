@@ -32,29 +32,35 @@ type Status struct {
 	LeadTransferee uint64
 }
 
-// getStatus gets a copy of the current raft status.
-func getStatus(r *raft) Status {
+func getProgressCopy(r *raft) map[uint64]Progress {
+	prs := make(map[uint64]Progress)
+	for id, p := range r.prs {
+		prs[id] = *p
+	}
+
+	for id, p := range r.learnerPrs {
+		prs[id] = *p
+	}
+	return prs
+}
+
+func getStatusWithoutProgress(r *raft) Status {
 	s := Status{
 		ID:             r.id,
 		LeadTransferee: r.leadTransferee,
 	}
-
 	s.HardState = r.hardState()
 	s.SoftState = *r.softState()
-
 	s.Applied = r.raftLog.applied
+	return s
+}
 
+// getStatus gets a copy of the current raft status.
+func getStatus(r *raft) Status {
+	s := getStatusWithoutProgress(r)
 	if s.RaftState == StateLeader {
-		s.Progress = make(map[uint64]Progress)
-		for id, p := range r.prs {
-			s.Progress[id] = *p
-		}
-
-		for id, p := range r.learnerPrs {
-			s.Progress[id] = *p
-		}
+		s.Progress = getProgressCopy(r)
 	}
-
 	return s
 }
 

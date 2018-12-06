@@ -236,6 +236,39 @@ func (rn *RawNode) Status() *Status {
 	return &status
 }
 
+// StatusWithoutProgress returns a Status without populating the Progress field
+// (and returns the Status as a value to avoid forcing it onto the heap). This
+// is more performant if the Progress is not required. See WithProgress for an
+// allocation-free way to introspect the Progress.
+func (rn *RawNode) StatusWithoutProgress() Status {
+	return getStatusWithoutProgress(rn.raft)
+}
+
+// ProgressType indicates the type of replica a Progress corresponds to.
+type ProgressType byte
+
+const (
+	// ProgressTypePeer accompanies a Progress for a regular peer replica.
+	ProgressTypePeer ProgressType = iota
+	// ProgressTypeLearner accompanies a Progress for a learner replica.
+	ProgressTypeLearner
+)
+
+// WithProgress is a helper to introspect the Progress for this node and its
+// peers.
+func (rn *RawNode) WithProgress(visitor func(id uint64, typ ProgressType, pr Progress)) {
+	for id, pr := range rn.raft.prs {
+		pr := *pr
+		pr.ins = nil
+		visitor(id, ProgressTypePeer, pr)
+	}
+	for id, pr := range rn.raft.learnerPrs {
+		pr := *pr
+		pr.ins = nil
+		visitor(id, ProgressTypeLearner, pr)
+	}
+}
+
 // ReportUnreachable reports the given node is not reachable for the last send.
 func (rn *RawNode) ReportUnreachable(id uint64) {
 	_ = rn.raft.Step(pb.Message{Type: pb.MsgUnreachable, From: id})
