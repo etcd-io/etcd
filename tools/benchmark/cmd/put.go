@@ -145,7 +145,7 @@ func compactKV(clients []*v3.Client) {
 		panic(err)
 	}
 	revToCompact := max(0, resp.Header.Revision-compactIndexDelta)
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	_, err = clients[0].KV.Compact(ctx, revToCompact)
 	cancel()
 	if err != nil {
