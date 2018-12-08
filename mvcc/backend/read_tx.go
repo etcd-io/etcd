@@ -19,7 +19,7 @@ import (
 	"math"
 	"sync"
 
-	bolt "go.etcd.io/bbolt"
+	"github.com/dgraph-io/badger"
 )
 
 // safeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
@@ -41,9 +41,8 @@ type readTx struct {
 	buf txReadBuffer
 
 	// txmu protects accesses to buckets and tx on Range requests.
-	txmu    sync.RWMutex
-	tx      *bolt.Tx
-	buckets map[string]*bolt.Bucket
+	txmu sync.RWMutex
+	tx   *badger.Txn
 }
 
 func (rt *readTx) Lock()   { rt.mu.RLock() }
@@ -65,27 +64,7 @@ func (rt *readTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 		return keys, vals
 	}
 
-	// find/cache bucket
-	bn := string(bucketName)
-	rt.txmu.RLock()
-	bucket, ok := rt.buckets[bn]
-	rt.txmu.RUnlock()
-	if !ok {
-		rt.txmu.Lock()
-		bucket = rt.tx.Bucket(bucketName)
-		rt.buckets[bn] = bucket
-		rt.txmu.Unlock()
-	}
-
-	// ignore missing bucket since may have been created in this batch
-	if bucket == nil {
-		return keys, vals
-	}
-	rt.txmu.Lock()
-	c := bucket.Cursor()
-	rt.txmu.Unlock()
-
-	k2, v2 := unsafeRange(c, key, endKey, limit-int64(len(keys)))
+	k2, v2 := unsafeRange(rt.tx, bucketName, key, endKey, limit-int64(len(keys)))
 	return append(k2, keys...), append(v2, vals...)
 }
 
@@ -115,6 +94,5 @@ func (rt *readTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 
 func (rt *readTx) reset() {
 	rt.buf.reset()
-	rt.buckets = make(map[string]*bolt.Bucket)
 	rt.tx = nil
 }

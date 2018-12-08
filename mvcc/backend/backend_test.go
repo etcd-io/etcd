@@ -21,8 +21,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	bolt "go.etcd.io/bbolt"
 )
 
 func TestBackendClose(t *testing.T) {
@@ -103,77 +101,6 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 		}
 		time.Sleep(time.Duration(i*100) * time.Millisecond)
 	}
-
-	// check whether put happens via db view
-	b.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("test"))
-		if bucket == nil {
-			t.Errorf("bucket test does not exit")
-			return nil
-		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
-		return nil
-	})
-}
-
-func TestBackendDefrag(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend()
-	defer cleanup(b, tmpPath)
-
-	tx := b.BatchTx()
-	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	for i := 0; i < defragLimit+100; i++ {
-		tx.UnsafePut([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
-	}
-	tx.Unlock()
-	b.ForceCommit()
-
-	// remove some keys to ensure the disk space will be reclaimed after defrag
-	tx = b.BatchTx()
-	tx.Lock()
-	for i := 0; i < 50; i++ {
-		tx.UnsafeDelete([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)))
-	}
-	tx.Unlock()
-	b.ForceCommit()
-
-	size := b.Size()
-
-	// shrink and check hash
-	oh, err := b.Hash(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = b.Defrag()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	nh, err := b.Hash(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if oh != nh {
-		t.Errorf("hash = %v, want %v", nh, oh)
-	}
-
-	nsize := b.Size()
-	if nsize >= size {
-		t.Errorf("new size = %v, want < %d", nsize, size)
-	}
-
-	// try put more keys after shrink.
-	tx = b.BatchTx()
-	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	tx.UnsafePut([]byte("test"), []byte("more"), []byte("bar"))
-	tx.Unlock()
-	b.ForceCommit()
 }
 
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.

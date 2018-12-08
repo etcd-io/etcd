@@ -1,13 +1,16 @@
 module go.etcd.io/etcd
 
 require (
+	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
 	github.com/coreos/pkg v0.0.0-20160727233714-3ac0863d7acf
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgraph-io/badger v1.5.4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102 // indirect
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.0

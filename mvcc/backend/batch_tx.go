@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
+	"github.com/dgraph-io/badger"
 	"go.uber.org/zap"
 )
 
@@ -39,27 +39,13 @@ type BatchTx interface {
 
 type batchTx struct {
 	sync.Mutex
-	tx      *bolt.Tx
+	tx      *badger.Txn
 	backend *backend
 
 	pending int
 }
 
-func (t *batchTx) UnsafeCreateBucket(name []byte) {
-	_, err := t.tx.CreateBucket(name)
-	if err != nil && err != bolt.ErrBucketExists {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to create a bucket",
-				zap.String("bucket-name", string(name)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot create bucket %s (%v)", name, err)
-		}
-	}
-	t.pending++
-}
+func (t *batchTx) UnsafeCreateBucket(name []byte) {}
 
 // UnsafePut must be called holding the lock on the tx.
 func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
@@ -72,56 +58,27 @@ func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
 }
 
 func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	if seq {
-		// it is useful to increase fill percent when the workloads are mostly append-only.
-		// this can delay the page split and reduce space usage.
-		bucket.FillPercent = 0.9
-	}
-	if err := bucket.Put(key, value); err != nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to write to a bucket",
-				zap.String("bucket-name", string(bucketName)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot put key into bucket (%v)", err)
-		}
+	err := t.tx.Set(append(bucketName, key...), value)
+	if err != nil {
+		panic(err)
 	}
 	t.pending++
 }
 
 // UnsafeRange must be called holding the lock on the tx.
-func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	return unsafeRange(bucket.Cursor(), key, endKey, limit)
+func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
+	return unsafeRange(t.tx, bucketName, key, endKey, limit)
 }
 
-func unsafeRange(c *bolt.Cursor, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
+func unsafeRange(tx *badger.Txn, bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	if limit <= 0 {
 		limit = math.MaxInt64
 	}
+	key = append(bucketName, key...)
+	if len(endKey) != 0 {
+		endKey = append(bucketName, endKey...)
+	}
+
 	var isMatch func(b []byte) bool
 	if len(endKey) > 0 {
 		isMatch = func(b []byte) bool { return bytes.Compare(b, endKey) < 0 }
@@ -130,40 +87,34 @@ func unsafeRange(c *bolt.Cursor, key, endKey []byte, limit int64) (keys [][]byte
 		limit = 1
 	}
 
-	for ck, cv := c.Seek(key); ck != nil && isMatch(ck); ck, cv = c.Next() {
-		vs = append(vs, cv)
-		keys = append(keys, ck)
+	opt := badger.DefaultIteratorOptions
+
+	it := tx.NewIterator(opt)
+	defer it.Close()
+	for it.Seek(key); it.Valid(); it.Next() {
+		if !isMatch(it.Item().Key()) {
+			break
+		}
+		keys = append(keys, it.Item().KeyCopy(nil)[len(bucketName):])
+		v, err := it.Item().ValueCopy(nil)
+		if err != nil {
+			panic(err)
+		}
+		vs = append(vs, v)
+
 		if limit == int64(len(keys)) {
 			break
 		}
 	}
+
 	return keys, vs
 }
 
 // UnsafeDelete must be called holding the lock on the tx.
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	err := bucket.Delete(key)
+	err := t.tx.Delete(append(bucketName, key...))
 	if err != nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to delete a key",
-				zap.String("bucket-name", string(bucketName)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot delete key from bucket (%v)", err)
-		}
+		panic(err)
 	}
 	t.pending++
 }
@@ -173,9 +124,18 @@ func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 	return unsafeForEach(t.tx, bucketName, visitor)
 }
 
-func unsafeForEach(tx *bolt.Tx, bucket []byte, visitor func(k, v []byte) error) error {
-	if b := tx.Bucket(bucket); b != nil {
-		return b.ForEach(visitor)
+func unsafeForEach(tx *badger.Txn, bucketName []byte, visitor func(k, v []byte) error) error {
+	it := tx.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Seek(bucketName); it.ValidForPrefix(bucketName); it.Next() {
+		item := it.Item()
+		k := item.Key()
+		v, err := item.Value()
+		if err != nil {
+			panic(err)
+		}
+		visitor(k[len(bucketName):], v)
 	}
 	return nil
 }
@@ -217,12 +177,9 @@ func (t *batchTx) commit(stop bool) {
 		start := time.Now()
 
 		// gofail: var beforeCommit struct{}
-		err := t.tx.Commit()
+		err := t.tx.Commit(nil)
 		// gofail: var afterCommit struct{}
 
-		rebalanceSec.Observe(t.tx.Stats().RebalanceTime.Seconds())
-		spillSec.Observe(t.tx.Stats().SpillTime.Seconds())
-		writeSec.Observe(t.tx.Stats().WriteTime.Seconds())
 		commitSec.Observe(time.Since(start).Seconds())
 		atomic.AddInt64(&t.backend.commits, 1)
 
@@ -290,13 +247,7 @@ func (t *batchTxBuffered) commit(stop bool) {
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	if t.backend.readTx.tx != nil {
-		if err := t.backend.readTx.tx.Rollback(); err != nil {
-			if t.backend.lg != nil {
-				t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
-			} else {
-				plog.Fatalf("cannot rollback tx (%s)", err)
-			}
-		}
+		t.backend.readTx.tx.Discard()
 		t.backend.readTx.reset()
 	}
 
