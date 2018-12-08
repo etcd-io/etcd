@@ -16,8 +16,10 @@ package cmd
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 
@@ -26,7 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 // rangeCmd represents the range command
@@ -38,9 +40,12 @@ var rangeCmd = &cobra.Command{
 }
 
 var (
-	rangeRate        int
-	rangeTotal       int
-	rangeConsistency string
+	rangeRate         int
+	rangeTotal        int
+	rangeConsistency  string
+	rangeLimit        int
+	rangeKeySpaceSize int
+	rangeKeySize      int
 )
 
 func init() {
@@ -48,20 +53,14 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
+
+	rangeCmd.Flags().IntVar(&rangeKeySize, "key-size", 8, "Key size of put request")
+	rangeCmd.Flags().IntVar(&rangeKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	rangeCmd.Flags().IntVar(&rangeLimit, "limit", 1, "Limit number of keys")
+
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
-	if len(args) == 0 || len(args) > 2 {
-		fmt.Fprintln(os.Stderr, cmd.Usage())
-		os.Exit(1)
-	}
-
-	k := args[0]
-	end := ""
-	if len(args) == 2 {
-		end = args[1]
-	}
-
 	if rangeConsistency == "l" {
 		fmt.Println("bench with linearizable range")
 	} else if rangeConsistency == "s" {
@@ -101,11 +100,19 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
-			opts := []v3.OpOption{v3.WithRange(end)}
+			sk := rand.Int63n(int64(rangeKeySpaceSize))
+			ek := sk + rand.Int63n(int64(rangeLimit))
+
+			skb, ekb := make([]byte, keySize), make([]byte, keySize)
+
+			binary.BigEndian.PutUint64(skb, uint64(sk))
+			binary.BigEndian.PutUint64(ekb, uint64(ek))
+
+			opts := []v3.OpOption{v3.WithRange(string(ekb))}
 			if rangeConsistency == "s" {
 				opts = append(opts, v3.WithSerializable())
 			}
-			op := v3.OpGet(k, opts...)
+			op := v3.OpGet(string(skb), opts...)
 			requests <- op
 		}
 		close(requests)

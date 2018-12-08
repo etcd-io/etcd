@@ -132,14 +132,25 @@ func unsafeRange(tx *badger.Txn, bucketName, key, endKey []byte, limit int64) (k
 		limit = 1
 	}
 
-	opt := badger.DefaultIteratorOptions
 	if len(endKey) == 0 {
-		limit = 1
+		item, err := tx.Get(key)
+		if err == badger.ErrKeyNotFound {
+			return nil, nil
+		}
+		if err != nil {
+			panic(err)
+		}
+		v, err := item.ValueCopy(nil)
+		if err != nil {
+			panic(err)
+		}
+		return [][]byte{item.KeyCopy(nil)}, [][]byte{v}
 	}
+
+	opt := badger.DefaultIteratorOptions
 	if int(limit) > 0 && int(limit) < opt.PrefetchSize {
 		opt.PrefetchSize = int(limit)
 	}
-
 	it := tx.NewIterator(opt)
 	defer it.Close()
 	for it.Seek(key); it.Valid(); it.Next() {

@@ -27,10 +27,10 @@ import (
 	v3 "go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/pkg/report"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 // putCmd represents the put command
@@ -108,9 +108,9 @@ func putFunc(cmd *cobra.Command, args []string) {
 	go func() {
 		for i := 0; i < putTotal; i++ {
 			if seqKeys {
-				binary.PutVarint(k, int64(i%keySpaceSize))
+				binary.BigEndian.PutUint64(k, uint64(i%keySpaceSize))
 			} else {
-				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
+				binary.BigEndian.PutUint64(k, uint64(rand.Intn(keySpaceSize)))
 			}
 			requests <- v3.OpPut(string(k), v)
 		}
