@@ -326,7 +326,7 @@ type Iterator struct {
 // Using prefetch is highly recommended if you're doing a long running iteration.
 // Avoid long running iterations in update transactions.
 func (txn *Txn) NewIterator(opt IteratorOptions) *Iterator {
-	if atomic.AddInt32(&txn.numIterators, 1) > 1 {
+	if atomic.AddInt32(&txn.numIterators, 1) > 1 && txn.update {
 		panic("Only one iterator can be active at one time.")
 	}
 
