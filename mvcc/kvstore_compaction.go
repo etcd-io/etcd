@@ -30,7 +30,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
-	batchsize := int64(10000)
+	batchsize := int64(250)
 	last := make([]byte, 8+1+8)
 	for {
 		var rev revision
@@ -39,7 +39,8 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		tx := s.b.BatchTx()
 		tx.Lock()
 
-		keys, _ := tx.UnsafeRange(keyBucketName, last, end, batchsize)
+		keys := tx.UnsafeRangeKeys(keyBucketName, last, end, batchsize)
+
 		for _, key := range keys {
 			rev = bytesToRev(key)
 			if _, ok := keep[rev]; !ok {
@@ -71,7 +72,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(3 * time.Millisecond):
 		case <-s.stopc:
 			return false
 		}

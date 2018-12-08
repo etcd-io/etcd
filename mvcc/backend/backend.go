@@ -29,8 +29,8 @@ import (
 )
 
 var (
-	defaultBatchLimit    = 10000
-	defaultBatchInterval = 100 * time.Millisecond
+	defaultBatchLimit    = 2000
+	defaultBatchInterval = 30 * time.Millisecond
 
 	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc/backend")
 
@@ -156,6 +156,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	}
 	b.batchTx = newBatchTxBuffered(b)
 	go b.run()
+	go b.runGC()
 	return b
 }
 
@@ -164,6 +165,18 @@ func newBackend(bcfg BackendConfig) *backend {
 // The write result is isolated with other txs until the current one get committed.
 func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
+}
+
+func (b *backend) runGC() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+	again:
+		err := b.db.RunValueLogGC(0.5)
+		if err == nil {
+			goto again
+		}
+	}
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }

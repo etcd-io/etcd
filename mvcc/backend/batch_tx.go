@@ -31,6 +31,9 @@ type BatchTx interface {
 	UnsafePut(bucketName []byte, key []byte, value []byte)
 	UnsafeSeqPut(bucketName []byte, key []byte, value []byte)
 	UnsafeDelete(bucketName []byte, key []byte)
+
+	UnsafeRangeKeys(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte)
+
 	// Commit commits a previous tx and begins a new writable one.
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
@@ -68,6 +71,43 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 // UnsafeRange must be called holding the lock on the tx.
 func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	return unsafeRange(t.tx, bucketName, key, endKey, limit)
+}
+
+func (t *batchTx) UnsafeRangeKeys(bucketName, key, endKey []byte, limit int64) (keys [][]byte) {
+	if limit <= 0 {
+		limit = math.MaxInt64
+	}
+	key = append(bucketName, key...)
+	if len(endKey) != 0 {
+		endKey = append(bucketName, endKey...)
+	}
+
+	var isMatch func(b []byte) bool
+	if len(endKey) > 0 {
+		isMatch = func(b []byte) bool { return bytes.Compare(b, endKey) < 0 }
+	} else {
+		isMatch = func(b []byte) bool { return bytes.Equal(b, key) }
+		limit = 1
+	}
+
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchValues = false
+	opt.PrefetchSize = 250
+
+	it := t.tx.NewIterator(opt)
+	defer it.Close()
+	for it.Seek(key); it.Valid(); it.Next() {
+		if !isMatch(it.Item().Key()) {
+			break
+		}
+		keys = append(keys, it.Item().KeyCopy(nil)[len(bucketName):])
+
+		if limit == int64(len(keys)) {
+			break
+		}
+	}
+
+	return keys
 }
 
 func unsafeRange(tx *badger.Txn, bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
