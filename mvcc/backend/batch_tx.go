@@ -92,7 +92,12 @@ func (t *batchTx) UnsafeRangeKeys(bucketName, key, endKey []byte, limit int64) (
 
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = false
-	opt.PrefetchSize = 250
+	if len(endKey) == 0 {
+		limit = 1
+	}
+	if int(limit) > 0 && int(limit) < opt.PrefetchSize {
+		opt.PrefetchSize = int(limit)
+	}
 
 	it := t.tx.NewIterator(opt)
 	defer it.Close()
@@ -128,6 +133,12 @@ func unsafeRange(tx *badger.Txn, bucketName, key, endKey []byte, limit int64) (k
 	}
 
 	opt := badger.DefaultIteratorOptions
+	if len(endKey) == 0 {
+		limit = 1
+	}
+	if int(limit) > 0 && int(limit) < opt.PrefetchSize {
+		opt.PrefetchSize = int(limit)
+	}
 
 	it := tx.NewIterator(opt)
 	defer it.Close()
