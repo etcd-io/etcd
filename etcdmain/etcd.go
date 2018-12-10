@@ -60,8 +60,8 @@ func startEtcdOrProxyV2() {
 	defaultInitialCluster := cfg.ec.InitialCluster
 
 	err := cfg.parse(os.Args[1:])
+	lg := cfg.ec.GetLogger()
 	if err != nil {
-		lg := cfg.ec.GetLogger()
 		if lg != nil {
 			lg.Warn("failed to verify flags", zap.Error(err))
 		} else {
@@ -77,8 +77,6 @@ func startEtcdOrProxyV2() {
 		}
 		os.Exit(1)
 	}
-
-	lg := cfg.ec.GetLogger()
 
 	if lg == nil {
 		// TODO: remove in 3.5
