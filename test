@@ -616,6 +616,7 @@ function commit_title_pass {
 function fmt_pass {
 	toggle_failpoints disable
 
+    # TODO: add "unparam"
 	for p in shellcheck \
 			markdown_you \
 			markdown_marker \
@@ -625,7 +626,6 @@ function fmt_pass {
 			govet_shadow \
 			gosimple \
 			unused \
-			unparam \
 			staticcheck \
 			revive \
 			unconvert \

@@ -120,7 +120,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
-	tearDown := func(t *testing.T) {
+	tearDown := func(_ *testing.T) {
 		b.Close()
 		os.Remove(tPath)
 		as.Close()
