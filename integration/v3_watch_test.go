@@ -590,6 +590,8 @@ func TestV3WatchEmptyKey(t *testing.T) {
 }
 
 func TestV3WatchMultipleWatchersSynced(t *testing.T) {
+	t.Skip()
+
 	defer testutil.AfterTest(t)
 	testV3WatchMultipleWatchers(t, 0)
 }
