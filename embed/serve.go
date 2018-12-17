@@ -276,7 +276,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 			gwmux,
 			wsproxy.WithRequestMutator(
 				// Default to the POST method for streams
-				func(incoming *http.Request, outgoing *http.Request) *http.Request {
+				func(_ *http.Request, outgoing *http.Request) *http.Request {
 					outgoing.Method = "POST"
 					return outgoing
 				},
