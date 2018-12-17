@@ -155,11 +155,11 @@ func (f *fifo) run() {
 			}
 		} else {
 			todo(f.ctx)
-			f.finishCond.L.Lock()
+			f.mu.Lock()
 			f.finished++
 			f.pendings = f.pendings[1:]
 			f.finishCond.Broadcast()
-			f.finishCond.L.Unlock()
+			f.mu.Unlock()
 		}
 	}
 }
