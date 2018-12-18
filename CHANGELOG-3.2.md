@@ -9,6 +9,22 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 <hr>
 
 
+## [v3.2.26](https://github.com/etcd-io/etcd/releases/tag/v3.2.26) (2019-TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.25...v3.2.26) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
+
+### gRPC Proxy
+
+- Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
+
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
+
+
+<hr>
+
+
 ## [v3.2.25](https://github.com/etcd-io/etcd/releases/tag/v3.2.25) (2018-10-10)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.24...v3.2.25) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
