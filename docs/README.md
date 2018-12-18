@@ -1,7 +1,9 @@
 
+**We are moving to https://etcd.netlify.com with help from CNCF.**
+
 #### etcd Documentation
 
-This is official etcd documentation.
+This is experimental etcd documentation.
 
 Please visit https://etcd.readthedocs.io/en/latest for latest builds.
 
