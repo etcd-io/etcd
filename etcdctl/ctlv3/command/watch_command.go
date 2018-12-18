@@ -101,6 +101,10 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 		l = strings.TrimSuffix(l, "\n")
 
 		args := argify(l)
+		if len(args) < 1 {
+			fmt.Fprintf(os.Stderr, "Invalid command: %s (watch and progress supported)\n", l)
+			continue
+		}
 		switch args[0] {
 		case "watch":
 			if len(args) < 2 && envKey == "" {
