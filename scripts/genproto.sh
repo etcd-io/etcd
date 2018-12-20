@@ -10,8 +10,8 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
 	exit 255
 fi
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.6.0" ]]; then
-	echo "could not find protoc 3.6.0, is it installed + in PATH?"
+if [[ $(protoc --version | cut -f2 -d' ') != "3.6.1" ]]; then
+	echo "could not find protoc 3.6.1, is it installed + in PATH?"
 	exit 255
 fi
 
@@ -19,8 +19,8 @@ fi
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
 
 # exact version of packages to build
-GOGO_PROTO_SHA="1adfc126b41513cc696b209667c8656ea7aac67c"
-GRPC_GATEWAY_SHA="92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
+GOGO_PROTO_SHA="4cbf7e384e768b4e01799441fdf2a706a5635ae7"
+GRPC_GATEWAY_SHA="01c07cdabb480b6d67b5c5586ae3b66e806de513"
 SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
 
 # disable go mod
