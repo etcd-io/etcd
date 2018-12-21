@@ -20,7 +20,7 @@ require (
 	github.com/gorilla/websocket v0.0.0-20170926233335-4201258b820c // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/grpc-ecosystem/grpc-gateway v1.4.1
+	github.com/grpc-ecosystem/grpc-gateway v1.6.3
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/kr/pty v1.0.0
