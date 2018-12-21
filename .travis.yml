@@ -14,6 +14,8 @@ notifications:
   on_failure: never
 
 env:
+  global:
+  - GO111MODULE=on
   matrix:
   - TARGET=linux-amd64-fmt
   - TARGET=linux-amd64-integration-1-cpu
