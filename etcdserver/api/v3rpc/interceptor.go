@@ -81,7 +81,7 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 	if ok {
 		remote = peerInfo.Addr.String()
 	}
-	var responseType string = info.FullMethod
+	responseType := info.FullMethod
 	var reqCount, respCount int64
 	var reqSize, respSize int
 	var reqContent string
