@@ -43,21 +43,25 @@ An initial agenda will be posted to the [shared Google docs][shared-meeting-note
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
 
-Please download and import the following iCalendar (.ics) files to your calendar system.
+Please download and import the following iCalendar (.ics) files to calendar system.
+
 Weekly: https://zoom.us/meeting/916003437/ics?icsToken=e4a085b6837f5802d9aef0d2ded4777d0faf1a71e39279c4a6d8b577993d879c
 
-Join Zoom Meeting
-https://zoom.us/j/916003437
+Join Zoom Meeting https://zoom.us/j/916003437
 
+```
 One tap mobile
 +14086380986,,916003437# US (San Jose)
 +16465588665,,916003437# US (New York)
 
-Dial by your location
+Dial by location
         +1 408 638 0986 US (San Jose)
         +1 646 558 8665 US (New York)
+
 Meeting ID: 916 003 437
-Find your local number: https://zoom.us/u/actX55uPfS
+```
+
+To Find local number: https://zoom.us/u/actX55uPfS
 
 ## Getting started
 
