@@ -63,8 +63,7 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 			continue
 		}
 		if !txw.seq && wb.used > 1 {
-			// assume no duplicate keys
-			sort.Sort(wb)
+			sort.Stable(wb)
 		}
 		rb.merge(wb)
 	}
