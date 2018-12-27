@@ -36,6 +36,14 @@ type Storage interface {
 	SaveSnap(snap raftpb.Snapshot) error
 	// Close closes the Storage and performs finalization.
 	Close() error
+
+	// SaveSnapshot function saves only snapshot to the underlying stable storage.
+	SaveSnapshot(snap raftpb.Snapshot) error
+	// SaveAll function saves ents, snapshot and state to the underlying stable storage.
+	// SaveAll MUST block until st and ents are on stable storage.
+	SaveAll(st raftpb.HardState, ents []raftpb.Entry, snap raftpb.Snapshot) error
+	// Release release release the locked wal files since they will not be used.
+	Release(snap raftpb.Snapshot) error
 }
 
 type storage struct {
@@ -63,6 +71,49 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 		return err
 	}
 	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
+}
+
+// SaveSnapshot saves the snapshot to disk.
+func (st *storage) SaveSnapshot(snap raftpb.Snapshot) error {
+	return st.Snapshotter.SaveSnap(snap)
+}
+
+func (st *storage) Release(snap raftpb.Snapshot) error {
+	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
+}
+
+func checkWALSnap(lg *zap.Logger, waldir string, snapshot *raftpb.Snapshot) bool {
+	if snapshot == nil {
+		if lg != nil {
+			lg.Fatal("checkWALSnap: snapshot is empty")
+		} else {
+			plog.Fatal("heckWALSnap: snapshot is empty")
+		}
+	}
+
+	walsnap := walpb.Snapshot{
+		Index: snapshot.Metadata.Index,
+		Term:  snapshot.Metadata.Term,
+	}
+
+	w, _, _, st, _ := readWAL(lg, waldir, walsnap)
+	defer w.Close()
+
+	if lg != nil {
+		lg.Info(
+			"checkWALSnap: snapshot and hardstate data",
+			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+			zap.Uint64("st-commit", st.Commit),
+		)
+	} else {
+		plog.Infof("checkWALSnap: snapshot index: `%d`, HardState Commit: `%d`", snapshot.Metadata.Index, st.Commit)
+	}
+
+	if snapshot.Metadata.Index > st.Commit {
+		return false
+	}
+
+	return true
 }
 
 func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {

@@ -65,14 +65,14 @@ import (
 )
 
 const (
-	DefaultSnapshotCount = 100000
+	DefaultSnapshotCount = 10
 
 	// DefaultSnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
-	DefaultSnapshotCatchUpEntries uint64 = 5000
+	DefaultSnapshotCatchUpEntries uint64 = 10
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
@@ -418,10 +418,37 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 			}
 		}
-		snapshot, err = ss.Load()
-		if err != nil && err != snap.ErrNoSnapshot {
-			return nil, err
+
+		// Find a snapshot to start/restart a raft node
+		var (
+			snapshot *raftpb.Snapshot
+			err      error
+		)
+
+		for i := uint64(0); ; i++ {
+			snapshot, err = ss.LoadIndex(i)
+			if err != nil && err != snap.ErrNoSnapshot {
+				return nil, err
+			}
+
+			if err == snap.ErrNoSnapshot {
+				break
+			}
+
+			if checkWALSnap(cfg.Logger, cfg.WALDir(), snapshot) {
+				break
+			}
+
+			if cfg.Logger != nil {
+				cfg.Logger.Info(
+					"skip snapshot",
+					zap.Uint64("index", i),
+				)
+			} else {
+				plog.Infof("skip snapshot: `%d`", i)
+			}
 		}
+
 		if snapshot != nil {
 			if err = st.Recovery(snapshot.Data); err != nil {
 				if cfg.Logger != nil {

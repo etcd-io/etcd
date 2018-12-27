@@ -238,8 +238,20 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.transport.Send(r.processMessages(rd.Messages))
 				}
 
-				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+				if !raft.IsEmptySnap(rd.Snapshot) {
+					// gofail: var raftBeforeSaveSnap struct{}
+					if err := r.storage.SaveSnapshot(rd.Snapshot); err != nil {
+						if r.lg != nil {
+							r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
+						} else {
+							plog.Fatalf("raft save snapshot error: %v", err)
+						}
+					}
+					// gofail: var raftAfterSaveSnap struct{}
+				}
+
+				// gofail: var raftBeforeSaveAll struct{}
+				if err := r.storage.SaveAll(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
 					if r.lg != nil {
 						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 					} else {
@@ -249,28 +261,26 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
 				}
-				// gofail: var raftAfterSave struct{}
+				// gofail: var raftAfterSaveAll struct{}
 
 				if !raft.IsEmptySnap(rd.Snapshot) {
-					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
-						if r.lg != nil {
-							r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
-						} else {
-							plog.Fatalf("raft save snapshot error: %v", err)
-						}
-					}
 					// etcdserver now claim the snapshot has been persisted onto the disk
 					notifyc <- struct{}{}
 
-					// gofail: var raftAfterSaveSnap struct{}
+					// gofail: var raftBeforeApplySnapshot struct{}
 					r.raftStorage.ApplySnapshot(rd.Snapshot)
+
 					if r.lg != nil {
 						r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", rd.Snapshot.Metadata.Index))
 					} else {
 						plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
 					}
-					// gofail: var raftAfterApplySnap struct{}
+					// gofail: var raftAfterApplySnapshot struct{}
+
+					if err := r.storage.Release(rd.Snapshot); err != nil {
+						log.Fatal(err)
+					}
+					// gofail: var raftAfterWALRelease struct{}
 				}
 
 				r.raftStorage.Append(rd.Entries)
