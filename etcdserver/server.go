@@ -29,6 +29,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+	"github.com/coreos/pkg/capnslog"
+	humanize "github.com/dustin/go-humanize"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
@@ -57,11 +61,6 @@ import (
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/version"
 	"go.etcd.io/etcd/wal"
-
-	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/pkg/capnslog"
-	humanize "github.com/dustin/go-humanize"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -426,10 +425,19 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 			}
 		}
-		snapshot, err = ss.Load()
+
+		// Find a snapshot to start/restart a raft node
+		walSnaps, serr := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+		if serr != nil {
+			return nil, serr
+		}
+		// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
+		// wal log entries
+		snapshot, err = ss.LoadNewestAvailable(walSnaps)
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
+
 		if snapshot != nil {
 			if err = st.Recovery(snapshot.Data); err != nil {
 				if cfg.Logger != nil {
@@ -2370,8 +2378,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 				plog.Panicf("unexpected create snapshot error %v", err)
 			}
 		}
-		// SaveSnap saves the snapshot and releases the locked wal files
-		// to the snapshot index.
+		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			if lg != nil {
 				lg.Panic("failed to save snapshot", zap.Error(err))
@@ -2386,6 +2393,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			)
 		} else {
 			plog.Infof("saved snapshot at index %d", snap.Metadata.Index)
+		}
+		if err = s.r.storage.Release(snap); err != nil {
+			if lg != nil {
+				lg.Panic("failed to release wal", zap.Error(err))
+			} else {
+				plog.Panicf("failed to release wal %v", err)
+			}
 		}
 
 		// When sending a snapshot, etcd will pause compaction.
