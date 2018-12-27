@@ -38,6 +38,7 @@ const snapSuffix = ".snap"
 
 var (
 	ErrNoSnapshot    = errors.New("snap: no available snapshot")
+	ErrSnapshotIndex = errors.New("snap: no available snapshot index")
 	ErrEmptySnapshot = errors.New("snap: empty snapshot")
 	ErrCRCMismatch   = errors.New("snap: crc mismatch")
 	crcTable         = crc32.MakeTable(crc32.Castagnoli)
@@ -117,6 +118,23 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 		return nil, ErrNoSnapshot
 	}
 	return snap, nil
+}
+
+func (s *Snapshotter) LoadIndex(i uint64) (*raftpb.Snapshot, error) {
+	names, err := s.snapNames()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(names) == 0 {
+		return nil, ErrNoSnapshot
+	}
+
+	if i >= uint64(len(names)) {
+		return nil, ErrSnapshotIndex
+	}
+
+	return loadSnap(s.lg, s.dir, names[i])
 }
 
 func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
