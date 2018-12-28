@@ -117,21 +117,17 @@ func etcdFlagUsages(flagSet *pflag.FlagSet) string {
 		} else {
 			format = "   %s   --%s"
 		}
-		if len(flag.NoOptDefVal) > 0 {
-			format = format + "["
-		}
 		if flag.Value.Type() == "string" {
 			// put quotes on the value
 			format = format + "=%q"
 		} else {
 			format = format + "=%s"
 		}
-		if len(flag.NoOptDefVal) > 0 {
-			format = format + "]"
-		}
 		format = format + "\t%s\n"
 		shorthand := flag.Shorthand
-		fmt.Fprintf(x, format, shorthand, flag.Name, flag.DefValue, flag.Usage)
+		defValue := strings.Replace(flag.DefValue, "[", "", -1)
+		defValue = strings.Replace(defValue, "]", "", -1)
+		fmt.Fprintf(x, format, shorthand, flag.Name, defValue, flag.Usage)
 	})
 
 	return x.String()
