@@ -118,9 +118,11 @@ func (sctx *serveCtx) serve(
 		go func() { errHandler(gs.Serve(grpcl)) }()
 
 		var gwmux *gw.ServeMux
-		gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
-		if err != nil {
-			return err
+		if s.Cfg.EnableGRPCGateway {
+			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
+			if err != nil {
+				return err
+			}
 		}
 
 		httpmux := sctx.createMux(gwmux, handler)
@@ -156,15 +158,17 @@ func (sctx *serveCtx) serve(
 		}
 		handler = grpcHandlerFunc(gs, handler)
 
-		dtls := tlscfg.Clone()
-		// trust local server
-		dtls.InsecureSkipVerify = true
-		creds := credentials.NewTLS(dtls)
-		opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 		var gwmux *gw.ServeMux
-		gwmux, err = sctx.registerGateway(opts)
-		if err != nil {
-			return err
+		if s.Cfg.EnableGRPCGateway {
+			dtls := tlscfg.Clone()
+			// trust local server
+			dtls.InsecureSkipVerify = true
+			creds := credentials.NewTLS(dtls)
+			opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+			gwmux, err = sctx.registerGateway(opts)
+			if err != nil {
+				return err
+			}
 		}
 
 		var tlsl net.Listener
@@ -270,19 +274,21 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 		httpmux.Handle(path, h)
 	}
 
-	httpmux.Handle(
-		"/v3/",
-		wsproxy.WebsocketProxy(
-			gwmux,
-			wsproxy.WithRequestMutator(
-				// Default to the POST method for streams
-				func(_ *http.Request, outgoing *http.Request) *http.Request {
-					outgoing.Method = "POST"
-					return outgoing
-				},
+	if gwmux != nil {
+		httpmux.Handle(
+			"/v3/",
+			wsproxy.WebsocketProxy(
+				gwmux,
+				wsproxy.WithRequestMutator(
+					// Default to the POST method for streams
+					func(_ *http.Request, outgoing *http.Request) *http.Request {
+						outgoing.Method = "POST"
+						return outgoing
+					},
+				),
 			),
-		),
-	)
+		)
+	}
 	if handler != nil {
 		httpmux.Handle("/", handler)
 	}

@@ -148,6 +148,8 @@ type ServerConfig struct {
 
 	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
 	LeaseCheckpointInterval time.Duration
+
+	EnableGRPCGateway bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
