@@ -30,7 +30,7 @@ type httpKVAPI struct {
 }
 
 func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	key := r.RequestURI
+	key := r.RequestURI[1:]
 	switch {
 	case r.Method == "PUT":
 		v, err := ioutil.ReadAll(r.Body)
@@ -59,7 +59,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		nodeId, err := strconv.ParseUint(key[1:], 0, 64)
+		nodeId, err := strconv.ParseUint(key, 0, 64)
 		if err != nil {
 			log.Printf("Failed to convert ID for conf change (%v)\n", err)
 			http.Error(w, "Failed on POST", http.StatusBadRequest)
@@ -76,7 +76,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// As above, optimistic that raft will apply the conf change
 		w.WriteHeader(http.StatusNoContent)
 	case r.Method == "DELETE":
-		nodeId, err := strconv.ParseUint(key[1:], 0, 64)
+		nodeId, err := strconv.ParseUint(key, 0, 64)
 		if err != nil {
 			log.Printf("Failed to convert ID for conf change (%v)\n", err)
 			http.Error(w, "Failed on DELETE", http.StatusBadRequest)
