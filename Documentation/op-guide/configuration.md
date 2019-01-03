@@ -261,6 +261,7 @@ The security flags help to [build a secure etcd cluster][security].
 + Enable client cert authentication.
 + default: false
 + env variable: ETCD_CLIENT_CERT_AUTH
++ CN authentication is not supported by gRPC-gateway.
 
 ### --client-crl-file
 + Path to the client certificate revocation list file.
