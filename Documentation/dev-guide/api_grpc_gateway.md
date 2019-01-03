@@ -18,6 +18,8 @@ gRPC gateway endpoint has changed since etcd v3.3:
 - etcd v3.5 or later uses only `[CLIENT-URL]/v3/*`.
   - **`[CLIENT-URL]/v3beta/*` is deprecated**.
 
+gRPC-gateway does not support authentication using TLS Common Name.
+
 ### Put and get keys
 
 Use the `/v3/kv/range` and `/v3/kv/put` services to read and write keys:
