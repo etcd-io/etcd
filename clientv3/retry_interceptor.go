@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -377,6 +376,6 @@ func filterCallOptions(callOptions []grpc.CallOption) (grpcOptions []grpc.CallOp
 // For example waitBetween=1s and jitter=0.10 can generate waits between 900ms and 1100ms.
 func backoffLinearWithJitter(waitBetween time.Duration, jitterFraction float64) backoffFunc {
 	return func(attempt uint) time.Duration {
-		return backoffutils.JitterUp(waitBetween, jitterFraction)
+		return jitterUp(waitBetween, jitterFraction)
 	}
 }
