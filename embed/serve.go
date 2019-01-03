@@ -331,6 +331,17 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 			http.Error(rw, errCVE20185702(host), 421)
 			return
 		}
+	} else if ac.s.Cfg.ClientCertAuthEnabled && ac.s.Cfg.EnableGRPCGateway &&
+		ac.s.AuthStore().IsAuthEnabled() && strings.HasPrefix(req.URL.Path, "/v3/") {
+		for _, chains := range req.TLS.VerifiedChains {
+			if len(chains) < 1 {
+				continue
+			}
+			if len(chains[0].Subject.CommonName) != 0 {
+				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", 400)
+				return
+			}
+		}
 	}
 
 	// Write CORS header.
