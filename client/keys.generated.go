@@ -32,9 +32,9 @@ var (
 type codecSelfer8411 struct{}
 
 func init() {
-	if codec1978.GenVersion != 8 {
+	if codec1978.GenVersion != 10 {
 		_, file, _, _ := runtime.Caller(0)
-		panic("codecgen version mismatch: current: 8, need " + strconv.FormatInt(int64(codec1978.GenVersion), 10) + ". Re-generate file: " + file)
+		panic("codecgen version mismatch: current: 10, need " + strconv.FormatInt(int64(codec1978.GenVersion), 10) + ". Re-generate file: " + file)
 	}
 	if false { // reference the types, but skip this branch at build/run time
 		var v0 time.Duration
