@@ -2178,6 +2178,11 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
 		}
+
+		if err = s.r.storage.Release(snap); err != nil {
+			lg.Panic("failed to release wal", zap.Error(err))
+		}
+
 		lg.Info(
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
