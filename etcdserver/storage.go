@@ -36,12 +36,6 @@ type Storage interface {
 	SaveSnap(snap raftpb.Snapshot) error
 	// Close closes the Storage and performs finalization.
 	Close() error
-
-	// SaveSnapshot function saves only snapshot to the underlying stable storage.
-	SaveSnapshot(snap raftpb.Snapshot) error
-	// SaveAll function saves ents, snapshot and state to the underlying stable storage.
-	// SaveAll MUST block until st and ents are on stable storage.
-	SaveAll(st raftpb.HardState, ents []raftpb.Entry, snap raftpb.Snapshot) error
 	// Release release release the locked wal files since they will not be used.
 	Release(snap raftpb.Snapshot) error
 }
@@ -66,15 +60,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	err = st.Snapshotter.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
-	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
-}
 
-// SaveSnapshot saves the snapshot to disk.
-func (st *storage) SaveSnapshot(snap raftpb.Snapshot) error {
 	return st.Snapshotter.SaveSnap(snap)
 }
 

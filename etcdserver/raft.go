@@ -240,7 +240,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnapshot(rd.Snapshot); err != nil {
+					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
 						if r.lg != nil {
 							r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
 						} else {
@@ -250,8 +250,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
-				// gofail: var raftBeforeSaveAll struct{}
-				if err := r.storage.SaveAll(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
+				// gofail: var raftBeforeSave struct{}
+				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
 					if r.lg != nil {
 						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 					} else {
@@ -261,7 +261,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
 				}
-				// gofail: var raftAfterSaveAll struct{}
+				// gofail: var raftAfterSave struct{}
 
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// etcdserver now claim the snapshot has been persisted onto the disk
