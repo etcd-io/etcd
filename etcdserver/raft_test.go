@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/pkg/mock/mockstorage"
 	"go.etcd.io/etcd/pkg/pbutil"
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
-
 	"go.uber.org/zap"
 )
 
@@ -225,5 +225,50 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	case <-continueC:
 	case <-time.After(time.Second):
 		t.Fatalf("unexpected blocking on execution")
+	}
+}
+
+func TestProcessAppRespMessages(t *testing.T) {
+	n := newNopReadyNode()
+	st := v2store.New()
+	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl.SetStore(st)
+
+	rs := raft.NewMemoryStorage()
+	p := mockstorage.NewStorageRecorder("")
+	tr, sendc := newSendMsgAppRespTransporter()
+	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
+		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+		Node:        n,
+		transport:   tr,
+		storage:     p,
+		raftStorage: rs,
+	})
+
+	s := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		r:          *r,
+		v2store:    st,
+		cluster:    cl,
+		SyncTicker: &time.Ticker{},
+	}
+	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
+
+	s.start()
+	defer s.Stop()
+
+	lead := uint64(1)
+
+	n.readyc <- raft.Ready{Messages: []raftpb.Message{
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 1},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 2},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 3},
+	}}
+
+	got, want := <-sendc, 1
+	if got != want {
+		t.Errorf("count = %d, want %d", got, want)
 	}
 }
