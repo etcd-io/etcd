@@ -44,7 +44,7 @@ type v2v3Server struct {
 }
 
 func NewServer(lg *zap.Logger, c *clientv3.Client, pfx string) etcdserver.ServerPeer {
-	return &v2v3Server{c: c, store: newStore(c, pfx)}
+	return &v2v3Server{lg: lg, c: c, store: newStore(c, pfx)}
 }
 
 func (s *v2v3Server) ClientCertAuthEnabled() bool { return false }

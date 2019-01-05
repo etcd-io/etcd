@@ -38,7 +38,7 @@ type ApplierV2 interface {
 }
 
 func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
-	return &applierV2store{store: s, cluster: c}
+	return &applierV2store{lg: lg, store: s, cluster: c}
 }
 
 type applierV2store struct {
