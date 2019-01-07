@@ -65,14 +65,14 @@ import (
 )
 
 const (
-	DefaultSnapshotCount = 10
+	DefaultSnapshotCount = 100000
 
 	// DefaultSnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
-	DefaultSnapshotCatchUpEntries uint64 = 10
+	DefaultSnapshotCatchUpEntries uint64 = 5000
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
@@ -420,11 +420,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 
 		// Find a snapshot to start/restart a raft node
-		var (
-			snapshot *raftpb.Snapshot
-			err      error
-		)
-
 		for i := uint64(0); ; i++ {
 			snapshot, err = ss.LoadIndex(i)
 			if err != nil && err != snap.ErrNoSnapshot {
