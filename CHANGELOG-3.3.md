@@ -26,6 +26,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) an
 
 - Add [`etcd gateway --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
 
+### Security, Authentication
+
+- Disable [CommonName authentication for gRPC-gateway](https://github.com/etcd-io/etcd/pull/10366) gRPC-gateway proxy requests to etcd server use the etcd client server TLS certificate. If that certificate contains CommonName we do not want to use that for authentication as it could lead to permission escalation.
+
 ### Go
 
 - Compile with [*Go 1.10.7*](https://golang.org/doc/devel/release.html#go1.10).
