@@ -79,7 +79,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		e := eh.Queue.Events[i]
 
 		if !e.Refresh {
-			ok := (e.Node.Key == key)
+			ok := e.Node.Key == key
 
 			if recursive {
 				// add tailing slash
