@@ -44,7 +44,7 @@ func NewElectCommand() *cobra.Command {
 
 func electCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 && len(args) != 2 {
-		ExitWithError(ExitBadArgs, errors.New("elect takes one election name argument and an optional proposal argument."))
+		ExitWithError(ExitBadArgs, errors.New("elect takes one election name argument and an optional proposal argument"))
 	}
 	c := mustClientFromCmd(cmd)
 

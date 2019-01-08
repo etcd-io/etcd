@@ -161,7 +161,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		handleKeyWatch(ctx, h.lg, w, resp, rr.Stream)
 	default:
-		writeKeyError(h.lg, w, errors.New("received response with no Event/Watcher!"))
+		writeKeyError(h.lg, w, errors.New("received response with no Event/Watcher"))
 	}
 }
 
@@ -556,7 +556,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuccess bool) error {
 	ev := resp.Event
 	if ev == nil {
-		return errors.New("cannot write empty Event!")
+		return errors.New("cannot write empty Event")
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))
