@@ -1768,3 +1768,24 @@ func (s *snapTransporter) SendSnapshot(m snap.Message) {
 	m.CloseWithError(nil)
 	s.snapDoneC <- m
 }
+
+type sendMsgAppRespTransporter struct {
+	nopTransporter
+	sendC chan int
+}
+
+func newSendMsgAppRespTransporter() (rafthttp.Transporter, <-chan int) {
+	ch := make(chan int, 1)
+	tr := &sendMsgAppRespTransporter{sendC: ch}
+	return tr, ch
+}
+
+func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
+	var send int
+	for _, msg := range m {
+		if msg.To != 0 {
+			send++
+		}
+	}
+	s.sendC <- send
+}
