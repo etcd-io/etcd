@@ -1491,7 +1491,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
-			`{"errorCode":300,"message":"Raft Internal Error","cause":"received response with no Event/Watcher!","index":0}`,
+			`{"errorCode":300,"message":"Raft Internal Error","cause":"received response with no Event/Watcher","index":0}`,
 		},
 	}
 	for i, tt := range testBadCases {
