@@ -67,7 +67,7 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	if printValueOnly {
 		dp, simple := (display).(*simplePrinter)
 		if !simple {
-			ExitWithError(ExitBadArgs, fmt.Errorf("print-value-only is only for `--write-out=simple`."))
+			ExitWithError(ExitBadArgs, fmt.Errorf("print-value-only is only for `--write-out=simple`"))
 		}
 		dp.valueOnly = true
 	}
@@ -76,11 +76,11 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 
 func getGetOp(args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("get command needs one argument as key and an optional argument as range_end."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("get command needs one argument as key and an optional argument as range_end"))
 	}
 
 	if getPrefix && getFromKey {
-		ExitWithError(ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one"))
 	}
 
 	opts := []clientv3.OpOption{}
@@ -95,7 +95,7 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	key := args[0]
 	if len(args) > 1 {
 		if getPrefix || getFromKey {
-			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` or `--from-key` is set."))
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` or `--from-key` is set"))
 		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}

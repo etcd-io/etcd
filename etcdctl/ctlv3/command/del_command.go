@@ -55,18 +55,18 @@ func delCommandFunc(cmd *cobra.Command, args []string) {
 
 func getDelOp(args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 || len(args) > 2 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("del command needs one argument as key and an optional argument as range_end."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("del command needs one argument as key and an optional argument as range_end"))
 	}
 
 	if delPrefix && delFromKey {
-		ExitWithError(ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one"))
 	}
 
 	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
 		if delPrefix || delFromKey {
-			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` or `--from-key` is set."))
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` or `--from-key` is set"))
 		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}

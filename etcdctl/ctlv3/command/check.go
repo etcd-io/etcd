@@ -163,7 +163,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first.", checkPerfPrefix, checkPerfPrefix))
+		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkPerfPrefix, checkPerfPrefix))
 	}
 
 	ksize, vsize := 256, 1024
@@ -318,7 +318,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first.", checkDatascalePrefix, checkDatascalePrefix))
+		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkDatascalePrefix, checkDatascalePrefix))
 	}
 
 	ksize, vsize := 512, 512
