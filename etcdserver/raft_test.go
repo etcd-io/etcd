@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/pkg/mock/mockstorage"
 	"go.etcd.io/etcd/pkg/pbutil"
 	"go.etcd.io/etcd/pkg/types"
@@ -230,9 +229,7 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 
 func TestProcessAppRespMessages(t *testing.T) {
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(zap.NewExample(), "abc")
-	cl.SetStore(st)
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorder("")
@@ -250,11 +247,9 @@ func TestProcessAppRespMessages(t *testing.T) {
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
 		r:          *r,
-		v2store:    st,
 		cluster:    cl,
 		SyncTicker: &time.Ticker{},
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.start()
 	defer s.Stop()
