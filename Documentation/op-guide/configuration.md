@@ -372,20 +372,24 @@ Follow the instructions when using these flags.
 + Load server configuration from a file.
 + default: ""
 + example: [sample configuration file][sample-config-file]
++ env variable: ETCD_CONFIG_FILE
 
 ## Profiling flags
 
 ### --enable-pprof
 + Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 + default: false
++ env variable: ETCD_ENABLE_PPROF
 
 ### --metrics
 + Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
 + default: basic
++ env variable: ETCD_METRICS
 
 ### --listen-metrics-urls
 + List of additional URLs to listen on that will respond to both the `/metrics` and `/health` endpoints
 + default: ""
++ env variable: ETCD_LISTEN_METRICS_URLS
 
 ## Auth flags
 
@@ -394,16 +398,19 @@ Follow the instructions when using these flags.
 + For asymmetric algorithms ('RS', 'PS', 'ES'), the public key is optional, as the private key contains enough information to both sign and verify tokens.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512,ttl=10m'
 + default: "simple"
++ env variable: ETCD_AUTH_TOKEN
 
 ### --bcrypt-cost
 + Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 + default: 10
++ env variable: (not supported)
 
 ## Experimental flags
 
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
 + default: 0s
++ env variable: ETCD_EXPERIMENTAL_CORRUPT_CHECK_TIME
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
