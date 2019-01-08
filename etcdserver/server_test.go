@@ -969,7 +969,7 @@ func TestSnapshot(t *testing.T) {
 	ch := make(chan struct{}, 2)
 
 	go func() {
-		gaction, _ := p.Wait(1)
+		gaction, _ := p.Wait(2)
 		defer func() { ch <- struct{}{} }()
 
 		if len(gaction) != 2 {
@@ -1084,6 +1084,10 @@ func TestSnapshotOrdering(t *testing.T) {
 	}
 
 	// unblock SaveSnapshot, etcdserver now permitted to move snapshot file
+	if ac := <-p.Chan(); ac.Name != "Sync" {
+		t.Fatalf("expected Sync, got %+v", ac)
+	}
+
 	if ac := <-p.Chan(); ac.Name != "Release" {
 		t.Fatalf("expected Release, got %+v", ac)
 	}

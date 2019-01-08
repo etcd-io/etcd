@@ -595,6 +595,10 @@ func (w *WAL) sync() error {
 	return err
 }
 
+func (w *WAL) Sync() error {
+	return w.sync()
+}
+
 // ReleaseLockTo releases the locks, which has smaller index than the given index
 // except the largest one among them.
 // For example, if WAL is holding lock 1,2,3,4,5,6, ReleaseLockTo(4) will release
