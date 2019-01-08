@@ -38,6 +38,8 @@ type Storage interface {
 	Close() error
 	// Release release release the locked wal files since they will not be used.
 	Release(snap raftpb.Snapshot) error
+	// Sync WAL
+	Sync() error
 }
 
 type storage struct {
