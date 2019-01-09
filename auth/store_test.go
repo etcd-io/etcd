@@ -848,3 +848,21 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 		t.Errorf("expected user name 'root', got %+v", ai)
 	}
 }
+
+func TestUserNoPasswordAdd(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	username := "usernopass"
+	ua := &pb.AuthUserAddRequest{Name: username, Options: &authpb.UserAddOptions{NoPassword: true}}
+	_, err := as.UserAdd(ua)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err = as.Authenticate(ctx, username, "")
+	if err != ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
+	}
+}
