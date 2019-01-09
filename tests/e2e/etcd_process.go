@@ -104,18 +104,22 @@ func (ep *etcdServerProcess) Restart() error {
 	return ep.Start()
 }
 
-func (ep *etcdServerProcess) Stop() error {
+func (ep *etcdServerProcess) Stop() (err error) {
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
-	if err := ep.proc.Stop(); err != nil {
+	err = ep.proc.Stop()
+	if err != nil {
 		return err
 	}
 	ep.proc = nil
 	<-ep.donec
 	ep.donec = make(chan struct{})
 	if ep.cfg.purl.Scheme == "unix" || ep.cfg.purl.Scheme == "unixs" {
-		os.Remove(ep.cfg.purl.Host + ep.cfg.purl.Path)
+		err = os.Remove(ep.cfg.purl.Host + ep.cfg.purl.Path)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
