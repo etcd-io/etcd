@@ -52,6 +52,15 @@ cfssl gencert \
 mv server2.pem server2.crt
 mv server2-key.pem server2.key.insecure
 
+# generate DNS: localhost, IP: 127.0.0.1, CN: "" certificates
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  ./server-ca-csr3.json | cfssljson --bare ./server3
+mv server3.pem server3.crt
+mv server3-key.pem server3.key.insecure
+
 # generate revoked certificates and crl
 cfssl gencert --ca ./ca.crt \
   --ca-key ./ca-key.pem \
