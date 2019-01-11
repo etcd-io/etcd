@@ -19,18 +19,9 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### etcdctl v3
-
-- Add [`etcdctl --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
-
 ### gRPC Proxy
 
 - Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
-- Add [`etcd proxy --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
-
-### etcd gateway
-
-- Add [`etcd gateway --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/10250) flag.
 
 ### Security, Authentication
 
