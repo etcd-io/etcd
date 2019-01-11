@@ -23,6 +23,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.25...v3.2.26) an
 
 - Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
 
+### Security, Authentication
+
+- Disable [CommonName authentication for gRPC-gateway](https://github.com/etcd-io/etcd/pull/10366) gRPC-gateway proxy requests to etcd server use the etcd client server TLS certificate. If that certificate contains CommonName we do not want to use that for authentication as it could lead to permission escalation.
+
 ### Go
 
 - Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
