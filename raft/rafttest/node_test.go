@@ -173,3 +173,43 @@ func waitCommitConverge(ns []*node, target uint64) bool {
 
 	return false
 }
+
+func TestElectionPacketLossNetwork(t *testing.T) {
+	ntimes := 100
+	dropRate := 0.9
+	hit := 0
+	peers := []raft.Peer{{ID: 1, Context: nil}, {ID: 2, Context: nil}, {ID: 3, Context: nil}}
+
+	for i := 0; i < ntimes; i++ {
+		nt := newRaftNetwork(1, 2, 3)
+		nodes := make([]*node, 0)
+
+		for i := 1; i <= 3; i++ {
+			n := startNode(uint64(i), peers, nt.nodeNetwork(uint64(i)))
+			nodes = append(nodes, n)
+		}
+
+		lossNode := uint64(1)
+		var i uint64
+		for i = 1; i <= 3; i++ {
+			if i == lossNode {
+				continue
+			}
+			nt.drop(uint64(i), lossNode, dropRate)
+		}
+
+		li := waitLeader(nodes)
+		lead := nodes[li]
+		if lead.id == lossNode {
+			hit++
+		}
+
+		for _, n := range nodes {
+			n.stop()
+		}
+	}
+
+	if float64(hit/ntimes) > (1 - dropRate) {
+		t.Errorf("elect bad node in packet loss network, want no bad node elected")
+	}
+}
