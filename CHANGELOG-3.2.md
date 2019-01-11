@@ -3,13 +3,19 @@
 Previous change logs can be found at [CHANGELOG-3.1](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.1.md).
 
 
-The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.10+, and 3.3.0+.
+The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.26+, and 3.3.11+.
 
 
 <hr>
 
 
-## [v3.2.26](https://github.com/etcd-io/etcd/releases/tag/v3.2.26) (2019-TBD)
+## [v3.2.27](https://github.com/etcd-io/etcd/releases/tag/v3.2.27) (2019-TBD)
+
+
+<hr>
+
+
+## [v3.2.26](https://github.com/etcd-io/etcd/releases/tag/v3.2.26) (2019-1-11)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.25...v3.2.26) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md).**
 
