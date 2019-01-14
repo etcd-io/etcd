@@ -2,7 +2,8 @@ etcdctl
 ========
 
 `etcdctl` is a command line client for [etcd][etcd].
-Make sure to set environment variable `ETCDCTL_API=3`. For etcdctl v2, please check [READMEv2][READMEv2].
+
+The v3 API is used by default. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
 
 Global flags (e.g., `dial-timeout`, `--cacert`, `--cert`, `--key`) can be set with environment variables:
 
