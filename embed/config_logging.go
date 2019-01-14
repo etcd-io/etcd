@@ -103,8 +103,7 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		if len(cfg.LogOutputs) != 1 {
-			fmt.Printf("--logger=capnslog supports only 1 value in '--log-outputs', got %q\n", cfg.LogOutputs)
-			os.Exit(1)
+			return fmt.Errorf("--logger=capnslog supports only 1 value in '--log-outputs', got %q", cfg.LogOutputs)
 		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
@@ -117,7 +116,7 @@ func (cfg *Config) setupLogging() error {
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 		case DefaultLogOutput:
 		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, %q, %q)`, output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
+			return fmt.Errorf("unknown log-output %q (only supports %q, %q, %q)", output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
 		}
 
 	case "zap":
@@ -127,7 +126,7 @@ func (cfg *Config) setupLogging() error {
 		if len(cfg.LogOutputs) > 1 {
 			for _, v := range cfg.LogOutputs {
 				if v == DefaultLogOutput {
-					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
+					return fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput)
 				}
 			}
 		}
