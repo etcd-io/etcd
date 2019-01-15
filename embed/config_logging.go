@@ -186,28 +186,29 @@ func (cfg *Config) setupLogging() error {
 				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 				grpc.EnableTracing = true
 			}
-
-			var err error
-			cfg.logger, err = lcfg.Build()
-			if err != nil {
-				return err
-			}
-
-			cfg.loggerConfig = &lcfg
-			cfg.loggerCore = nil
-			cfg.loggerWriteSyncer = nil
-
-			grpcLogOnce.Do(func() {
-				// debug true, enable info, warning, error
-				// debug false, only discard info
-				var gl grpclog.LoggerV2
-				gl, err = logutil.NewGRPCLoggerV2(lcfg)
-				if err == nil {
-					grpclog.SetLoggerV2(gl)
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
+					var err error
+					c.logger, err = lcfg.Build()
+					if err != nil {
+						return err
+					}
+					c.loggerMu.Lock()
+					defer c.loggerMu.Unlock()
+					c.loggerConfig = &lcfg
+					c.loggerCore = nil
+					c.loggerWriteSyncer = nil
+					grpcLogOnce.Do(func() {
+						// debug true, enable info, warning, error
+						// debug false, only discard info
+						var gl grpclog.LoggerV2
+						gl, err = logutil.NewGRPCLoggerV2(lcfg)
+						if err == nil {
+							grpclog.SetLoggerV2(gl)
+						}
+					})
+					return nil
 				}
-			})
-			if err != nil {
-				return err
 			}
 		} else {
 			if len(cfg.LogOutputs) > 1 {
@@ -237,17 +238,26 @@ func (cfg *Config) setupLogging() error {
 				syncer,
 				lvl,
 			)
-			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
+					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+					c.loggerMu.Lock()
+					defer c.loggerMu.Unlock()
+					c.loggerConfig = nil
+					c.loggerCore = cr
+					c.loggerWriteSyncer = syncer
 
-			cfg.loggerConfig = nil
-			cfg.loggerCore = cr
-			cfg.loggerWriteSyncer = syncer
-
-			grpcLogOnce.Do(func() {
-				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
-			})
+					grpcLogOnce.Do(func() {
+						grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+					})
+					return nil
+				}
+			}
 		}
-
+		err := cfg.ZapLoggerBuilder(cfg)
+		if err != nil {
+			return err
+		}
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
 			state := conn.ConnectionState()
 			remoteAddr := conn.RemoteAddr().String()
@@ -283,4 +293,21 @@ func (cfg *Config) setupLogging() error {
 	}
 
 	return nil
+}
+
+// NewZapCoreLoggerBuilder generates a zap core logger builder.
+func NewZapCoreLoggerBuilder(lg *zap.Logger, cr zapcore.Core, syncer zapcore.WriteSyncer) func(*Config) error {
+	return func(cfg *Config) error {
+		cfg.loggerMu.Lock()
+		defer cfg.loggerMu.Unlock()
+		cfg.logger = lg
+		cfg.loggerConfig = nil
+		cfg.loggerCore = cr
+		cfg.loggerWriteSyncer = syncer
+
+		grpcLogOnce.Do(func() {
+			grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+		})
+		return nil
+	}
 }
