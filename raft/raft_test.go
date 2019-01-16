@@ -2043,7 +2043,7 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 	for i := 0; i < a.electionTimeout; i++ {
 		a.tick()
 	}
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.electionTimeout-1; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
@@ -2052,9 +2052,16 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 		t.Errorf("state = %s, want %s", a.state, StateFollower)
 	}
 
+	if c.state != StateCandidate {
+		t.Errorf("state = %s, want %s", c.state, StateCandidate)
+	}
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+
 	if c.state != StateLeader {
 		t.Errorf("state = %s, want %s", c.state, StateLeader)
 	}
+
 }
 
 // TestFreeStuckCandidateWithCheckQuorum ensures that a candidate with a higher term
