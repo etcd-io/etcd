@@ -239,7 +239,7 @@ func newTestNode() *node {
 
 func newTestNodeDir() (*node, *node) {
 	s := newStore()
-	nd := newDir(s, key, 0, nil, time.Now().Add(expiration))
+	nd := newDir(s, key, 0, s.Root, time.Now().Add(expiration))
 	cKey, cVal := "hello", "world"
 	child := newKV(s, cKey, cVal, 0, nd, time.Now().Add(expiration))
 	return nd, child
