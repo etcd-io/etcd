@@ -1133,3 +1133,24 @@ func TestWatchCancelDisconnected(t *testing.T) {
 		t.Fatal("took too long to cancel disconnected watcher")
 	}
 }
+
+// TestWatchClose ensures that close does not return error
+func TestWatchClose(t *testing.T) {
+	runWatchTest(t, testWatchClose)
+}
+
+func testWatchClose(t *testing.T, wctx *watchctx) {
+	ctx, cancel := context.WithCancel(context.Background())
+	wch := wctx.w.Watch(ctx, "a")
+	cancel()
+	if wch == nil {
+		t.Fatalf("expected watcher channel, got nil")
+	}
+	if wctx.w.Close() != nil {
+		t.Fatalf("watch did not close successfully")
+	}
+	wresp, ok := <-wch
+	if ok {
+		t.Fatalf("read wch got %v; expected closed channel", wresp)
+	}
+}
