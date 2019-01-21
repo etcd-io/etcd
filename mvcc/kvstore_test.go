@@ -466,51 +466,61 @@ func TestRestoreDelete(t *testing.T) {
 }
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
-	defer os.Remove(tmpPath)
+	tests := []string{"recreate", "restore"}
+	for _, test := range tests {
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+		defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
 
-	// write scheduled compaction, but not do compaction
-	rbytes := newRevBytes()
-	revToBytes(revision{main: 2}, rbytes)
-	tx := s0.b.BatchTx()
-	tx.Lock()
-	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
-	tx.Unlock()
-
-	s0.Close()
-
-	s1 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
-
-	// wait for scheduled compaction to be finished
-	time.Sleep(100 * time.Millisecond)
-
-	if _, err := s1.Range([]byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
-		t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
-	}
-	// check the key in backend is deleted
-	revbytes := newRevBytes()
-	revToBytes(revision{main: 1}, revbytes)
-
-	// The disk compaction is done asynchronously and requires more time on slow disk.
-	// try 5 times for CI with slow IO.
-	for i := 0; i < 5; i++ {
-		tx = s1.b.BatchTx()
+		// write scheduled compaction, but not do compaction
+		rbytes := newRevBytes()
+		revToBytes(revision{main: 2}, rbytes)
+		tx := s0.b.BatchTx()
 		tx.Lock()
-		ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 		tx.Unlock()
-		if len(ks) != 0 {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		return
-	}
 
-	t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+		s0.Close()
+
+		var s *store
+		switch test {
+		case "recreate":
+			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+		case "restore":
+			s0.Restore(b)
+			s = s0
+		}
+
+		// wait for scheduled compaction to be finished
+		time.Sleep(100 * time.Millisecond)
+
+		if _, err := s.Range([]byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
+			t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
+		}
+		// check the key in backend is deleted
+		revbytes := newRevBytes()
+		revToBytes(revision{main: 1}, revbytes)
+
+		// The disk compaction is done asynchronously and requires more time on slow disk.
+		// try 5 times for CI with slow IO.
+		for i := 0; i < 5; i++ {
+			tx = s.b.BatchTx()
+			tx.Lock()
+			ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+			tx.Unlock()
+			if len(ks) != 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return
+		}
+
+		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+	}
 }
 
 type hashKVResult struct {
