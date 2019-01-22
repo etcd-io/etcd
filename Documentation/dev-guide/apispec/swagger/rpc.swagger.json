@@ -34,7 +34,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthenticateResponse"
             }
@@ -61,7 +61,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthDisableResponse"
             }
@@ -88,7 +88,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthEnableResponse"
             }
@@ -115,7 +115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleAddResponse"
             }
@@ -142,7 +142,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleDeleteResponse"
             }
@@ -169,7 +169,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleGetResponse"
             }
@@ -196,7 +196,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionResponse"
             }
@@ -223,7 +223,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleListResponse"
             }
@@ -250,7 +250,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionResponse"
             }
@@ -277,7 +277,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserAddResponse"
             }
@@ -304,7 +304,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordResponse"
             }
@@ -331,7 +331,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserDeleteResponse"
             }
@@ -358,7 +358,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserGetResponse"
             }
@@ -385,7 +385,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleResponse"
             }
@@ -412,7 +412,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserListResponse"
             }
@@ -439,7 +439,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleResponse"
             }
@@ -466,7 +466,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberAddResponse"
             }
@@ -493,7 +493,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberListResponse"
             }
@@ -520,7 +520,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberRemoveResponse"
             }
@@ -547,7 +547,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberUpdateResponse"
             }
@@ -574,7 +574,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbCompactionResponse"
             }
@@ -601,7 +601,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
             }
@@ -628,7 +628,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
             }
@@ -655,7 +655,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
             }
@@ -682,7 +682,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
             }
@@ -709,7 +709,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbPutResponse"
             }
@@ -736,7 +736,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbRangeResponse"
             }
@@ -763,7 +763,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbTxnResponse"
             }
@@ -790,7 +790,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseGrantResponse"
             }
@@ -807,7 +807,7 @@
         "operationId": "LeaseKeepAlive",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
@@ -818,7 +818,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
             }
@@ -845,7 +845,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
             }
@@ -872,7 +872,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
             }
@@ -899,7 +899,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
             }
@@ -926,7 +926,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAlarmResponse"
             }
@@ -953,7 +953,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbDefragmentResponse"
             }
@@ -980,7 +980,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbHashKVResponse"
             }
@@ -1007,7 +1007,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/etcdserverpbSnapshotResponse"
             }
@@ -1034,7 +1034,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbStatusResponse"
             }
@@ -1061,7 +1061,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMoveLeaderResponse"
             }
@@ -1078,7 +1078,7 @@
         "operationId": "Watch",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
@@ -1089,7 +1089,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/etcdserverpbWatchResponse"
             }
