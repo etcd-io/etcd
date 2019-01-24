@@ -318,6 +318,9 @@ type Config struct {
 	loggerCore        zapcore.Core
 	loggerWriteSyncer zapcore.WriteSyncer
 
+	// EnableGRPCGateway is false to disable grpc gateway.
+	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
+
 	// TO BE DEPRECATED
 
 	// LogPkgLevels is being deprecated in v3.5.

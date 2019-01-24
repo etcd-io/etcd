@@ -75,7 +75,7 @@ func TestV3CurlAuth(t *testing.T) {
 }
 func TestV3CurlAuthClientTLSCertAuth(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(configClientTLSCertAuth))
+		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(configClientTLSCertAuthWithNoCN))
 	}
 }
 
