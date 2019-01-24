@@ -46,6 +46,11 @@ type Command struct {
 	Flags []Flag
 	// Treat all flags as normal arguments if true
 	SkipFlagParsing bool
+	// Skip argument reordering which attempts to move flags before arguments,
+	// but only works if all flags appear after all arguments. This behavior was
+	// removed n version 2 since it only works under specific conditions so we
+	// backport here by exposing it as an option for compatibility.
+	SkipArgReorder bool
 	// Boolean to hide built-in help command
 	HideHelp bool
 	// Boolean to hide this command from help or completion
@@ -54,6 +59,25 @@ type Command struct {
 	// Full name of command for help, defaults to full command name, including parent commands.
 	HelpName        string
 	commandNamePath []string
+
+	// CustomHelpTemplate the text template for the command help topic.
+	// cli.go uses text/template to render templates. You can
+	// render custom help text by setting this variable.
+	CustomHelpTemplate string
+}
+
+type CommandsByName []Command
+
+func (c CommandsByName) Len() int {
+	return len(c)
+}
+
+func (c CommandsByName) Less(i, j int) bool {
+	return c[i].Name < c[j].Name
+}
+
+func (c CommandsByName) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
 }
 
 // FullName returns the full name of the command.
@@ -82,14 +106,15 @@ func (c Command) Run(ctx *Context) (err error) {
 		)
 	}
 
-	if ctx.App.EnableBashCompletion {
-		c.Flags = append(c.Flags, BashCompletionFlag)
+	set, err := flagSet(c.Name, c.Flags)
+	if err != nil {
+		return err
 	}
-
-	set := flagSet(c.Name, c.Flags)
 	set.SetOutput(ioutil.Discard)
 
-	if !c.SkipFlagParsing {
+	if c.SkipFlagParsing {
+		err = set.Parse(append([]string{"--"}, ctx.Args().Tail()...))
+	} else if !c.SkipArgReorder {
 		firstFlagIndex := -1
 		terminatorIndex := -1
 		for index, arg := range ctx.Args() {
@@ -122,21 +147,7 @@ func (c Command) Run(ctx *Context) (err error) {
 			err = set.Parse(ctx.Args().Tail())
 		}
 	} else {
-		if c.SkipFlagParsing {
-			err = set.Parse(append([]string{"--"}, ctx.Args().Tail()...))
-		}
-	}
-
-	if err != nil {
-		if c.OnUsageError != nil {
-			err := c.OnUsageError(ctx, err, false)
-			HandleExitCoder(err)
-			return err
-		}
-		fmt.Fprintln(ctx.App.Writer, "Incorrect Usage.")
-		fmt.Fprintln(ctx.App.Writer)
-		ShowCommandHelp(ctx, c.Name)
-		return err
+		err = set.Parse(ctx.Args().Tail())
 	}
 
 	nerr := normalizeFlags(c.Flags, set)
@@ -148,9 +159,21 @@ func (c Command) Run(ctx *Context) (err error) {
 	}
 
 	context := NewContext(ctx.App, set, ctx)
-
+	context.Command = c
 	if checkCommandCompletions(context, c.Name) {
 		return nil
+	}
+
+	if err != nil {
+		if c.OnUsageError != nil {
+			err := c.OnUsageError(context, err, false)
+			HandleExitCoder(err)
+			return err
+		}
+		fmt.Fprintln(context.App.Writer, "Incorrect Usage:", err.Error())
+		fmt.Fprintln(context.App.Writer)
+		ShowCommandHelp(context, c.Name)
+		return err
 	}
 
 	if checkCommandHelp(context, c.Name) {
@@ -174,15 +197,16 @@ func (c Command) Run(ctx *Context) (err error) {
 	if c.Before != nil {
 		err = c.Before(context)
 		if err != nil {
-			fmt.Fprintln(ctx.App.Writer, err)
-			fmt.Fprintln(ctx.App.Writer)
-			ShowCommandHelp(ctx, c.Name)
+			ShowCommandHelp(context, c.Name)
 			HandleExitCoder(err)
 			return err
 		}
 	}
 
-	context.Command = c
+	if c.Action == nil {
+		c.Action = helpSubcommand.Action
+	}
+
 	err = HandleAction(c.Action, context)
 
 	if err != nil {
@@ -223,14 +247,13 @@ func (c Command) startApp(ctx *Context) error {
 		app.HelpName = app.Name
 	}
 
-	if c.Description != "" {
-		app.Usage = c.Description
-	} else {
-		app.Usage = c.Usage
-	}
+	app.Usage = c.Usage
+	app.Description = c.Description
+	app.ArgsUsage = c.ArgsUsage
 
 	// set CommandNotFound
 	app.CommandNotFound = ctx.App.CommandNotFound
+	app.CustomAppHelpTemplate = c.CustomHelpTemplate
 
 	// set the flags and commands
 	app.Commands = c.Subcommands
@@ -243,6 +266,7 @@ func (c Command) startApp(ctx *Context) error {
 	app.Author = ctx.App.Author
 	app.Email = ctx.App.Email
 	app.Writer = ctx.App.Writer
+	app.ErrWriter = ctx.App.ErrWriter
 
 	app.categories = CommandCategories{}
 	for _, command := range c.Subcommands {
@@ -265,6 +289,7 @@ func (c Command) startApp(ctx *Context) error {
 	} else {
 		app.Action = helpSubcommand.Action
 	}
+	app.OnUsageError = c.OnUsageError
 
 	for index, cc := range app.Commands {
 		app.Commands[index].commandNamePath = []string{c.Name, cc.Name}

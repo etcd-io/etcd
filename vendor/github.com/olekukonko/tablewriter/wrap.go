@@ -10,7 +10,8 @@ package tablewriter
 import (
 	"math"
 	"strings"
-	"unicode/utf8"
+
+	"github.com/mattn/go-runewidth"
 )
 
 var (
@@ -27,7 +28,7 @@ func WrapString(s string, lim int) ([]string, int) {
 	var lines []string
 	max := 0
 	for _, v := range words {
-		max = len(v)
+		max = runewidth.StringWidth(v)
 		if max > lim {
 			lim = max
 		}
@@ -55,9 +56,9 @@ func WrapWords(words []string, spc, lim, pen int) [][]string {
 	length := make([][]int, n)
 	for i := 0; i < n; i++ {
 		length[i] = make([]int, n)
-		length[i][i] = utf8.RuneCountInString(words[i])
+		length[i][i] = runewidth.StringWidth(words[i])
 		for j := i + 1; j < n; j++ {
-			length[i][j] = length[i][j-1] + spc + utf8.RuneCountInString(words[j])
+			length[i][j] = length[i][j-1] + spc + runewidth.StringWidth(words[j])
 		}
 	}
 	nbrk := make([]int, n)
@@ -94,10 +95,5 @@ func WrapWords(words []string, spc, lim, pen int) [][]string {
 
 // getLines decomposes a multiline string into a slice of strings.
 func getLines(s string) []string {
-	var lines []string
-
-	for _, line := range strings.Split(s, nl) {
-		lines = append(lines, line)
-	}
-	return lines
+	return strings.Split(s, nl)
 }

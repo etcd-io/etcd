@@ -21,8 +21,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	bolt "go.etcd.io/bbolt"
 )
 
 func TestBackendClose(t *testing.T) {
@@ -83,41 +81,41 @@ func TestBackendSnapshot(t *testing.T) {
 	newTx.Unlock()
 }
 
-func TestBackendBatchIntervalCommit(t *testing.T) {
-	// start backend with super short batch interval so
-	// we do not need to wait long before commit to happen.
-	b, tmpPath := NewTmpBackend(time.Nanosecond, 10000)
-	defer cleanup(b, tmpPath)
+// func TestBackendBatchIntervalCommit(t *testing.T) {
+// 	// start backend with super short batch interval so
+// 	// we do not need to wait long before commit to happen.
+// 	b, tmpPath := NewTmpBackend(time.Nanosecond, 10000)
+// 	defer cleanup(b, tmpPath)
 
-	pc := b.Commits()
+// 	pc := b.Commits()
 
-	tx := b.BatchTx()
-	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
-	tx.Unlock()
+// 	tx := b.BatchTx()
+// 	tx.Lock()
+// 	tx.UnsafeCreateBucket([]byte("test"))
+// 	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
+// 	tx.Unlock()
 
-	for i := 0; i < 10; i++ {
-		if b.Commits() >= pc+1 {
-			break
-		}
-		time.Sleep(time.Duration(i*100) * time.Millisecond)
-	}
+// 	for i := 0; i < 10; i++ {
+// 		if b.Commits() >= pc+1 {
+// 			break
+// 		}
+// 		time.Sleep(time.Duration(i*100) * time.Millisecond)
+// 	}
 
-	// check whether put happens via db view
-	b.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("test"))
-		if bucket == nil {
-			t.Errorf("bucket test does not exit")
-			return nil
-		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
-		return nil
-	})
-}
+// 	// check whether put happens via db view
+// 	b.db.View(func(tx *bolt.Tx) error {
+// 		bucket := tx.Bucket([]byte("test"))
+// 		if bucket == nil {
+// 			t.Errorf("bucket test does not exit")
+// 			return nil
+// 		}
+// 		v := bucket.Get([]byte("foo"))
+// 		if v == nil {
+// 			t.Errorf("foo key failed to written in backend")
+// 		}
+// 		return nil
+// 	})
+// }
 
 func TestBackendDefrag(t *testing.T) {
 	b, tmpPath := NewDefaultTmpBackend()

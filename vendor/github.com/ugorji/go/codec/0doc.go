@@ -39,6 +39,7 @@ Rich Feature Set includes:
   - Careful selected use of 'unsafe' for targeted performance gains.
     100% mode exists where 'unsafe' is not used at all.
   - Lock-free (sans mutex) concurrency for scaling to 100's of cores
+  - In-place updates during decode, with option to zero value in maps and slices prior to decode
   - Coerce types where appropriate
     e.g. decode an int in the stream into a float, decode numbers from formatted strings, etc
   - Corner Cases:
@@ -224,41 +225,3 @@ with some caveats. See Encode documentation.
 */
 package codec
 
-// TODO:
-//   - For Go 1.11, when mid-stack inlining is enabled,
-//     we should use committed functions for writeXXX and readXXX calls.
-//     This involves uncommenting the methods for decReaderSwitch and encWriterSwitch
-//     and using those (decReaderSwitch and encWriterSwitch) in all handles
-//     instead of encWriter and decReader.
-//     The benefit is that, for the (En|De)coder over []byte, the encWriter/decReader
-//     will be inlined, giving a performance bump for that typical case.
-//     However, it will only  be inlined if mid-stack inlining is enabled,
-//     as we call panic to raise errors, and panic currently prevents inlining.
-//
-// PUNTED:
-//   - To make Handle comparable, make extHandle in BasicHandle a non-embedded pointer,
-//     and use overlay methods on *BasicHandle to call through to extHandle after initializing
-//     the "xh *extHandle" to point to a real slice.
-//
-// BEFORE EACH RELEASE:
-//   - Look through and fix padding for each type, to eliminate false sharing
-//     - critical shared objects that are read many times
-//       TypeInfos
-//     - pooled objects:
-//       decNaked, decNakedContainers, codecFner, typeInfoLoadArray, 
-//     - small objects allocated independently, that we read/use much across threads:
-//       codecFn, typeInfo
-//     - Objects allocated independently and used a lot
-//       Decoder, Encoder,
-//       xxxHandle, xxxEncDriver, xxxDecDriver (xxx = json, msgpack, cbor, binc, simple)
-//     - In all above, arrange values modified together to be close to each other.
-//
-//     For all of these, either ensure that they occupy full cache lines,
-//     or ensure that the things just past the cache line boundary are hardly read/written
-//     e.g. JsonHandle.RawBytesExt - which is copied into json(En|De)cDriver at init
-//
-//     Occupying full cache lines means they occupy 8*N words (where N is an integer).
-//     Check this out by running: ./run.sh -z
-//     - look at those tagged ****, meaning they are not occupying full cache lines
-//     - look at those tagged <<<<, meaning they are larger than 32 words (something to watch)
-//   - Run "golint -min_confidence 0.81"

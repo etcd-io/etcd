@@ -90,7 +90,9 @@ func (p *Pool) writer() {
 // Restore terminal state and close pool
 func (p *Pool) Stop() error {
 	p.finishOnce.Do(func() {
-		close(p.shutdownCh)
+		if p.shutdownCh != nil {
+			close(p.shutdownCh)
+		}
 	})
 
 	// Wait for the worker to complete

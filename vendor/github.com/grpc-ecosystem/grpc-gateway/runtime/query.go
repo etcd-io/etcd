@@ -64,7 +64,7 @@ func populateFieldValueFromPath(msg proto.Message, fieldPath []string, values []
 		if err != nil {
 			return err
 		} else if !f.IsValid() {
-			grpclog.Printf("field not found in %T: %s", msg, strings.Join(fieldPath, "."))
+			grpclog.Infof("field not found in %T: %s", msg, strings.Join(fieldPath, "."))
 			return nil
 		}
 
@@ -108,7 +108,7 @@ func populateFieldValueFromPath(msg proto.Message, fieldPath []string, values []
 		return fmt.Errorf("no value of field: %s", strings.Join(fieldPath, "."))
 	case 1:
 	default:
-		grpclog.Printf("too many field values: %s", strings.Join(fieldPath, "."))
+		grpclog.Infof("too many field values: %s", strings.Join(fieldPath, "."))
 	}
 	return populateField(m, values[0], props)
 }
@@ -221,6 +221,23 @@ func populateField(f reflect.Value, value string, props *proto.Properties) error
 			f.Field(0).SetInt(int64(t.Unix()))
 			f.Field(1).SetInt(int64(t.Nanosecond()))
 			return nil
+		case "Duration":
+			if value == "null" {
+				f.Field(0).SetInt(0)
+				f.Field(1).SetInt(0)
+				return nil
+			}
+			d, err := time.ParseDuration(value)
+			if err != nil {
+				return fmt.Errorf("bad Duration: %v", err)
+			}
+
+			ns := d.Nanoseconds()
+			s := ns / 1e9
+			ns %= 1e9
+			f.Field(0).SetInt(s)
+			f.Field(1).SetInt(ns)
+			return nil
 		case "DoubleValue":
 			fallthrough
 		case "FloatValue":
@@ -284,6 +301,24 @@ func populateField(f reflect.Value, value string, props *proto.Properties) error
 		}
 	}
 
+	// Handle Time and Duration stdlib types
+	switch t := i.(type) {
+	case *time.Time:
+		pt, err := time.Parse(time.RFC3339Nano, value)
+		if err != nil {
+			return fmt.Errorf("bad Timestamp: %v", err)
+		}
+		*t = pt
+		return nil
+	case *time.Duration:
+		d, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("bad Duration: %v", err)
+		}
+		*t = d
+		return nil
+	}
+
 	// is the destination field an enumeration type?
 	if enumValMap := proto.EnumValueMap(props.Enum); enumValMap != nil {
 		return populateFieldEnum(f, value, enumValMap)
@@ -291,7 +326,7 @@ func populateField(f reflect.Value, value string, props *proto.Properties) error
 
 	conv, ok := convFromType[f.Kind()]
 	if !ok {
-		return fmt.Errorf("unsupported field type %T", f)
+		return fmt.Errorf("field type %T is not supported in query parameters", i)
 	}
 	result := conv.Call([]reflect.Value{reflect.ValueOf(value)})
 	if err := result[1].Interface(); err != nil {
