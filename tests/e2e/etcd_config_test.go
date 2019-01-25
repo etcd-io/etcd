@@ -190,3 +190,34 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		}
 	}
 }
+
+func TestGrpcproxyAndCommonName(t *testing.T) {
+	argsWithNonEmptyCN := []string{
+		binDir + "/etcd",
+		"grpc-proxy",
+		"start",
+		"--cert", certPath2,
+		"--key", privateKeyPath2,
+		"--cacert", caPath,
+	}
+
+	argsWithEmptyCN := []string{
+		binDir + "/etcd",
+		"grpc-proxy",
+		"start",
+		"--cert", certPath3,
+		"--key", privateKeyPath3,
+		"--cacert", caPath,
+	}
+
+	err := spawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+
+	p, err := spawnCmd(argsWithEmptyCN)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	p.Stop()
+}

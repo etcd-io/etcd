@@ -91,6 +91,10 @@ type TLSInfo struct {
 	// Logger logs TLS errors.
 	// If nil, all logs are discarded.
 	Logger *zap.Logger
+
+	// EmptyCN indicates that the cert must have empty CN.
+	// If true, ClientConfig() will return an error for a cert with non empty CN.
+	EmptyCN bool
 }
 
 func (info TLSInfo) String() string {
@@ -378,6 +382,28 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	if info.selfCert {
 		cfg.InsecureSkipVerify = true
 	}
+
+	if info.EmptyCN {
+		hasNonEmptyCN := false
+		cn := ""
+		tlsutil.NewCert(info.CertFile, info.KeyFile, func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error) {
+			var block *pem.Block
+			block, _ = pem.Decode(certPEMBlock)
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return tls.Certificate{}, err
+			}
+			if len(cert.Subject.CommonName) != 0 {
+				hasNonEmptyCN = true
+				cn = cert.Subject.CommonName
+			}
+			return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		})
+		if hasNonEmptyCN {
+			return nil, fmt.Errorf("cert has non empty Common Name (%s)", cn)
+		}
+	}
+
 	return cfg, nil
 }
 
