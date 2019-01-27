@@ -126,7 +126,7 @@ func New(bcfg BackendConfig) Backend {
 
 func NewDefaultBackend(path string) Backend {
 	bcfg := DefaultBackendConfig()
-	bcfg.Path = "106.12.201.77:38081"
+	bcfg.Path = path
 	return newBackend(bcfg)
 }
 
@@ -192,11 +192,10 @@ type IgnoreKey struct {
 
 func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
 	panic("fuck")
-	return 0, nil
 }
 
 func (b *backend) Size() int64 {
-	return int64(kvv.TxnTotalSizeLimit)
+	panic("fix me")
 }
 
 func (b *backend) SizeInUse() int64 {
@@ -236,8 +235,9 @@ func (b *backend) begin(write bool) kvv.Transaction {
 func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
 	//dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
 	bcfg := BackendConfig{}
-	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = "106.12.201.77:38081", batchInterval, batchLimit
-	return newBackend(bcfg), "106.12.201.77:38081"
+	path := "127.0.0.1:3379"
+	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = path, batchInterval, batchLimit
+	return newBackend(bcfg), path
 }
 
 func NewDefaultTmpBackend() (*backend, string) {

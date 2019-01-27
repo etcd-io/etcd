@@ -22,7 +22,7 @@ import (
 
 func TestBatchTxPut(t *testing.T) {
 	t.Log(123)
-	b := NewDefaultBackend("12")
+	b := NewDefaultBackend("127.0.0.1:3379")
 
 	tx := b.BatchTx()
 	tx.Lock()

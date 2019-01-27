@@ -270,6 +270,7 @@ github.com/pingcap/tidb v2.0.11+incompatible/go.mod h1:I8C6jrPINP2rrVunTRd7C9fRR
 github.com/pingcap/tidb-tools v0.0.0-20181112132202-4860a0d5de03/go.mod h1:XGdcy9+yqlDSEMTpOXnwf3hiTeqrV6MN/u1se9N8yIM=
 github.com/pingcap/tidb-tools v2.1.2+incompatible h1:vWDgZRG1k6DyEeHkd0oADHjhP3jbuq1wMXf4EmphzZM=
 github.com/pingcap/tidb-tools v2.1.2+incompatible/go.mod h1:XGdcy9+yqlDSEMTpOXnwf3hiTeqrV6MN/u1se9N8yIM=
+github.com/pingcap/tikv v2.1.2+incompatible h1:ozkkcKN9kozhC2fX0erzIiGiCAa3iWq0wIJjOBQ1Vmw=
 github.com/pingcap/tipb v0.0.0-20181012112600-11e33c750323/go.mod h1:RtkHW8WbcNxj8lsbzjaILci01CtYnYbIkQhjyZWrWVI=
 github.com/pingcap/tipb v0.0.0-20190107072121-abbec73437b7 h1:wnjdQRhybddDesBVBKyOLUPgDaOFdtqA92pduBgWvVQ=
 github.com/pingcap/tipb v0.0.0-20190107072121-abbec73437b7/go.mod h1:RtkHW8WbcNxj8lsbzjaILci01CtYnYbIkQhjyZWrWVI=
