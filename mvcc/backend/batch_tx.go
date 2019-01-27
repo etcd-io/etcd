@@ -21,8 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
+	tikv_client "github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
+	goctx "golang.org/x/net/context"
 )
 
 type BatchTx interface {
@@ -39,27 +40,13 @@ type BatchTx interface {
 
 type batchTx struct {
 	sync.Mutex
-	tx      *bolt.Tx
+	tx      tikv_client.Transaction
 	backend *backend
 
 	pending int
 }
 
-func (t *batchTx) UnsafeCreateBucket(name []byte) {
-	_, err := t.tx.CreateBucket(name)
-	if err != nil && err != bolt.ErrBucketExists {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to create a bucket",
-				zap.String("bucket-name", string(name)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot create bucket %s (%v)", name, err)
-		}
-	}
-	t.pending++
-}
+func (t *batchTx) UnsafeCreateBucket(name []byte) {}
 
 // UnsafePut must be called holding the lock on the tx.
 func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
@@ -72,98 +59,55 @@ func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
 }
 
 func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	if seq {
-		// it is useful to increase fill percent when the workloads are mostly append-only.
-		// this can delay the page split and reduce space usage.
-		bucket.FillPercent = 0.9
-	}
-	if err := bucket.Put(key, value); err != nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to write to a bucket",
-				zap.String("bucket-name", string(bucketName)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot put key into bucket (%v)", err)
-		}
+	key = append(bucketName, key...)
+	if err := t.tx.Set(key, value); err != nil {
+		plog.Fatalf("t.tx.Set failed, err=%v, key=%v, value=%v", err, key, value)
 	}
 	t.pending++
 }
 
 // UnsafeRange must be called holding the lock on the tx.
 func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	return unsafeRange(bucket.Cursor(), key, endKey, limit)
+	return unsafeRange(t.tx, bucketName, key, endKey, limit)
 }
 
-func unsafeRange(c *bolt.Cursor, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
+func unsafeRange(tx tikv_client.Transaction, bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	if limit <= 0 {
 		limit = math.MaxInt64
 	}
-	var isMatch func(b []byte) bool
-	if len(endKey) > 0 {
-		isMatch = func(b []byte) bool { return bytes.Compare(b, endKey) < 0 }
-	} else {
-		isMatch = func(b []byte) bool { return bytes.Equal(b, key) }
-		limit = 1
+
+	flatKey := append(bucketName, key...)
+	if len(endKey) == 0 {
+		val, err := tx.Get(flatKey)
+		if tikv_client.IsErrNotFound(err) {
+			return keys, vs
+		}
+
+		return [][]byte{key}, [][]byte{val}
 	}
 
-	for ck, cv := c.Seek(key); ck != nil && isMatch(ck); ck, cv = c.Next() {
-		vs = append(vs, cv)
-		keys = append(keys, ck)
-		if limit == int64(len(keys)) {
-			break
-		}
+	endKey = append(bucketName, endKey...)
+
+	it, err := tx.Iter(flatKey, endKey)
+	if err != nil {
+		return nil, nil
 	}
+	defer it.Close()
+
+	for ; it.Valid() && int64(len(keys)) < limit; it.Next() {
+		keys = append(keys, it.Key()[len(bucketName):])
+		vs = append(vs, it.Value())
+	}
+
 	return keys, vs
 }
 
 // UnsafeDelete must be called holding the lock on the tx.
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
-	bucket := t.tx.Bucket(bucketName)
-	if bucket == nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to find a bucket",
-				zap.String("bucket-name", string(bucketName)),
-			)
-		} else {
-			plog.Fatalf("bucket %s does not exist", bucketName)
-		}
-	}
-	err := bucket.Delete(key)
-	if err != nil {
-		if t.backend.lg != nil {
-			t.backend.lg.Fatal(
-				"failed to delete a key",
-				zap.String("bucket-name", string(bucketName)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot delete key from bucket (%v)", err)
-		}
+	key = append(bucketName, key...)
+
+	if err := t.tx.Delete(key); err != nil {
+		plog.Fatalf("t.tx.Delete failed, err=%v", err)
 	}
 	t.pending++
 }
@@ -173,9 +117,17 @@ func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 	return unsafeForEach(t.tx, bucketName, visitor)
 }
 
-func unsafeForEach(tx *bolt.Tx, bucket []byte, visitor func(k, v []byte) error) error {
-	if b := tx.Bucket(bucket); b != nil {
-		return b.ForEach(visitor)
+func unsafeForEach(tx tikv_client.Transaction, bucketName []byte, visitor func(k, v []byte) error) error {
+	it, err := tx.Iter(bucketName, nil)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for ; it.Valid() && bytes.HasPrefix(it.Key(), bucketName); it.Next() {
+		if err := visitor(it.Key()[len(bucketName):], it.Value()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -217,12 +169,9 @@ func (t *batchTx) commit(stop bool) {
 		start := time.Now()
 
 		// gofail: var beforeCommit struct{}
-		err := t.tx.Commit()
+		err := t.tx.Commit(goctx.Background())
 		// gofail: var afterCommit struct{}
 
-		rebalanceSec.Observe(t.tx.Stats().RebalanceTime.Seconds())
-		spillSec.Observe(t.tx.Stats().SpillTime.Seconds())
-		writeSec.Observe(t.tx.Stats().WriteTime.Seconds())
 		commitSec.Observe(time.Since(start).Seconds())
 		atomic.AddInt64(&t.backend.commits, 1)
 
@@ -236,7 +185,7 @@ func (t *batchTx) commit(stop bool) {
 		}
 	}
 	if !stop {
-		t.tx = t.backend.begin(true)
+		t.tx = t.backend.begin()
 	}
 }
 
@@ -303,7 +252,7 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	t.batchTx.commit(stop)
 
 	if !stop {
-		t.backend.readTx.tx = t.backend.begin(false)
+		t.backend.readTx.tx = t.backend.begin()
 	}
 }
 

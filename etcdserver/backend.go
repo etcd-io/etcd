@@ -44,10 +44,6 @@ func newBackend(cfg ServerConfig) backend.Backend {
 		}
 	}
 	bcfg.Logger = cfg.Logger
-	if cfg.QuotaBackendBytes > 0 && cfg.QuotaBackendBytes != DefaultQuotaBytes {
-		// permit 10% excess over quota for disarm
-		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
-	}
 	return backend.New(bcfg)
 }
 
