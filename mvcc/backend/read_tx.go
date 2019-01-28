@@ -19,7 +19,7 @@ import (
 	"math"
 	"sync"
 
-	tikv_client "github.com/pingcap/tidb/kv"
+	kvv "github.com/pingcap/tidb/kv"
 )
 
 // safeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
@@ -36,13 +36,12 @@ type ReadTx interface {
 }
 
 type readTx struct {
-	// mu protects accesses to the txReadBuffer
 	mu  sync.RWMutex
 	buf txReadBuffer
 
-	// txmu protects accesses to tx on Range requests.
+	// txmu protects accesses to buckets and tx on Range requests.
 	txmu sync.RWMutex
-	tx   tikv_client.Transaction
+	tx   kvv.Transaction
 }
 
 func (rt *readTx) Lock()   { rt.mu.RLock() }

@@ -38,6 +38,7 @@ type ServerConfig struct {
 	ClientURLs     types.URLs
 	PeerURLs       types.URLs
 	DataDir        string
+	TikvPath       string
 	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
 	// rather than the dataDir/member/wal.
 	DedicatedWALDir string
@@ -295,4 +296,4 @@ func (c *ServerConfig) bootstrapTimeout() time.Duration {
 	return time.Second
 }
 
-func (c *ServerConfig) backendPath() string { return filepath.Join(c.SnapDir(), "db") }
+func (c *ServerConfig) backendPath() string { return c.TikvPath }

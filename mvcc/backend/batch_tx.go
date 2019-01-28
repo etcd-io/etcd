@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	tikv_client "github.com/pingcap/tidb/kv"
+	kvv "github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 	goctx "golang.org/x/net/context"
 )
@@ -40,7 +40,7 @@ type BatchTx interface {
 
 type batchTx struct {
 	sync.Mutex
-	tx      tikv_client.Transaction
+	tx      kvv.Transaction
 	backend *backend
 
 	pending int
@@ -71,7 +71,7 @@ func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 	return unsafeRange(t.tx, bucketName, key, endKey, limit)
 }
 
-func unsafeRange(tx tikv_client.Transaction, bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
+func unsafeRange(tx kvv.Transaction, bucketName, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	if limit <= 0 {
 		limit = math.MaxInt64
 	}
@@ -79,7 +79,7 @@ func unsafeRange(tx tikv_client.Transaction, bucketName, key, endKey []byte, lim
 	flatKey := append(bucketName, key...)
 	if len(endKey) == 0 {
 		val, err := tx.Get(flatKey)
-		if tikv_client.IsErrNotFound(err) {
+		if kvv.IsErrNotFound(err) {
 			return keys, vs
 		}
 
@@ -117,7 +117,7 @@ func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 	return unsafeForEach(t.tx, bucketName, visitor)
 }
 
-func unsafeForEach(tx tikv_client.Transaction, bucketName []byte, visitor func(k, v []byte) error) error {
+func unsafeForEach(tx kvv.Transaction, bucketName []byte, visitor func(k, v []byte) error) error {
 	it, err := tx.Iter(bucketName, nil)
 	if err != nil {
 		return err

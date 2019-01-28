@@ -189,11 +189,13 @@ func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
 }
 
 func (b *backend) Size() int64 {
-	panic("fix me")
+	// TODO
+	return -1
 }
 
 func (b *backend) SizeInUse() int64 {
-	panic("fix me")
+	// TODO
+	return -1
 }
 
 func (b *backend) run() {
@@ -240,11 +242,7 @@ func (b *backend) begin() tikv_client.Transaction {
 func (b *backend) unsafeBegin() tikv_client.Transaction {
 	tx, err := b.db.Begin()
 	if err != nil {
-		if b.lg != nil {
-			b.lg.Fatal("failed to begin tx", zap.Error(err))
-		} else {
-			plog.Fatalf("cannot begin tx (%s)", err)
-		}
+		panic(err)
 	}
 	return tx
 }

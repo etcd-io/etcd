@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	// tikv_client "github.com/pingcap/tidb/kv"
 )
 
 func TestBatchTxPut(t *testing.T) {
