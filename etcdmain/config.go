@@ -131,6 +131,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file")
 
 	// member
+	fs.StringVar(&cfg.ec.TikvPath, "tikv-path", cfg.ec.TikvPath, "Access path of tikv backend.")
 	fs.StringVar(&cfg.ec.Dir, "data-dir", cfg.ec.Dir, "Path to the data directory.")
 	fs.StringVar(&cfg.ec.WalDir, "wal-dir", cfg.ec.WalDir, "Path to the dedicated wal directory.")
 	fs.Var(

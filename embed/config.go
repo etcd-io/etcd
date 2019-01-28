@@ -58,6 +58,7 @@ const (
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
+	DefaultTikvPath         = "mocktikv://"
 
 	DefaultLogOutput = "default"
 	JournalLogOutput = "systemd/journal"
@@ -115,6 +116,9 @@ type Config struct {
 	Name   string `json:"name"`
 	Dir    string `json:"data-dir"`
 	WalDir string `json:"wal-dir"`
+
+	// Access path to tikv backend
+	TikvPath string
 
 	SnapshotCount uint64 `json:"snapshot-count"`
 
@@ -381,6 +385,8 @@ func NewConfig() *Config {
 		LCUrls: []url.URL{*lcurl},
 		APUrls: []url.URL{*apurl},
 		ACUrls: []url.URL{*acurl},
+
+		TikvPath: DefaultTikvPath,
 
 		ClusterState:        ClusterStateFlagNew,
 		InitialClusterToken: "etcd-cluster",

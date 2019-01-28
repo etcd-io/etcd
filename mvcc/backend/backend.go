@@ -15,32 +15,22 @@
 package backend
 
 import (
-	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/tidb/store/mockstore"
-
-	"github.com/pingcap/tidb/store/tikv"
-	"github.com/pingcap/tidb/terror"
-
 	"github.com/coreos/pkg/capnslog"
-	kvv "github.com/pingcap/tidb/kv"
+	tikv_client "github.com/pingcap/tidb/kv"
+	"github.com/pingcap/tidb/store/mockstore"
+	"github.com/pingcap/tidb/store/tikv"
 	"go.uber.org/zap"
 )
 
 var (
 	defaultBatchLimit    = 10000
 	defaultBatchInterval = 100 * time.Millisecond
-
-	defragLimit = 10000
-
-	// initialMmapSize is the initial size of the mmapped region. Setting this larger than
-	// the potential max db size can prevent writer from blocking reader.
-	// This only works for linux.
-	initialMmapSize = uint64(10 * 1024 * 1024 * 1024)
 
 	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc/backend")
 
@@ -81,15 +71,15 @@ type backend struct {
 	// size and commits are used with atomic operations so they must be
 	// 64-bit aligned, otherwise 32-bit tests will crash
 
-	// size is the number of bytes allocated in the backend
-	size int64
-	// sizeInUse is the number of bytes actually used in the backend
-	sizeInUse int64
+	// // size is the number of bytes allocated in the backend
+	// size int64
+	// // sizeInUse is the number of bytes actually used in the backend
+	// sizeInUse int64
 	// commits counts number of commits since start
 	commits int64
 
 	mu sync.RWMutex
-	db kvv.Storage
+	db tikv_client.Storage
 
 	batchInterval time.Duration
 	batchLimit    int
@@ -104,14 +94,12 @@ type backend struct {
 }
 
 type BackendConfig struct {
-	// Path is the file path to the backend file.
+	// Path is the access path to the backend db.
 	Path string
 	// BatchInterval is the maximum time before flushing the BatchTx.
 	BatchInterval time.Duration
 	// BatchLimit is the maximum puts before flushing the BatchTx.
 	BatchLimit int
-	// MmapSize is the number of bytes to mmap for the backend.
-	MmapSize uint64
 	// Logger logs backend-side operations.
 	Logger *zap.Logger
 }
@@ -134,9 +122,13 @@ func NewDefaultBackend(path string) Backend {
 }
 
 func newBackend(bcfg BackendConfig) *backend {
-	driver := tikv.Driver{}
-	db, err := driver.Open(fmt.Sprintf("tikv://%s", bcfg.Path))
-	terror.MustNil(err)
+	var driver tikv_client.Driver
+	if strings.HasPrefix(bcfg.Path, "mocktikv://") {
+		driver = &mockstore.MockDriver{}
+	} else {
+		driver = &tikv.Driver{}
+	}
+	db, err := driver.Open(bcfg.Path)
 	if err != nil {
 		if bcfg.Logger != nil {
 			bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
@@ -184,8 +176,7 @@ func (b *backend) ForceCommit() {
 }
 
 func (b *backend) Snapshot() Snapshot {
-	panic("fuck")
-	return nil
+	panic("fix me")
 }
 
 type IgnoreKey struct {
@@ -194,15 +185,17 @@ type IgnoreKey struct {
 }
 
 func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
-	panic("fuck")
-}
-
-func (b *backend) Size() int64 {
 	panic("fix me")
 }
 
+func (b *backend) Size() int64 {
+	// TODO
+	return -1
+}
+
 func (b *backend) SizeInUse() int64 {
-	return int64(b.batchTx.tx.Size())
+	// TODO
+	return -1
 }
 
 func (b *backend) run() {
@@ -238,10 +231,16 @@ func (b *backend) Defrag() error {
 	return nil
 }
 
-func (b *backend) begin(write bool) kvv.Transaction {
+func (b *backend) begin() tikv_client.Transaction {
 	b.mu.RLock()
-	tx, err := b.db.Begin()
+	tx := b.unsafeBegin()
 	b.mu.RUnlock()
+
+	return tx
+}
+
+func (b *backend) unsafeBegin() tikv_client.Transaction {
+	tx, err := b.db.Begin()
 	if err != nil {
 		panic(err)
 	}
@@ -250,39 +249,26 @@ func (b *backend) begin(write bool) kvv.Transaction {
 
 // NewTmpBackend creates a backend implementation for testing.
 func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
-	//dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
-	driver := mockstore.MockDriver{}
-	db, err := driver.Open("mocktikv://")
 	bcfg := DefaultBackendConfig()
-	if err != nil {
-		if bcfg.Logger != nil {
-			bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
-		} else {
-			plog.Panicf("cannot open database at %s (%v)", bcfg.Path, err)
-		}
-	}
-	b := &backend{
-		db: db,
+	bcfg.Path = "mocktikv://"
+	bcfg.BatchInterval = batchInterval
+	bcfg.BatchLimit = batchLimit
 
-		batchInterval: batchInterval,
-		batchLimit:    batchLimit,
-
-		readTx: &readTx{
-			buf: txReadBuffer{
-				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
-			},
-		},
-
-		stopc: make(chan struct{}),
-		donec: make(chan struct{}),
-
-		lg: bcfg.Logger,
-	}
-	b.batchTx = newBatchTxBuffered(b)
-	go b.run()
-	return b, "mocktikv://"
+	return newBackend(bcfg), bcfg.Path
 }
 
 func NewDefaultTmpBackend() (*backend, string) {
 	return NewTmpBackend(defaultBatchInterval, defaultBatchLimit)
+}
+
+type snapshot struct {
+	tikv_client.Transaction
+	stopc chan struct{}
+	donec chan struct{}
+}
+
+func (s *snapshot) Close() error {
+	close(s.stopc)
+	<-s.donec
+	return s.Rollback()
 }

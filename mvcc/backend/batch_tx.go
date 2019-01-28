@@ -18,9 +18,12 @@ import (
 	"bytes"
 	"math"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	kvv "github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
+	goctx "golang.org/x/net/context"
 )
 
 type BatchTx interface {
@@ -56,9 +59,9 @@ func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
 }
 
 func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
-	err := t.tx.Set(append(bucketName, key...), value)
-	if err != nil {
-		panic(err)
+	key = append(bucketName, key...)
+	if err := t.tx.Set(key, value); err != nil {
+		plog.Fatalf("t.tx.Set failed, err=%v, key=%v, value=%v", err, key, value)
 	}
 	t.pending++
 }
@@ -72,42 +75,39 @@ func unsafeRange(tx kvv.Transaction, bucketName, key, endKey []byte, limit int64
 	if limit <= 0 {
 		limit = math.MaxInt64
 	}
-	key = append(bucketName, key...)
-	if len(endKey) != 0 {
-		endKey = append(bucketName, endKey...)
-	}
-	var isMatch func(b []byte) bool
-	if len(endKey) > 0 {
-		isMatch = func(b []byte) bool { return bytes.Compare(b, endKey) < 0 }
-	} else {
-		isMatch = func(b []byte) bool { return bytes.Equal(b, key) }
-		limit = 1
-	}
-	it, err := tx.Iter(key, endKey)
-	defer it.Close()
-	if err != nil {
-		panic(err)
-	}
-	for ; it.Valid(); it.Next() {
-		if !isMatch(it.Key()) {
-			break
-		}
-		keys = append(keys, it.Key()[len(bucketName):])
-		v := it.Value()
-		vs = append(vs, v)
 
-		if limit == int64(len(keys)) {
-			break
+	flatKey := append(bucketName, key...)
+	if len(endKey) == 0 {
+		val, err := tx.Get(flatKey)
+		if kvv.IsErrNotFound(err) {
+			return keys, vs
 		}
+
+		return [][]byte{key}, [][]byte{val}
 	}
+
+	endKey = append(bucketName, endKey...)
+
+	it, err := tx.Iter(flatKey, endKey)
+	if err != nil {
+		return nil, nil
+	}
+	defer it.Close()
+
+	for ; it.Valid() && int64(len(keys)) < limit; it.Next() {
+		keys = append(keys, it.Key()[len(bucketName):])
+		vs = append(vs, it.Value())
+	}
+
 	return keys, vs
 }
 
 // UnsafeDelete must be called holding the lock on the tx.
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
-	err := t.tx.Delete(append(bucketName, key...))
-	if err != nil {
-		panic(err)
+	key = append(bucketName, key...)
+
+	if err := t.tx.Delete(key); err != nil {
+		plog.Fatalf("t.tx.Delete failed, err=%v", err)
 	}
 	t.pending++
 }
@@ -117,22 +117,17 @@ func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) err
 	return unsafeForEach(t.tx, bucketName, visitor)
 }
 
-func unsafeForEach(tx kvv.Transaction, bucket []byte, visitor func(k, v []byte) error) error {
-	it, err := tx.Iter(bucket, nil)
-	defer it.Close()
+func unsafeForEach(tx kvv.Transaction, bucketName []byte, visitor func(k, v []byte) error) error {
+	it, err := tx.Iter(bucketName, nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	for ; it.Valid(); it.Next() {
-		k := it.Key()
-		v := it.Value()
-		if !bytes.Equal(bucket, k[:len(bucket)]) {
-			break
+	defer it.Close()
+
+	for ; it.Valid() && bytes.HasPrefix(it.Key(), bucketName); it.Next() {
+		if err := visitor(it.Key()[len(bucketName):], it.Value()); err != nil {
+			return err
 		}
-		if err != nil {
-			panic(err)
-		}
-		visitor(k[len(bucket):], v)
 	}
 	return nil
 }
@@ -166,32 +161,32 @@ func (t *batchTx) safePending() int {
 
 func (t *batchTx) commit(stop bool) {
 	// commit the last tx
-	// if t.tx != nil {
-	// 	if t.pending == 0 && !stop {
-	// 		return
-	// 	}
+	if t.tx != nil {
+		if t.pending == 0 && !stop {
+			return
+		}
 
-	// 	start := time.Now()
+		start := time.Now()
 
-	// 	// gofail: var beforeCommit struct{}
-	// 	err := t.tx.Commit(goctx.Background())
-	// 	// gofail: var afterCommit struct{}
+		// gofail: var beforeCommit struct{}
+		err := t.tx.Commit(goctx.Background())
+		// gofail: var afterCommit struct{}
 
-	// 	commitSec.Observe(time.Since(start).Seconds())
-	// 	atomic.AddInt64(&t.backend.commits, 1)
+		commitSec.Observe(time.Since(start).Seconds())
+		atomic.AddInt64(&t.backend.commits, 1)
 
-	// 	t.pending = 0
-	// 	if err != nil {
-	// 		if t.backend.lg != nil {
-	// 			t.backend.lg.Fatal("failed to commit tx", zap.Error(err))
-	// 		} else {
-	// 			plog.Fatalf("cannot commit tx (%s)", err)
-	// 		}
-	// 	}
-	// }
-	// if !stop {
-	// 	t.tx = t.backend.begin(true)
-	// }
+		t.pending = 0
+		if err != nil {
+			if t.backend.lg != nil {
+				t.backend.lg.Fatal("failed to commit tx", zap.Error(err))
+			} else {
+				plog.Fatalf("cannot commit tx (%s)", err)
+			}
+		}
+	}
+	if !stop {
+		t.tx = t.backend.begin()
+	}
 }
 
 type batchTxBuffered struct {
@@ -257,7 +252,7 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	t.batchTx.commit(stop)
 
 	if !stop {
-		t.backend.readTx.tx = t.backend.begin(false)
+		t.backend.readTx.tx = t.backend.begin()
 	}
 }
 
