@@ -20,6 +20,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pingcap/tidb/store/mockstore"
+
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/terror"
 
@@ -203,7 +206,21 @@ func (b *backend) SizeInUse() int64 {
 }
 
 func (b *backend) run() {
-
+	defer close(b.donec)
+	t := time.NewTimer(b.batchInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+		case <-b.stopc:
+			b.batchTx.CommitAndStop()
+			return
+		}
+		if b.batchTx.safePending() != 0 {
+			b.batchTx.Commit()
+		}
+		t.Reset(b.batchInterval)
+	}
 }
 
 func (b *backend) Close() error {
@@ -234,10 +251,36 @@ func (b *backend) begin(write bool) kvv.Transaction {
 // NewTmpBackend creates a backend implementation for testing.
 func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
 	//dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
-	bcfg := BackendConfig{}
-	path := "127.0.0.1:3379"
-	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = path, batchInterval, batchLimit
-	return newBackend(bcfg), path
+	driver := mockstore.MockDriver{}
+	db, err := driver.Open("mocktikv://")
+	bcfg := DefaultBackendConfig()
+	if err != nil {
+		if bcfg.Logger != nil {
+			bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
+		} else {
+			plog.Panicf("cannot open database at %s (%v)", bcfg.Path, err)
+		}
+	}
+	b := &backend{
+		db: db,
+
+		batchInterval: batchInterval,
+		batchLimit:    batchLimit,
+
+		readTx: &readTx{
+			buf: txReadBuffer{
+				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
+			},
+		},
+
+		stopc: make(chan struct{}),
+		donec: make(chan struct{}),
+
+		lg: bcfg.Logger,
+	}
+	b.batchTx = newBatchTxBuffered(b)
+	go b.run()
+	return b, "mocktikv://"
 }
 
 func NewDefaultTmpBackend() (*backend, string) {

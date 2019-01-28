@@ -18,12 +18,35 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	kvv "github.com/pingcap/tidb/kv"
+	"github.com/pingcap/tidb/store/mockstore"
 )
+
+func TestOpen(t *testing.T) {
+	t.Log("=======begin=======")
+	driver := mockstore.MockDriver{}
+	db, err := driver.Open("mocktikv://")
+	if err != nil {
+		t.Log(err)
+		t.Log(db)
+	}
+	transaction, errr := db.Begin()
+	if errr != nil {
+		t.Log(errr)
+		t.Log(transaction)
+	}
+	var key kvv.Key
+	key = []byte("123")
+	transaction.Set(key, []byte("456"))
+	result, _ := transaction.Get(key)
+	t.Log(string(result))
+}
 
 func TestBatchTxPut(t *testing.T) {
 	t.Log(123)
-	b := NewDefaultBackend("127.0.0.1:3379")
-
+	b, _ := NewDefaultTmpBackend()
+	t.Log(b)
 	tx := b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -31,13 +54,14 @@ func TestBatchTxPut(t *testing.T) {
 	// create bucket
 	tx.UnsafeCreateBucket([]byte("test"))
 
-	// put
+	// // put
 	v := []byte("bar")
 	tx.UnsafePut([]byte("test"), []byte("foo"), v)
 
 	// check put result before and after tx is committed
 	for k := 0; k < 2; k++ {
 		_, gv := tx.UnsafeRange([]byte("test"), []byte("foo"), nil, 0)
+		t.Log(string(gv[0]))
 		if !reflect.DeepEqual(gv[0], v) {
 			t.Errorf("v = %s, want %s", string(gv[0]), string(v))
 		}
