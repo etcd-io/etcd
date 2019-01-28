@@ -113,9 +113,11 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	Name     string `json:"name"`
-	Dir      string `json:"data-dir"`
-	WalDir   string `json:"wal-dir"`
+	Name   string `json:"name"`
+	Dir    string `json:"data-dir"`
+	WalDir string `json:"wal-dir"`
+
+	// Access path to tikv backend
 	TikvPath string
 
 	SnapshotCount uint64 `json:"snapshot-count"`

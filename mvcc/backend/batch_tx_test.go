@@ -150,20 +150,6 @@ func TestBatchTxCommit(t *testing.T) {
 	tx.Unlock()
 
 	tx.Commit()
-
-	// // check whether put happens via db view
-	// b.db.View(func(tx tikv_client.Transaction) error {
-	// 	bucket := tx.Bucket([]byte("test"))
-	// 	if bucket == nil {
-	// 		t.Errorf("bucket test does not exit")
-	// 		return nil
-	// 	}
-	// 	v := bucket.Get([]byte("foo"))
-	// 	if v == nil {
-	// 		t.Errorf("foo key failed to written in backend")
-	// 	}
-	// 	return nil
-	// })
 }
 
 func TestBatchTxBatchLimitCommit(t *testing.T) {
@@ -177,19 +163,4 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 	tx.UnsafeCreateBucket([]byte("test"))
 	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
 	tx.Unlock()
-
-	// // batch limit commit should have been triggered
-	// // check whether put happens via db view
-	// b.db.View(func(tx tikv_client.Transaction) error {
-	// 	bucket := tx.Bucket([]byte("test"))
-	// 	if bucket == nil {
-	// 		t.Errorf("bucket test does not exit")
-	// 		return nil
-	// 	}
-	// 	v := bucket.Get([]byte("foo"))
-	// 	if v == nil {
-	// 		t.Errorf("foo key failed to written in backend")
-	// 	}
-	// 	return nil
-	// })
 }
