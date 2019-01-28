@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/clientv3"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/clientv3"
 	"golang.org/x/net/context"
 )
 

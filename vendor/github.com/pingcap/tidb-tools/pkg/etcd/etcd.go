@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/errors"
 	"go.etcd.io/etcd/clientv3"
+	"github.com/pingcap/errors"
 )
 
 // Node organizes the ectd query result as a Trie tree

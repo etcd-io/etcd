@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"go.etcd.io/etcd/clientv3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-tools/pkg/etcd"
 	log "github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/clientv3"
 )
 
 // EtcdRegistry wraps the reactions with etcd

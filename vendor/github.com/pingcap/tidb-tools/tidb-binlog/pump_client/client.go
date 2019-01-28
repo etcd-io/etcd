@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"github.com/pingcap/errors"
 	pd "github.com/pingcap/pd/client"
 	"github.com/pingcap/tidb-tools/pkg/etcd"
@@ -29,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-tools/tidb-binlog/node"
 	pb "github.com/pingcap/tipb/go-binlog"
 	log "github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 const (
