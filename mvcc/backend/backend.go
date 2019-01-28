@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
-	tikv_client "github.com/pingcap/tidb/kv"
+	kvv "github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/mockstore"
 	"github.com/pingcap/tidb/store/tikv"
 	"go.uber.org/zap"
@@ -71,15 +71,15 @@ type backend struct {
 	// size and commits are used with atomic operations so they must be
 	// 64-bit aligned, otherwise 32-bit tests will crash
 
-	// // size is the number of bytes allocated in the backend
-	// size int64
-	// // sizeInUse is the number of bytes actually used in the backend
-	// sizeInUse int64
+	// size is the number of bytes allocated in the backend
+	size int64
+	// sizeInUse is the number of bytes actually used in the backend
+	sizeInUse int64
 	// commits counts number of commits since start
 	commits int64
 
 	mu sync.RWMutex
-	db tikv_client.Storage
+	db kvv.Storage
 
 	batchInterval time.Duration
 	batchLimit    int
@@ -122,7 +122,7 @@ func NewDefaultBackend(path string) Backend {
 }
 
 func newBackend(bcfg BackendConfig) *backend {
-	var driver tikv_client.Driver
+	var driver kvv.Driver
 	if strings.HasPrefix(bcfg.Path, "mocktikv://") {
 		driver = &mockstore.MockDriver{}
 	} else {
@@ -231,7 +231,7 @@ func (b *backend) Defrag() error {
 	return nil
 }
 
-func (b *backend) begin() tikv_client.Transaction {
+func (b *backend) begin() kvv.Transaction {
 	b.mu.RLock()
 	tx := b.unsafeBegin()
 	b.mu.RUnlock()
@@ -239,7 +239,7 @@ func (b *backend) begin() tikv_client.Transaction {
 	return tx
 }
 
-func (b *backend) unsafeBegin() tikv_client.Transaction {
+func (b *backend) unsafeBegin() kvv.Transaction {
 	tx, err := b.db.Begin()
 	if err != nil {
 		panic(err)
@@ -259,16 +259,4 @@ func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, strin
 
 func NewDefaultTmpBackend() (*backend, string) {
 	return NewTmpBackend(defaultBatchInterval, defaultBatchLimit)
-}
-
-type snapshot struct {
-	tikv_client.Transaction
-	stopc chan struct{}
-	donec chan struct{}
-}
-
-func (s *snapshot) Close() error {
-	close(s.stopc)
-	<-s.donec
-	return s.Rollback()
 }
