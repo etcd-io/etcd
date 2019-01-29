@@ -76,14 +76,6 @@ func Commaf(v float64) string {
 	return buf.String()
 }
 
-// CommafWithDigits works like the Commaf but limits the resulting
-// string to the given number of decimal places.
-//
-// e.g. CommafWithDigits(834142.32, 1) -> 834,142.3
-func CommafWithDigits(f float64, decimals int) string {
-	return stripTrailingDigits(Commaf(f), decimals)
-}
-
 // BigComma produces a string form of the given big.Int in base 10
 // with commas after every three orders of magnitude.
 func BigComma(b *big.Int) string {
