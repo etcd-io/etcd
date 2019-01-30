@@ -21,7 +21,7 @@
         "operationId": "Campaign",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbCampaignResponse"
             }
@@ -48,7 +48,7 @@
         "operationId": "Leader",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbLeaderResponse"
             }
@@ -75,7 +75,7 @@
         "operationId": "Observe",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/v3electionpbLeaderResponse"
             }
@@ -102,7 +102,7 @@
         "operationId": "Proclaim",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbProclaimResponse"
             }
@@ -129,7 +129,7 @@
         "operationId": "Resign",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbResignResponse"
             }

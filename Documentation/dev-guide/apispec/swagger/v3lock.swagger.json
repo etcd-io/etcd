@@ -21,7 +21,7 @@
         "operationId": "Lock",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3lockpbLockResponse"
             }
@@ -48,7 +48,7 @@
         "operationId": "Unlock",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3lockpbUnlockResponse"
             }
