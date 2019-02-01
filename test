@@ -454,18 +454,6 @@ function govet_shadow_pass {
 	fi
 }
 
-function unused_pass {
-	if command -v unused >/dev/null; then
-		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
-		if [ -n "${unusedResult}" ]; then
-			echo -e "unused checking failed:\\n${unusedResult}"
-			exit 255
-		fi
-	else
-		echo "Skipping unused..."
-	fi
-}
-
 function unparam_pass {
 	if command -v unparam >/dev/null; then
 		unparamResult=$(unparam "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
@@ -611,7 +599,6 @@ function fmt_pass {
 			gofmt \
 			govet \
 			govet_shadow \
-			unused \
 			staticcheck \
 			revive \
 			unconvert \
