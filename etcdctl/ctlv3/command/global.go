@@ -402,7 +402,7 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 	// strip insecure connections
 	ret := []string{}
 	for _, ep := range eps {
-		if strings.HasPrefix("http://", ep) {
+		if strings.HasPrefix(ep, "http://") {
 			fmt.Fprintf(os.Stderr, "ignoring discovered insecure endpoint %q\n", ep)
 			continue
 		}
