@@ -52,11 +52,11 @@ $ $GOPATH/bin/etcd
 Run the following:
 
 ```sh
-$ ETCDCTL_API=3 ./bin/etcdctl put foo bar
+$ ./bin/etcdctl put foo bar
 OK
 ```
 
-(or `ETCDCTL_API=3 $GOPATH/bin/etcdctl put foo bar` if etcdctl was installed with `go get`)
+(or `$GOPATH/bin/etcdctl put foo bar` if etcdctl was installed with `go get`)
 
 If OK is printed, then etcd is working!
 
