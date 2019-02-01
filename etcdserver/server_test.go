@@ -995,7 +995,7 @@ func TestSnapshot(t *testing.T) {
 		defer func() { ch <- struct{}{} }()
 
 		if len(gaction) != 1 {
-			t.Fatalf("len(action) = %d, want 1", len(gaction))
+			t.Errorf("len(action) = %d, want 1", len(gaction))
 		}
 		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[0])
@@ -1007,7 +1007,7 @@ func TestSnapshot(t *testing.T) {
 		defer func() { ch <- struct{}{} }()
 
 		if len(gaction) != 2 {
-			t.Fatalf("len(action) = %d, want 2", len(gaction))
+			t.Errorf("len(action) = %d, want 2", len(gaction))
 		}
 		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
 			t.Errorf("action = %s, want Clone", gaction[0])
@@ -1140,7 +1140,7 @@ func TestTriggerSnap(t *testing.T) {
 		// each operation is recorded as a Save
 		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap
 		if len(gaction) != wcnt {
-			t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
+			t.Errorf("len(action) = %d, want %d", len(gaction), wcnt)
 		}
 		if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[wcnt-1])

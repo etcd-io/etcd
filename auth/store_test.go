@@ -751,10 +751,10 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 				token := fmt.Sprintf("%s(%d)", user, i)
 				ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, token)
 				if _, err := as.Authenticate(ctx, user, "123"); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 				if _, err := as.AuthInfoFromCtx(ctx); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 			}(u)
 		}

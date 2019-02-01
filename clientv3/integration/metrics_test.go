@@ -54,12 +54,12 @@ func TestV3ClientMetrics(t *testing.T) {
 
 		ln, err = transport.NewUnixListener(addr)
 		if err != nil {
-			t.Fatalf("Error: %v occurred while listening on addr: %v", err, addr)
+			t.Errorf("Error: %v occurred while listening on addr: %v", err, addr)
 		}
 
 		err = srv.Serve(ln)
 		if err != nil && !transport.IsClosedConnError(err) {
-			t.Fatalf("Err serving http requests: %v", err)
+			t.Errorf("Err serving http requests: %v", err)
 		}
 	}()
 

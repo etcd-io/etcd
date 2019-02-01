@@ -86,7 +86,7 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 				errCode := status.Convert(err).Code()
 				errDesc := rpctypes.ErrorDesc(err)
 				if err != nil && !(errDesc == context.Canceled.Error() || errCode == codes.Unavailable) {
-					t.Fatalf("inflight request should be canceled with '%v' or code Unavailable, got '%v' with code '%s'", context.Canceled.Error(), errDesc, errCode)
+					t.Errorf("inflight request should be canceled with '%v' or code Unavailable, got '%v' with code '%s'", context.Canceled.Error(), errDesc, errCode)
 				}
 			}
 		}()

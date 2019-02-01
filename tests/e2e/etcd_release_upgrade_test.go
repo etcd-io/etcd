@@ -168,7 +168,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 			epc.procs[i].Config().execPath = binDir + "/etcd"
 			epc.procs[i].Config().keepDataDir = true
 			if err := epc.procs[i].Restart(); err != nil {
-				t.Fatalf("error restarting etcd process (%v)", err)
+				t.Errorf("error restarting etcd process (%v)", err)
 			}
 			wg.Done()
 		}(i)

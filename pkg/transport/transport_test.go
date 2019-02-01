@@ -59,12 +59,12 @@ func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
 		tr, err := NewTransport(cliTLS, 3*time.Second)
 		tr.TLSClientConfig.MaxVersion = tls.VersionTLS12
 		if err != nil {
-			t.Fatalf("unexpected NewTransport error: %v", err)
+			t.Errorf("unexpected NewTransport error: %v", err)
 		}
 		cli := &http.Client{Transport: tr}
 		_, gerr := cli.Get("https://" + ln.Addr().String())
 		if gerr == nil || !strings.Contains(gerr.Error(), "tls: handshake failure") {
-			t.Fatal("expected client TLS handshake error")
+			t.Error("expected client TLS handshake error")
 		}
 		ln.Close()
 		donec <- struct{}{}

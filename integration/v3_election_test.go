@@ -53,7 +53,7 @@ func TestElectionWait(t *testing.T) {
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
 				if !ok {
-					t.Fatalf("could not observe election; channel closed")
+					t.Errorf("could not observe election; channel closed")
 				}
 				electedc <- string(s.Kvs[0].Value)
 				// wait for next election round
@@ -76,7 +76,7 @@ func TestElectionWait(t *testing.T) {
 			e := concurrency.NewElection(session, "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
 			if err := e.Campaign(context.TODO(), ev); err != nil {
-				t.Fatalf("failed volunteer (%v)", err)
+				t.Errorf("failed volunteer (%v)", err)
 			}
 			// wait for followers to accept leadership
 			for j := 0; j < followers; j++ {
@@ -87,7 +87,7 @@ func TestElectionWait(t *testing.T) {
 			}
 			// let next leader take over
 			if err := e.Resign(context.TODO()); err != nil {
-				t.Fatalf("failed resign (%v)", err)
+				t.Errorf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader
 			for j := 0; j < followers; j++ {

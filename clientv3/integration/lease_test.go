@@ -86,7 +86,7 @@ func TestLeaseRevoke(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = lapi.Revoke(context.Background(), clientv3.LeaseID(resp.ID))
+	_, err = lapi.Revoke(context.Background(), resp.ID)
 	if err != nil {
 		t.Errorf("failed to revoke lease %v", err)
 	}
@@ -302,7 +302,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 		if !clientv3.IsConnCanceled(err) {
 			// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
 			// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
-			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+			t.Errorf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
 
@@ -372,7 +372,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 	go func() {
 		_, err := cli.Grant(context.TODO(), 5)
 		if !clientv3.IsConnCanceled(err) {
-			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+			t.Errorf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -767,7 +767,7 @@ func TestV3LeaseFailureOverlap(t *testing.T) {
 				if err == nil || err == rpctypes.ErrTimeoutDueToConnectionLost {
 					return
 				}
-				t.Fatal(err)
+				t.Error(err)
 			}()
 		}
 	}

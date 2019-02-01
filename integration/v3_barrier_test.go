@@ -51,7 +51,7 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 		go func() {
 			br := recipe.NewBarrier(chooseClient(), "test-barrier")
 			if err := br.Wait(); err != nil {
-				t.Fatalf("could not wait on barrier (%v)", err)
+				t.Errorf("could not wait on barrier (%v)", err)
 			}
 			donec <- struct{}{}
 		}()

@@ -75,16 +75,16 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		select {
 		case ev := <-wch:
 			if werr := ev.Err(); werr != nil {
-				t.Fatal(werr)
+				t.Error(werr)
 			}
 			if len(ev.Events) != 1 {
-				t.Fatalf("expected one event, got %+v", ev)
+				t.Errorf("expected one event, got %+v", ev)
 			}
 			if !bytes.Equal(ev.Events[0].Kv.Value, []byte(val)) {
-				t.Fatalf("expected %q, got %+v", val, ev.Events[0].Kv)
+				t.Errorf("expected %q, got %+v", val, ev.Events[0].Kv)
 			}
 		case <-time.After(7 * time.Second):
-			t.Fatal("took too long to receive events")
+			t.Error("took too long to receive events")
 		}
 	}()
 
@@ -350,7 +350,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		}
 		cancel()
 		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+			t.Errorf("unexpected error: %v", err)
 		}
 	}()
 

@@ -49,8 +49,6 @@ RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u github.com/mgechev/revive \
   && go get -v -u github.com/mdempsky/unconvert \
   && go get -v -u mvdan.cc/unparam \
-  && go get -v -u honnef.co/go/tools/cmd/gosimple \
-  && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
   && go get -v -u github.com/gyuho/gocovmerge \
   && go get -v -u github.com/gordonklaus/ineffassign \

@@ -691,7 +691,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 					},
 				},
 			},
-			wantErr: errors.New("Location header not set"),
+			wantErr: errors.New("location header not set"),
 		},
 
 		// fail if Location header is invalid
@@ -707,7 +707,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 					},
 				},
 			},
-			wantErr: errors.New("Location header not valid URL: :"),
+			wantErr: errors.New("location header not valid URL: :"),
 		},
 
 		// fail if redirects checked way too many times
@@ -795,7 +795,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 
 	want = []string{"http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"}
 	got = hc.Endpoints()
-	sort.Sort(sort.StringSlice(got))
+	sort.Strings(got)
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
 	}

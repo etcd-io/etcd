@@ -133,7 +133,7 @@ func watchTest(cx ctlCtx) {
 		go func(i int, puts []kv) {
 			for j := range puts {
 				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
-					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
+					cx.t.Errorf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 				}
 			}
 			close(donec)

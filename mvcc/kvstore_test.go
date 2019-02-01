@@ -550,7 +550,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 			for {
 				hash, _, compactRev, err := s.HashByRev(int64(rev))
 				if err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 				select {
 				case <-donec:
@@ -570,7 +570,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 				revHash[r.compactRev] = r.hash
 			}
 			if r.hash != revHash[r.compactRev] {
-				t.Fatalf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
+				t.Errorf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
 			}
 		}
 	}()
@@ -581,7 +581,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 		for i := 100; i >= 0; i-- {
 			_, err := s.Compact(int64(rev - 1 - i))
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
