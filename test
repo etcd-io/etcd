@@ -99,9 +99,8 @@ if [ "${VERBOSE}" == "1" ]; then
 	echo "Running with TEST:" "${TEST[@]}"
 fi
 
-# TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS")
 # shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
 if [ "${VERBOSE}" == "1" ]; then
@@ -455,18 +454,6 @@ function govet_shadow_pass {
 	fi
 }
 
-function gosimple_pass {
-	if command -v gosimple >/dev/null; then
-		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
-		if [ -n "${gosimpleResult}" ]; then
-			echo -e "gosimple checking failed:\\n${gosimpleResult}"
-			exit 255
-		fi
-	else
-		echo "Skipping gosimple..."
-	fi
-}
-
 function unused_pass {
 	if command -v unused >/dev/null; then
 		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
@@ -624,7 +611,6 @@ function fmt_pass {
 			gofmt \
 			govet \
 			govet_shadow \
-			gosimple \
 			unused \
 			staticcheck \
 			revive \
