@@ -314,13 +314,6 @@ func withRetryPolicy(rp retryPolicy) retryOption {
 	}}
 }
 
-// withAuthRetry sets enables authentication retries.
-func withAuthRetry(retryAuth bool) retryOption {
-	return retryOption{applyFunc: func(o *options) {
-		o.retryAuth = retryAuth
-	}}
-}
-
 // withMax sets the maximum number of retries on this call, or this interceptor.
 func withMax(maxRetries uint) retryOption {
 	return retryOption{applyFunc: func(o *options) {

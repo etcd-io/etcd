@@ -43,10 +43,6 @@ func (rp retryPolicy) String() string {
 	}
 }
 
-type rpcFunc func(ctx context.Context) error
-type retryRPCFunc func(context.Context, rpcFunc, retryPolicy) error
-type retryStopErrFunc func(error) bool
-
 // isSafeRetryImmutableRPC returns "true" when an immutable request is safe for retry.
 //
 // immutable requests (e.g. Get) should be retried unless it's
