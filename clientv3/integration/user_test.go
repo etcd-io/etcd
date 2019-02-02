@@ -110,3 +110,45 @@ func authSetupRoot(t *testing.T, auth clientv3.Auth) {
 		t.Fatal(err)
 	}
 }
+
+func TestGetTokenWithoutAuth(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 10})
+	defer clus.Terminate(t)
+
+	authapi := clus.RandClient()
+
+	var err error
+	var client *clientv3.Client
+
+	// make sure "auth" was disabled
+	if _, err = authapi.AuthDisable(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
+
+	// "Username" and "Password" must be used
+	cfg := clientv3.Config{
+		Endpoints:   authapi.Endpoints(),
+		DialTimeout: 1 * time.Second, // make sure all connection time of connect all endpoint must be more DialTimeout
+		Username:    "root",
+		Password:    "123",
+	}
+
+	client, err = clientv3.New(cfg)
+	if err == nil {
+		defer client.Close()
+	}
+
+	switch err {
+	case nil:
+		t.Log("passes as expected, but may be connection time less than DialTimeout")
+	case context.DeadlineExceeded:
+		t.Errorf("not expected result:%v with endpoint:%s", err, authapi.Endpoints())
+	case rpctypes.ErrAuthNotEnabled:
+		t.Logf("passes as expected:%v", err)
+	default:
+		t.Errorf("other errors:%v", err)
+	}
+
+}
