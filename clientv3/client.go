@@ -310,6 +310,10 @@ func (c *Client) getToken(ctx context.Context) error {
 		var resp *AuthenticateResponse
 		resp, err = auth.authenticate(ctx, c.Username, c.Password)
 		if err != nil {
+			// return err without retrying other endpoints
+			if err == rpctypes.ErrAuthNotEnabled {
+				return err
+			}
 			continue
 		}
 
