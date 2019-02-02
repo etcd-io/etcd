@@ -429,6 +429,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   save`.
   - User can specify timeout of `etcdctl snapshot save` command using flag
     `--command-timeout`.
+  - Fix etcdctl to [strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443)
 
 ### gRPC proxy
 
