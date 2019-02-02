@@ -408,6 +408,11 @@ Follow the instructions when using these flags.
 
 ## Experimental flags
 
+### --experimental-backend-bbolt-freelist-type
++ The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
++ default: array
++ env variable: ETCD_EXPERIMENTAL_BACKEND_BBOLT_FREELIST_TYPE
+
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
 + default: 0s

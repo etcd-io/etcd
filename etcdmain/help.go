@@ -200,6 +200,8 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
+  --experimental-backend-bbolt-freelist-type
+    ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
 
 Unsafe feature:
   --force-new-cluster 'false'
