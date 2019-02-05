@@ -528,7 +528,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 
 func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	if len(tls.CipherSuites) > 0 && len(ss) > 0 {
-		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
+		return fmt.Errorf("tLSInfo.CipherSuites is already specified (given %v)", ss)
 	}
 	if len(ss) > 0 {
 		cs := make([]uint16, len(ss))

@@ -131,7 +131,7 @@ func (b *builder) newResolverGroup(id string) (*ResolverGroup, error) {
 	_, ok := b.resolverGroups[id]
 	b.mu.RUnlock()
 	if ok {
-		return nil, fmt.Errorf("Endpoint already exists for id: %s", id)
+		return nil, fmt.Errorf("endpoint already exists for id: %s", id)
 	}
 
 	es := &ResolverGroup{id: id}
@@ -146,7 +146,7 @@ func (b *builder) getResolverGroup(id string) (*ResolverGroup, error) {
 	es, ok := b.resolverGroups[id]
 	b.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("ResolverGroup not found for id: %s", id)
+		return nil, fmt.Errorf("resolverGroup not found for id: %s", id)
 	}
 	return es, nil
 }

@@ -395,7 +395,7 @@ func stressLeaseRenew(tctx context.Context, lc pb.LeaseClient) (reterr error) {
 			continue
 		}
 		if rresp.TTL == 0 {
-			return fmt.Errorf("TTL shouldn't be 0 so soon")
+			return fmt.Errorf("tTL shouldn't be 0 so soon")
 		}
 	}
 	return nil

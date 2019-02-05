@@ -37,13 +37,13 @@ func NewURLs(strs []string) (URLs, error) {
 			return nil, err
 		}
 		if u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "unix" && u.Scheme != "unixs" {
-			return nil, fmt.Errorf("URL scheme must be http, https, unix, or unixs: %s", in)
+			return nil, fmt.Errorf("uRL scheme must be http, https, unix, or unixs: %s", in)
 		}
 		if _, _, err := net.SplitHostPort(u.Host); err != nil {
 			return nil, fmt.Errorf(`URL address does not have the form "host:port": %s`, in)
 		}
 		if u.Path != "" {
-			return nil, fmt.Errorf("URL must not contain a path: %s", in)
+			return nil, fmt.Errorf("uRL must not contain a path: %s", in)
 		}
 		all[i] = *u
 	}

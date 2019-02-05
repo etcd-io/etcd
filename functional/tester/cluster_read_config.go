@@ -76,15 +76,15 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 
 	for _, v := range clus.Tester.Checkers {
 		if _, ok := rpcpb.Checker_value[v]; !ok {
-			return nil, fmt.Errorf("Checker is unknown; got %q", v)
+			return nil, fmt.Errorf("checker is unknown; got %q", v)
 		}
 	}
 
 	if clus.Tester.StressKeySuffixRangeTxn > 100 {
-		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
+		return nil, fmt.Errorf("stressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
 	}
 	if clus.Tester.StressKeyTxnOps > 64 {
-		return nil, fmt.Errorf("StressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
+		return nil, fmt.Errorf("stressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
 	}
 
 	for i, mem := range clus.Members {
@@ -92,7 +92,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, errors.New("EtcdExec 'embed' cannot be run with failpoints enabled")
 		}
 		if mem.BaseDir == "" {
-			return nil, fmt.Errorf("BaseDir cannot be empty (got %q)", mem.BaseDir)
+			return nil, fmt.Errorf("baseDir cannot be empty (got %q)", mem.BaseDir)
 		}
 		if mem.Etcd.Name == "" {
 			return nil, fmt.Errorf("'--name' cannot be empty (got %+v)", mem)
@@ -175,83 +175,83 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 
 		if !strings.HasPrefix(mem.Etcd.DataDir, mem.BaseDir) {
-			return nil, fmt.Errorf("Etcd.DataDir must be prefixed with BaseDir (got %q)", mem.Etcd.DataDir)
+			return nil, fmt.Errorf("etcd.DataDir must be prefixed with BaseDir (got %q)", mem.Etcd.DataDir)
 		}
 
 		// TODO: support separate WALDir that can be handled via failure-archive
 		if !strings.HasPrefix(mem.Etcd.WALDir, mem.BaseDir) {
-			return nil, fmt.Errorf("Etcd.WALDir must be prefixed with BaseDir (got %q)", mem.Etcd.WALDir)
+			return nil, fmt.Errorf("etcd.WALDir must be prefixed with BaseDir (got %q)", mem.Etcd.WALDir)
 		}
 
 		// TODO: only support generated certs with TLS generator
 		// deprecate auto TLS
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerCertFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerAutoTLS 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerKeyFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerKeyFile)
+			return nil, fmt.Errorf("etcd.PeerAutoTLS 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerKeyFile)
 		}
 		if mem.Etcd.PeerAutoTLS && mem.Etcd.PeerTrustedCAFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerAutoTLS 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
+			return nil, fmt.Errorf("etcd.PeerAutoTLS 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
 		}
 		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientCertFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientCertFile is %q", mem.Etcd.ClientCertFile)
+			return nil, fmt.Errorf("etcd.ClientAutoTLS 'true', but Etcd.ClientCertFile is %q", mem.Etcd.ClientCertFile)
 		}
 		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientKeyFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.ClientKeyFile)
+			return nil, fmt.Errorf("etcd.ClientAutoTLS 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.ClientKeyFile)
 		}
 		if mem.Etcd.ClientAutoTLS && mem.Etcd.ClientTrustedCAFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientAutoTLS 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
+			return nil, fmt.Errorf("etcd.ClientAutoTLS 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
 		}
 
 		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile == "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'true', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerKeyFile == "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'true', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
 		}
 		// only support self-signed certs
 		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerTrustedCAFile == "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'true', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerCertFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'false', but Etcd.PeerCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerKeyFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'false', but Etcd.PeerKeyFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if !mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerTrustedCAFile != "" {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth 'false', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth 'false', but Etcd.PeerTrustedCAFile is %q", mem.Etcd.PeerTrustedCAFile)
 		}
 		if mem.Etcd.PeerClientCertAuth && mem.Etcd.PeerAutoTLS {
-			return nil, fmt.Errorf("Etcd.PeerClientCertAuth and Etcd.PeerAutoTLS cannot be both 'true'")
+			return nil, fmt.Errorf("etcd.PeerClientCertAuth and Etcd.PeerAutoTLS cannot be both 'true'")
 		}
 		if (mem.Etcd.PeerCertFile == "") != (mem.Etcd.PeerKeyFile == "") {
-			return nil, fmt.Errorf("Both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
+			return nil, fmt.Errorf("both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientAutoTLS {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth and Etcd.ClientAutoTLS cannot be both 'true'")
+			return nil, fmt.Errorf("etcd.ClientCertAuth and Etcd.ClientAutoTLS cannot be both 'true'")
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile == "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'true', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientKeyFile == "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'true', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientTrustedCAFile == "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'true', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.ClientTrustedCAFile)
 		}
 		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientCertFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'false', but Etcd.ClientCertFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientKeyFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'false', but Etcd.ClientKeyFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if !mem.Etcd.ClientCertAuth && mem.Etcd.ClientTrustedCAFile != "" {
-			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.PeerCertFile)
+			return nil, fmt.Errorf("etcd.ClientCertAuth 'false', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if (mem.Etcd.ClientCertFile == "") != (mem.Etcd.ClientKeyFile == "") {
-			return nil, fmt.Errorf("Both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
+			return nil, fmt.Errorf("both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
 		}
 
 		peerTLS := mem.Etcd.PeerAutoTLS ||
@@ -365,7 +365,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 				case "stderr", "stdout", "/dev/null", "default":
 				default:
 					if !strings.HasPrefix(v, mem.BaseDir) {
-						return nil, fmt.Errorf("LogOutput %q must be prefixed with BaseDir %q", v, mem.BaseDir)
+						return nil, fmt.Errorf("logOutput %q must be prefixed with BaseDir %q", v, mem.BaseDir)
 					}
 				}
 			}

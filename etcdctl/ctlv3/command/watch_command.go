@@ -62,7 +62,7 @@ func NewWatchCommand() *cobra.Command {
 func watchCommandFunc(cmd *cobra.Command, args []string) {
 	envKey, envRange := os.Getenv("ETCDCTL_WATCH_KEY"), os.Getenv("ETCDCTL_WATCH_RANGE_END")
 	if envKey == "" && envRange != "" {
-		ExitWithError(ExitBadArgs, fmt.Errorf("ETCDCTL_WATCH_KEY is empty but got ETCDCTL_WATCH_RANGE_END=%q", envRange))
+		ExitWithError(ExitBadArgs, fmt.Errorf("eTCDCTL_WATCH_KEY is empty but got ETCDCTL_WATCH_RANGE_END=%q", envRange))
 	}
 
 	if watchInteractive {
@@ -96,7 +96,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 	for {
 		l, err := reader.ReadString('\n')
 		if err != nil {
-			ExitWithError(ExitInvalidInput, fmt.Errorf("Error reading watch request line: %v", err))
+			ExitWithError(ExitInvalidInput, fmt.Errorf("error reading watch request line: %v", err))
 		}
 		l = strings.TrimSuffix(l, "\n")
 

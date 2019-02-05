@@ -40,7 +40,7 @@ type v2v3Store struct {
 
 const maxPathDepth = 63
 
-var errUnsupported = fmt.Errorf("TTLs are unsupported")
+var errUnsupported = fmt.Errorf("tTLs are unsupported")
 
 func NewStore(c *clientv3.Client, pfx string) v2store.Store { return newStore(c, pfx) }
 
