@@ -9,7 +9,17 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 <hr>
 
 
-## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-TBD)
+## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-02-07)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### etcdctl
+
+- [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
+
+### Go
+
+- Compile with [*Go 1.10.7*](https://golang.org/doc/devel/release.html#go1.10).
 
 
 <hr>
