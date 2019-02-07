@@ -44,7 +44,7 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last hour.',
+              message: 'etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last 30 minutes.',
             },
           },
           {
@@ -117,7 +117,7 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": {{ $value }} proposal failures within the last hour on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": {{ $value }} proposal failures within the last 30 minutes on etcd instance {{ $labels.instance }}.',
             },
           },
           {
