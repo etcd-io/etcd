@@ -19,7 +19,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 
 ### Go
 
-- Compile with [*Go 1.10.7*](https://golang.org/doc/devel/release.html#go1.10).
+- Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
 
 
 <hr>
