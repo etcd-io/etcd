@@ -21,10 +21,11 @@ import (
 
 	"github.com/coreos/go-systemd/daemon"
 	systemdutil "github.com/coreos/go-systemd/util"
+	"github.com/kardianos/service"
 	"go.uber.org/zap"
 )
 
-func Main() {
+func checkAndStart() {
 	checkSupportArch()
 
 	if len(os.Args) > 1 {
@@ -71,4 +72,51 @@ func notifySystemd(lg *zap.Logger) {
 			plog.Errorf("forgot to set Type=notify in systemd service file?")
 		}
 	}
+}
+
+var logger service.Logger
+
+func Main() {
+	svcConfig := &service.Config{
+		// Required name of the service. No spaces suggested.
+		Name: "etcd daemon",
+		// Long description of service.
+		Description: "graceful running etcd",
+	}
+
+	prg := &program{}
+
+	s, err := service.New(prg, svcConfig)
+	if err != nil {
+		plog.Errorf("failed to init daemon service: %v", err)
+	}
+
+	logger, err = s.Logger(nil)
+	if err != nil {
+		plog.Errorf("failed to init daemon logger: %v", err)
+	}
+
+	err = s.Run()
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
+type program struct {
+	Stderr, Stdout string //TODO use logger or lg or plog?
+}
+
+func (p *program) Start(s service.Service) error {
+	// Start should not block. Do the actual work async.
+	go p.run()
+	return nil
+}
+
+func (p *program) run() {
+	checkAndStart()
+}
+
+func (p *program) Stop(s service.Service) error {
+	// Stop should not block. Return with a few seconds or do something
+	return s.Stop()
 }
