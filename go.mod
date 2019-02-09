@@ -23,6 +23,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.4.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0
+	github.com/kardianos/service v1.0.0
 	github.com/kr/pty v1.0.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
@@ -52,6 +53,7 @@ require (
 	golang.org/x/crypto v0.0.0-20180608092829-8ac0e0d97ce4
 	golang.org/x/net v0.0.0-20180906233101-161cd47e91fd
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
+	golang.org/x/sys v0.0.0-20190204133820-41f3e6584952
 	google.golang.org/genproto v0.0.0-20180608181217-32ee49c4dd80 // indirect
 	google.golang.org/grpc v1.14.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
