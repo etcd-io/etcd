@@ -19,15 +19,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/fileutil"
+
+	"go.uber.org/zap"
 )
 
-var (
-	badWalName = errors.New("bad wal name")
-)
+var errBadWALName = errors.New("bad wal name")
 
-func Exist(dirpath string) bool {
-	names, err := fileutil.ReadDir(dirpath)
+// Exist returns true if there are any files in a given directory.
+func Exist(dir string) bool {
+	names, err := fileutil.ReadDir(dir, fileutil.WithExt(".wal"))
 	if err != nil {
 		return false
 	}
@@ -37,12 +38,16 @@ func Exist(dirpath string) bool {
 // searchIndex returns the last array index of names whose raft index section is
 // equal to or smaller than the given index.
 // The given names MUST be sorted.
-func searchIndex(names []string, index uint64) (int, bool) {
+func searchIndex(lg *zap.Logger, names []string, index uint64) (int, bool) {
 	for i := len(names) - 1; i >= 0; i-- {
 		name := names[i]
-		_, curIndex, err := parseWalName(name)
+		_, curIndex, err := parseWALName(name)
 		if err != nil {
-			plog.Panicf("parse correct name should never fail: %v", err)
+			if lg != nil {
+				lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
+			} else {
+				plog.Panicf("parse correct name should never fail: %v", err)
+			}
 		}
 		if index >= curIndex {
 			return i, true
@@ -53,12 +58,16 @@ func searchIndex(names []string, index uint64) (int, bool) {
 
 // names should have been sorted based on sequence number.
 // isValidSeq checks whether seq increases continuously.
-func isValidSeq(names []string) bool {
+func isValidSeq(lg *zap.Logger, names []string) bool {
 	var lastSeq uint64
 	for _, name := range names {
-		curSeq, _, err := parseWalName(name)
+		curSeq, _, err := parseWALName(name)
 		if err != nil {
-			plog.Panicf("parse correct name should never fail: %v", err)
+			if lg != nil {
+				lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
+			} else {
+				plog.Panicf("parse correct name should never fail: %v", err)
+			}
 		}
 		if lastSeq != 0 && lastSeq != curSeq-1 {
 			return false
@@ -67,25 +76,33 @@ func isValidSeq(names []string) bool {
 	}
 	return true
 }
-func readWalNames(dirpath string) ([]string, error) {
+
+func readWALNames(lg *zap.Logger, dirpath string) ([]string, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}
-	wnames := checkWalNames(names)
+	wnames := checkWalNames(lg, names)
 	if len(wnames) == 0 {
 		return nil, ErrFileNotFound
 	}
 	return wnames, nil
 }
 
-func checkWalNames(names []string) []string {
+func checkWalNames(lg *zap.Logger, names []string) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
-		if _, _, err := parseWalName(name); err != nil {
+		if _, _, err := parseWALName(name); err != nil {
 			// don't complain about left over tmp files
 			if !strings.HasSuffix(name, ".tmp") {
-				plog.Warningf("ignored file %v in wal", name)
+				if lg != nil {
+					lg.Warn(
+						"ignored file in WAL directory",
+						zap.String("path", name),
+					)
+				} else {
+					plog.Warningf("ignored file %v in wal", name)
+				}
 			}
 			continue
 		}
@@ -94,9 +111,9 @@ func checkWalNames(names []string) []string {
 	return wnames
 }
 
-func parseWalName(str string) (seq, index uint64, err error) {
+func parseWALName(str string) (seq, index uint64, err error) {
 	if !strings.HasSuffix(str, ".wal") {
-		return 0, 0, badWalName
+		return 0, 0, errBadWALName
 	}
 	_, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
 	return seq, index, err

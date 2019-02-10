@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,34 +15,23 @@
 package flags
 
 import (
+	"reflect"
 	"testing"
 )
 
-func TestStringsSet(t *testing.T) {
+func TestStringsValue(t *testing.T) {
 	tests := []struct {
-		vals []string
-
-		val  string
-		pass bool
+		s   string
+		exp []string
 	}{
-		// known values
-		{[]string{"abc", "def"}, "abc", true},
-		{[]string{"on", "off", "false"}, "on", true},
-
-		// unrecognized values
-		{[]string{"abc", "def"}, "ghi", false},
-		{[]string{"on", "off"}, "", false},
+		{s: "a,b,c", exp: []string{"a", "b", "c"}},
+		{s: "a, b,c", exp: []string{"a", " b", "c"}},
+		{s: "", exp: []string{}},
 	}
-
-	for i, tt := range tests {
-		sf := NewStringsFlag(tt.vals...)
-		if sf.val != tt.vals[0] {
-			t.Errorf("#%d: want default val=%v,but got %v", i, tt.vals[0], sf.val)
-		}
-
-		err := sf.Set(tt.val)
-		if tt.pass != (err == nil) {
-			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+	for i := range tests {
+		ss := []string(*NewStringsValue(tests[i].s))
+		if !reflect.DeepEqual(tests[i].exp, ss) {
+			t.Fatalf("#%d: expected %q, got %q", i, tests[i].exp, ss)
 		}
 	}
 }

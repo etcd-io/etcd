@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
@@ -41,7 +41,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	for i := range clus.Members {
 		if oldLeadIdx != i {
 			go func(m *member) {
-				idc <- checkLeaderTransition(t, m, oldLeadID)
+				idc <- checkLeaderTransition(m, oldLeadID)
 			}(clus.Members[i])
 		}
 	}

@@ -15,9 +15,10 @@
 package mvcc
 
 import (
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.uber.org/zap"
 )
 
 type storeTxnRead struct {
@@ -83,14 +84,14 @@ func (tw *storeTxnWrite) Range(key, end []byte, ro RangeOptions) (r *RangeResult
 
 func (tw *storeTxnWrite) DeleteRange(key, end []byte) (int64, int64) {
 	if n := tw.deleteRange(key, end); n != 0 || len(tw.changes) > 0 {
-		return n, int64(tw.beginRev + 1)
+		return n, tw.beginRev + 1
 	}
-	return 0, int64(tw.beginRev)
+	return 0, tw.beginRev
 }
 
 func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID) int64 {
 	tw.put(key, value, lease)
-	return int64(tw.beginRev + 1)
+	return tw.beginRev + 1
 }
 
 func (tw *storeTxnWrite) End() {
@@ -120,7 +121,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 
-	revpairs := tr.s.kvindex.Revisions(key, end, int64(rev))
+	revpairs := tr.s.kvindex.Revisions(key, end, rev)
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -139,10 +140,25 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		revToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
 		if len(vs) != 1 {
-			plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+			if tr.s.lg != nil {
+				tr.s.lg.Fatal(
+					"range failed to find revision pair",
+					zap.Int64("revision-main", revpair.main),
+					zap.Int64("revision-sub", revpair.sub),
+				)
+			} else {
+				plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+			}
 		}
 		if err := kvs[i].Unmarshal(vs[0]); err != nil {
-			plog.Fatalf("cannot unmarshal event: %v", err)
+			if tr.s.lg != nil {
+				tr.s.lg.Fatal(
+					"failed to unmarshal mvccpb.KeyValue",
+					zap.Error(err),
+				)
+			} else {
+				plog.Fatalf("cannot unmarshal event: %v", err)
+			}
 		}
 	}
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
@@ -177,7 +193,14 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		plog.Fatalf("cannot marshal event: %v", err)
+		if tw.storeTxnRead.s.lg != nil {
+			tw.storeTxnRead.s.lg.Fatal(
+				"failed to marshal mvccpb.KeyValue",
+				zap.Error(err),
+			)
+		} else {
+			plog.Fatalf("cannot marshal event: %v", err)
+		}
 	}
 
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
@@ -190,7 +213,14 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 		err = tw.s.le.Detach(oldLease, []lease.LeaseItem{{Key: string(key)}})
 		if err != nil {
-			plog.Errorf("unexpected error from lease detach: %v", err)
+			if tw.storeTxnRead.s.lg != nil {
+				tw.storeTxnRead.s.lg.Fatal(
+					"failed to detach old lease from a key",
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("unexpected error from lease detach: %v", err)
+			}
 		}
 	}
 	if leaseID != lease.NoLease {
@@ -207,35 +237,56 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	rrev := tw.beginRev
 	if len(tw.changes) > 0 {
-		rrev += 1
+		rrev++
 	}
-	keys, revs := tw.s.kvindex.Range(key, end, rrev)
+	keys, _ := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {
 		return 0
 	}
-	for i, key := range keys {
-		tw.delete(key, revs[i])
+	for _, key := range keys {
+		tw.delete(key)
 	}
 	return int64(len(keys))
 }
 
-func (tw *storeTxnWrite) delete(key []byte, rev revision) {
+func (tw *storeTxnWrite) delete(key []byte) {
 	ibytes := newRevBytes()
 	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
-	ibytes = appendMarkTombstone(ibytes)
+
+	if tw.storeTxnRead.s != nil && tw.storeTxnRead.s.lg != nil {
+		ibytes = appendMarkTombstone(tw.storeTxnRead.s.lg, ibytes)
+	} else {
+		// TODO: remove this in v3.5
+		ibytes = appendMarkTombstone(nil, ibytes)
+	}
 
 	kv := mvccpb.KeyValue{Key: key}
 
 	d, err := kv.Marshal()
 	if err != nil {
-		plog.Fatalf("cannot marshal event: %v", err)
+		if tw.storeTxnRead.s.lg != nil {
+			tw.storeTxnRead.s.lg.Fatal(
+				"failed to marshal mvccpb.KeyValue",
+				zap.Error(err),
+			)
+		} else {
+			plog.Fatalf("cannot marshal event: %v", err)
+		}
 	}
 
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	err = tw.s.kvindex.Tombstone(key, idxRev)
 	if err != nil {
-		plog.Fatalf("cannot tombstone an existing key (%s): %v", string(key), err)
+		if tw.storeTxnRead.s.lg != nil {
+			tw.storeTxnRead.s.lg.Fatal(
+				"failed to tombstone an existing key",
+				zap.String("key", string(key)),
+				zap.Error(err),
+			)
+		} else {
+			plog.Fatalf("cannot tombstone an existing key (%s): %v", string(key), err)
+		}
 	}
 	tw.changes = append(tw.changes, kv)
 
@@ -245,7 +296,14 @@ func (tw *storeTxnWrite) delete(key []byte, rev revision) {
 	if leaseID != lease.NoLease {
 		err = tw.s.le.Detach(leaseID, []lease.LeaseItem{item})
 		if err != nil {
-			plog.Errorf("cannot detach %v", err)
+			if tw.storeTxnRead.s.lg != nil {
+				tw.storeTxnRead.s.lg.Fatal(
+					"failed to detach old lease from a key",
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("cannot detach %v", err)
+			}
 		}
 	}
 }

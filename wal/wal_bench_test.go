@@ -19,7 +19,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 func BenchmarkWrite100EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 100, 0) }
@@ -41,7 +43,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p, []byte("somedata"))
+	w, err := Create(zap.NewExample(), p, []byte("somedata"))
 	if err != nil {
 		b.Fatalf("err = %v, want nil", err)
 	}

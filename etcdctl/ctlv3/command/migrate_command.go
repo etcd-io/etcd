@@ -24,24 +24,26 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/etcd/client"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var (
@@ -124,9 +126,9 @@ func prepareBackend() backend.Backend {
 	return be
 }
 
-func rebuildStoreV2() (store.Store, uint64) {
+func rebuildStoreV2() (v2store.Store, uint64) {
 	var index uint64
-	cl := membership.NewCluster("")
+	cl := membership.NewCluster(zap.NewExample(), "")
 
 	waldir := migrateWALdir
 	if len(waldir) == 0 {
@@ -134,7 +136,7 @@ func rebuildStoreV2() (store.Store, uint64) {
 	}
 	snapdir := filepath.Join(migrateDatadir, "member", "snap")
 
-	ss := snap.New(snapdir)
+	ss := snap.New(zap.NewExample(), snapdir)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
 		ExitWithError(ExitError, err)
@@ -146,7 +148,7 @@ func rebuildStoreV2() (store.Store, uint64) {
 		index = snapshot.Metadata.Index
 	}
 
-	w, err := wal.OpenForRead(waldir, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), waldir, walsnap)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -157,7 +159,7 @@ func rebuildStoreV2() (store.Store, uint64) {
 		ExitWithError(ExitError, err)
 	}
 
-	st := store.New()
+	st := v2store.New()
 	if snapshot != nil {
 		err := st.Recovery(snapshot.Data)
 		if err != nil {
@@ -168,7 +170,7 @@ func rebuildStoreV2() (store.Store, uint64) {
 	cl.SetStore(st)
 	cl.Recover(api.UpdateCapability)
 
-	applier := etcdserver.NewApplierV2(st, cl)
+	applier := etcdserver.NewApplierV2(zap.NewExample(), st, cl)
 	for _, ent := range ents {
 		if ent.Type == raftpb.EntryConfChange {
 			var cc raftpb.ConfChange
@@ -237,10 +239,10 @@ func applyRequest(req *pb.Request, applyV2 etcdserver.ApplierV2) {
 	}
 }
 
-func writeStore(w io.Writer, st store.Store) uint64 {
+func writeStore(w io.Writer, st v2store.Store) uint64 {
 	all, err := st.Get("/1", true, true)
 	if err != nil {
-		if eerr, ok := err.(*etcdErr.Error); ok && eerr.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if eerr, ok := err.(*v2error.Error); ok && eerr.ErrorCode == v2error.EcodeKeyNotFound {
 			fmt.Println("no v2 keys to migrate")
 			os.Exit(0)
 		}
@@ -249,7 +251,7 @@ func writeStore(w io.Writer, st store.Store) uint64 {
 	return writeKeys(w, all.Node)
 }
 
-func writeKeys(w io.Writer, n *store.NodeExtern) uint64 {
+func writeKeys(w io.Writer, n *v2store.NodeExtern) uint64 {
 	maxIndex := n.ModifiedIndex
 
 	nodes := n.Nodes

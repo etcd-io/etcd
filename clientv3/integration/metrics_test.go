@@ -25,10 +25,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -39,7 +39,7 @@ func TestV3ClientMetrics(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	var (
-		addr string = "localhost:27989"
+		addr = "localhost:27989"
 		ln   net.Listener
 		err  error
 	)

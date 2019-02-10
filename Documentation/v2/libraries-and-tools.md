@@ -22,7 +22,7 @@
 
 **Go libraries**
 
-- [etcd/client](https://github.com/coreos/etcd/blob/master/client) - the officially maintained Go client
+- [etcd/client](https://github.com/etcd-io/etcd/blob/master/client) - the officially maintained Go client
 - [go-etcd](https://github.com/coreos/go-etcd) - the deprecated official client. May be useful for older (<2.0.0) versions of etcd.
 
 **Java libraries**
@@ -120,7 +120,6 @@
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
 - [configdb](https://git.autistici.org/ai/configdb/tree/master) - A REST relational abstraction on top of arbitrary database backends, aimed at storing configs and inventories.
-- [fleet](https://github.com/coreos/fleet) - Distributed init system
 - [kubernetes/kubernetes](https://github.com/kubernetes/kubernetes) - Container cluster manager introduced by Google.
 - [mailgun/vulcand](https://github.com/mailgun/vulcand) - HTTP proxy that uses etcd as a configuration backend.
 - [duedil-ltd/discodns](https://github.com/duedil-ltd/discodns) - Simple DNS nameserver using etcd as a database for names and records.

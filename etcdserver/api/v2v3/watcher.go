@@ -18,12 +18,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/coreos/etcd/clientv3"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
 )
 
-func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint64) (store.Watcher, error) {
+func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint64) (v2store.Watcher, error) {
 	ctx, cancel := context.WithCancel(s.ctx)
 	wch := s.c.Watch(
 		ctx,
@@ -36,10 +36,10 @@ func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint
 	resp, ok := <-wch
 	if err := resp.Err(); err != nil || !ok {
 		cancel()
-		return nil, etcdErr.NewError(etcdErr.EcodeRaftInternal, prefix, 0)
+		return nil, v2error.NewError(v2error.EcodeRaftInternal, prefix, 0)
 	}
 
-	evc, donec := make(chan *store.Event), make(chan struct{})
+	evc, donec := make(chan *v2store.Event), make(chan struct{})
 	go func() {
 		defer func() {
 			close(evc)
@@ -82,7 +82,7 @@ func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint
 	}, nil
 }
 
-func (s *v2v3Store) mkV2Events(wr clientv3.WatchResponse) (evs []*store.Event) {
+func (s *v2v3Store) mkV2Events(wr clientv3.WatchResponse) (evs []*v2store.Event) {
 	ak := s.mkActionKey()
 	for _, rev := range mkRevs(wr) {
 		var act, key *clientv3.Event
@@ -97,7 +97,7 @@ func (s *v2v3Store) mkV2Events(wr clientv3.WatchResponse) (evs []*store.Event) {
 				key = ev
 			}
 		}
-		v2ev := &store.Event{
+		v2ev := &v2store.Event{
 			Action:    string(act.Kv.Value),
 			Node:      s.mkV2Node(key.Kv),
 			PrevNode:  s.mkV2Node(key.PrevKv),
@@ -125,7 +125,7 @@ func mkRevs(wr clientv3.WatchResponse) (revs [][]*clientv3.Event) {
 
 type v2v3Watcher struct {
 	startRev int64
-	evc      chan *store.Event
+	evc      chan *v2store.Event
 	donec    chan struct{}
 	cancel   context.CancelFunc
 }
@@ -137,4 +137,4 @@ func (w *v2v3Watcher) Remove() {
 	<-w.donec
 }
 
-func (w *v2v3Watcher) EventChan() chan *store.Event { return w.evc }
+func (w *v2v3Watcher) EventChan() chan *v2store.Event { return w.evc }

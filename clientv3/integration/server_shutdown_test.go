@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -63,7 +63,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	wch := watchCli.Watch(context.Background(), key, clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -104,7 +104,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -337,10 +337,20 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		defer close(donec)
 		ctx, cancel := context.WithTimeout(context.TODO(), clientTimeout)
 		readyc <- struct{}{}
-		_, err := cli.Get(ctx, "abc", gops...)
+
+		// TODO: The new grpc load balancer will not pin to an endpoint
+		// as intended by this test. But it will round robin member within
+		// two attempts.
+		// Remove retry loop once the new grpc load balancer provides retry.
+		for i := 0; i < 2; i++ {
+			_, err = cli.Get(ctx, "abc", gops...)
+			if err == nil {
+				break
+			}
+		}
 		cancel()
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 	}()
 
@@ -348,7 +358,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	clus.Members[target].Restart(t)
 
 	select {
-	case <-time.After(clientTimeout + 3*time.Second):
+	case <-time.After(clientTimeout + integration.RequestWaitTimeout):
 		t.Fatalf("timed out waiting for Get [linearizable: %v, opt: %+v]", linearizable, opt)
 	case <-donec:
 	}
@@ -361,7 +371,57 @@ func isServerCtxTimeout(err error) bool {
 	if err == nil {
 		return false
 	}
-	ev, _ := status.FromError(err)
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
 	code := ev.Code()
 	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
+}
+
+// In grpc v1.11.3+ dial timeouts can error out with transport.ErrConnClosing. Previously dial timeouts
+// would always error out with context.DeadlineExceeded.
+func isClientTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.DeadlineExceeded {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.DeadlineExceeded
+}
+
+func isCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled
+}
+
+func isUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Unavailable
 }

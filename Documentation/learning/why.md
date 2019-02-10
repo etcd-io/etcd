@@ -1,6 +1,6 @@
 # etcd versus other key-value stores
 
-The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istibuted systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".
+The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istributed systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".
 
 etcd is designed as a general substrate for large scale distributed systems. These are systems that will never tolerate split-brain operation and are willing to sacrifice availability to achieve this end. etcd stores metadata in a consistent and fault-tolerant way. An etcd cluster is meant to provide key-value storage with best of class stability, reliability, scalability and performance.
 
@@ -47,7 +47,7 @@ When considering features, support, and stability, new applications planning to 
 
 ### Consul
 
-Consul bills itself as an end-to-end service discovery framework. To wit, it includes services such as health checking, failure detection, and DNS. Incidentally, Consul also exposes a key value store with mediocre performance and an intricate API. As it stands in Consul 0.7, the storage system does not scales well; systems requiring millions of keys will suffer from high latencies and memory pressure. The key value API is missing, most notably, multi-version keys, conditional transactions, and reliable streaming watches.
+Consul is an end-to-end service discovery framework. It provides built-in health checking, failure detection, and DNS services. In addition, Consul exposes a key value store with RESTful HTTP APIs. [As it stands in Consul 1.0][dbtester-comparison-results], the storage system does not scale as well as other systems like etcd or Zookeeper in key-value operations; systems requiring millions of keys will suffer from high latencies and memory pressure. The key value API is missing, most notably, multi-version keys, conditional transactions, and reliable streaming watches.
 
 etcd and Consul solve different problems. If looking for a distributed consistent key value store, etcd is a better choice over Consul. If looking for end-to-end cluster service discovery, etcd will not have enough features; choose Kubernetes, Consul, or SmartStack.
 
@@ -82,12 +82,12 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [cockroach]: https://github.com/cockroachdb/cockroach
 [spanner]: https://cloud.google.com/spanner/
 [tidb]: https://github.com/pingcap/tidb
-[etcd-v3lock]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb
-[etcd-v3election]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb
+[etcd-v3lock]: https://godoc.org/github.com/etcd-io/etcd/etcdserver/api/v3lock/v3lockpb
+[etcd-v3election]: https://godoc.org/github.com/coreos/etcd-io/etcdserver/api/v3election/v3electionpb
 [etcd-etcdctl-lock]: ../../etcdctl/README.md#lock-lockname-command-arg1-arg2-
 [etcd-etcdctl-elect]: ../../etcdctl/README.md#elect-options-election-name-proposal
 [etcd-mvcc]: data_model.md
-[etcd-recipe]: https://godoc.org/github.com/coreos/etcd/contrib/recipes
+[etcd-recipe]: https://godoc.org/github.com/etcd-io/etcd/contrib/recipes
 [consul-lock]: https://www.consul.io/docs/commands/lock.html
 [newsql-leader]: http://dl.acm.org/citation.cfm?id=2960999
 [etcd-reconfig]: ../op-guide/runtime-configuration.md
@@ -112,4 +112,5 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [zk-bindings]: https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#ch_bindings
 [container-linux]: https://coreos.com/why
 [locksmith]: https://github.com/coreos/locksmith
-[kubernetes]: http://kubernetes.io/docs/whatisk8s
+[kubernetes]: https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
+[dbtester-comparison-results]: https://github.com/coreos/dbtester/tree/master/test-results/2018Q1-02-etcd-zookeeper-consul

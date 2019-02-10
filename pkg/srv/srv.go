@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 
 // GetCluster gets the cluster information via DNS discovery.
 // Also sees each entry as a separate instance.
-func GetCluster(service, name, dns string, apurls types.URLs) ([]string, error) {
+func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]string, error) {
 	tempName := int(0)
 	tcp2ap := make(map[string]url.URL)
 
@@ -83,20 +83,9 @@ func GetCluster(service, name, dns string, apurls types.URLs) ([]string, error) 
 		return nil
 	}
 
-	failCount := 0
-	err := updateNodeMap(service+"-ssl", "https")
-	srvErr := make([]string, 2)
+	err := updateNodeMap(service, serviceScheme)
 	if err != nil {
-		srvErr[0] = fmt.Sprintf("error querying DNS SRV records for _%s-ssl %s", service, err)
-		failCount++
-	}
-	err = updateNodeMap(service, "http")
-	if err != nil {
-		srvErr[1] = fmt.Sprintf("error querying DNS SRV records for _%s %s", service, err)
-		failCount++
-	}
-	if failCount == 2 {
-		return nil, fmt.Errorf("srv: too many errors querying DNS SRV records (%q, %q)", srvErr[0], srvErr[1])
+		return nil, fmt.Errorf("error querying DNS SRV records for _%s %s", service, err)
 	}
 	return stringParts, nil
 }
@@ -107,7 +96,7 @@ type SRVClients struct {
 }
 
 // GetClient looks up the client endpoints for a service and domain.
-func GetClient(service, domain string) (*SRVClients, error) {
+func GetClient(service, domain string, serviceName string) (*SRVClients, error) {
 	var urls []*url.URL
 	var srvs []*net.SRV
 
@@ -126,8 +115,8 @@ func GetClient(service, domain string) (*SRVClients, error) {
 		return nil
 	}
 
-	errHTTPS := updateURLs(service+"-ssl", "https")
-	errHTTP := updateURLs(service, "http")
+	errHTTPS := updateURLs(GetSRVService(service, serviceName, "https"), "https")
+	errHTTP := updateURLs(GetSRVService(service, serviceName, "http"), "http")
 
 	if errHTTPS != nil && errHTTP != nil {
 		return nil, fmt.Errorf("dns lookup errors: %s and %s", errHTTPS, errHTTP)
@@ -138,4 +127,16 @@ func GetClient(service, domain string) (*SRVClients, error) {
 		endpoints[i] = urls[i].String()
 	}
 	return &SRVClients{Endpoints: endpoints, SRVs: srvs}, nil
+}
+
+// GetSRVService generates a SRV service including an optional suffix.
+func GetSRVService(service, serviceName string, scheme string) (SRVService string) {
+	if scheme == "https" {
+		service = fmt.Sprintf("%s-ssl", service)
+	}
+
+	if serviceName != "" {
+		return fmt.Sprintf("%s-%s", service, serviceName)
+	}
+	return service
 }

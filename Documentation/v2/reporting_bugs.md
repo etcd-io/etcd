@@ -46,5 +46,5 @@ $ sudo journalctl -u etcd2
 
 Due to an upstream systemd bug, journald may miss the last few log lines when its process exit. If journalctl tells you that etcd stops without fatal or panic message, you could try `sudo journalctl -f -t etcd2` to get full log.
 
-[etcd-issue]: https://github.com/coreos/etcd/issues/new
+[etcd-issue]: https://github.com/etcd-io/etcd/issues/new
 [filing-good-bugs]: http://fantasai.inkedblade.net/style/talks/filing-good-bugs/

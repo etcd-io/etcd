@@ -20,10 +20,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/raft"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -43,11 +44,6 @@ func HandlePrometheus(mux *http.ServeMux) {
 	mux.Handle(pathMetrics, promhttp.Handler())
 }
 
-// HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
-}
-
 // NewHealthHandler handles '/health' requests.
 func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +54,7 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 		}
 		h := hfunc()
 		d, _ := json.Marshal(h)
-		if !h.Health {
+		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
 			return
 		}
@@ -67,36 +63,61 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 	}
 }
 
+var (
+	healthSuccess = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_success",
+		Help:      "The total number of successful health checks",
+	})
+	healthFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "health_failures",
+		Help:      "The total number of failed health checks",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(healthSuccess)
+	prometheus.MustRegister(healthFailed)
+}
+
 // Health defines etcd server health status.
 // TODO: remove manual parsing in etcdctl cluster-health
 type Health struct {
-	Health bool     `json:"health"`
-	Errors []string `json:"errors,omitempty"`
+	Health string `json:"health"`
 }
 
+// TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
+
 func checkHealth(srv etcdserver.ServerV2) Health {
-	h := Health{Health: false}
+	h := Health{Health: "true"}
 
 	as := srv.Alarms()
 	if len(as) > 0 {
-		for _, v := range as {
-			h.Errors = append(h.Errors, v.Alarm.String())
+		h.Health = "false"
+	}
+
+	if h.Health == "true" {
+		if uint64(srv.Leader()) == raft.None {
+			h.Health = "false"
 		}
-		return h
 	}
 
-	if uint64(srv.Leader()) == raft.None {
-		h.Errors = append(h.Errors, etcdserver.ErrNoLeader.Error())
-		return h
+	if h.Health == "true" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+		cancel()
+		if err != nil {
+			h.Health = "false"
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
-	cancel()
-	if err != nil {
-		h.Errors = append(h.Errors, err.Error())
+	if h.Health == "true" {
+		healthSuccess.Inc()
+	} else {
+		healthFailed.Inc()
 	}
-
-	h.Health = err == nil
 	return h
 }

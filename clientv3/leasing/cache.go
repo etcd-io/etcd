@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	v3pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	v3pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 const revokeBackoff = 2 * time.Second
@@ -298,7 +298,7 @@ func (lc *leaseCache) evalOps(ops []v3.Op) ([]*v3pb.ResponseOp, bool) {
 		}
 		resps[i] = &v3pb.ResponseOp{
 			Response: &v3pb.ResponseOp_ResponseRange{
-				(*v3pb.RangeResponse)(resp),
+				ResponseRange: (*v3pb.RangeResponse)(resp),
 			},
 		}
 	}

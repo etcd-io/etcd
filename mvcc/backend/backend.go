@@ -25,8 +25,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/coreos/pkg/capnslog"
+	humanize "github.com/dustin/go-humanize"
+	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 )
 
 var (
@@ -40,10 +42,10 @@ var (
 	// This only works for linux.
 	initialMmapSize = uint64(10 * 1024 * 1024 * 1024)
 
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "mvcc/backend")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc/backend")
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
-	minSnapshotWarningTimeout = time.Duration(30 * time.Second)
+	minSnapshotWarningTimeout = 30 * time.Second
 )
 
 type Backend interface {
@@ -52,8 +54,15 @@ type Backend interface {
 
 	Snapshot() Snapshot
 	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
-	// Size returns the current size of the backend.
+	// Size returns the current size of the backend physically allocated.
+	// The backend can hold DB space that is not utilized at the moment,
+	// since it can conduct pre-allocation or spare unused space for recycling.
+	// Use SizeInUse() instead for the actual DB size.
 	Size() int64
+	// SizeInUse returns the current size of the backend logically in use.
+	// Since the backend can manage free space in a non-byte unit such as
+	// number of pages, the returned value can be not exactly accurate in bytes.
+	SizeInUse() int64
 	Defrag() error
 	ForceCommit()
 	Close() error
@@ -72,8 +81,10 @@ type backend struct {
 	// size and commits are used with atomic operations so they must be
 	// 64-bit aligned, otherwise 32-bit tests will crash
 
-	// size is the number of bytes in the backend
+	// size is the number of bytes allocated in the backend
 	size int64
+	// sizeInUse is the number of bytes actually used in the backend
+	sizeInUse int64
 	// commits counts number of commits since start
 	commits int64
 
@@ -88,6 +99,8 @@ type backend struct {
 
 	stopc chan struct{}
 	donec chan struct{}
+
+	lg *zap.Logger
 }
 
 type BackendConfig struct {
@@ -99,6 +112,8 @@ type BackendConfig struct {
 	BatchLimit int
 	// MmapSize is the number of bytes to mmap for the backend.
 	MmapSize uint64
+	// Logger logs backend-side operations.
+	Logger *zap.Logger
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -128,7 +143,11 @@ func newBackend(bcfg BackendConfig) *backend {
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
-		plog.Panicf("cannot open database at %s (%v)", bcfg.Path, err)
+		if bcfg.Logger != nil {
+			bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
+		} else {
+			plog.Panicf("cannot open database at %s (%v)", bcfg.Path, err)
+		}
 	}
 
 	// In future, may want to make buffering optional for low-concurrency systems
@@ -148,6 +167,8 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		stopc: make(chan struct{}),
 		donec: make(chan struct{}),
+
+		lg: bcfg.Logger,
 	}
 	b.batchTx = newBatchTxBuffered(b)
 	go b.run()
@@ -175,7 +196,11 @@ func (b *backend) Snapshot() Snapshot {
 	defer b.mu.RUnlock()
 	tx, err := b.db.Begin(false)
 	if err != nil {
-		plog.Fatalf("cannot begin tx (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to begin tx", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot begin tx (%s)", err)
+		}
 	}
 
 	stopc, donec := make(chan struct{}), make(chan struct{})
@@ -195,9 +220,19 @@ func (b *backend) Snapshot() Snapshot {
 		for {
 			select {
 			case <-ticker.C:
-				plog.Warningf("snapshotting is taking more than %v seconds to finish transferring %v MB [started at %v]", time.Since(start).Seconds(), float64(dbBytes)/float64(1024*1014), start)
+				if b.lg != nil {
+					b.lg.Warn(
+						"snapshotting taking too long to transfer",
+						zap.Duration("taking", time.Since(start)),
+						zap.Int64("bytes", dbBytes),
+						zap.String("size", humanize.Bytes(uint64(dbBytes))),
+					)
+				} else {
+					plog.Warningf("snapshotting is taking more than %v seconds to finish transferring %v MB [started at %v]", time.Since(start).Seconds(), float64(dbBytes)/float64(1024*1014), start)
+				}
+
 			case <-stopc:
-				snapshotDurations.Observe(time.Since(start).Seconds())
+				snapshotTransferSec.Observe(time.Since(start).Seconds())
 				return
 			}
 		}
@@ -247,6 +282,10 @@ func (b *backend) Size() int64 {
 	return atomic.LoadInt64(&b.size)
 }
 
+func (b *backend) SizeInUse() int64 {
+	return atomic.LoadInt64(&b.sizeInUse)
+}
+
 func (b *backend) run() {
 	defer close(b.donec)
 	t := time.NewTimer(b.batchInterval)
@@ -258,7 +297,9 @@ func (b *backend) run() {
 			b.batchTx.CommitAndStop()
 			return
 		}
-		b.batchTx.Commit()
+		if b.batchTx.safePending() != 0 {
+			b.batchTx.Commit()
+		}
 		t.Reset(b.batchInterval)
 	}
 }
@@ -275,18 +316,12 @@ func (b *backend) Commits() int64 {
 }
 
 func (b *backend) Defrag() error {
-	err := b.defrag()
-	if err != nil {
-		return err
-	}
-
-	// commit to update metadata like db.size
-	b.batchTx.Commit()
-
-	return nil
+	return b.defrag()
 }
 
 func (b *backend) defrag() error {
+	now := time.Now()
+
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
@@ -302,6 +337,7 @@ func (b *backend) defrag() error {
 	defer b.readTx.mu.Unlock()
 
 	b.batchTx.unsafeCommit(true)
+
 	b.batchTx.tx = nil
 
 	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)
@@ -309,43 +345,87 @@ func (b *backend) defrag() error {
 		return err
 	}
 
-	err = defragdb(b.db, tmpdb, defragLimit)
+	dbp := b.db.Path()
+	tdbp := tmpdb.Path()
+	size1, sizeInUse1 := b.Size(), b.SizeInUse()
+	if b.lg != nil {
+		b.lg.Info(
+			"defragmenting",
+			zap.String("path", dbp),
+			zap.Int64("current-db-size-bytes", size1),
+			zap.String("current-db-size", humanize.Bytes(uint64(size1))),
+			zap.Int64("current-db-size-in-use-bytes", sizeInUse1),
+			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse1))),
+		)
+	}
 
+	err = defragdb(b.db, tmpdb, defragLimit)
 	if err != nil {
 		tmpdb.Close()
 		os.RemoveAll(tmpdb.Path())
 		return err
 	}
 
-	dbp := b.db.Path()
-	tdbp := tmpdb.Path()
-
 	err = b.db.Close()
 	if err != nil {
-		plog.Fatalf("cannot close database (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to close database", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot close database (%s)", err)
+		}
 	}
 	err = tmpdb.Close()
 	if err != nil {
-		plog.Fatalf("cannot close database (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to close tmp database", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot close database (%s)", err)
+		}
 	}
 	err = os.Rename(tdbp, dbp)
 	if err != nil {
-		plog.Fatalf("cannot rename database (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to rename tmp database", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot rename database (%s)", err)
+		}
 	}
 
 	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
 	if err != nil {
-		plog.Panicf("cannot open database at %s (%v)", dbp, err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
+		} else {
+			plog.Panicf("cannot open database at %s (%v)", dbp, err)
+		}
 	}
-	b.batchTx.tx, err = b.db.Begin(true)
-	if err != nil {
-		plog.Fatalf("cannot begin tx (%s)", err)
-	}
+	b.batchTx.tx = b.unsafeBegin(true)
 
 	b.readTx.reset()
 	b.readTx.tx = b.unsafeBegin(false)
-	atomic.StoreInt64(&b.size, b.readTx.tx.Size())
 
+	size := b.readTx.tx.Size()
+	db := b.readTx.tx.DB()
+	atomic.StoreInt64(&b.size, size)
+	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
+
+	took := time.Since(now)
+	defragSec.Observe(took.Seconds())
+
+	size2, sizeInUse2 := b.Size(), b.SizeInUse()
+	if b.lg != nil {
+		b.lg.Info(
+			"defragmented",
+			zap.String("path", dbp),
+			zap.Int64("current-db-size-bytes-diff", size2-size1),
+			zap.Int64("current-db-size-bytes", size2),
+			zap.String("current-db-size", humanize.Bytes(uint64(size2))),
+			zap.Int64("current-db-size-in-use-bytes-diff", sizeInUse2-sizeInUse1),
+			zap.Int64("current-db-size-in-use-bytes", sizeInUse2),
+			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse2))),
+			zap.Duration("took", took),
+		)
+	}
 	return nil
 }
 
@@ -373,10 +453,10 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 		}
 
 		tmpb, berr := tmptx.CreateBucketIfNotExists(next)
-		tmpb.FillPercent = 0.9 // for seq write in for each
 		if berr != nil {
 			return berr
 		}
+		tmpb.FillPercent = 0.9 // for seq write in for each
 
 		b.ForEach(func(k, v []byte) error {
 			count++
@@ -405,14 +485,23 @@ func (b *backend) begin(write bool) *bolt.Tx {
 	b.mu.RLock()
 	tx := b.unsafeBegin(write)
 	b.mu.RUnlock()
-	atomic.StoreInt64(&b.size, tx.Size())
+
+	size := tx.Size()
+	db := tx.DB()
+	atomic.StoreInt64(&b.size, size)
+	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
+
 	return tx
 }
 
 func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 	tx, err := b.db.Begin(write)
 	if err != nil {
-		plog.Fatalf("cannot begin tx (%s)", err)
+		if b.lg != nil {
+			b.lg.Fatal("failed to begin tx", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot begin tx (%s)", err)
+		}
 	}
 	return tx
 }
@@ -421,7 +510,7 @@ func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
 	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
 	if err != nil {
-		plog.Fatal(err)
+		panic(err)
 	}
 	tmpPath := filepath.Join(dir, "database")
 	bcfg := DefaultBackendConfig()

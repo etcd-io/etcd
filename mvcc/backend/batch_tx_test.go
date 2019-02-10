@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 func TestBatchTxPut(t *testing.T) {

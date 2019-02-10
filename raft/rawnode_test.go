@@ -16,10 +16,11 @@ package raft
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // TestRawNodeStep ensures that RawNode.Step ignore local message.
@@ -56,6 +57,10 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 	rd := rawNode.Ready()
 	s.Append(rd.Entries)
 	rawNode.Advance(rd)
+
+	if d := rawNode.Ready(); d.MustSync || !IsEmptyHardState(d.HardState) || len(d.Entries) > 0 {
+		t.Fatalf("expected empty hard state with must-sync=false: %#v", d)
+	}
 
 	rawNode.Campaign()
 	proposed := false
@@ -190,8 +195,9 @@ func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
 // to the underlying raft. It also ensures that ReadState can be read out.
 func TestRawNodeReadIndex(t *testing.T) {
 	msgs := []raftpb.Message{}
-	appendStep := func(r *raft, m raftpb.Message) {
+	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
+		return nil
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
@@ -328,7 +334,7 @@ func TestRawNodeRestart(t *testing.T) {
 		HardState: emptyState,
 		// commit up to commit index in st
 		CommittedEntries: entries[:st.Commit],
-		MustSync:         true,
+		MustSync:         false,
 	}
 
 	storage := NewMemoryStorage()
@@ -365,7 +371,7 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 		HardState: emptyState,
 		// commit up to commit index in st
 		CommittedEntries: entries,
-		MustSync:         true,
+		MustSync:         false,
 	}
 
 	s := NewMemoryStorage()
@@ -398,5 +404,215 @@ func TestRawNodeStatus(t *testing.T) {
 	status := rawNode.Status()
 	if status == nil {
 		t.Errorf("expected status struct, got nil")
+	}
+}
+
+// TestRawNodeCommitPaginationAfterRestart is the RawNode version of
+// TestNodeCommitPaginationAfterRestart. The anomaly here was even worse as the
+// Raft group would forget to apply entries:
+//
+// - node learns that index 11 is committed
+// - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
+//   exceeds maxBytes), which isn't noticed internally by Raft
+// - Commit index gets bumped to 10
+// - the node persists the HardState, but crashes before applying the entries
+// - upon restart, the storage returns the same entries, but `slice` takes a
+//   different code path and removes the last entry.
+// - Raft does not emit a HardState, but when the app calls Advance(), it bumps
+//   its internal applied index cursor to 10 (when it should be 9)
+// - the next Ready asks the app to apply index 11 (omitting index 10), losing a
+//    write.
+func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
+	s := &ignoreSizeHintMemStorage{
+		MemoryStorage: NewMemoryStorage(),
+	}
+	persistedHardState := raftpb.HardState{
+		Term:   1,
+		Vote:   1,
+		Commit: 10,
+	}
+
+	s.hardState = persistedHardState
+	s.ents = make([]raftpb.Entry, 10)
+	var size uint64
+	for i := range s.ents {
+		ent := raftpb.Entry{
+			Term:  1,
+			Index: uint64(i + 1),
+			Type:  raftpb.EntryNormal,
+			Data:  []byte("a"),
+		}
+
+		s.ents[i] = ent
+		size += uint64(ent.Size())
+	}
+
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	// Set a MaxSizePerMsg that would suggest to Raft that the last committed entry should
+	// not be included in the initial rd.CommittedEntries. However, our storage will ignore
+	// this and *will* return it (which is how the Commit index ended up being 10 initially).
+	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
+
+	s.ents = append(s.ents, raftpb.Entry{
+		Term:  1,
+		Index: uint64(11),
+		Type:  raftpb.EntryNormal,
+		Data:  []byte("boom"),
+	})
+
+	rawNode, err := NewRawNode(cfg, []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for highestApplied := uint64(0); highestApplied != 11; {
+		rd := rawNode.Ready()
+		n := len(rd.CommittedEntries)
+		if n == 0 {
+			t.Fatalf("stopped applying entries at index %d", highestApplied)
+		}
+		if next := rd.CommittedEntries[0].Index; highestApplied != 0 && highestApplied+1 != next {
+			t.Fatalf("attempting to apply index %d after index %d, leaving a gap", next, highestApplied)
+		}
+		highestApplied = rd.CommittedEntries[n-1].Index
+		rawNode.Advance(rd)
+		rawNode.Step(raftpb.Message{
+			Type:   raftpb.MsgHeartbeat,
+			To:     1,
+			From:   1, // illegal, but we get away with it
+			Term:   1,
+			Commit: 11,
+		})
+	}
+}
+
+// TestRawNodeBoundedLogGrowthWithPartition tests a scenario where a leader is
+// partitioned from a quorum of nodes. It verifies that the leader's log is
+// protected from unbounded growth even as new entries continue to be proposed.
+// This protection is provided by the MaxUncommittedEntriesSize configuration.
+func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
+	const maxEntries = 16
+	data := []byte("testdata")
+	testEntry := raftpb.Entry{Data: data}
+	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
+
+	s := NewMemoryStorage()
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	cfg.MaxUncommittedEntriesSize = maxEntrySize
+	rawNode, err := NewRawNode(cfg, []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rd := rawNode.Ready()
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+
+	// Become the leader.
+	rawNode.Campaign()
+	for {
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+		if rd.SoftState.Lead == rawNode.raft.id {
+			rawNode.Advance(rd)
+			break
+		}
+		rawNode.Advance(rd)
+	}
+
+	// Simulate a network partition while we make our proposals by never
+	// committing anything. These proposals should not cause the leader's
+	// log to grow indefinitely.
+	for i := 0; i < 1024; i++ {
+		rawNode.Propose(data)
+	}
+
+	// Check the size of leader's uncommitted log tail. It should not exceed the
+	// MaxUncommittedEntriesSize limit.
+	checkUncommitted := func(exp uint64) {
+		t.Helper()
+		if a := rawNode.raft.uncommittedSize; exp != a {
+			t.Fatalf("expected %d uncommitted entry bytes, found %d", exp, a)
+		}
+	}
+	checkUncommitted(maxEntrySize)
+
+	// Recover from the partition. The uncommitted tail of the Raft log should
+	// disappear as entries are committed.
+	rd = rawNode.Ready()
+	if len(rd.CommittedEntries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	}
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	checkUncommitted(0)
+}
+
+func BenchmarkStatusProgress(b *testing.B) {
+	setup := func(members int) *RawNode {
+		peers := make([]uint64, members)
+		for i := range peers {
+			peers[i] = uint64(i + 1)
+		}
+		cfg := newTestConfig(1, peers, 3, 1, NewMemoryStorage())
+		cfg.Logger = discardLogger
+		r := newRaft(cfg)
+		r.becomeFollower(1, 1)
+		r.becomeCandidate()
+		r.becomeLeader()
+		return &RawNode{raft: r}
+	}
+
+	for _, members := range []int{1, 3, 5, 100} {
+		b.Run(fmt.Sprintf("members=%d", members), func(b *testing.B) {
+			// NB: call getStatus through rn.Status because that incurs an additional
+			// allocation.
+			rn := setup(members)
+
+			b.Run("Status", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = rn.Status()
+				}
+			})
+
+			b.Run("Status-example", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					s := rn.Status()
+					var n uint64
+					for _, pr := range s.Progress {
+						n += pr.Match
+					}
+					_ = n
+				}
+			})
+
+			b.Run("StatusWithoutProgress", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = rn.StatusWithoutProgress()
+				}
+			})
+
+			b.Run("WithProgress", func(b *testing.B) {
+				b.ReportAllocs()
+				visit := func(uint64, ProgressType, Progress) {}
+
+				for i := 0; i < b.N; i++ {
+					rn.WithProgress(visit)
+				}
+			})
+			b.Run("WithProgress-example", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					var n uint64
+					visit := func(_ uint64, _ ProgressType, pr Progress) {
+						n += pr.Match
+					}
+					rn.WithProgress(visit)
+					_ = n
+				}
+			})
+		})
 	}
 }

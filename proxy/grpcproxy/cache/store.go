@@ -20,10 +20,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/adt"
 	"github.com/golang/groupcache/lru"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/adt"
 )
 
 var (
@@ -99,9 +99,12 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 	iv = c.cachedRanges.Find(ivl)
 
 	if iv == nil {
-		c.cachedRanges.Insert(ivl, []string{key})
+		val := map[string]struct{}{key: {}}
+		c.cachedRanges.Insert(ivl, val)
 	} else {
-		iv.Val = append(iv.Val.([]string), key)
+		val := iv.Val.(map[string]struct{})
+		val[key] = struct{}{}
+		iv.Val = val
 	}
 }
 
@@ -141,8 +144,8 @@ func (c *cache) Invalidate(key, endkey []byte) {
 
 	ivs = c.cachedRanges.Stab(ivl)
 	for _, iv := range ivs {
-		keys := iv.Val.([]string)
-		for _, key := range keys {
+		keys := iv.Val.(map[string]struct{})
+		for key := range keys {
 			c.lru.Remove(key)
 		}
 	}

@@ -1,0 +1,34 @@
+Snapshot:
+empty
+Start dupmping log entries from snapshot.
+WAL metadata:
+nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
+WAL entries:
+lastIndex=34
+term	     index	type	data
+   4	        10	norm	ID:5 range:<key:"1" range_end:"hi" limit:6 revision:1 sort_order:ASCEND max_mod_revision:20000 max_create_revision:20000 > 
+   5	        11	norm	ID:6 put:<key:"foo1" value:"bar1" lease:1 ignore_lease:true > 
+   6	        12	norm	ID:7 delete_range:<key:"0" range_end:"9" prev_kv:true > 
+   7	        13	norm	ID:8 txn:<success:<request_delete_range:<key:"a" range_end:"b" > > failure:<request_delete_range:<key:"a" range_end:"b" > > > 
+   8	        14	norm	ID:9 compaction:<physical:true > 
+   9	        15	norm	ID:10 lease_grant:<TTL:1 ID:1 > 
+  10	        16	norm	ID:11 lease_revoke:<ID:2 > 
+  11	        17	norm	ID:12 alarm:<action:3 memberID:4 alarm:5 > 
+  12	        18	norm	ID:13 auth_enable:<> 
+  13	        19	norm	ID:14 auth_disable:<> 
+  14	        20	norm	ID:15 authenticate:<name:"myname" password:"password" simple_token:"token" > 
+  15	        21	norm	ID:16 auth_user_add:<name:"name1" password:"pass1" > 
+  16	        22	norm	ID:17 auth_user_delete:<name:"name1" > 
+  17	        23	norm	ID:18 auth_user_get:<name:"name1" > 
+  18	        24	norm	ID:19 auth_user_change_password:<name:"name1" password:"pass2" > 
+  19	        25	norm	ID:20 auth_user_grant_role:<user:"user1" role:"role1" > 
+  20	        26	norm	ID:21 auth_user_revoke_role:<name:"user2" role:"role2" > 
+  21	        27	norm	ID:22 auth_user_list:<> 
+  22	        28	norm	ID:23 auth_role_list:<> 
+  23	        29	norm	ID:24 auth_role_add:<name:"role2" > 
+  24	        30	norm	ID:25 auth_role_delete:<role:"role1" > 
+  25	        31	norm	ID:26 auth_role_get:<role:"role3" > 
+  26	        32	norm	ID:27 auth_role_grant_permission:<name:"role3" perm:<permType:WRITE key:"Keys" range_end:"RangeEnd" > > 
+  27	        33	norm	ID:28 auth_role_revoke_permission:<role:"role3" key:"key" range_end:"rangeend" > 
+
+Entry types (InternalRaftRequest) count is : 24

@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
 )
@@ -54,6 +54,11 @@ func TestLeaseGrant(t *testing.T) {
 	lapi := clus.RandClient()
 
 	kv := clus.RandClient()
+
+	_, merr := lapi.Grant(context.Background(), clientv3.MaxLeaseTTL+1)
+	if merr != rpctypes.ErrLeaseTTLTooLarge {
+		t.Fatalf("err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
+	}
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -138,6 +143,10 @@ func TestLeaseKeepAlive(t *testing.T) {
 	kresp, ok := <-rc
 	if !ok {
 		t.Errorf("chan is closed, want not closed")
+	}
+
+	if kresp == nil {
+		t.Fatalf("unexpected null response")
 	}
 
 	if kresp.ID != resp.ID {
@@ -282,26 +291,68 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
 		_, err := cli.Grant(context.TODO(), 5)
-		if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
+		if !clientv3.IsConnCanceled(err) {
 			// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
 			// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
-			t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
+			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
 
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
-
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Grant took too long")
 	case <-donec:
+	}
+}
+
+// TestLeaseKeepAliveFullResponseQueue ensures when response
+// queue is full thus dropping keepalive response sends,
+// keepalive request is sent with the same rate of TTL / 3.
+func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	lapi := clus.Client(0)
+
+	// expect lease keepalive every 10-second
+	lresp, err := lapi.Grant(context.Background(), 30)
+	if err != nil {
+		t.Fatalf("failed to create lease %v", err)
+	}
+	id := lresp.ID
+
+	old := clientv3.LeaseResponseChSize
+	defer func() {
+		clientv3.LeaseResponseChSize = old
+	}()
+	clientv3.LeaseResponseChSize = 0
+
+	// never fetch from response queue, and let it become full
+	_, err = lapi.KeepAlive(context.Background(), id)
+	if err != nil {
+		t.Fatalf("failed to keepalive lease %v", err)
+	}
+
+	// TTL should not be refreshed after 3 seconds
+	// expect keepalive to be triggered after TTL/3
+	time.Sleep(3 * time.Second)
+
+	tr, terr := lapi.TimeToLive(context.Background(), id)
+	if terr != nil {
+		t.Fatalf("failed to get lease information %v", terr)
+	}
+	if tr.TTL >= 29 {
+		t.Errorf("unexpected kept-alive lease TTL %d", tr.TTL)
 	}
 }
 
@@ -319,13 +370,14 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := cli.Grant(context.TODO(), 5); err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+		_, err := cli.Grant(context.TODO(), 5)
+		if !clientv3.IsConnCanceled(err) {
+			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Grant took too long")
 	case <-donec:
 	}
@@ -351,13 +403,14 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := cli.Revoke(context.TODO(), leaseID); err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
+		_, err := cli.Revoke(context.TODO(), leaseID)
+		if !clientv3.IsConnCanceled(err) {
+			t.Fatalf("expected %v, %v or server unavailable, got %v", err != context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
 	select {
-	case <-time.After(3 * time.Second):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Revoke took too long")
 	case <-donec:
 	}
@@ -771,8 +824,11 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 	// kaReqLeader may issue multiple requests while waiting for the first
 	// response from proxy server; drain any stray keepalive responses
 	time.Sleep(100 * time.Millisecond)
-	for len(kaReqLeader) > 0 {
+	for {
 		<-kaReqLeader
+		if len(kaReqLeader) == 0 {
+			break
+		}
 	}
 
 	select {

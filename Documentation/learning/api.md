@@ -472,10 +472,10 @@ message LeaseKeepAliveResponse {
 * ID - the lease that was refreshed with a new TTL.
 * TTL - the new time-to-live, in seconds, that the lease has remaining.
 
-[elections]: https://github.com/coreos/etcd/blob/master/clientv3/concurrency/election.go
-[kv-proto]: https://github.com/coreos/etcd/blob/master/mvcc/mvccpb/kv.proto
+[elections]: https://github.com/etcd-io/etcd/blob/master/clientv3/concurrency/election.go
+[kv-proto]: https://github.com/etcd-io/etcd/blob/master/mvcc/mvccpb/kv.proto
 [grpc-api]: ../dev-guide/api_reference_v3.md
-[grpc-service]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
-[locks]: https://github.com/coreos/etcd/blob/master/clientv3/concurrency/mutex.go
+[grpc-service]: https://github.com/etcd-io/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
+[locks]: https://github.com/etcd-io/etcd/blob/master/clientv3/concurrency/mutex.go
 [mvcc]: https://en.wikipedia.org/wiki/Multiversion_concurrency_control
-[stm]: https://github.com/coreos/etcd/blob/master/clientv3/concurrency/stm.go
+[stm]: https://github.com/etcd-io/etcd/blob/master/clientv3/concurrency/stm.go

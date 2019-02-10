@@ -19,9 +19,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 // HandleHealth registers health handler on '/health'.
@@ -30,13 +30,12 @@ func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {
-	h := etcdhttp.Health{Health: false}
+	h := etcdhttp.Health{Health: "false"}
 	ctx, cancel := context.WithTimeout(c.Ctx(), time.Second)
 	_, err := c.Get(ctx, "a")
 	cancel()
-	h.Health = err == nil || err == rpctypes.ErrPermissionDenied
-	if !h.Health {
-		h.Errors = append(h.Errors, err.Error())
+	if err == nil || err == rpctypes.ErrPermissionDenied {
+		h.Health = "true"
 	}
 	return h
 }

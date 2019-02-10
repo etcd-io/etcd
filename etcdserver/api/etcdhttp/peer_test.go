@@ -23,11 +23,13 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/rafthttp"
+	"go.uber.org/zap"
+
 	"github.com/coreos/go-semver/semver"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 type fakeCluster struct {
@@ -55,7 +57,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test data"))
 	})
-	ph := newPeerHandler(&fakeCluster{}, h, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeCluster{}, h, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 

@@ -17,6 +17,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"syscall"
@@ -62,7 +63,7 @@ func TryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 func ofdTryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	f, err := os.OpenFile(path, flag, perm)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ofdTryLockFile failed to open %q (%v)", path, err)
 	}
 
 	flock := wrlck
@@ -83,15 +84,14 @@ func LockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 func ofdLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	f, err := os.OpenFile(path, flag, perm)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ofdLockFile failed to open %q (%v)", path, err)
 	}
 
 	flock := wrlck
 	err = syscall.FcntlFlock(f.Fd(), F_OFD_SETLKW, &flock)
-
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
-	return &LockedFile{f}, err
+	return &LockedFile{f}, nil
 }

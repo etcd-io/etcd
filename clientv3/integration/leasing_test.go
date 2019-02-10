@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/clientv3/leasing"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3/leasing"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -1385,7 +1385,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	// make lkv1 connection choppy so Txn fails
 	go func() {
 		defer close(sdonec)
-		for i := 0; i < 10 && cctx.Err() == nil; i++ {
+		for i := 0; i < 3 && cctx.Err() == nil; i++ {
 			clus.Members[0].Stop(t)
 			time.Sleep(10 * time.Millisecond)
 			clus.Members[0].Restart(t)
@@ -1396,6 +1396,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 		if _, err := lkv2.Put(cctx, "k", "v"); err != nil {
 			t.Log(err)
 		}
+		// blocks until lkv1 connection comes back
 		resp, err := lkv1.Get(cctx, "k")
 		if err != nil {
 			t.Fatal(err)
@@ -1408,11 +1409,11 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	case <-pdonec:
 		cancel()
 		<-sdonec
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		cancel()
 		<-sdonec
 		<-pdonec
-		t.Fatal("took to long to revoke and put")
+		t.Fatal("took too long to revoke and put")
 	}
 }
 
@@ -1643,6 +1644,7 @@ func TestLeasingReconnectTxn(t *testing.T) {
 			clus.Members[0].DropConnections()
 			time.Sleep(time.Millisecond)
 		}
+		time.Sleep(10 * time.Millisecond)
 	}()
 
 	_, lerr := lkv.Txn(context.TODO()).
@@ -1904,7 +1906,7 @@ func TestLeasingSessionExpire(t *testing.T) {
 	}
 	waitForExpireAck(t, lkv)
 	clus.Members[0].Restart(t)
-
+	integration.WaitClientV3(t, lkv2)
 	if _, err = lkv2.Put(context.TODO(), "abc", "def"); err != nil {
 		t.Fatal(err)
 	}
@@ -1919,10 +1921,6 @@ func TestLeasingSessionExpire(t *testing.T) {
 }
 
 func TestLeasingSessionExpireCancel(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
 	tests := []func(context.Context, clientv3.KV) error{
 		func(ctx context.Context, kv clientv3.KV) error {
 			_, err := kv.Get(ctx, "abc")
@@ -1959,37 +1957,43 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 		},
 	}
 	for i := range tests {
-		lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
-		testutil.AssertNil(t, err)
-		defer closeLKV()
+		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
+			defer testutil.AfterTest(t)
+			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
 
-		if _, err = lkv.Get(context.TODO(), "abc"); err != nil {
-			t.Fatal(err)
-		}
+			lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
+			testutil.AssertNil(t, err)
+			defer closeLKV()
 
-		// down endpoint lkv uses for keepalives
-		clus.Members[0].Stop(t)
-		if err := waitForLeasingExpire(clus.Client(1), "foo/abc"); err != nil {
-			t.Fatal(err)
-		}
-		waitForExpireAck(t, lkv)
-
-		ctx, cancel := context.WithCancel(context.TODO())
-		errc := make(chan error, 1)
-		go func() { errc <- tests[i](ctx, lkv) }()
-		// some delay to get past for ctx.Err() != nil {} loops
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-
-		select {
-		case err := <-errc:
-			if err != ctx.Err() {
-				t.Errorf("#%d: expected %v, got %v", i, ctx.Err(), err)
+			if _, err = lkv.Get(context.TODO(), "abc"); err != nil {
+				t.Fatal(err)
 			}
-		case <-time.After(5 * time.Second):
-			t.Errorf("#%d: timed out waiting for cancel", i)
-		}
-		clus.Members[0].Restart(t)
+
+			// down endpoint lkv uses for keepalives
+			clus.Members[0].Stop(t)
+			if err := waitForLeasingExpire(clus.Client(1), "foo/abc"); err != nil {
+				t.Fatal(err)
+			}
+			waitForExpireAck(t, lkv)
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			errc := make(chan error, 1)
+			go func() { errc <- tests[i](ctx, lkv) }()
+			// some delay to get past for ctx.Err() != nil {} loops
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+
+			select {
+			case err := <-errc:
+				if err != ctx.Err() {
+					t.Errorf("#%d: expected %v of server unavailable, got %v", i, ctx.Err(), err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Errorf("#%d: timed out waiting for cancel", i)
+			}
+			clus.Members[0].Restart(t)
+		})
 	}
 }
 
@@ -2015,6 +2019,8 @@ func waitForExpireAck(t *testing.T, kv clientv3.KV) {
 		cancel()
 		if err == ctx.Err() {
 			return
+		} else if err != nil {
+			t.Logf("current error: %v", err)
 		}
 		time.Sleep(time.Second)
 	}

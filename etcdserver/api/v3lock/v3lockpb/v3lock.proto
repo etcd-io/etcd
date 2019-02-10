@@ -20,7 +20,7 @@ service Lock {
   // lease associate with the owner expires.
   rpc Lock(LockRequest) returns (LockResponse) {
       option (google.api.http) = {
-        post: "/v3beta/lock/lock"
+        post: "/v3/lock/lock"
         body: "*"
     };
   }
@@ -30,7 +30,7 @@ service Lock {
   // ownership of the lock.
   rpc Unlock(UnlockRequest) returns (UnlockResponse) {
       option (google.api.http) = {
-        post: "/v3beta/lock/unlock"
+        post: "/v3/lock/unlock"
         body: "*"
     };
   }
@@ -42,7 +42,7 @@ message LockRequest {
   // lease is the ID of the lease that will be attached to ownership of the
   // lock. If the lease expires or is revoked and currently holds the lock,
   // the lock is automatically released. Calls to Lock with the same lease will
-  // be treated as a single acquistion; locking twice with the same lease is a
+  // be treated as a single acquisition; locking twice with the same lease is a
   // no-op.
   int64 lease = 2;
 }

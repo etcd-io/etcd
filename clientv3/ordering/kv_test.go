@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {
@@ -82,6 +82,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	clus.Members[2].Restart(t)
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
+	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != errOrderViolation {
@@ -147,7 +148,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	clus.Members[2].Restart(t)
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
-
+	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
@@ -204,7 +205,7 @@ var rangeTests = []struct {
 
 func TestKvOrdering(t *testing.T) {
 	for i, tt := range rangeTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil), tt.response.OpResponse()}
+		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
 			func(r *clientv3.GetResponse) OrderViolationFunc {
@@ -258,7 +259,7 @@ var txnTests = []struct {
 
 func TestTxnOrdering(t *testing.T) {
 	for i, tt := range txnTests {
-		mKV := &mockKV{clientv3.NewKVFromKVClient(nil), tt.response.OpResponse()}
+		mKV := &mockKV{clientv3.NewKVFromKVClient(nil, nil), tt.response.OpResponse()}
 		kv := &kvOrdering{
 			mKV,
 			func(r *clientv3.TxnResponse) OrderViolationFunc {

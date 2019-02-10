@@ -21,7 +21,7 @@ segmented WAL files. Inside of each file the raft state and entries are appended
 to it with the Save method:
 
 	metadata := []byte{}
-	w, err := wal.Create("/var/lib/etcd", metadata)
+	w, err := wal.Create(zap.NewExample(), "/var/lib/etcd", metadata)
 	...
 	err := w.Save(s, ents)
 

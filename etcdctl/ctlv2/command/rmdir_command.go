@@ -17,8 +17,8 @@ package command
 import (
 	"errors"
 
-	"github.com/coreos/etcd/client"
 	"github.com/urfave/cli"
+	"go.etcd.io/etcd/client"
 )
 
 // NewRemoveDirCommand returns the CLI command for "rmdir".

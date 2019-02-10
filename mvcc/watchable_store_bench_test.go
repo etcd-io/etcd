@@ -19,13 +19,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+
+	"go.uber.org/zap"
 )
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(be, &lease.FakeLessor{}, nil)
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -46,7 +48,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(be, &lease.FakeLessor{}, &i)
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &i)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -63,22 +65,37 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	}
 }
 
-// BenchmarkWatchableStoreWatchSyncPut benchmarks the case of
+// BenchmarkWatchableStoreWatchPutSync benchmarks the case of
 // many synced watchers receiving a Put notification.
-func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
+func BenchmarkWatchableStoreWatchPutSync(b *testing.B) {
+	benchmarkWatchableStoreWatchPut(b, true)
+}
+
+// BenchmarkWatchableStoreWatchPutUnsync benchmarks the case of
+// many unsynced watchers receiving a Put notification.
+func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
+	benchmarkWatchableStoreWatchPut(b, false)
+}
+
+func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 	defer cleanup(s, be, tmpPath)
 
 	k := []byte("testkey")
 	v := []byte("testval")
 
+	rev := int64(0)
+	if !synced {
+		// non-0 value to keep watchers in unsynced
+		rev = 1
+	}
+
 	w := s.NewWatchStream()
 	defer w.Close()
 	watchIDs := make([]WatchID, b.N)
 	for i := range watchIDs {
-		// non-0 value to keep watchers in unsynced
-		watchIDs[i] = w.Watch(k, nil, 1)
+		watchIDs[i], _ = w.Watch(0, k, nil, rev)
 	}
 
 	b.ResetTimer()
@@ -105,7 +122,7 @@ func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(be, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
@@ -142,7 +159,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
-		watchIDs[i] = w.Watch(testKey, nil, 1)
+		watchIDs[i], _ = w.Watch(0, testKey, nil, 1)
 	}
 
 	// random-cancel N watchers to make it not biased towards
@@ -162,7 +179,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 
 	defer func() {
 		s.store.Close()
@@ -182,7 +199,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
-		watchIDs[i] = w.Watch(testKey, nil, 0)
+		watchIDs[i], _ = w.Watch(0, testKey, nil, 0)
 	}
 
 	// randomly cancel watchers to make it not biased towards

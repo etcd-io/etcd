@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/clientv3"
 )
 
 var (
@@ -105,7 +105,7 @@ func newRoleRevokePermissionCommand() *cobra.Command {
 // roleAddCommandFunc executes the "role add" command.
 func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role add command requires role name as its argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role add command requires role name as its argument"))
 	}
 
 	resp, err := mustClientFromCmd(cmd).Auth.RoleAdd(context.TODO(), args[0])
@@ -119,7 +119,7 @@ func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 // roleDeleteCommandFunc executes the "role delete" command.
 func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument"))
 	}
 
 	resp, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
@@ -133,7 +133,7 @@ func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 // roleGetCommandFunc executes the "role get" command.
 func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role get command requires role name as its argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role get command requires role name as its argument"))
 	}
 
 	name := args[0]
@@ -148,7 +148,7 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 // roleListCommandFunc executes the "role list" command.
 func roleListCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role list command requires no arguments."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role list command requires no arguments"))
 	}
 
 	resp, err := mustClientFromCmd(cmd).Auth.RoleList(context.TODO())
@@ -162,7 +162,7 @@ func roleListCommandFunc(cmd *cobra.Command, args []string) {
 // roleGrantPermissionCommandFunc executes the "role grant-permission" command.
 func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 3 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key [endkey] as its argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key [endkey] as its argument"))
 	}
 
 	perm, err := clientv3.StrToPermissionType(args[1])
@@ -182,7 +182,7 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 // roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
 func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 2 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument"))
 	}
 
 	key, rangeEnd := permRange(args[1:])

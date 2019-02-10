@@ -23,18 +23,19 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/idutil"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/idutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/urfave/cli"
+	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 )
 
 func NewBackupCommand() cli.Command {
@@ -86,7 +87,7 @@ func handleBackup(c *cli.Context) error {
 	metadata.NodeID = idgen.Next()
 	metadata.ClusterID = idgen.Next()
 
-	neww, err := wal.Create(destWAL, pbutil.MustMarshal(&metadata))
+	neww, err := wal.Create(zap.NewExample(), destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,14 +103,14 @@ func handleBackup(c *cli.Context) error {
 }
 
 func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
-	ss := snap.New(srcSnap)
+	ss := snap.New(zap.NewExample(), srcSnap)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
 		log.Fatal(err)
 	}
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-		newss := snap.New(destSnap)
+		newss := snap.New(zap.NewExample(), destSnap)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)
 		}
@@ -118,7 +119,7 @@ func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
 }
 
 func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
-	w, err := wal.OpenForRead(srcWAL, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), srcWAL, walsnap)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -189,11 +190,11 @@ func saveDB(destDB, srcDB string, idx uint64, v3 bool) {
 		var src *bolt.DB
 		ch := make(chan *bolt.DB, 1)
 		go func() {
-			src, err := bolt.Open(srcDB, 0444, &bolt.Options{ReadOnly: true})
+			db, err := bolt.Open(srcDB, 0444, &bolt.Options{ReadOnly: true})
 			if err != nil {
 				log.Fatal(err)
 			}
-			ch <- src
+			ch <- db
 		}()
 		select {
 		case src = <-ch:

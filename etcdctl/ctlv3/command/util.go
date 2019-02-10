@@ -18,9 +18,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
-	pb "github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	pb "go.etcd.io/etcd/mvcc/mvccpb"
 
 	"github.com/spf13/cobra"
 )
@@ -74,4 +80,75 @@ func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
 		ExitWithError(ExitError, err)
 	}
 	return context.WithTimeout(context.Background(), timeOut)
+}
+
+func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
+	commandTimeoutFlag := cmd.Flags().Lookup("command-timeout")
+	if commandTimeoutFlag == nil {
+		panic("expect command-timeout flag to exist")
+	}
+	return commandTimeoutFlag.Changed
+}
+
+// get the process_resident_memory_bytes from <server:2379>/metrics
+func endpointMemoryMetrics(host string) float64 {
+	residentMemoryKey := "process_resident_memory_bytes"
+	var residentMemoryValue string
+	if !strings.HasPrefix(host, `http://`) {
+		host = "http://" + host
+	}
+	url := host + "/metrics"
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("fetch error: %v", err))
+		return 0.0
+	}
+	byts, readerr := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if readerr != nil {
+		fmt.Println(fmt.Sprintf("fetch error: reading %s: %v", url, readerr))
+		return 0.0
+	}
+
+	for _, line := range strings.Split(string(byts), "\n") {
+		if strings.HasPrefix(line, residentMemoryKey) {
+			residentMemoryValue = strings.TrimSpace(strings.TrimPrefix(line, residentMemoryKey))
+			break
+		}
+	}
+	if residentMemoryValue == "" {
+		fmt.Println(fmt.Sprintf("could not find: %v", residentMemoryKey))
+		return 0.0
+	}
+	residentMemoryBytes, parseErr := strconv.ParseFloat(residentMemoryValue, 64)
+	if parseErr != nil {
+		fmt.Println(fmt.Sprintf("parse error: %v", parseErr))
+		return 0.0
+	}
+
+	return residentMemoryBytes
+}
+
+// compact keyspace history to a provided revision
+func compact(c *v3.Client, rev int64) {
+	fmt.Printf("Compacting with revision %d\n", rev)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Compacted with revision %d\n", rev)
+}
+
+// defrag a given endpoint
+func defrag(c *v3.Client, ep string) {
+	fmt.Printf("Defragmenting %q\n", ep)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, err := c.Defragment(ctx, ep)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	fmt.Printf("Defragmented %q\n", ep)
 }

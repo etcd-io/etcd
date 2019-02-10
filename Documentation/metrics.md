@@ -99,7 +99,7 @@ Abnormally high snapshot duration (`snapshot_save_total_duration_seconds`) indic
 
 ## Prometheus supplied metrics
 
-The Prometheus client library provides a number of metrics under the `go` and `process` namespaces. There are a few that are particlarly interesting.
+The Prometheus client library provides a number of metrics under the `go` and `process` namespaces. There are a few that are particularly interesting.
 
 | Name                              | Description                                | Type         |
 |-----------------------------------|--------------------------------------------|--------------|

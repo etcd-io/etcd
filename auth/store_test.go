@@ -24,15 +24,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/auth/authpb"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/backend"
 
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/metadata"
 )
-
-func init() { BcryptCost = bcrypt.MinCost }
 
 func dummyIndexWaiter(index uint64) <-chan struct{} {
 	ch := make(chan struct{})
@@ -48,39 +48,61 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
 	old := as.Revision()
-	b.Close()
 	as.Close()
+	b.Close()
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
-	as = NewAuthStore(b2, tp)
+	as = NewAuthStore(zap.NewExample(), b2, tp, bcrypt.MinCost)
 	new := as.Revision()
-	b2.Close()
 	as.Close()
+	b2.Close()
 
 	if old != new {
 		t.Fatalf("expected revision %d, got %d", old, new)
 	}
 }
 
-func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
+// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+
+	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
+	for _, invalidCost := range invalidCosts {
+		as := NewAuthStore(zap.NewExample(), b, tp, invalidCost)
+		if as.BcryptCost() != bcrypt.DefaultCost {
+			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
+		}
+		as.Close()
+	}
+
+	b.Close()
+}
+
+func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
+	b, tPath := backend.NewDefaultTmpBackend()
+
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +120,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
-	tearDown := func(t *testing.T) {
+	tearDown := func(_ *testing.T) {
 		b.Close()
 		os.Remove(tPath)
 		as.Close()
@@ -142,6 +164,18 @@ func TestUserAdd(t *testing.T) {
 	_, err = as.UserAdd(ua) // add a user with empty name
 	if err != ErrUserEmpty {
 		t.Fatal(err)
+	}
+}
+
+func TestRecover(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	as.enabled = false
+	as.Recover(as.be)
+
+	if !as.IsAuthEnabled() {
+		t.Fatalf("expected auth enabled got disabled")
 	}
 }
 
@@ -257,6 +291,73 @@ func TestUserGrant(t *testing.T) {
 	}
 }
 
+func TestHasRole(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// grants a role to the user
+	_, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// checks role reflects correctly
+	hr := as.HasRole("foo", "role-test")
+	if !hr {
+		t.Fatal("expected role granted, got false")
+	}
+
+	// checks non existent role
+	hr = as.HasRole("foo", "non-existent-role")
+	if hr {
+		t.Fatal("expected role not found, got true")
+	}
+
+	// checks non existent user
+	hr = as.HasRole("nouser", "role-test")
+	if hr {
+		t.Fatal("expected user not found got true")
+	}
+}
+
+func TestIsOpPermitted(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// add new role
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// grants a role to the user
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check permission reflected to user
+
+	err = as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestGetUser(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
@@ -276,6 +377,12 @@ func TestGetUser(t *testing.T) {
 	expected := []string{"role-test"}
 	if !reflect.DeepEqual(expected, u.Roles) {
 		t.Errorf("expected %v, got %v", expected, u.Roles)
+	}
+
+	// check non existent user
+	_, err = as.UserGet(&pb.AuthUserGetRequest{Name: "nouser"})
+	if err == nil {
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }
 
@@ -364,8 +471,8 @@ func TestRoleRevokePermission(t *testing.T) {
 
 	_, err = as.RoleRevokePermission(&pb.AuthRoleRevokePermissionRequest{
 		Role:     "role-test-1",
-		Key:      "Keys",
-		RangeEnd: "RangeEnd",
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -467,19 +574,19 @@ func TestAuthInfoFromCtx(t *testing.T) {
 		t.Error(err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{"token": "Invalid Token"}))
+	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
 	if err != ErrInvalidAuthToken {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{"token": "Invalid.Token"}))
+	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid.Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
 	if err != ErrInvalidAuthToken {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{"token": resp.Token}))
+	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: resp.Token}))
 	ai, err = as.AuthInfoFromCtx(ctx)
 	if err != nil {
 		t.Error(err)
@@ -513,17 +620,17 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{"token": "test"}))
+		ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "test"}))
 		as.AuthInfoFromCtx(ctx)
 	}()
 	as.UserAdd(&pb.AuthUserAddRequest{Name: "test"})
@@ -579,16 +686,16 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as2 := NewAuthStore(as.be, tp)
+	as2 := NewAuthStore(zap.NewExample(), as.be, tp, bcrypt.MinCost)
 	defer func(a *authStore) {
 		a.Close()
 	}(as2)
 
-	if !as2.isAuthEnabled() {
+	if !as2.IsAuthEnabled() {
 		t.Fatal("recovering authStore from existing backend failed")
 	}
 
@@ -661,36 +768,36 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(b, tp)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	username := "user"
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{username, "pass"})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, Password: "pass"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	roles := []string{"role1", "role2", "abc", "xyz", "role3"}
 	for _, role := range roles {
-		_, err = as.RoleAdd(&pb.AuthRoleAddRequest{role})
+		_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: role})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{username, role})
+		_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: username, Role: role})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	user, err := as.UserGet(&pb.AuthUserGetRequest{username})
+	user, err := as.UserGet(&pb.AuthUserGetRequest{Name: username})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -699,5 +806,45 @@ func TestRolesOrder(t *testing.T) {
 		if strings.Compare(user.Roles[i-1], user.Roles[i]) != -1 {
 			t.Errorf("User.Roles isn't sorted (%s vs %s)", user.Roles[i-1], user.Roles[i])
 		}
+	}
+}
+
+func TestAuthInfoFromCtxWithRootSimple(t *testing.T) {
+	testAuthInfoFromCtxWithRoot(t, tokenTypeSimple)
+}
+
+func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
+	opts := testJWTOpts()
+	testAuthInfoFromCtxWithRoot(t, opts)
+}
+
+// testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
+func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	tp, err := NewTokenProvider(zap.NewExample(), opts, dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	defer as.Close()
+
+	if err = enableAuthAndCreateRoot(as); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	ctx = as.WithRoot(ctx)
+
+	ai, aerr := as.AuthInfoFromCtx(ctx)
+	if aerr != nil {
+		t.Error(err)
+	}
+	if ai == nil {
+		t.Error("expected non-nil *AuthInfo")
+	}
+	if ai.Username != "root" {
+		t.Errorf("expected user name 'root', got %+v", ai)
 	}
 }

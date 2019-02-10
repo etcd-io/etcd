@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/raft"
 )
 
 func TestBasicProgress(t *testing.T) {
-	peers := []raft.Peer{{1, nil}, {2, nil}, {3, nil}, {4, nil}, {5, nil}}
+	peers := []raft.Peer{{ID: 1, Context: nil}, {ID: 2, Context: nil}, {ID: 3, Context: nil}, {ID: 4, Context: nil}, {ID: 5, Context: nil}}
 	nt := newRaftNetwork(1, 2, 3, 4, 5)
 
 	nodes := make([]*node, 0)
@@ -49,7 +49,7 @@ func TestBasicProgress(t *testing.T) {
 }
 
 func TestRestart(t *testing.T) {
-	peers := []raft.Peer{{1, nil}, {2, nil}, {3, nil}, {4, nil}, {5, nil}}
+	peers := []raft.Peer{{ID: 1, Context: nil}, {ID: 2, Context: nil}, {ID: 3, Context: nil}, {ID: 4, Context: nil}, {ID: 5, Context: nil}}
 	nt := newRaftNetwork(1, 2, 3, 4, 5)
 
 	nodes := make([]*node, 0)
@@ -89,7 +89,7 @@ func TestRestart(t *testing.T) {
 }
 
 func TestPause(t *testing.T) {
-	peers := []raft.Peer{{1, nil}, {2, nil}, {3, nil}, {4, nil}, {5, nil}}
+	peers := []raft.Peer{{ID: 1, Context: nil}, {ID: 2, Context: nil}, {ID: 3, Context: nil}, {ID: 4, Context: nil}, {ID: 5, Context: nil}}
 	nt := newRaftNetwork(1, 2, 3, 4, 5)
 
 	nodes := make([]*node, 0)

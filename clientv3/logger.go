@@ -18,15 +18,14 @@ import (
 	"io/ioutil"
 	"sync"
 
+	"go.etcd.io/etcd/pkg/logutil"
+
 	"google.golang.org/grpc/grpclog"
 )
 
-// Logger is the logger used by client library.
-// It implements grpclog.LoggerV2 interface.
-type Logger grpclog.LoggerV2
-
 var (
-	logger settableLogger
+	lgMu sync.RWMutex
+	lg   logutil.Logger
 )
 
 type settableLogger struct {
@@ -36,38 +35,35 @@ type settableLogger struct {
 
 func init() {
 	// disable client side logs by default
-	logger.mu.Lock()
-	logger.l = grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard)
-
-	// logger has to override the grpclog at initialization so that
-	// any changes to the grpclog go through logger with locking
-	// instead of through SetLogger
-	//
-	// now updates only happen through settableLogger.set
-	grpclog.SetLoggerV2(&logger)
-	logger.mu.Unlock()
+	lg = &settableLogger{}
+	SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 }
 
-// SetLogger sets client-side Logger. By default, logs are disabled.
-func SetLogger(l Logger) {
-	logger.set(l)
+// SetLogger sets client-side Logger.
+func SetLogger(l grpclog.LoggerV2) {
+	lgMu.Lock()
+	lg = logutil.NewLogger(l)
+	// override grpclog so that any changes happen with locking
+	grpclog.SetLoggerV2(lg)
+	lgMu.Unlock()
 }
 
-// GetLogger returns the current logger.
-func GetLogger() Logger {
-	return logger.get()
+// GetLogger returns the current logutil.Logger.
+func GetLogger() logutil.Logger {
+	lgMu.RLock()
+	l := lg
+	lgMu.RUnlock()
+	return l
 }
 
-func (s *settableLogger) set(l Logger) {
-	s.mu.Lock()
-	logger.l = l
-	grpclog.SetLoggerV2(&logger)
-	s.mu.Unlock()
+// NewLogger returns a new Logger with logutil.Logger.
+func NewLogger(gl grpclog.LoggerV2) logutil.Logger {
+	return &settableLogger{l: gl}
 }
 
-func (s *settableLogger) get() Logger {
+func (s *settableLogger) get() grpclog.LoggerV2 {
 	s.mu.RLock()
-	l := logger.l
+	l := s.l
 	s.mu.RUnlock()
 	return l
 }
@@ -94,3 +90,12 @@ func (s *settableLogger) Print(args ...interface{})                 { s.get().In
 func (s *settableLogger) Printf(format string, args ...interface{}) { s.get().Infof(format, args...) }
 func (s *settableLogger) Println(args ...interface{})               { s.get().Infoln(args...) }
 func (s *settableLogger) V(l int) bool                              { return s.get().V(l) }
+func (s *settableLogger) Lvl(lvl int) grpclog.LoggerV2 {
+	s.mu.RLock()
+	l := s.l
+	s.mu.RUnlock()
+	if l.V(lvl) {
+		return s
+	}
+	return logutil.NewDiscardLogger()
+}

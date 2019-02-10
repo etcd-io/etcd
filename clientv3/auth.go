@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/etcd/auth/authpb"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
+	"go.etcd.io/etcd/auth/authpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"google.golang.org/grpc"
 )
 
@@ -100,91 +99,96 @@ type Auth interface {
 	RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error)
 }
 
-type auth struct {
-	remote pb.AuthClient
+type authClient struct {
+	remote   pb.AuthClient
+	callOpts []grpc.CallOption
 }
 
 func NewAuth(c *Client) Auth {
-	return &auth{remote: RetryAuthClient(c)}
+	api := &authClient{remote: RetryAuthClient(c)}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api
 }
 
-func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
-	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{})
+func (auth *authClient) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
+	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{}, auth.callOpts...)
 	return (*AuthEnableResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) AuthDisable(ctx context.Context) (*AuthDisableResponse, error) {
-	resp, err := auth.remote.AuthDisable(ctx, &pb.AuthDisableRequest{})
+func (auth *authClient) AuthDisable(ctx context.Context) (*AuthDisableResponse, error) {
+	resp, err := auth.remote.AuthDisable(ctx, &pb.AuthDisableRequest{}, auth.callOpts...)
 	return (*AuthDisableResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
-	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password})
+func (auth *authClient) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
+	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password}, auth.callOpts...)
 	return (*AuthUserAddResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserDelete(ctx context.Context, name string) (*AuthUserDeleteResponse, error) {
-	resp, err := auth.remote.UserDelete(ctx, &pb.AuthUserDeleteRequest{Name: name})
+func (auth *authClient) UserDelete(ctx context.Context, name string) (*AuthUserDeleteResponse, error) {
+	resp, err := auth.remote.UserDelete(ctx, &pb.AuthUserDeleteRequest{Name: name}, auth.callOpts...)
 	return (*AuthUserDeleteResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error) {
-	resp, err := auth.remote.UserChangePassword(ctx, &pb.AuthUserChangePasswordRequest{Name: name, Password: password})
+func (auth *authClient) UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error) {
+	resp, err := auth.remote.UserChangePassword(ctx, &pb.AuthUserChangePasswordRequest{Name: name, Password: password}, auth.callOpts...)
 	return (*AuthUserChangePasswordResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserGrantRole(ctx context.Context, user string, role string) (*AuthUserGrantRoleResponse, error) {
-	resp, err := auth.remote.UserGrantRole(ctx, &pb.AuthUserGrantRoleRequest{User: user, Role: role})
+func (auth *authClient) UserGrantRole(ctx context.Context, user string, role string) (*AuthUserGrantRoleResponse, error) {
+	resp, err := auth.remote.UserGrantRole(ctx, &pb.AuthUserGrantRoleRequest{User: user, Role: role}, auth.callOpts...)
 	return (*AuthUserGrantRoleResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error) {
-	resp, err := auth.remote.UserGet(ctx, &pb.AuthUserGetRequest{Name: name})
+func (auth *authClient) UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error) {
+	resp, err := auth.remote.UserGet(ctx, &pb.AuthUserGetRequest{Name: name}, auth.callOpts...)
 	return (*AuthUserGetResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserList(ctx context.Context) (*AuthUserListResponse, error) {
-	resp, err := auth.remote.UserList(ctx, &pb.AuthUserListRequest{})
+func (auth *authClient) UserList(ctx context.Context) (*AuthUserListResponse, error) {
+	resp, err := auth.remote.UserList(ctx, &pb.AuthUserListRequest{}, auth.callOpts...)
 	return (*AuthUserListResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error) {
-	resp, err := auth.remote.UserRevokeRole(ctx, &pb.AuthUserRevokeRoleRequest{Name: name, Role: role})
+func (auth *authClient) UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error) {
+	resp, err := auth.remote.UserRevokeRole(ctx, &pb.AuthUserRevokeRoleRequest{Name: name, Role: role}, auth.callOpts...)
 	return (*AuthUserRevokeRoleResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
-	resp, err := auth.remote.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: name})
+func (auth *authClient) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
+	resp, err := auth.remote.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: name}, auth.callOpts...)
 	return (*AuthRoleAddResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
+func (auth *authClient) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
 	perm := &authpb.Permission{
 		Key:      []byte(key),
 		RangeEnd: []byte(rangeEnd),
 		PermType: authpb.Permission_Type(permType),
 	}
-	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm})
+	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm}, auth.callOpts...)
 	return (*AuthRoleGrantPermissionResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
-	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role})
+func (auth *authClient) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
+	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role}, auth.callOpts...)
 	return (*AuthRoleGetResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleList(ctx context.Context) (*AuthRoleListResponse, error) {
-	resp, err := auth.remote.RoleList(ctx, &pb.AuthRoleListRequest{})
+func (auth *authClient) RoleList(ctx context.Context) (*AuthRoleListResponse, error) {
+	resp, err := auth.remote.RoleList(ctx, &pb.AuthRoleListRequest{}, auth.callOpts...)
 	return (*AuthRoleListResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error) {
-	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: key, RangeEnd: rangeEnd})
+func (auth *authClient) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error) {
+	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: []byte(key), RangeEnd: []byte(rangeEnd)}, auth.callOpts...)
 	return (*AuthRoleRevokePermissionResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error) {
-	resp, err := auth.remote.RoleDelete(ctx, &pb.AuthRoleDeleteRequest{Role: role})
+func (auth *authClient) RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error) {
+	resp, err := auth.remote.RoleDelete(ctx, &pb.AuthRoleDeleteRequest{Role: role}, auth.callOpts...)
 	return (*AuthRoleDeleteResponse)(resp), toErr(ctx, err)
 }
 
@@ -197,12 +201,13 @@ func StrToPermissionType(s string) (PermissionType, error) {
 }
 
 type authenticator struct {
-	conn   *grpc.ClientConn // conn in-use
-	remote pb.AuthClient
+	conn     *grpc.ClientConn // conn in-use
+	remote   pb.AuthClient
+	callOpts []grpc.CallOption
 }
 
 func (auth *authenticator) authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
-	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password})
+	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password}, auth.callOpts...)
 	return (*AuthenticateResponse)(resp), toErr(ctx, err)
 }
 
@@ -210,14 +215,18 @@ func (auth *authenticator) close() {
 	auth.conn.Close()
 }
 
-func newAuthenticator(endpoint string, opts []grpc.DialOption) (*authenticator, error) {
-	conn, err := grpc.Dial(endpoint, opts...)
+func newAuthenticator(ctx context.Context, target string, opts []grpc.DialOption, c *Client) (*authenticator, error) {
+	conn, err := grpc.DialContext(ctx, target, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &authenticator{
+	api := &authenticator{
 		conn:   conn,
 		remote: pb.NewAuthClient(conn),
-	}, nil
+	}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api, nil
 }

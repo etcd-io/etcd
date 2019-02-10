@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestEndpointSwitchResolvesViolation(t *testing.T) {
@@ -122,6 +122,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	// NewOrderViolationSwitchEndpointClosure will be able to
 	// access the full list of endpoints.
 	cli.SetEndpoints(eps...)
+	time.Sleep(1 * time.Second) // give enough time for operation
 	OrderingKv := NewKV(cli.KV, NewOrderViolationSwitchEndpointClosure(*cli))
 	// set prevRev to the first member's revision of "foo" such that
 	// the revision is higher than the fourth and fifth members' revision of "foo"
@@ -133,10 +134,17 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
 	clus.Members[2].Stop(t)
-	clus.Members[3].Restart(t)
-	clus.Members[4].Restart(t)
+	err = clus.Members[3].Restart(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = clus.Members[4].Restart(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clus.Members[3].WaitStarted(t)
 	cli.SetEndpoints(clus.Members[3].GRPCAddr())
-	time.Sleep(1 * time.Second) // give enough time for operation
+	time.Sleep(5 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ErrNoGreaterRev {

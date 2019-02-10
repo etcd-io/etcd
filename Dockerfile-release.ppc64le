@@ -1,4 +1,4 @@
-FROM ppc64le/ubuntu:16.04
+FROM ppc64le/alpine:latest
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/

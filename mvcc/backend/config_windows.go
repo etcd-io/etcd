@@ -16,7 +16,7 @@
 
 package backend
 
-import bolt "github.com/coreos/bbolt"
+import bolt "go.etcd.io/bbolt"
 
 var boltOpenOptions *bolt.Options = nil
 

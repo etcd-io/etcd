@@ -18,7 +18,6 @@ package flags
 import (
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -26,44 +25,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/flags")
-)
-
-// DeprecatedFlag encapsulates a flag that may have been previously valid but
-// is now deprecated. If a DeprecatedFlag is set, an error occurs.
-type DeprecatedFlag struct {
-	Name string
-}
-
-func (f *DeprecatedFlag) Set(_ string) error {
-	return fmt.Errorf(`flag "-%s" is no longer supported.`, f.Name)
-}
-
-func (f *DeprecatedFlag) String() string {
-	return ""
-}
-
-// IgnoredFlag encapsulates a flag that may have been previously valid but is
-// now ignored. If an IgnoredFlag is set, a warning is printed and
-// operation continues.
-type IgnoredFlag struct {
-	Name string
-}
-
-// IsBoolFlag is defined to allow the flag to be defined without an argument
-func (f *IgnoredFlag) IsBoolFlag() bool {
-	return true
-}
-
-func (f *IgnoredFlag) Set(s string) error {
-	plog.Warningf(`flag "-%s" is no longer supported - ignoring.`, f.Name)
-	return nil
-}
-
-func (f *IgnoredFlag) String() string {
-	return ""
-}
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/flags")
 
 // SetFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
@@ -119,9 +81,7 @@ func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 			continue
 		}
 		if alreadySet[kv[0]] {
-			// TODO: exit with error in v3.4
-			plog.Warningf("recognized environment variable %s, but unused: shadowed by corresponding flag", kv[0])
-			continue
+			plog.Fatalf("conflicting environment variable %q is shadowed by corresponding command-line flag (either unset environment variable or disable flag)", kv[0])
 		}
 		if strings.HasPrefix(env, prefix+"_") {
 			plog.Warningf("unrecognized environment variable %s", env)
@@ -148,11 +108,6 @@ func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet 
 		}
 	}
 	return nil
-}
-
-// URLsFromFlag returns a slices from url got from the flag.
-func URLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
-	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue))
 }
 
 func IsSet(fs *flag.FlagSet, name string) bool {

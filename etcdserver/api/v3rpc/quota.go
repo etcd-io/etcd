@@ -17,10 +17,10 @@ package v3rpc
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 type quotaKVServer struct {
@@ -52,7 +52,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 	return &quotaKVServer{
 		NewKVServer(s),
-		quotaAlarmer{etcdserver.NewBackendQuota(s), s, s.ID()},
+		quotaAlarmer{etcdserver.NewBackendQuota(s, "kv"), s, s.ID()},
 	}
 }
 
@@ -85,6 +85,6 @@ func (s *quotaLeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequ
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 	return &quotaLeaseServer{
 		NewLeaseServer(s),
-		quotaAlarmer{etcdserver.NewBackendQuota(s), s, s.ID()},
+		quotaAlarmer{etcdserver.NewBackendQuota(s, "lease"), s, s.ID()},
 	}
 }

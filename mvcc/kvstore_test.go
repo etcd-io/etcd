@@ -26,16 +26,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/schedule"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/schedule"
+	"go.etcd.io/etcd/pkg/testutil"
+
+	"go.uber.org/zap"
 )
 
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer s.Close()
 	defer os.Remove(tmpPath)
 
@@ -141,12 +143,12 @@ func TestStorePut(t *testing.T) {
 		}
 
 		wact := []testutil.Action{
-			{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
 		}
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
-				{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
+				{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
 			}
 		}
 
@@ -154,8 +156,8 @@ func TestStorePut(t *testing.T) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{"get", []interface{}{[]byte("foo"), tt.wputrev.main}},
-			{"put", []interface{}{[]byte("foo"), tt.wputrev}},
+			{Name: "get", Params: []interface{}{[]byte("foo"), tt.wputrev.main}},
+			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -221,13 +223,13 @@ func TestStoreRange(t *testing.T) {
 		wstart := newRevBytes()
 		revToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
-			{"range", []interface{}{keyBucketName, wstart, []byte(nil), int64(0)}},
+			{Name: "range", Params: []interface{}{keyBucketName, wstart, []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{"range", []interface{}{[]byte("foo"), []byte("goo"), wrev}},
+			{Name: "range", Params: []interface{}{[]byte("foo"), []byte("goo"), wrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -296,14 +298,14 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{"range", []interface{}{[]byte("foo"), []byte("goo"), tt.wrrev}},
-			{"tombstone", []interface{}{[]byte("foo"), tt.wdelrev}},
+			{Name: "range", Params: []interface{}{[]byte("foo"), []byte("goo"), tt.wrrev}},
+			{Name: "tombstone", Params: []interface{}{[]byte("foo"), tt.wdelrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -335,16 +337,16 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
-		{"put", []interface{}{metaBucketName, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
-		{"range", []interface{}{keyBucketName, make([]byte, 17), end, int64(10000)}},
-		{"delete", []interface{}{keyBucketName, key2}},
-		{"put", []interface{}{metaBucketName, finishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "put", Params: []interface{}{metaBucketName, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "range", Params: []interface{}{keyBucketName, make([]byte, 17), end, int64(10000)}},
+		{Name: "delete", Params: []interface{}{keyBucketName, key2}},
+		{Name: "put", Params: []interface{}{metaBucketName, finishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
 	wact = []testutil.Action{
-		{"compact", []interface{}{int64(3)}},
+		{Name: "compact", Params: []interface{}{int64(3)}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -391,9 +393,9 @@ func TestStoreRestore(t *testing.T) {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
 	}
 	wact := []testutil.Action{
-		{"range", []interface{}{metaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
-		{"range", []interface{}{metaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
-		{"range", []interface{}{keyBucketName, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
+		{Name: "range", Params: []interface{}{metaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{metaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{keyBucketName, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -405,8 +407,8 @@ func TestStoreRestore(t *testing.T) {
 	}
 	ki := &keyIndex{key: []byte("foo"), modified: revision{5, 0}, generations: gens}
 	wact = []testutil.Action{
-		{"keyIndex", []interface{}{ki}},
-		{"insert", []interface{}{ki}},
+		{Name: "keyIndex", Params: []interface{}{ki}},
+		{Name: "insert", Params: []interface{}{ki}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -419,7 +421,7 @@ func TestRestoreDelete(t *testing.T) {
 	defer func() { restoreChunkKeys = oldChunk }()
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	keys := make(map[string]struct{})
@@ -445,7 +447,7 @@ func TestRestoreDelete(t *testing.T) {
 	}
 	s.Close()
 
-	s = NewStore(b, &lease.FakeLessor{}, nil)
+	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer s.Close()
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
@@ -464,51 +466,61 @@ func TestRestoreDelete(t *testing.T) {
 }
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(b, &lease.FakeLessor{}, nil)
-	defer os.Remove(tmpPath)
+	tests := []string{"recreate", "restore"}
+	for _, test := range tests {
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+		defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
+		s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
 
-	// write scheduled compaction, but not do compaction
-	rbytes := newRevBytes()
-	revToBytes(revision{main: 2}, rbytes)
-	tx := s0.b.BatchTx()
-	tx.Lock()
-	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
-	tx.Unlock()
-
-	s0.Close()
-
-	s1 := NewStore(b, &lease.FakeLessor{}, nil)
-
-	// wait for scheduled compaction to be finished
-	time.Sleep(100 * time.Millisecond)
-
-	if _, err := s1.Range([]byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
-		t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
-	}
-	// check the key in backend is deleted
-	revbytes := newRevBytes()
-	revToBytes(revision{main: 1}, revbytes)
-
-	// The disk compaction is done asynchronously and requires more time on slow disk.
-	// try 5 times for CI with slow IO.
-	for i := 0; i < 5; i++ {
-		tx = s1.b.BatchTx()
+		// write scheduled compaction, but not do compaction
+		rbytes := newRevBytes()
+		revToBytes(revision{main: 2}, rbytes)
+		tx := s0.b.BatchTx()
 		tx.Lock()
-		ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 		tx.Unlock()
-		if len(ks) != 0 {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		return
-	}
 
-	t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+		s0.Close()
+
+		var s *store
+		switch test {
+		case "recreate":
+			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+		case "restore":
+			s0.Restore(b)
+			s = s0
+		}
+
+		// wait for scheduled compaction to be finished
+		time.Sleep(100 * time.Millisecond)
+
+		if _, err := s.Range([]byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
+			t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
+		}
+		// check the key in backend is deleted
+		revbytes := newRevBytes()
+		revToBytes(revision{main: 1}, revbytes)
+
+		// The disk compaction is done asynchronously and requires more time on slow disk.
+		// try 5 times for CI with slow IO.
+		for i := 0; i < 5; i++ {
+			tx = s.b.BatchTx()
+			tx.Lock()
+			ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+			tx.Unlock()
+			if len(ks) != 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return
+		}
+
+		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+	}
 }
 
 type hashKVResult struct {
@@ -519,7 +531,7 @@ type hashKVResult struct {
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -583,6 +595,35 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	}
 }
 
+// TestHashKVZeroRevision ensures that "HashByRev(0)" computes
+// correct hash value with latest revision.
+func TestHashKVZeroRevision(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	defer os.Remove(tmpPath)
+
+	rev := 1000
+	for i := 2; i <= rev; i++ {
+		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
+	}
+	if _, err := s.Compact(int64(rev / 2)); err != nil {
+		t.Fatal(err)
+	}
+
+	hash1, _, _, err := s.HashByRev(int64(rev))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hash2 uint32
+	hash2, _, _, err = s.HashByRev(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hash1 != hash2 {
+		t.Errorf("hash %d (rev %d) != hash %d (rev 0)", hash1, rev, hash2)
+	}
+}
+
 func TestTxnPut(t *testing.T) {
 	// assign arbitrary size
 	bytesN := 30
@@ -591,7 +632,7 @@ func TestTxnPut(t *testing.T) {
 	vals := createBytesSlice(bytesN, sliceN)
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
@@ -606,7 +647,7 @@ func TestTxnPut(t *testing.T) {
 
 func TestTxnBlockBackendForceCommit(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
 	txn := s.Read()
@@ -642,7 +683,7 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 	bytes := newRevBytes()
 	revToBytes(rev, bytes)
 	if tombstone {
-		bytes = appendMarkTombstone(bytes)
+		bytes = appendMarkTombstone(zap.NewExample(), bytes)
 	}
 	return bytes
 }
@@ -666,6 +707,7 @@ func newFakeStore() *store {
 		compactMainRev: -1,
 		fifoSched:      schedule.NewFIFOScheduler(),
 		stopc:          make(chan struct{}),
+		lg:             zap.NewExample(),
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
 	return s
@@ -712,6 +754,7 @@ func (b *fakeBackend) BatchTx() backend.BatchTx                                 
 func (b *fakeBackend) ReadTx() backend.ReadTx                                      { return b.tx }
 func (b *fakeBackend) Hash(ignores map[backend.IgnoreKey]struct{}) (uint32, error) { return 0, nil }
 func (b *fakeBackend) Size() int64                                                 { return 0 }
+func (b *fakeBackend) SizeInUse() int64                                            { return 0 }
 func (b *fakeBackend) Snapshot() backend.Snapshot                                  { return nil }
 func (b *fakeBackend) ForceCommit()                                                {}
 func (b *fakeBackend) Defrag() error                                               { return nil }

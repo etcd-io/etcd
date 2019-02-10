@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/embed"
 	"github.com/ghodss/yaml"
+	"go.etcd.io/etcd/embed"
 )
 
 func TestConfigParsingMemberFlags(t *testing.T) {
@@ -55,7 +55,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 		MaxSnapFiles  uint   `json:"max-snapshots"`
 		MaxWalFiles   uint   `json:"max-wals"`
 		Name          string `json:"name"`
-		SnapCount     uint64 `json:"snapshot-count"`
+		SnapshotCount uint64 `json:"snapshot-count"`
 		LPUrls        string `json:"listen-peer-urls"`
 		LCUrls        string `json:"listen-client-urls"`
 		AcurlsCfgFile string `json:"advertise-client-urls"`
@@ -513,13 +513,13 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 
 func validateMemberFlags(t *testing.T, cfg *config) {
 	wcfg := &embed.Config{
-		Dir:          "testdir",
-		LPUrls:       []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
-		LCUrls:       []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}},
-		MaxSnapFiles: 10,
-		MaxWalFiles:  10,
-		Name:         "testname",
-		SnapCount:    10,
+		Dir:           "testdir",
+		LPUrls:        []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
+		LCUrls:        []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}},
+		MaxSnapFiles:  10,
+		MaxWalFiles:   10,
+		Name:          "testname",
+		SnapshotCount: 10,
 	}
 
 	if cfg.ec.Dir != wcfg.Dir {
@@ -534,8 +534,8 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 	if cfg.ec.Name != wcfg.Name {
 		t.Errorf("name = %v, want %v", cfg.ec.Name, wcfg.Name)
 	}
-	if cfg.ec.SnapCount != wcfg.SnapCount {
-		t.Errorf("snapcount = %v, want %v", cfg.ec.SnapCount, wcfg.SnapCount)
+	if cfg.ec.SnapshotCount != wcfg.SnapshotCount {
+		t.Errorf("snapcount = %v, want %v", cfg.ec.SnapshotCount, wcfg.SnapshotCount)
 	}
 	if !reflect.DeepEqual(cfg.ec.LPUrls, wcfg.LPUrls) {
 		t.Errorf("listen-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.LPUrls)
@@ -567,10 +567,10 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 		t.Errorf("initialClusterToken = %v, want %v", cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken)
 	}
 	if !reflect.DeepEqual(cfg.ec.APUrls, wcfg.ec.APUrls) {
-		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.ec.LPUrls)
+		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.APUrls, wcfg.ec.APUrls)
 	}
 	if !reflect.DeepEqual(cfg.ec.ACUrls, wcfg.ec.ACUrls) {
-		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.LCUrls, wcfg.ec.LCUrls)
+		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.ACUrls, wcfg.ec.ACUrls)
 	}
 }
 

@@ -20,23 +20,30 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"github.com/ghodss/yaml"
 )
 
 func TestConfigFileOtherFields(t *testing.T) {
-	ctls := securityConfig{CAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
-	ptls := securityConfig{CAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
+	ctls := securityConfig{TrustedCAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
+	ptls := securityConfig{TrustedCAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
 	yc := struct {
 		ClientSecurityCfgFile securityConfig `json:"client-transport-security"`
 		PeerSecurityCfgFile   securityConfig `json:"peer-transport-security"`
 		ForceNewCluster       bool           `json:"force-new-cluster"`
+		Logger                string         `json:"logger"`
+		LogOutputs            []string       `json:"log-outputs"`
+		Debug                 bool           `json:"debug"`
 	}{
 		ctls,
 		ptls,
 		true,
+		"zap",
+		[]string{"/dev/null"},
+		false,
 	}
 
 	b, err := yaml.Marshal(&yc)
@@ -129,8 +136,7 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 }
 
 func (s *securityConfig) equals(t *transport.TLSInfo) bool {
-	return s.CAFile == t.CAFile &&
-		s.CertFile == t.CertFile &&
+	return s.CertFile == t.CertFile &&
 		s.CertAuth == t.ClientCertAuth &&
 		s.TrustedCAFile == t.TrustedCAFile
 }
@@ -147,4 +153,50 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 		t.Fatal(err)
 	}
 	return tmpfile
+}
+
+func TestAutoCompactionModeInvalid(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Logger = "zap"
+	cfg.LogOutputs = []string{"/dev/null"}
+	cfg.Debug = false
+	cfg.AutoCompactionMode = "period"
+	err := cfg.Validate()
+	if err == nil {
+		t.Errorf("expected non-nil error, got %v", err)
+	}
+}
+
+func TestAutoCompactionModeParse(t *testing.T) {
+	tests := []struct {
+		mode      string
+		retention string
+		werr      bool
+		wdur      time.Duration
+	}{
+		// revision
+		{"revision", "1", false, 1},
+		{"revision", "1h", false, time.Hour},
+		{"revision", "a", true, 0},
+		// periodic
+		{"periodic", "1", false, time.Hour},
+		{"periodic", "a", true, 0},
+		// err mode
+		{"errmode", "1", false, 0},
+		{"errmode", "1h", false, time.Hour},
+	}
+
+	hasErr := func(err error) bool {
+		return err != nil
+	}
+
+	for i, tt := range tests {
+		dur, err := parseCompactionRetention(tt.mode, tt.retention)
+		if hasErr(err) != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if dur != tt.wdur {
+			t.Errorf("#%d: duration = %s, want %s", i, dur, tt.wdur)
+		}
+	}
 }

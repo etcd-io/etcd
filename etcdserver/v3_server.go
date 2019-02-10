@@ -20,15 +20,16 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/coreos/etcd/auth"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/lease/leasehttp"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/lease/leasehttp"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/raft"
 
 	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 )
 
 const (
@@ -84,20 +85,26 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	var resp *pb.RangeResponse
+	var err error
+	defer func(start time.Time) {
+		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), start, r, resp, err)
+	}(time.Now())
+
 	if !r.Serializable {
-		err := s.linearizableReadNotify(ctx)
+		err = s.linearizableReadNotify(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	var resp *pb.RangeResponse
-	var err error
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
+
 	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
-		return nil, serr
+		err = serr
+		return nil, err
 	}
 	return resp, err
 }
@@ -131,12 +138,18 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		chk := func(ai *auth.AuthInfo) error {
 			return checkTxnAuth(s.authStore, ai, r)
 		}
+
+		defer func(start time.Time) {
+			warnOfExpensiveReadOnlyTxnRequest(s.getLogger(), start, r, resp, err)
+		}(time.Now())
+
 		get := func() { resp, err = s.applyV3Base.Txn(r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
 		return resp, err
 	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
@@ -351,12 +364,22 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		return nil, err
 	}
 
+	lg := s.getLogger()
+
 	var resp proto.Message
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
 			if err != auth.ErrAuthNotEnabled {
-				plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+				if lg != nil {
+					lg.Warn(
+						"invalid authentication was requested",
+						zap.String("user", r.Name),
+						zap.Error(err),
+					)
+				} else {
+					plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+				}
 			}
 			return nil, err
 		}
@@ -379,7 +402,12 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		if checkedRevision == s.AuthStore().Revision() {
 			break
 		}
-		plog.Infof("revision when password checked is obsolete, retrying")
+
+		if lg != nil {
+			lg.Info("revision when password checked became stale; retrying")
+		} else {
+			plog.Infof("revision when password checked is obsolete, retrying")
+		}
 	}
 
 	return resp.(*pb.AuthenticateResponse), nil
@@ -511,29 +539,25 @@ func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) 
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
 func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
-	for {
-		ai, err := s.AuthInfoFromCtx(ctx)
-		if err != nil {
-			return err
-		}
-		if ai == nil {
-			// chk expects non-nil AuthInfo; use empty credentials
-			ai = &auth.AuthInfo{}
-		}
-		if err = chk(ai); err != nil {
-			if err == auth.ErrAuthOldRevision {
-				continue
-			}
-			return err
-		}
-		// fetch response for serialized request
-		get()
-		//  empty credentials or current auth info means no need to retry
-		if ai.Revision == 0 || ai.Revision == s.authStore.Revision() {
-			return nil
-		}
-		// avoid TOCTOU error, retry of the request is required.
+	ai, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
 	}
+	if ai == nil {
+		// chk expects non-nil AuthInfo; use empty credentials
+		ai = &auth.AuthInfo{}
+	}
+	if err = chk(ai); err != nil {
+		return err
+	}
+	// fetch response for serialized request
+	get()
+	// check for stale token revision in case the auth store was updated while
+	// the request has been handled.
+	if ai.Revision != 0 && ai.Revision != s.authStore.Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
 }
 
 func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
@@ -575,7 +599,12 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	defer cancel()
 
 	start := time.Now()
-	s.r.Propose(cctx, data)
+	err = s.r.Propose(cctx, data)
+	if err != nil {
+		proposalsFailed.Inc()
+		s.w.Trigger(id, nil) // GC wait
+		return nil, err
+	}
 	proposalsPending.Inc()
 	defer proposalsPending.Dec()
 
@@ -598,10 +627,13 @@ func (s *EtcdServer) linearizableReadLoop() {
 	var rs raft.ReadState
 
 	for {
-		ctx := make([]byte, 8)
-		binary.BigEndian.PutUint64(ctx, s.reqIDGen.Next())
-
+		ctxToSend := make([]byte, 8)
+		id1 := s.reqIDGen.Next()
+		binary.BigEndian.PutUint64(ctxToSend, id1)
+		leaderChangedNotifier := s.leaderChangedNotify()
 		select {
+		case <-leaderChangedNotifier:
+			continue
 		case <-s.readwaitc:
 		case <-s.stopping:
 			return
@@ -614,13 +646,19 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
+		lg := s.getLogger()
 		cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-		if err := s.r.ReadIndex(cctx, ctx); err != nil {
+		if err := s.r.ReadIndex(cctx, ctxToSend); err != nil {
 			cancel()
 			if err == raft.ErrStopped {
 				return
 			}
-			plog.Errorf("failed to get read index from raft: %v", err)
+			if lg != nil {
+				lg.Warn("failed to get read index from Raft", zap.Error(err))
+			} else {
+				plog.Errorf("failed to get read index from raft: %v", err)
+			}
+			readIndexFailed.Inc()
 			nr.notify(err)
 			continue
 		}
@@ -633,16 +671,39 @@ func (s *EtcdServer) linearizableReadLoop() {
 		for !timeout && !done {
 			select {
 			case rs = <-s.r.readStateC:
-				done = bytes.Equal(rs.RequestCtx, ctx)
+				done = bytes.Equal(rs.RequestCtx, ctxToSend)
 				if !done {
 					// a previous request might time out. now we should ignore the response of it and
 					// continue waiting for the response of the current requests.
-					plog.Warningf("ignored out-of-date read index response (want %v, got %v)", rs.RequestCtx, ctx)
+					id2 := uint64(0)
+					if len(rs.RequestCtx) == 8 {
+						id2 = binary.BigEndian.Uint64(rs.RequestCtx)
+					}
+					if lg != nil {
+						lg.Warn(
+							"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
+							zap.Uint64("sent-request-id", id1),
+							zap.Uint64("received-request-id", id2),
+						)
+					} else {
+						plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
+					}
+					slowReadIndex.Inc()
 				}
+			case <-leaderChangedNotifier:
+				timeout = true
+				readIndexFailed.Inc()
+				// return a retryable error.
+				nr.notify(ErrLeaderChanged)
 			case <-time.After(s.Cfg.ReqTimeout()):
-				plog.Warningf("timed out waiting for read index response")
+				if lg != nil {
+					lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
+				} else {
+					plog.Warningf("timed out waiting for read index response (local node might have slow network)")
+				}
 				nr.notify(ErrTimeout)
 				timeout = true
+				slowReadIndex.Inc()
 			case <-s.stopping:
 				return
 			}

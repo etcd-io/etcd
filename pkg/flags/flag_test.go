@@ -17,6 +17,7 @@ package flags
 import (
 	"flag"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -34,17 +35,11 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	if err := fs.Set("b", "bar"); err != nil {
 		t.Fatal(err)
 	}
-	// command-line flags take precedence over env vars
-	os.Setenv("ETCD_C", "woof")
-	if err := fs.Set("c", "quack"); err != nil {
-		t.Fatal(err)
-	}
 
 	// first verify that flags are as expected before reading the env
 	for f, want := range map[string]string{
 		"a": "",
 		"b": "bar",
-		"c": "quack",
 	} {
 		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Fatalf("flag %q=%q, want %q", f, got, want)
@@ -59,7 +54,6 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	for f, want := range map[string]string{
 		"a": "foo",
 		"b": "bar",
-		"c": "quack",
 	} {
 		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
@@ -87,7 +81,14 @@ func TestSetFlagsFromEnvParsingError(t *testing.T) {
 	}
 	defer os.Unsetenv("ETCD_HEARTBEAT_INTERVAL")
 
-	if serr := SetFlagsFromEnv("ETCD", fs); serr.Error() != `invalid value "100 # ms" for ETCD_HEARTBEAT_INTERVAL: strconv.ParseUint: parsing "100 # ms": invalid syntax` {
-		t.Fatalf("expected parsing error, got %v", serr)
+	err := SetFlagsFromEnv("ETCD", fs)
+	for _, v := range []string{"invalid syntax", "parse error"} {
+		if strings.Contains(err.Error(), v) {
+			err = nil
+			break
+		}
+	}
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
 	}
 }

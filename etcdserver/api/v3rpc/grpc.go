@@ -17,15 +17,14 @@ package v3rpc
 import (
 	"crypto/tls"
 	"math"
-	"os"
 
-	"github.com/coreos/etcd/etcdserver"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -36,18 +35,21 @@ const (
 	maxSendBytes      = math.MaxInt32
 )
 
-func init() {
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
-}
-
 func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOption) *grpc.Server {
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
 	}
-	opts = append(opts, grpc.UnaryInterceptor(newUnaryInterceptor(s)))
-	opts = append(opts, grpc.StreamInterceptor(newStreamInterceptor(s)))
+	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+		newLogUnaryInterceptor(s),
+		newUnaryInterceptor(s),
+		grpc_prometheus.UnaryServerInterceptor,
+	)))
+	opts = append(opts, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+		newStreamInterceptor(s),
+		grpc_prometheus.StreamServerInterceptor,
+	)))
 	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
 	opts = append(opts, grpc.MaxConcurrentStreams(maxStreams))

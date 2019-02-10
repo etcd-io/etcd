@@ -45,12 +45,12 @@ It is important to monitor your production etcd cluster for healthy information 
 
 #### Health Monitoring
 
-At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health":true}`, then the cluster is healthy.
+At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health":"true"}`, then the cluster is healthy.
 
 ```
 $ curl -L http://127.0.0.1:2379/health
 
-{"health":true}
+{"health":"true"}
 ```
 
 You can also use etcdctl to check the cluster-wide health information. It will contact all the members of the cluster and collect the health information for you.
@@ -77,12 +77,14 @@ easier.
 When you want to debug etcd without stopping it, you can enable debug logging at runtime.
 etcd exposes logging configuration at `/config/local/log`.
 
+**`/config/local/log` endpoint is being deprecated in v3.5.**
+
 ```
 $ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'
-$ # debug logging enabled
-$
+# debug logging enabled
+
 $ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"INFO"}'
-$ # debug logging disabled
+# debug logging disabled
 ```
 
 #### Debugging Variables
@@ -237,13 +239,13 @@ This command will rewrite some of the metadata contained in the backup (specific
 
 #### Restoring a backup
 
-To restore a backup using the procedure created above, start etcd with the `-force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
+To restore a backup using the procedure created above, start etcd with the `--force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
 
 ```sh
     etcd \
       -data-dir=%backup_data_dir% \
       [-wal-dir=%backup_wal_dir%] \
-      -force-new-cluster \
+      --force-new-cluster \
       ...
 ```
 
@@ -273,7 +275,7 @@ You can then add more nodes to the cluster and restore resiliency. See the [add 
 
 ### Client Request Timeout
 
-etcd sets different timeouts for various types of client requests. The timeout value is not tunable now, which will be improved soon (https://github.com/coreos/etcd/issues/2038).
+etcd sets different timeouts for various types of client requests. The timeout value is not tunable now, which will be improved soon (https://github.com/etcd-io/etcd/issues/2038).
 
 #### Get requests
 

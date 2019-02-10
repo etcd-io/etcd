@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	pb "github.com/coreos/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 type SnapshotStatus int
@@ -109,6 +109,19 @@ func (rd Ready) containsUpdates() bool {
 		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || len(rd.ReadStates) != 0
 }
 
+// appliedCursor extracts from the Ready the highest index the client has
+// applied (once the Ready is confirmed via Advance). If no information is
+// contained in the Ready, returns zero.
+func (rd Ready) appliedCursor() uint64 {
+	if n := len(rd.CommittedEntries); n > 0 {
+		return rd.CommittedEntries[n-1].Index
+	}
+	if index := rd.Snapshot.Metadata.Index; index > 0 {
+		return index
+	}
+	return 0
+}
+
 // Node represents a node in a raft cluster.
 type Node interface {
 	// Tick increments the internal logical clock for the Node by a single tick. Election
@@ -116,7 +129,8 @@ type Node interface {
 	Tick()
 	// Campaign causes the Node to transition to candidate state and start campaigning to become leader.
 	Campaign(ctx context.Context) error
-	// Propose proposes that data be appended to the log.
+	// Propose proposes that data be appended to the log. Note that proposals can be lost without
+	// notice, therefore it is user's job to ensure proposal retries.
 	Propose(ctx context.Context, data []byte) error
 	// ProposeConfChange proposes config change.
 	// At most one ConfChange can be in the process of going through consensus.
@@ -161,7 +175,16 @@ type Node interface {
 	Status() Status
 	// ReportUnreachable reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
-	// ReportSnapshot reports the status of the sent snapshot.
+	// ReportSnapshot reports the status of the sent snapshot. The id is the raft ID of the follower
+	// who is meant to receive the snapshot, and the status is SnapshotFinish or SnapshotFailure.
+	// Calling ReportSnapshot with SnapshotFinish is a no-op. But, any failure in applying a
+	// snapshot (for e.g., while streaming it from leader to follower), should be reported to the
+	// leader with SnapshotFailure. When leader sends a snapshot to a follower, it pauses any raft
+	// log probes until the follower can apply the snapshot and advance its state. If the follower
+	// can't do that, for e.g., due to a crash, it could end up in a limbo, never getting any
+	// updates from the leader. Therefore, it is crucial that the application ensures that any
+	// failure in snapshot sending is caught and reported back to the leader; so it can resume raft
+	// log probing in the follower.
 	ReportSnapshot(id uint64, status SnapshotStatus)
 	// Stop performs any necessary termination of the Node.
 	Stop()
@@ -224,9 +247,14 @@ func RestartNode(c *Config) Node {
 	return &n
 }
 
+type msgWithResult struct {
+	m      pb.Message
+	result chan error
+}
+
 // node is the canonical implementation of the Node interface
 type node struct {
-	propc      chan pb.Message
+	propc      chan msgWithResult
 	recvc      chan pb.Message
 	confc      chan pb.ConfChange
 	confstatec chan pb.ConfState
@@ -242,7 +270,7 @@ type node struct {
 
 func newNode() node {
 	return node{
-		propc:      make(chan pb.Message),
+		propc:      make(chan msgWithResult),
 		recvc:      make(chan pb.Message),
 		confc:      make(chan pb.ConfChange),
 		confstatec: make(chan pb.ConfState),
@@ -271,12 +299,13 @@ func (n *node) Stop() {
 }
 
 func (n *node) run(r *raft) {
-	var propc chan pb.Message
+	var propc chan msgWithResult
 	var readyc chan Ready
 	var advancec chan struct{}
 	var prevLastUnstablei, prevLastUnstablet uint64
 	var havePrevLastUnstablei bool
 	var prevSnapi uint64
+	var applyingToI uint64
 	var rd Ready
 
 	lead := None
@@ -314,19 +343,25 @@ func (n *node) run(r *raft) {
 		// TODO: maybe buffer the config propose if there exists one (the way
 		// described in raft dissertation)
 		// Currently it is dropped in Step silently.
-		case m := <-propc:
+		case pm := <-propc:
+			m := pm.m
 			m.From = r.id
-			r.Step(m)
+			err := r.Step(m)
+			if pm.result != nil {
+				pm.result <- err
+				close(pm.result)
+			}
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
 			if pr := r.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
-				r.Step(m) // raft never returns an error
+				r.Step(m)
 			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {
-				r.resetPendingConf()
 				select {
-				case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+				case n.confstatec <- pb.ConfState{
+					Nodes:    r.nodes(),
+					Learners: r.learnerNodes()}:
 				case <-n.done:
 				}
 				break
@@ -344,12 +379,13 @@ func (n *node) run(r *raft) {
 				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
-				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
 			}
 			select {
-			case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+			case n.confstatec <- pb.ConfState{
+				Nodes:    r.nodes(),
+				Learners: r.learnerNodes()}:
 			case <-n.done:
 			}
 		case <-n.tickc:
@@ -369,13 +405,18 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
+			if index := rd.appliedCursor(); index != 0 {
+				applyingToI = index
+			}
 
 			r.msgs = nil
 			r.readStates = nil
+			r.reduceUncommittedSize(rd.CommittedEntries)
 			advancec = n.advancec
 		case <-advancec:
-			if prevHardSt.Commit != 0 {
-				r.raftLog.appliedTo(prevHardSt.Commit)
+			if applyingToI != 0 {
+				r.raftLog.appliedTo(applyingToI)
+				applyingToI = 0
 			}
 			if havePrevLastUnstablei {
 				r.raftLog.stableTo(prevLastUnstablei, prevLastUnstablet)
@@ -406,7 +447,7 @@ func (n *node) Tick() {
 func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Message{Type: pb.MsgHup}) }
 
 func (n *node) Propose(ctx context.Context, data []byte) error {
-	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
+	return n.stepWait(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
@@ -426,22 +467,53 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 	return n.Step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
 }
 
+func (n *node) step(ctx context.Context, m pb.Message) error {
+	return n.stepWithWaitOption(ctx, m, false)
+}
+
+func (n *node) stepWait(ctx context.Context, m pb.Message) error {
+	return n.stepWithWaitOption(ctx, m, true)
+}
+
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
 // if any.
-func (n *node) step(ctx context.Context, m pb.Message) error {
-	ch := n.recvc
-	if m.Type == pb.MsgProp {
-		ch = n.propc
+func (n *node) stepWithWaitOption(ctx context.Context, m pb.Message, wait bool) error {
+	if m.Type != pb.MsgProp {
+		select {
+		case n.recvc <- m:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-n.done:
+			return ErrStopped
+		}
 	}
-
+	ch := n.propc
+	pm := msgWithResult{m: m}
+	if wait {
+		pm.result = make(chan error, 1)
+	}
 	select {
-	case ch <- m:
-		return nil
+	case ch <- pm:
+		if !wait {
+			return nil
+		}
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-n.done:
 		return ErrStopped
 	}
+	select {
+	case rsp := <-pm.result:
+		if rsp != nil {
+			return rsp
+		}
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-n.done:
+		return ErrStopped
+	}
+	return nil
 }
 
 func (n *node) Ready() <-chan Ready { return n.readyc }
@@ -523,7 +595,7 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if len(r.readStates) != 0 {
 		rd.ReadStates = r.readStates
 	}
-	rd.MustSync = MustSync(rd.HardState, prevHardSt, len(rd.Entries))
+	rd.MustSync = MustSync(r.hardState(), prevHardSt, len(rd.Entries))
 	return rd
 }
 

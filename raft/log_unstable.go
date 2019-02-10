@@ -14,7 +14,7 @@
 
 package raft
 
-import pb "github.com/coreos/etcd/raft/raftpb"
+import pb "go.etcd.io/etcd/raft/raftpb"
 
 // unstable.entries[i] has raft log position i+unstable.offset.
 // Note that unstable.offset may be less than the highest log
@@ -147,7 +147,7 @@ func (u *unstable) slice(lo uint64, hi uint64) []pb.Entry {
 	return u.entries[lo-u.offset : hi-u.offset]
 }
 
-// u.offset <= lo <= hi <= u.offset+len(u.offset)
+// u.offset <= lo <= hi <= u.offset+len(u.entries)
 func (u *unstable) mustCheckOutOfBounds(lo, hi uint64) {
 	if lo > hi {
 		u.logger.Panicf("invalid unstable.slice %d > %d", lo, hi)

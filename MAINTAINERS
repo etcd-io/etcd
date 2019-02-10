@@ -1,8 +1,18 @@
-Anthony Romano <anthony.romano@coreos.com> (@heyitsanthony) pkg:*
-Brandon Philips <brandon.philips@coreos.com> (@philips) pkg:*
-Fanmin Shi <fanmin.shi@coreos.com> (@fanminshi) pkg:*
-Gyu-Ho Lee <gyu_ho.lee@coreos.com> (@gyuho) pkg:*
-Xiang Li <xiang.li@coreos.com> (@xiang90) pkg:*
+# This is the official list of etcd maintainers.
+#
+# Names should be added to this file like so:
+#     Individual's name <submission email address> (@GITHUB_HANDLE) pkg:*
+#     Individual's name <submission email address> <email2> <emailN> (@GITHUB_HANDLE) pkg:*
+#
+# Please keep the list sorted.
 
-Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:github.com/coreos/etcd/raft
-Hitoshi Mitake <mitake.hitoshi@lab.ntt.co.jp> (@mitake) pkg:github.com/coreos/etcd/auth
+Anthony Romano <romanoanthony061@gmail.com> (@heyitsanthony) pkg:*
+Brandon Philips <bphilips@redhat.com> (@philips) pkg:*
+Fanmin Shi <fashi@redhat.com> (@fanminshi) pkg:*
+Gyuho Lee <gyuhox@gmail.com> <leegyuho@amazon.com> (@gyuho) pkg:*
+Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
+Joe Betz <jpbetz@google.com> (@jpbetz) pkg:*
+Sam Batschelet <sbatsche@redhat.com> (@hexfusion) pkg:*
+Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
+
+Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft

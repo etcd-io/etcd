@@ -1,66 +1,98 @@
-#!/bin/sh -e
+#!/usr/bin/env bash
 
 # set some environment variables
-ORG_PATH="github.com/coreos"
+ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [ ! -z "$FAILPOINTS" ]; then
+if [[ -n "$FAILPOINTS" ]]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
-GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/cmd/vendor/${REPO_PATH}/version.GitSHA=${GIT_SHA}"
+GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 
 # enable/disable failpoints
 toggle_failpoints() {
 	mode="$1"
-	if which gofail >/dev/null 2>&1; then
+	if command -v gofail >/dev/null 2>&1; then
 		gofail "$mode" etcdserver/ mvcc/backend/
-	elif [ "$mode" != "disable" ]; then
+	elif [[ "$mode" != "disable" ]]; then
 		echo "FAILPOINTS set but gofail not found"
 		exit 1
 	fi
 }
 
+etcd_setup_gopath() {
+	echo "Setting GOPATH from vendor directory at 'gopath'"
+	d=$(dirname "$0")
+	CDIR=$(cd "$d" || return && pwd)
+	cd "$CDIR" || return
+	etcdGOPATH="${CDIR}/gopath"
+	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
+	if [[ -n "$GOPATH" ]]; then
+		GOPATH=":$GOPATH"
+	fi
+	rm -rf "${etcdGOPATH:?}/"
+	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/go.etcd.io"
+	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src${GOPATH}
+	ln -s "${CDIR}/vendor" "${etcdGOPATH}/vendor/src"
+	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/go.etcd.io/etcd"
+}
+
 toggle_failpoints_default() {
 	mode="disable"
-	if [ ! -z "$FAILPOINTS" ]; then mode="enable"; fi
+	if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
 	toggle_failpoints "$mode"
 }
 
 etcd_build() {
 	out="bin"
-	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
+	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
 	toggle_failpoints_default
-	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 
+	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/etcd" ${REPO_PATH}/cmd/etcd || return
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+		-installsuffix cgo \
+		-ldflags "$GO_LDFLAGS" \
+		-o "${out}/etcd" ${REPO_PATH} || return
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/etcdctl" ${REPO_PATH}/cmd/etcdctl || return
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+		-installsuffix cgo \
+		-ldflags "$GO_LDFLAGS" \
+		-o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
 }
 
-etcd_setup_gopath() {
-	d=$(dirname "$0")
-	CDIR=$(cd "$d" && pwd)
-	cd "$CDIR"
-	etcdGOPATH="${CDIR}/gopath"
-	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
-	if [ -n "$GOPATH" ]; then
-		GOPATH=":$GOPATH"
-	fi
-	export GOPATH=${etcdGOPATH}$GOPATH
-	rm -rf "${etcdGOPATH}/src"
-	mkdir -p "${etcdGOPATH}"
-	ln -s "${CDIR}/cmd/vendor" "${etcdGOPATH}/src"
+tools_build() {
+	out="bin"
+	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+	tools_path="tools/benchmark
+	tools/etcd-dump-db
+	tools/etcd-dump-logs
+	tools/local-tester/bridge
+	functional/cmd/etcd-agent
+	functional/cmd/etcd-proxy
+	functional/cmd/etcd-runner
+	functional/cmd/etcd-tester"
+	for tool in ${tools_path}
+	do
+		echo "Building" "'${tool}'"...
+		# shellcheck disable=SC2086
+		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
+		  -installsuffix cgo \
+		  -ldflags "${GO_LDFLAGS}" \
+		  -o "${out}/${tool}" "${REPO_PATH}/${tool}" || return
+	done
 }
 
 toggle_failpoints_default
 
+if [[ "${ETCD_SETUP_GOPATH}" == "1" ]]; then
+	etcd_setup_gopath
+fi
+
 # only build when called directly, not sourced
 if echo "$0" | grep "build$" >/dev/null; then
-	# force new gopath so builds outside of gopath work
-	etcd_setup_gopath
 	etcd_build
 fi

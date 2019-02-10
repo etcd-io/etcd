@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package fileutil implements utility functions related to files and paths.
 package fileutil
 
 import (
@@ -21,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/coreos/pkg/capnslog"
 )
@@ -33,9 +31,7 @@ const (
 	PrivateDirMode = 0700
 )
 
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/fileutil")
-)
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/fileutil")
 
 // IsDirWriteable checks if dir is writable by writing and removing a file
 // to dir. It returns nil if dir is writable.
@@ -45,21 +41,6 @@ func IsDirWriteable(dir string) error {
 		return err
 	}
 	return os.Remove(f)
-}
-
-// ReadDir returns the filenames in the given directory in sorted order.
-func ReadDir(dirpath string) ([]string, error) {
-	dir, err := os.Open(dirpath)
-	if err != nil {
-		return nil, err
-	}
-	defer dir.Close()
-	names, err := dir.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(names)
-	return names, nil
 }
 
 // TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
@@ -93,6 +74,7 @@ func CreateDirAll(dir string) error {
 	return err
 }
 
+// Exist returns true if a file or directory exists.
 func Exist(name string) bool {
 	_, err := os.Stat(name)
 	return err == nil

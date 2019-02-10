@@ -19,14 +19,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 type fakeStats struct{}
@@ -36,13 +37,14 @@ func (s *fakeStats) LeaderStats() []byte { return nil }
 func (s *fakeStats) StoreStats() []byte  { return nil }
 
 type v2v3Server struct {
+	lg    *zap.Logger
 	c     *clientv3.Client
 	store *v2v3Store
 	fakeStats
 }
 
-func NewServer(c *clientv3.Client, pfx string) etcdserver.ServerPeer {
-	return &v2v3Server{c: c, store: newStore(c, pfx)}
+func NewServer(lg *zap.Logger, c *clientv3.Client, pfx string) etcdserver.ServerPeer {
+	return &v2v3Server{lg: lg, c: c, store: newStore(c, pfx)}
 }
 
 func (s *v2v3Server) ClientCertAuthEnabled() bool { return false }
@@ -106,7 +108,7 @@ func (s *v2v3Server) Cluster() api.Cluster            { return s }
 func (s *v2v3Server) Alarms() []*pb.AlarmMember       { return nil }
 
 func (s *v2v3Server) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
-	applier := etcdserver.NewApplierV2(s.store, nil)
+	applier := etcdserver.NewApplierV2(s.lg, s.store, nil)
 	reqHandler := etcdserver.NewStoreRequestV2Handler(s.store, applier)
 	req := (*etcdserver.RequestV2)(&r)
 	resp, err := req.Handle(ctx, reqHandler)

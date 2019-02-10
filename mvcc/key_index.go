@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/google/btree"
+	"go.uber.org/zap"
 )
 
 var (
@@ -46,7 +47,7 @@ var (
 // rev except the largest one. If the generation becomes empty
 // during compaction, it will be removed. if all the generations get
 // removed, the keyIndex should be removed.
-
+//
 // For example:
 // compact(2) on the previous example
 // generations:
@@ -73,11 +74,21 @@ type keyIndex struct {
 }
 
 // put puts a revision to the keyIndex.
-func (ki *keyIndex) put(main int64, sub int64) {
+func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64) {
 	rev := revision{main: main, sub: sub}
 
 	if !rev.GreaterThan(ki.modified) {
-		plog.Panicf("store.keyindex: put with unexpected smaller revision [%v / %v]", rev, ki.modified)
+		if lg != nil {
+			lg.Panic(
+				"'put' with an unexpected smaller revision",
+				zap.Int64("given-revision-main", rev.main),
+				zap.Int64("given-revision-sub", rev.sub),
+				zap.Int64("modified-revision-main", ki.modified.main),
+				zap.Int64("modified-revision-sub", ki.modified.sub),
+			)
+		} else {
+			plog.Panicf("store.keyindex: put with unexpected smaller revision [%v / %v]", rev, ki.modified)
+		}
 	}
 	if len(ki.generations) == 0 {
 		ki.generations = append(ki.generations, generation{})
@@ -92,9 +103,16 @@ func (ki *keyIndex) put(main int64, sub int64) {
 	ki.modified = rev
 }
 
-func (ki *keyIndex) restore(created, modified revision, ver int64) {
+func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int64) {
 	if len(ki.generations) != 0 {
-		plog.Panicf("store.keyindex: cannot restore non-empty keyIndex")
+		if lg != nil {
+			lg.Panic(
+				"'restore' got an unexpected non-empty generations",
+				zap.Int("generations-size", len(ki.generations)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: cannot restore non-empty keyIndex")
+		}
 	}
 
 	ki.modified = modified
@@ -106,14 +124,21 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 // tombstone puts a revision, pointing to a tombstone, to the keyIndex.
 // It also creates a new empty generation in the keyIndex.
 // It returns ErrRevisionNotFound when tombstone on an empty generation.
-func (ki *keyIndex) tombstone(main int64, sub int64) error {
+func (ki *keyIndex) tombstone(lg *zap.Logger, main int64, sub int64) error {
 	if ki.isEmpty() {
-		plog.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
+		if lg != nil {
+			lg.Panic(
+				"'tombstone' got an unexpected empty keyIndex",
+				zap.String("key", string(ki.key)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
+		}
 	}
 	if ki.generations[len(ki.generations)-1].isEmpty() {
 		return ErrRevisionNotFound
 	}
-	ki.put(main, sub)
+	ki.put(lg, main, sub)
 	ki.generations = append(ki.generations, generation{})
 	keysGauge.Dec()
 	return nil
@@ -121,9 +146,16 @@ func (ki *keyIndex) tombstone(main int64, sub int64) error {
 
 // get gets the modified, created revision and version of the key that satisfies the given atRev.
 // Rev must be higher than or equal to the given atRev.
-func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err error) {
+func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created revision, ver int64, err error) {
 	if ki.isEmpty() {
-		plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		if lg != nil {
+			lg.Panic(
+				"'get' got an unexpected empty keyIndex",
+				zap.String("key", string(ki.key)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		}
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
@@ -141,9 +173,16 @@ func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err
 // since returns revisions since the given rev. Only the revision with the
 // largest sub revision will be returned if multiple revisions have the same
 // main revision.
-func (ki *keyIndex) since(rev int64) []revision {
+func (ki *keyIndex) since(lg *zap.Logger, rev int64) []revision {
 	if ki.isEmpty() {
-		plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		if lg != nil {
+			lg.Panic(
+				"'since' got an unexpected empty keyIndex",
+				zap.String("key", string(ki.key)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		}
 	}
 	since := revision{rev, 0}
 	var gi int
@@ -182,9 +221,16 @@ func (ki *keyIndex) since(rev int64) []revision {
 // revision than the given atRev except the largest one (If the largest one is
 // a tombstone, it will not be kept).
 // If a generation becomes empty during compaction, it will be removed.
-func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
+func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]struct{}) {
 	if ki.isEmpty() {
-		plog.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
+		if lg != nil {
+			lg.Panic(
+				"'compact' got an unexpected empty keyIndex",
+				zap.String("key", string(ki.key)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
+		}
 	}
 
 	genIdx, revIndex := ki.doCompact(atRev, available)
@@ -223,9 +269,8 @@ func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
 }
 
 func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (genIdx int, revIndex int) {
-	// walk until reaching the first revision that has an revision smaller or equal to
-	// the atRev.
-	// add it to the available map
+	// walk until reaching the first revision smaller or equal to "atRev",
+	// and add the revision to the available map
 	f := func(rev revision) bool {
 		if rev.main <= atRev {
 			available[rev] = struct{}{}
@@ -279,22 +324,22 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 	return nil
 }
 
-func (a *keyIndex) Less(b btree.Item) bool {
-	return bytes.Compare(a.key, b.(*keyIndex).key) == -1
+func (ki *keyIndex) Less(b btree.Item) bool {
+	return bytes.Compare(ki.key, b.(*keyIndex).key) == -1
 }
 
-func (a *keyIndex) equal(b *keyIndex) bool {
-	if !bytes.Equal(a.key, b.key) {
+func (ki *keyIndex) equal(b *keyIndex) bool {
+	if !bytes.Equal(ki.key, b.key) {
 		return false
 	}
-	if a.modified != b.modified {
+	if ki.modified != b.modified {
 		return false
 	}
-	if len(a.generations) != len(b.generations) {
+	if len(ki.generations) != len(b.generations) {
 		return false
 	}
-	for i := range a.generations {
-		ag, bg := a.generations[i], b.generations[i]
+	for i := range ki.generations {
+		ag, bg := ki.generations[i], b.generations[i]
 		if !ag.equal(bg) {
 			return false
 		}
@@ -339,16 +384,16 @@ func (g *generation) String() string {
 	return fmt.Sprintf("g: created[%d] ver[%d], revs %#v\n", g.created, g.ver, g.revs)
 }
 
-func (a generation) equal(b generation) bool {
-	if a.ver != b.ver {
+func (g generation) equal(b generation) bool {
+	if g.ver != b.ver {
 		return false
 	}
-	if len(a.revs) != len(b.revs) {
+	if len(g.revs) != len(b.revs) {
 		return false
 	}
 
-	for i := range a.revs {
-		ar, br := a.revs[i], b.revs[i]
+	for i := range g.revs {
+		ar, br := g.revs[i], b.revs[i]
 		if ar != br {
 			return false
 		}

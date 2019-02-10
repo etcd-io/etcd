@@ -18,10 +18,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -229,11 +229,14 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CreateRequest:
 			cr := uv.CreateRequest
 
-			if err = wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil && err == rpctypes.ErrPermissionDenied {
-				// Return WatchResponse which is caused by permission checking if and only if
-				// the error is permission denied. For other errors (e.g. timeout or connection closed),
-				// the permission checking mechanism should do nothing for preserving error code.
-				wps.watchCh <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, WatchId: -1, Created: true, Canceled: true}
+			if err := wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
+				wps.watchCh <- &pb.WatchResponse{
+					Header:       &pb.ResponseHeader{},
+					WatchId:      -1,
+					Created:      true,
+					Canceled:     true,
+					CancelReason: err.Error(),
+				}
 				continue
 			}
 

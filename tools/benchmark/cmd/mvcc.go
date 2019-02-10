@@ -18,9 +18,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +38,7 @@ func initMVCC() {
 	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = "mvcc-bench", time.Duration(batchInterval)*time.Millisecond, batchLimit
 	be := backend.New(bcfg)
-	s = mvcc.NewStore(be, &lease.FakeLessor{}, nil)
+	s = mvcc.NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
 	os.Remove("mvcc-bench") // boltDB has an opened fd, so removing the file is ok
 }
 

@@ -15,15 +15,16 @@
 package auth
 
 import (
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/adt"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/adt"
+
+	"go.uber.org/zap"
 )
 
-func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
-	user := getUser(tx, userName)
+func getMergedPerms(lg *zap.Logger, tx backend.BatchTx, userName string) *unifiedRangePermissions {
+	user := getUser(lg, tx, userName)
 	if user == nil {
-		plog.Errorf("invalid user name %s", userName)
 		return nil
 	}
 
@@ -70,7 +71,11 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 	}
 }
 
-func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func checkKeyInterval(
+	lg *zap.Logger,
+	cachedPerms *unifiedRangePermissions,
+	key, rangeEnd []byte,
+	permtyp authpb.Permission_Type) bool {
 	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
 		rangeEnd = nil
 	}
@@ -82,12 +87,16 @@ func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte
 	case authpb.WRITE:
 		return cachedPerms.writePerms.Contains(ivl)
 	default:
-		plog.Panicf("unknown auth type: %v", permtyp)
+		if lg != nil {
+			lg.Panic("unknown auth type", zap.String("auth-type", permtyp.String()))
+		} else {
+			plog.Panicf("unknown auth type: %v", permtyp)
+		}
 	}
 	return false
 }
 
-func checkKeyPoint(cachedPerms *unifiedRangePermissions, key []byte, permtyp authpb.Permission_Type) bool {
+func checkKeyPoint(lg *zap.Logger, cachedPerms *unifiedRangePermissions, key []byte, permtyp authpb.Permission_Type) bool {
 	pt := adt.NewBytesAffinePoint(key)
 	switch permtyp {
 	case authpb.READ:
@@ -95,7 +104,11 @@ func checkKeyPoint(cachedPerms *unifiedRangePermissions, key []byte, permtyp aut
 	case authpb.WRITE:
 		return cachedPerms.writePerms.Intersects(pt)
 	default:
-		plog.Panicf("unknown auth type: %v", permtyp)
+		if lg != nil {
+			lg.Panic("unknown auth type", zap.String("auth-type", permtyp.String()))
+		} else {
+			plog.Panicf("unknown auth type: %v", permtyp)
+		}
 	}
 	return false
 }
@@ -104,19 +117,26 @@ func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {
-		perms := getMergedPerms(tx, userName)
+		perms := getMergedPerms(as.lg, tx, userName)
 		if perms == nil {
-			plog.Errorf("failed to create a unified permission of user %s", userName)
+			if as.lg != nil {
+				as.lg.Warn(
+					"failed to create a merged permission",
+					zap.String("user-name", userName),
+				)
+			} else {
+				plog.Errorf("failed to create a unified permission of user %s", userName)
+			}
 			return false
 		}
 		as.rangePermCache[userName] = perms
 	}
 
 	if len(rangeEnd) == 0 {
-		return checkKeyPoint(as.rangePermCache[userName], key, permtyp)
+		return checkKeyPoint(as.lg, as.rangePermCache[userName], key, permtyp)
 	}
 
-	return checkKeyInterval(as.rangePermCache[userName], key, rangeEnd, permtyp)
+	return checkKeyInterval(as.lg, as.rangePermCache[userName], key, rangeEnd, permtyp)
 }
 
 func (as *authStore) clearCachedPerm() {

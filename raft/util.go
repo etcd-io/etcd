@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
-	pb "github.com/coreos/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 func (st StateType) MarshalJSON() ([]byte, error) {
@@ -77,10 +77,7 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%x->%x %v Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
-		fmt.Fprintf(&buf, " Rejected")
-		if m.RejectHint != 0 {
-			fmt.Fprintf(&buf, "(Hint:%d)", m.RejectHint)
-		}
+		fmt.Fprintf(&buf, " Rejected (Hint: %d)", m.RejectHint)
 	}
 	if m.Commit != 0 {
 		fmt.Fprintf(&buf, " Commit:%d", m.Commit)
@@ -101,6 +98,12 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	return buf.String()
 }
 
+// PayloadSize is the size of the payload of this Entry. Notably, it does not
+// depend on its Index or Term.
+func PayloadSize(e pb.Entry) int {
+	return len(e.Data)
+}
+
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {
@@ -111,6 +114,16 @@ func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 		formatted = fmt.Sprintf("%q", e.Data)
 	}
 	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
+}
+
+// DescribeEntries calls DescribeEntry for each Entry, adding a newline to
+// each.
+func DescribeEntries(ents []pb.Entry, f EntryFormatter) string {
+	var buf bytes.Buffer
+	for _, e := range ents {
+		_, _ = buf.WriteString(DescribeEntry(e, f) + "\n")
+	}
+	return buf.String()
 }
 
 func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {

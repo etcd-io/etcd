@@ -22,10 +22,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/mirror"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/mirror"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 
 	"github.com/spf13/cobra"
 )
@@ -62,7 +62,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 
 func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination argument."))
+		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination argument"))
 	}
 
 	dialTimeout := dialTimeoutFromCmd(cmd)
@@ -106,7 +106,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 
 	// if destination prefix is specified and remove destination prefix is true return error
 	if mmnodestprefix && len(mmdestprefix) > 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
 	}
 
 	// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix

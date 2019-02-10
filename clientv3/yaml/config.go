@@ -22,8 +22,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/tlsutil"
 )
 
 type yamlConfig struct {
@@ -70,9 +70,6 @@ func NewConfig(fpath string) (*clientv3.Config, error) {
 		}
 	}
 
-	if yc.CAfile != "" && yc.TrustedCAfile == "" {
-		yc.TrustedCAfile = yc.CAfile
-	}
 	if yc.TrustedCAfile != "" {
 		cp, err = tlsutil.NewCertPool([]string{yc.TrustedCAfile})
 		if err != nil {

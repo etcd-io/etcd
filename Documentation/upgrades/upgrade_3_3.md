@@ -8,9 +8,24 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 ### Upgrade checklists
 
+**NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
+
 Highlighted breaking changes in 3.3.
 
-#### Change in `etcdserver.EtcdServer` struct
+#### Changed value type of `etcd --auto-compaction-retention` flag to `string`
+
+Changed `--auto-compaction-retention` flag to [accept string values](https://github.com/etcd-io/etcd/pull/8563) with [finer granularity](https://github.com/etcd-io/etcd/issues/8503). Now that `--auto-compaction-retention` accepts string values, etcd configuration YAML file `auto-compaction-retention` field must be changed to `string` type. Previously, `--config-file etcd.config.yaml` can have `auto-compaction-retention: 24` field, now must be `auto-compaction-retention: "24"` or `auto-compaction-retention: "24h"`. If configured as `--auto-compaction-mode periodic --auto-compaction-retention "24h"`, the time duration value for `--auto-compaction-retention` flag must be valid for [`time.ParseDuration`](https://golang.org/pkg/time/#ParseDuration) function in Go.
+
+```diff
+# etcd.config.yaml
++auto-compaction-mode: periodic
+-auto-compaction-retention: 24
++auto-compaction-retention: "24"
++# Or
++auto-compaction-retention: "24h"
+```
+
+#### Changed `etcdserver.EtcdServer.ServerConfig` to `*etcdserver.EtcdServer.ServerConfig`
 
 `etcdserver.EtcdServer` has changed the type of its member field `*etcdserver.ServerConfig` to `etcdserver.ServerConfig`. And `etcdserver.NewServer` now takes `etcdserver.ServerConfig`, instead of `*etcdserver.ServerConfig`.
 
@@ -40,7 +55,9 @@ func (e *EtcdServer) Start() error {
     ...
 ```
 
-#### Change in `embed.EtcdServer` struct
+#### Added `embed.Config.LogOutput` struct
+
+**Note that this field has been renamed to `embed.Config.LogOutputs` in `[]string` type in v3.4. Please see [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for more details.**
 
 Field `LogOutput` is added to `embed.Config`:
 
@@ -63,6 +80,8 @@ WARNING: 2017/11/02 11:35:51 grpc: addrConn.resetTransport failed to create clie
 
 From v3.3, gRPC server logs are disabled by default.
 
+**Note that `embed.Config.SetupLogging` method has been deprecated in v3.4. Please see [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for more details.**
+
 ```go
 import "github.com/coreos/etcd/embed"
 
@@ -72,62 +91,195 @@ cfg.SetupLogging()
 
 Set `embed.Config.Debug` field to `true` to enable gRPC server logs.
 
-#### Change in `/health` endpoint response value
+#### Changed `/health` endpoint response
 
-Previously, `[endpoint]:[client-port]/health` returns manually marshaled JSON value. 3.3 instead defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct and returns properly encoded JSON value with errors, if any.
+Previously, `[endpoint]:[client-port]/health` returned manually marshaled JSON value. 3.3 now defines [`etcdhttp.Health`](https://godoc.org/github.com/coreos/etcd/etcdserver/api/etcdhttp#Health) struct.
 
-Before
-
-```bash
-$ curl http://localhost:2379/health
-{"health": "true"}
-```
-
-After
+Note that in v3.3.0-rc.0, v3.3.0-rc.1, and v3.3.0-rc.2, `etcdhttp.Health` has boolean type `"health"` and `"errors"` fields. For backward compatibilities, we reverted `"health"` field to `string` type and removed `"errors"` field. Further health information will be provided in separate APIs.
 
 ```bash
 $ curl http://localhost:2379/health
-{"health":true}
-
-# Or
-{"health":false,"errors":["NOSPACE"]}
+{"health":"true"}
 ```
 
-#### Change in gRPC gateway HTTP endpoints (replaced `/v3alpha` with `/v3beta`)
+#### Changed gRPC gateway HTTP endpoints (replaced `/v3alpha` with `/v3beta`)
 
 Before
 
 ```bash
 curl -L http://localhost:2379/v3alpha/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
 After
 
 ```bash
 curl -L http://localhost:2379/v3beta/kv/put \
-	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+  -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 ```
 
 Requests to `/v3alpha` endpoints will redirect to `/v3beta`, and `/v3alpha` will be removed in 3.4 release.
 
-#### `gcr.io/etcd-development/etcd` as primary container registry
+#### Changed maximum request size limits
 
-etcd uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
+3.3 now allows custom request size limits for both server and **client side**. In previous versions(v3.2.10, v3.2.11), client response size was limited to only 4 MiB.
+
+Server-side request limits can be configured with `--max-request-bytes` flag:
+
+```bash
+# limits request size to 1.5 KiB
+etcd --max-request-bytes 1536
+
+# client writes exceeding 1.5 KiB will be rejected
+etcdctl put foo [LARGE VALUE...]
+# etcdserver: request is too large
+```
+
+Or configure `embed.Config.MaxRequestBytes` field:
+
+```go
+import "github.com/coreos/etcd/embed"
+import "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+
+// limit requests to 5 MiB
+cfg := embed.NewConfig()
+cfg.MaxRequestBytes = 5 * 1024 * 1024
+
+// client writes exceeding 5 MiB will be rejected
+_, err := cli.Put(ctx, "foo", [LARGE VALUE...])
+err == rpctypes.ErrRequestTooLarge
+```
+
+**If not specified, server-side limit defaults to 1.5 MiB**.
+
+Client-side request limits must be configured based on server-side limits.
+
+```bash
+# limits request size to 1 MiB
+etcd --max-request-bytes 1048576
+```
+
+```go
+import "github.com/coreos/etcd/clientv3"
+
+cli, _ := clientv3.New(clientv3.Config{
+    Endpoints: []string{"127.0.0.1:2379"},
+    MaxCallSendMsgSize: 2 * 1024 * 1024,
+    MaxCallRecvMsgSize: 3 * 1024 * 1024,
+})
+
+
+// client writes exceeding "--max-request-bytes" will be rejected from etcd server
+_, err := cli.Put(ctx, "foo", strings.Repeat("a", 1*1024*1024+5))
+err == rpctypes.ErrRequestTooLarge
+
+
+// client writes exceeding "MaxCallSendMsgSize" will be rejected from client-side
+_, err = cli.Put(ctx, "foo", strings.Repeat("a", 5*1024*1024))
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: trying to send message larger than max (5242890 vs. 2097152)"
+
+
+// some writes under limits
+for i := range []int{0,1,2,3,4} {
+    _, err = cli.Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("a", 1*1024*1024-500))
+    if err != nil {
+        panic(err)
+    }
+}
+// client reads exceeding "MaxCallRecvMsgSize" will be rejected from client-side
+_, err = cli.Get(ctx, "foo", clientv3.WithPrefix())
+err.Error() == "rpc error: code = ResourceExhausted desc = grpc: received message larger than max (5240509 vs. 3145728)"
+```
+
+**If not specified, client-side send limit defaults to 2 MiB (1.5 MiB + gRPC overhead bytes) and receive limit to `math.MaxInt32`**. Please see [clientv3 godoc](https://godoc.org/github.com/coreos/etcd/clientv3#Config) for more detail.
+
+#### Changed raw gRPC client wrapper function signatures
+
+3.3 changes the function signatures of `clientv3` gRPC client wrapper. This change was needed to support [custom `grpc.CallOption` on message size limits](https://github.com/etcd-io/etcd/pull/9047).
+
+Before and after
+
+```diff
+-func NewKVFromKVClient(remote pb.KVClient) KV {
++func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
+
+-func NewClusterFromClusterClient(remote pb.ClusterClient) Cluster {
++func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
+
+-func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Duration) Lease {
++func NewLeaseFromLeaseClient(remote pb.LeaseClient, c *Client, keepAliveTimeout time.Duration) Lease {
+
+-func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient) Maintenance {
++func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client) Maintenance {
+
+-func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
++func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
+```
+
+#### Changed clientv3 `Snapshot` API error type
+
+Previously, clientv3 `Snapshot` API returned raw [`grpc/*status.statusError`] type error. v3.3 now translates those errors to corresponding public error types, to be consistent with other APIs.
 
 Before
 
+```go
+import "context"
+
+// reading snapshot with canceled context should error out
+ctx, cancel := context.WithCancel(context.Background())
+rc, _ := cli.Snapshot(ctx)
+cancel()
+_, err := io.Copy(f, rc)
+err.Error() == "rpc error: code = Canceled desc = context canceled"
+
+// reading snapshot with deadline exceeded should error out
+ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+rc, _ = cli.Snapshot(ctx)
+time.Sleep(2 * time.Second)
+_, err = io.Copy(f, rc)
+err.Error() == "rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+```
+
+After
+
+```go
+import "context"
+
+// reading snapshot with canceled context should error out
+ctx, cancel := context.WithCancel(context.Background())
+rc, _ := cli.Snapshot(ctx)
+cancel()
+_, err := io.Copy(f, rc)
+err == context.Canceled
+
+// reading snapshot with deadline exceeded should error out
+ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+rc, _ = cli.Snapshot(ctx)
+time.Sleep(2 * time.Second)
+_, err = io.Copy(f, rc)
+err == context.DeadlineExceeded
+```
+
+#### Changed `etcdctl lease timetolive` command output
+
+Previously, `lease timetolive LEASE_ID` command on expired lease prints `-1s` for remaining seconds. 3.3 now outputs clearer messages.
+
+Before
+
+
 ```bash
-docker pull quay.io/coreos/etcd:v3.2.5
+lease 2d8257079fa1bc0c granted with TTL(0s), remaining(-1s)
 ```
 
 After
 
 ```bash
-docker pull gcr.io/etcd-development/etcd:v3.3.0
+lease 2d8257079fa1bc0c already expired
 ```
 
-#### Deprecate `golang.org/x/net/context` imports
+#### Changed `golang.org/x/net/context` imports
 
 `clientv3` has deprecated `golang.org/x/net/context`. If a project vendors `golang.org/x/net/context` in other code (e.g. etcd generated protocol buffer code) and imports `github.com/coreos/etcd/clientv3`, it requires Go 1.9+ to compile.
 
@@ -145,11 +297,11 @@ import "context"
 cli.Put(context.Background(), "f", "v")
 ```
 
-#### Upgrade grpc/grpc-go to `v1.7.4`
+#### Changed gRPC dependency
 
-3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.4`.
+3.3 now requires [grpc/grpc-go](https://github.com/grpc/grpc-go/releases) `v1.7.5`.
 
-##### Deprecate `grpclog.Logger`
+##### Deprecated `grpclog.Logger`
 
 `grpclog.Logger` has been deprecated in favor of [`grpclog.LoggerV2`](https://github.com/grpc/grpc-go/blob/master/grpclog/loggerv2.go). `clientv3.Logger` is now `grpclog.LoggerV2`.
 
@@ -170,9 +322,9 @@ clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 // log.New above cannot be used (not implement grpclog.LoggerV2 interface)
 ```
 
-##### Deprecate `grpc.ErrClientConnTimeout`
+##### Deprecated `grpc.ErrClientConnTimeout`
 
-Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.3 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/coreos/etcd/issues/8504)).
+Previously, `grpc.ErrClientConnTimeout` error is returned on client dial time-outs. 3.3 instead returns `context.DeadlineExceeded` (see [#8504](https://github.com/etcd-io/etcd/issues/8504)).
 
 Before
 
@@ -197,6 +349,22 @@ _, err := clientv3.New(clientv3.Config{
 if err == context.DeadlineExceeded {
 	// handle errors
 }
+```
+
+#### Changed official container registry
+
+etcd now uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
+
+Before
+
+```bash
+docker pull quay.io/coreos/etcd:v3.2.5
+```
+
+After
+
+```bash
+docker pull gcr.io/etcd-development/etcd:v3.3.0
 ```
 
 ### Server upgrade checklists

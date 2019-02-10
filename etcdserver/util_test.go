@@ -19,11 +19,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 func TestLongestConnected(t *testing.T) {
@@ -31,7 +33,7 @@ func TestLongestConnected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clus, err := membership.NewClusterFromURLsMap("test", umap)
+	clus, err := membership.NewClusterFromURLsMap(zap.NewExample(), "test", umap)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,6 +85,7 @@ func (s *nopTransporterWithActiveTime) RemovePeer(id types.ID)              {}
 func (s *nopTransporterWithActiveTime) RemoveAllPeers()                     {}
 func (s *nopTransporterWithActiveTime) UpdatePeer(id types.ID, us []string) {}
 func (s *nopTransporterWithActiveTime) ActiveSince(id types.ID) time.Time   { return s.activeMap[id] }
+func (s *nopTransporterWithActiveTime) ActivePeers() int                    { return 0 }
 func (s *nopTransporterWithActiveTime) Stop()                               {}
 func (s *nopTransporterWithActiveTime) Pause()                              {}
 func (s *nopTransporterWithActiveTime) Resume()                             {}

@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -41,6 +42,19 @@ type Config struct {
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
 	DialKeepAliveTimeout time.Duration `json:"dial-keep-alive-timeout"`
 
+	// MaxCallSendMsgSize is the client-side request send limit in bytes.
+	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
+	// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.
+	// ("--max-request-bytes" flag to etcd or "embed.Config.MaxRequestBytes").
+	MaxCallSendMsgSize int
+
+	// MaxCallRecvMsgSize is the client-side response receive limit.
+	// If 0, it defaults to "math.MaxInt32", because range response can
+	// easily exceed request send limits.
+	// Make sure that "MaxCallRecvMsgSize" >= server-side default send/recv limit.
+	// ("--max-request-bytes" flag to etcd or "embed.Config.MaxRequestBytes").
+	MaxCallRecvMsgSize int
+
 	// TLS holds the client secure credentials, if any.
 	TLS *tls.Config
 
@@ -59,4 +73,30 @@ type Config struct {
 	// Context is the default client context; it can be used to cancel grpc dial out and
 	// other operations that do not have an explicit context.
 	Context context.Context
+
+	// LogConfig configures client-side logger.
+	// If nil, use the default logger.
+	// TODO: configure gRPC logger
+	LogConfig *zap.Config
+
+	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
+	PermitWithoutStream bool `json:"permit-without-stream"`
+}
+
+// DefaultLogConfig is the default client logging configuration.
+// Default log level is "Warn". Use "zap.InfoLevel" for debugging.
+// Use "/dev/null" for output paths, to discard all logs.
+var DefaultLogConfig = zap.Config{
+	Level:       zap.NewAtomicLevelAt(zap.WarnLevel),
+	Development: false,
+	Sampling: &zap.SamplingConfig{
+		Initial:    100,
+		Thereafter: 100,
+	},
+	Encoding:      "json",
+	EncoderConfig: zap.NewProductionEncoderConfig(),
+
+	// Use "/dev/null" to discard all
+	OutputPaths:      []string{"stderr"},
+	ErrorOutputPaths: []string{"stderr"},
 }

@@ -23,8 +23,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func NewLockCommand() *cobra.Command {
 
 func lockCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute."))
+		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute"))
 	}
 	c := mustClientFromCmd(cmd)
 	if err := lockUntilSignal(c, args[0], args[1:]); err != nil {

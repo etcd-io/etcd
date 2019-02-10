@@ -4,46 +4,67 @@
 # ./test
 # ./test -v
 #
-# Run tests for one package
 #
-# PKG=./wal ./test
-# PKG=snap ./test
+# Run specified test pass
+#
+# $ PASSES=unit ./test
+# $ PASSES=integration ./test
+#
+#
+# Run tests for one package
+# Each pass has different default timeout, if you just run tests in one package or 1 test case then you can set TIMEOUT
+# flag for different expectation
+#
+# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test
+# $ PASSES=integration PKG=client/integration TIMEOUT=1m ./test
+#
+#
+# Run specified unit tests in one package
+# To run all the tests with prefix of "TestNew", set "TESTCASE=TestNew ";
+# to run only "TestNew", set "TESTCASE="\bTestNew\b""
+#
+# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test
+# $ PASSES=integration PKG=client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test
+#
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# COVERDIR=coverage PASSES="build_cov cov" ./test
+# $ COVERDIR=coverage PASSES="build_cov cov" ./test
 set -e
 
 source ./build
 
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
-	./tools/functional-tester/build
+	./functional/build
 fi
 
-# build tests with vendored dependencies
-etcd_setup_gopath
-
 if [ -z "$PASSES" ]; then
-	PASSES="fmt bom dep compile build unit"
+	PASSES="fmt bom dep build unit"
 fi
 
 USERPKG=${PKG:-}
 
-# Invoke ./cover for HTML output
+# Invoke ./tests/cover.test.bash for HTML output
 COVER=${COVER:-"-cover"}
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-IGNORE_PKGS="(cmd/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
-INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
+IGNORE_PKGS="(vendor/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
+INTEGRATION_PKGS="(integration|tests/e2e|contrib|functional)"
 
-# all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
-PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
+# all github.com/etcd-io/etcd/whatever pkgs that are not auto-generated / tools
+# shellcheck disable=SC1117
+PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|tests/e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
 # pkg1,pkg2,pkg3
 PKGS_COMMA=${PKGS// /,}
 
+# shellcheck disable=SC1117
 TEST_PKGS=$(find . -name \*_test.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+
+# shellcheck disable=SC1117
 FORMATTABLE=$(find . -name \*.go | while read -r a; do echo "$(dirname "$a")/*.go"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+
 TESTABLE_AND_FORMATTABLE=$(echo "$TEST_PKGS" | grep -vE "$INTEGRATION_PKGS")
 
 # check if user provided PKG override
@@ -58,26 +79,55 @@ else
 	# only run gofmt on packages provided by user
 	FMT="$TEST"
 fi
+
+# shellcheck disable=SC2206
 FMT=($FMT)
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with FMT:" "${FMT[@]}"
+fi
 
 # prepend REPO_PATH to each local package
 split=$TEST
 TEST=""
 for a in $split; do TEST="$TEST ${REPO_PATH}/${a}"; done
+
+# shellcheck disable=SC2206
 TEST=($TEST)
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with TEST:" "${TEST[@]}"
+fi
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-STATIC_ANALYSIS_PATHS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+# shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
+if [ "${VERBOSE}" == "1" ]; then
+	# shellcheck disable=SC2128
+	echo "Running with STATIC_ANALYSIS_PATHS:" "${STATIC_ANALYSIS_PATHS[@]}"
+fi
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
 fi
 
+# determine the number of CPUs to use for Go tests
+TEST_CPUS="1,2,4"
+if [ -n "${CPU}" ]; then
+	TEST_CPUS="${CPU}"
+fi
+echo "Running with TEST_CPUS:" "${TEST_CPUS}"
+
 # determine whether target supports race detection
 if [ "$GOARCH" == "amd64" ]; then
 	RACE="--race"
+fi
+
+RUN_ARG=""
+if [ -n "${TESTCASE}" ]; then
+	RUN_ARG="-run=${TESTCASE}"
 fi
 
 function unit_pass {
@@ -90,31 +140,69 @@ function unit_pass {
 		GO_TEST_FLAG="-v"
 		export CLIENT_DEBUG=1
 	fi
-	# only -run=Test so examples can run in integration tests
-	go test ${GO_TEST_FLAG} -timeout 3m "${COVER}" ${RACE} -cpu 1,2,4 -run=Test "$@" "${TEST[@]}"
+
+	if [ "${RUN_ARG}" == "" ]; then
+	    RUN_ARG="-run=Test"
+	fi
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="3m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu "${TEST_CPUS}" ${RUN_ARG} "$@" "${TEST[@]}"
 }
 
 function integration_pass {
 	echo "Running integration tests..."
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
-	integration_extra "$@"
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="20m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+
+	# if TESTCASE and PKG set, run specified test case in specified PKG
+	# if TESTCASE set, PKG not set, run specified test case in all integration and integration_extra packages
+	# if TESTCASE not set, PKG set, run all test cases in specified package
+	# if TESTCASE not set, PKG not set, run all tests in all integration and integration_extra packages
+	if [ -z "${TESTCASE}" ] && [ -z "${USERPKG}" ]; then
+		go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+		integration_extra "$@"
+	else
+		if [ -z "${USERPKG}" ]; then
+			INTEGTESTPKG=("${REPO_PATH}/integration"
+						  "${REPO_PATH}/client/integration"
+						  "${REPO_PATH}/clientv3/integration"
+						  "${REPO_PATH}/contrib/raftexample"
+						  "${REPO_PATH}/store")
+		else
+			INTEGTESTPKG=("${TEST[@]}")
+		fi
+		go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${INTEGTESTPKG[@]}"
+	fi
 }
 
 function integration_extra {
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/client/integration"
-	go test -timeout 15m -v ${RACE} -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
-	go test -timeout 1m -v -cpu 1,2,4 "$@" "${REPO_PATH}/contrib/raftexample"
-	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/store"
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example "$@" "${TEST[@]}"
+	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
+	go test -timeout 25m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 1m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/contrib/raftexample"
+	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
+	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
 }
 
 function functional_pass {
   	# Clean up any data and logs from previous runs
-  	rm -rf ./agent-*
+  	rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
 	for a in 1 2 3; do
-		mkdir -p ./agent-$a
-		./bin/etcd-agent -etcd-path ./bin/etcd -etcd-log-dir "./agent-$a" -port ":${a}9027" -use-root=false &
+		./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
 		pid="$!"
 		agent_pids="${agent_pids} $pid"
 	done
@@ -126,33 +214,27 @@ function functional_pass {
 		done
 	done
 
-	echo "Starting 'etcd-tester'"
-	./bin/etcd-tester \
-		-agent-endpoints "127.0.0.1:19027,127.0.0.1:29027,127.0.0.1:39027" \
-		-client-ports 12379,22379,32379 \
-		-peer-ports 12380,22380,32380 \
-		-limit 1 \
-		-schedule-cases "0 1 2 3 4 5" \
-		-exit-on-failure && echo "'etcd-tester' succeeded"
+	echo "functional test START!"
+	./bin/etcd-tester --config ./functional.yaml && echo "'etcd-tester' succeeded"
 	ETCD_TESTER_EXIT_CODE=$?
 	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
 
-	echo "Waiting for processes to exit"
+	# shellcheck disable=SC2206
 	agent_pids=($agent_pids)
-	kill -s TERM "${agent_pids[@]}"
-	for a in "${agent_pids[@]}"; do wait "$a" || true; done
+	kill -s TERM "${agent_pids[@]}" || true
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
 		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi
+	echo "functional test PASS!"
 }
 
 function cov_pass {
 	echo "Running code coverage..."
 	# install gocovmerge before running code coverage from github.com/wadey/gocovmerge
 	# gocovmerge merges coverage files
-	if ! which gocovmerge >/dev/null; then
+	if ! command -v gocovmerge >/dev/null; then
 		echo "gocovmerge not installed"
 		exit 255
 	fi
@@ -170,10 +252,11 @@ function cov_pass {
 	mkdir -p "$COVERDIR"
 
 	# run code coverage for unit and integration tests
-	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 15m"
+	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 20m"
+	# shellcheck disable=SC2206
 	GOCOVFLAGS=($GOCOVFLAGS)
 	failed=""
-	for t in $(echo "${TEST_PKGS}" | grep -vE "(e2e|functional-tester)"); do
+	for t in $(echo "${TEST_PKGS}" | grep -vE "(tests/e2e|functional)"); do
 		tf=$(echo "$t" | tr / _)
 		# cache package compilation data for faster repeated builds
 		go test "${GOCOVFLAGS[@]}" -i "${REPO_PATH}/$t" || true
@@ -192,10 +275,10 @@ function cov_pass {
 	# use 30m timeout because e2e coverage takes longer
 	# due to many tests cause etcd process to wait
 	# on leadership transfer timeout during gracefully shutdown
-	echo Testing e2e without proxy...
-	go test -tags cov -timeout 30m -v "${REPO_PATH}/e2e" || failed="$failed e2e"
-	echo Testing e2e with proxy...
-	go test -tags "cov cluster_proxy" -timeout 30m -v "${REPO_PATH}/e2e" || failed="$failed e2e-proxy"
+	echo Testing tests/e2e without proxy...
+	go test -tags cov -timeout 30m -v "${REPO_PATH}/tests/e2e" || failed="$failed tests/e2e"
+	echo Testing tests/e2e with proxy...
+	go test -tags "cov cluster_proxy" -timeout 30m -v "${REPO_PATH}/tests/e2e" || failed="$failed tests/e2e-proxy"
 
 	# incrementally merge to get coverage data even if some coverage files are corrupted
 	# optimistically assume etcdserver package's coverage file is OK since gocovmerge
@@ -222,15 +305,25 @@ function cov_pass {
 
 function e2e_pass {
 	echo "Running e2e tests..."
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e"
+
+	# check if user provided time out, especially useful when just run one test case
+	# expectation could be different
+	USERTIMEOUT=""
+	if [ -z "${TIMEOUT}" ]; then
+		USERTIMEOUT="20m"
+	else
+		USERTIMEOUT="${TIMEOUT}"
+	fi
+
+	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/e2e" &
+	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/tests/e2e" &
 	e2epid="$!"
-	go test -timeout 15m -v -cpu 1,2,4 "$@" "${REPO_PATH}/integration" &
+	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration" &
 	intpid="$!"
 	wait $e2epid
 	wait $intpid
@@ -238,21 +331,21 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/integration"
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 "$@" "${REPO_PATH}/clientv3/integration"
-	go test -timeout 15m -v -tags cluster_proxy "$@" "${REPO_PATH}/e2e"
+	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 20m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function release_pass {
 	rm -f ./bin/etcd-last-release
 	# to grab latest patch release; bump this up for every minor release
-	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.2.*" | head -1)
+	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.3.*" | head -1)
 	if [ -n "$MANUAL_VER" ]; then
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
 	fi
 	if [[ -z ${UPGRADE_VER} ]]; then
-		UPGRADE_VER="v3.2.0"
+		UPGRADE_VER="v3.3.0"
 		echo "fallback to" ${UPGRADE_VER}
 	fi
 
@@ -260,7 +353,7 @@ function release_pass {
 	echo "Downloading $file"
 
 	set +e
-	curl --fail -L "https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/$file" -o "/tmp/$file"
+	curl --fail -L "https://github.com/etcd-io/etcd/releases/download/$UPGRADE_VER/$file" -o "/tmp/$file"
 	local result=$?
 	set -e
 	case $result in
@@ -275,37 +368,11 @@ function release_pass {
 	mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function gofmt_pass {
-	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
-	if [ -n "${fmtRes}" ]; then
-		echo -e "gofmt checking failed:\n${fmtRes}"
-		exit 255
-	fi
-}
-
-function govet_pass {
-	vetRes=$(go vet "${TEST[@]}")
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking failed:\n${vetRes}"
-		exit 255
-	fi
-}
-
-function govet_shadow_pass {
-	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
-	fmtpkgs=($fmtpkgs)
-	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet -all -shadow checking failed:\n${vetRes}"
-		exit 255
-	fi
-}
-
 function shellcheck_pass {
-	if which shellcheck >/dev/null; then
-		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
+	if command -v shellcheck >/dev/null; then
+		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
-			echo -e "shellcheck checking failed:\n${shellcheckResult}"
+			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
 	fi
@@ -313,19 +380,19 @@ function shellcheck_pass {
 
 function markdown_you_pass {
 	# eschew you
-	yous=$(find . -name \*.md -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true)
-	if [ ! -z "$yous" ]; then
-		echo -e "found 'you' in documentation:\n${yous}"
+	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/v2/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
+	if [ -n "$yous" ]; then
+		echo -e "found 'you' in documentation:\\n${yous}"
 		exit 255
 	fi
 }
 
 function markdown_marker_pass {
 	# TODO: check other markdown files when marker handles headers with '[]'
-	if which marker >/dev/null; then
+	if command -v marker >/dev/null; then
 		markerResult=$(marker --skip-http --root ./Documentation 2>&1 || true)
 		if [ -n "${markerResult}" ]; then
-			echo -e "marker checking failed:\n${markerResult}"
+			echo -e "marker checking failed:\\n${markerResult}"
 			exit 255
 		fi
 	else
@@ -334,23 +401,26 @@ function markdown_marker_pass {
 }
 
 function goword_pass {
-	if which goword >/dev/null; then
+	if command -v goword >/dev/null; then
 		# get all go files to process
 		gofiles=$(find "${FMT[@]}" -iname '*.go' 2>/dev/null)
+		# shellcheck disable=SC2206
 		gofiles_all=($gofiles)
 		# ignore tests and protobuf files
+		# shellcheck disable=SC1117
 		gofiles=$(echo "${gofiles_all[@]}" | sort | uniq | sed "s/ /\n/g" | grep -vE "(\\_test.go|\\.pb\\.go)")
+		# shellcheck disable=SC2206
 		gofiles=($gofiles)
 		# only check for broken exported godocs
 		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
-		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
+		if [ -n "$gowordRes" ]; then
+			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 		# check some spelling
 		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
-		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
+		if [ -n "$gowordRes" ]; then
+			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 	else
@@ -358,11 +428,42 @@ function goword_pass {
 	fi
 }
 
+function gofmt_pass {
+	fmtRes=$(gofmt -l -s -d "${FMT[@]}")
+	if [ -n "${fmtRes}" ]; then
+		echo -e "gofmt checking failed:\\n${fmtRes}"
+		exit 255
+	fi
+}
+
+function govet_pass {
+	vetRes=$(go vet "${TEST[@]}")
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking failed:\\n${vetRes}"
+		exit 255
+	fi
+}
+
+function govet_shadow_pass {
+	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
+	# shellcheck disable=SC2206
+	fmtpkgs=($fmtpkgs)
+	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
+	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	export PATH=${GOPATH}/bin:${PATH}
+	shadow_tool=$(which shadow)
+	vetRes=$(go vet -all -vettool="${shadow_tool}" "${TEST[@]}")
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
+		exit 255
+	fi
+}
+
 function gosimple_pass {
-	if which gosimple >/dev/null; then
+	if command -v gosimple >/dev/null; then
 		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${gosimpleResult}" ]; then
-			echo -e "gosimple checking failed:\n${gosimpleResult}"
+			echo -e "gosimple checking failed:\\n${gosimpleResult}"
 			exit 255
 		fi
 	else
@@ -371,10 +472,10 @@ function gosimple_pass {
 }
 
 function unused_pass {
-	if which unused >/dev/null; then
+	if command -v unused >/dev/null; then
 		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${unusedResult}" ]; then
-			echo -e "unused checking failed:\n${unusedResult}"
+			echo -e "unused checking failed:\\n${unusedResult}"
 			exit 255
 		fi
 	else
@@ -382,19 +483,31 @@ function unused_pass {
 	fi
 }
 
+function unparam_pass {
+	if command -v unparam >/dev/null; then
+		unparamResult=$(unparam "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${unparamResult}" ]; then
+			echo -e "unparam checking failed:\\n${unparamResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping unparam..."
+	fi
+}
+
 function staticcheck_pass {
-	if which staticcheck >/dev/null; then
+	if command -v staticcheck >/dev/null; then
 		staticcheckResult=$(staticcheck "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
 			STATIC_CHECK_MASK="SA(1012|1019|2002)"
 			if echo "${staticcheckResult}" | grep -vE "$STATIC_CHECK_MASK"; then
-				echo -e "staticcheck checking failed:\n${staticcheckResult}"
+				echo -e "staticcheck checking failed:\\n${staticcheckResult}"
 				exit 255
 			else
 				suppressed=$(echo "${staticcheckResult}" | sed 's/ /\n/g' | grep "(SA" | sort | uniq -c)
-				echo -e "staticcheck suppressed warnings:\n${suppressed}"
+				echo -e "staticcheck suppressed warnings:\\n${suppressed}"
 			fi
 		fi
 	else
@@ -402,11 +515,35 @@ function staticcheck_pass {
 	fi
 }
 
+function revive_pass {
+	if command -v revive >/dev/null; then
+		reviveResult=$(revive -config ./tests/revive.toml -exclude "vendor/..." ./... 2>&1 || true)
+		if [ -n "${reviveResult}" ]; then
+			echo -e "revive checking failed:\\n${reviveResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping revive..."
+	fi
+}
+
+function unconvert_pass {
+	if command -v unconvert >/dev/null; then
+		unconvertResult=$(unconvert -v "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
+		if [ -n "${unconvertResult}" ]; then
+			echo -e "unconvert checking failed:\\n${unconvertResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping unconvert..."
+	fi
+}
+
 function ineffassign_pass {
-	if which ineffassign >/dev/null; then
+	if command -v ineffassign >/dev/null; then
 		ineffassignResult=$(ineffassign "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${ineffassignResult}" ]; then
-			echo -e "ineffassign checking failed:\n${ineffassignResult}"
+			echo -e "ineffassign checking failed:\\n${ineffassignResult}"
 			exit 255
 		fi
 	else
@@ -415,10 +552,10 @@ function ineffassign_pass {
 }
 
 function nakedret_pass {
-	if which nakedret >/dev/null; then
+	if command -v nakedret >/dev/null; then
 		nakedretResult=$(nakedret "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${nakedretResult}" ]; then
-			echo -e "nakedret checking failed:\n${nakedretResult}"
+			echo -e "nakedret checking failed:\\n${nakedretResult}"
 			exit 255
 		fi
 	else
@@ -428,23 +565,25 @@ function nakedret_pass {
 
 function license_header_pass {
 	licRes=""
-	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
+	files=$(find . -type f -iname '*.go' ! -path './vendor/*' ! -path './gopath.proto/*')
 	for file in $files; do
 		if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
 			licRes="${licRes}"$(echo -e "  ${file}")
 		fi
 	done
 	if [ -n "${licRes}" ]; then
-		echo -e "license header checking failed:\n${licRes}"
+		echo -e "license header checking failed:\\n${licRes}"
 		exit 255
 	fi
 }
 
 function receiver_name_pass {
+	# shellcheck disable=SC1117
 	recvs=$(grep 'func ([^*]' {*,*/*,*/*/*}.go  | grep -Ev "(generated|pb/)" | tr  ':' ' ' |  \
 		awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
 		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
 	if [ -n "${recvs}" ]; then
+		# shellcheck disable=SC2206
 		recvs=($recvs)
 		for recv in "${recvs[@]}"; do
 			echo "Mismatched receiver for $recv..."
@@ -470,7 +609,7 @@ function commit_title_pass {
 		spaceCommas=$(echo "$commitMsg" | sed 's/ /\n/g' | grep -c ',$' || echo 0)
 		commaSpaces=$(echo "$commitMsg" | sed 's/,/\n/g' | grep -c '^ ' || echo 0)
 		if [[ $(echo "$commitMsg" | grep -c ":..*") == 0 || "$commitMsg" == "$pkgPrefix" || "$spaceCommas" != "$commaSpaces" ]]; then
-    			echo "$l"...
+			echo "$l"...
 			echo "Expected commit title format '<package>{\", \"<package>}: <description>'"
 			echo "Got: $l"
 			exit 255
@@ -481,36 +620,39 @@ function commit_title_pass {
 function fmt_pass {
 	toggle_failpoints disable
 
-	for p in gofmt \
-			govet \
-			govet_shadow \
-			shellcheck \
+    # TODO: add "unparam"
+	for p in shellcheck \
 			markdown_you \
 			markdown_marker \
 			goword \
+			gofmt \
+			govet \
+			govet_shadow \
 			gosimple \
 			unused \
 			staticcheck \
+			revive \
+			unconvert \
 			ineffassign \
 			nakedret \
 			license_header \
 			receiver_name \
 			commit_title \
 			; do
-		echo "Starting '$p' pass at $(date)"
+		echo "'$p' started at $(date)"
 		"${p}"_pass "$@"
-		echo "Finished '$p' pass at $(date)"
+		echo "'$p' completed at $(date)"
 	done
 }
 
 function bom_pass {
-	if ! which license-bill-of-materials >/dev/null; then
+	if ! command -v license-bill-of-materials >/dev/null; then
 		return
 	fi
 	echo "Checking bill of materials..."
 	license-bill-of-materials \
 		--override-file bill-of-materials.override.json \
-		github.com/coreos/etcd github.com/coreos/etcd/etcdctl >bom-now.json || true
+		go.etcd.io/etcd go.etcd.io/etcd/etcdctl >bom-now.json || true
 	if ! diff bill-of-materials.json bom-now.json; then
 		echo "vendored licenses do not match given bill of materials"
 		exit 255
@@ -525,8 +667,8 @@ function dep_pass {
 	badpkg="(etcdserver$|mvcc$|backend$|grpc-gateway)"
 	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
 	popd >/dev/null
-	if [ ! -z "$deps" ]; then
-		echo -e "clientv3 has masked dependencies:\n${deps}"
+	if [ -n "$deps" ]; then
+		echo -e "clientv3 has masked dependencies:\\n${deps}"
 		exit 255
 	fi
 }
@@ -538,14 +680,11 @@ function build_cov_pass {
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
 
-function compile_pass {
-	echo "Checking build..."
-	go build -v ./tools/...
-}
-
 # fail fast on static tests
 function build_pass {
-	GO_BUILD_FLAGS="-a -v" etcd_build
+	echo "Checking build..."
+	GO_BUILD_FLAGS="-v" etcd_build
+	GO_BUILD_FLAGS="-v" tools_build
 }
 
 for pass in $PASSES; do

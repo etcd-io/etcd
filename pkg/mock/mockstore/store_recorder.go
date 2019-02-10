@@ -17,25 +17,25 @@ package mockstore
 import (
 	"time"
 
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/store"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // StoreRecorder provides a Store interface with a testutil.Recorder
 type StoreRecorder struct {
-	store.Store
+	v2store.Store
 	testutil.Recorder
 }
 
 // storeRecorder records all the methods it receives.
-// storeRecorder DOES NOT work as a actual store.
+// storeRecorder DOES NOT work as a actual v2store.
 // It always returns invalid empty response and no error.
 type storeRecorder struct {
-	store.Store
+	v2store.Store
 	testutil.Recorder
 }
 
-func NewNop() store.Store { return &storeRecorder{Recorder: &testutil.RecorderBuffered{}} }
+func NewNop() v2store.Store { return &storeRecorder{Recorder: &testutil.RecorderBuffered{}} }
 func NewRecorder() *StoreRecorder {
 	sr := &storeRecorder{Recorder: &testutil.RecorderBuffered{}}
 	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
@@ -47,58 +47,58 @@ func NewRecorderStream() *StoreRecorder {
 
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
-func (s *storeRecorder) Get(path string, recursive, sorted bool) (*store.Event, error) {
+func (s *storeRecorder) Get(path string, recursive, sorted bool) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Get",
 		Params: []interface{}{path, recursive, sorted},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) Set(path string, dir bool, val string, expireOpts store.TTLOptionSet) (*store.Event, error) {
+func (s *storeRecorder) Set(path string, dir bool, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Set",
 		Params: []interface{}{path, dir, val, expireOpts},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) Update(path, val string, expireOpts store.TTLOptionSet) (*store.Event, error) {
+func (s *storeRecorder) Update(path, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Update",
 		Params: []interface{}{path, val, expireOpts},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, expireOpts store.TTLOptionSet) (*store.Event, error) {
+func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Create",
 		Params: []interface{}{path, dir, val, uniq, expireOpts},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expireOpts store.TTLOptionSet) (*store.Event, error) {
+func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndSwap",
 		Params: []interface{}{path, prevVal, prevIdx, val, expireOpts},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) Delete(path string, dir, recursive bool) (*store.Event, error) {
+func (s *storeRecorder) Delete(path string, dir, recursive bool) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Delete",
 		Params: []interface{}{path, dir, recursive},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*store.Event, error) {
+func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndDelete",
 		Params: []interface{}{path, prevVal, prevIdx},
 	})
-	return &store.Event{}, nil
+	return &v2store.Event{}, nil
 }
-func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
+func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (v2store.Watcher, error) {
 	s.Record(testutil.Action{Name: "Watch"})
-	return store.NewNopWatcher(), nil
+	return v2store.NewNopWatcher(), nil
 }
 func (s *storeRecorder) Save() ([]byte, error) {
 	s.Record(testutil.Action{Name: "Save"})
@@ -114,7 +114,7 @@ func (s *storeRecorder) SaveNoCopy() ([]byte, error) {
 	return nil, nil
 }
 
-func (s *storeRecorder) Clone() store.Store {
+func (s *storeRecorder) Clone() v2store.Store {
 	s.Record(testutil.Action{Name: "Clone"})
 	return s
 }
@@ -147,11 +147,11 @@ func NewErrRecorder(err error) *StoreRecorder {
 	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
 }
 
-func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*store.Event, error) {
+func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*v2store.Event, error) {
 	s.storeRecorder.Get(path, recursive, sorted)
 	return nil, s.err
 }
-func (s *errStoreRecorder) Watch(path string, recursive, sorted bool, index uint64) (store.Watcher, error) {
+func (s *errStoreRecorder) Watch(path string, recursive, sorted bool, index uint64) (v2store.Watcher, error) {
 	s.storeRecorder.Watch(path, recursive, sorted, index)
 	return nil, s.err
 }

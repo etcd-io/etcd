@@ -19,20 +19,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.uber.org/zap"
 )
 
 func TestRenewHTTP(t *testing.T) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -52,11 +53,12 @@ func TestRenewHTTP(t *testing.T) {
 }
 
 func TestTimeToLiveHTTP(t *testing.T) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -93,11 +95,12 @@ func TestTimeToLiveHTTPTimeout(t *testing.T) {
 }
 
 func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
+	lg := zap.NewNop()
 	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be, int64(5))
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -110,7 +113,7 @@ func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 	if err == nil {
 		t.Fatalf("expected timeout error, got nil")
 	}
-	if strings.Compare(err.Error(), ErrLeaseHTTPTimeout.Error()) != 0 {
+	if err.Error() != ErrLeaseHTTPTimeout.Error() {
 		t.Fatalf("expected (%v), got (%v)", ErrLeaseHTTPTimeout.Error(), err.Error())
 	}
 }

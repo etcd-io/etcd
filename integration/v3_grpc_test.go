@@ -25,14 +25,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
@@ -166,7 +168,7 @@ func TestV3HashKV(t *testing.T) {
 		}
 
 		rev := resp.Header.Revision
-		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{Revision: 0})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +179,7 @@ func TestV3HashKV(t *testing.T) {
 		prevHash := hresp.Hash
 		prevCompactRev := hresp.CompactRevision
 		for i := 0; i < 10; i++ {
-			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{Revision: 0})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -519,7 +521,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{6},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 6},
 			},
 			true,
 		},
@@ -530,7 +532,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{5},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
 			},
 			false,
 		},
@@ -541,7 +543,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{5},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
 			},
 			true,
 		},
@@ -552,7 +554,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
 				Result:      pb.Compare_LESS,
-				TargetUnion: &pb.Compare_CreateRevision{4},
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 4},
 			},
 			false,
 		},
@@ -563,7 +565,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/b0"),
 				Target:      pb.Compare_VALUE,
 				Result:      pb.Compare_EQUAL,
-				TargetUnion: &pb.Compare_Value{[]byte("x")},
+				TargetUnion: &pb.Compare_Value{Value: []byte("x")},
 			},
 			false,
 		},
@@ -574,7 +576,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
 				Result:      pb.Compare_GREATER,
-				TargetUnion: &pb.Compare_Lease{0},
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
 			},
 			false,
 		},
@@ -585,7 +587,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
 				Result:      pb.Compare_EQUAL,
-				TargetUnion: &pb.Compare_Lease{0},
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
 			},
 			true,
 		},
@@ -1570,6 +1572,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &testTLSInfo
+	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
 		t.Fatalf("expected no client")
@@ -1654,7 +1657,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testTLSReload(t, cloneFunc, replaceFunc, revertFunc)
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
 
 // TestTLSReloadCopy ensures server reloads expired/valid certs
@@ -1684,17 +1687,57 @@ func TestTLSReloadCopy(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testTLSReload(t, cloneFunc, replaceFunc, revertFunc)
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
 
-func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc func(), revertFunc func()) {
+// TestTLSReloadCopyIPOnly ensures server reloads expired/valid certs
+// when new certs are copied over, one by one. And expects server
+// to reject client requests, and vice versa.
+func TestTLSReloadCopyIPOnly(t *testing.T) {
+	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(certsDir)
+
+	cloneFunc := func() transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(testTLSInfoIP, certsDir)
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		return tlsInfo
+	}
+	replaceFunc := func() {
+		if _, err = copyTLSFiles(testTLSInfoExpiredIP, certsDir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	revertFunc := func() {
+		if _, err = copyTLSFiles(testTLSInfoIP, certsDir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, true)
+}
+
+func testTLSReload(
+	t *testing.T,
+	cloneFunc func() transport.TLSInfo,
+	replaceFunc func(),
+	revertFunc func(),
+	useIP bool) {
 	defer testutil.AfterTest(t)
 
 	// 1. separate copies for TLS assets modification
 	tlsInfo := cloneFunc()
 
 	// 2. start cluster with valid certs
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1, PeerTLS: &tlsInfo, ClientTLS: &tlsInfo})
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:      1,
+		PeerTLS:   &tlsInfo,
+		ClientTLS: &tlsInfo,
+		UseIP:     useIP,
+	})
 	defer clus.Terminate(t)
 
 	// 3. concurrent client dialing while certs become expired
@@ -1712,6 +1755,7 @@ func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc
 				continue
 			}
 			cli, cerr := clientv3.New(clientv3.Config{
+				DialOptions: []grpc.DialOption{grpc.WithBlock()},
 				Endpoints:   []string{clus.Members[0].GRPCAddr()},
 				DialTimeout: time.Second,
 				TLS:         cc,
@@ -1845,29 +1889,37 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 	}
 }
 
-// TestV3PutLargeRequests ensures that configurable MaxRequestBytes works as intended.
-func TestV3PutLargeRequests(t *testing.T) {
+// TestV3LargeRequests ensures that configurable MaxRequestBytes works as intended.
+func TestV3LargeRequests(t *testing.T) {
 	defer testutil.AfterTest(t)
 	tests := []struct {
-		key             string
 		maxRequestBytes uint
 		valueSize       int
 		expectError     error
 	}{
 		// don't set to 0. use 0 as the default.
-		{"foo", 1, 1024, rpctypes.ErrGRPCRequestTooLarge},
-		{"foo", 10 * 1024 * 1024, 9 * 1024 * 1024, nil},
-		{"foo", 10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
-		{"foo", 10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},
+		{1, 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{10 * 1024 * 1024, 9 * 1024 * 1024, nil},
+		{10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},
 	}
 	for i, test := range tests {
 		clus := NewClusterV3(t, &ClusterConfig{Size: 1, MaxRequestBytes: test.maxRequestBytes})
 		kvcli := toGRPC(clus.Client(0)).KV
-		reqput := &pb.PutRequest{Key: []byte(test.key), Value: make([]byte, test.valueSize)}
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}
 		_, err := kvcli.Put(context.TODO(), reqput)
-
 		if !eqErrGRPC(err, test.expectError) {
 			t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+		}
+
+		// request went through, expect large response back from server
+		if test.expectError == nil {
+			reqget := &pb.RangeRequest{Key: []byte("foo")}
+			// limit receive call size with original value + gRPC overhead bytes
+			_, err = kvcli.Range(context.TODO(), reqget, grpc.MaxCallRecvMsgSize(test.valueSize+512*1024))
+			if err != nil {
+				t.Errorf("#%d: range expected no error, got %v", i, err)
+			}
 		}
 
 		clus.Terminate(t)
@@ -1884,7 +1936,18 @@ func eqErrGRPC(err1 error, err2 error) bool {
 // FailFast=false works with Put.
 func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
-	if _, err := kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
-		t.Fatal(err)
+	// TODO: Remove retry loop once the new grpc load balancer provides retry.
+	var err error
+	for i := 0; i < 10; i++ {
+		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for restart: %v", err)
 	}
 }

@@ -20,11 +20,11 @@ import (
 	"sync"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -285,7 +285,7 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 		if _, ok := err.(rpctypes.EtcdError); ok {
 			return nil, err
 		}
-		if ev, _ := status.FromError(err); ev.Code() != codes.Unavailable {
+		if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
 			return nil, err
 		}
 	}
@@ -445,8 +445,11 @@ func (lkv *leasingKV) revokeLeaseKvs(ctx context.Context, kvs []*mvccpb.KeyValue
 }
 
 func (lkv *leasingKV) waitSession(ctx context.Context) error {
+	lkv.leases.mu.RLock()
+	sessionc := lkv.sessionc
+	lkv.leases.mu.RUnlock()
 	select {
-	case <-lkv.sessionc:
+	case <-sessionc:
 		return nil
 	case <-lkv.ctx.Done():
 		return lkv.ctx.Err()

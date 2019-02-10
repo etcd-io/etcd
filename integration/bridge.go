@@ -21,7 +21,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 // bridge creates a unix socket bridge to another unix socket, making it possible
@@ -155,12 +155,12 @@ func (b *bridge) serveConn(bc *bridgeConn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		b.ioCopy(bc, bc.out, bc.in)
+		b.ioCopy(bc.out, bc.in)
 		bc.close()
 		wg.Done()
 	}()
 	go func() {
-		b.ioCopy(bc, bc.in, bc.out)
+		b.ioCopy(bc.in, bc.out)
 		bc.close()
 		wg.Done()
 	}()
@@ -200,7 +200,7 @@ func (b *bridge) Unblackhole() {
 }
 
 // ref. https://github.com/golang/go/blob/master/src/io/io.go copyBuffer
-func (b *bridge) ioCopy(bc *bridgeConn, dst io.Writer, src io.Reader) (err error) {
+func (b *bridge) ioCopy(dst io.Writer, src io.Reader) (err error) {
 	buf := make([]byte, 32*1024)
 	for {
 		select {

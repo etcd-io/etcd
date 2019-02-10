@@ -20,12 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3LeasePrmote ensures the newly elected leader can promote itself
@@ -222,6 +224,56 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 	})
 }
 
+// TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
+// across leader elections.
+func TestV3LeaseCheckpoint(t *testing.T) {
+	var ttl int64 = 300
+	leaseInterval := 2 * time.Second
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, LeaseCheckpointInterval: leaseInterval})
+	defer clus.Terminate(t)
+
+	// create lease
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := toGRPC(clus.RandClient())
+	lresp, err := c.Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: ttl})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wait for a checkpoint to occur
+	time.Sleep(leaseInterval + 1*time.Second)
+
+	// Force a leader election
+	leaderId := clus.WaitLeader(t)
+	leader := clus.Members[leaderId]
+	leader.Stop(t)
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+	leader.Restart(t)
+	newLeaderId := clus.WaitLeader(t)
+	c2 := toGRPC(clus.Client(newLeaderId))
+
+	time.Sleep(250 * time.Millisecond)
+
+	// Check the TTL of the new leader
+	var ttlresp *pb.LeaseTimeToLiveResponse
+	for i := 0; i < 10; i++ {
+		if ttlresp, err = c2.Lease.LeaseTimeToLive(ctx, &pb.LeaseTimeToLiveRequest{ID: lresp.ID}); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	expectedTTL := ttl - int64(leaseInterval.Seconds())
+	if ttlresp.TTL < expectedTTL-1 || ttlresp.TTL > expectedTTL {
+		t.Fatalf("expected lease to be checkpointed after restart such that %d < TTL <%d, but got TTL=%d", expectedTTL-1, expectedTTL, ttlresp.TTL)
+	}
+}
+
 // TestV3LeaseExists creates a lease on a random client and confirms it exists in the cluster.
 func TestV3LeaseExists(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -285,14 +337,14 @@ func TestV3LeaseLeases(t *testing.T) {
 
 // TestV3LeaseRenewStress keeps creating lease and renewing it immediately to ensure the renewal goes through.
 // it was oberserved that the immediate lease renewal after granting a lease from follower resulted lease not found.
-// related issue https://github.com/coreos/etcd/issues/6978
+// related issue https://github.com/etcd-io/etcd/issues/6978
 func TestV3LeaseRenewStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseRenew)
 }
 
 // TestV3LeaseTimeToLiveStress keeps creating lease and retrieving it immediately to ensure the lease can be retrieved.
 // it was oberserved that the immediate lease retrieval after granting a lease from follower resulted lease not found.
-// related issue https://github.com/coreos/etcd/issues/6978
+// related issue https://github.com/etcd-io/etcd/issues/6978
 func TestV3LeaseTimeToLiveStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseTimeToLive)
 }
@@ -385,7 +437,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 }
 
 // TestV3GetNonExistLease ensures client retrieving nonexistent lease on a follower doesn't result node panic
-// related issue https://github.com/coreos/etcd/issues/6537
+// related issue https://github.com/etcd-io/etcd/issues/6537
 func TestV3GetNonExistLease(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
@@ -487,6 +539,8 @@ func TestV3LeaseSwitch(t *testing.T) {
 // election timeout after it loses its quorum. And the new leader extends the TTL of
 // the lease to at least TTL + election timeout.
 func TestV3LeaseFailover(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -516,7 +570,6 @@ func TestV3LeaseFailover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lac.CloseSend()
 
 	// send keep alive to old leader until the old leader starts
 	// to drop lease request.

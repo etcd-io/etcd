@@ -17,13 +17,15 @@ package etcdserver
 import (
 	"io"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
+
+	"go.uber.org/zap"
 )
 
 type Storage interface {
@@ -63,7 +65,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
 }
 
-func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var (
 		err       error
 		wmetadata []byte
@@ -71,19 +73,35 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 
 	repaired := false
 	for {
-		if w, err = wal.Open(waldir, snap); err != nil {
-			plog.Fatalf("open wal error: %v", err)
+		if w, err = wal.Open(lg, waldir, snap); err != nil {
+			if lg != nil {
+				lg.Fatal("failed to open WAL", zap.Error(err))
+			} else {
+				plog.Fatalf("open wal error: %v", err)
+			}
 		}
 		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
 			w.Close()
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || err != io.ErrUnexpectedEOF {
-				plog.Fatalf("read wal error (%v) and cannot be repaired", err)
+				if lg != nil {
+					lg.Fatal("failed to read WAL, cannot be repaired", zap.Error(err))
+				} else {
+					plog.Fatalf("read wal error (%v) and cannot be repaired", err)
+				}
 			}
-			if !wal.Repair(waldir) {
-				plog.Fatalf("WAL error (%v) cannot be repaired", err)
+			if !wal.Repair(lg, waldir) {
+				if lg != nil {
+					lg.Fatal("failed to repair WAL", zap.Error(err))
+				} else {
+					plog.Fatalf("WAL error (%v) cannot be repaired", err)
+				}
 			} else {
-				plog.Infof("repaired WAL error (%v)", err)
+				if lg != nil {
+					lg.Info("repaired WAL", zap.Error(err))
+				} else {
+					plog.Infof("repaired WAL error (%v)", err)
+				}
 				repaired = true
 			}
 			continue

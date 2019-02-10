@@ -18,14 +18,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
 )
 
-func capabilityHandler(c api.Capability, fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+func authCapabilityHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !api.IsCapabilityEnabled(c) {
-			notCapable(w, r, c)
+		if !api.IsCapabilityEnabled(api.AuthCapability) {
+			notCapable(w, r, api.AuthCapability)
 			return
 		}
 		fn(w, r)

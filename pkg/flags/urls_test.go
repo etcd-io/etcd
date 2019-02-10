@@ -15,6 +15,8 @@
 package flags
 
 import (
+	"net/url"
+	"reflect"
 	"testing"
 )
 
@@ -45,17 +47,27 @@ func TestValidateURLsValueBad(t *testing.T) {
 	}
 }
 
-func TestValidateURLsValueGood(t *testing.T) {
-	tests := []string{
-		"https://1.2.3.4:8080",
-		"http://10.1.1.1:80",
-		"http://localhost:80",
-		"http://:80",
+func TestNewURLsValue(t *testing.T) {
+	tests := []struct {
+		s   string
+		exp []url.URL
+	}{
+		{s: "https://1.2.3.4:8080", exp: []url.URL{{Scheme: "https", Host: "1.2.3.4:8080"}}},
+		{s: "http://10.1.1.1:80", exp: []url.URL{{Scheme: "http", Host: "10.1.1.1:80"}}},
+		{s: "http://localhost:80", exp: []url.URL{{Scheme: "http", Host: "localhost:80"}}},
+		{s: "http://:80", exp: []url.URL{{Scheme: "http", Host: ":80"}}},
+		{
+			s: "http://localhost:1,https://localhost:2",
+			exp: []url.URL{
+				{Scheme: "http", Host: "localhost:1"},
+				{Scheme: "https", Host: "localhost:2"},
+			},
+		},
 	}
-	for i, in := range tests {
-		u := URLsValue{}
-		if err := u.Set(in); err != nil {
-			t.Errorf("#%d: err=%v, want nil for in=%q", i, err, in)
+	for i := range tests {
+		uu := []url.URL(*NewURLsValue(tests[i].s))
+		if !reflect.DeepEqual(tests[i].exp, uu) {
+			t.Fatalf("#%d: expected %+v, got %+v", i, tests[i].exp, uu)
 		}
 	}
 }

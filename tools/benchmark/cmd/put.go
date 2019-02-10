@@ -21,11 +21,13 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/report"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/report"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -51,6 +53,8 @@ var (
 
 	compactInterval   time.Duration
 	compactIndexDelta int64
+
+	checkHashkv bool
 )
 
 func init() {
@@ -64,6 +68,7 @@ func init() {
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
+	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -126,6 +131,10 @@ func putFunc(cmd *cobra.Command, args []string) {
 	close(r.Results())
 	bar.Finish()
 	fmt.Println(<-rc)
+
+	if checkHashkv {
+		hashKV(cmd, clients)
+	}
 }
 
 func compactKV(clients []*v3.Client) {
@@ -149,4 +158,35 @@ func max(n1, n2 int64) int64 {
 		return n1
 	}
 	return n2
+}
+
+func hashKV(cmd *cobra.Command, clients []*v3.Client) {
+	eps, err := cmd.Flags().GetStringSlice("endpoints")
+	if err != nil {
+		panic(err)
+	}
+	for i, ip := range eps {
+		eps[i] = strings.TrimSpace(ip)
+	}
+	host := eps[0]
+
+	st := time.Now()
+	clients[0].HashKV(context.Background(), eps[0], 0)
+	rh, eh := clients[0].HashKV(context.Background(), host, 0)
+	if eh != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, eh)
+		panic(err)
+	}
+	rt, es := clients[0].Status(context.Background(), host)
+	if es != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, es)
+		panic(err)
+	}
+
+	rs := "HaskKV Summary:\n"
+	rs += fmt.Sprintf("\tHashKV: %d\n", rh.Hash)
+	rs += fmt.Sprintf("\tEndpoint: %s\n", host)
+	rs += fmt.Sprintf("\tTime taken to get hashkv: %v\n", time.Since(st))
+	rs += fmt.Sprintf("\tDB size: %s", humanize.Bytes(uint64(rt.DbSize)))
+	fmt.Println(rs)
 }

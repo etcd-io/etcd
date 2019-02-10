@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // TestV3AuthEmptyUserGet ensures that a get with an empty user will return an empty user error.
@@ -103,6 +103,68 @@ func TestV3AuthRevision(t *testing.T) {
 	}
 	if aresp.Header.Revision != rev {
 		t.Fatalf("revision expected %d, got %d", rev, aresp.Header.Revision)
+	}
+}
+
+// TestV3AuthWithLeaseRevokeWithRoot ensures that granted leases
+// with root user be revoked after TTL.
+func TestV3AuthWithLeaseRevokeWithRoot(t *testing.T) {
+	testV3AuthWithLeaseRevokeWithRoot(t, ClusterConfig{Size: 1})
+}
+
+// TestV3AuthWithLeaseRevokeWithRootJWT creates a lease with a JWT-token enabled cluster.
+// And tests if server is able to revoke expiry lease item.
+func TestV3AuthWithLeaseRevokeWithRootJWT(t *testing.T) {
+	testV3AuthWithLeaseRevokeWithRoot(t, ClusterConfig{Size: 1, AuthToken: defaultTokenJWT})
+}
+
+func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ccfg)
+	defer clus.Terminate(t)
+
+	api := toGRPC(clus.Client(0))
+	authSetupRoot(t, api.Auth)
+
+	rootc, cerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer rootc.Close()
+
+	leaseResp, err := rootc.Grant(context.TODO(), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseID := leaseResp.ID
+
+	if _, err = rootc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(leaseID)); err != nil {
+		t.Fatal(err)
+	}
+
+	// wait for lease expire
+	time.Sleep(3 * time.Second)
+
+	tresp, terr := api.Lease.LeaseTimeToLive(
+		context.TODO(),
+		&pb.LeaseTimeToLiveRequest{
+			ID:   int64(leaseID),
+			Keys: true,
+		},
+	)
+	if terr != nil {
+		t.Error(terr)
+	}
+	if len(tresp.Keys) > 0 || tresp.GrantedTTL != 0 {
+		t.Errorf("lease %016x should have been revoked, got %+v", leaseID, tresp)
+	}
+	if tresp.TTL != -1 {
+		t.Errorf("lease %016x should have been expired, got %+v", leaseID, tresp)
 	}
 }
 

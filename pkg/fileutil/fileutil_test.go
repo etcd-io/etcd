@@ -15,15 +15,17 @@
 package fileutil
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/user"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestIsDirWriteable(t *testing.T) {
@@ -55,33 +57,6 @@ func TestIsDirWriteable(t *testing.T) {
 	}
 }
 
-func TestReadDir(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpdir)
-	if err != nil {
-		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
-	}
-	files := []string{"def", "abc", "xyz", "ghi"}
-	for _, f := range files {
-		var fh *os.File
-		fh, err = os.Create(filepath.Join(tmpdir, f))
-		if err != nil {
-			t.Fatalf("error creating file: %v", err)
-		}
-		if err = fh.Close(); err != nil {
-			t.Fatalf("error closing file: %v", err)
-		}
-	}
-	fs, err := ReadDir(tmpdir)
-	if err != nil {
-		t.Fatalf("error calling ReadDir: %v", err)
-	}
-	wfs := []string{"abc", "def", "ghi", "xyz"}
-	if !reflect.DeepEqual(fs, wfs) {
-		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
-	}
-}
-
 func TestCreateDirAll(t *testing.T) {
 	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
 	if err != nil {
@@ -104,6 +79,16 @@ func TestCreateDirAll(t *testing.T) {
 }
 
 func TestExist(t *testing.T) {
+	fdir := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()+rand.Int63n(1000)))
+	os.RemoveAll(fdir)
+	if err := os.Mkdir(fdir, 0666); err != nil {
+		t.Skip(err)
+	}
+	defer os.RemoveAll(fdir)
+	if !Exist(fdir) {
+		t.Fatalf("expected Exist true, got %v", Exist(fdir))
+	}
+
 	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
 	if err != nil {
 		t.Fatal(err)

@@ -1,4 +1,4 @@
-$ORG_PATH="github.com/coreos"
+$ORG_PATH="go.etcd.io"
 $REPO_PATH="$ORG_PATH/etcd"
 $PWD = $((Get-Item -Path ".\" -Verbose).FullName)
 $FSROOT = $((Get-Location).Drive.Name+":")
@@ -10,7 +10,7 @@ if ($FSYS.StartsWith("FAT","CurrentCultureIgnoreCase")) {
 }
 
 # Set $Env:GO_LDFLAGS="-s" for building without symbols.
-$GO_LDFLAGS="$Env:GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
+$GO_LDFLAGS="$Env:GO_LDFLAGS -X $REPO_PATH/version.GitSHA=$GIT_SHA"
 
 # rebuild symlinks
 git ls-files -s cmd | select-string -pattern 120000 | ForEach {
@@ -77,5 +77,5 @@ if (-not $env:GOPATH) {
 $env:CGO_ENABLED = 0
 $env:GO15VENDOREXPERIMENT = 1
 $GIT_SHA="$(git rev-parse --short HEAD)"
-go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcd.exe "$REPO_PATH\cmd\etcd"
-go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcdctl.exe "$REPO_PATH\cmd\etcdctl"
+go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcd.exe "$REPO_PATH"
+go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcdctl.exe "$REPO_PATH\etcdctl"

@@ -17,17 +17,19 @@ package etcdserver
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/auth"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/auth"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 )
 
 const (
@@ -55,6 +57,8 @@ type applierV3 interface {
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
+
+	LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error)
 
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 
@@ -108,6 +112,9 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
+	defer func(start time.Time) {
+		warnOfExpensiveRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+	}(time.Now())
 
 	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
 	switch {
@@ -125,6 +132,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.LeaseGrant(r.LeaseGrant)
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = a.s.applyV3.LeaseRevoke(r.LeaseRevoke)
+	case r.LeaseCheckpoint != nil:
+		ar.resp, ar.err = a.s.applyV3.LeaseCheckpoint(r.LeaseCheckpoint)
 	case r.Alarm != nil:
 		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
 	case r.Authenticate != nil:
@@ -501,25 +510,39 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPat
 	if !txnPath[0] {
 		reqs = rt.Failure
 	}
+
+	lg := a.s.getLogger()
 	for i, req := range reqs {
 		respi := tresp.Responses[i].Response
 		switch tv := req.Request.(type) {
 		case *pb.RequestOp_RequestRange:
 			resp, err := a.Range(txn, tv.RequestRange)
 			if err != nil {
-				plog.Panicf("unexpected error during txn: %v", err)
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 		case *pb.RequestOp_RequestPut:
 			resp, err := a.Put(txn, tv.RequestPut)
 			if err != nil {
-				plog.Panicf("unexpected error during txn: %v", err)
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {
-				plog.Panicf("unexpected error during txn: %v", err)
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
@@ -563,10 +586,21 @@ func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevo
 	return &pb.LeaseRevokeResponse{Header: newHeader(a.s)}, err
 }
 
+func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error) {
+	for _, c := range lc.Checkpoints {
+		err := a.s.lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
+		if err != nil {
+			return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, err
+		}
+	}
+	return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, nil
+}
+
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	resp := &pb.AlarmResponse{}
 	oldCount := len(a.s.alarmStore.Get(ar.Alarm))
 
+	lg := a.s.getLogger()
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
 		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
@@ -581,14 +615,22 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 
-		plog.Warningf("alarm %v raised by peer %s", m.Alarm, types.ID(m.MemberID))
+		if lg != nil {
+			lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+		} else {
+			plog.Warningf("alarm %v raised by peer %s", m.Alarm, types.ID(m.MemberID))
+		}
 		switch m.Alarm {
 		case pb.AlarmType_CORRUPT:
 			a.s.applyV3 = newApplierV3Corrupt(a)
 		case pb.AlarmType_NOSPACE:
 			a.s.applyV3 = newApplierV3Capped(a)
 		default:
-			plog.Errorf("unimplemented alarm activation (%+v)", m)
+			if lg != nil {
+				lg.Warn("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			} else {
+				plog.Errorf("unimplemented alarm activation (%+v)", m)
+			}
 		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
@@ -604,10 +646,18 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		switch m.Alarm {
 		case pb.AlarmType_NOSPACE, pb.AlarmType_CORRUPT:
 			// TODO: check kv hash before deactivating CORRUPT?
-			plog.Infof("alarm disarmed %+v", ar)
+			if lg != nil {
+				lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+			} else {
+				plog.Infof("alarm disarmed %+v", ar)
+			}
 			a.s.applyV3 = a.s.newApplierV3()
 		default:
-			plog.Errorf("unimplemented alarm deactivation (%+v)", m)
+			if lg != nil {
+				lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			} else {
+				plog.Errorf("unimplemented alarm deactivation (%+v)", m)
+			}
 		}
 	default:
 		return nil, nil
@@ -771,7 +821,7 @@ type quotaApplierV3 struct {
 }
 
 func newQuotaApplierV3(s *EtcdServer, app applierV3) applierV3 {
-	return &quotaApplierV3{app, NewBackendQuota(s)}
+	return &quotaApplierV3{app, NewBackendQuota(s, "v3-applier")}
 }
 
 func (a *quotaApplierV3) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, error) {

@@ -39,11 +39,15 @@
 		WatchRequest
 		WatchCreateRequest
 		WatchCancelRequest
+		WatchProgressRequest
 		WatchResponse
 		LeaseGrantRequest
 		LeaseGrantResponse
 		LeaseRevokeRequest
 		LeaseRevokeResponse
+		LeaseCheckpoint
+		LeaseCheckpointRequest
+		LeaseCheckpointResponse
 		LeaseKeepAliveRequest
 		LeaseKeepAliveResponse
 		LeaseTimeToLiveRequest

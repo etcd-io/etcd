@@ -1,0 +1,13 @@
+
+go install -v ./tools/etcd-dump-metrics
+
+# for latest master branch
+etcd-dump-metrics > docs/metrics/latest
+
+# Or download etcd v3.3.9 to ./bin
+goreman start
+etcd-dump-metrics --addr http://localhost:2379/metrics > docs/metrics/v3.3.9
+
+# Or download etcd v3.3.9 to temporary directory to fetch metrics
+etcd-dump-metrics --debug --download-ver v3.3.9
+etcd-dump-metrics --download-ver v3.3.9 > docs/metrics/v3.3.9

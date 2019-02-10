@@ -127,6 +127,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: none
 + env variable: ETCD_DISCOVERY_SRV
 
+### --discovery-srv-name
++ Suffix to the DNS srv name queried when bootstrapping using DNS.
++ default: none
++ env variable: ETCD_DISCOVERY_SRV_NAME
+
 ### --discovery-fallback
 + Expected behavior ("exit" or "proxy") when discovery services fails.
 + default: "proxy"

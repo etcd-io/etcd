@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/store"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 type RequestV2 pb.Request
@@ -39,11 +39,11 @@ type reqV2HandlerEtcdServer struct {
 }
 
 type reqV2HandlerStore struct {
-	store   store.Store
+	store   v2store.Store
 	applier ApplierV2
 }
 
-func NewStoreRequestV2Handler(s store.Store, applier ApplierV2) RequestV2Handler {
+func NewStoreRequestV2Handler(s v2store.Store, applier ApplierV2) RequestV2Handler {
 	return &reqV2HandlerStore{s, applier}
 }
 
@@ -122,14 +122,14 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	r.ID = s.reqIDGen.Next()
 	h := &reqV2HandlerEtcdServer{
 		reqV2HandlerStore: reqV2HandlerStore{
-			store:   s.store,
+			store:   s.v2store,
 			applier: s.applyV2,
 		},
 		s: s,
 	}
 	rp := &r
 	resp, err := ((*RequestV2)(rp)).Handle(ctx, h)
-	resp.Term, resp.Index = s.Term(), s.Index()
+	resp.Term, resp.Index = s.Term(), s.CommittedIndex()
 	return resp, err
 }
 
@@ -157,4 +157,9 @@ func (r *RequestV2) Handle(ctx context.Context, v2api RequestV2Handler) (Respons
 		return v2api.Head(ctx, r)
 	}
 	return Response{}, ErrUnknownMethod
+}
+
+func (r *RequestV2) String() string {
+	rpb := pb.Request(*r)
+	return rpb.String()
 }

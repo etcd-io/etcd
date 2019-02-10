@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
+	"go.uber.org/zap"
 )
 
 type index interface {
@@ -39,11 +40,13 @@ type index interface {
 type treeIndex struct {
 	sync.RWMutex
 	tree *btree.BTree
+	lg   *zap.Logger
 }
 
-func newTreeIndex() index {
+func newTreeIndex(lg *zap.Logger) index {
 	return &treeIndex{
 		tree: btree.New(32),
+		lg:   lg,
 	}
 }
 
@@ -54,12 +57,12 @@ func (ti *treeIndex) Put(key []byte, rev revision) {
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.put(rev.main, rev.sub)
+		keyi.put(ti.lg, rev.main, rev.sub)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(rev.main, rev.sub)
+	okeyi.put(ti.lg, rev.main, rev.sub)
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
@@ -69,7 +72,7 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, v
 	if keyi = ti.keyIndex(keyi); keyi == nil {
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
-	return keyi.get(atRev)
+	return keyi.get(ti.lg, atRev)
 }
 
 func (ti *treeIndex) KeyIndex(keyi *keyIndex) *keyIndex {
@@ -109,7 +112,7 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
 		return []revision{rev}
 	}
 	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
+		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 		}
 	})
@@ -125,7 +128,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 		return [][]byte{key}, []revision{rev}
 	}
 	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
+		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 			keys = append(keys, ki.key)
 		}
@@ -144,7 +147,7 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	}
 
 	ki := item.(*keyIndex)
-	return ki.tombstone(rev.main, rev.sub)
+	return ki.tombstone(ti.lg, rev.main, rev.sub)
 }
 
 // RangeSince returns all revisions from key(including) to end(excluding)
@@ -162,7 +165,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return nil
 		}
 		keyi = item.(*keyIndex)
-		return keyi.since(rev)
+		return keyi.since(ti.lg, rev)
 	}
 
 	endi := &keyIndex{key: end}
@@ -172,7 +175,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return false
 		}
 		curKeyi := item.(*keyIndex)
-		revs = append(revs, curKeyi.since(rev)...)
+		revs = append(revs, curKeyi.since(ti.lg, rev)...)
 		return true
 	})
 	sort.Sort(revisions(revs))
@@ -182,19 +185,34 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
-	var emptyki []*keyIndex
-	plog.Printf("store.index: compact %d", rev)
-	// TODO: do not hold the lock for long time?
-	// This is probably OK. Compacting 10M keys takes O(10ms).
-	ti.Lock()
-	defer ti.Unlock()
-	ti.tree.Ascend(compactIndex(rev, available, &emptyki))
-	for _, ki := range emptyki {
-		item := ti.tree.Delete(ki)
-		if item == nil {
-			plog.Panic("store.index: unexpected delete failure during compaction")
-		}
+	if ti.lg != nil {
+		ti.lg.Info("compact tree index", zap.Int64("revision", rev))
+	} else {
+		plog.Printf("store.index: compact %d", rev)
 	}
+	ti.Lock()
+	clone := ti.tree.Clone()
+	ti.Unlock()
+
+	clone.Ascend(func(item btree.Item) bool {
+		keyi := item.(*keyIndex)
+		//Lock is needed here to prevent modification to the keyIndex while
+		//compaction is going on or revision added to empty before deletion
+		ti.Lock()
+		keyi.compact(ti.lg, rev, available)
+		if keyi.isEmpty() {
+			item := ti.tree.Delete(keyi)
+			if item == nil {
+				if ti.lg != nil {
+					ti.lg.Panic("failed to delete during compaction")
+				} else {
+					plog.Panic("store.index: unexpected delete failure during compaction")
+				}
+			}
+		}
+		ti.Unlock()
+		return true
+	})
 	return available
 }
 
@@ -209,17 +227,6 @@ func (ti *treeIndex) Keep(rev int64) map[revision]struct{} {
 		return true
 	})
 	return available
-}
-
-func compactIndex(rev int64, available map[revision]struct{}, emptyki *[]*keyIndex) func(i btree.Item) bool {
-	return func(i btree.Item) bool {
-		keyi := i.(*keyIndex)
-		keyi.compact(rev, available)
-		if keyi.isEmpty() {
-			*emptyki = append(*emptyki, keyi)
-		}
-		return true
-	}
 }
 
 func (ti *treeIndex) Equal(bi index) bool {

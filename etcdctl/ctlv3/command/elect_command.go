@@ -21,8 +21,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func NewElectCommand() *cobra.Command {
 
 func electCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 && len(args) != 2 {
-		ExitWithError(ExitBadArgs, errors.New("elect takes one election name argument and an optional proposal argument."))
+		ExitWithError(ExitBadArgs, errors.New("elect takes one election name argument and an optional proposal argument"))
 	}
 	c := mustClientFromCmd(cmd)
 

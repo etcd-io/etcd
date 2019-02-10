@@ -21,6 +21,8 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"go.uber.org/zap"
 )
 
 // InterruptHandler is a function that is called on receiving a
@@ -43,7 +45,7 @@ func RegisterInterruptHandler(h InterruptHandler) {
 }
 
 // HandleInterrupts calls the handler functions on receiving a SIGINT or SIGTERM.
-func HandleInterrupts() {
+func HandleInterrupts(lg *zap.Logger) {
 	notifier := make(chan os.Signal, 1)
 	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
 
@@ -57,7 +59,11 @@ func HandleInterrupts() {
 
 		interruptExitMu.Lock()
 
-		plog.Noticef("received %v signal, shutting down...", sig)
+		if lg != nil {
+			lg.Info("received signal; shutting down", zap.String("signal", sig.String()))
+		} else {
+			plog.Noticef("received %v signal, shutting down...", sig)
+		}
 
 		for _, h := range ihs {
 			h()

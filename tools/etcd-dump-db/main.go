@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ var (
 		Run:   listBucketCommandFunc,
 	}
 	iterateBucketCommand = &cobra.Command{
-		Use:   "iterate-bucket [data dir or db file path]",
+		Use:   "iterate-bucket [data dir or db file path] [bucket name]",
 		Short: "iterate-bucket lists key-value pairs in reverse order.",
 		Run:   iterateBucketCommandFunc,
 	}
@@ -46,14 +47,14 @@ var (
 	}
 )
 
-var (
-	iterateBucketName  string
-	iterateBucketLimit uint64
-)
+var flockTimeout time.Duration
+var iterateBucketLimit uint64
+var iterateBucketDecode bool
 
 func init() {
-	iterateBucketCommand.PersistentFlags().StringVar(&iterateBucketName, "bucket", "", "bucket name to iterate")
+	rootCommand.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
 	iterateBucketCommand.PersistentFlags().Uint64Var(&iterateBucketLimit, "limit", 0, "max number of key-value pairs to iterate (0< to iterate all)")
+	iterateBucketCommand.PersistentFlags().BoolVar(&iterateBucketDecode, "decode", false, "true to decode Protocol Buffer encoded data")
 
 	rootCommand.AddCommand(listBucketCommand)
 	rootCommand.AddCommand(iterateBucketCommand)
@@ -89,8 +90,8 @@ func listBucketCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func iterateBucketCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) < 1 {
-		log.Fatalf("Must provide at least 1 argument (got %v)", args)
+	if len(args) != 2 {
+		log.Fatalf("Must provide 2 arguments (got %v)", args)
 	}
 	dp := args[0]
 	if !strings.HasSuffix(dp, "db") {
@@ -99,12 +100,8 @@ func iterateBucketCommandFunc(cmd *cobra.Command, args []string) {
 	if !existFileOrDir(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
-
-	if iterateBucketName == "" {
-		log.Fatal("got empty bucket name")
-	}
-
-	err := iterateBucket(dp, iterateBucketName, iterateBucketLimit)
+	bucket := args[1]
+	err := iterateBucket(dp, bucket, iterateBucketLimit, iterateBucketDecode)
 	if err != nil {
 		log.Fatal(err)
 	}
