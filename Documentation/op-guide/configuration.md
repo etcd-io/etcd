@@ -182,7 +182,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --strict-reconfig-check
 + Reject reconfiguration requests that would cause quorum loss.
-+ default: false
++ default: true
 + env variable: ETCD_STRICT_RECONFIG_CHECK
 
 ### --auto-compaction-retention
