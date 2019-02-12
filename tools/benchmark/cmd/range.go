@@ -41,6 +41,7 @@ var (
 	rangeRate        int
 	rangeTotal       int
 	rangeConsistency string
+	prefix           bool
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
+	rangeCmd.Flags().BoolVar(&prefix, "prefix", false, "Get keys with matching prefix")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -102,6 +104,9 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
 			opts := []v3.OpOption{v3.WithRange(end)}
+			if prefix {
+				opts = append(opts, v3.WithPrefix())
+			}
 			if rangeConsistency == "s" {
 				opts = append(opts, v3.WithSerializable())
 			}
