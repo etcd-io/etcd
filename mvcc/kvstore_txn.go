@@ -35,7 +35,8 @@ type storeTxnRead struct {
 	// for creating concurrent read tx when the read is expensive.
 	b backend.Backend
 	// is the transcation readonly?
-	ro bool
+	ro              bool
+	isCommittedRead bool
 
 	firstRev int64
 	rev      int64
@@ -48,16 +49,18 @@ func (s *store) Read() TxnRead {
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
 	return newMetricsTxnRead(&storeTxnRead{
-		s:        s,
-		tx:       tx,
-		b:        s.b,
-		ro:       readonly,
-		firstRev: firstRev,
-		rev:      rev})
+		s:               s,
+		tx:              tx,
+		b:               s.b,
+		ro:              readonly,
+		isCommittedRead: false,
+		firstRev:        firstRev,
+		rev:             rev})
 }
 
-func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
-func (tr *storeTxnRead) Rev() int64      { return tr.rev }
+func (tr *storeTxnRead) FirstRev() int64       { return tr.firstRev }
+func (tr *storeTxnRead) Rev() int64            { return tr.rev }
+func (tr *storeTxnRead) IsCommittedRead() bool { return tr.isCommittedRead }
 
 func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
 	return tr.rangeKeys(key, end, tr.Rev(), ro)
@@ -84,10 +87,11 @@ func (s *store) Write() TxnWrite {
 	tx.Lock()
 	tw := &storeTxnWrite{
 		storeTxnRead: storeTxnRead{
-			s:        s,
-			txlocked: true,
-			tx:       tx,
-			ro:       readwrite,
+			s:               s,
+			txlocked:        true,
+			tx:              tx,
+			ro:              readwrite,
+			isCommittedRead: false,
 		},
 		tx:       tx,
 		beginRev: s.currentRev,
@@ -161,6 +165,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	if limit > expensiveReadLimit && !tr.txlocked && tr.ro { // first expensive read in a read only transcation
 		// too many keys to range. upgrade the read transcation to concurrent read tx.
 		tr.tx = tr.b.CommittedReadTx()
+		tr.isCommittedRead = true
 	}
 	if !tr.txlocked {
 		tr.tx.Lock()

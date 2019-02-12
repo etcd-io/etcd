@@ -304,6 +304,7 @@ func (b *backend) SizeInUse() int64 {
 func (b *backend) run() {
 	defer close(b.donec)
 	t := time.NewTimer(b.batchInterval)
+	start := time.Now()
 	defer t.Stop()
 	for {
 		select {
@@ -315,6 +316,8 @@ func (b *backend) run() {
 		if b.batchTx.safePending() != 0 {
 			b.batchTx.Commit()
 		}
+		batchIntervalSec.Observe(time.Since(start).Seconds())
+		start = time.Now()
 		t.Reset(b.batchInterval)
 		b.createConcurrentReadTxs()
 	}

@@ -217,6 +217,49 @@ var (
 		// highest bucket start of 0.01 sec * 2^14 == 163.84 sec
 		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
 	})
+
+	committedReadCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd_debugging",
+			Subsystem: "mvcc",
+			Name:      "committed_read_total",
+			Help:      "Total number of committed read.",
+		})
+
+
+
+	rangeSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "mvcc",
+		Name:      "range_duration_seconds",
+		Help:      "The latency distributions of range in mvcc store.",
+
+		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
+		// highest bucket start of 0.01 msec * 2^13 == 8.192 sec
+		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 14),
+	})
+
+	putSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "mvcc",
+		Name:      "put_duration_seconds",
+		Help:      "The latency distributions of put in mvcc store.",
+
+		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
+		// highest bucket start of 0.01 msec * 2^13 == 81.92 msec
+		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 14),
+	})
+
+	committedReadSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "mvcc",
+		Name:      "committed_read_duration_seconds",
+		Help:      "The latency distributions of committed read in mvcc store.",
+
+		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
+		// highest bucket start of 0.01 msec * 2^15 == 327.68 msec
+		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 16),
+	})
 )
 
 func init() {
@@ -239,6 +282,10 @@ func init() {
 	prometheus.MustRegister(dbTotalSizeInUse)
 	prometheus.MustRegister(hashSec)
 	prometheus.MustRegister(hashRevSec)
+	prometheus.MustRegister(committedReadCounter)
+	prometheus.MustRegister(rangeSec)
+	prometheus.MustRegister(putSec)
+	prometheus.MustRegister(committedReadSec)
 }
 
 // ReportEventReceived reports that an event is received.
