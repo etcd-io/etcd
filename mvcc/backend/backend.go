@@ -71,6 +71,7 @@ type Backend interface {
 	Defrag() error
 	ForceCommit()
 	Close() error
+	ExpensiveReadLimit() int
 }
 
 type Snapshot interface {
@@ -108,6 +109,8 @@ type backend struct {
 	donec chan struct{}
 
 	lg *zap.Logger
+
+	expensiveReadLimit int
 }
 
 type BackendConfig struct {
@@ -121,6 +124,8 @@ type BackendConfig struct {
 	MmapSize uint64
 	// Logger logs backend-side operations.
 	Logger *zap.Logger
+	// ExpensiveReadLimit is the number of keys in expensive read request
+	ExpensiveReadLimit int
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -178,6 +183,8 @@ func newBackend(bcfg BackendConfig) *backend {
 		donec: make(chan struct{}),
 
 		lg: bcfg.Logger,
+
+		expensiveReadLimit: bcfg.ExpensiveReadLimit,
 	}
 	b.batchTx = newBatchTxBuffered(b)
 	go b.run()
@@ -569,4 +576,8 @@ func (s *snapshot) Close() error {
 	close(s.stopc)
 	<-s.donec
 	return s.Tx.Rollback()
+}
+
+func (b *backend) ExpensiveReadLimit() int {
+	return b.expensiveReadLimit
 }

@@ -48,6 +48,7 @@ func newBackend(cfg ServerConfig) backend.Backend {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
 	}
+	bcfg.ExpensiveReadLimit = cfg.BackendExpensiveReadLimit
 	return backend.New(bcfg)
 }
 

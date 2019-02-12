@@ -75,6 +75,8 @@ const (
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
+
+	DefaultBackendExpensiveReadLimit = 1000
 )
 
 var (
@@ -270,9 +272,10 @@ type Config struct {
 	AuthToken  string `json:"auth-token"`
 	BcryptCost uint   `json:"bcrypt-cost"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	ExperimentalInitialCorruptCheck       bool          `json:"experimental-initial-corrupt-check"`
+	ExperimentalCorruptCheckTime          time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalEnableV2V3                string        `json:"experimental-enable-v2v3"`
+	ExperimentalBackendExpensiveReadLimit int           `json:"experimental-backend-expensive-read-limit"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
