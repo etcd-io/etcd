@@ -150,6 +150,8 @@ type ServerConfig struct {
 	LeaseCheckpointInterval time.Duration
 
 	EnableGRPCGateway bool
+
+	BackendExpensiveReadLimit int
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

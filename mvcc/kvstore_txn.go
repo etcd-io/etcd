@@ -22,9 +22,8 @@ import (
 )
 
 const (
-	expensiveReadLimit = 1000
-	readonly           = true
-	readwrite          = false
+	readonly  = true
+	readwrite = false
 )
 
 type storeTxnRead struct {
@@ -40,6 +39,8 @@ type storeTxnRead struct {
 
 	firstRev int64
 	rev      int64
+
+	expensiveReadLimit int
 }
 
 func (s *store) Read() TxnRead {
@@ -49,13 +50,14 @@ func (s *store) Read() TxnRead {
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
 	return newMetricsTxnRead(&storeTxnRead{
-		s:               s,
-		tx:              tx,
-		b:               s.b,
-		ro:              readonly,
-		isCommittedRead: false,
-		firstRev:        firstRev,
-		rev:             rev})
+		s:                  s,
+		tx:                 tx,
+		b:                  s.b,
+		ro:                 readonly,
+		isCommittedRead:    false,
+		firstRev:           firstRev,
+		rev:                rev,
+		expensiveReadLimit: s.b.ExpensiveReadLimit()})
 }
 
 func (tr *storeTxnRead) FirstRev() int64       { return tr.firstRev }
@@ -162,8 +164,8 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		limit = len(revpairs)
 	}
 
-	if limit > expensiveReadLimit && !tr.txlocked && tr.ro { // first expensive read in a read only transcation
-		// too many keys to range. upgrade the read transcation to concurrent read tx.
+	if limit > tr.expensiveReadLimit && !tr.txlocked && tr.ro { // first expensive read in a read only transaction
+		// too many keys to range. upgrade the read transaction to concurrent read tx.
 		tr.tx = tr.b.CommittedReadTx()
 		tr.isCommittedRead = true
 	}

@@ -200,6 +200,8 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
+  --experimental-backend-expensive-read-limit '1000'
+    The number of keys in expensive read request in etcd backend
 
 Unsafe feature:
   --force-new-cluster 'false'
