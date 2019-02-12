@@ -83,6 +83,17 @@ var (
 		// highest bucket start of 0.01 sec * 2^16 == 655.36 sec
 		Buckets: prometheus.ExponentialBuckets(.01, 2, 17),
 	})
+
+	batchIntervalSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "backend",
+		Name:      "batch_interval_duration_Seconds",
+		Help:      "The distributions of batch interval in mvcc backend.",
+
+		// lowest bucket start of upper bound 0.0001 sec (0.1 msec) with factor 2
+		// highest bucket start of 0.1 msec * 2^13 == 0.8192 sec
+		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 14),
+	})
 )
 
 func init() {
@@ -92,4 +103,5 @@ func init() {
 	prometheus.MustRegister(writeSec)
 	prometheus.MustRegister(defragSec)
 	prometheus.MustRegister(snapshotTransferSec)
+	prometheus.MustRegister(batchIntervalSec)
 }

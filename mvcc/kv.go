@@ -57,6 +57,7 @@ type ReadView interface {
 type TxnRead interface {
 	ReadView
 	// End marks the transaction is complete and ready to commit.
+	IsCommittedRead() bool
 	End()
 }
 

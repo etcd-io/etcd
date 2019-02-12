@@ -14,25 +14,36 @@
 
 package mvcc
 
-import "go.etcd.io/etcd/lease"
+import (
+	"go.etcd.io/etcd/lease"
+	"time"
+)
 
 type metricsTxnWrite struct {
 	TxnWrite
-	ranges  uint
-	puts    uint
-	deletes uint
+	ranges         uint
+	puts           uint
+	committedReads uint
+	deletes        uint
+	rangeStart     time.Time
+	putStart       time.Time
 }
 
 func newMetricsTxnRead(tr TxnRead) TxnRead {
-	return &metricsTxnWrite{&txnReadWrite{tr}, 0, 0, 0}
+	txn := &metricsTxnWrite{}
+	txn.TxnWrite = &txnReadWrite{tr}
+	return txn
 }
 
 func newMetricsTxnWrite(tw TxnWrite) TxnWrite {
-	return &metricsTxnWrite{tw, 0, 0, 0}
+	txn := &metricsTxnWrite{}
+	txn.TxnWrite = tw
+	return txn
 }
 
 func (tw *metricsTxnWrite) Range(key, end []byte, ro RangeOptions) (*RangeResult, error) {
 	tw.ranges++
+	tw.rangeStart = time.Now()
 	return tw.TxnWrite.Range(key, end, ro)
 }
 
@@ -43,6 +54,7 @@ func (tw *metricsTxnWrite) DeleteRange(key, end []byte) (n, rev int64) {
 
 func (tw *metricsTxnWrite) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
 	tw.puts++
+	tw.putStart = time.Now()
 	return tw.TxnWrite.Put(key, value, lease)
 }
 
@@ -51,7 +63,19 @@ func (tw *metricsTxnWrite) End() {
 	if sum := tw.ranges + tw.puts + tw.deletes; sum > 1 {
 		txnCounter.Inc()
 	}
-	rangeCounter.Add(float64(tw.ranges))
-	putCounter.Add(float64(tw.puts))
 	deleteCounter.Add(float64(tw.deletes))
+	if tw.puts > 0 {
+		putCounter.Add(float64(tw.puts))
+		putSec.Observe(time.Since(tw.putStart).Seconds())
+	}
+	if tw.ranges > 0 {
+		// cannot determine if the read transaction is a committed read at the beginning of the transaction
+		if tw.TxnWrite.IsCommittedRead() {
+			committedReadSec.Observe(time.Since(tw.rangeStart).Seconds())
+			committedReadCounter.Inc()
+		} else {
+			rangeSec.Observe(time.Since(tw.rangeStart).Seconds())
+			rangeCounter.Add(float64(tw.ranges))
+		}
+	}
 }
