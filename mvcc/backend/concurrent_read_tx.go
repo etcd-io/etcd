@@ -36,3 +36,10 @@ func (rt *concurrentReadTx) UnsafeRange(bucketName, key, endKey []byte, limit in
 func (rt *concurrentReadTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
 	return unsafeForEach(rt.tx, bucketName, visitor)
 }
+
+func (m *MonitoredReadTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	return m.Tx.UnsafeRange(bucketName, key, endKey, limit)
+}
+func (m *MonitoredReadTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
+	return m.Tx.UnsafeForEach(bucketName, visitor)
+}

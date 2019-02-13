@@ -46,6 +46,10 @@ var (
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
 	minSnapshotWarningTimeout = 30 * time.Second
+
+	// maxConcurrentReadTxns is the maximum number of bbolt transactions open at any time. When this
+	// limit is hit, committed read transaction requests must wait.
+	maxConcurrentCommittedReadTxs = uint64(10)
 )
 
 type Backend interface {
@@ -103,7 +107,7 @@ type backend struct {
 
 	readTx *readTx
 
-	concurrentReadTxCh chan chan ReadTx
+	committedReadScheduler *concurrentReadScheduler
 
 	stopc chan struct{}
 	donec chan struct{}
@@ -177,8 +181,6 @@ func newBackend(bcfg BackendConfig) *backend {
 			buckets: make(map[string]*bolt.Bucket),
 		},
 
-		concurrentReadTxCh: make(chan chan ReadTx),
-
 		stopc: make(chan struct{}),
 		donec: make(chan struct{}),
 
@@ -187,6 +189,7 @@ func newBackend(bcfg BackendConfig) *backend {
 		expensiveReadLimit: bcfg.ExpensiveReadLimit,
 	}
 	b.batchTx = newBatchTxBuffered(b)
+	b.committedReadScheduler = newConcurrentReadScheduler(b, maxConcurrentCommittedReadTxs)
 	go b.run()
 	return b
 }
@@ -201,9 +204,7 @@ func (b *backend) BatchTx() BatchTx {
 func (b *backend) ReadTx() ReadTx { return b.readTx }
 
 func (b *backend) CommittedReadTx() ReadTx {
-	rch := make(chan ReadTx)
-	b.concurrentReadTxCh <- rch
-	return <-rch
+	return b.committedReadScheduler.RequestConcurrentReadTx()
 }
 
 // ForceCommit forces the current batching tx to commit.
@@ -326,25 +327,7 @@ func (b *backend) run() {
 		batchIntervalSec.Observe(time.Since(start).Seconds())
 		start = time.Now()
 		t.Reset(b.batchInterval)
-		b.createConcurrentReadTxs()
-	}
-}
-
-func (b *backend) createConcurrentReadTxs() {
-	// do not allow too many concurrent read txs.
-	// TODO: improve this by having a global pending counter?
-	for i := 0; i < 100; i++ {
-		select {
-		case rch := <-b.concurrentReadTxCh:
-			rtx, err := b.db.Begin(false)
-			if err != nil {
-				plog.Fatalf("cannot begin read tx (%s)", err)
-			}
-			rch <- &concurrentReadTx{tx: rtx}
-		default:
-			// no more to create.
-			return
-		}
+		b.committedReadScheduler.BeginConcurrentReadTxs()
 	}
 }
 

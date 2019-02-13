@@ -87,12 +87,26 @@ var (
 	batchIntervalSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "backend",
-		Name:      "batch_interval_duration_Seconds",
+		Name:      "batch_interval_duration_seconds",
 		Help:      "The distributions of batch interval in mvcc backend.",
 
 		// lowest bucket start of upper bound 0.0001 sec (0.1 msec) with factor 2
 		// highest bucket start of 0.1 msec * 2^13 == 0.8192 sec
-		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 14),
+		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
+	})
+
+	openReadGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "backend",
+		Name:      "open_reads",
+		Help:      "The number of open bbolt read transactions.",
+	})
+
+	pendingReadGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "backend",
+		Name:      "pending_reads",
+		Help:      "The number of pending committed reads.",
 	})
 )
 
@@ -104,4 +118,6 @@ func init() {
 	prometheus.MustRegister(defragSec)
 	prometheus.MustRegister(snapshotTransferSec)
 	prometheus.MustRegister(batchIntervalSec)
+	prometheus.MustRegister(openReadGauge)
+	prometheus.MustRegister(pendingReadGauge)
 }
