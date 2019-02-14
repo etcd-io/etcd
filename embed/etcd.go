@@ -159,6 +159,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	backendFreelistType := parseBackendFreelistType(cfg.ExperimentalBackendFreelistType)
+
 	srvcfg := etcdserver.ServerConfig{
 		Name:                       cfg.Name,
 		ClientURLs:                 cfg.ACUrls,
@@ -182,6 +184,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionMode:         cfg.AutoCompactionMode,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		BackendBatchLimit:          cfg.BackendBatchLimit,
+		BackendFreelistType:        backendFreelistType,
 		BackendBatchInterval:       cfg.BackendBatchInterval,
 		MaxTxnOps:                  cfg.MaxTxnOps,
 		MaxRequestBytes:            cfg.MaxRequestBytes,

@@ -110,6 +110,8 @@ type BackendConfig struct {
 	BatchInterval time.Duration
 	// BatchLimit is the maximum puts before flushing the BatchTx.
 	BatchLimit int
+	// BackendFreelistType is the backend boltdb's freelist type.
+	BackendFreelistType bolt.FreelistType
 	// MmapSize is the number of bytes to mmap for the backend.
 	MmapSize uint64
 	// Logger logs backend-side operations.
@@ -140,6 +142,7 @@ func newBackend(bcfg BackendConfig) *backend {
 		*bopts = *boltOpenOptions
 	}
 	bopts.InitialMmapSize = bcfg.mmapSize()
+	bopts.FreelistType = bcfg.BackendFreelistType
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {

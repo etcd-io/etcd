@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/pkg/transport"
 	"go.etcd.io/etcd/pkg/types"
 
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -59,6 +60,9 @@ type ServerConfig struct {
 	BackendBatchInterval time.Duration
 	// BackendBatchLimit is the maximum operations before commit the backend transaction.
 	BackendBatchLimit int
+
+	// BackendFreelistType is the type of the backend boltdb freelist.
+	BackendFreelistType bolt.FreelistType
 
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
