@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"math"
 	"sync"
+	"sync/atomic"
 
+	"github.com/prometheus/client_golang/prometheus"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -117,4 +119,40 @@ func (rt *readTx) reset() {
 	rt.buf.reset()
 	rt.buckets = make(map[string]*bolt.Bucket)
 	rt.tx = nil
+}
+
+// MonitoredReadTx increments a GaugedCounter when each transaction is locked and decrements it
+// when they are unlocked.
+type MonitoredReadTx struct {
+	Counter *GaugedCounter
+	Tx      ReadTx
+}
+
+func (m *MonitoredReadTx) Lock() {
+	m.Counter.Inc()
+	m.Tx.Lock()
+}
+func (m *MonitoredReadTx) Unlock() {
+	m.Tx.Unlock()
+	m.Counter.Dec()
+}
+
+// GaugeCounter is an atomic counter that also emits a prometheus gauge metric of the count.
+type GaugedCounter struct {
+	count uint64 // atomic uint64
+	gauge prometheus.Gauge
+}
+
+func (c *GaugedCounter) Inc() {
+	c.gauge.Inc()
+	atomic.AddUint64(&c.count, 1)
+}
+
+func (c *GaugedCounter) Dec() {
+	c.gauge.Dec()
+	atomic.AddUint64(&c.count, ^uint64(0))
+}
+
+func (c *GaugedCounter) Value() uint64 {
+	return atomic.LoadUint64(&c.count)
 }

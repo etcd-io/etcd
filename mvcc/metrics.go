@@ -226,8 +226,6 @@ var (
 			Help:      "Total number of committed read.",
 		})
 
-
-
 	rangeSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "mvcc",
@@ -236,7 +234,7 @@ var (
 
 		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
 		// highest bucket start of 0.01 msec * 2^13 == 8.192 sec
-		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 14),
+		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 
 	putSec = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -247,7 +245,7 @@ var (
 
 		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
 		// highest bucket start of 0.01 msec * 2^13 == 81.92 msec
-		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 14),
+		Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 
 	committedReadSec = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -258,7 +256,7 @@ var (
 
 		// lowest bucket start of upper bound 0.00001 sec (0.01 msec) with factor 2
 		// highest bucket start of 0.01 msec * 2^15 == 327.68 msec
-		Buckets: prometheus.ExponentialBuckets(0.00001, 2, 16),
+		Buckets: prometheus.ExponentialBuckets(0.01, 2, 16),
 	})
 )
 
