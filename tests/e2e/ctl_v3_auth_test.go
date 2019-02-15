@@ -786,8 +786,19 @@ func authLeaseTestLeaseRevoke(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	if err := leaseTestRevoke(cx); err != nil {
-		cx.t.Fatalf("authLeaseTestLeaseRevoke: error (%v)", err)
+	// put with TTL 10 seconds and revoke
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatalf("ctlV3LeaseGrant error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
+		cx.t.Fatalf("ctlV3Put error (%v)", err)
+	}
+	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
+		cx.t.Fatalf("ctlV3LeaseRevoke error (%v)", err)
+	}
+	if err := ctlV3GetWithErr(cx, []string{"key"}, []string{"retrying of unary invoker failed"}); err != nil { // expect errors
+		cx.t.Fatalf("ctlV3GetWithErr error (%v)", err)
 	}
 }
 
