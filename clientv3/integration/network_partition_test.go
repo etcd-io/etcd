@@ -310,10 +310,19 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaderChanged, err)
 	}
 
-	ctx, cancel = context.WithTimeout(context.TODO(), 10*time.Second)
-	_, err = kvc.Get(ctx, "a")
-	cancel()
-	if err != nil {
-		t.Fatalf("expected nil, got %v", err)
+	for i := 0; i < 5; i++ {
+		ctx, cancel = context.WithTimeout(context.TODO(), 10*time.Second)
+		_, err = kvc.Get(ctx, "a")
+		cancel()
+		if err != nil {
+			if err == rpctypes.ErrTimeout {
+				<-time.After(time.Second)
+				i++
+				continue
+			}
+			t.Fatalf("expected nil or timeout, got %v", err)
+		}
+		// No error returned and no retry required
+		break
 	}
 }
