@@ -37,6 +37,7 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/ghodss/yaml"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
@@ -75,6 +76,8 @@ const (
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
+	// backend freelist map type
+	freelistMapType = "map"
 )
 
 var (
@@ -162,9 +165,13 @@ type Config struct {
 	//
 	// If single-node, it advances ticks regardless.
 	//
-	// See https://go.etcd.io/etcd/issues/9333 for more detail.
+	// See https://github.com/etcd-io/etcd/issues/9333 for more detail.
 	InitialElectionTickAdvance bool `json:"initial-election-tick-advance"`
 
+	// BackendBatchInterval is the maximum time before commit the backend transaction.
+	BackendBatchInterval time.Duration `json:"backend-batch-interval"`
+	// BackendBatchLimit is the maximum operations before commit the backend transaction.
+	BackendBatchLimit int   `json:"backend-batch-limit"`
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
 	MaxTxnOps         uint  `json:"max-txn-ops"`
 	MaxRequestBytes   uint  `json:"max-request-bytes"`
@@ -246,7 +253,7 @@ type Config struct {
 	// CVE-2018-5702 reference:
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
 	// - https://github.com/transmission/transmission/pull/468
-	// - https://go.etcd.io/etcd/issues/9353
+	// - https://github.com/etcd-io/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
 	// UserHandlers is for registering users handlers and only used for
@@ -269,6 +276,8 @@ type Config struct {
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	// ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
+	ExperimentalBackendFreelistType string `json:"experimental-backend-bbolt-freelist-type"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -297,6 +306,9 @@ type Config struct {
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
+	// ZapLoggerBuilder is used to build the zap logger.
+	ZapLoggerBuilder func(*Config) error
+
 	// logger logs server-side operations. The default is nil,
 	// and "setupLogging" must be called before starting server.
 	// Do not set logger directly.
@@ -310,6 +322,9 @@ type Config struct {
 	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
 	loggerCore        zapcore.Core
 	loggerWriteSyncer zapcore.WriteSyncer
+
+	// EnableGRPCGateway is false to disable grpc gateway.
+	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
 
 	// TO BE DEPRECATED
 
@@ -885,4 +900,12 @@ func (cfg *Config) getMetricsURLs() (ss []string) {
 		ss[i] = cfg.ListenMetricsUrls[i].String()
 	}
 	return ss
+}
+
+func parseBackendFreelistType(freelistType string) bolt.FreelistType {
+	if freelistType == freelistMapType {
+		return bolt.FreelistMapType
+	}
+
+	return bolt.FreelistArrayType
 }

@@ -82,6 +82,16 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_QUOTA_BACKEND_BYTES
 
+### --backend-batch-limit
++ BackendBatchLimit is the maximum operations before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_LIMIT
+
+### --backend-batch-interval
++ BackendBatchInterval is the maximum time before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_INTERVAL
+
 ### --max-txn-ops
 + Maximum number of operations permitted in a transaction.
 + default: 128
@@ -172,7 +182,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --strict-reconfig-check
 + Reject reconfiguration requests that would cause quorum loss.
-+ default: false
++ default: true
 + env variable: ETCD_STRICT_RECONFIG_CHECK
 
 ### --auto-compaction-retention
@@ -251,6 +261,7 @@ The security flags help to [build a secure etcd cluster][security].
 + Enable client cert authentication.
 + default: false
 + env variable: ETCD_CLIENT_CERT_AUTH
++ CN authentication is not supported by gRPC-gateway.
 
 ### --client-crl-file
 + Path to the client certificate revocation list file.
@@ -310,6 +321,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: none
 + env variable: ETCD_PEER_CERT_ALLOWED_CN
 
+### --cipher-suites
++ Comma-separated list of supported TLS cipher suites between server/client and peers.
++ default: ""
++ env variable: ETCD_CIPHER_SUITES
+
 ## Logging flags
 
 ### --logger
@@ -323,7 +339,8 @@ The security flags help to [build a secure etcd cluster][security].
 ### --log-outputs
 + Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
 + default: default
-+ env variable: ETCD_LOG_OUTPUT
++ env variable: ETCD_LOG_OUTPUTS
++ 'default' use 'stderr' config for v3.4 during zap logger migraion
 
 ### --debug
 + Drop the default log level to DEBUG for all subpackages.
@@ -356,20 +373,24 @@ Follow the instructions when using these flags.
 + Load server configuration from a file.
 + default: ""
 + example: [sample configuration file][sample-config-file]
++ env variable: ETCD_CONFIG_FILE
 
 ## Profiling flags
 
 ### --enable-pprof
 + Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 + default: false
++ env variable: ETCD_ENABLE_PPROF
 
 ### --metrics
 + Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
 + default: basic
++ env variable: ETCD_METRICS
 
 ### --listen-metrics-urls
 + List of additional URLs to listen on that will respond to both the `/metrics` and `/health` endpoints
 + default: ""
++ env variable: ETCD_LISTEN_METRICS_URLS
 
 ## Auth flags
 
@@ -378,16 +399,24 @@ Follow the instructions when using these flags.
 + For asymmetric algorithms ('RS', 'PS', 'ES'), the public key is optional, as the private key contains enough information to both sign and verify tokens.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512,ttl=10m'
 + default: "simple"
++ env variable: ETCD_AUTH_TOKEN
 
 ### --bcrypt-cost
 + Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 + default: 10
++ env variable: (not supported)
 
 ## Experimental flags
+
+### --experimental-backend-bbolt-freelist-type
++ The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
++ default: array
++ env variable: ETCD_EXPERIMENTAL_BACKEND_BBOLT_FREELIST_TYPE
 
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
 + default: 0s
++ env variable: ETCD_EXPERIMENTAL_CORRUPT_CHECK_TIME
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md

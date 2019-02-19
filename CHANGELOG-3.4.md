@@ -180,6 +180,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Now, highest buckets collect 0.8192 seconds, 1.6384 seconds, and 3.2768 seconds or more.
 - Add [`etcd_server_is_leader`](https://github.com/etcd-io/etcd/pull/9587) Prometheus metric.
 - Add [`etcd_server_id`](https://github.com/etcd-io/etcd/pull/9998) Prometheus metric.
+- Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/10257) Prometheus metric.
 - Add [`etcd_server_version`](https://github.com/etcd-io/etcd/pull/8960) Prometheus metric.
   - To replace [Kubernetes `etcd-version-monitor`](https://github.com/etcd-io/etcd/issues/8948).
 - Add [`etcd_server_go_version`](https://github.com/etcd-io/etcd/pull/9957) Prometheus metric.
@@ -305,6 +306,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - `etcd --logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
   - `etcd --logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/etcd-io/etcd/pull/9579) and outputs to `os.Stderr`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - `etcd --logger=zap --log-outputs=/dev/null` will discard all server logs.
+- Add [`etcd --backend-batch-limit`](https://github.com/etcd-io/etcd/pull/10283) flag.
+- Add [`etcd --backend-batch-interval`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/etcd-io/etcd/pull/9281).
   - "unsynced" watcher is watcher that needs to be in sync with events that have happened.
   - That is, "unsynced" watcher is the slow watcher that was requested on old revision.
@@ -369,6 +372,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
+- Add [`embed.Config.BackendBatchLimit`](https://github.com/etcd-io/etcd/pull/10283) field.
+- Add [`embed.Config.BackendBatchInterval`](https://github.com/etcd-io/etcd/pull/10283) field.
 
 ### Package `integration`
 
@@ -420,6 +425,11 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add [`progress` command to `etcdctl watch --interactive`](https://github.com/etcd-io/etcd/pull/9869).
   - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
   - Think of it as `WithProgressNotify` that can be triggered manually.
+- Add [timeout](https://github.com/etcd-io/etcd/pull/10301) to `etcdctl snapshot
+  save`.
+  - User can specify timeout of `etcdctl snapshot save` command using flag
+    `--command-timeout`.
+  - Fix etcdctl to [strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443)
 
 ### gRPC proxy
 
@@ -427,6 +437,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Let's assume that a watcher had been requested with a future revision X and sent to node A that became network-partitioned thereafter. Meanwhile, cluster makes progress. Then when the partition gets removed, the leader sends a snapshot to node A. Previously if the snapshot's latest revision is still lower than the watch revision X,  **etcd server panicked** during snapshot restore operation.
   - Especially, gRPC proxy was affected, since it detects a leader loss with a key `"proxy-namespace__lostleader"` and a watch revision `"int64(math.MaxInt64 - 2)"`.
   - Now, this server-side panic has been fixed.
+- Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
 
 ### gRPC gateway
 

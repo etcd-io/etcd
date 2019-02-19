@@ -28,14 +28,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.etcd.io/etcd/clientv3/balancer"
 	"go.etcd.io/etcd/clientv3/balancer/picker"
 	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -313,6 +310,10 @@ func (c *Client) getToken(ctx context.Context) error {
 		var resp *AuthenticateResponse
 		resp, err = auth.authenticate(ctx, c.Username, c.Password)
 		if err != nil {
+			// return err without retrying other endpoints
+			if err == rpctypes.ErrAuthNotEnabled {
+				return err
+			}
 			continue
 		}
 
@@ -491,7 +492,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	dialEndpoint := cfg.Endpoints[0]
 
-	// Use an provided endpoint target so that for https:// without any tls config given, then
+	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dialWithBalancer(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
 	if err != nil {
@@ -530,7 +531,7 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 		quorum := (n/2 + 1)
 		if attempt%quorum == 0 {
 			c.lg.Info("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
-			return backoffutils.JitterUp(waitBetween, jitterFraction)
+			return jitterUp(waitBetween, jitterFraction)
 		}
 		c.lg.Info("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
 		return 0

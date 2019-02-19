@@ -95,22 +95,22 @@ func init() {
 	prometheus.MustRegister(watcherCount)
 }
 
-func reportReadSuccess(read_action string) {
-	readCounter.WithLabelValues(read_action).Inc()
+func reportReadSuccess(readAction string) {
+	readCounter.WithLabelValues(readAction).Inc()
 }
 
-func reportReadFailure(read_action string) {
-	readCounter.WithLabelValues(read_action).Inc()
-	readFailedCounter.WithLabelValues(read_action).Inc()
+func reportReadFailure(readAction string) {
+	readCounter.WithLabelValues(readAction).Inc()
+	readFailedCounter.WithLabelValues(readAction).Inc()
 }
 
-func reportWriteSuccess(write_action string) {
-	writeCounter.WithLabelValues(write_action).Inc()
+func reportWriteSuccess(writeAction string) {
+	writeCounter.WithLabelValues(writeAction).Inc()
 }
 
-func reportWriteFailure(write_action string) {
-	writeCounter.WithLabelValues(write_action).Inc()
-	writeFailedCounter.WithLabelValues(write_action).Inc()
+func reportWriteFailure(writeAction string) {
+	writeCounter.WithLabelValues(writeAction).Inc()
+	writeFailedCounter.WithLabelValues(writeAction).Inc()
 }
 
 func reportExpiredKey() {

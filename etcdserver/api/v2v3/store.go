@@ -531,8 +531,8 @@ func compareFail(nodePath, prevValue string, prevIndex uint64, resp *clientv3.Tx
 		return v2error.NewError(v2error.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	kv := kvs[0]
-	indexMatch := (prevIndex == 0 || kv.ModRevision == int64(prevIndex))
-	valueMatch := (prevValue == "" || string(kv.Value) == prevValue)
+	indexMatch := prevIndex == 0 || kv.ModRevision == int64(prevIndex)
+	valueMatch := prevValue == "" || string(kv.Value) == prevValue
 	var cause string
 	switch {
 	case indexMatch && !valueMatch:

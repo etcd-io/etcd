@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -500,6 +501,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": ver.String()}).Set(1)
 	onSet(c.lg, ver)
 }
 
@@ -516,7 +518,7 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://go.etcd.io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
+		// https://github.com/etcd-io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
 		if c.lg != nil {
 			c.lg.Debug("number of started member is 1; can accept add member request")
 		} else {

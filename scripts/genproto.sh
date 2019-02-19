@@ -10,13 +10,16 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
 	exit 255
 fi
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.6.0" ]]; then
-	echo "could not find protoc 3.6.0, is it installed + in PATH?"
+if [[ $(protoc --version | cut -f2 -d' ') != "3.6.1" ]]; then
+	echo "could not find protoc 3.6.1, is it installed + in PATH?"
 	exit 255
 fi
 
 # directories containing protos to be built
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
+
+# disable go mod
+export GO111MODULE=off
 
 # exact version of packages to build
 GOGO_PROTO_SHA="1adfc126b41513cc696b209667c8656ea7aac67c"

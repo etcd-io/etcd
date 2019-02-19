@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// etcd-dump-metrics automates etcd Prometheus metrics documentation.
 package main
 
 import (

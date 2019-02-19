@@ -267,11 +267,30 @@ func TestProgressResume(t *testing.T) {
 	}
 }
 
+func TestProgressLeader(t *testing.T) {
+	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.prs[2].becomeReplicate()
+
+	// Send proposals to r1. The first 5 entries should be appended to the log.
+	propMsg := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("foo")}}}
+	for i := 0; i < 5; i++ {
+		if pr := r.prs[r.id]; pr.State != ProgressStateReplicate || pr.Match != uint64(i+1) || pr.Next != pr.Match+1 {
+			t.Errorf("unexpected progress %v", pr)
+		}
+		if err := r.Step(propMsg); err != nil {
+			t.Fatalf("proposal resulted in error: %v", err)
+		}
+	}
+}
+
 // TestProgressResumeByHeartbeatResp ensures raft.heartbeat reset progress.paused by heartbeat response.
 func TestProgressResumeByHeartbeatResp(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()
 	r.becomeLeader()
+
 	r.prs[2].Paused = true
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
@@ -1524,7 +1543,7 @@ func TestHandleHeartbeatResp(t *testing.T) {
 
 // TestRaftFreesReadOnlyMem ensures raft will free read request from
 // readOnly readIndexQueue and pendingReadIndex map.
-// related issue: https://go.etcd.io/etcd/issues/7571
+// related issue: https://github.com/etcd-io/etcd/issues/7571
 func TestRaftFreesReadOnlyMem(t *testing.T) {
 	sm := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	sm.becomeCandidate()
@@ -3959,6 +3978,55 @@ func TestPreVoteWithSplitVote(t *testing.T) {
 	sm = nt.peers[3].(*raft)
 	if sm.state != StateFollower {
 		t.Errorf("peer 3 state: %s, want %s", sm.state, StateFollower)
+	}
+}
+
+// TestPreVoteWithCheckQuorum ensures that after a node become pre-candidate,
+// it will checkQuorum correctly.
+func TestPreVoteWithCheckQuorum(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	n1.preVote = true
+	n2.preVote = true
+	n3.preVote = true
+
+	n1.checkQuorum = true
+	n2.checkQuorum = true
+	n3.checkQuorum = true
+
+	nt := newNetwork(n1, n2, n3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// isolate node 1. node 2 and node 3 have leader info
+	nt.isolate(1)
+
+	// check state
+	sm := nt.peers[1].(*raft)
+	if sm.state != StateLeader {
+		t.Fatalf("peer 1 state: %s, want %s", sm.state, StateLeader)
+	}
+	sm = nt.peers[2].(*raft)
+	if sm.state != StateFollower {
+		t.Fatalf("peer 2 state: %s, want %s", sm.state, StateFollower)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateFollower {
+		t.Fatalf("peer 3 state: %s, want %s", sm.state, StateFollower)
+	}
+
+	// node 2 will ignore node 3's PreVote
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+
+	// Do we have a leader?
+	if n2.state != StateLeader && n3.state != StateFollower {
+		t.Errorf("no leader")
 	}
 }
 

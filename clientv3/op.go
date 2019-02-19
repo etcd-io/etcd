@@ -392,7 +392,14 @@ func WithRange(endKey string) OpOption {
 
 // WithFromKey specifies the range of 'Get', 'Delete', 'Watch' requests
 // to be equal or greater than the key in the argument.
-func WithFromKey() OpOption { return WithRange("\x00") }
+func WithFromKey() OpOption {
+	return func(op *Op) {
+		if len(op.key) == 0 {
+			op.key = []byte{0}
+		}
+		op.end = []byte("\x00")
+	}
+}
 
 // WithSerializable makes 'Get' request serializable. By default,
 // it's linearizable. Serializable requests are better for lower latency

@@ -24,11 +24,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool) (s srv.SRVClients) {
+func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, serviceName string) (s srv.SRVClients) {
 	if dns == "" {
 		return s
 	}
-	srvs, err := srv.GetClient("etcd-client", dns)
+	srvs, err := srv.GetClient("etcd-client", dns, serviceName)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -103,8 +103,7 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		if len(cfg.LogOutputs) != 1 {
-			fmt.Printf("--logger=capnslog supports only 1 value in '--log-outputs', got %q\n", cfg.LogOutputs)
-			os.Exit(1)
+			return fmt.Errorf("--logger=capnslog supports only 1 value in '--log-outputs', got %q", cfg.LogOutputs)
 		}
 		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
 		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
@@ -117,7 +116,7 @@ func (cfg *Config) setupLogging() error {
 			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
 		case DefaultLogOutput:
 		default:
-			plog.Panicf(`unknown log-output %q (only supports %q, %q, %q)`, output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
+			return fmt.Errorf("unknown log-output %q (only supports %q, %q, %q)", output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
 		}
 
 	case "zap":
@@ -127,7 +126,7 @@ func (cfg *Config) setupLogging() error {
 		if len(cfg.LogOutputs) > 1 {
 			for _, v := range cfg.LogOutputs {
 				if v == DefaultLogOutput {
-					panic(fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput))
+					return fmt.Errorf("multi logoutput for %q is not supported yet", DefaultLogOutput)
 				}
 			}
 		}
@@ -152,7 +151,8 @@ func (cfg *Config) setupLogging() error {
 		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
-				return errors.New("'--log-outputs=default' is not supported for v3.4 during zap logger migraion (use 'journal', 'stderr', 'stdout', etc.)")
+				outputPaths[StdErrLogOutput] = struct{}{}
+				errOutputPaths[StdErrLogOutput] = struct{}{}
 
 			case JournalLogOutput:
 				isJournal = true
@@ -185,28 +185,29 @@ func (cfg *Config) setupLogging() error {
 				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 				grpc.EnableTracing = true
 			}
-
-			var err error
-			cfg.logger, err = lcfg.Build()
-			if err != nil {
-				return err
-			}
-
-			cfg.loggerConfig = &lcfg
-			cfg.loggerCore = nil
-			cfg.loggerWriteSyncer = nil
-
-			grpcLogOnce.Do(func() {
-				// debug true, enable info, warning, error
-				// debug false, only discard info
-				var gl grpclog.LoggerV2
-				gl, err = logutil.NewGRPCLoggerV2(lcfg)
-				if err == nil {
-					grpclog.SetLoggerV2(gl)
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
+					var err error
+					c.logger, err = lcfg.Build()
+					if err != nil {
+						return err
+					}
+					c.loggerMu.Lock()
+					defer c.loggerMu.Unlock()
+					c.loggerConfig = &lcfg
+					c.loggerCore = nil
+					c.loggerWriteSyncer = nil
+					grpcLogOnce.Do(func() {
+						// debug true, enable info, warning, error
+						// debug false, only discard info
+						var gl grpclog.LoggerV2
+						gl, err = logutil.NewGRPCLoggerV2(lcfg)
+						if err == nil {
+							grpclog.SetLoggerV2(gl)
+						}
+					})
+					return nil
 				}
-			})
-			if err != nil {
-				return err
 			}
 		} else {
 			if len(cfg.LogOutputs) > 1 {
@@ -236,17 +237,26 @@ func (cfg *Config) setupLogging() error {
 				syncer,
 				lvl,
 			)
-			cfg.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
+					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+					c.loggerMu.Lock()
+					defer c.loggerMu.Unlock()
+					c.loggerConfig = nil
+					c.loggerCore = cr
+					c.loggerWriteSyncer = syncer
 
-			cfg.loggerConfig = nil
-			cfg.loggerCore = cr
-			cfg.loggerWriteSyncer = syncer
-
-			grpcLogOnce.Do(func() {
-				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
-			})
+					grpcLogOnce.Do(func() {
+						grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+					})
+					return nil
+				}
+			}
 		}
-
+		err := cfg.ZapLoggerBuilder(cfg)
+		if err != nil {
+			return err
+		}
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
 			state := conn.ConnectionState()
 			remoteAddr := conn.RemoteAddr().String()
@@ -282,4 +292,21 @@ func (cfg *Config) setupLogging() error {
 	}
 
 	return nil
+}
+
+// NewZapCoreLoggerBuilder generates a zap core logger builder.
+func NewZapCoreLoggerBuilder(lg *zap.Logger, cr zapcore.Core, syncer zapcore.WriteSyncer) func(*Config) error {
+	return func(cfg *Config) error {
+		cfg.loggerMu.Lock()
+		defer cfg.loggerMu.Unlock()
+		cfg.logger = lg
+		cfg.loggerConfig = nil
+		cfg.loggerCore = cr
+		cfg.loggerWriteSyncer = syncer
+
+		grpcLogOnce.Do(func() {
+			grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+		})
+		return nil
+	}
 }

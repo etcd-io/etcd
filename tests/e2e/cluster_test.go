@@ -78,6 +78,13 @@ var (
 		initialToken:          "new",
 		clientCertAuthEnabled: true,
 	}
+	configClientTLSCertAuthWithNoCN = etcdProcessClusterConfig{
+		clusterSize:           1,
+		clientTLS:             clientTLS,
+		initialToken:          "new",
+		clientCertAuthEnabled: true,
+		noCN:                  true,
+	}
 	configJWT = etcdProcessClusterConfig{
 		clusterSize:   1,
 		initialToken:  "new",
@@ -116,6 +123,7 @@ type etcdProcessClusterConfig struct {
 	isPeerAutoTLS         bool
 	isClientAutoTLS       bool
 	isClientCRL           bool
+	noCN                  bool
 
 	cipherSuites []string
 

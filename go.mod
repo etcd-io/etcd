@@ -44,8 +44,8 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8
 	github.com/ugorji/go v1.1.1
 	github.com/urfave/cli v1.18.0
-	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18
-	go.etcd.io/bbolt v1.3.1-etcd.7
+	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
+	go.etcd.io/bbolt v1.3.2
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
@@ -57,5 +57,5 @@ require (
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.2
 )

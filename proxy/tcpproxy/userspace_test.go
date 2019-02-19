@@ -67,3 +67,65 @@ func TestUserspaceProxy(t *testing.T) {
 		t.Errorf("got = %s, want %s", got, want)
 	}
 }
+
+func TestUserspaceProxyPriority(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+
+	backends := []struct {
+		Payload  string
+		Priority uint16
+	}{
+		{"hello proxy 1", 1},
+		{"hello proxy 2", 2},
+		{"hello proxy 3", 3},
+	}
+
+	var eps []*net.SRV
+	var front *url.URL
+	for _, b := range backends {
+		backend := b
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, backend.Payload)
+		}))
+		defer ts.Close()
+
+		front, err = url.Parse(ts.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var port uint16
+		fmt.Sscanf(front.Port(), "%d", &port)
+
+		ep := &net.SRV{Target: front.Hostname(), Port: port, Priority: backend.Priority}
+		eps = append(eps, ep)
+	}
+
+	p := TCPProxy{
+		Listener:  l,
+		Endpoints: eps,
+	}
+	go p.Run()
+	defer p.Stop()
+
+	front.Host = l.Addr().String()
+
+	res, err := http.Get(front.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, gerr := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if gerr != nil {
+		t.Fatal(gerr)
+	}
+
+	want := "hello proxy 1"
+	if string(got) != want {
+		t.Errorf("got = %s, want %s", got, want)
+	}
+}

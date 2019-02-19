@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"go.etcd.io/etcd/pkg/transport"
 
@@ -167,11 +168,35 @@ func TestAutoCompactionModeInvalid(t *testing.T) {
 }
 
 func TestAutoCompactionModeParse(t *testing.T) {
-	dur, err := parseCompactionRetention("revision", "1")
-	if err != nil {
-		t.Error(err)
+	tests := []struct {
+		mode      string
+		retention string
+		werr      bool
+		wdur      time.Duration
+	}{
+		// revision
+		{"revision", "1", false, 1},
+		{"revision", "1h", false, time.Hour},
+		{"revision", "a", true, 0},
+		// periodic
+		{"periodic", "1", false, time.Hour},
+		{"periodic", "a", true, 0},
+		// err mode
+		{"errmode", "1", false, 0},
+		{"errmode", "1h", false, time.Hour},
 	}
-	if dur != 1 {
-		t.Fatalf("AutoCompactionRetention expected 1, got %d", dur)
+
+	hasErr := func(err error) bool {
+		return err != nil
+	}
+
+	for i, tt := range tests {
+		dur, err := parseCompactionRetention(tt.mode, tt.retention)
+		if hasErr(err) != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if dur != tt.wdur {
+			t.Errorf("#%d: duration = %s, want %s", i, dur, tt.wdur)
+		}
 	}
 }

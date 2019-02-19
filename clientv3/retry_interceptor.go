@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -49,11 +48,21 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 			if err := waitRetryBackoff(ctx, attempt, callOpts); err != nil {
 				return err
 			}
+			logger.Info(
+				"retrying of unary invoker",
+				zap.String("target", cc.Target()),
+				zap.Uint("attempt", attempt),
+			)
 			lastErr = invoker(ctx, method, req, reply, cc, grpcOpts...)
-			logger.Info("retry unary intercept", zap.Uint("attempt", attempt), zap.Error(lastErr))
 			if lastErr == nil {
 				return nil
 			}
+			logger.Warn(
+				"retrying of unary invoker failed",
+				zap.String("target", cc.Target()),
+				zap.Uint("attempt", attempt),
+				zap.Error(lastErr),
+			)
 			if isContextError(lastErr) {
 				if ctx.Err() != nil {
 					// its the context deadline or cancellation.
@@ -65,7 +74,11 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 			if callOpts.retryAuth && rpctypes.Error(lastErr) == rpctypes.ErrInvalidAuthToken {
 				gterr := c.getToken(ctx)
 				if gterr != nil {
-					logger.Info("retry failed to fetch new auth token", zap.Error(gterr))
+					logger.Warn(
+						"retrying of unary invoker failed to fetch new auth token",
+						zap.String("target", cc.Target()),
+						zap.Error(gterr),
+					)
 					return lastErr // return the original error for simplicity
 				}
 				continue
@@ -377,6 +390,6 @@ func filterCallOptions(callOptions []grpc.CallOption) (grpcOptions []grpc.CallOp
 // For example waitBetween=1s and jitter=0.10 can generate waits between 900ms and 1100ms.
 func backoffLinearWithJitter(waitBetween time.Duration, jitterFraction float64) backoffFunc {
 	return func(attempt uint) time.Duration {
-		return backoffutils.JitterUp(waitBetween, jitterFraction)
+		return jitterUp(waitBetween, jitterFraction)
 	}
 }

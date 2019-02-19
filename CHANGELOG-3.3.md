@@ -3,7 +3,43 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md).
 
 
-The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.10+, and 3.3.0+.
+The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.26+, and 3.3.11+.
+
+
+<hr>
+
+
+## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-02-07)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### etcdctl
+
+- [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
+
+### Go
+
+- Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
+
+
+<hr>
+
+
+## [v3.3.11](https://github.com/etcd-io/etcd/releases/tag/v3.3.11) (2019-1-11)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### gRPC Proxy
+
+- Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
+
+### Security, Authentication
+
+- Disable [CommonName authentication for gRPC-gateway](https://github.com/etcd-io/etcd/pull/10366) gRPC-gateway proxy requests to etcd server use the etcd client server TLS certificate. If that certificate contains CommonName we do not want to use that for authentication as it could lead to permission escalation.
+
+### Go
+
+- Compile with [*Go 1.10.7*](https://golang.org/doc/devel/release.html#go1.10).
 
 
 <hr>

@@ -227,3 +227,44 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 		t.Fatalf("unexpected blocking on execution")
 	}
 }
+
+func TestProcessDuplicatedAppRespMessage(t *testing.T) {
+	n := newNopReadyNode()
+	cl := membership.NewCluster(zap.NewExample(), "abc")
+
+	rs := raft.NewMemoryStorage()
+	p := mockstorage.NewStorageRecorder("")
+	tr, sendc := newSendMsgAppRespTransporter()
+	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
+		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+		Node:        n,
+		transport:   tr,
+		storage:     p,
+		raftStorage: rs,
+	})
+
+	s := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		r:          *r,
+		cluster:    cl,
+		SyncTicker: &time.Ticker{},
+	}
+
+	s.start()
+	defer s.Stop()
+
+	lead := uint64(1)
+
+	n.readyc <- raft.Ready{Messages: []raftpb.Message{
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 1},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 2},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 3},
+	}}
+
+	got, want := <-sendc, 1
+	if got != want {
+		t.Errorf("count = %d, want %d", got, want)
+	}
+}

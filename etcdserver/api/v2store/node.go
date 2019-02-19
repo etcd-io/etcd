@@ -338,8 +338,8 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 // Compare function compares node index and value with provided ones.
 // second result value explains result and equals to one of Compare.. constants
 func (n *node) Compare(prevValue string, prevIndex uint64) (ok bool, which int) {
-	indexMatch := (prevIndex == 0 || n.ModifiedIndex == prevIndex)
-	valueMatch := (prevValue == "" || n.Value == prevValue)
+	indexMatch := prevIndex == 0 || n.ModifiedIndex == prevIndex
+	valueMatch := prevValue == "" || n.Value == prevValue
 	ok = valueMatch && indexMatch
 	switch {
 	case valueMatch && indexMatch:

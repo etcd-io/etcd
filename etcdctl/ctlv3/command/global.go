@@ -39,14 +39,15 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Insecure           bool
-	InsecureSkipVerify bool
-	InsecureDiscovery  bool
-	Endpoints          []string
-	DialTimeout        time.Duration
-	CommandTimeOut     time.Duration
-	KeepAliveTime      time.Duration
-	KeepAliveTimeout   time.Duration
+	Insecure              bool
+	InsecureSkipVerify    bool
+	InsecureDiscovery     bool
+	Endpoints             []string
+	DialTimeout           time.Duration
+	CommandTimeOut        time.Duration
+	KeepAliveTime         time.Duration
+	KeepAliveTimeout      time.Duration
+	DNSClusterServiceName string
 
 	TLS transport.TLSInfo
 
@@ -75,8 +76,9 @@ type authCfg struct {
 }
 
 type discoveryCfg struct {
-	domain   string
-	insecure bool
+	domain      string
+	insecure    bool
+	serviceName string
 }
 
 var display printer = &simplePrinter{}
@@ -133,7 +135,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// WARNING logs contain important information like TLS misconfirugation, but spams
 		// too many routine connection disconnects to turn on by default.
 		//
-		// See https://go.etcd.io/etcd/pull/9623 for background
+		// See https://github.com/etcd-io/etcd/pull/9623 for background
 		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 
@@ -390,10 +392,19 @@ func discoverySrvFromCmd(cmd *cobra.Command) string {
 	return domainStr
 }
 
+func discoveryDNSClusterServiceNameFromCmd(cmd *cobra.Command) string {
+	serviceNameStr, err := cmd.Flags().GetString("discovery-srv-name")
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+	return serviceNameStr
+}
+
 func discoveryCfgFromCmd(cmd *cobra.Command) *discoveryCfg {
 	return &discoveryCfg{
-		domain:   discoverySrvFromCmd(cmd),
-		insecure: insecureDiscoveryFromCmd(cmd),
+		domain:      discoverySrvFromCmd(cmd),
+		insecure:    insecureDiscoveryFromCmd(cmd),
+		serviceName: discoveryDNSClusterServiceNameFromCmd(cmd),
 	}
 }
 
@@ -422,7 +433,7 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 		return []string{}, nil
 	}
 
-	srvs, err := srv.GetClient("etcd-client", discoveryCfg.domain)
+	srvs, err := srv.GetClient("etcd-client", discoveryCfg.domain, discoveryCfg.serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +444,7 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 	// strip insecure connections
 	ret := []string{}
 	for _, ep := range eps {
-		if strings.HasPrefix("http://", ep) {
+		if strings.HasPrefix(ep, "http://") {
 			fmt.Fprintf(os.Stderr, "ignoring discovered insecure endpoint %q\n", ep)
 			continue
 		}

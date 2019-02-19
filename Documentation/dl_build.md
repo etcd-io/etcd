@@ -27,6 +27,7 @@ To build a vendored `etcd` from the `master` branch via `go get`:
 $ echo $GOPATH
 /Users/example/go
 $ go get -v go.etcd.io/etcd
+$ go get -v go.etcd.io/etcd/etcdctl
 ```
 
 ## Test the installation
@@ -35,14 +36,14 @@ Check the etcd binary is built correctly by starting etcd and setting a key.
 
 ### Starting etcd
 
-If etcd is built without using GOPATH, run the following:
+If etcd is built without using `go get`, run the following:
 
-```
+```sh
 $ ./bin/etcd
 ```
-If etcd is built using GOPATH, run the following:
+If etcd is built using `go get`, run the following:
 
-```
+```sh
 $ $GOPATH/bin/etcd
 ```
 
@@ -50,10 +51,12 @@ $ $GOPATH/bin/etcd
 
 Run the following:
 
-```
-$ ETCDCTL_API=3 ./bin/etcdctl put foo bar
+```sh
+$ ./bin/etcdctl put foo bar
 OK
 ```
+
+(or `$GOPATH/bin/etcdctl put foo bar` if etcdctl was installed with `go get`)
 
 If OK is printed, then etcd is working!
 

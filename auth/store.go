@@ -1166,6 +1166,27 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 			Username: chains[0].Subject.CommonName,
 			Revision: as.Revision(),
 		}
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return nil
+		}
+
+		// gRPC-gateway proxy request to etcd server includes Grpcgateway-Accept
+		// header. The proxy uses etcd client server certificate. If the certificate
+		// has a CommonName we should never use this for authentication.
+		if gw := md["grpcgateway-accept"]; len(gw) > 0 {
+			if as.lg != nil {
+				as.lg.Warn(
+					"ignoring common name in gRPC-gateway proxy request",
+					zap.String("common-name", ai.Username),
+					zap.String("user-name", ai.Username),
+					zap.Uint64("revision", ai.Revision),
+				)
+			} else {
+				plog.Warningf("ignoring common name in gRPC-gateway proxy request %s", ai.Username)
+			}
+			return nil
+		}
 		if as.lg != nil {
 			as.lg.Debug(
 				"found command name",

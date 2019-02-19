@@ -539,29 +539,25 @@ func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) 
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
 func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
-	for {
-		ai, err := s.AuthInfoFromCtx(ctx)
-		if err != nil {
-			return err
-		}
-		if ai == nil {
-			// chk expects non-nil AuthInfo; use empty credentials
-			ai = &auth.AuthInfo{}
-		}
-		if err = chk(ai); err != nil {
-			if err == auth.ErrAuthOldRevision {
-				continue
-			}
-			return err
-		}
-		// fetch response for serialized request
-		get()
-		//  empty credentials or current auth info means no need to retry
-		if ai.Revision == 0 || ai.Revision == s.authStore.Revision() {
-			return nil
-		}
-		// avoid TOCTOU error, retry of the request is required.
+	ai, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
 	}
+	if ai == nil {
+		// chk expects non-nil AuthInfo; use empty credentials
+		ai = &auth.AuthInfo{}
+	}
+	if err = chk(ai); err != nil {
+		return err
+	}
+	// fetch response for serialized request
+	get()
+	// check for stale token revision in case the auth store was updated while
+	// the request has been handled.
+	if ai.Revision != 0 && ai.Revision != s.authStore.Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
 }
 
 func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {

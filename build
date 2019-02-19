@@ -5,7 +5,7 @@ ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [[ ! -z "$FAILPOINTS" ]]; then
+if [[ -n "$FAILPOINTS" ]]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
@@ -42,7 +42,7 @@ etcd_setup_gopath() {
 
 toggle_failpoints_default() {
 	mode="disable"
-	if [[ ! -z "$FAILPOINTS" ]]; then mode="enable"; fi
+	if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
 	toggle_failpoints "$mode"
 }
 

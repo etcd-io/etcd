@@ -191,7 +191,7 @@ func TestOldHealthBalancerGraylist(t *testing.T) {
 
 // TestBalancerDoNotBlockOnClose ensures that balancer and grpc don't deadlock each other
 // due to rapid open/close conn. The deadlock causes balancer.Close() to block forever.
-// See issue: https://go.etcd.io/etcd/issues/7283 for more detail.
+// See issue: https://github.com/etcd-io/etcd/issues/7283 for more detail.
 func TestOldHealthBalancerDoNotBlockOnClose(t *testing.T) {
 	defer testutil.AfterTest(t)
 

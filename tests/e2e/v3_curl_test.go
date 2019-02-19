@@ -73,6 +73,11 @@ func TestV3CurlAuth(t *testing.T) {
 		testCtl(t, testV3CurlAuth, withApiPrefix(p))
 	}
 }
+func TestV3CurlAuthClientTLSCertAuth(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(configClientTLSCertAuthWithNoCN))
+	}
+}
 
 func testV3CurlPutGet(cx ctlCtx) {
 	var (
@@ -179,12 +184,21 @@ func testV3CurlTxn(cx ctlCtx) {
 }
 
 func testV3CurlAuth(cx ctlCtx) {
+	p := cx.apiPrefix
+
 	// create root user
-	userreq, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor")})
+	rootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor")})
 	testutil.AssertNil(cx.t, err)
 
-	p := cx.apiPrefix
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(userreq), expected: "revision"}); err != nil {
+	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(rootuser), expected: "revision"}); err != nil {
+		cx.t.Fatalf("failed testV3CurlAuth add user with curl (%v)", err)
+	}
+
+	// create non root user
+	nonrootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("example.com"), Password: string("example")})
+	testutil.AssertNil(cx.t, err)
+
+	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(nonrootuser), expected: "revision"}); err != nil {
 		cx.t.Fatalf("failed testV3CurlAuth add user with curl (%v)", err)
 	}
 
@@ -197,10 +211,18 @@ func testV3CurlAuth(cx ctlCtx) {
 	}
 
 	// grant root role
-	grantrolereq, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("root"), Role: string("root")})
+	grantroleroot, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("root"), Role: string("root")})
 	testutil.AssertNil(cx.t, err)
 
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantrolereq), expected: "revision"}); err != nil {
+	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantroleroot), expected: "revision"}); err != nil {
+		cx.t.Fatalf("failed testV3CurlAuth grant role with curl using prefix (%s) (%v)", p, err)
+	}
+
+	// grant non root user root role
+	grantrole, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("example.com"), Role: string("root")})
+	testutil.AssertNil(cx.t, err)
+
+	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantrole), expected: "revision"}); err != nil {
 		cx.t.Fatalf("failed testV3CurlAuth grant role with curl using prefix (%s) (%v)", p, err)
 	}
 
@@ -243,7 +265,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		cx.t.Fatalf("failed invalid token in authenticate response with curl")
 	}
 
-	authHeader = "Authorization : " + token
+	authHeader = "Authorization: " + token
 
 	// put with auth
 	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {

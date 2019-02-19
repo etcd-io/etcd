@@ -78,12 +78,12 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 
 func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
 	}
 
 	key := args[0]
 	if putIgnoreVal && len(args) > 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set"))
 	}
 
 	var value string
@@ -91,7 +91,7 @@ func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	if !putIgnoreVal {
 		value, err = argOrStdin(args, os.Stdin, 1)
 		if err != nil {
-			ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
+			ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
 		}
 	}
 

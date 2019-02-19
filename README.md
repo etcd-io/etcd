@@ -35,13 +35,33 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Community meetings
 
-*Community meeting is put on hold for now.*
+*Community meeting will resume at 11:00 am on Thursday, January 10th, 2019.*
 
-etcd contributors and maintainers have bi-weekly meetings at 11:00 AM (USA Pacific) on Tuesdays.
+etcd contributors and maintainers have monthly (every four weeks) meetings at 11:00 AM (USA Pacific) on Thursday.
 
 An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
+
+Please download and import the following iCalendar (.ics) files to calendar system.
+
+Weekly: https://zoom.us/meeting/916003437/ics?icsToken=e4a085b6837f5802d9aef0d2ded4777d0faf1a71e39279c4a6d8b577993d879c
+
+Join Zoom Meeting https://zoom.us/j/916003437
+
+```
+One tap mobile
++14086380986,,916003437# US (San Jose)
++16465588665,,916003437# US (New York)
+
+Dial by location
+        +1 408 638 0986 US (San Jose)
+        +1 646 558 8665 US (New York)
+
+Meeting ID: 916 003 437
+```
+
+To Find local number: https://zoom.us/u/actX55uPfS
 
 ## Getting started
 
@@ -85,8 +105,8 @@ This will bring up etcd listening on port 2379 for client communication and on p
 Next, let's set a single key, and then retrieve it:
 
 ```
-ETCDCTL_API=3 etcdctl put mykey "this is awesome"
-ETCDCTL_API=3 etcdctl get mykey
+etcdctl put mykey "this is awesome"
+etcdctl get mykey
 ```
 
 etcd is now running and serving client requests. For more, please check out:

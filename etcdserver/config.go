@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/pkg/transport"
 	"go.etcd.io/etcd/pkg/types"
 
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -54,6 +55,14 @@ type ServerConfig struct {
 
 	MaxSnapFiles uint
 	MaxWALFiles  uint
+
+	// BackendBatchInterval is the maximum time before commit the backend transaction.
+	BackendBatchInterval time.Duration
+	// BackendBatchLimit is the maximum operations before commit the backend transaction.
+	BackendBatchLimit int
+
+	// BackendFreelistType is the type of the backend boltdb freelist.
+	BackendFreelistType bolt.FreelistType
 
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
@@ -96,7 +105,7 @@ type ServerConfig struct {
 	//
 	// If single-node, it advances ticks regardless.
 	//
-	// See https://go.etcd.io/etcd/issues/9333 for more detail.
+	// See https://github.com/etcd-io/etcd/issues/9333 for more detail.
 	InitialElectionTickAdvance bool
 
 	BootstrapTimeout time.Duration
@@ -143,6 +152,8 @@ type ServerConfig struct {
 
 	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
 	LeaseCheckpointInterval time.Duration
+
+	EnableGRPCGateway bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

@@ -44,7 +44,7 @@ func NewLockCommand() *cobra.Command {
 
 func lockCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute."))
+		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute"))
 	}
 	c := mustClientFromCmd(cmd)
 	if err := lockUntilSignal(c, args[0], args[1:]); err != nil {

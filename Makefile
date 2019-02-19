@@ -14,7 +14,7 @@
 build:
 	GO_BUILD_FLAGS="-v" ./build
 	./bin/etcd --version
-	ETCDCTL_API=3 ./bin/etcdctl version
+	./bin/etcdctl version
 
 clean:
 	rm -f ./codecov
@@ -51,7 +51,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.11.1
+GO_VERSION ?= 1.11.4
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -65,11 +65,11 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.10.3 make build-docker-test
+#   GO_VERSION=1.10.7 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.10.3 make push-docker-test
+#   GO_VERSION=1.10.7 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -197,7 +197,7 @@ build-docker-release-master:
 	docker run \
 	  --rm \
 	  gcr.io/etcd-development/etcd:$(ETCD_VERSION) \
-	  /bin/sh -c "/usr/local/bin/etcd --version && ETCDCTL_API=3 /usr/local/bin/etcdctl version"
+	  /bin/sh -c "/usr/local/bin/etcd --version && /usr/local/bin/etcdctl version"
 
 push-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
@@ -500,7 +500,7 @@ build-docker-functional:
 	  gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
 	  /bin/bash -c "./bin/etcd --version && \
 	   ./bin/etcd-failpoints --version && \
-	   ETCDCTL_API=3 ./bin/etcdctl version && \
+	   ./bin/etcdctl version && \
 	   ./bin/etcd-agent -help || true && \
 	   ./bin/etcd-proxy -help || true && \
 	   ./bin/etcd-runner --help || true && \

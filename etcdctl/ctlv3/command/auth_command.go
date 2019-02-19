@@ -45,7 +45,7 @@ func newAuthEnableCommand() *cobra.Command {
 // authEnableCommandFunc executes the "auth enable" command.
 func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("auth enable command does not accept any arguments."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("auth enable command does not accept any arguments"))
 	}
 
 	ctx, cancel := commandCtx(cmd)
@@ -83,7 +83,7 @@ func newAuthDisableCommand() *cobra.Command {
 // authDisableCommandFunc executes the "auth disable" command.
 func authDisableCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("auth disable command does not accept any arguments."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("auth disable command does not accept any arguments"))
 	}
 
 	ctx, cancel := commandCtx(cmd)

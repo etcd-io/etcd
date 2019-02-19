@@ -8,6 +8,13 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 
 <hr>
 
+## [v3.1.21](https://github.com/etcd-io/etcd/releases/tag/v3.1.21) (2019-TBD)
+
+### etcdctl
+
+- [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
+
+<hr>
 
 ## [v3.1.20](https://github.com/etcd-io/etcd/releases/tag/v3.1.20) (2018-10-10)
 

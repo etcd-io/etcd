@@ -115,7 +115,7 @@ fi
 
 # determine the number of CPUs to use for Go tests
 TEST_CPUS="1,2,4"
-if [ ! -z "${CPU}" ]; then
+if [ -n "${CPU}" ]; then
 	TEST_CPUS="${CPU}"
 fi
 echo "Running with TEST_CPUS:" "${TEST_CPUS}"
@@ -126,7 +126,7 @@ if [ "$GOARCH" == "amd64" ]; then
 fi
 
 RUN_ARG=""
-if [ ! -z "${TESTCASE}" ]; then
+if [ -n "${TESTCASE}" ]; then
 	RUN_ARG="-run=${TESTCASE}"
 fi
 
@@ -381,7 +381,7 @@ function shellcheck_pass {
 function markdown_you_pass {
 	# eschew you
 	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/v2/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
-	if [ ! -z "$yous" ]; then
+	if [ -n "$yous" ]; then
 		echo -e "found 'you' in documentation:\\n${yous}"
 		exit 255
 	fi
@@ -413,13 +413,13 @@ function goword_pass {
 		gofiles=($gofiles)
 		# only check for broken exported godocs
 		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
-		if [ ! -z "$gowordRes" ]; then
+		if [ -n "$gowordRes" ]; then
 			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 		# check some spelling
 		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
-		if [ ! -z "$gowordRes" ]; then
+		if [ -n "$gowordRes" ]; then
 			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
@@ -448,7 +448,11 @@ function govet_shadow_pass {
 	fmtpkgs=$(for a in "${FMT[@]}"; do dirname "$a"; done | sort | uniq | grep -v "\\.")
 	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
-	vetRes=$(go tool vet -all -shadow "${fmtpkgs[@]}" 2>&1 | grep -v '/gw/' || true)
+	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
+	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	export PATH=${GOPATH}/bin:${PATH}
+	shadow_tool=$(which shadow)
+	vetRes=$(go vet -all -vettool="${shadow_tool}" "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
 		exit 255
@@ -616,6 +620,7 @@ function commit_title_pass {
 function fmt_pass {
 	toggle_failpoints disable
 
+    # TODO: add "unparam"
 	for p in shellcheck \
 			markdown_you \
 			markdown_marker \
@@ -625,7 +630,6 @@ function fmt_pass {
 			govet_shadow \
 			gosimple \
 			unused \
-			unparam \
 			staticcheck \
 			revive \
 			unconvert \
@@ -663,7 +667,7 @@ function dep_pass {
 	badpkg="(etcdserver$|mvcc$|backend$|grpc-gateway)"
 	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
 	popd >/dev/null
-	if [ ! -z "$deps" ]; then
+	if [ -n "$deps" ]; then
 		echo -e "clientv3 has masked dependencies:\\n${deps}"
 		exit 255
 	fi

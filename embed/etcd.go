@@ -43,7 +43,7 @@ import (
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -159,6 +159,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	backendFreelistType := parseBackendFreelistType(cfg.ExperimentalBackendFreelistType)
+
 	srvcfg := etcdserver.ServerConfig{
 		Name:                       cfg.Name,
 		ClientURLs:                 cfg.ACUrls,
@@ -181,6 +183,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionRetention:    autoCompactionRetention,
 		AutoCompactionMode:         cfg.AutoCompactionMode,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
+		BackendBatchLimit:          cfg.BackendBatchLimit,
+		BackendFreelistType:        backendFreelistType,
+		BackendBatchInterval:       cfg.BackendBatchInterval,
 		MaxTxnOps:                  cfg.MaxTxnOps,
 		MaxRequestBytes:            cfg.MaxRequestBytes,
 		StrictReconfigCheck:        cfg.StrictReconfigCheck,
@@ -198,6 +203,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LoggerWriteSyncer:          cfg.loggerWriteSyncer,
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
+		EnableGRPCGateway:          cfg.EnableGRPCGateway,
 	}
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
@@ -412,7 +418,7 @@ func stopServers(ctx context.Context, ss *servers) {
 
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
-	// and https://go.etcd.io/etcd/issues/8916
+	// and https://github.com/etcd-io/etcd/issues/8916
 	if ss.secure {
 		shutdownNow()
 		return

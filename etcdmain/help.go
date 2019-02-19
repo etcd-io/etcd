@@ -69,6 +69,10 @@ Member:
     Maximum number of wal files to retain (0 is unlimited).
   --quota-backend-bytes '0'
     Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
+  --backend-batch-interval ''
+    BackendBatchInterval is the maximum time before commit the backend transaction.
+  --backend-batch-limit '0'
+    BackendBatchLimit is the maximum operations before commit the backend transaction.
   --max-txn-ops '128'
     Maximum number of operations permitted in a transaction.
   --max-request-bytes '1572864'
@@ -196,6 +200,8 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
+  --experimental-backend-bbolt-freelist-type
+    ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
 
 Unsafe feature:
   --force-new-cluster 'false'
