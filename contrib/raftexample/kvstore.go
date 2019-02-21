@@ -48,8 +48,8 @@ func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <
 
 func (s *kvstore) Lookup(key string) (string, bool) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	v, ok := s.kvStore[key]
-	s.mu.RUnlock()
 	return v, ok
 }
 
@@ -106,7 +106,7 @@ func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
 		return err
 	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.kvStore = store
-	s.mu.Unlock()
 	return nil
 }
