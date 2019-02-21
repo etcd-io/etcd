@@ -950,6 +950,17 @@ func (ac *addrConn) createTransport(connectRetryNum, ridx int, backoffDeadline, 
 			Metadata:  addr.Metadata,
 			Authority: ac.cc.authority,
 		}
+		if target.Addr != target.Authority {
+			target.Authority = target.Addr
+
+			// When user dials with "grpc.WithDialer", "grpc.DialContext" "cc.parsedTarget"
+			// update only happpens once. This is problematic, because when TLS is enabled,
+			// retries happen through "grpc.WithDialer" with static "cc.parsedTarget" from
+			// the initial dial call.
+			// If the server authenticates by IP addresses, we want to set a new endpoint as
+			// a new authority. Otherwise
+			// "transport: authentication handshake failed: x509: certificate is valid for 127.0.0.1, 192.168.154.254, not 192.168.208.149"
+		}
 		done := make(chan struct{})
 		onPrefaceReceipt := func() {
 			ac.mu.Lock()
