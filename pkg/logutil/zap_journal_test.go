@@ -34,7 +34,7 @@ func TestNewJournalWriter(t *testing.T) {
 	syncer := zapcore.AddSync(jw)
 
 	cr := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
 		syncer,
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)
