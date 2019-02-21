@@ -58,20 +58,8 @@ var (
 )
 
 func init() {
-	lcfg := &zap.Config{
-		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-		Development: false,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding:      "json",
-		EncoderConfig: zap.NewProductionEncoderConfig(),
-
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-	lg, err := logutil.NewRaftLogger(lcfg)
+	lcfg := logutil.DefaultZapLoggerConfig
+	lg, err := logutil.NewRaftLogger(&lcfg)
 	if err != nil {
 		log.Fatalf("cannot create raft logger %v", err)
 	}

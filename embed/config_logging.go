@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"sort"
 	"sync"
 
 	"go.etcd.io/etcd/pkg/logutil"
@@ -131,77 +130,55 @@ func (cfg *Config) setupLogging() error {
 			}
 		}
 
-		// TODO: use zapcore to support more features?
-		lcfg := zap.Config{
-			Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-			Development: false,
-			Sampling: &zap.SamplingConfig{
-				Initial:    100,
-				Thereafter: 100,
-			},
-			Encoding:      "json",
-			EncoderConfig: zap.NewProductionEncoderConfig(),
-
-			OutputPaths:      make([]string, 0),
-			ErrorOutputPaths: make([]string, 0),
-		}
-
-		outputPaths, errOutputPaths := make(map[string]struct{}), make(map[string]struct{})
+		outputPaths, errOutputPaths := make([]string, 0), make([]string, 0)
 		isJournal := false
 		for _, v := range cfg.LogOutputs {
 			switch v {
 			case DefaultLogOutput:
-				outputPaths[StdErrLogOutput] = struct{}{}
-				errOutputPaths[StdErrLogOutput] = struct{}{}
+				outputPaths = append(outputPaths, StdErrLogOutput)
+				errOutputPaths = append(errOutputPaths, StdErrLogOutput)
 
 			case JournalLogOutput:
 				isJournal = true
 
 			case StdErrLogOutput:
-				outputPaths[StdErrLogOutput] = struct{}{}
-				errOutputPaths[StdErrLogOutput] = struct{}{}
+				outputPaths = append(outputPaths, StdErrLogOutput)
+				errOutputPaths = append(errOutputPaths, StdErrLogOutput)
 
 			case StdOutLogOutput:
-				outputPaths[StdOutLogOutput] = struct{}{}
-				errOutputPaths[StdOutLogOutput] = struct{}{}
+				outputPaths = append(outputPaths, StdOutLogOutput)
+				errOutputPaths = append(errOutputPaths, StdOutLogOutput)
 
 			default:
-				outputPaths[v] = struct{}{}
-				errOutputPaths[v] = struct{}{}
+				outputPaths = append(outputPaths, v)
+				errOutputPaths = append(errOutputPaths, v)
 			}
 		}
 
 		if !isJournal {
-			for v := range outputPaths {
-				lcfg.OutputPaths = append(lcfg.OutputPaths, v)
-			}
-			for v := range errOutputPaths {
-				lcfg.ErrorOutputPaths = append(lcfg.ErrorOutputPaths, v)
-			}
-			sort.Strings(lcfg.OutputPaths)
-			sort.Strings(lcfg.ErrorOutputPaths)
+			copied := logutil.AddOutputPaths(logutil.DefaultZapLoggerConfig, outputPaths, errOutputPaths)
 
 			if cfg.Debug {
-				lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+				copied.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 				grpc.EnableTracing = true
 			}
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
 					var err error
-					c.logger, err = lcfg.Build()
+					c.logger, err = copied.Build()
 					if err != nil {
 						return err
 					}
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
-					c.loggerConfig = &lcfg
+					c.loggerConfig = &copied
 					c.loggerCore = nil
 					c.loggerWriteSyncer = nil
 					grpcLogOnce.Do(func() {
 						// debug true, enable info, warning, error
 						// debug false, only discard info
 						var gl grpclog.LoggerV2
-						gl, err = logutil.NewGRPCLoggerV2(lcfg)
+						gl, err = logutil.NewGRPCLoggerV2(copied)
 						if err == nil {
 							grpclog.SetLoggerV2(gl)
 						}
@@ -233,7 +210,7 @@ func (cfg *Config) setupLogging() error {
 			// WARN: do not change field names in encoder config
 			// journald logging writer assumes field names of "level" and "caller"
 			cr := zapcore.NewCore(
-				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+				zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
 				syncer,
 				lvl,
 			)
@@ -253,10 +230,12 @@ func (cfg *Config) setupLogging() error {
 				}
 			}
 		}
+
 		err := cfg.ZapLoggerBuilder(cfg)
 		if err != nil {
 			return err
 		}
+
 		logTLSHandshakeFailure := func(conn *tls.Conn, err error) {
 			state := conn.ConnectionState()
 			remoteAddr := conn.RemoteAddr().String()
