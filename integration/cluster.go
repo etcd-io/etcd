@@ -47,6 +47,7 @@ import (
 	lockpb "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/tlsutil"
 	"go.etcd.io/etcd/pkg/transport"
@@ -673,19 +674,10 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 
 	m.InitialCorruptCheck = true
 
-	m.LoggerConfig = &zap.Config{
-		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-		Development: false,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding:      "json",
-		EncoderConfig: zap.NewProductionEncoderConfig(),
-
-		OutputPaths:      []string{"/dev/null"},
-		ErrorOutputPaths: []string{"/dev/null"},
-	}
+	lcfg := logutil.DefaultZapLoggerConfig
+	m.LoggerConfig = &lcfg
+	m.LoggerConfig.OutputPaths = []string{"/dev/null"}
+	m.LoggerConfig.ErrorOutputPaths = []string{"/dev/null"}
 	if os.Getenv("CLUSTER_DEBUG") != "" {
 		m.LoggerConfig.OutputPaths = []string{"stderr"}
 		m.LoggerConfig.ErrorOutputPaths = []string{"stderr"}
