@@ -82,21 +82,3 @@ type Config struct {
 	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
 	PermitWithoutStream bool `json:"permit-without-stream"`
 }
-
-// DefaultLogConfig is the default client logging configuration.
-// Default log level is "Warn". Use "zap.InfoLevel" for debugging.
-// Use "/dev/null" for output paths, to discard all logs.
-var DefaultLogConfig = zap.Config{
-	Level:       zap.NewAtomicLevelAt(zap.WarnLevel),
-	Development: false,
-	Sampling: &zap.SamplingConfig{
-		Initial:    100,
-		Thereafter: 100,
-	},
-	Encoding:      "json",
-	EncoderConfig: zap.NewProductionEncoderConfig(),
-
-	// Use "/dev/null" to discard all
-	OutputPaths:      []string{"stderr"},
-	ErrorOutputPaths: []string{"stderr"},
-}

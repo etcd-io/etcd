@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/clientv3/balancer/picker"
 	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -446,7 +447,7 @@ func newClient(cfg *Config) (*Client, error) {
 		callOpts: defaultCallOpts,
 	}
 
-	lcfg := DefaultLogConfig
+	lcfg := logutil.DefaultZapLoggerConfig
 	if cfg.LogConfig != nil {
 		lcfg = *cfg.LogConfig
 	}
@@ -530,10 +531,10 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 		n := uint(len(c.Endpoints()))
 		quorum := (n/2 + 1)
 		if attempt%quorum == 0 {
-			c.lg.Info("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
+			c.lg.Debug("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
 			return jitterUp(waitBetween, jitterFraction)
 		}
-		c.lg.Info("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
+		c.lg.Debug("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
 		return 0
 	}
 }

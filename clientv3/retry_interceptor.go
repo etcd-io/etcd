@@ -48,7 +48,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 			if err := waitRetryBackoff(ctx, attempt, callOpts); err != nil {
 				return err
 			}
-			logger.Info(
+			logger.Debug(
 				"retrying of unary invoker",
 				zap.String("target", cc.Target()),
 				zap.Uint("attempt", attempt),
@@ -112,7 +112,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 			return nil, grpc.Errorf(codes.Unimplemented, "clientv3/retry_interceptor: cannot retry on ClientStreams, set Disable()")
 		}
 		newStreamer, err := streamer(ctx, desc, cc, method, grpcOpts...)
-		logger.Info("retry stream intercept", zap.Error(err))
+		logger.Warn("retry stream intercept", zap.Error(err))
 		if err != nil {
 			// TODO(mwitkow): Maybe dial and transport errors should be retriable?
 			return nil, err
@@ -228,7 +228,7 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 	if s.callOpts.retryAuth && rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
 		gterr := s.client.getToken(s.ctx)
 		if gterr != nil {
-			s.client.lg.Info("retry failed to fetch new auth token", zap.Error(gterr))
+			s.client.lg.Warn("retry failed to fetch new auth token", zap.Error(gterr))
 			return false, err // return the original error for simplicity
 		}
 		return true, err
