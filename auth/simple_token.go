@@ -14,7 +14,7 @@
 
 package auth
 
-// CAUTION: This randum number based token mechanism is only for testing purpose.
+// CAUTION: This random number based token mechanism is only for testing purpose.
 // JWT based mechanism will be added in the near future.
 
 import (
@@ -134,7 +134,7 @@ func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 				zap.String("token", token),
 			)
 		} else {
-			plog.Panicf("token %s is alredy used", token)
+			plog.Panicf("token %s is already used", token)
 		}
 	}
 
