@@ -36,7 +36,7 @@ func RegisterBuilder(cfg Config) {
 	bb := &builder{cfg}
 	balancer.Register(bb)
 
-	bb.cfg.Logger.Info(
+	bb.cfg.Logger.Debug(
 		"registered balancer",
 		zap.String("policy", bb.cfg.Policy.String()),
 		zap.String("name", bb.cfg.Name),

@@ -151,19 +151,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 func startGRPCProxy(cmd *cobra.Command, args []string) {
 	checkArgs()
 
-	lcfg := zap.Config{
-		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-		Development: false,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding:      "json",
-		EncoderConfig: zap.NewProductionEncoderConfig(),
-
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
+	lcfg := logutil.DefaultZapLoggerConfig
 	if grpcProxyDebug {
 		lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		grpc.EnableTracing = true
