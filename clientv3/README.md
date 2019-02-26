@@ -28,7 +28,7 @@ if err != nil {
 defer cli.Close()
 ```
 
-etcd v3 uses [`gRPC`](http://www.grpc.io) for remote procedure calls. And `clientv3` uses
+etcd v3 uses [`gRPC`](https://www.grpc.io) for remote procedure calls. And `clientv3` uses
 [`grpc-go`](https://github.com/grpc/grpc-go) to connect to etcd. Make sure to close the client after using it.
 If the client is not closed, the connection will have leaky goroutines. To specify client request timeout,
 pass `context.WithTimeout` to APIs:
