@@ -70,6 +70,15 @@ cfssl gencert \
 mv server3.pem server3.crt
 mv server3-key.pem server3.key.insecure
 
+# generate DNS: localhost, IP: 127.0.0.1, CN: example.com certificates
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  ./server-ca-csr4.json | cfssljson --bare ./server4
+mv server4.pem server4.crt
+mv server4-key.pem server4.key.insecure
+
 # generate revoked certificates and crl
 cfssl gencert --ca ./ca.crt \
   --ca-key ./ca-key.pem \
@@ -88,6 +97,5 @@ cfssl gencert \
   ./server-ca-csr-wildcard.json | cfssljson --bare ./server-wildcard
 mv server-wildcard.pem server-wildcard.crt
 mv server-wildcard-key.pem server-wildcard.key.insecure
-
 
 rm -f *.csr *.pem *.stderr *.txt
