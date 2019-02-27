@@ -670,6 +670,9 @@ func (e *Etcd) serveMetrics() (err error) {
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
+			if !e.cfg.MetricsTLSInfo.Empty() {
+				tlsInfo = &e.cfg.MetricsTLSInfo
+			}
 			if murl.Scheme == "http" {
 				tlsInfo = nil
 			}
