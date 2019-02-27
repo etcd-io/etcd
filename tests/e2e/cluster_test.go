@@ -91,6 +91,13 @@ var (
 		initialToken:  "new",
 		authTokenOpts: "jwt,pub-key=../../integration/fixtures/server.crt,priv-key=../../integration/fixtures/server.key.insecure,sign-method=RS256,ttl=1s",
 	}
+	configMetricsTLS = etcdProcessClusterConfig{
+		clusterSize:      1,
+		clientTLS:        clientTLS,
+		initialToken:     "new",
+		metricsURLScheme: "https",
+		isMetricsTLS:     true,
+	}
 )
 
 func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
@@ -124,6 +131,8 @@ type etcdProcessClusterConfig struct {
 	isPeerAutoTLS         bool
 	isClientAutoTLS       bool
 	isClientCRL           bool
+	isMetricsTLS          bool
+	isMetricsAutoTLS      bool
 	noCN                  bool
 
 	cipherSuites []string
@@ -323,6 +332,19 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 				"--peer-trusted-ca-file", caPath,
 			}
 			args = append(args, tlsPeerArgs...)
+		}
+	}
+
+	if cfg.isMetricsTLS {
+		if cfg.isMetricsAutoTLS {
+			args = append(args, "--metrics-auto-tls")
+		} else {
+			tlsMetricsArgs := []string{
+				"--metrics-cert-file", certPath4,
+				"--metrics-key-file", privateKeyPath4,
+				"--metrics-trusted-ca-file", caPath,
+			}
+			args = append(args, tlsMetricsArgs...)
 		}
 	}
 

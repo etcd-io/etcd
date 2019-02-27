@@ -27,6 +27,9 @@ var (
 	certPath3       string
 	privateKeyPath3 string
 
+	certPath4       string
+	privateKeyPath4 string
+
 	crlPath               string
 	revokedCertPath       string
 	revokedPrivateKeyPath string
@@ -54,6 +57,9 @@ func TestMain(m *testing.M) {
 
 	certPath3 = certDir + "/server3.crt"
 	privateKeyPath3 = certDir + "/server3.key.insecure"
+
+	certPath4 = certDir + "/server4.crt"
+	privateKeyPath4 = certDir + "/server4.key.insecure"
 
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {

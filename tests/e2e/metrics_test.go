@@ -25,17 +25,42 @@ func TestV3MetricsSecure(t *testing.T) {
 	cfg := configTLS
 	cfg.clusterSize = 1
 	cfg.metricsURLScheme = "https"
-	testCtl(t, metricsTest)
+	testCtl(t, func(cx ctlCtx) {
+		metricsTest(cx, false)
+	})
 }
 
 func TestV3MetricsInsecure(t *testing.T) {
 	cfg := configTLS
 	cfg.clusterSize = 1
 	cfg.metricsURLScheme = "http"
-	testCtl(t, metricsTest)
+	testCtl(t, func(cx ctlCtx) {
+		metricsTest(cx, false)
+	})
 }
 
-func metricsTest(cx ctlCtx) {
+func TestV3MetricsSecureTLSCertAuth(t *testing.T) {
+	testCtl(t, func(cx ctlCtx) {
+		metricsTest(cx, true)
+
+		req := cURLReq{endpoint: "/metrics", metricsURLScheme: cx.cfg.metricsURLScheme}
+
+		expectErr := []string{
+			"curl: (60) SSL certificate problem: unable to get local issuer certificate",
+			"More details here: https://curl.haxx.se/docs/sslcerts.html",
+			"",
+			"curl failed to verify the legitimacy of the server and therefore could not",
+			"establish a secure connection to it. To learn more about this situation and",
+			"how to fix it, please visit the web page mentioned above.",
+		}
+
+		if err := spawnWithExpects(cURLPrefixArgs(cx.epc, "GET", req), expectErr...); err != nil {
+			cx.t.Fatalf("failed get with curl (%v)", err)
+		}
+	}, withCfg(configMetricsTLS))
+}
+
+func metricsTest(cx ctlCtx, useCertAuth bool) {
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -59,7 +84,7 @@ func metricsTest(cx ctlCtx) {
 			cx.t.Fatal(err)
 		}
 
-		if err := cURLGet(cx.epc, cURLReq{endpoint: test.endpoint, expected: test.expected, metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
+		if err := cURLGet(cx.epc, cURLReq{endpoint: test.endpoint, expected: test.expected, metricsURLScheme: cx.cfg.metricsURLScheme, useCertAuth: useCertAuth}); err != nil {
 			cx.t.Fatalf("failed get with curl (%v)", err)
 		}
 	}

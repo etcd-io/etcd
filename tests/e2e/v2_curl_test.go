@@ -133,6 +133,7 @@ type cURLReq struct {
 	header   string
 
 	metricsURLScheme string
+	useCertAuth      bool
 
 	ciphers string
 }
@@ -158,6 +159,8 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath3, "--key", privateKeyPath3)
 			}
 		}
+	} else if req.useCertAuth {
+		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath4, "--key", privateKeyPath4)
 	}
 	if req.metricsURLScheme != "" {
 		acurl = clus.procs[rand.Intn(clus.cfg.clusterSize)].EndpointsMetrics()[0]
