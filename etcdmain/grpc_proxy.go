@@ -77,6 +77,13 @@ var (
 	grpcProxyListenAutoTLS bool
 	grpcProxyListenCRL     string
 
+	// tls for clients connecting to proxy for metrics
+
+	grpcProxyMetricsListenCA   string
+	grpcProxyMetricsListenCert string
+	grpcProxyMetricsListenKey  string
+	grpcProxyMetricsListenCRL  string
+
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
 	grpcProxyResolverTTL        int
@@ -150,6 +157,11 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyListenAutoTLS, "auto-tls", false, "proxy TLS using generated certificates")
 	cmd.Flags().StringVar(&grpcProxyListenCRL, "client-crl-file", "", "proxy client certificate revocation list file.")
 
+	cmd.Flags().StringVar(&grpcProxyMetricsListenCert, "metrics-cert-file", "", "identify secure connections to the /metrics endpoint using this TLS certificate file")
+	cmd.Flags().StringVar(&grpcProxyMetricsListenKey, "metrics-key-file", "", "identify secure connections to the /metrics endpoint using this TLS key file")
+	cmd.Flags().StringVar(&grpcProxyMetricsListenCA, "metrics-trusted-ca-file", "", "verify certificates of TLS-enabled secure /metrics endpoint using this CA bundle")
+	cmd.Flags().StringVar(&grpcProxyMetricsListenCRL, "metrics-client-crl-file", "", "/metrics endpoint client certificate revocation list file.")
+
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
@@ -211,6 +223,12 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
 	if len(grpcProxyMetricsListenAddr) > 0 {
+		if grpcProxyMetricsListenCert != "" && grpcProxyMetricsListenKey != "" {
+			tlsinfo = newTLS(grpcProxyMetricsListenCA, grpcProxyMetricsListenCert, grpcProxyMetricsListenKey)
+			if tlsinfo != nil {
+				tlsinfo.CRLFile = grpcProxyMetricsListenCRL
+			}
+		}
 		mhttpl := mustMetricsListener(lg, tlsinfo)
 		go func() {
 			mux := http.NewServeMux()

@@ -174,6 +174,20 @@ Profiling and Monitoring:
     Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
   --listen-metrics-urls ''
     List of URLs to listen on for the metrics and health endpoints.
+  --metrics-cert-file ''
+    Path to the metrics server TLS cert file.
+  --metrics-key-file ''
+    Path to the metrics server TLS key file.
+  --metrics-client-cert-auth 'false'
+    Enable metrics client cert authentication.
+  --metrics-trusted-ca-file ''
+    Path to the metrics server TLS trusted CA file.
+  --metrics-cert-allowed-cn ''
+    Required CN for client certs connecting to the metrics endpoint.
+  --metrics-crl-file ''
+    Path to the metrics certificate revocation list file.
+  --metrics-auto-tls 'false'
+    Metrics TLS using generated certificates.
 
 Logging:
   --logger 'zap'

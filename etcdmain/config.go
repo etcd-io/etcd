@@ -210,6 +210,13 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ec.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedHostname, "peer-cert-allowed-hostname", "", "Allowed TLS hostname for inter peer authentication.")
+	fs.StringVar(&cfg.ec.MetricsTLSInfo.CertFile, "metrics-cert-file", "", "Path to the metrics server TLS cert file.")
+	fs.StringVar(&cfg.ec.MetricsTLSInfo.KeyFile, "metrics-key-file", "", "Path to the metrics server TLS key file.")
+	fs.BoolVar(&cfg.ec.MetricsTLSInfo.ClientCertAuth, "metrics-client-cert-auth", false, "Enable metrics client cert authentication.")
+	fs.BoolVar(&cfg.ec.MetricsTLSInfo.InsecureSkipVerify, "metrics-auto-tls", false, "Metrics TLS using generated certificates")
+	fs.StringVar(&cfg.ec.MetricsTLSInfo.TrustedCAFile, "metrics-trusted-ca-file", "", "Path to the metrics server TLS trusted CA file.")
+	fs.StringVar(&cfg.ec.MetricsTLSInfo.CRLFile, "metrics-crl-file", "", "Path to the metrics certificate revocation list file.")
+	fs.StringVar(&cfg.ec.MetricsTLSInfo.AllowedCN, "metrics-cert-allowed-cn", "", "Allowed CN for metrics authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
 	fs.BoolVar(&cfg.ec.PeerTLSInfo.SkipClientSANVerify, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 
