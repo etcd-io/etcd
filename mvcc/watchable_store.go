@@ -346,7 +346,7 @@ func (s *watchableStore) syncWatchers() int {
 	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
 	// values are actual key-value pairs in backend.
 	tx := s.store.b.ReadTx()
-	tx.Lock()
+	tx.RLock()
 	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
 	var evs []mvccpb.Event
 	if s.store != nil && s.store.lg != nil {
@@ -355,7 +355,7 @@ func (s *watchableStore) syncWatchers() int {
 		// TODO: remove this in v3.5
 		evs = kvsToEvents(nil, wg, revs, vs)
 	}
-	tx.Unlock()
+	tx.RUnlock()
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)

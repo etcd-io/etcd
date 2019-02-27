@@ -336,8 +336,8 @@ func (b *backend) defrag() error {
 	defer b.mu.Unlock()
 
 	// block concurrent read requests while resetting tx
-	b.readTx.mu.Lock()
-	defer b.readTx.mu.Unlock()
+	b.readTx.Lock()
+	defer b.readTx.Unlock()
 
 	b.batchTx.unsafeCommit(true)
 

@@ -45,6 +45,29 @@ type batchTx struct {
 	pending int
 }
 
+func (t *batchTx) Lock() {
+	t.Mutex.Lock()
+}
+
+func (t *batchTx) Unlock() {
+	if t.pending >= t.backend.batchLimit {
+		t.commit(false)
+	}
+	t.Mutex.Unlock()
+}
+
+// BatchTx interface embeds ReadTx interface. But RLock() and RUnlock() do not
+// have appropriate semantics in BatchTx interface. Therefore should not be called.
+// TODO: might want to decouple ReadTx and BatchTx
+
+func (t *batchTx) RLock() {
+	panic("unexpected RLock")
+}
+
+func (t *batchTx) RUnlock() {
+	panic("unexpected RUnlock")
+}
+
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
@@ -194,13 +217,6 @@ func (t *batchTx) CommitAndStop() {
 	t.Unlock()
 }
 
-func (t *batchTx) Unlock() {
-	if t.pending >= t.backend.batchLimit {
-		t.commit(false)
-	}
-	t.Mutex.Unlock()
-}
-
 func (t *batchTx) safePending() int {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
@@ -259,9 +275,9 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
-		t.backend.readTx.mu.Lock()
+		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
 		t.buf.writeback(&t.backend.readTx.buf)
-		t.backend.readTx.mu.Unlock()
+		t.backend.readTx.Unlock()
 		if t.pending >= t.backend.batchLimit {
 			t.commit(false)
 		}
@@ -283,9 +299,9 @@ func (t *batchTxBuffered) CommitAndStop() {
 
 func (t *batchTxBuffered) commit(stop bool) {
 	// all read txs must be closed to acquire boltdb commit rwlock
-	t.backend.readTx.mu.Lock()
+	t.backend.readTx.Lock()
 	t.unsafeCommit(stop)
-	t.backend.readTx.mu.Unlock()
+	t.backend.readTx.Unlock()
 }
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
