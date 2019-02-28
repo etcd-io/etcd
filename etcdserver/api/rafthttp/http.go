@@ -131,7 +131,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			plog.Errorf("failed to unmarshal raft message (%v)", err)
 		}
-		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
+		http.Error(w, "error unmarshalling raft message", http.StatusBadRequest)
 		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
 		return
 	}
