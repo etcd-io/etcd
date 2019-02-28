@@ -42,8 +42,8 @@ require (
 	github.com/spf13/pflag v1.0.1
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8
-	github.com/ugorji/go v1.1.1
-	github.com/urfave/cli v1.18.0
+	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
+	github.com/urfave/cli v1.20.0
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.2
 	go.uber.org/atomic v1.3.2 // indirect

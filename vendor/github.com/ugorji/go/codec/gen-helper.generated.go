@@ -1,6 +1,6 @@
-/* // +build ignore */
+// comment this out // + build ignore
 
-// Copyright (c) 2012-2015 Ugorji Nwoke. All rights reserved.
+// Copyright (c) 2012-2018 Ugorji Nwoke. All rights reserved.
 // Use of this source code is governed by a MIT license found in the LICENSE file.
 
 // Code generated from gen-helper.go.tmpl - DO NOT EDIT.
@@ -10,10 +10,11 @@ package codec
 import (
 	"encoding"
 	"reflect"
+	"strconv"
 )
 
 // GenVersion is the current version of codecgen.
-const GenVersion = 8
+const GenVersion = 10
 
 // This file is used to generate helper code for codecgen.
 // The values here i.e. genHelper(En|De)coder are not to be used directly by
@@ -49,10 +50,20 @@ type genHelperEncDriver struct {
 
 func (x genHelperEncDriver) EncodeBuiltin(rt uintptr, v interface{}) {}
 func (x genHelperEncDriver) EncStructFieldKey(keyType valueType, s string) {
-	encStructFieldKey(x.encDriver, keyType, s)
+	var m must
+	if keyType == valueTypeString {
+		x.encDriver.EncodeStringEnc(cUTF8, s)
+	} else if keyType == valueTypeInt {
+		x.encDriver.EncodeInt(m.Int(strconv.ParseInt(s, 10, 64)))
+	} else if keyType == valueTypeUint {
+		x.encDriver.EncodeUint(m.Uint(strconv.ParseUint(s, 10, 64)))
+	} else if keyType == valueTypeFloat {
+		x.encDriver.EncodeFloat64(m.Float(strconv.ParseFloat(s, 64)))
+	}
+	// encStructFieldKey(x.encDriver, keyType, s)
 }
 func (x genHelperEncDriver) EncodeSymbol(s string) {
-	x.encDriver.EncodeString(cUTF8, s)
+	x.encDriver.EncodeStringEnc(cUTF8, s)
 }
 
 type genHelperDecDriver struct {
@@ -124,19 +135,19 @@ func (f genHelperEncoder) EncFallback(iv interface{}) {
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncTextMarshal(iv encoding.TextMarshaler) {
 	bs, fnerr := iv.MarshalText()
-	f.e.marshal(bs, fnerr, false, cUTF8)
+	f.e.marshalUtf8(bs, fnerr)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncJSONMarshal(iv jsonMarshaler) {
 	bs, fnerr := iv.MarshalJSON()
-	f.e.marshal(bs, fnerr, true, cUTF8)
+	f.e.marshalAsis(bs, fnerr)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncBinaryMarshal(iv encoding.BinaryMarshaler) {
 	bs, fnerr := iv.MarshalBinary()
-	f.e.marshal(bs, fnerr, false, cRAW)
+	f.e.marshalRaw(bs, fnerr)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
@@ -167,6 +178,11 @@ func (f genHelperEncoder) Extension(rtid uintptr) (xfn *extTypeTagFn) {
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
 func (f genHelperEncoder) EncExtension(v interface{}, xfFn *extTypeTagFn) {
 	f.e.e.EncodeExt(v, xfFn.tag, xfFn.ext, f.e)
+}
+
+// FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
+func (f genHelperEncoder) WriteStr(s string) {
+	f.e.w.writestr(s)
 }
 
 // FOR USE BY CODECGEN ONLY. IT *WILL* CHANGE WITHOUT NOTICE. *DO NOT USE*
