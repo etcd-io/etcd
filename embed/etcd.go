@@ -672,6 +672,7 @@ func (e *Etcd) serveMetrics() (err error) {
 			tlsInfo := &e.cfg.ClientTLSInfo
 			if !e.cfg.MetricsTLSInfo.Empty() {
 				tlsInfo = &e.cfg.MetricsTLSInfo
+				e.cfg.logger.Warn("ignoring client certificates for additional metrics and health endpoints since metrics certificates given")
 			}
 			if murl.Scheme == "http" {
 				tlsInfo = nil
