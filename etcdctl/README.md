@@ -329,6 +329,27 @@ put key2 "some extra key"
 # OK
 ```
 
+#### Remarks
+
+When using multi-line values within a TXN command, newlines must be represented as `\n`. Literal newlines will cause parsing failures. This differs from other commands (such as PUT) where the shell will convert literal newlines for us. For example:
+
+```bash
+./etcdctl txn <<<'mod("key1") > "0"
+
+put key1 "overwrote-key1"
+
+put key1 "created-key1"
+put key2 "this is\na multi-line\nvalue"
+
+'
+
+# FAILURE
+
+# OK
+
+# OK
+```
+
 ### COMPACTION [options] \<revision\>
 
 COMPACTION discards all etcd event history prior to a given revision. Since etcd uses a multiversion concurrency control
