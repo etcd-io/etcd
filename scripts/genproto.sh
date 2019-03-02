@@ -23,7 +23,7 @@ export GO111MODULE=off
 
 # exact version of packages to build
 GOGO_PROTO_SHA="636bf0302bc95575d69441b25a2603156ffdddf1"
-GRPC_GATEWAY_SHA="92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
+GRPC_GATEWAY_SHA="b2b68f0fb9a188ce0f9f1e44172dbad24c224cea"
 SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
 
 # set up self-contained GOPATH for building
