@@ -20,18 +20,55 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type RequestHeader struct {
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// username is a username that is associated with an auth token of gRPC connection
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// auth_revision is a revision number of auth.authStore. It is not related to mvcc
-	AuthRevision uint64 `protobuf:"varint,3,opt,name=auth_revision,json=authRevision,proto3" json:"auth_revision,omitempty"`
+	AuthRevision         uint64   `protobuf:"varint,3,opt,name=auth_revision,json=authRevision,proto3" json:"auth_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RequestHeader) Reset()                    { *m = RequestHeader{} }
-func (m *RequestHeader) String() string            { return proto.CompactTextString(m) }
-func (*RequestHeader) ProtoMessage()               {}
-func (*RequestHeader) Descriptor() ([]byte, []int) { return fileDescriptorRaftInternal, []int{0} }
+func (m *RequestHeader) Reset()         { *m = RequestHeader{} }
+func (m *RequestHeader) String() string { return proto.CompactTextString(m) }
+func (*RequestHeader) ProtoMessage()    {}
+func (*RequestHeader) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_internal_50a4e85740fdd4d4, []int{0}
+}
+func (m *RequestHeader) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestHeader.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RequestHeader) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestHeader.Merge(dst, src)
+}
+func (m *RequestHeader) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestHeader) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestHeader.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestHeader proto.InternalMessageInfo
 
 // An InternalRaftRequest is the union of all requests which can be
 // sent via raft.
@@ -64,20 +101,82 @@ type InternalRaftRequest struct {
 	AuthRoleGet              *AuthRoleGetRequest              `protobuf:"bytes,1202,opt,name=auth_role_get,json=authRoleGet" json:"auth_role_get,omitempty"`
 	AuthRoleGrantPermission  *AuthRoleGrantPermissionRequest  `protobuf:"bytes,1203,opt,name=auth_role_grant_permission,json=authRoleGrantPermission" json:"auth_role_grant_permission,omitempty"`
 	AuthRoleRevokePermission *AuthRoleRevokePermissionRequest `protobuf:"bytes,1204,opt,name=auth_role_revoke_permission,json=authRoleRevokePermission" json:"auth_role_revoke_permission,omitempty"`
+	XXX_NoUnkeyedLiteral     struct{}                         `json:"-"`
+	XXX_unrecognized         []byte                           `json:"-"`
+	XXX_sizecache            int32                            `json:"-"`
 }
 
-func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequest{} }
-func (m *InternalRaftRequest) String() string            { return proto.CompactTextString(m) }
-func (*InternalRaftRequest) ProtoMessage()               {}
-func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaftInternal, []int{1} }
+func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
+func (m *InternalRaftRequest) String() string { return proto.CompactTextString(m) }
+func (*InternalRaftRequest) ProtoMessage()    {}
+func (*InternalRaftRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_internal_50a4e85740fdd4d4, []int{1}
+}
+func (m *InternalRaftRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *InternalRaftRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_InternalRaftRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *InternalRaftRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InternalRaftRequest.Merge(dst, src)
+}
+func (m *InternalRaftRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *InternalRaftRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InternalRaftRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InternalRaftRequest proto.InternalMessageInfo
 
 type EmptyResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *EmptyResponse) Reset()                    { *m = EmptyResponse{} }
-func (m *EmptyResponse) String() string            { return proto.CompactTextString(m) }
-func (*EmptyResponse) ProtoMessage()               {}
-func (*EmptyResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaftInternal, []int{2} }
+func (m *EmptyResponse) Reset()         { *m = EmptyResponse{} }
+func (m *EmptyResponse) String() string { return proto.CompactTextString(m) }
+func (*EmptyResponse) ProtoMessage()    {}
+func (*EmptyResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_internal_50a4e85740fdd4d4, []int{2}
+}
+func (m *EmptyResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EmptyResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EmptyResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *EmptyResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EmptyResponse.Merge(dst, src)
+}
+func (m *EmptyResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *EmptyResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_EmptyResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EmptyResponse proto.InternalMessageInfo
 
 // What is the difference between AuthenticateRequest (defined in rpc.proto) and InternalAuthenticateRequest?
 // InternalAuthenticateRequest has a member that is filled by etcdserver and shouldn't be user-facing.
@@ -86,15 +185,44 @@ type InternalAuthenticateRequest struct {
 	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	// simple_token is generated in API layer (etcdserver/v3_server.go)
-	SimpleToken string `protobuf:"bytes,3,opt,name=simple_token,json=simpleToken,proto3" json:"simple_token,omitempty"`
+	SimpleToken          string   `protobuf:"bytes,3,opt,name=simple_token,json=simpleToken,proto3" json:"simple_token,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *InternalAuthenticateRequest) Reset()         { *m = InternalAuthenticateRequest{} }
 func (m *InternalAuthenticateRequest) String() string { return proto.CompactTextString(m) }
 func (*InternalAuthenticateRequest) ProtoMessage()    {}
 func (*InternalAuthenticateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorRaftInternal, []int{3}
+	return fileDescriptor_raft_internal_50a4e85740fdd4d4, []int{3}
 }
+func (m *InternalAuthenticateRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *InternalAuthenticateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_InternalAuthenticateRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *InternalAuthenticateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InternalAuthenticateRequest.Merge(dst, src)
+}
+func (m *InternalAuthenticateRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *InternalAuthenticateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InternalAuthenticateRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InternalAuthenticateRequest proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*RequestHeader)(nil), "etcdserverpb.RequestHeader")
@@ -132,6 +260,9 @@ func (m *RequestHeader) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x18
 		i++
 		i = encodeVarintRaftInternal(dAtA, i, uint64(m.AuthRevision))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -460,6 +591,9 @@ func (m *InternalRaftRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n27
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -478,6 +612,9 @@ func (m *EmptyResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -514,6 +651,9 @@ func (m *InternalAuthenticateRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRaftInternal(dAtA, i, uint64(len(m.SimpleToken)))
 		i += copy(dAtA[i:], m.SimpleToken)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -538,6 +678,9 @@ func (m *RequestHeader) Size() (n int) {
 	}
 	if m.AuthRevision != 0 {
 		n += 1 + sovRaftInternal(uint64(m.AuthRevision))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -656,12 +799,18 @@ func (m *InternalRaftRequest) Size() (n int) {
 		l = m.AuthRoleRevokePermission.Size()
 		n += 2 + l + sovRaftInternal(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *EmptyResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -679,6 +828,9 @@ func (m *InternalAuthenticateRequest) Size() (n int) {
 	l = len(m.SimpleToken)
 	if l > 0 {
 		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -804,6 +956,7 @@ func (m *RequestHeader) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1764,6 +1917,7 @@ func (m *InternalRaftRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1814,6 +1968,7 @@ func (m *EmptyResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1951,6 +2106,7 @@ func (m *InternalAuthenticateRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2065,9 +2221,9 @@ var (
 	ErrIntOverflowRaftInternal   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("raft_internal.proto", fileDescriptorRaftInternal) }
+func init() { proto.RegisterFile("raft_internal.proto", fileDescriptor_raft_internal_50a4e85740fdd4d4) }
 
-var fileDescriptorRaftInternal = []byte{
+var fileDescriptor_raft_internal_50a4e85740fdd4d4 = []byte{
 	// 867 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x96, 0xcb, 0x52, 0x33, 0x45,
 	0x14, 0xc7, 0x49, 0xb8, 0xa6, 0x13, 0x2e, 0x36, 0xa0, 0x6d, 0xa8, 0x8a, 0x10, 0xbc, 0xe0, 0x0d,

@@ -820,7 +820,7 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbLeaseKeepAliveResponse"
             }
           }
         }
@@ -1009,7 +1009,7 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbSnapshotResponse"
             }
           }
         }
@@ -1091,7 +1091,7 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbWatchResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbWatchResponse"
             }
           }
         }
@@ -2508,6 +2508,43 @@
           "format": "int64"
         }
       }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        },
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
     }
   },
   "securityDefinitions": {
@@ -2521,5 +2558,43 @@
     {
       "ApiKey": []
     }
-  ]
+  ],
+  "x-stream-definitions": {
+    "etcdserverpbLeaseKeepAliveResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbLeaseKeepAliveResponse",
+      "type": "object"
+    },
+    "etcdserverpbSnapshotResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbSnapshotResponse",
+      "type": "object"
+    },
+    "etcdserverpbWatchResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbWatchResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbWatchResponse",
+      "type": "object"
+    }
+  }
 }

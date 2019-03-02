@@ -10,11 +10,11 @@ import (
 
 	math "math"
 
-	_ "github.com/gogo/protobuf/gogoproto"
+	authpb "go.etcd.io/etcd/auth/authpb"
 
 	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
 
-	authpb "go.etcd.io/etcd/auth/authpb"
+	_ "github.com/gogo/protobuf/gogoproto"
 
 	context "golang.org/x/net/context"
 
@@ -27,6 +27,12 @@ import (
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type AlarmType int32
 
@@ -50,7 +56,9 @@ var AlarmType_value = map[string]int32{
 func (x AlarmType) String() string {
 	return proto.EnumName(AlarmType_name, int32(x))
 }
-func (AlarmType) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
+func (AlarmType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{0}
+}
 
 type RangeRequest_SortOrder int32
 
@@ -74,7 +82,9 @@ var RangeRequest_SortOrder_value = map[string]int32{
 func (x RangeRequest_SortOrder) String() string {
 	return proto.EnumName(RangeRequest_SortOrder_name, int32(x))
 }
-func (RangeRequest_SortOrder) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1, 0} }
+func (RangeRequest_SortOrder) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{1, 0}
+}
 
 type RangeRequest_SortTarget int32
 
@@ -104,7 +114,9 @@ var RangeRequest_SortTarget_value = map[string]int32{
 func (x RangeRequest_SortTarget) String() string {
 	return proto.EnumName(RangeRequest_SortTarget_name, int32(x))
 }
-func (RangeRequest_SortTarget) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1, 1} }
+func (RangeRequest_SortTarget) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{1, 1}
+}
 
 type Compare_CompareResult int32
 
@@ -131,7 +143,9 @@ var Compare_CompareResult_value = map[string]int32{
 func (x Compare_CompareResult) String() string {
 	return proto.EnumName(Compare_CompareResult_name, int32(x))
 }
-func (Compare_CompareResult) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9, 0} }
+func (Compare_CompareResult) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{9, 0}
+}
 
 type Compare_CompareTarget int32
 
@@ -161,7 +175,9 @@ var Compare_CompareTarget_value = map[string]int32{
 func (x Compare_CompareTarget) String() string {
 	return proto.EnumName(Compare_CompareTarget_name, int32(x))
 }
-func (Compare_CompareTarget) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9, 1} }
+func (Compare_CompareTarget) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{9, 1}
+}
 
 type WatchCreateRequest_FilterType int32
 
@@ -185,7 +201,7 @@ func (x WatchCreateRequest_FilterType) String() string {
 	return proto.EnumName(WatchCreateRequest_FilterType_name, int32(x))
 }
 func (WatchCreateRequest_FilterType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{21, 0}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{21, 0}
 }
 
 type AlarmRequest_AlarmAction int32
@@ -211,7 +227,7 @@ func (x AlarmRequest_AlarmAction) String() string {
 	return proto.EnumName(AlarmRequest_AlarmAction_name, int32(x))
 }
 func (AlarmRequest_AlarmAction) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{52, 0}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{52, 0}
 }
 
 type ResponseHeader struct {
@@ -225,13 +241,44 @@ type ResponseHeader struct {
 	// header.revision number.
 	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	// raft_term is the raft term when the request was applied.
-	RaftTerm uint64 `protobuf:"varint,4,opt,name=raft_term,json=raftTerm,proto3" json:"raft_term,omitempty"`
+	RaftTerm             uint64   `protobuf:"varint,4,opt,name=raft_term,json=raftTerm,proto3" json:"raft_term,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ResponseHeader) Reset()                    { *m = ResponseHeader{} }
-func (m *ResponseHeader) String() string            { return proto.CompactTextString(m) }
-func (*ResponseHeader) ProtoMessage()               {}
-func (*ResponseHeader) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
+func (m *ResponseHeader) Reset()         { *m = ResponseHeader{} }
+func (m *ResponseHeader) String() string { return proto.CompactTextString(m) }
+func (*ResponseHeader) ProtoMessage()    {}
+func (*ResponseHeader) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{0}
+}
+func (m *ResponseHeader) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResponseHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResponseHeader.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ResponseHeader) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseHeader.Merge(dst, src)
+}
+func (m *ResponseHeader) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResponseHeader) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseHeader.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseHeader proto.InternalMessageInfo
 
 func (m *ResponseHeader) GetClusterId() uint64 {
 	if m != nil {
@@ -303,13 +350,44 @@ type RangeRequest struct {
 	MinCreateRevision int64 `protobuf:"varint,12,opt,name=min_create_revision,json=minCreateRevision,proto3" json:"min_create_revision,omitempty"`
 	// max_create_revision is the upper bound for returned key create revisions; all keys with
 	// greater create revisions will be filtered away.
-	MaxCreateRevision int64 `protobuf:"varint,13,opt,name=max_create_revision,json=maxCreateRevision,proto3" json:"max_create_revision,omitempty"`
+	MaxCreateRevision    int64    `protobuf:"varint,13,opt,name=max_create_revision,json=maxCreateRevision,proto3" json:"max_create_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RangeRequest) Reset()                    { *m = RangeRequest{} }
-func (m *RangeRequest) String() string            { return proto.CompactTextString(m) }
-func (*RangeRequest) ProtoMessage()               {}
-func (*RangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1} }
+func (m *RangeRequest) Reset()         { *m = RangeRequest{} }
+func (m *RangeRequest) String() string { return proto.CompactTextString(m) }
+func (*RangeRequest) ProtoMessage()    {}
+func (*RangeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{1}
+}
+func (m *RangeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RangeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RangeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RangeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RangeRequest.Merge(dst, src)
+}
+func (m *RangeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RangeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RangeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RangeRequest proto.InternalMessageInfo
 
 func (m *RangeRequest) GetKey() []byte {
 	if m != nil {
@@ -410,13 +488,44 @@ type RangeResponse struct {
 	// more indicates if there are more keys to return in the requested range.
 	More bool `protobuf:"varint,3,opt,name=more,proto3" json:"more,omitempty"`
 	// count is set to the number of keys within the range when requested.
-	Count int64 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	Count                int64    `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RangeResponse) Reset()                    { *m = RangeResponse{} }
-func (m *RangeResponse) String() string            { return proto.CompactTextString(m) }
-func (*RangeResponse) ProtoMessage()               {}
-func (*RangeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{2} }
+func (m *RangeResponse) Reset()         { *m = RangeResponse{} }
+func (m *RangeResponse) String() string { return proto.CompactTextString(m) }
+func (*RangeResponse) ProtoMessage()    {}
+func (*RangeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{2}
+}
+func (m *RangeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RangeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RangeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RangeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RangeResponse.Merge(dst, src)
+}
+func (m *RangeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RangeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RangeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RangeResponse proto.InternalMessageInfo
 
 func (m *RangeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -462,13 +571,44 @@ type PutRequest struct {
 	IgnoreValue bool `protobuf:"varint,5,opt,name=ignore_value,json=ignoreValue,proto3" json:"ignore_value,omitempty"`
 	// If ignore_lease is set, etcd updates the key using its current lease.
 	// Returns an error if the key does not exist.
-	IgnoreLease bool `protobuf:"varint,6,opt,name=ignore_lease,json=ignoreLease,proto3" json:"ignore_lease,omitempty"`
+	IgnoreLease          bool     `protobuf:"varint,6,opt,name=ignore_lease,json=ignoreLease,proto3" json:"ignore_lease,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *PutRequest) Reset()                    { *m = PutRequest{} }
-func (m *PutRequest) String() string            { return proto.CompactTextString(m) }
-func (*PutRequest) ProtoMessage()               {}
-func (*PutRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{3} }
+func (m *PutRequest) Reset()         { *m = PutRequest{} }
+func (m *PutRequest) String() string { return proto.CompactTextString(m) }
+func (*PutRequest) ProtoMessage()    {}
+func (*PutRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{3}
+}
+func (m *PutRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *PutRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_PutRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *PutRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PutRequest.Merge(dst, src)
+}
+func (m *PutRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *PutRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_PutRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PutRequest proto.InternalMessageInfo
 
 func (m *PutRequest) GetKey() []byte {
 	if m != nil {
@@ -515,13 +655,44 @@ func (m *PutRequest) GetIgnoreLease() bool {
 type PutResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// if prev_kv is set in the request, the previous key-value pair will be returned.
-	PrevKv *mvccpb.KeyValue `protobuf:"bytes,2,opt,name=prev_kv,json=prevKv" json:"prev_kv,omitempty"`
+	PrevKv               *mvccpb.KeyValue `protobuf:"bytes,2,opt,name=prev_kv,json=prevKv" json:"prev_kv,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *PutResponse) Reset()                    { *m = PutResponse{} }
-func (m *PutResponse) String() string            { return proto.CompactTextString(m) }
-func (*PutResponse) ProtoMessage()               {}
-func (*PutResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{4} }
+func (m *PutResponse) Reset()         { *m = PutResponse{} }
+func (m *PutResponse) String() string { return proto.CompactTextString(m) }
+func (*PutResponse) ProtoMessage()    {}
+func (*PutResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{4}
+}
+func (m *PutResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *PutResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_PutResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *PutResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PutResponse.Merge(dst, src)
+}
+func (m *PutResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *PutResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_PutResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PutResponse proto.InternalMessageInfo
 
 func (m *PutResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -548,13 +719,44 @@ type DeleteRangeRequest struct {
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
 	// If prev_kv is set, etcd gets the previous key-value pairs before deleting it.
 	// The previous key-value pairs will be returned in the delete response.
-	PrevKv bool `protobuf:"varint,3,opt,name=prev_kv,json=prevKv,proto3" json:"prev_kv,omitempty"`
+	PrevKv               bool     `protobuf:"varint,3,opt,name=prev_kv,json=prevKv,proto3" json:"prev_kv,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DeleteRangeRequest) Reset()                    { *m = DeleteRangeRequest{} }
-func (m *DeleteRangeRequest) String() string            { return proto.CompactTextString(m) }
-func (*DeleteRangeRequest) ProtoMessage()               {}
-func (*DeleteRangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{5} }
+func (m *DeleteRangeRequest) Reset()         { *m = DeleteRangeRequest{} }
+func (m *DeleteRangeRequest) String() string { return proto.CompactTextString(m) }
+func (*DeleteRangeRequest) ProtoMessage()    {}
+func (*DeleteRangeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{5}
+}
+func (m *DeleteRangeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DeleteRangeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DeleteRangeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DeleteRangeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteRangeRequest.Merge(dst, src)
+}
+func (m *DeleteRangeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *DeleteRangeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DeleteRangeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DeleteRangeRequest proto.InternalMessageInfo
 
 func (m *DeleteRangeRequest) GetKey() []byte {
 	if m != nil {
@@ -582,13 +784,44 @@ type DeleteRangeResponse struct {
 	// deleted is the number of keys deleted by the delete range request.
 	Deleted int64 `protobuf:"varint,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	// if prev_kv is set in the request, the previous key-value pairs will be returned.
-	PrevKvs []*mvccpb.KeyValue `protobuf:"bytes,3,rep,name=prev_kvs,json=prevKvs" json:"prev_kvs,omitempty"`
+	PrevKvs              []*mvccpb.KeyValue `protobuf:"bytes,3,rep,name=prev_kvs,json=prevKvs" json:"prev_kvs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
 }
 
-func (m *DeleteRangeResponse) Reset()                    { *m = DeleteRangeResponse{} }
-func (m *DeleteRangeResponse) String() string            { return proto.CompactTextString(m) }
-func (*DeleteRangeResponse) ProtoMessage()               {}
-func (*DeleteRangeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{6} }
+func (m *DeleteRangeResponse) Reset()         { *m = DeleteRangeResponse{} }
+func (m *DeleteRangeResponse) String() string { return proto.CompactTextString(m) }
+func (*DeleteRangeResponse) ProtoMessage()    {}
+func (*DeleteRangeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{6}
+}
+func (m *DeleteRangeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DeleteRangeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DeleteRangeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DeleteRangeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteRangeResponse.Merge(dst, src)
+}
+func (m *DeleteRangeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *DeleteRangeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DeleteRangeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DeleteRangeResponse proto.InternalMessageInfo
 
 func (m *DeleteRangeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -619,13 +852,44 @@ type RequestOp struct {
 	//	*RequestOp_RequestPut
 	//	*RequestOp_RequestDeleteRange
 	//	*RequestOp_RequestTxn
-	Request isRequestOp_Request `protobuf_oneof:"request"`
+	Request              isRequestOp_Request `protobuf_oneof:"request"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
-func (m *RequestOp) Reset()                    { *m = RequestOp{} }
-func (m *RequestOp) String() string            { return proto.CompactTextString(m) }
-func (*RequestOp) ProtoMessage()               {}
-func (*RequestOp) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{7} }
+func (m *RequestOp) Reset()         { *m = RequestOp{} }
+func (m *RequestOp) String() string { return proto.CompactTextString(m) }
+func (*RequestOp) ProtoMessage()    {}
+func (*RequestOp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{7}
+}
+func (m *RequestOp) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestOp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestOp.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RequestOp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestOp.Merge(dst, src)
+}
+func (m *RequestOp) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestOp) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestOp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestOp proto.InternalMessageInfo
 
 type isRequestOp_Request interface {
 	isRequestOp_Request()
@@ -773,22 +1037,22 @@ func _RequestOp_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Request.(type) {
 	case *RequestOp_RequestRange:
 		s := proto.Size(x.RequestRange)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *RequestOp_RequestPut:
 		s := proto.Size(x.RequestPut)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *RequestOp_RequestDeleteRange:
 		s := proto.Size(x.RequestDeleteRange)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *RequestOp_RequestTxn:
 		s := proto.Size(x.RequestTxn)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -806,13 +1070,44 @@ type ResponseOp struct {
 	//	*ResponseOp_ResponsePut
 	//	*ResponseOp_ResponseDeleteRange
 	//	*ResponseOp_ResponseTxn
-	Response isResponseOp_Response `protobuf_oneof:"response"`
+	Response             isResponseOp_Response `protobuf_oneof:"response"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *ResponseOp) Reset()                    { *m = ResponseOp{} }
-func (m *ResponseOp) String() string            { return proto.CompactTextString(m) }
-func (*ResponseOp) ProtoMessage()               {}
-func (*ResponseOp) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{8} }
+func (m *ResponseOp) Reset()         { *m = ResponseOp{} }
+func (m *ResponseOp) String() string { return proto.CompactTextString(m) }
+func (*ResponseOp) ProtoMessage()    {}
+func (*ResponseOp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{8}
+}
+func (m *ResponseOp) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResponseOp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResponseOp.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ResponseOp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseOp.Merge(dst, src)
+}
+func (m *ResponseOp) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResponseOp) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseOp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseOp proto.InternalMessageInfo
 
 type isResponseOp_Response interface {
 	isResponseOp_Response()
@@ -960,22 +1255,22 @@ func _ResponseOp_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Response.(type) {
 	case *ResponseOp_ResponseRange:
 		s := proto.Size(x.ResponseRange)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *ResponseOp_ResponsePut:
 		s := proto.Size(x.ResponsePut)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *ResponseOp_ResponseDeleteRange:
 		s := proto.Size(x.ResponseDeleteRange)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *ResponseOp_ResponseTxn:
 		s := proto.Size(x.ResponseTxn)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -1001,13 +1296,44 @@ type Compare struct {
 	TargetUnion isCompare_TargetUnion `protobuf_oneof:"target_union"`
 	// range_end compares the given target to all keys in the range [key, range_end).
 	// See RangeRequest for more details on key ranges.
-	RangeEnd []byte `protobuf:"bytes,64,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
+	RangeEnd             []byte   `protobuf:"bytes,64,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Compare) Reset()                    { *m = Compare{} }
-func (m *Compare) String() string            { return proto.CompactTextString(m) }
-func (*Compare) ProtoMessage()               {}
-func (*Compare) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9} }
+func (m *Compare) Reset()         { *m = Compare{} }
+func (m *Compare) String() string { return proto.CompactTextString(m) }
+func (*Compare) ProtoMessage()    {}
+func (*Compare) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{9}
+}
+func (m *Compare) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Compare) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Compare.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Compare) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Compare.Merge(dst, src)
+}
+func (m *Compare) XXX_Size() int {
+	return m.Size()
+}
+func (m *Compare) XXX_DiscardUnknown() {
+	xxx_messageInfo_Compare.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Compare proto.InternalMessageInfo
 
 type isCompare_TargetUnion interface {
 	isCompare_TargetUnion()
@@ -1192,20 +1518,20 @@ func _Compare_OneofSizer(msg proto.Message) (n int) {
 	// target_union
 	switch x := m.TargetUnion.(type) {
 	case *Compare_Version:
-		n += proto.SizeVarint(4<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.Version))
 	case *Compare_CreateRevision:
-		n += proto.SizeVarint(5<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.CreateRevision))
 	case *Compare_ModRevision:
-		n += proto.SizeVarint(6<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.ModRevision))
 	case *Compare_Value:
-		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.Value)))
 		n += len(x.Value)
 	case *Compare_Lease:
-		n += proto.SizeVarint(8<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.Lease))
 	case nil:
 	default:
@@ -1239,13 +1565,44 @@ type TxnRequest struct {
 	// success is a list of requests which will be applied when compare evaluates to true.
 	Success []*RequestOp `protobuf:"bytes,2,rep,name=success" json:"success,omitempty"`
 	// failure is a list of requests which will be applied when compare evaluates to false.
-	Failure []*RequestOp `protobuf:"bytes,3,rep,name=failure" json:"failure,omitempty"`
+	Failure              []*RequestOp `protobuf:"bytes,3,rep,name=failure" json:"failure,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *TxnRequest) Reset()                    { *m = TxnRequest{} }
-func (m *TxnRequest) String() string            { return proto.CompactTextString(m) }
-func (*TxnRequest) ProtoMessage()               {}
-func (*TxnRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{10} }
+func (m *TxnRequest) Reset()         { *m = TxnRequest{} }
+func (m *TxnRequest) String() string { return proto.CompactTextString(m) }
+func (*TxnRequest) ProtoMessage()    {}
+func (*TxnRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{10}
+}
+func (m *TxnRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TxnRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TxnRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *TxnRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TxnRequest.Merge(dst, src)
+}
+func (m *TxnRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *TxnRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_TxnRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TxnRequest proto.InternalMessageInfo
 
 func (m *TxnRequest) GetCompare() []*Compare {
 	if m != nil {
@@ -1274,13 +1631,44 @@ type TxnResponse struct {
 	Succeeded bool `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
 	// responses is a list of responses corresponding to the results from applying
 	// success if succeeded is true or failure if succeeded is false.
-	Responses []*ResponseOp `protobuf:"bytes,3,rep,name=responses" json:"responses,omitempty"`
+	Responses            []*ResponseOp `protobuf:"bytes,3,rep,name=responses" json:"responses,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *TxnResponse) Reset()                    { *m = TxnResponse{} }
-func (m *TxnResponse) String() string            { return proto.CompactTextString(m) }
-func (*TxnResponse) ProtoMessage()               {}
-func (*TxnResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{11} }
+func (m *TxnResponse) Reset()         { *m = TxnResponse{} }
+func (m *TxnResponse) String() string { return proto.CompactTextString(m) }
+func (*TxnResponse) ProtoMessage()    {}
+func (*TxnResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{11}
+}
+func (m *TxnResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TxnResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TxnResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *TxnResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TxnResponse.Merge(dst, src)
+}
+func (m *TxnResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *TxnResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_TxnResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TxnResponse proto.InternalMessageInfo
 
 func (m *TxnResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1311,13 +1699,44 @@ type CompactionRequest struct {
 	// physical is set so the RPC will wait until the compaction is physically
 	// applied to the local database such that compacted entries are totally
 	// removed from the backend database.
-	Physical bool `protobuf:"varint,2,opt,name=physical,proto3" json:"physical,omitempty"`
+	Physical             bool     `protobuf:"varint,2,opt,name=physical,proto3" json:"physical,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CompactionRequest) Reset()                    { *m = CompactionRequest{} }
-func (m *CompactionRequest) String() string            { return proto.CompactTextString(m) }
-func (*CompactionRequest) ProtoMessage()               {}
-func (*CompactionRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{12} }
+func (m *CompactionRequest) Reset()         { *m = CompactionRequest{} }
+func (m *CompactionRequest) String() string { return proto.CompactTextString(m) }
+func (*CompactionRequest) ProtoMessage()    {}
+func (*CompactionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{12}
+}
+func (m *CompactionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CompactionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CompactionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CompactionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactionRequest.Merge(dst, src)
+}
+func (m *CompactionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *CompactionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CompactionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CompactionRequest proto.InternalMessageInfo
 
 func (m *CompactionRequest) GetRevision() int64 {
 	if m != nil {
@@ -1334,13 +1753,44 @@ func (m *CompactionRequest) GetPhysical() bool {
 }
 
 type CompactionResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *CompactionResponse) Reset()                    { *m = CompactionResponse{} }
-func (m *CompactionResponse) String() string            { return proto.CompactTextString(m) }
-func (*CompactionResponse) ProtoMessage()               {}
-func (*CompactionResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{13} }
+func (m *CompactionResponse) Reset()         { *m = CompactionResponse{} }
+func (m *CompactionResponse) String() string { return proto.CompactTextString(m) }
+func (*CompactionResponse) ProtoMessage()    {}
+func (*CompactionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{13}
+}
+func (m *CompactionResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CompactionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CompactionResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CompactionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactionResponse.Merge(dst, src)
+}
+func (m *CompactionResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *CompactionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CompactionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CompactionResponse proto.InternalMessageInfo
 
 func (m *CompactionResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1350,22 +1800,84 @@ func (m *CompactionResponse) GetHeader() *ResponseHeader {
 }
 
 type HashRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HashRequest) Reset()                    { *m = HashRequest{} }
-func (m *HashRequest) String() string            { return proto.CompactTextString(m) }
-func (*HashRequest) ProtoMessage()               {}
-func (*HashRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{14} }
+func (m *HashRequest) Reset()         { *m = HashRequest{} }
+func (m *HashRequest) String() string { return proto.CompactTextString(m) }
+func (*HashRequest) ProtoMessage()    {}
+func (*HashRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{14}
+}
+func (m *HashRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HashRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HashRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HashRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HashRequest.Merge(dst, src)
+}
+func (m *HashRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *HashRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_HashRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HashRequest proto.InternalMessageInfo
 
 type HashKVRequest struct {
 	// revision is the key-value store revision for the hash operation.
-	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	Revision             int64    `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HashKVRequest) Reset()                    { *m = HashKVRequest{} }
-func (m *HashKVRequest) String() string            { return proto.CompactTextString(m) }
-func (*HashKVRequest) ProtoMessage()               {}
-func (*HashKVRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{15} }
+func (m *HashKVRequest) Reset()         { *m = HashKVRequest{} }
+func (m *HashKVRequest) String() string { return proto.CompactTextString(m) }
+func (*HashKVRequest) ProtoMessage()    {}
+func (*HashKVRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{15}
+}
+func (m *HashKVRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HashKVRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HashKVRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HashKVRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HashKVRequest.Merge(dst, src)
+}
+func (m *HashKVRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *HashKVRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_HashKVRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HashKVRequest proto.InternalMessageInfo
 
 func (m *HashKVRequest) GetRevision() int64 {
 	if m != nil {
@@ -1379,13 +1891,44 @@ type HashKVResponse struct {
 	// hash is the hash value computed from the responding member's MVCC keys up to a given revision.
 	Hash uint32 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
 	// compact_revision is the compacted revision of key-value store when hash begins.
-	CompactRevision int64 `protobuf:"varint,3,opt,name=compact_revision,json=compactRevision,proto3" json:"compact_revision,omitempty"`
+	CompactRevision      int64    `protobuf:"varint,3,opt,name=compact_revision,json=compactRevision,proto3" json:"compact_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HashKVResponse) Reset()                    { *m = HashKVResponse{} }
-func (m *HashKVResponse) String() string            { return proto.CompactTextString(m) }
-func (*HashKVResponse) ProtoMessage()               {}
-func (*HashKVResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{16} }
+func (m *HashKVResponse) Reset()         { *m = HashKVResponse{} }
+func (m *HashKVResponse) String() string { return proto.CompactTextString(m) }
+func (*HashKVResponse) ProtoMessage()    {}
+func (*HashKVResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{16}
+}
+func (m *HashKVResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HashKVResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HashKVResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HashKVResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HashKVResponse.Merge(dst, src)
+}
+func (m *HashKVResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *HashKVResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_HashKVResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HashKVResponse proto.InternalMessageInfo
 
 func (m *HashKVResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1411,13 +1954,44 @@ func (m *HashKVResponse) GetCompactRevision() int64 {
 type HashResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// hash is the hash value computed from the responding member's KV's backend.
-	Hash uint32 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	Hash                 uint32   `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HashResponse) Reset()                    { *m = HashResponse{} }
-func (m *HashResponse) String() string            { return proto.CompactTextString(m) }
-func (*HashResponse) ProtoMessage()               {}
-func (*HashResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{17} }
+func (m *HashResponse) Reset()         { *m = HashResponse{} }
+func (m *HashResponse) String() string { return proto.CompactTextString(m) }
+func (*HashResponse) ProtoMessage()    {}
+func (*HashResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{17}
+}
+func (m *HashResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HashResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HashResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HashResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HashResponse.Merge(dst, src)
+}
+func (m *HashResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *HashResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_HashResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HashResponse proto.InternalMessageInfo
 
 func (m *HashResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1434,12 +2008,43 @@ func (m *HashResponse) GetHash() uint32 {
 }
 
 type SnapshotRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SnapshotRequest) Reset()                    { *m = SnapshotRequest{} }
-func (m *SnapshotRequest) String() string            { return proto.CompactTextString(m) }
-func (*SnapshotRequest) ProtoMessage()               {}
-func (*SnapshotRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{18} }
+func (m *SnapshotRequest) Reset()         { *m = SnapshotRequest{} }
+func (m *SnapshotRequest) String() string { return proto.CompactTextString(m) }
+func (*SnapshotRequest) ProtoMessage()    {}
+func (*SnapshotRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{18}
+}
+func (m *SnapshotRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SnapshotRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SnapshotRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SnapshotRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SnapshotRequest.Merge(dst, src)
+}
+func (m *SnapshotRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *SnapshotRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SnapshotRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SnapshotRequest proto.InternalMessageInfo
 
 type SnapshotResponse struct {
 	// header has the current key-value store information. The first header in the snapshot
@@ -1448,13 +2053,44 @@ type SnapshotResponse struct {
 	// remaining_bytes is the number of blob bytes to be sent after this message
 	RemainingBytes uint64 `protobuf:"varint,2,opt,name=remaining_bytes,json=remainingBytes,proto3" json:"remaining_bytes,omitempty"`
 	// blob contains the next chunk of the snapshot in the snapshot stream.
-	Blob []byte `protobuf:"bytes,3,opt,name=blob,proto3" json:"blob,omitempty"`
+	Blob                 []byte   `protobuf:"bytes,3,opt,name=blob,proto3" json:"blob,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SnapshotResponse) Reset()                    { *m = SnapshotResponse{} }
-func (m *SnapshotResponse) String() string            { return proto.CompactTextString(m) }
-func (*SnapshotResponse) ProtoMessage()               {}
-func (*SnapshotResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{19} }
+func (m *SnapshotResponse) Reset()         { *m = SnapshotResponse{} }
+func (m *SnapshotResponse) String() string { return proto.CompactTextString(m) }
+func (*SnapshotResponse) ProtoMessage()    {}
+func (*SnapshotResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{19}
+}
+func (m *SnapshotResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SnapshotResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SnapshotResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SnapshotResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SnapshotResponse.Merge(dst, src)
+}
+func (m *SnapshotResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *SnapshotResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_SnapshotResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SnapshotResponse proto.InternalMessageInfo
 
 func (m *SnapshotResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1484,13 +2120,44 @@ type WatchRequest struct {
 	//	*WatchRequest_CreateRequest
 	//	*WatchRequest_CancelRequest
 	//	*WatchRequest_ProgressRequest
-	RequestUnion isWatchRequest_RequestUnion `protobuf_oneof:"request_union"`
+	RequestUnion         isWatchRequest_RequestUnion `protobuf_oneof:"request_union"`
+	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
+	XXX_unrecognized     []byte                      `json:"-"`
+	XXX_sizecache        int32                       `json:"-"`
 }
 
-func (m *WatchRequest) Reset()                    { *m = WatchRequest{} }
-func (m *WatchRequest) String() string            { return proto.CompactTextString(m) }
-func (*WatchRequest) ProtoMessage()               {}
-func (*WatchRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{20} }
+func (m *WatchRequest) Reset()         { *m = WatchRequest{} }
+func (m *WatchRequest) String() string { return proto.CompactTextString(m) }
+func (*WatchRequest) ProtoMessage()    {}
+func (*WatchRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{20}
+}
+func (m *WatchRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchRequest.Merge(dst, src)
+}
+func (m *WatchRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchRequest proto.InternalMessageInfo
 
 type isWatchRequest_RequestUnion interface {
 	isWatchRequest_RequestUnion()
@@ -1613,17 +2280,17 @@ func _WatchRequest_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.RequestUnion.(type) {
 	case *WatchRequest_CreateRequest:
 		s := proto.Size(x.CreateRequest)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *WatchRequest_CancelRequest:
 		s := proto.Size(x.CancelRequest)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *WatchRequest_ProgressRequest:
 		s := proto.Size(x.ProgressRequest)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -1661,13 +2328,44 @@ type WatchCreateRequest struct {
 	// use on the stream will cause an error to be returned.
 	WatchId int64 `protobuf:"varint,7,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
 	// fragment enables splitting large revisions into multiple watch responses.
-	Fragment bool `protobuf:"varint,8,opt,name=fragment,proto3" json:"fragment,omitempty"`
+	Fragment             bool     `protobuf:"varint,8,opt,name=fragment,proto3" json:"fragment,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchCreateRequest) Reset()                    { *m = WatchCreateRequest{} }
-func (m *WatchCreateRequest) String() string            { return proto.CompactTextString(m) }
-func (*WatchCreateRequest) ProtoMessage()               {}
-func (*WatchCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{21} }
+func (m *WatchCreateRequest) Reset()         { *m = WatchCreateRequest{} }
+func (m *WatchCreateRequest) String() string { return proto.CompactTextString(m) }
+func (*WatchCreateRequest) ProtoMessage()    {}
+func (*WatchCreateRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{21}
+}
+func (m *WatchCreateRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchCreateRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchCreateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchCreateRequest.Merge(dst, src)
+}
+func (m *WatchCreateRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchCreateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchCreateRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchCreateRequest proto.InternalMessageInfo
 
 func (m *WatchCreateRequest) GetKey() []byte {
 	if m != nil {
@@ -1727,13 +2425,44 @@ func (m *WatchCreateRequest) GetFragment() bool {
 
 type WatchCancelRequest struct {
 	// watch_id is the watcher id to cancel so that no more events are transmitted.
-	WatchId int64 `protobuf:"varint,1,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
+	WatchId              int64    `protobuf:"varint,1,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchCancelRequest) Reset()                    { *m = WatchCancelRequest{} }
-func (m *WatchCancelRequest) String() string            { return proto.CompactTextString(m) }
-func (*WatchCancelRequest) ProtoMessage()               {}
-func (*WatchCancelRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{22} }
+func (m *WatchCancelRequest) Reset()         { *m = WatchCancelRequest{} }
+func (m *WatchCancelRequest) String() string { return proto.CompactTextString(m) }
+func (*WatchCancelRequest) ProtoMessage()    {}
+func (*WatchCancelRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{22}
+}
+func (m *WatchCancelRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchCancelRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchCancelRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchCancelRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchCancelRequest.Merge(dst, src)
+}
+func (m *WatchCancelRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchCancelRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchCancelRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchCancelRequest proto.InternalMessageInfo
 
 func (m *WatchCancelRequest) GetWatchId() int64 {
 	if m != nil {
@@ -1745,12 +2474,43 @@ func (m *WatchCancelRequest) GetWatchId() int64 {
 // Requests the a watch stream progress status be sent in the watch response stream as soon as
 // possible.
 type WatchProgressRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchProgressRequest) Reset()                    { *m = WatchProgressRequest{} }
-func (m *WatchProgressRequest) String() string            { return proto.CompactTextString(m) }
-func (*WatchProgressRequest) ProtoMessage()               {}
-func (*WatchProgressRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{23} }
+func (m *WatchProgressRequest) Reset()         { *m = WatchProgressRequest{} }
+func (m *WatchProgressRequest) String() string { return proto.CompactTextString(m) }
+func (*WatchProgressRequest) ProtoMessage()    {}
+func (*WatchProgressRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{23}
+}
+func (m *WatchProgressRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchProgressRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchProgressRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchProgressRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchProgressRequest.Merge(dst, src)
+}
+func (m *WatchProgressRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchProgressRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchProgressRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchProgressRequest proto.InternalMessageInfo
 
 type WatchResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1776,14 +2536,45 @@ type WatchResponse struct {
 	// cancel_reason indicates the reason for canceling the watcher.
 	CancelReason string `protobuf:"bytes,6,opt,name=cancel_reason,json=cancelReason,proto3" json:"cancel_reason,omitempty"`
 	// framgment is true if large watch response was split over multiple responses.
-	Fragment bool            `protobuf:"varint,7,opt,name=fragment,proto3" json:"fragment,omitempty"`
-	Events   []*mvccpb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
+	Fragment             bool            `protobuf:"varint,7,opt,name=fragment,proto3" json:"fragment,omitempty"`
+	Events               []*mvccpb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *WatchResponse) Reset()                    { *m = WatchResponse{} }
-func (m *WatchResponse) String() string            { return proto.CompactTextString(m) }
-func (*WatchResponse) ProtoMessage()               {}
-func (*WatchResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{24} }
+func (m *WatchResponse) Reset()         { *m = WatchResponse{} }
+func (m *WatchResponse) String() string { return proto.CompactTextString(m) }
+func (*WatchResponse) ProtoMessage()    {}
+func (*WatchResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{24}
+}
+func (m *WatchResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchResponse.Merge(dst, src)
+}
+func (m *WatchResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchResponse proto.InternalMessageInfo
 
 func (m *WatchResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1845,13 +2636,44 @@ type LeaseGrantRequest struct {
 	// TTL is the advisory time-to-live in seconds. Expired lease will return -1.
 	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	// ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
-	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID                   int64    `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseGrantRequest) Reset()                    { *m = LeaseGrantRequest{} }
-func (m *LeaseGrantRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseGrantRequest) ProtoMessage()               {}
-func (*LeaseGrantRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{25} }
+func (m *LeaseGrantRequest) Reset()         { *m = LeaseGrantRequest{} }
+func (m *LeaseGrantRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseGrantRequest) ProtoMessage()    {}
+func (*LeaseGrantRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{25}
+}
+func (m *LeaseGrantRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseGrantRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseGrantRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseGrantRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseGrantRequest.Merge(dst, src)
+}
+func (m *LeaseGrantRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseGrantRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseGrantRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseGrantRequest proto.InternalMessageInfo
 
 func (m *LeaseGrantRequest) GetTTL() int64 {
 	if m != nil {
@@ -1872,14 +2694,45 @@ type LeaseGrantResponse struct {
 	// ID is the lease ID for the granted lease.
 	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	// TTL is the server chosen lease time-to-live in seconds.
-	TTL   int64  `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
-	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	TTL                  int64    `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	Error                string   `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseGrantResponse) Reset()                    { *m = LeaseGrantResponse{} }
-func (m *LeaseGrantResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseGrantResponse) ProtoMessage()               {}
-func (*LeaseGrantResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{26} }
+func (m *LeaseGrantResponse) Reset()         { *m = LeaseGrantResponse{} }
+func (m *LeaseGrantResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseGrantResponse) ProtoMessage()    {}
+func (*LeaseGrantResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{26}
+}
+func (m *LeaseGrantResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseGrantResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseGrantResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseGrantResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseGrantResponse.Merge(dst, src)
+}
+func (m *LeaseGrantResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseGrantResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseGrantResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseGrantResponse proto.InternalMessageInfo
 
 func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1911,13 +2764,44 @@ func (m *LeaseGrantResponse) GetError() string {
 
 type LeaseRevokeRequest struct {
 	// ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
-	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID                   int64    `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseRevokeRequest) Reset()                    { *m = LeaseRevokeRequest{} }
-func (m *LeaseRevokeRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseRevokeRequest) ProtoMessage()               {}
-func (*LeaseRevokeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{27} }
+func (m *LeaseRevokeRequest) Reset()         { *m = LeaseRevokeRequest{} }
+func (m *LeaseRevokeRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseRevokeRequest) ProtoMessage()    {}
+func (*LeaseRevokeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{27}
+}
+func (m *LeaseRevokeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseRevokeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseRevokeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseRevokeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseRevokeRequest.Merge(dst, src)
+}
+func (m *LeaseRevokeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseRevokeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseRevokeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseRevokeRequest proto.InternalMessageInfo
 
 func (m *LeaseRevokeRequest) GetID() int64 {
 	if m != nil {
@@ -1927,13 +2811,44 @@ func (m *LeaseRevokeRequest) GetID() int64 {
 }
 
 type LeaseRevokeResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *LeaseRevokeResponse) Reset()                    { *m = LeaseRevokeResponse{} }
-func (m *LeaseRevokeResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseRevokeResponse) ProtoMessage()               {}
-func (*LeaseRevokeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{28} }
+func (m *LeaseRevokeResponse) Reset()         { *m = LeaseRevokeResponse{} }
+func (m *LeaseRevokeResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseRevokeResponse) ProtoMessage()    {}
+func (*LeaseRevokeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{28}
+}
+func (m *LeaseRevokeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseRevokeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseRevokeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseRevokeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseRevokeResponse.Merge(dst, src)
+}
+func (m *LeaseRevokeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseRevokeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseRevokeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseRevokeResponse proto.InternalMessageInfo
 
 func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1946,13 +2861,44 @@ type LeaseCheckpoint struct {
 	// ID is the lease ID to checkpoint.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// Remaining_TTL is the remaining time until expiry of the lease.
-	Remaining_TTL int64 `protobuf:"varint,2,opt,name=remaining_TTL,json=remainingTTL,proto3" json:"remaining_TTL,omitempty"`
+	Remaining_TTL        int64    `protobuf:"varint,2,opt,name=remaining_TTL,json=remainingTTL,proto3" json:"remaining_TTL,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseCheckpoint) Reset()                    { *m = LeaseCheckpoint{} }
-func (m *LeaseCheckpoint) String() string            { return proto.CompactTextString(m) }
-func (*LeaseCheckpoint) ProtoMessage()               {}
-func (*LeaseCheckpoint) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{29} }
+func (m *LeaseCheckpoint) Reset()         { *m = LeaseCheckpoint{} }
+func (m *LeaseCheckpoint) String() string { return proto.CompactTextString(m) }
+func (*LeaseCheckpoint) ProtoMessage()    {}
+func (*LeaseCheckpoint) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{29}
+}
+func (m *LeaseCheckpoint) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseCheckpoint) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseCheckpoint.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseCheckpoint) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseCheckpoint.Merge(dst, src)
+}
+func (m *LeaseCheckpoint) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseCheckpoint) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseCheckpoint.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseCheckpoint proto.InternalMessageInfo
 
 func (m *LeaseCheckpoint) GetID() int64 {
 	if m != nil {
@@ -1969,13 +2915,44 @@ func (m *LeaseCheckpoint) GetRemaining_TTL() int64 {
 }
 
 type LeaseCheckpointRequest struct {
-	Checkpoints []*LeaseCheckpoint `protobuf:"bytes,1,rep,name=checkpoints" json:"checkpoints,omitempty"`
+	Checkpoints          []*LeaseCheckpoint `protobuf:"bytes,1,rep,name=checkpoints" json:"checkpoints,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
 }
 
-func (m *LeaseCheckpointRequest) Reset()                    { *m = LeaseCheckpointRequest{} }
-func (m *LeaseCheckpointRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseCheckpointRequest) ProtoMessage()               {}
-func (*LeaseCheckpointRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{30} }
+func (m *LeaseCheckpointRequest) Reset()         { *m = LeaseCheckpointRequest{} }
+func (m *LeaseCheckpointRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseCheckpointRequest) ProtoMessage()    {}
+func (*LeaseCheckpointRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{30}
+}
+func (m *LeaseCheckpointRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseCheckpointRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseCheckpointRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseCheckpointRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseCheckpointRequest.Merge(dst, src)
+}
+func (m *LeaseCheckpointRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseCheckpointRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseCheckpointRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseCheckpointRequest proto.InternalMessageInfo
 
 func (m *LeaseCheckpointRequest) GetCheckpoints() []*LeaseCheckpoint {
 	if m != nil {
@@ -1985,13 +2962,44 @@ func (m *LeaseCheckpointRequest) GetCheckpoints() []*LeaseCheckpoint {
 }
 
 type LeaseCheckpointResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *LeaseCheckpointResponse) Reset()                    { *m = LeaseCheckpointResponse{} }
-func (m *LeaseCheckpointResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseCheckpointResponse) ProtoMessage()               {}
-func (*LeaseCheckpointResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{31} }
+func (m *LeaseCheckpointResponse) Reset()         { *m = LeaseCheckpointResponse{} }
+func (m *LeaseCheckpointResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseCheckpointResponse) ProtoMessage()    {}
+func (*LeaseCheckpointResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{31}
+}
+func (m *LeaseCheckpointResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseCheckpointResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseCheckpointResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseCheckpointResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseCheckpointResponse.Merge(dst, src)
+}
+func (m *LeaseCheckpointResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseCheckpointResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseCheckpointResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseCheckpointResponse proto.InternalMessageInfo
 
 func (m *LeaseCheckpointResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2002,13 +3010,44 @@ func (m *LeaseCheckpointResponse) GetHeader() *ResponseHeader {
 
 type LeaseKeepAliveRequest struct {
 	// ID is the lease ID for the lease to keep alive.
-	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID                   int64    `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseKeepAliveRequest) Reset()                    { *m = LeaseKeepAliveRequest{} }
-func (m *LeaseKeepAliveRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseKeepAliveRequest) ProtoMessage()               {}
-func (*LeaseKeepAliveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{32} }
+func (m *LeaseKeepAliveRequest) Reset()         { *m = LeaseKeepAliveRequest{} }
+func (m *LeaseKeepAliveRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseKeepAliveRequest) ProtoMessage()    {}
+func (*LeaseKeepAliveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{32}
+}
+func (m *LeaseKeepAliveRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseKeepAliveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseKeepAliveRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseKeepAliveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseKeepAliveRequest.Merge(dst, src)
+}
+func (m *LeaseKeepAliveRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseKeepAliveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseKeepAliveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseKeepAliveRequest proto.InternalMessageInfo
 
 func (m *LeaseKeepAliveRequest) GetID() int64 {
 	if m != nil {
@@ -2022,13 +3061,44 @@ type LeaseKeepAliveResponse struct {
 	// ID is the lease ID from the keep alive request.
 	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	// TTL is the new time-to-live for the lease.
-	TTL int64 `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	TTL                  int64    `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseKeepAliveResponse) Reset()                    { *m = LeaseKeepAliveResponse{} }
-func (m *LeaseKeepAliveResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseKeepAliveResponse) ProtoMessage()               {}
-func (*LeaseKeepAliveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{33} }
+func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
+func (m *LeaseKeepAliveResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseKeepAliveResponse) ProtoMessage()    {}
+func (*LeaseKeepAliveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{33}
+}
+func (m *LeaseKeepAliveResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseKeepAliveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseKeepAliveResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseKeepAliveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseKeepAliveResponse.Merge(dst, src)
+}
+func (m *LeaseKeepAliveResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseKeepAliveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseKeepAliveResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseKeepAliveResponse proto.InternalMessageInfo
 
 func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2055,13 +3125,44 @@ type LeaseTimeToLiveRequest struct {
 	// ID is the lease ID for the lease.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// keys is true to query all the keys attached to this lease.
-	Keys bool `protobuf:"varint,2,opt,name=keys,proto3" json:"keys,omitempty"`
+	Keys                 bool     `protobuf:"varint,2,opt,name=keys,proto3" json:"keys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseTimeToLiveRequest) Reset()                    { *m = LeaseTimeToLiveRequest{} }
-func (m *LeaseTimeToLiveRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseTimeToLiveRequest) ProtoMessage()               {}
-func (*LeaseTimeToLiveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{34} }
+func (m *LeaseTimeToLiveRequest) Reset()         { *m = LeaseTimeToLiveRequest{} }
+func (m *LeaseTimeToLiveRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseTimeToLiveRequest) ProtoMessage()    {}
+func (*LeaseTimeToLiveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{34}
+}
+func (m *LeaseTimeToLiveRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseTimeToLiveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseTimeToLiveRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseTimeToLiveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseTimeToLiveRequest.Merge(dst, src)
+}
+func (m *LeaseTimeToLiveRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseTimeToLiveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseTimeToLiveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseTimeToLiveRequest proto.InternalMessageInfo
 
 func (m *LeaseTimeToLiveRequest) GetID() int64 {
 	if m != nil {
@@ -2086,13 +3187,44 @@ type LeaseTimeToLiveResponse struct {
 	// GrantedTTL is the initial granted time in seconds upon lease creation/renewal.
 	GrantedTTL int64 `protobuf:"varint,4,opt,name=grantedTTL,proto3" json:"grantedTTL,omitempty"`
 	// Keys is the list of keys attached to this lease.
-	Keys [][]byte `protobuf:"bytes,5,rep,name=keys" json:"keys,omitempty"`
+	Keys                 [][]byte `protobuf:"bytes,5,rep,name=keys" json:"keys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseTimeToLiveResponse) Reset()                    { *m = LeaseTimeToLiveResponse{} }
-func (m *LeaseTimeToLiveResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseTimeToLiveResponse) ProtoMessage()               {}
-func (*LeaseTimeToLiveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{35} }
+func (m *LeaseTimeToLiveResponse) Reset()         { *m = LeaseTimeToLiveResponse{} }
+func (m *LeaseTimeToLiveResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseTimeToLiveResponse) ProtoMessage()    {}
+func (*LeaseTimeToLiveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{35}
+}
+func (m *LeaseTimeToLiveResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseTimeToLiveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseTimeToLiveResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseTimeToLiveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseTimeToLiveResponse.Merge(dst, src)
+}
+func (m *LeaseTimeToLiveResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseTimeToLiveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseTimeToLiveResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseTimeToLiveResponse proto.InternalMessageInfo
 
 func (m *LeaseTimeToLiveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2130,21 +3262,83 @@ func (m *LeaseTimeToLiveResponse) GetKeys() [][]byte {
 }
 
 type LeaseLeasesRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseLeasesRequest) Reset()                    { *m = LeaseLeasesRequest{} }
-func (m *LeaseLeasesRequest) String() string            { return proto.CompactTextString(m) }
-func (*LeaseLeasesRequest) ProtoMessage()               {}
-func (*LeaseLeasesRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{36} }
+func (m *LeaseLeasesRequest) Reset()         { *m = LeaseLeasesRequest{} }
+func (m *LeaseLeasesRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseLeasesRequest) ProtoMessage()    {}
+func (*LeaseLeasesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{36}
+}
+func (m *LeaseLeasesRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseLeasesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseLeasesRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseLeasesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseLeasesRequest.Merge(dst, src)
+}
+func (m *LeaseLeasesRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseLeasesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseLeasesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseLeasesRequest proto.InternalMessageInfo
 
 type LeaseStatus struct {
-	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID                   int64    `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaseStatus) Reset()                    { *m = LeaseStatus{} }
-func (m *LeaseStatus) String() string            { return proto.CompactTextString(m) }
-func (*LeaseStatus) ProtoMessage()               {}
-func (*LeaseStatus) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{37} }
+func (m *LeaseStatus) Reset()         { *m = LeaseStatus{} }
+func (m *LeaseStatus) String() string { return proto.CompactTextString(m) }
+func (*LeaseStatus) ProtoMessage()    {}
+func (*LeaseStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{37}
+}
+func (m *LeaseStatus) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseStatus.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseStatus.Merge(dst, src)
+}
+func (m *LeaseStatus) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseStatus proto.InternalMessageInfo
 
 func (m *LeaseStatus) GetID() int64 {
 	if m != nil {
@@ -2154,14 +3348,45 @@ func (m *LeaseStatus) GetID() int64 {
 }
 
 type LeaseLeasesResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Leases []*LeaseStatus  `protobuf:"bytes,2,rep,name=leases" json:"leases,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Leases               []*LeaseStatus  `protobuf:"bytes,2,rep,name=leases" json:"leases,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *LeaseLeasesResponse) Reset()                    { *m = LeaseLeasesResponse{} }
-func (m *LeaseLeasesResponse) String() string            { return proto.CompactTextString(m) }
-func (*LeaseLeasesResponse) ProtoMessage()               {}
-func (*LeaseLeasesResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{38} }
+func (m *LeaseLeasesResponse) Reset()         { *m = LeaseLeasesResponse{} }
+func (m *LeaseLeasesResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseLeasesResponse) ProtoMessage()    {}
+func (*LeaseLeasesResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{38}
+}
+func (m *LeaseLeasesResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaseLeasesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaseLeasesResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaseLeasesResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaseLeasesResponse.Merge(dst, src)
+}
+func (m *LeaseLeasesResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaseLeasesResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaseLeasesResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaseLeasesResponse proto.InternalMessageInfo
 
 func (m *LeaseLeasesResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2185,13 +3410,44 @@ type Member struct {
 	// peerURLs is the list of URLs the member exposes to the cluster for communication.
 	PeerURLs []string `protobuf:"bytes,3,rep,name=peerURLs" json:"peerURLs,omitempty"`
 	// clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty.
-	ClientURLs []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
+	ClientURLs           []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Member) Reset()                    { *m = Member{} }
-func (m *Member) String() string            { return proto.CompactTextString(m) }
-func (*Member) ProtoMessage()               {}
-func (*Member) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{39} }
+func (m *Member) Reset()         { *m = Member{} }
+func (m *Member) String() string { return proto.CompactTextString(m) }
+func (*Member) ProtoMessage()    {}
+func (*Member) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{39}
+}
+func (m *Member) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Member) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Member.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Member) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Member.Merge(dst, src)
+}
+func (m *Member) XXX_Size() int {
+	return m.Size()
+}
+func (m *Member) XXX_DiscardUnknown() {
+	xxx_messageInfo_Member.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Member proto.InternalMessageInfo
 
 func (m *Member) GetID() uint64 {
 	if m != nil {
@@ -2223,13 +3479,44 @@ func (m *Member) GetClientURLs() []string {
 
 type MemberAddRequest struct {
 	// peerURLs is the list of URLs the added member will use to communicate with the cluster.
-	PeerURLs []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	PeerURLs             []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MemberAddRequest) Reset()                    { *m = MemberAddRequest{} }
-func (m *MemberAddRequest) String() string            { return proto.CompactTextString(m) }
-func (*MemberAddRequest) ProtoMessage()               {}
-func (*MemberAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{40} }
+func (m *MemberAddRequest) Reset()         { *m = MemberAddRequest{} }
+func (m *MemberAddRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberAddRequest) ProtoMessage()    {}
+func (*MemberAddRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{40}
+}
+func (m *MemberAddRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberAddRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberAddRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberAddRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberAddRequest.Merge(dst, src)
+}
+func (m *MemberAddRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberAddRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberAddRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberAddRequest proto.InternalMessageInfo
 
 func (m *MemberAddRequest) GetPeerURLs() []string {
 	if m != nil {
@@ -2243,13 +3530,44 @@ type MemberAddResponse struct {
 	// member is the member information for the added member.
 	Member *Member `protobuf:"bytes,2,opt,name=member" json:"member,omitempty"`
 	// members is a list of all members after adding the new member.
-	Members []*Member `protobuf:"bytes,3,rep,name=members" json:"members,omitempty"`
+	Members              []*Member `protobuf:"bytes,3,rep,name=members" json:"members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *MemberAddResponse) Reset()                    { *m = MemberAddResponse{} }
-func (m *MemberAddResponse) String() string            { return proto.CompactTextString(m) }
-func (*MemberAddResponse) ProtoMessage()               {}
-func (*MemberAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{41} }
+func (m *MemberAddResponse) Reset()         { *m = MemberAddResponse{} }
+func (m *MemberAddResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberAddResponse) ProtoMessage()    {}
+func (*MemberAddResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{41}
+}
+func (m *MemberAddResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberAddResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberAddResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberAddResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberAddResponse.Merge(dst, src)
+}
+func (m *MemberAddResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberAddResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberAddResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberAddResponse proto.InternalMessageInfo
 
 func (m *MemberAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2274,13 +3592,44 @@ func (m *MemberAddResponse) GetMembers() []*Member {
 
 type MemberRemoveRequest struct {
 	// ID is the member ID of the member to remove.
-	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID                   uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MemberRemoveRequest) Reset()                    { *m = MemberRemoveRequest{} }
-func (m *MemberRemoveRequest) String() string            { return proto.CompactTextString(m) }
-func (*MemberRemoveRequest) ProtoMessage()               {}
-func (*MemberRemoveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{42} }
+func (m *MemberRemoveRequest) Reset()         { *m = MemberRemoveRequest{} }
+func (m *MemberRemoveRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberRemoveRequest) ProtoMessage()    {}
+func (*MemberRemoveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{42}
+}
+func (m *MemberRemoveRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberRemoveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberRemoveRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberRemoveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberRemoveRequest.Merge(dst, src)
+}
+func (m *MemberRemoveRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberRemoveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberRemoveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberRemoveRequest proto.InternalMessageInfo
 
 func (m *MemberRemoveRequest) GetID() uint64 {
 	if m != nil {
@@ -2292,13 +3641,44 @@ func (m *MemberRemoveRequest) GetID() uint64 {
 type MemberRemoveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// members is a list of all members after removing the member.
-	Members []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	Members              []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *MemberRemoveResponse) Reset()                    { *m = MemberRemoveResponse{} }
-func (m *MemberRemoveResponse) String() string            { return proto.CompactTextString(m) }
-func (*MemberRemoveResponse) ProtoMessage()               {}
-func (*MemberRemoveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{43} }
+func (m *MemberRemoveResponse) Reset()         { *m = MemberRemoveResponse{} }
+func (m *MemberRemoveResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberRemoveResponse) ProtoMessage()    {}
+func (*MemberRemoveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{43}
+}
+func (m *MemberRemoveResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberRemoveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberRemoveResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberRemoveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberRemoveResponse.Merge(dst, src)
+}
+func (m *MemberRemoveResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberRemoveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberRemoveResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberRemoveResponse proto.InternalMessageInfo
 
 func (m *MemberRemoveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2318,13 +3698,44 @@ type MemberUpdateRequest struct {
 	// ID is the member ID of the member to update.
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// peerURLs is the new list of URLs the member will use to communicate with the cluster.
-	PeerURLs []string `protobuf:"bytes,2,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	PeerURLs             []string `protobuf:"bytes,2,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MemberUpdateRequest) Reset()                    { *m = MemberUpdateRequest{} }
-func (m *MemberUpdateRequest) String() string            { return proto.CompactTextString(m) }
-func (*MemberUpdateRequest) ProtoMessage()               {}
-func (*MemberUpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{44} }
+func (m *MemberUpdateRequest) Reset()         { *m = MemberUpdateRequest{} }
+func (m *MemberUpdateRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberUpdateRequest) ProtoMessage()    {}
+func (*MemberUpdateRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{44}
+}
+func (m *MemberUpdateRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberUpdateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberUpdateRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberUpdateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberUpdateRequest.Merge(dst, src)
+}
+func (m *MemberUpdateRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberUpdateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberUpdateRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberUpdateRequest proto.InternalMessageInfo
 
 func (m *MemberUpdateRequest) GetID() uint64 {
 	if m != nil {
@@ -2343,13 +3754,44 @@ func (m *MemberUpdateRequest) GetPeerURLs() []string {
 type MemberUpdateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// members is a list of all members after updating the member.
-	Members []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	Members              []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *MemberUpdateResponse) Reset()                    { *m = MemberUpdateResponse{} }
-func (m *MemberUpdateResponse) String() string            { return proto.CompactTextString(m) }
-func (*MemberUpdateResponse) ProtoMessage()               {}
-func (*MemberUpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{45} }
+func (m *MemberUpdateResponse) Reset()         { *m = MemberUpdateResponse{} }
+func (m *MemberUpdateResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberUpdateResponse) ProtoMessage()    {}
+func (*MemberUpdateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{45}
+}
+func (m *MemberUpdateResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberUpdateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberUpdateResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberUpdateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberUpdateResponse.Merge(dst, src)
+}
+func (m *MemberUpdateResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberUpdateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberUpdateResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberUpdateResponse proto.InternalMessageInfo
 
 func (m *MemberUpdateResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2366,23 +3808,85 @@ func (m *MemberUpdateResponse) GetMembers() []*Member {
 }
 
 type MemberListRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MemberListRequest) Reset()                    { *m = MemberListRequest{} }
-func (m *MemberListRequest) String() string            { return proto.CompactTextString(m) }
-func (*MemberListRequest) ProtoMessage()               {}
-func (*MemberListRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{46} }
+func (m *MemberListRequest) Reset()         { *m = MemberListRequest{} }
+func (m *MemberListRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberListRequest) ProtoMessage()    {}
+func (*MemberListRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{46}
+}
+func (m *MemberListRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberListRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberListRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberListRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberListRequest.Merge(dst, src)
+}
+func (m *MemberListRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberListRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberListRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberListRequest proto.InternalMessageInfo
 
 type MemberListResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// members is a list of all members associated with the cluster.
-	Members []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	Members              []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *MemberListResponse) Reset()                    { *m = MemberListResponse{} }
-func (m *MemberListResponse) String() string            { return proto.CompactTextString(m) }
-func (*MemberListResponse) ProtoMessage()               {}
-func (*MemberListResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{47} }
+func (m *MemberListResponse) Reset()         { *m = MemberListResponse{} }
+func (m *MemberListResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberListResponse) ProtoMessage()    {}
+func (*MemberListResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{47}
+}
+func (m *MemberListResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MemberListResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MemberListResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MemberListResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MemberListResponse.Merge(dst, src)
+}
+func (m *MemberListResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MemberListResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MemberListResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MemberListResponse proto.InternalMessageInfo
 
 func (m *MemberListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2399,21 +3903,83 @@ func (m *MemberListResponse) GetMembers() []*Member {
 }
 
 type DefragmentRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DefragmentRequest) Reset()                    { *m = DefragmentRequest{} }
-func (m *DefragmentRequest) String() string            { return proto.CompactTextString(m) }
-func (*DefragmentRequest) ProtoMessage()               {}
-func (*DefragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{48} }
+func (m *DefragmentRequest) Reset()         { *m = DefragmentRequest{} }
+func (m *DefragmentRequest) String() string { return proto.CompactTextString(m) }
+func (*DefragmentRequest) ProtoMessage()    {}
+func (*DefragmentRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{48}
+}
+func (m *DefragmentRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DefragmentRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DefragmentRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DefragmentRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefragmentRequest.Merge(dst, src)
+}
+func (m *DefragmentRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *DefragmentRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefragmentRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DefragmentRequest proto.InternalMessageInfo
 
 type DefragmentResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *DefragmentResponse) Reset()                    { *m = DefragmentResponse{} }
-func (m *DefragmentResponse) String() string            { return proto.CompactTextString(m) }
-func (*DefragmentResponse) ProtoMessage()               {}
-func (*DefragmentResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{49} }
+func (m *DefragmentResponse) Reset()         { *m = DefragmentResponse{} }
+func (m *DefragmentResponse) String() string { return proto.CompactTextString(m) }
+func (*DefragmentResponse) ProtoMessage()    {}
+func (*DefragmentResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{49}
+}
+func (m *DefragmentResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DefragmentResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DefragmentResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DefragmentResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefragmentResponse.Merge(dst, src)
+}
+func (m *DefragmentResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *DefragmentResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefragmentResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DefragmentResponse proto.InternalMessageInfo
 
 func (m *DefragmentResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2424,13 +3990,44 @@ func (m *DefragmentResponse) GetHeader() *ResponseHeader {
 
 type MoveLeaderRequest struct {
 	// targetID is the node ID for the new leader.
-	TargetID uint64 `protobuf:"varint,1,opt,name=targetID,proto3" json:"targetID,omitempty"`
+	TargetID             uint64   `protobuf:"varint,1,opt,name=targetID,proto3" json:"targetID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *MoveLeaderRequest) Reset()                    { *m = MoveLeaderRequest{} }
-func (m *MoveLeaderRequest) String() string            { return proto.CompactTextString(m) }
-func (*MoveLeaderRequest) ProtoMessage()               {}
-func (*MoveLeaderRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{50} }
+func (m *MoveLeaderRequest) Reset()         { *m = MoveLeaderRequest{} }
+func (m *MoveLeaderRequest) String() string { return proto.CompactTextString(m) }
+func (*MoveLeaderRequest) ProtoMessage()    {}
+func (*MoveLeaderRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{50}
+}
+func (m *MoveLeaderRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MoveLeaderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MoveLeaderRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MoveLeaderRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MoveLeaderRequest.Merge(dst, src)
+}
+func (m *MoveLeaderRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *MoveLeaderRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_MoveLeaderRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MoveLeaderRequest proto.InternalMessageInfo
 
 func (m *MoveLeaderRequest) GetTargetID() uint64 {
 	if m != nil {
@@ -2440,13 +4037,44 @@ func (m *MoveLeaderRequest) GetTargetID() uint64 {
 }
 
 type MoveLeaderResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *MoveLeaderResponse) Reset()                    { *m = MoveLeaderResponse{} }
-func (m *MoveLeaderResponse) String() string            { return proto.CompactTextString(m) }
-func (*MoveLeaderResponse) ProtoMessage()               {}
-func (*MoveLeaderResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{51} }
+func (m *MoveLeaderResponse) Reset()         { *m = MoveLeaderResponse{} }
+func (m *MoveLeaderResponse) String() string { return proto.CompactTextString(m) }
+func (*MoveLeaderResponse) ProtoMessage()    {}
+func (*MoveLeaderResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{51}
+}
+func (m *MoveLeaderResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MoveLeaderResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MoveLeaderResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *MoveLeaderResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MoveLeaderResponse.Merge(dst, src)
+}
+func (m *MoveLeaderResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MoveLeaderResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MoveLeaderResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MoveLeaderResponse proto.InternalMessageInfo
 
 func (m *MoveLeaderResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2464,13 +4092,44 @@ type AlarmRequest struct {
 	// alarm request covers all members.
 	MemberID uint64 `protobuf:"varint,2,opt,name=memberID,proto3" json:"memberID,omitempty"`
 	// alarm is the type of alarm to consider for this request.
-	Alarm AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	Alarm                AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *AlarmRequest) Reset()                    { *m = AlarmRequest{} }
-func (m *AlarmRequest) String() string            { return proto.CompactTextString(m) }
-func (*AlarmRequest) ProtoMessage()               {}
-func (*AlarmRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{52} }
+func (m *AlarmRequest) Reset()         { *m = AlarmRequest{} }
+func (m *AlarmRequest) String() string { return proto.CompactTextString(m) }
+func (*AlarmRequest) ProtoMessage()    {}
+func (*AlarmRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{52}
+}
+func (m *AlarmRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AlarmRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AlarmRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AlarmRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AlarmRequest.Merge(dst, src)
+}
+func (m *AlarmRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AlarmRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AlarmRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AlarmRequest proto.InternalMessageInfo
 
 func (m *AlarmRequest) GetAction() AlarmRequest_AlarmAction {
 	if m != nil {
@@ -2497,13 +4156,44 @@ type AlarmMember struct {
 	// memberID is the ID of the member associated with the raised alarm.
 	MemberID uint64 `protobuf:"varint,1,opt,name=memberID,proto3" json:"memberID,omitempty"`
 	// alarm is the type of alarm which has been raised.
-	Alarm AlarmType `protobuf:"varint,2,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	Alarm                AlarmType `protobuf:"varint,2,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *AlarmMember) Reset()                    { *m = AlarmMember{} }
-func (m *AlarmMember) String() string            { return proto.CompactTextString(m) }
-func (*AlarmMember) ProtoMessage()               {}
-func (*AlarmMember) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{53} }
+func (m *AlarmMember) Reset()         { *m = AlarmMember{} }
+func (m *AlarmMember) String() string { return proto.CompactTextString(m) }
+func (*AlarmMember) ProtoMessage()    {}
+func (*AlarmMember) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{53}
+}
+func (m *AlarmMember) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AlarmMember) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AlarmMember.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AlarmMember) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AlarmMember.Merge(dst, src)
+}
+func (m *AlarmMember) XXX_Size() int {
+	return m.Size()
+}
+func (m *AlarmMember) XXX_DiscardUnknown() {
+	xxx_messageInfo_AlarmMember.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AlarmMember proto.InternalMessageInfo
 
 func (m *AlarmMember) GetMemberID() uint64 {
 	if m != nil {
@@ -2522,13 +4212,44 @@ func (m *AlarmMember) GetAlarm() AlarmType {
 type AlarmResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// alarms is a list of alarms associated with the alarm request.
-	Alarms []*AlarmMember `protobuf:"bytes,2,rep,name=alarms" json:"alarms,omitempty"`
+	Alarms               []*AlarmMember `protobuf:"bytes,2,rep,name=alarms" json:"alarms,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
 }
 
-func (m *AlarmResponse) Reset()                    { *m = AlarmResponse{} }
-func (m *AlarmResponse) String() string            { return proto.CompactTextString(m) }
-func (*AlarmResponse) ProtoMessage()               {}
-func (*AlarmResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{54} }
+func (m *AlarmResponse) Reset()         { *m = AlarmResponse{} }
+func (m *AlarmResponse) String() string { return proto.CompactTextString(m) }
+func (*AlarmResponse) ProtoMessage()    {}
+func (*AlarmResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{54}
+}
+func (m *AlarmResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AlarmResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AlarmResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AlarmResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AlarmResponse.Merge(dst, src)
+}
+func (m *AlarmResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AlarmResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AlarmResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AlarmResponse proto.InternalMessageInfo
 
 func (m *AlarmResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2545,12 +4266,43 @@ func (m *AlarmResponse) GetAlarms() []*AlarmMember {
 }
 
 type StatusRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *StatusRequest) Reset()                    { *m = StatusRequest{} }
-func (m *StatusRequest) String() string            { return proto.CompactTextString(m) }
-func (*StatusRequest) ProtoMessage()               {}
-func (*StatusRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{55} }
+func (m *StatusRequest) Reset()         { *m = StatusRequest{} }
+func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
+func (*StatusRequest) ProtoMessage()    {}
+func (*StatusRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{55}
+}
+func (m *StatusRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StatusRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StatusRequest.Merge(dst, src)
+}
+func (m *StatusRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *StatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StatusRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StatusRequest proto.InternalMessageInfo
 
 type StatusResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -2569,13 +4321,44 @@ type StatusResponse struct {
 	// errors contains alarm/health information and status.
 	Errors []string `protobuf:"bytes,8,rep,name=errors" json:"errors,omitempty"`
 	// dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member.
-	DbSizeInUse int64 `protobuf:"varint,9,opt,name=dbSizeInUse,proto3" json:"dbSizeInUse,omitempty"`
+	DbSizeInUse          int64    `protobuf:"varint,9,opt,name=dbSizeInUse,proto3" json:"dbSizeInUse,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *StatusResponse) Reset()                    { *m = StatusResponse{} }
-func (m *StatusResponse) String() string            { return proto.CompactTextString(m) }
-func (*StatusResponse) ProtoMessage()               {}
-func (*StatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{56} }
+func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
+func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
+func (*StatusResponse) ProtoMessage()    {}
+func (*StatusResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{56}
+}
+func (m *StatusResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StatusResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StatusResponse.Merge(dst, src)
+}
+func (m *StatusResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *StatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_StatusResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StatusResponse proto.InternalMessageInfo
 
 func (m *StatusResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2641,30 +4424,123 @@ func (m *StatusResponse) GetDbSizeInUse() int64 {
 }
 
 type AuthEnableRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthEnableRequest) Reset()                    { *m = AuthEnableRequest{} }
-func (m *AuthEnableRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthEnableRequest) ProtoMessage()               {}
-func (*AuthEnableRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{57} }
+func (m *AuthEnableRequest) Reset()         { *m = AuthEnableRequest{} }
+func (m *AuthEnableRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthEnableRequest) ProtoMessage()    {}
+func (*AuthEnableRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{57}
+}
+func (m *AuthEnableRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthEnableRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthEnableRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthEnableRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthEnableRequest.Merge(dst, src)
+}
+func (m *AuthEnableRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthEnableRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthEnableRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthEnableRequest proto.InternalMessageInfo
 
 type AuthDisableRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthDisableRequest) Reset()                    { *m = AuthDisableRequest{} }
-func (m *AuthDisableRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthDisableRequest) ProtoMessage()               {}
-func (*AuthDisableRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{58} }
+func (m *AuthDisableRequest) Reset()         { *m = AuthDisableRequest{} }
+func (m *AuthDisableRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthDisableRequest) ProtoMessage()    {}
+func (*AuthDisableRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{58}
+}
+func (m *AuthDisableRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthDisableRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthDisableRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthDisableRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthDisableRequest.Merge(dst, src)
+}
+func (m *AuthDisableRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthDisableRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthDisableRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthDisableRequest proto.InternalMessageInfo
 
 type AuthenticateRequest struct {
-	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Password             string   `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthenticateRequest) Reset()                    { *m = AuthenticateRequest{} }
-func (m *AuthenticateRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthenticateRequest) ProtoMessage()               {}
-func (*AuthenticateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{59} }
+func (m *AuthenticateRequest) Reset()         { *m = AuthenticateRequest{} }
+func (m *AuthenticateRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthenticateRequest) ProtoMessage()    {}
+func (*AuthenticateRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{59}
+}
+func (m *AuthenticateRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthenticateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthenticateRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthenticateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthenticateRequest.Merge(dst, src)
+}
+func (m *AuthenticateRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthenticateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthenticateRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthenticateRequest proto.InternalMessageInfo
 
 func (m *AuthenticateRequest) GetName() string {
 	if m != nil {
@@ -2681,14 +4557,45 @@ func (m *AuthenticateRequest) GetPassword() string {
 }
 
 type AuthUserAddRequest struct {
-	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Password             string   `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserAddRequest) Reset()                    { *m = AuthUserAddRequest{} }
-func (m *AuthUserAddRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserAddRequest) ProtoMessage()               {}
-func (*AuthUserAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{60} }
+func (m *AuthUserAddRequest) Reset()         { *m = AuthUserAddRequest{} }
+func (m *AuthUserAddRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserAddRequest) ProtoMessage()    {}
+func (*AuthUserAddRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{60}
+}
+func (m *AuthUserAddRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserAddRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserAddRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserAddRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserAddRequest.Merge(dst, src)
+}
+func (m *AuthUserAddRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserAddRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserAddRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserAddRequest proto.InternalMessageInfo
 
 func (m *AuthUserAddRequest) GetName() string {
 	if m != nil {
@@ -2705,13 +4612,44 @@ func (m *AuthUserAddRequest) GetPassword() string {
 }
 
 type AuthUserGetRequest struct {
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserGetRequest) Reset()                    { *m = AuthUserGetRequest{} }
-func (m *AuthUserGetRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserGetRequest) ProtoMessage()               {}
-func (*AuthUserGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{61} }
+func (m *AuthUserGetRequest) Reset()         { *m = AuthUserGetRequest{} }
+func (m *AuthUserGetRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserGetRequest) ProtoMessage()    {}
+func (*AuthUserGetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{61}
+}
+func (m *AuthUserGetRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserGetRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserGetRequest.Merge(dst, src)
+}
+func (m *AuthUserGetRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserGetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserGetRequest proto.InternalMessageInfo
 
 func (m *AuthUserGetRequest) GetName() string {
 	if m != nil {
@@ -2722,13 +4660,44 @@ func (m *AuthUserGetRequest) GetName() string {
 
 type AuthUserDeleteRequest struct {
 	// name is the name of the user to delete.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserDeleteRequest) Reset()                    { *m = AuthUserDeleteRequest{} }
-func (m *AuthUserDeleteRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserDeleteRequest) ProtoMessage()               {}
-func (*AuthUserDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{62} }
+func (m *AuthUserDeleteRequest) Reset()         { *m = AuthUserDeleteRequest{} }
+func (m *AuthUserDeleteRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserDeleteRequest) ProtoMessage()    {}
+func (*AuthUserDeleteRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{62}
+}
+func (m *AuthUserDeleteRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserDeleteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserDeleteRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserDeleteRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserDeleteRequest.Merge(dst, src)
+}
+func (m *AuthUserDeleteRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserDeleteRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserDeleteRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserDeleteRequest proto.InternalMessageInfo
 
 func (m *AuthUserDeleteRequest) GetName() string {
 	if m != nil {
@@ -2741,15 +4710,44 @@ type AuthUserChangePasswordRequest struct {
 	// name is the name of the user whose password is being changed.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// password is the new password for the user.
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Password             string   `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *AuthUserChangePasswordRequest) Reset()         { *m = AuthUserChangePasswordRequest{} }
 func (m *AuthUserChangePasswordRequest) String() string { return proto.CompactTextString(m) }
 func (*AuthUserChangePasswordRequest) ProtoMessage()    {}
 func (*AuthUserChangePasswordRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{63}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{63}
 }
+func (m *AuthUserChangePasswordRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserChangePasswordRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserChangePasswordRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserChangePasswordRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserChangePasswordRequest.Merge(dst, src)
+}
+func (m *AuthUserChangePasswordRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserChangePasswordRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserChangePasswordRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserChangePasswordRequest proto.InternalMessageInfo
 
 func (m *AuthUserChangePasswordRequest) GetName() string {
 	if m != nil {
@@ -2769,13 +4767,44 @@ type AuthUserGrantRoleRequest struct {
 	// user is the name of the user which should be granted a given role.
 	User string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	// role is the name of the role to grant to the user.
-	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	Role                 string   `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserGrantRoleRequest) Reset()                    { *m = AuthUserGrantRoleRequest{} }
-func (m *AuthUserGrantRoleRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserGrantRoleRequest) ProtoMessage()               {}
-func (*AuthUserGrantRoleRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{64} }
+func (m *AuthUserGrantRoleRequest) Reset()         { *m = AuthUserGrantRoleRequest{} }
+func (m *AuthUserGrantRoleRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserGrantRoleRequest) ProtoMessage()    {}
+func (*AuthUserGrantRoleRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{64}
+}
+func (m *AuthUserGrantRoleRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserGrantRoleRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserGrantRoleRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserGrantRoleRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserGrantRoleRequest.Merge(dst, src)
+}
+func (m *AuthUserGrantRoleRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserGrantRoleRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserGrantRoleRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserGrantRoleRequest proto.InternalMessageInfo
 
 func (m *AuthUserGrantRoleRequest) GetUser() string {
 	if m != nil {
@@ -2792,14 +4821,45 @@ func (m *AuthUserGrantRoleRequest) GetRole() string {
 }
 
 type AuthUserRevokeRoleRequest struct {
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Role                 string   `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserRevokeRoleRequest) Reset()                    { *m = AuthUserRevokeRoleRequest{} }
-func (m *AuthUserRevokeRoleRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserRevokeRoleRequest) ProtoMessage()               {}
-func (*AuthUserRevokeRoleRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{65} }
+func (m *AuthUserRevokeRoleRequest) Reset()         { *m = AuthUserRevokeRoleRequest{} }
+func (m *AuthUserRevokeRoleRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserRevokeRoleRequest) ProtoMessage()    {}
+func (*AuthUserRevokeRoleRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{65}
+}
+func (m *AuthUserRevokeRoleRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserRevokeRoleRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserRevokeRoleRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserRevokeRoleRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserRevokeRoleRequest.Merge(dst, src)
+}
+func (m *AuthUserRevokeRoleRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserRevokeRoleRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserRevokeRoleRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserRevokeRoleRequest proto.InternalMessageInfo
 
 func (m *AuthUserRevokeRoleRequest) GetName() string {
 	if m != nil {
@@ -2817,13 +4877,44 @@ func (m *AuthUserRevokeRoleRequest) GetRole() string {
 
 type AuthRoleAddRequest struct {
 	// name is the name of the role to add to the authentication system.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthRoleAddRequest) Reset()                    { *m = AuthRoleAddRequest{} }
-func (m *AuthRoleAddRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleAddRequest) ProtoMessage()               {}
-func (*AuthRoleAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{66} }
+func (m *AuthRoleAddRequest) Reset()         { *m = AuthRoleAddRequest{} }
+func (m *AuthRoleAddRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleAddRequest) ProtoMessage()    {}
+func (*AuthRoleAddRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{66}
+}
+func (m *AuthRoleAddRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleAddRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleAddRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleAddRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleAddRequest.Merge(dst, src)
+}
+func (m *AuthRoleAddRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleAddRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleAddRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleAddRequest proto.InternalMessageInfo
 
 func (m *AuthRoleAddRequest) GetName() string {
 	if m != nil {
@@ -2833,13 +4924,44 @@ func (m *AuthRoleAddRequest) GetName() string {
 }
 
 type AuthRoleGetRequest struct {
-	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	Role                 string   `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthRoleGetRequest) Reset()                    { *m = AuthRoleGetRequest{} }
-func (m *AuthRoleGetRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleGetRequest) ProtoMessage()               {}
-func (*AuthRoleGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{67} }
+func (m *AuthRoleGetRequest) Reset()         { *m = AuthRoleGetRequest{} }
+func (m *AuthRoleGetRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleGetRequest) ProtoMessage()    {}
+func (*AuthRoleGetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{67}
+}
+func (m *AuthRoleGetRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleGetRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleGetRequest.Merge(dst, src)
+}
+func (m *AuthRoleGetRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleGetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleGetRequest proto.InternalMessageInfo
 
 func (m *AuthRoleGetRequest) GetRole() string {
 	if m != nil {
@@ -2849,29 +4971,122 @@ func (m *AuthRoleGetRequest) GetRole() string {
 }
 
 type AuthUserListRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthUserListRequest) Reset()                    { *m = AuthUserListRequest{} }
-func (m *AuthUserListRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserListRequest) ProtoMessage()               {}
-func (*AuthUserListRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{68} }
+func (m *AuthUserListRequest) Reset()         { *m = AuthUserListRequest{} }
+func (m *AuthUserListRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthUserListRequest) ProtoMessage()    {}
+func (*AuthUserListRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{68}
+}
+func (m *AuthUserListRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserListRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserListRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserListRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserListRequest.Merge(dst, src)
+}
+func (m *AuthUserListRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserListRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserListRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserListRequest proto.InternalMessageInfo
 
 type AuthRoleListRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthRoleListRequest) Reset()                    { *m = AuthRoleListRequest{} }
-func (m *AuthRoleListRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleListRequest) ProtoMessage()               {}
-func (*AuthRoleListRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{69} }
+func (m *AuthRoleListRequest) Reset()         { *m = AuthRoleListRequest{} }
+func (m *AuthRoleListRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleListRequest) ProtoMessage()    {}
+func (*AuthRoleListRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{69}
+}
+func (m *AuthRoleListRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleListRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleListRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleListRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleListRequest.Merge(dst, src)
+}
+func (m *AuthRoleListRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleListRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleListRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleListRequest proto.InternalMessageInfo
 
 type AuthRoleDeleteRequest struct {
-	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	Role                 string   `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthRoleDeleteRequest) Reset()                    { *m = AuthRoleDeleteRequest{} }
-func (m *AuthRoleDeleteRequest) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleDeleteRequest) ProtoMessage()               {}
-func (*AuthRoleDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{70} }
+func (m *AuthRoleDeleteRequest) Reset()         { *m = AuthRoleDeleteRequest{} }
+func (m *AuthRoleDeleteRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleDeleteRequest) ProtoMessage()    {}
+func (*AuthRoleDeleteRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{70}
+}
+func (m *AuthRoleDeleteRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleDeleteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleDeleteRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleDeleteRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleDeleteRequest.Merge(dst, src)
+}
+func (m *AuthRoleDeleteRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleDeleteRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleDeleteRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleDeleteRequest proto.InternalMessageInfo
 
 func (m *AuthRoleDeleteRequest) GetRole() string {
 	if m != nil {
@@ -2884,15 +5099,44 @@ type AuthRoleGrantPermissionRequest struct {
 	// name is the name of the role which will be granted the permission.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// perm is the permission to grant to the role.
-	Perm *authpb.Permission `protobuf:"bytes,2,opt,name=perm" json:"perm,omitempty"`
+	Perm                 *authpb.Permission `protobuf:"bytes,2,opt,name=perm" json:"perm,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
 }
 
 func (m *AuthRoleGrantPermissionRequest) Reset()         { *m = AuthRoleGrantPermissionRequest{} }
 func (m *AuthRoleGrantPermissionRequest) String() string { return proto.CompactTextString(m) }
 func (*AuthRoleGrantPermissionRequest) ProtoMessage()    {}
 func (*AuthRoleGrantPermissionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{71}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{71}
 }
+func (m *AuthRoleGrantPermissionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleGrantPermissionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleGrantPermissionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleGrantPermissionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleGrantPermissionRequest.Merge(dst, src)
+}
+func (m *AuthRoleGrantPermissionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleGrantPermissionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleGrantPermissionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleGrantPermissionRequest proto.InternalMessageInfo
 
 func (m *AuthRoleGrantPermissionRequest) GetName() string {
 	if m != nil {
@@ -2909,17 +5153,46 @@ func (m *AuthRoleGrantPermissionRequest) GetPerm() *authpb.Permission {
 }
 
 type AuthRoleRevokePermissionRequest struct {
-	Role     string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
-	Key      []byte `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	RangeEnd []byte `protobuf:"bytes,3,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
+	Role                 string   `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	Key                  []byte   `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	RangeEnd             []byte   `protobuf:"bytes,3,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *AuthRoleRevokePermissionRequest) Reset()         { *m = AuthRoleRevokePermissionRequest{} }
 func (m *AuthRoleRevokePermissionRequest) String() string { return proto.CompactTextString(m) }
 func (*AuthRoleRevokePermissionRequest) ProtoMessage()    {}
 func (*AuthRoleRevokePermissionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{72}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{72}
 }
+func (m *AuthRoleRevokePermissionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleRevokePermissionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleRevokePermissionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleRevokePermissionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleRevokePermissionRequest.Merge(dst, src)
+}
+func (m *AuthRoleRevokePermissionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleRevokePermissionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleRevokePermissionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleRevokePermissionRequest proto.InternalMessageInfo
 
 func (m *AuthRoleRevokePermissionRequest) GetRole() string {
 	if m != nil {
@@ -2943,13 +5216,44 @@ func (m *AuthRoleRevokePermissionRequest) GetRangeEnd() []byte {
 }
 
 type AuthEnableResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthEnableResponse) Reset()                    { *m = AuthEnableResponse{} }
-func (m *AuthEnableResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthEnableResponse) ProtoMessage()               {}
-func (*AuthEnableResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{73} }
+func (m *AuthEnableResponse) Reset()         { *m = AuthEnableResponse{} }
+func (m *AuthEnableResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthEnableResponse) ProtoMessage()    {}
+func (*AuthEnableResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{73}
+}
+func (m *AuthEnableResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthEnableResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthEnableResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthEnableResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthEnableResponse.Merge(dst, src)
+}
+func (m *AuthEnableResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthEnableResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthEnableResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthEnableResponse proto.InternalMessageInfo
 
 func (m *AuthEnableResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2959,13 +5263,44 @@ func (m *AuthEnableResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthDisableResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthDisableResponse) Reset()                    { *m = AuthDisableResponse{} }
-func (m *AuthDisableResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthDisableResponse) ProtoMessage()               {}
-func (*AuthDisableResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{74} }
+func (m *AuthDisableResponse) Reset()         { *m = AuthDisableResponse{} }
+func (m *AuthDisableResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthDisableResponse) ProtoMessage()    {}
+func (*AuthDisableResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{74}
+}
+func (m *AuthDisableResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthDisableResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthDisableResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthDisableResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthDisableResponse.Merge(dst, src)
+}
+func (m *AuthDisableResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthDisableResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthDisableResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthDisableResponse proto.InternalMessageInfo
 
 func (m *AuthDisableResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -2977,13 +5312,44 @@ func (m *AuthDisableResponse) GetHeader() *ResponseHeader {
 type AuthenticateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// token is an authorized token that can be used in succeeding RPCs
-	Token string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Token                string   `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AuthenticateResponse) Reset()                    { *m = AuthenticateResponse{} }
-func (m *AuthenticateResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthenticateResponse) ProtoMessage()               {}
-func (*AuthenticateResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{75} }
+func (m *AuthenticateResponse) Reset()         { *m = AuthenticateResponse{} }
+func (m *AuthenticateResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthenticateResponse) ProtoMessage()    {}
+func (*AuthenticateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{75}
+}
+func (m *AuthenticateResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthenticateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthenticateResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthenticateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthenticateResponse.Merge(dst, src)
+}
+func (m *AuthenticateResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthenticateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthenticateResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthenticateResponse proto.InternalMessageInfo
 
 func (m *AuthenticateResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3000,13 +5366,44 @@ func (m *AuthenticateResponse) GetToken() string {
 }
 
 type AuthUserAddResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserAddResponse) Reset()                    { *m = AuthUserAddResponse{} }
-func (m *AuthUserAddResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserAddResponse) ProtoMessage()               {}
-func (*AuthUserAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{76} }
+func (m *AuthUserAddResponse) Reset()         { *m = AuthUserAddResponse{} }
+func (m *AuthUserAddResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserAddResponse) ProtoMessage()    {}
+func (*AuthUserAddResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{76}
+}
+func (m *AuthUserAddResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserAddResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserAddResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserAddResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserAddResponse.Merge(dst, src)
+}
+func (m *AuthUserAddResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserAddResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserAddResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserAddResponse proto.InternalMessageInfo
 
 func (m *AuthUserAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3016,14 +5413,45 @@ func (m *AuthUserAddResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthUserGetResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Roles  []string        `protobuf:"bytes,2,rep,name=roles" json:"roles,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Roles                []string        `protobuf:"bytes,2,rep,name=roles" json:"roles,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserGetResponse) Reset()                    { *m = AuthUserGetResponse{} }
-func (m *AuthUserGetResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserGetResponse) ProtoMessage()               {}
-func (*AuthUserGetResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{77} }
+func (m *AuthUserGetResponse) Reset()         { *m = AuthUserGetResponse{} }
+func (m *AuthUserGetResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserGetResponse) ProtoMessage()    {}
+func (*AuthUserGetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{77}
+}
+func (m *AuthUserGetResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserGetResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserGetResponse.Merge(dst, src)
+}
+func (m *AuthUserGetResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserGetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserGetResponse proto.InternalMessageInfo
 
 func (m *AuthUserGetResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3040,13 +5468,44 @@ func (m *AuthUserGetResponse) GetRoles() []string {
 }
 
 type AuthUserDeleteResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserDeleteResponse) Reset()                    { *m = AuthUserDeleteResponse{} }
-func (m *AuthUserDeleteResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserDeleteResponse) ProtoMessage()               {}
-func (*AuthUserDeleteResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{78} }
+func (m *AuthUserDeleteResponse) Reset()         { *m = AuthUserDeleteResponse{} }
+func (m *AuthUserDeleteResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserDeleteResponse) ProtoMessage()    {}
+func (*AuthUserDeleteResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{78}
+}
+func (m *AuthUserDeleteResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserDeleteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserDeleteResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserDeleteResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserDeleteResponse.Merge(dst, src)
+}
+func (m *AuthUserDeleteResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserDeleteResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserDeleteResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserDeleteResponse proto.InternalMessageInfo
 
 func (m *AuthUserDeleteResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3056,15 +5515,44 @@ func (m *AuthUserDeleteResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthUserChangePasswordResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
 func (m *AuthUserChangePasswordResponse) Reset()         { *m = AuthUserChangePasswordResponse{} }
 func (m *AuthUserChangePasswordResponse) String() string { return proto.CompactTextString(m) }
 func (*AuthUserChangePasswordResponse) ProtoMessage()    {}
 func (*AuthUserChangePasswordResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{79}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{79}
 }
+func (m *AuthUserChangePasswordResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserChangePasswordResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserChangePasswordResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserChangePasswordResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserChangePasswordResponse.Merge(dst, src)
+}
+func (m *AuthUserChangePasswordResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserChangePasswordResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserChangePasswordResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserChangePasswordResponse proto.InternalMessageInfo
 
 func (m *AuthUserChangePasswordResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3074,13 +5562,44 @@ func (m *AuthUserChangePasswordResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthUserGrantRoleResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserGrantRoleResponse) Reset()                    { *m = AuthUserGrantRoleResponse{} }
-func (m *AuthUserGrantRoleResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserGrantRoleResponse) ProtoMessage()               {}
-func (*AuthUserGrantRoleResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{80} }
+func (m *AuthUserGrantRoleResponse) Reset()         { *m = AuthUserGrantRoleResponse{} }
+func (m *AuthUserGrantRoleResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserGrantRoleResponse) ProtoMessage()    {}
+func (*AuthUserGrantRoleResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{80}
+}
+func (m *AuthUserGrantRoleResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserGrantRoleResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserGrantRoleResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserGrantRoleResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserGrantRoleResponse.Merge(dst, src)
+}
+func (m *AuthUserGrantRoleResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserGrantRoleResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserGrantRoleResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserGrantRoleResponse proto.InternalMessageInfo
 
 func (m *AuthUserGrantRoleResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3090,13 +5609,44 @@ func (m *AuthUserGrantRoleResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthUserRevokeRoleResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserRevokeRoleResponse) Reset()                    { *m = AuthUserRevokeRoleResponse{} }
-func (m *AuthUserRevokeRoleResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserRevokeRoleResponse) ProtoMessage()               {}
-func (*AuthUserRevokeRoleResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{81} }
+func (m *AuthUserRevokeRoleResponse) Reset()         { *m = AuthUserRevokeRoleResponse{} }
+func (m *AuthUserRevokeRoleResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserRevokeRoleResponse) ProtoMessage()    {}
+func (*AuthUserRevokeRoleResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{81}
+}
+func (m *AuthUserRevokeRoleResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserRevokeRoleResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserRevokeRoleResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserRevokeRoleResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserRevokeRoleResponse.Merge(dst, src)
+}
+func (m *AuthUserRevokeRoleResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserRevokeRoleResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserRevokeRoleResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserRevokeRoleResponse proto.InternalMessageInfo
 
 func (m *AuthUserRevokeRoleResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3106,13 +5656,44 @@ func (m *AuthUserRevokeRoleResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthRoleAddResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthRoleAddResponse) Reset()                    { *m = AuthRoleAddResponse{} }
-func (m *AuthRoleAddResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleAddResponse) ProtoMessage()               {}
-func (*AuthRoleAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{82} }
+func (m *AuthRoleAddResponse) Reset()         { *m = AuthRoleAddResponse{} }
+func (m *AuthRoleAddResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleAddResponse) ProtoMessage()    {}
+func (*AuthRoleAddResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{82}
+}
+func (m *AuthRoleAddResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleAddResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleAddResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleAddResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleAddResponse.Merge(dst, src)
+}
+func (m *AuthRoleAddResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleAddResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleAddResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleAddResponse proto.InternalMessageInfo
 
 func (m *AuthRoleAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3122,14 +5703,45 @@ func (m *AuthRoleAddResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthRoleGetResponse struct {
-	Header *ResponseHeader      `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Perm   []*authpb.Permission `protobuf:"bytes,2,rep,name=perm" json:"perm,omitempty"`
+	Header               *ResponseHeader      `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Perm                 []*authpb.Permission `protobuf:"bytes,2,rep,name=perm" json:"perm,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *AuthRoleGetResponse) Reset()                    { *m = AuthRoleGetResponse{} }
-func (m *AuthRoleGetResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleGetResponse) ProtoMessage()               {}
-func (*AuthRoleGetResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{83} }
+func (m *AuthRoleGetResponse) Reset()         { *m = AuthRoleGetResponse{} }
+func (m *AuthRoleGetResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleGetResponse) ProtoMessage()    {}
+func (*AuthRoleGetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{83}
+}
+func (m *AuthRoleGetResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleGetResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleGetResponse.Merge(dst, src)
+}
+func (m *AuthRoleGetResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleGetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleGetResponse proto.InternalMessageInfo
 
 func (m *AuthRoleGetResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3146,14 +5758,45 @@ func (m *AuthRoleGetResponse) GetPerm() []*authpb.Permission {
 }
 
 type AuthRoleListResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Roles  []string        `protobuf:"bytes,2,rep,name=roles" json:"roles,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Roles                []string        `protobuf:"bytes,2,rep,name=roles" json:"roles,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthRoleListResponse) Reset()                    { *m = AuthRoleListResponse{} }
-func (m *AuthRoleListResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleListResponse) ProtoMessage()               {}
-func (*AuthRoleListResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{84} }
+func (m *AuthRoleListResponse) Reset()         { *m = AuthRoleListResponse{} }
+func (m *AuthRoleListResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleListResponse) ProtoMessage()    {}
+func (*AuthRoleListResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{84}
+}
+func (m *AuthRoleListResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleListResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleListResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleListResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleListResponse.Merge(dst, src)
+}
+func (m *AuthRoleListResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleListResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleListResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleListResponse proto.InternalMessageInfo
 
 func (m *AuthRoleListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3170,14 +5813,45 @@ func (m *AuthRoleListResponse) GetRoles() []string {
 }
 
 type AuthUserListResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Users  []string        `protobuf:"bytes,2,rep,name=users" json:"users,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Users                []string        `protobuf:"bytes,2,rep,name=users" json:"users,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthUserListResponse) Reset()                    { *m = AuthUserListResponse{} }
-func (m *AuthUserListResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthUserListResponse) ProtoMessage()               {}
-func (*AuthUserListResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{85} }
+func (m *AuthUserListResponse) Reset()         { *m = AuthUserListResponse{} }
+func (m *AuthUserListResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthUserListResponse) ProtoMessage()    {}
+func (*AuthUserListResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{85}
+}
+func (m *AuthUserListResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthUserListResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthUserListResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthUserListResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthUserListResponse.Merge(dst, src)
+}
+func (m *AuthUserListResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthUserListResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthUserListResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthUserListResponse proto.InternalMessageInfo
 
 func (m *AuthUserListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3194,13 +5868,44 @@ func (m *AuthUserListResponse) GetUsers() []string {
 }
 
 type AuthRoleDeleteResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *AuthRoleDeleteResponse) Reset()                    { *m = AuthRoleDeleteResponse{} }
-func (m *AuthRoleDeleteResponse) String() string            { return proto.CompactTextString(m) }
-func (*AuthRoleDeleteResponse) ProtoMessage()               {}
-func (*AuthRoleDeleteResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{86} }
+func (m *AuthRoleDeleteResponse) Reset()         { *m = AuthRoleDeleteResponse{} }
+func (m *AuthRoleDeleteResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthRoleDeleteResponse) ProtoMessage()    {}
+func (*AuthRoleDeleteResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{86}
+}
+func (m *AuthRoleDeleteResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleDeleteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleDeleteResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleDeleteResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleDeleteResponse.Merge(dst, src)
+}
+func (m *AuthRoleDeleteResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleDeleteResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleDeleteResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleDeleteResponse proto.InternalMessageInfo
 
 func (m *AuthRoleDeleteResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3210,15 +5915,44 @@ func (m *AuthRoleDeleteResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthRoleGrantPermissionResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
 func (m *AuthRoleGrantPermissionResponse) Reset()         { *m = AuthRoleGrantPermissionResponse{} }
 func (m *AuthRoleGrantPermissionResponse) String() string { return proto.CompactTextString(m) }
 func (*AuthRoleGrantPermissionResponse) ProtoMessage()    {}
 func (*AuthRoleGrantPermissionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{87}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{87}
 }
+func (m *AuthRoleGrantPermissionResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleGrantPermissionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleGrantPermissionResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleGrantPermissionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleGrantPermissionResponse.Merge(dst, src)
+}
+func (m *AuthRoleGrantPermissionResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleGrantPermissionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleGrantPermissionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleGrantPermissionResponse proto.InternalMessageInfo
 
 func (m *AuthRoleGrantPermissionResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3228,15 +5962,44 @@ func (m *AuthRoleGrantPermissionResponse) GetHeader() *ResponseHeader {
 }
 
 type AuthRoleRevokePermissionResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Header               *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
 func (m *AuthRoleRevokePermissionResponse) Reset()         { *m = AuthRoleRevokePermissionResponse{} }
 func (m *AuthRoleRevokePermissionResponse) String() string { return proto.CompactTextString(m) }
 func (*AuthRoleRevokePermissionResponse) ProtoMessage()    {}
 func (*AuthRoleRevokePermissionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorRpc, []int{88}
+	return fileDescriptor_rpc_a2f39eccaef4d9f6, []int{88}
 }
+func (m *AuthRoleRevokePermissionResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthRoleRevokePermissionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthRoleRevokePermissionResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AuthRoleRevokePermissionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRoleRevokePermissionResponse.Merge(dst, src)
+}
+func (m *AuthRoleRevokePermissionResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthRoleRevokePermissionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRoleRevokePermissionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRoleRevokePermissionResponse proto.InternalMessageInfo
 
 func (m *AuthRoleRevokePermissionResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -3386,7 +6149,7 @@ func NewKVClient(cc *grpc.ClientConn) KVClient {
 
 func (c *kVClient) Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error) {
 	out := new(RangeResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Range", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.KV/Range", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3395,7 +6158,7 @@ func (c *kVClient) Range(ctx context.Context, in *RangeRequest, opts ...grpc.Cal
 
 func (c *kVClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error) {
 	out := new(PutResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Put", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.KV/Put", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3404,7 +6167,7 @@ func (c *kVClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOpt
 
 func (c *kVClient) DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error) {
 	out := new(DeleteRangeResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/DeleteRange", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.KV/DeleteRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3413,7 +6176,7 @@ func (c *kVClient) DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts
 
 func (c *kVClient) Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error) {
 	out := new(TxnResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Txn", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.KV/Txn", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3422,7 +6185,7 @@ func (c *kVClient) Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOpt
 
 func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error) {
 	out := new(CompactionResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Compact", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.KV/Compact", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3596,7 +6359,7 @@ func NewWatchClient(cc *grpc.ClientConn) WatchClient {
 }
 
 func (c *watchClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Watch_WatchClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Watch_serviceDesc.Streams[0], c.cc, "/etcdserverpb.Watch/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Watch_serviceDesc.Streams[0], "/etcdserverpb.Watch/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3710,7 +6473,7 @@ func NewLeaseClient(cc *grpc.ClientConn) LeaseClient {
 
 func (c *leaseClient) LeaseGrant(ctx context.Context, in *LeaseGrantRequest, opts ...grpc.CallOption) (*LeaseGrantResponse, error) {
 	out := new(LeaseGrantResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseGrant", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Lease/LeaseGrant", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3719,7 +6482,7 @@ func (c *leaseClient) LeaseGrant(ctx context.Context, in *LeaseGrantRequest, opt
 
 func (c *leaseClient) LeaseRevoke(ctx context.Context, in *LeaseRevokeRequest, opts ...grpc.CallOption) (*LeaseRevokeResponse, error) {
 	out := new(LeaseRevokeResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseRevoke", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Lease/LeaseRevoke", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3727,7 +6490,7 @@ func (c *leaseClient) LeaseRevoke(ctx context.Context, in *LeaseRevokeRequest, o
 }
 
 func (c *leaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (Lease_LeaseKeepAliveClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Lease_serviceDesc.Streams[0], c.cc, "/etcdserverpb.Lease/LeaseKeepAlive", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Lease_serviceDesc.Streams[0], "/etcdserverpb.Lease/LeaseKeepAlive", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3759,7 +6522,7 @@ func (x *leaseLeaseKeepAliveClient) Recv() (*LeaseKeepAliveResponse, error) {
 
 func (c *leaseClient) LeaseTimeToLive(ctx context.Context, in *LeaseTimeToLiveRequest, opts ...grpc.CallOption) (*LeaseTimeToLiveResponse, error) {
 	out := new(LeaseTimeToLiveResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseTimeToLive", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Lease/LeaseTimeToLive", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3768,7 +6531,7 @@ func (c *leaseClient) LeaseTimeToLive(ctx context.Context, in *LeaseTimeToLiveRe
 
 func (c *leaseClient) LeaseLeases(ctx context.Context, in *LeaseLeasesRequest, opts ...grpc.CallOption) (*LeaseLeasesResponse, error) {
 	out := new(LeaseLeasesResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseLeases", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Lease/LeaseLeases", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3950,7 +6713,7 @@ func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 
 func (c *clusterClient) MemberAdd(ctx context.Context, in *MemberAddRequest, opts ...grpc.CallOption) (*MemberAddResponse, error) {
 	out := new(MemberAddResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberAdd", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Cluster/MemberAdd", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3959,7 +6722,7 @@ func (c *clusterClient) MemberAdd(ctx context.Context, in *MemberAddRequest, opt
 
 func (c *clusterClient) MemberRemove(ctx context.Context, in *MemberRemoveRequest, opts ...grpc.CallOption) (*MemberRemoveResponse, error) {
 	out := new(MemberRemoveResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberRemove", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Cluster/MemberRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3968,7 +6731,7 @@ func (c *clusterClient) MemberRemove(ctx context.Context, in *MemberRemoveReques
 
 func (c *clusterClient) MemberUpdate(ctx context.Context, in *MemberUpdateRequest, opts ...grpc.CallOption) (*MemberUpdateResponse, error) {
 	out := new(MemberUpdateResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberUpdate", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Cluster/MemberUpdate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3977,7 +6740,7 @@ func (c *clusterClient) MemberUpdate(ctx context.Context, in *MemberUpdateReques
 
 func (c *clusterClient) MemberList(ctx context.Context, in *MemberListRequest, opts ...grpc.CallOption) (*MemberListResponse, error) {
 	out := new(MemberListResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberList", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Cluster/MemberList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4133,7 +6896,7 @@ func NewMaintenanceClient(cc *grpc.ClientConn) MaintenanceClient {
 
 func (c *maintenanceClient) Alarm(ctx context.Context, in *AlarmRequest, opts ...grpc.CallOption) (*AlarmResponse, error) {
 	out := new(AlarmResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Alarm", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/Alarm", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4142,7 +6905,7 @@ func (c *maintenanceClient) Alarm(ctx context.Context, in *AlarmRequest, opts ..
 
 func (c *maintenanceClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Status", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/Status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4151,7 +6914,7 @@ func (c *maintenanceClient) Status(ctx context.Context, in *StatusRequest, opts 
 
 func (c *maintenanceClient) Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error) {
 	out := new(DefragmentResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Defragment", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/Defragment", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4160,7 +6923,7 @@ func (c *maintenanceClient) Defragment(ctx context.Context, in *DefragmentReques
 
 func (c *maintenanceClient) Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error) {
 	out := new(HashResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Hash", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/Hash", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4169,7 +6932,7 @@ func (c *maintenanceClient) Hash(ctx context.Context, in *HashRequest, opts ...g
 
 func (c *maintenanceClient) HashKV(ctx context.Context, in *HashKVRequest, opts ...grpc.CallOption) (*HashKVResponse, error) {
 	out := new(HashKVResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/HashKV", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/HashKV", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4177,7 +6940,7 @@ func (c *maintenanceClient) HashKV(ctx context.Context, in *HashKVRequest, opts 
 }
 
 func (c *maintenanceClient) Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (Maintenance_SnapshotClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Maintenance_serviceDesc.Streams[0], c.cc, "/etcdserverpb.Maintenance/Snapshot", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Maintenance_serviceDesc.Streams[0], "/etcdserverpb.Maintenance/Snapshot", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4210,7 +6973,7 @@ func (x *maintenanceSnapshotClient) Recv() (*SnapshotResponse, error) {
 
 func (c *maintenanceClient) MoveLeader(ctx context.Context, in *MoveLeaderRequest, opts ...grpc.CallOption) (*MoveLeaderResponse, error) {
 	out := new(MoveLeaderResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/MoveLeader", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Maintenance/MoveLeader", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4461,7 +7224,7 @@ func NewAuthClient(cc *grpc.ClientConn) AuthClient {
 
 func (c *authClient) AuthEnable(ctx context.Context, in *AuthEnableRequest, opts ...grpc.CallOption) (*AuthEnableResponse, error) {
 	out := new(AuthEnableResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/AuthEnable", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/AuthEnable", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4470,7 +7233,7 @@ func (c *authClient) AuthEnable(ctx context.Context, in *AuthEnableRequest, opts
 
 func (c *authClient) AuthDisable(ctx context.Context, in *AuthDisableRequest, opts ...grpc.CallOption) (*AuthDisableResponse, error) {
 	out := new(AuthDisableResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/AuthDisable", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/AuthDisable", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4479,7 +7242,7 @@ func (c *authClient) AuthDisable(ctx context.Context, in *AuthDisableRequest, op
 
 func (c *authClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error) {
 	out := new(AuthenticateResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/Authenticate", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/Authenticate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4488,7 +7251,7 @@ func (c *authClient) Authenticate(ctx context.Context, in *AuthenticateRequest, 
 
 func (c *authClient) UserAdd(ctx context.Context, in *AuthUserAddRequest, opts ...grpc.CallOption) (*AuthUserAddResponse, error) {
 	out := new(AuthUserAddResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserAdd", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserAdd", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4497,7 +7260,7 @@ func (c *authClient) UserAdd(ctx context.Context, in *AuthUserAddRequest, opts .
 
 func (c *authClient) UserGet(ctx context.Context, in *AuthUserGetRequest, opts ...grpc.CallOption) (*AuthUserGetResponse, error) {
 	out := new(AuthUserGetResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserGet", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4506,7 +7269,7 @@ func (c *authClient) UserGet(ctx context.Context, in *AuthUserGetRequest, opts .
 
 func (c *authClient) UserList(ctx context.Context, in *AuthUserListRequest, opts ...grpc.CallOption) (*AuthUserListResponse, error) {
 	out := new(AuthUserListResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserList", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4515,7 +7278,7 @@ func (c *authClient) UserList(ctx context.Context, in *AuthUserListRequest, opts
 
 func (c *authClient) UserDelete(ctx context.Context, in *AuthUserDeleteRequest, opts ...grpc.CallOption) (*AuthUserDeleteResponse, error) {
 	out := new(AuthUserDeleteResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserDelete", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4524,7 +7287,7 @@ func (c *authClient) UserDelete(ctx context.Context, in *AuthUserDeleteRequest, 
 
 func (c *authClient) UserChangePassword(ctx context.Context, in *AuthUserChangePasswordRequest, opts ...grpc.CallOption) (*AuthUserChangePasswordResponse, error) {
 	out := new(AuthUserChangePasswordResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserChangePassword", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserChangePassword", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4533,7 +7296,7 @@ func (c *authClient) UserChangePassword(ctx context.Context, in *AuthUserChangeP
 
 func (c *authClient) UserGrantRole(ctx context.Context, in *AuthUserGrantRoleRequest, opts ...grpc.CallOption) (*AuthUserGrantRoleResponse, error) {
 	out := new(AuthUserGrantRoleResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserGrantRole", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserGrantRole", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4542,7 +7305,7 @@ func (c *authClient) UserGrantRole(ctx context.Context, in *AuthUserGrantRoleReq
 
 func (c *authClient) UserRevokeRole(ctx context.Context, in *AuthUserRevokeRoleRequest, opts ...grpc.CallOption) (*AuthUserRevokeRoleResponse, error) {
 	out := new(AuthUserRevokeRoleResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/UserRevokeRole", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/UserRevokeRole", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4551,7 +7314,7 @@ func (c *authClient) UserRevokeRole(ctx context.Context, in *AuthUserRevokeRoleR
 
 func (c *authClient) RoleAdd(ctx context.Context, in *AuthRoleAddRequest, opts ...grpc.CallOption) (*AuthRoleAddResponse, error) {
 	out := new(AuthRoleAddResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleAdd", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleAdd", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4560,7 +7323,7 @@ func (c *authClient) RoleAdd(ctx context.Context, in *AuthRoleAddRequest, opts .
 
 func (c *authClient) RoleGet(ctx context.Context, in *AuthRoleGetRequest, opts ...grpc.CallOption) (*AuthRoleGetResponse, error) {
 	out := new(AuthRoleGetResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleGet", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4569,7 +7332,7 @@ func (c *authClient) RoleGet(ctx context.Context, in *AuthRoleGetRequest, opts .
 
 func (c *authClient) RoleList(ctx context.Context, in *AuthRoleListRequest, opts ...grpc.CallOption) (*AuthRoleListResponse, error) {
 	out := new(AuthRoleListResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleList", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4578,7 +7341,7 @@ func (c *authClient) RoleList(ctx context.Context, in *AuthRoleListRequest, opts
 
 func (c *authClient) RoleDelete(ctx context.Context, in *AuthRoleDeleteRequest, opts ...grpc.CallOption) (*AuthRoleDeleteResponse, error) {
 	out := new(AuthRoleDeleteResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleDelete", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4587,7 +7350,7 @@ func (c *authClient) RoleDelete(ctx context.Context, in *AuthRoleDeleteRequest, 
 
 func (c *authClient) RoleGrantPermission(ctx context.Context, in *AuthRoleGrantPermissionRequest, opts ...grpc.CallOption) (*AuthRoleGrantPermissionResponse, error) {
 	out := new(AuthRoleGrantPermissionResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleGrantPermission", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleGrantPermission", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -4596,7 +7359,7 @@ func (c *authClient) RoleGrantPermission(ctx context.Context, in *AuthRoleGrantP
 
 func (c *authClient) RoleRevokePermission(ctx context.Context, in *AuthRoleRevokePermissionRequest, opts ...grpc.CallOption) (*AuthRoleRevokePermissionResponse, error) {
 	out := new(AuthRoleRevokePermissionResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Auth/RoleRevokePermission", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/etcdserverpb.Auth/RoleRevokePermission", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -5040,6 +7803,9 @@ func (m *ResponseHeader) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.RaftTerm))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5140,6 +7906,9 @@ func (m *RangeRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.MaxCreateRevision))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5194,6 +7963,9 @@ func (m *RangeResponse) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x20
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Count))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5260,6 +8032,9 @@ func (m *PutRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5297,6 +8072,9 @@ func (m *PutResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n3
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5337,6 +8115,9 @@ func (m *DeleteRangeRequest) MarshalTo(dAtA []byte) (int, error) {
 			dAtA[i] = 0
 		}
 		i++
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5383,6 +8164,9 @@ func (m *DeleteRangeResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5407,6 +8191,9 @@ func (m *RequestOp) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn5
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5488,6 +8275,9 @@ func (m *ResponseOp) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn10
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5594,6 +8384,9 @@ func (m *Compare) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
 		i += copy(dAtA[i:], m.RangeEnd)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5686,6 +8479,9 @@ func (m *TxnRequest) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5736,6 +8532,9 @@ func (m *TxnResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5769,6 +8568,9 @@ func (m *CompactionRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5797,6 +8599,9 @@ func (m *CompactionResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n17
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5815,6 +8620,9 @@ func (m *HashRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5837,6 +8645,9 @@ func (m *HashKVRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Revision))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5876,6 +8687,9 @@ func (m *HashKVResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.CompactRevision))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5909,6 +8723,9 @@ func (m *HashResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Hash))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5927,6 +8744,9 @@ func (m *SnapshotRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5966,6 +8786,9 @@ func (m *SnapshotResponse) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Blob)))
 		i += copy(dAtA[i:], m.Blob)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5990,6 +8813,9 @@ func (m *WatchRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn21
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6120,6 +8946,9 @@ func (m *WatchCreateRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6143,6 +8972,9 @@ func (m *WatchCancelRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.WatchId))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6161,6 +8993,9 @@ func (m *WatchProgressRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6247,6 +9082,9 @@ func (m *WatchResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6274,6 +9112,9 @@ func (m *LeaseGrantRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x10
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6319,6 +9160,9 @@ func (m *LeaseGrantResponse) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Error)))
 		i += copy(dAtA[i:], m.Error)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6341,6 +9185,9 @@ func (m *LeaseRevokeRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6370,6 +9217,9 @@ func (m *LeaseRevokeResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n29
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6397,6 +9247,9 @@ func (m *LeaseCheckpoint) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x10
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Remaining_TTL))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6428,6 +9281,9 @@ func (m *LeaseCheckpointRequest) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6456,6 +9312,9 @@ func (m *LeaseCheckpointResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n30
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6478,6 +9337,9 @@ func (m *LeaseKeepAliveRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6517,6 +9379,9 @@ func (m *LeaseKeepAliveResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.TTL))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6549,6 +9414,9 @@ func (m *LeaseTimeToLiveRequest) MarshalTo(dAtA []byte) (int, error) {
 			dAtA[i] = 0
 		}
 		i++
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6601,6 +9469,9 @@ func (m *LeaseTimeToLiveResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], b)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6619,6 +9490,9 @@ func (m *LeaseLeasesRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6641,6 +9515,9 @@ func (m *LeaseStatus) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6681,6 +9558,9 @@ func (m *LeaseLeasesResponse) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6741,6 +9621,9 @@ func (m *Member) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6773,6 +9656,9 @@ func (m *MemberAddRequest) MarshalTo(dAtA []byte) (int, error) {
 			i++
 			i += copy(dAtA[i:], s)
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6824,6 +9710,9 @@ func (m *MemberAddResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6846,6 +9735,9 @@ func (m *MemberRemoveRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6887,6 +9779,9 @@ func (m *MemberRemoveResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6924,6 +9819,9 @@ func (m *MemberUpdateRequest) MarshalTo(dAtA []byte) (int, error) {
 			i++
 			i += copy(dAtA[i:], s)
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -6965,6 +9863,9 @@ func (m *MemberUpdateResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6983,6 +9884,9 @@ func (m *MemberListRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7023,6 +9927,9 @@ func (m *MemberListResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7041,6 +9948,9 @@ func (m *DefragmentRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7069,6 +9979,9 @@ func (m *DefragmentResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n39
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7091,6 +10004,9 @@ func (m *MoveLeaderRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.TargetID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7119,6 +10035,9 @@ func (m *MoveLeaderResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n40
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7153,6 +10072,9 @@ func (m *AlarmRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Alarm))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7180,6 +10102,9 @@ func (m *AlarmMember) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x10
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.Alarm))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7221,6 +10146,9 @@ func (m *AlarmResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7239,6 +10167,9 @@ func (m *StatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7318,6 +10249,9 @@ func (m *StatusResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(m.DbSizeInUse))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7336,6 +10270,9 @@ func (m *AuthEnableRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7354,6 +10291,9 @@ func (m *AuthDisableRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7383,6 +10323,9 @@ func (m *AuthenticateRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
 		i += copy(dAtA[i:], m.Password)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7414,6 +10357,9 @@ func (m *AuthUserAddRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
 		i += copy(dAtA[i:], m.Password)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7438,6 +10384,9 @@ func (m *AuthUserGetRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
 		i += copy(dAtA[i:], m.Name)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7461,6 +10410,9 @@ func (m *AuthUserDeleteRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
 		i += copy(dAtA[i:], m.Name)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7492,6 +10444,9 @@ func (m *AuthUserChangePasswordRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
 		i += copy(dAtA[i:], m.Password)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7521,6 +10476,9 @@ func (m *AuthUserGrantRoleRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
 		i += copy(dAtA[i:], m.Role)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7552,6 +10510,9 @@ func (m *AuthUserRevokeRoleRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
 		i += copy(dAtA[i:], m.Role)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7575,6 +10536,9 @@ func (m *AuthRoleAddRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
 		i += copy(dAtA[i:], m.Name)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7600,6 +10564,9 @@ func (m *AuthRoleGetRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
 		i += copy(dAtA[i:], m.Role)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7618,6 +10585,9 @@ func (m *AuthUserListRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7636,6 +10606,9 @@ func (m *AuthRoleListRequest) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7659,6 +10632,9 @@ func (m *AuthRoleDeleteRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
 		i += copy(dAtA[i:], m.Role)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7693,6 +10669,9 @@ func (m *AuthRoleGrantPermissionRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n43
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7730,6 +10709,9 @@ func (m *AuthRoleRevokePermissionRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
 		i += copy(dAtA[i:], m.RangeEnd)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7758,6 +10740,9 @@ func (m *AuthEnableResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n44
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7785,6 +10770,9 @@ func (m *AuthDisableResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n45
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7820,6 +10808,9 @@ func (m *AuthenticateResponse) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRpc(dAtA, i, uint64(len(m.Token)))
 		i += copy(dAtA[i:], m.Token)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7847,6 +10838,9 @@ func (m *AuthUserAddResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n47
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7891,6 +10885,9 @@ func (m *AuthUserGetResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7918,6 +10915,9 @@ func (m *AuthUserDeleteResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n49
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -7947,6 +10947,9 @@ func (m *AuthUserChangePasswordResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n50
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -7974,6 +10977,9 @@ func (m *AuthUserGrantRoleResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n51
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -8003,6 +11009,9 @@ func (m *AuthUserRevokeRoleResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n52
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -8030,6 +11039,9 @@ func (m *AuthRoleAddResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n53
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -8070,6 +11082,9 @@ func (m *AuthRoleGetResponse) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -8114,6 +11129,9 @@ func (m *AuthRoleListResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -8157,6 +11175,9 @@ func (m *AuthUserListResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -8184,6 +11205,9 @@ func (m *AuthRoleDeleteResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n57
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -8213,6 +11237,9 @@ func (m *AuthRoleGrantPermissionResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n58
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -8241,6 +11268,9 @@ func (m *AuthRoleRevokePermissionResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n59
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -8267,6 +11297,9 @@ func (m *ResponseHeader) Size() (n int) {
 	}
 	if m.RaftTerm != 0 {
 		n += 1 + sovRpc(uint64(m.RaftTerm))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8315,6 +11348,9 @@ func (m *RangeRequest) Size() (n int) {
 	if m.MaxCreateRevision != 0 {
 		n += 1 + sovRpc(uint64(m.MaxCreateRevision))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8336,6 +11372,9 @@ func (m *RangeResponse) Size() (n int) {
 	}
 	if m.Count != 0 {
 		n += 1 + sovRpc(uint64(m.Count))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8363,6 +11402,9 @@ func (m *PutRequest) Size() (n int) {
 	if m.IgnoreLease {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8376,6 +11418,9 @@ func (m *PutResponse) Size() (n int) {
 	if m.PrevKv != nil {
 		l = m.PrevKv.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8393,6 +11438,9 @@ func (m *DeleteRangeRequest) Size() (n int) {
 	}
 	if m.PrevKv {
 		n += 2
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8413,6 +11461,9 @@ func (m *DeleteRangeResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8421,6 +11472,9 @@ func (m *RequestOp) Size() (n int) {
 	_ = l
 	if m.Request != nil {
 		n += m.Request.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8466,6 +11520,9 @@ func (m *ResponseOp) Size() (n int) {
 	_ = l
 	if m.Response != nil {
 		n += m.Response.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8526,6 +11583,9 @@ func (m *Compare) Size() (n int) {
 	if l > 0 {
 		n += 2 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8583,6 +11643,9 @@ func (m *TxnRequest) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8602,6 +11665,9 @@ func (m *TxnResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8614,6 +11680,9 @@ func (m *CompactionRequest) Size() (n int) {
 	if m.Physical {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8624,12 +11693,18 @@ func (m *CompactionResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *HashRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8638,6 +11713,9 @@ func (m *HashKVRequest) Size() (n int) {
 	_ = l
 	if m.Revision != 0 {
 		n += 1 + sovRpc(uint64(m.Revision))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8655,6 +11733,9 @@ func (m *HashKVResponse) Size() (n int) {
 	if m.CompactRevision != 0 {
 		n += 1 + sovRpc(uint64(m.CompactRevision))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8668,12 +11749,18 @@ func (m *HashResponse) Size() (n int) {
 	if m.Hash != 0 {
 		n += 1 + sovRpc(uint64(m.Hash))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *SnapshotRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8691,6 +11778,9 @@ func (m *SnapshotResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8699,6 +11789,9 @@ func (m *WatchRequest) Size() (n int) {
 	_ = l
 	if m.RequestUnion != nil {
 		n += m.RequestUnion.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8763,6 +11856,9 @@ func (m *WatchCreateRequest) Size() (n int) {
 	if m.Fragment {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8772,12 +11868,18 @@ func (m *WatchCancelRequest) Size() (n int) {
 	if m.WatchId != 0 {
 		n += 1 + sovRpc(uint64(m.WatchId))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *WatchProgressRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8813,6 +11915,9 @@ func (m *WatchResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8824,6 +11929,9 @@ func (m *LeaseGrantRequest) Size() (n int) {
 	}
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8845,6 +11953,9 @@ func (m *LeaseGrantResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8853,6 +11964,9 @@ func (m *LeaseRevokeRequest) Size() (n int) {
 	_ = l
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8863,6 +11977,9 @@ func (m *LeaseRevokeResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8876,6 +11993,9 @@ func (m *LeaseCheckpoint) Size() (n int) {
 	if m.Remaining_TTL != 0 {
 		n += 1 + sovRpc(uint64(m.Remaining_TTL))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8888,6 +12008,9 @@ func (m *LeaseCheckpointRequest) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8898,6 +12021,9 @@ func (m *LeaseCheckpointResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8906,6 +12032,9 @@ func (m *LeaseKeepAliveRequest) Size() (n int) {
 	_ = l
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8923,6 +12052,9 @@ func (m *LeaseKeepAliveResponse) Size() (n int) {
 	if m.TTL != 0 {
 		n += 1 + sovRpc(uint64(m.TTL))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8934,6 +12066,9 @@ func (m *LeaseTimeToLiveRequest) Size() (n int) {
 	}
 	if m.Keys {
 		n += 2
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8960,12 +12095,18 @@ func (m *LeaseTimeToLiveResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *LeaseLeasesRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -8974,6 +12115,9 @@ func (m *LeaseStatus) Size() (n int) {
 	_ = l
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -8990,6 +12134,9 @@ func (m *LeaseLeasesResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovRpc(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9016,6 +12163,9 @@ func (m *Member) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9027,6 +12177,9 @@ func (m *MemberAddRequest) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9048,6 +12201,9 @@ func (m *MemberAddResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9056,6 +12212,9 @@ func (m *MemberRemoveRequest) Size() (n int) {
 	_ = l
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9073,6 +12232,9 @@ func (m *MemberRemoveResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9087,6 +12249,9 @@ func (m *MemberUpdateRequest) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9104,12 +12269,18 @@ func (m *MemberUpdateResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *MemberListRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9126,12 +12297,18 @@ func (m *MemberListResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *DefragmentRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9142,6 +12319,9 @@ func (m *DefragmentResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9150,6 +12330,9 @@ func (m *MoveLeaderRequest) Size() (n int) {
 	_ = l
 	if m.TargetID != 0 {
 		n += 1 + sovRpc(uint64(m.TargetID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9160,6 +12343,9 @@ func (m *MoveLeaderResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9176,6 +12362,9 @@ func (m *AlarmRequest) Size() (n int) {
 	if m.Alarm != 0 {
 		n += 1 + sovRpc(uint64(m.Alarm))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9187,6 +12376,9 @@ func (m *AlarmMember) Size() (n int) {
 	}
 	if m.Alarm != 0 {
 		n += 1 + sovRpc(uint64(m.Alarm))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9204,12 +12396,18 @@ func (m *AlarmResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *StatusRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9248,18 +12446,27 @@ func (m *StatusResponse) Size() (n int) {
 	if m.DbSizeInUse != 0 {
 		n += 1 + sovRpc(uint64(m.DbSizeInUse))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *AuthEnableRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *AuthDisableRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9273,6 +12480,9 @@ func (m *AuthenticateRequest) Size() (n int) {
 	l = len(m.Password)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9288,6 +12498,9 @@ func (m *AuthUserAddRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9298,6 +12511,9 @@ func (m *AuthUserGetRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9307,6 +12523,9 @@ func (m *AuthUserDeleteRequest) Size() (n int) {
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9322,6 +12541,9 @@ func (m *AuthUserChangePasswordRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9335,6 +12557,9 @@ func (m *AuthUserGrantRoleRequest) Size() (n int) {
 	l = len(m.Role)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9350,6 +12575,9 @@ func (m *AuthUserRevokeRoleRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9359,6 +12587,9 @@ func (m *AuthRoleAddRequest) Size() (n int) {
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9370,18 +12601,27 @@ func (m *AuthRoleGetRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *AuthUserListRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *AuthRoleListRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9391,6 +12631,9 @@ func (m *AuthRoleDeleteRequest) Size() (n int) {
 	l = len(m.Role)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9405,6 +12648,9 @@ func (m *AuthRoleGrantPermissionRequest) Size() (n int) {
 	if m.Perm != nil {
 		l = m.Perm.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9424,6 +12670,9 @@ func (m *AuthRoleRevokePermissionRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9434,6 +12683,9 @@ func (m *AuthEnableResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9443,6 +12695,9 @@ func (m *AuthDisableResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9458,6 +12713,9 @@ func (m *AuthenticateResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9467,6 +12725,9 @@ func (m *AuthUserAddResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9484,6 +12745,9 @@ func (m *AuthUserGetResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9493,6 +12757,9 @@ func (m *AuthUserDeleteResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9504,6 +12771,9 @@ func (m *AuthUserChangePasswordResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9513,6 +12783,9 @@ func (m *AuthUserGrantRoleResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9524,6 +12797,9 @@ func (m *AuthUserRevokeRoleResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9533,6 +12809,9 @@ func (m *AuthRoleAddResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9550,6 +12829,9 @@ func (m *AuthRoleGetResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9565,6 +12847,9 @@ func (m *AuthRoleListResponse) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9582,6 +12867,9 @@ func (m *AuthUserListResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9591,6 +12879,9 @@ func (m *AuthRoleDeleteResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9602,6 +12893,9 @@ func (m *AuthRoleGrantPermissionResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -9611,6 +12905,9 @@ func (m *AuthRoleRevokePermissionResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -9745,6 +13042,7 @@ func (m *ResponseHeader) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10069,6 +13367,7 @@ func (m *RangeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10222,6 +13521,7 @@ func (m *RangeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10413,6 +13713,7 @@ func (m *PutRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10529,6 +13830,7 @@ func (m *PutResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10661,6 +13963,7 @@ func (m *DeleteRangeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10794,6 +14097,7 @@ func (m *DeleteRangeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10972,6 +14276,7 @@ func (m *RequestOp) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11150,6 +14455,7 @@ func (m *ResponseOp) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11410,6 +14716,7 @@ func (m *Compare) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11553,6 +14860,7 @@ func (m *TxnRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11687,6 +14995,7 @@ func (m *TxnResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11776,6 +15085,7 @@ func (m *CompactionRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11859,6 +15169,7 @@ func (m *CompactionResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11909,6 +15220,7 @@ func (m *HashRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11978,6 +15290,7 @@ func (m *HashKVRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12099,6 +15412,7 @@ func (m *HashKVResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12201,6 +15515,7 @@ func (m *HashResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12251,6 +15566,7 @@ func (m *SnapshotRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12384,6 +15700,7 @@ func (m *SnapshotResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12530,6 +15847,7 @@ func (m *WatchRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12802,6 +16120,7 @@ func (m *WatchCreateRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12871,6 +16190,7 @@ func (m *WatchCancelRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12921,6 +16241,7 @@ func (m *WatchProgressRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13162,6 +16483,7 @@ func (m *WatchResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13250,6 +16572,7 @@ func (m *LeaseGrantRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13400,6 +16723,7 @@ func (m *LeaseGrantResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13469,6 +16793,7 @@ func (m *LeaseRevokeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13552,6 +16877,7 @@ func (m *LeaseRevokeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13640,6 +16966,7 @@ func (m *LeaseCheckpoint) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13721,6 +17048,7 @@ func (m *LeaseCheckpointRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13804,6 +17132,7 @@ func (m *LeaseCheckpointResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13873,6 +17202,7 @@ func (m *LeaseKeepAliveRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13994,6 +17324,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14083,6 +17414,7 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14252,6 +17584,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14302,6 +17635,7 @@ func (m *LeaseLeasesRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14371,6 +17705,7 @@ func (m *LeaseStatus) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14485,6 +17820,7 @@ func (m *LeaseLeasesResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14641,6 +17977,7 @@ func (m *Member) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14720,6 +18057,7 @@ func (m *MemberAddRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14867,6 +18205,7 @@ func (m *MemberAddResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14936,6 +18275,7 @@ func (m *MemberRemoveRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15050,6 +18390,7 @@ func (m *MemberRemoveResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15148,6 +18489,7 @@ func (m *MemberUpdateRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15262,6 +18604,7 @@ func (m *MemberUpdateResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15312,6 +18655,7 @@ func (m *MemberListRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15426,6 +18770,7 @@ func (m *MemberListResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15476,6 +18821,7 @@ func (m *DefragmentRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15559,6 +18905,7 @@ func (m *DefragmentResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15628,6 +18975,7 @@ func (m *MoveLeaderRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15711,6 +19059,7 @@ func (m *MoveLeaderResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15818,6 +19167,7 @@ func (m *AlarmRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15906,6 +19256,7 @@ func (m *AlarmMember) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16020,6 +19371,7 @@ func (m *AlarmResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16070,6 +19422,7 @@ func (m *StatusRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16325,6 +19678,7 @@ func (m *StatusResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16375,6 +19729,7 @@ func (m *AuthEnableRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16425,6 +19780,7 @@ func (m *AuthDisableRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16533,6 +19889,7 @@ func (m *AuthenticateRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16641,6 +19998,7 @@ func (m *AuthUserAddRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16720,6 +20078,7 @@ func (m *AuthUserGetRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16799,6 +20158,7 @@ func (m *AuthUserDeleteRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -16907,6 +20267,7 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17015,6 +20376,7 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17123,6 +20485,7 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17202,6 +20565,7 @@ func (m *AuthRoleAddRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17281,6 +20645,7 @@ func (m *AuthRoleGetRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17331,6 +20696,7 @@ func (m *AuthUserListRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17381,6 +20747,7 @@ func (m *AuthRoleListRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17460,6 +20827,7 @@ func (m *AuthRoleDeleteRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17572,6 +20940,7 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17713,6 +21082,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17796,6 +21166,7 @@ func (m *AuthEnableResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17879,6 +21250,7 @@ func (m *AuthDisableResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -17991,6 +21363,7 @@ func (m *AuthenticateResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18074,6 +21447,7 @@ func (m *AuthUserAddResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18186,6 +21560,7 @@ func (m *AuthUserGetResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18269,6 +21644,7 @@ func (m *AuthUserDeleteResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18352,6 +21728,7 @@ func (m *AuthUserChangePasswordResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18435,6 +21812,7 @@ func (m *AuthUserGrantRoleResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18518,6 +21896,7 @@ func (m *AuthUserRevokeRoleResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18601,6 +21980,7 @@ func (m *AuthRoleAddResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18715,6 +22095,7 @@ func (m *AuthRoleGetResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18827,6 +22208,7 @@ func (m *AuthRoleListResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -18939,6 +22321,7 @@ func (m *AuthUserListResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -19022,6 +22405,7 @@ func (m *AuthRoleDeleteResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -19105,6 +22489,7 @@ func (m *AuthRoleGrantPermissionResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -19188,6 +22573,7 @@ func (m *AuthRoleRevokePermissionResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -19302,9 +22688,9 @@ var (
 	ErrIntOverflowRpc   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("rpc.proto", fileDescriptorRpc) }
+func init() { proto.RegisterFile("rpc.proto", fileDescriptor_rpc_a2f39eccaef4d9f6) }
 
-var fileDescriptorRpc = []byte{
+var fileDescriptor_rpc_a2f39eccaef4d9f6 = []byte{
 	// 3836 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x5b, 0xdd, 0x6f, 0x23, 0xc9,
 	0x71, 0xd7, 0x90, 0xe2, 0x57, 0xf1, 0x43, 0x54, 0xeb, 0x63, 0x29, 0xee, 0xae, 0x56, 0xd7, 0xbb,
