@@ -1,12 +1,12 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/textproto"
 	"strings"
 
-	"context"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

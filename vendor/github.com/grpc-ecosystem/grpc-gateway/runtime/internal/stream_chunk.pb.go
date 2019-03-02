@@ -22,11 +22,11 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // StreamError is a response type which is returned when
 // streaming rpc returns an error.
 type StreamError struct {
-	GrpcCode             int32      `protobuf:"varint,1,opt,name=grpc_code,json=grpcCode" json:"grpc_code,omitempty"`
-	HttpCode             int32      `protobuf:"varint,2,opt,name=http_code,json=httpCode" json:"http_code,omitempty"`
-	Message              string     `protobuf:"bytes,3,opt,name=message" json:"message,omitempty"`
-	HttpStatus           string     `protobuf:"bytes,4,opt,name=http_status,json=httpStatus" json:"http_status,omitempty"`
-	Details              []*any.Any `protobuf:"bytes,5,rep,name=details" json:"details,omitempty"`
+	GrpcCode             int32      `protobuf:"varint,1,opt,name=grpc_code,json=grpcCode,proto3" json:"grpc_code,omitempty"`
+	HttpCode             int32      `protobuf:"varint,2,opt,name=http_code,json=httpCode,proto3" json:"http_code,omitempty"`
+	Message              string     `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	HttpStatus           string     `protobuf:"bytes,4,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Details              []*any.Any `protobuf:"bytes,5,rep,name=details,proto3" json:"details,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
 	XXX_unrecognized     []byte     `json:"-"`
 	XXX_sizecache        int32      `json:"-"`

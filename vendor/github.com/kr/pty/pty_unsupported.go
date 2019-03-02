@@ -1,4 +1,4 @@
-// +build !linux,!darwin,!freebsd,!dragonfly
+// +build !linux,!darwin,!freebsd,!dragonfly,!openbsd
 
 package pty
 
