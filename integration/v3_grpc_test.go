@@ -1933,13 +1933,13 @@ func eqErrGRPC(err1 error, err2 error) bool {
 // waitForRestart tries a range request until the client's server responds.
 // This is mainly a stop-gap function until grpcproxy's KVClient adapter
 // (and by extension, clientv3) supports grpc.CallOption pass-through so
-// FailFast=false works with Put.
+// WaitForReady=true works with Put.
 func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
 	// TODO: Remove retry loop once the new grpc load balancer provides retry.
 	var err error
 	for i := 0; i < 10; i++ {
-		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+		if _, err = kvc.Range(context.TODO(), req, grpc.WaitForReady(true)); err != nil {
 			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
 				time.Sleep(time.Millisecond * 250)
 			} else {
