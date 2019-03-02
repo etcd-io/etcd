@@ -242,17 +242,16 @@ func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ..
 	opts = append(opts, dopts...)
 
 	// Provide a net dialer that supports cancelation and timeout.
-	f := func(dialEp string, t time.Duration) (net.Conn, error) {
+	f := func(ctx context.Context, dialEp string) (net.Conn, error) {
 		proto, host, _ := endpoint.ParseEndpoint(dialEp)
 		select {
 		case <-c.ctx.Done():
 			return nil, c.ctx.Err()
 		default:
 		}
-		dialer := &net.Dialer{Timeout: t}
-		return dialer.DialContext(c.ctx, proto, host)
+		return (&net.Dialer{}).DialContext(ctx, proto, host)
 	}
-	opts = append(opts, grpc.WithDialer(f))
+	opts = append(opts, grpc.WithContextDialer(f))
 
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
