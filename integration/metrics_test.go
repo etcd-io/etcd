@@ -16,8 +16,10 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,7 +80,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bv, err := strconv.Atoi(beforeDefrag)
+	bv, err := checkDecimalRoundWhole(beforeDefrag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +91,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	biu, err := strconv.Atoi(beforeDefragInUse)
+	biu, err := checkDecimalRoundWhole(beforeDefragInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +115,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	aciu, err := strconv.Atoi(afterCompactionInUse)
+	aciu, err := checkDecimalRoundWhole(afterCompactionInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +130,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	av, err := strconv.Atoi(afterDefrag)
+	av, err := checkDecimalRoundWhole(afterDefrag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,13 +142,22 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	adiu, err := strconv.Atoi(afterDefragInUse)
+	adiu, err := checkDecimalRoundWhole(afterDefragInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if adiu > av {
 		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
 	}
+}
+
+func checkDecimalRoundWhole(value string) (wholeValue string, err error) {
+	s := strings.Split(value, ".")
+	roundedValue := s[0]
+	if len(s) < 2 {
+		return "", fmt.Errorf("expected metrics output to contain decimal, got %s\n", value)
+	}
+	return roundedValue, nil
 }
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
@@ -192,7 +203,7 @@ func TestMetricsHealth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hv != "0" {
-		t.Fatalf("expected '0' from etcd_server_health_failure, got %q", hv)
+	if hv != "0.0" {
+		t.Fatalf("expected '0.0' from etcd_server_health_failure, got %q", hv)
 	}
 }

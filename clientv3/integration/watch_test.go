@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -959,7 +960,8 @@ func TestWatchCancelOnServer(t *testing.T) {
 	}
 
 	// get max watches; proxy tests have leadership watches, so total may be >numWatches
-	maxWatches, _ := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	mxw, _ := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	maxWatches := strings.Split(mxw, ".")[0]
 
 	// cancel all and wait for cancels to propagate to etcd server
 	for i := 0; i < numWatches; i++ {
@@ -967,10 +969,11 @@ func TestWatchCancelOnServer(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 
-	minWatches, err := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	miw, err := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
 	if err != nil {
 		t.Fatal(err)
 	}
+	minWatches := strings.Split(miw, ".")[0]
 
 	maxWatchV, minWatchV := 0, 0
 	n, serr := fmt.Sscanf(maxWatches+" "+minWatches, "%d %d", &maxWatchV, &minWatchV)
