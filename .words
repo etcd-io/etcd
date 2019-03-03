@@ -24,6 +24,7 @@ deleter
 dev
 /dev/null
 dev/null
+dialer
 errClientDisconnected
 etcd
 gRPC

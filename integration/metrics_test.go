@@ -80,7 +80,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bv, err := checkDecimalRoundWhole(beforeDefrag)
+	bv, err := checkMetricsFormat(beforeDefrag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	biu, err := checkDecimalRoundWhole(beforeDefragInUse)
+	biu, err := checkMetricsFormat(beforeDefragInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	aciu, err := checkDecimalRoundWhole(afterCompactionInUse)
+	aciu, err := checkMetricsFormat(afterCompactionInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	av, err := checkDecimalRoundWhole(afterDefrag)
+	av, err := checkMetricsFormat(afterDefrag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	adiu, err := checkDecimalRoundWhole(afterDefragInUse)
+	adiu, err := checkMetricsFormat(afterDefragInUse)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,13 +151,12 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	}
 }
 
-func checkDecimalRoundWhole(value string) (wholeValue string, err error) {
+func checkMetricsFormat(value string) (int, error) {
 	s := strings.Split(value, ".")
-	roundedValue := s[0]
 	if len(s) < 2 {
-		return "", fmt.Errorf("expected metrics output to contain decimal, got %s\n", value)
+		return 0, fmt.Errorf("expected metrics output to contain decimal, got %s\n", value)
 	}
-	return roundedValue, nil
+	return strconv.Atoi(s[0])
 }
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
