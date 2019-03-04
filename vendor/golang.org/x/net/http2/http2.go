@@ -201,12 +201,19 @@ func validWireHeaderFieldName(v string) bool {
 	return true
 }
 
+var httpCodeStringCommon = map[int]string{} // n -> strconv.Itoa(n)
+
+func init() {
+	for i := 100; i <= 999; i++ {
+		if v := http.StatusText(i); v != "" {
+			httpCodeStringCommon[i] = strconv.Itoa(i)
+		}
+	}
+}
+
 func httpCodeString(code int) string {
-	switch code {
-	case 200:
-		return "200"
-	case 404:
-		return "404"
+	if s, ok := httpCodeStringCommon[code]; ok {
+		return s
 	}
 	return strconv.Itoa(code)
 }
