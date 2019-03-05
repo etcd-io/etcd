@@ -30,6 +30,8 @@ var safeRangeBucket = []byte("key")
 type ReadTx interface {
 	Lock()
 	Unlock()
+	RLock()
+	RUnlock()
 
 	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
 	UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error
@@ -46,8 +48,10 @@ type readTx struct {
 	buckets map[string]*bolt.Bucket
 }
 
-func (rt *readTx) Lock()   { rt.mu.RLock() }
-func (rt *readTx) Unlock() { rt.mu.RUnlock() }
+func (rt *readTx) Lock()    { rt.mu.Lock() }
+func (rt *readTx) Unlock()  { rt.mu.Unlock() }
+func (rt *readTx) RLock()   { rt.mu.RLock() }
+func (rt *readTx) RUnlock() { rt.mu.RUnlock() }
 
 func (rt *readTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if endKey == nil {
