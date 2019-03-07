@@ -11,7 +11,7 @@ jsonschema==2.6.0
 MarkupSafe==1.0
 Pygments==2.2.0
 pytz==2017.2
-PyYAML==3.12
+PyYAML>=4.2b1
 requests>=2.20.0
 six==1.10.0
 snowballstemmer==1.2.1
