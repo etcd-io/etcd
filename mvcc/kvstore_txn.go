@@ -31,13 +31,10 @@ type storeTxnRead struct {
 
 func (s *store) Read() TxnRead {
 	s.mu.RLock()
-	tx := s.b.ReadTx()
 	s.revMu.RLock()
-	// tx.RLock() blocks txReadBuffer for reading, which could potentially block the following two operations:
-	// A) writeback from txWriteBuffer to txReadBuffer at the end of a write transaction (TxnWrite).
-	// B) starting of a new backend batch transaction, where the pending changes need to be committed to boltdb
-	// and txReadBuffer needs to be reset.
-	tx.RLock()
+	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
+	// ConcurrentReadTx is created, it will not block write transaction.
+	tx := s.b.ConcurrentReadTx()
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
 	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})

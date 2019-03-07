@@ -51,6 +51,8 @@ var (
 type Backend interface {
 	ReadTx() ReadTx
 	BatchTx() BatchTx
+	// ConcurrentReadTx returns a non-blocking read transaction.
+	ConcurrentReadTx() ReadTx
 
 	Snapshot() Snapshot
 	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
@@ -166,6 +168,7 @@ func newBackend(bcfg BackendConfig) *backend {
 				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
 			},
 			buckets: make(map[string]*bolt.Bucket),
+			txWg:    new(sync.WaitGroup),
 		},
 
 		stopc: make(chan struct{}),
@@ -186,6 +189,23 @@ func (b *backend) BatchTx() BatchTx {
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
+
+// ConcurrentReadTx creates and returns a new ReadTx, which:
+// A) creates and keeps a copy of backend.readTx.txReadBuffer,
+// B) references the boltdb read Tx (and its bucket cache) of current batch interval.
+func (b *backend) ConcurrentReadTx() ReadTx {
+	b.readTx.RLock()
+	defer b.readTx.RUnlock()
+	// prevent boltdb read Tx from been rolled back until store read Tx is done.
+	b.readTx.txWg.Add(1)
+	return &concurrentReadTx{
+		buf:     b.readTx.buf.unsafeCopy(),
+		tx:      b.readTx.tx,
+		txMu:    &b.readTx.txMu,
+		buckets: b.readTx.buckets,
+		txWg:    b.readTx.txWg,
+	}
+}
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {

@@ -300,6 +300,8 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 }
 
+// TODO: add a unit test for concurrentReadTx
+
 func cleanup(b Backend, path string) {
 	b.Close()
 	os.Remove(path)

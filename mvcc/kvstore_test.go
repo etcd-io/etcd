@@ -645,30 +645,65 @@ func TestTxnPut(t *testing.T) {
 	}
 }
 
-func TestTxnBlockBackendForceCommit(t *testing.T) {
+func TestConcurrentReadAndWrite(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
-	txn := s.Read()
+	// write something to read later
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
+	// readTx simulates a long read request
+	readTx1 := s.Read()
+
+	// write should not be blocked by reads
 	done := make(chan struct{})
 	go func() {
-		s.b.ForceCommit()
+		s.Put([]byte("foo"), []byte("newBar"), lease.NoLease) // this is a write Txn
 		done <- struct{}{}
 	}()
 	select {
 	case <-done:
-		t.Fatalf("failed to block ForceCommit")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1 * time.Second):
+		t.Fatalf("write should not be blocked by read")
 	}
 
-	txn.End()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second): // wait 5 seconds for CI with slow IO
-		testutil.FatalStack(t, "failed to execute ForceCommit")
+	// readTx2 simulates a short read request
+	readTx2 := s.Read()
+	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
+	ret, err := readTx2.Range([]byte("foo"), nil, ro)
+	if err != nil {
+		t.Fatalf("failed to range: %v", err)
 	}
+	// readTx2 should see the result of new write
+	w := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("newBar"),
+		CreateRevision: 2,
+		ModRevision:    3,
+		Version:        2,
+	}
+	if !reflect.DeepEqual(ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	}
+	readTx2.End()
+
+	ret, err = readTx1.Range([]byte("foo"), nil, ro)
+	if err != nil {
+		t.Fatalf("failed to range: %v", err)
+	}
+	// readTx1 should not see the result of new write
+	w = mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 2,
+		ModRevision:    2,
+		Version:        1,
+	}
+	if !reflect.DeepEqual(ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	}
+	readTx1.End()
 }
 
 // TODO: test attach key to lessor
@@ -754,6 +789,7 @@ type fakeBackend struct {
 
 func (b *fakeBackend) BatchTx() backend.BatchTx                                    { return b.tx }
 func (b *fakeBackend) ReadTx() backend.ReadTx                                      { return b.tx }
+func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                            { return b.tx }
 func (b *fakeBackend) Hash(ignores map[backend.IgnoreKey]struct{}) (uint32, error) { return 0, nil }
 func (b *fakeBackend) Size() int64                                                 { return 0 }
 func (b *fakeBackend) SizeInUse() int64                                            { return 0 }

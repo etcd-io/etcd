@@ -306,13 +306,9 @@ func (t *batchTxBuffered) commit(stop bool) {
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	if t.backend.readTx.tx != nil {
-		if err := t.backend.readTx.tx.Rollback(); err != nil {
-			if t.backend.lg != nil {
-				t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
-			} else {
-				plog.Fatalf("cannot rollback tx (%s)", err)
-			}
-		}
+		// wait all store read transactions using the current boltdb tx to finish,
+		// then close the boltdb tx
+		go waitAndRollback(t.backend.readTx.tx, t.backend.readTx.txWg, t.backend.lg)
 		t.backend.readTx.reset()
 	}
 
@@ -320,6 +316,17 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 
 	if !stop {
 		t.backend.readTx.tx = t.backend.begin(false)
+	}
+}
+
+func waitAndRollback(tx *bolt.Tx, wg *sync.WaitGroup, lg *zap.Logger) {
+	wg.Wait()
+	if err := tx.Rollback(); err != nil {
+		if lg != nil {
+			lg.Fatal("failed to rollback tx", zap.Error(err))
+		} else {
+			plog.Fatalf("cannot rollback tx (%s)", err)
+		}
 	}
 }
 
