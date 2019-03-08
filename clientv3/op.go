@@ -218,6 +218,10 @@ func (op Op) isWrite() bool {
 
 // OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	return ret
@@ -225,6 +229,10 @@ func OpGet(key string, opts ...OpOption) Op {
 
 // OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tDeleteRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
@@ -544,3 +552,9 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 	ret.applyOpts(opts)
 	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }
+
+// isWithPrefix returns true if WithPrefix is being called in the op
+func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+
+// isWithFromKey returns true if WithFromKey is being called in the op
+func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }
