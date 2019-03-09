@@ -38,10 +38,10 @@ const (
 	unknownService         = "unknown service grpc.health.v1.Health"
 )
 
-// ErrNoAddrAvilable is returned by Get() when the balancer does not have
+// ErrNoAddrAvailable is returned by Get() when the balancer does not have
 // any active connection to endpoints at the time.
 // This error is returned only when opts.BlockingWait is true.
-var ErrNoAddrAvilable = status.Error(codes.Unavailable, "there is no address available")
+var ErrNoAddrAvailable = status.Error(codes.Unavailable, "there is no address available")
 
 type NotifyMsg int
 
@@ -510,7 +510,7 @@ func (b *GRPC17Health) Get(ctx context.Context, opts grpc.BalancerGetOptions) (g
 			return grpc.Address{Addr: ""}, nil, grpc.ErrClientConnClosing
 		}
 		if addr == "" {
-			return grpc.Address{Addr: ""}, nil, ErrNoAddrAvilable
+			return grpc.Address{Addr: ""}, nil, ErrNoAddrAvailable
 		}
 		return grpc.Address{Addr: addr}, func() {}, nil
 	}
