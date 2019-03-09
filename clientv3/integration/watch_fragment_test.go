@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 )
@@ -65,10 +66,10 @@ func TestWatchFragmentEnableWithGRPCLimit(t *testing.T) {
 func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 	cfg := &integration.ClusterConfig{
 		Size:            1,
-		MaxRequestBytes: 1.5 * 1024 * 1024,
+		MaxRequestBytes: embed.DefaultMaxRequestBytes,
 	}
 	if exceedRecvLimit {
-		cfg.ClientMaxCallRecvMsgSize = 1.5 * 1024 * 1024
+		cfg.ClientMaxCallRecvMsgSize = embed.DefaultMaxRequestBytes
 	}
 	clus := integration.NewClusterV3(t, cfg)
 	defer clus.Terminate(t)

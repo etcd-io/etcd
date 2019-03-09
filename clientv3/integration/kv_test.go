@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/mvcc/mvccpb"
@@ -37,7 +38,7 @@ func TestKVPutError(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	var (
-		maxReqBytes = 1.5 * 1024 * 1024 // hard coded max in v3_server.go
+		maxReqBytes = embed.DefaultMaxRequestBytes
 		quota       = int64(int(maxReqBytes) + 8*os.Getpagesize())
 	)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
