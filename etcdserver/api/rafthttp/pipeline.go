@@ -155,12 +155,12 @@ func (p *pipeline) post(data []byte) (err error) {
 		p.picker.unreachable(u)
 		return err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		p.picker.unreachable(u)
 		return err
 	}
-	resp.Body.Close()
 
 	err = checkPostResponse(resp, b, req, p.peerID)
 	if err != nil {
