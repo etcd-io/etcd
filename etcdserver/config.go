@@ -55,6 +55,7 @@ type ServerConfig struct {
 
 	MaxSnapFiles uint
 	MaxWALFiles  uint
+	MinWalSize   int64
 
 	// BackendBatchInterval is the maximum time before commit the backend transaction.
 	BackendBatchInterval time.Duration

@@ -52,6 +52,7 @@ const (
 	DefaultName                  = "default"
 	DefaultMaxSnapshots          = 5
 	DefaultMaxWALs               = 5
+	DefaultMinWALSize            = 64 * 1000 * 1000
 	DefaultMaxTxnOps             = uint(128)
 	DefaultMaxRequestBytes       = 1.5 * 1024 * 1024
 	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
@@ -130,8 +131,9 @@ type Config struct {
 	// Always use "DefaultSnapshotCatchUpEntries"
 	SnapshotCatchUpEntries uint64
 
-	MaxSnapFiles uint `json:"max-snapshots"`
-	MaxWalFiles  uint `json:"max-wals"`
+	MaxSnapFiles uint  `json:"max-snapshots"`
+	MaxWalFiles  uint  `json:"max-wals"`
+	MinWalSize   int64 `json:"min-wal-size"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
@@ -373,6 +375,7 @@ func NewConfig() *Config {
 	cfg := &Config{
 		MaxSnapFiles: DefaultMaxSnapshots,
 		MaxWalFiles:  DefaultMaxWALs,
+		MinWalSize:   DefaultMinWALSize,
 
 		Name: DefaultName,
 

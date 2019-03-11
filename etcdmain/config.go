@@ -148,6 +148,7 @@ func newConfig() *config {
 		"List of URLs to listen on for the metrics and health endpoints.",
 	)
 	fs.UintVar(&cfg.ec.MaxSnapFiles, "max-snapshots", cfg.ec.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited).")
+	fs.Int64Var(&cfg.ec.MinWalSize, "min-wal-size", cfg.ec.MinWalSize, "Preallocated wal size in bytes.")
 	fs.UintVar(&cfg.ec.MaxWalFiles, "max-wals", cfg.ec.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.ec.Name, "name", cfg.ec.Name, "Human-readable name for this member.")
 	fs.Uint64Var(&cfg.ec.SnapshotCount, "snapshot-count", cfg.ec.SnapshotCount, "Number of committed transactions to trigger a snapshot to disk.")

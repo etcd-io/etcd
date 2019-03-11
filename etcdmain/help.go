@@ -65,6 +65,8 @@ Member:
     List of URLs to listen on for client traffic.
   --max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
     Maximum number of snapshot files to retain (0 is unlimited).
+  --min-wal-size '` + strconv.Itoa(embed.DefaultMinWALSize) + `'
+    Preallocated wal size in bytes.
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
     Maximum number of wal files to retain (0 is unlimited).
   --quota-backend-bytes '0'
