@@ -22,9 +22,9 @@ import (
 	"time"
 )
 
-// TestNewTransportTLSInvalidCipherSuitesTLS12 expects a client with invalid
+// TestNewTransportTLSInvalidCipherSuitesTLS expects a client with invalid
 // cipher suites fail to handshake with the server.
-func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
+func TestNewTransportTLSInvalidCipherSuitesTLS(t *testing.T) {
 	tlsInfo, del, err := createSelfCert()
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
@@ -57,7 +57,6 @@ func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
 	}()
 	go func() {
 		tr, err := NewTransport(cliTLS, 3*time.Second)
-		tr.TLSClientConfig.MaxVersion = tls.VersionTLS12
 		if err != nil {
 			t.Fatalf("unexpected NewTransport error: %v", err)
 		}
