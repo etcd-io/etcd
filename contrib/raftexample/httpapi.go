@@ -31,6 +31,7 @@ type httpKVAPI struct {
 
 func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := r.RequestURI
+	defer r.Body.Close()
 	switch {
 	case r.Method == "PUT":
 		v, err := ioutil.ReadAll(r.Body)
