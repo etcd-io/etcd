@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -147,6 +148,57 @@ func TestOpenAtIndex(t *testing.T) {
 	defer os.RemoveAll(emptydir)
 	if _, err = Open(emptydir, walpb.Snapshot{}); err != ErrFileNotFound {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
+	}
+}
+
+// TestVerify tests that Verify throws a non-nil error when the WAL is corrupted.
+// The test creates a WAL directory and cuts out multiple WAL files. Then
+// it corrupts one of the files by completely truncating it.
+func TestVerify(t *testing.T) {
+	walDir, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(walDir)
+
+	// create WAL
+	w, err := Create(walDir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	// make 5 separate files
+	for i := 0; i < 5; i++ {
+		es := []raftpb.Entry{{Index: uint64(i), Data: []byte("waldata" + string(i+1))}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.cut(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// to verify the WAL is not corrupted at this point
+	err = Verify(walDir, walpb.Snapshot{})
+	if err != nil {
+		t.Errorf("expected a nil error, got %v", err)
+	}
+
+	walFiles, err := ioutil.ReadDir(walDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// corrupt the WAL by truncating one of the WAL files completely
+	err = os.Truncate(path.Join(walDir, walFiles[2].Name()), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Verify(walDir, walpb.Snapshot{})
+	if err == nil {
+		t.Error("expected a non-nil error, got nil")
 	}
 }
 
