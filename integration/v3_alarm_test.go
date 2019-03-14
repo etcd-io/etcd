@@ -88,8 +88,8 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		}
 	}
 
-	ctx, close := context.WithTimeout(context.TODO(), RequestWaitTimeout)
-	defer close()
+	ctx, cancel := context.WithTimeout(context.TODO(), RequestWaitTimeout)
+	defer cancel()
 
 	// small quota machine should reject put
 	if _, err := kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
