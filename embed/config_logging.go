@@ -170,10 +170,10 @@ func (cfg *Config) setupLogging() error {
 						return err
 					}
 					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
 					c.loggerConfig = &copied
 					c.loggerCore = nil
 					c.loggerWriteSyncer = nil
+					c.loggerMu.Unlock()
 					grpcLogOnce.Do(func() {
 						// debug true, enable info, warning, error
 						// debug false, only discard info
@@ -218,11 +218,10 @@ func (cfg *Config) setupLogging() error {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
 					c.loggerConfig = nil
 					c.loggerCore = cr
 					c.loggerWriteSyncer = syncer
-
+					c.loggerMu.Unlock()
 					grpcLogOnce.Do(func() {
 						grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
 					})
@@ -277,12 +276,11 @@ func (cfg *Config) setupLogging() error {
 func NewZapCoreLoggerBuilder(lg *zap.Logger, cr zapcore.Core, syncer zapcore.WriteSyncer) func(*Config) error {
 	return func(cfg *Config) error {
 		cfg.loggerMu.Lock()
-		defer cfg.loggerMu.Unlock()
 		cfg.logger = lg
 		cfg.loggerConfig = nil
 		cfg.loggerCore = cr
 		cfg.loggerWriteSyncer = syncer
-
+		cfg.loggerMu.Unlock()
 		grpcLogOnce.Do(func() {
 			grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
 		})
