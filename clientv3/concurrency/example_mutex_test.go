@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
@@ -72,4 +73,54 @@ func ExampleMutex_Lock() {
 	// acquired lock for s1
 	// released lock for s1
 	// acquired lock for s2
+}
+
+func ExampleMutex_TryLock() {
+	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	// create two separate sessions for lock competition
+	s1, err := concurrency.NewSession(cli)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer s1.Close()
+	m1 := concurrency.NewMutex(s1, "/my-lock2/")
+
+	s2, err := concurrency.NewSession(cli)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer s2.Close()
+	m2 := concurrency.NewMutex(s2, "/my-lock2/")
+
+	// acquire lock for s1
+	if err := m1.TryLock(context.TODO()); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("acquired lock for s1")
+	}
+
+	go func() {
+		if err := m2.TryLock(context.TODO()); err != nil {
+			fmt.Println("acquiring lock for s2 failed:", err)
+		} else {
+			fmt.Println("acquired lock for s2")
+		}
+	}()
+
+	time.Sleep(1 * time.Second)
+	if err := m1.Unlock(context.TODO()); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("released lock for s1")
+	}
+
+	// Output:
+	// acquired lock for s1
+	// acquiring lock for s2 failed: lock busy
+	// released lock for s1
 }
