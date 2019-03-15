@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.etcd.io/etcd/v3/etcdserver"
@@ -81,6 +82,11 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
 	membs := membersToProtoMembers(cs.cluster.Members())
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
+}
+
+func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }
 
 func (cs *ClusterServer) header() *pb.ResponseHeader {

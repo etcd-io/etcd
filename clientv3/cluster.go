@@ -20,15 +20,17 @@ import (
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/types"
 
+	"errors"
 	"google.golang.org/grpc"
 )
 
 type (
-	Member               pb.Member
-	MemberListResponse   pb.MemberListResponse
-	MemberAddResponse    pb.MemberAddResponse
-	MemberRemoveResponse pb.MemberRemoveResponse
-	MemberUpdateResponse pb.MemberUpdateResponse
+	Member                pb.Member
+	MemberListResponse    pb.MemberListResponse
+	MemberAddResponse     pb.MemberAddResponse
+	MemberRemoveResponse  pb.MemberRemoveResponse
+	MemberUpdateResponse  pb.MemberUpdateResponse
+	MemberPromoteResponse pb.MemberPromoteResponse
 )
 
 type Cluster interface {
@@ -43,6 +45,9 @@ type Cluster interface {
 
 	// MemberUpdate updates the peer addresses of the member.
 	MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error)
+
+	// MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
+	MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error)
 }
 
 type cluster struct {
@@ -111,4 +116,9 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 		return (*MemberListResponse)(resp), nil
 	}
 	return nil, toErr(ctx, err)
+}
+
+func (c *cluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }

@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
+	"errors"
 	"golang.org/x/time/rate"
 	gnaming "google.golang.org/grpc/naming"
 )
@@ -174,4 +175,9 @@ func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest)
 	}
 	resp := (pb.MemberListResponse)(*mresp)
 	return &resp, err
+}
+
+func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }
