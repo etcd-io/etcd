@@ -47,6 +47,23 @@ func (ls *lockServer) Lock(ctx context.Context, req *v3lockpb.LockRequest) (*v3l
 	return &v3lockpb.LockResponse{Header: m.Header(), Key: []byte(m.Key())}, nil
 }
 
+func (ls *lockServer) TryLock(ctx context.Context, req *v3lockpb.LockRequest) (*v3lockpb.LockResponse, error) {
+	s, err := concurrency.NewSession(
+		ls.c,
+		concurrency.WithLease(clientv3.LeaseID(req.Lease)),
+		concurrency.WithContext(ctx),
+	)
+	if err != nil {
+		return nil, err
+	}
+	s.Orphan()
+	m := concurrency.NewMutex(s, string(req.Name))
+	if err = m.TryLock(ctx); err != nil {
+		return nil, err
+	}
+	return &v3lockpb.LockResponse{Header: m.Header(), Key: []byte(m.Key())}, nil
+}
+
 func (ls *lockServer) Unlock(ctx context.Context, req *v3lockpb.UnlockRequest) (*v3lockpb.UnlockResponse, error) {
 	resp, err := ls.c.Delete(ctx, string(req.Key))
 	if err != nil {

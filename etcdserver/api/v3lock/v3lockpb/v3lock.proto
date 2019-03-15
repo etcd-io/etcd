@@ -24,6 +24,16 @@ service Lock {
         body: "*"
     };
   }
+  
+  // TryLock is different from Lock, TryLock locks the mutex will not be blocked
+  // any time. If the mutex is occupied while trying to acquire the lock, 
+  // this function will return an error immediately.
+  rpc TryLock(LockRequest) returns (LockResponse) {
+      option (google.api.http) = {
+        post: "/v3/lock/try_lock"
+        body: "*"
+    };
+  }
 
   // Unlock takes a key returned by Lock and releases the hold on lock. The
   // next Lock caller waiting for the lock will then be woken up and given
