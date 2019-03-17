@@ -44,7 +44,7 @@
     },
     "/v3/lock/trylock": {
       "post": {
-        "summary": "TryLock is different from Lock, TryLock locks the mutex will not be blocked \nany time. If the mutex is occupied while trying to acquire the lock, \nthis function will return an error immediately.",
+        "summary": "TryLock is different from Lock, TryLock locks the mutex will not be blocked\nany time. If the mutex is occupied while trying to acquire the lock, \nthis function will return an error immediately.",
         "operationId": "TryLock",
         "responses": {
           "200": {
@@ -65,7 +65,7 @@
           }
         ],
         "tags": [
-          "TryLock"
+          "Lock"
         ]
       }
     },
