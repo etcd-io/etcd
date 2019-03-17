@@ -30,7 +30,7 @@ service Lock {
   // this function will return an error immediately.
   rpc TryLock(LockRequest) returns (LockResponse) {
       option (google.api.http) = {
-        post: "/v3/lock/try_lock"
+        post: "/v3/lock/trylock"
         body: "*"
     };
   }

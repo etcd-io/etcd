@@ -42,6 +42,33 @@
         ]
       }
     },
+    "/v3/lock/trylock": {
+      "post": {
+        "summary": "TryLock is different from Lock, TryLock locks the mutex will not be blocked \nany time. If the mutex is occupied while trying to acquire the lock, \nthis function will return an error immediately.",
+        "operationId": "TryLock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3lockpbLockResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3lockpbLockRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TryLock"
+        ]
+      }
+    },
     "/v3/lock/unlock": {
       "post": {
         "summary": "Unlock takes a key returned by Lock and releases the hold on lock. The\nnext Lock caller waiting for the lock will then be woken up and given\nownership of the lock.",

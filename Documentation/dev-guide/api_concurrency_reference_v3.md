@@ -11,6 +11,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 | Method | Request Type | Response Type | Description |
 | ------ | ------------ | ------------- | ----------- |
 | Lock | LockRequest | LockResponse | Lock acquires a distributed shared lock on a given named lock. On success, it will return a unique key that exists so long as the lock is held by the caller. This key can be used in conjunction with transactions to safely ensure updates to etcd only occur while holding lock ownership. The lock is held until Unlock is called on the key or the lease associate with the owner expires. |
+| TryLock | LockRequest | LockResponse | TryLock is different from Lock, TryLock locks the mutex will not be blocked any time. If the mutex is occupied while trying to acquire the lock, this function will return an error immediately. |
 | Unlock | UnlockRequest | UnlockResponse | Unlock takes a key returned by Lock and releases the hold on lock. The next Lock caller waiting for the lock will then be woken up and given ownership of the lock. |
 
 

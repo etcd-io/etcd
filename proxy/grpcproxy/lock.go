@@ -33,6 +33,10 @@ func (lp *lockProxy) Lock(ctx context.Context, req *v3lockpb.LockRequest) (*v3lo
 	return v3lockpb.NewLockClient(lp.client.ActiveConnection()).Lock(ctx, req)
 }
 
+func (lp *lockProxy) Lock(ctx context.Context, req *v3lockpb.LockRequest) (*v3lockpb.LockResponse, error) {
+	return v3lockpb.NewLockClient(lp.client.ActiveConnection()).TryLock(ctx, req)
+}
+
 func (lp *lockProxy) Unlock(ctx context.Context, req *v3lockpb.UnlockRequest) (*v3lockpb.UnlockResponse, error) {
 	return v3lockpb.NewLockClient(lp.client.ActiveConnection()).Unlock(ctx, req)
 }
