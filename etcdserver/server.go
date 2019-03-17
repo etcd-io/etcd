@@ -1544,6 +1544,7 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*
 		return nil, err
 	}
 
+	// TODO: might switch to less strict check when adding raft learner
 	if s.Cfg.StrictReconfigCheck {
 		// by default StrictReconfigCheck is enabled; reject new members if unhealthy
 		if !s.cluster.IsReadyToAddNewMember() {
@@ -1585,6 +1586,11 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*
 		NodeID:  uint64(memb.ID),
 		Context: b,
 	}
+
+	if memb.IsLearner {
+		cc.Type = raftpb.ConfChangeAddLearnerNode
+	}
+
 	return s.configure(ctx, cc)
 }
 
@@ -2054,7 +2060,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	lg := s.getLogger()
 	*confState = *s.r.ApplyConfChange(cc)
 	switch cc.Type {
-	case raftpb.ConfChangeAddNode:
+	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
 		m := new(membership.Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			if lg != nil {
