@@ -46,15 +46,19 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	}
 
 	now := time.Now()
-	m := membership.NewMember("", urls, "", &now)
+	m := membership.NewMember("", urls, "", &now, r.IsLearner)
 	membs, merr := cs.server.AddMember(ctx, *m)
 	if merr != nil {
 		return nil, togRPCError(merr)
 	}
 
 	return &pb.MemberAddResponse{
-		Header:  cs.header(),
-		Member:  &pb.Member{ID: uint64(m.ID), PeerURLs: m.PeerURLs},
+		Header: cs.header(),
+		Member: &pb.Member{
+			ID:        uint64(m.ID),
+			PeerURLs:  m.PeerURLs,
+			IsLearner: m.IsLearner,
+		},
 		Members: membersToProtoMembers(membs),
 	}, nil
 }
@@ -101,6 +105,7 @@ func membersToProtoMembers(membs []*membership.Member) []*pb.Member {
 			ID:         uint64(membs[i].ID),
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
+			IsLearner:  membs[i].IsLearner,
 		}
 	}
 	return protoMembs
