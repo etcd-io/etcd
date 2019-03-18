@@ -100,13 +100,15 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
-
-	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
-	if serr := s.doSerialize(ctx, chk, get); serr != nil {
-		err = serr
+	get := func() error {
+		var err error
+		resp, err = s.applyV3Base.Range(nil, r)
+		return err
+	}
+	if err = s.doSerialize(ctx, chk, get); err != nil {
 		return nil, err
 	}
-	return resp, err
+	return resp, nil
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -143,11 +145,17 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 			warnOfExpensiveReadOnlyTxnRequest(s.getLogger(), start, r, resp, err)
 		}(time.Now())
 
-		get := func() { resp, err = s.applyV3Base.Txn(r) }
-		if serr := s.doSerialize(ctx, chk, get); serr != nil {
-			return nil, serr
+		get := func() error {
+			resp, err = s.applyV3Base.Txn(r)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
-		return resp, err
+		if err = s.doSerialize(ctx, chk, get); err != nil {
+			return nil, err
+		}
+		return resp, nil
 	}
 
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
@@ -538,7 +546,7 @@ func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) 
 }
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
-func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
+func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func() error) error {
 	ai, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
 		return err
@@ -551,7 +559,9 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 		return err
 	}
 	// fetch response for serialized request
-	get()
+	if err = get(); err != nil {
+		return err
+	}
 	// check for stale token revision in case the auth store was updated while
 	// the request has been handled.
 	if ai.Revision != 0 && ai.Revision != s.authStore.Revision() {
