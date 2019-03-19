@@ -320,12 +320,9 @@ func TestHasRole(t *testing.T) {
 	}
 }
 
-func TestIsOpPermitted(t *testing.T) {
-	as, tearDown := setupAuthStore(t)
-	defer tearDown(t)
-
+func addRoleAndUser(t *testing.T, as *authStore, role, user string) *authpb.Permission {
 	// add new role
-	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: role})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +334,7 @@ func TestIsOpPermitted(t *testing.T) {
 	}
 
 	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
-		Name: "role-test-1",
+		Name: role,
 		Perm: perm,
 	})
 	if err != nil {
@@ -345,12 +342,40 @@ func TestIsOpPermitted(t *testing.T) {
 	}
 
 	// grants a role to the user
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: user, Role: role})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// check permission reflected to user
+	return perm
+}
+
+func TestIsOpPermitted(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	perm := addRoleAndUser(t, as, "role-test-1", "foo")
+	err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestIsOpPermittedWithAuthOldRevision(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// add role and user
+	perm := addRoleAndUser(t, as, "role-test-1", "foo")
+	old := as.Revision()
+
+	// assign a new role to user
+	// analog asynchronous access
+	perm = addRoleAndUser(t, as, "role-test-2", "foo")
+	err := as.isOpPermitted("foo", old, perm.Key, perm.RangeEnd, perm.PermType)
+	if err != ErrAuthOldRevision {
+		t.Fatal("expect error, got nil")
+	}
 
 	err = as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
 	if err != nil {
