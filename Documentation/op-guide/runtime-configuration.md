@@ -100,7 +100,7 @@ Adding a member is a two step process:
 `etcdctl` adds a new member to the cluster by specifying the member's [name][conf-name] and [advertised peer URLs][conf-adv-peer]:
 
 ```sh
-$ etcdctl member add infra3 http://10.0.1.13:2380
+$ etcdctl member add infra3 --peer-urls=http://10.0.1.13:2380
 added member 9bf1b35fc7761a23 to cluster
 
 ETCD_NAME="infra3"
