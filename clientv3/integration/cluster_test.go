@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.etcd.io/etcd/integration"
@@ -58,6 +59,30 @@ func TestMemberAdd(t *testing.T) {
 
 	if !reflect.DeepEqual(resp.Member.PeerURLs, urls) {
 		t.Errorf("urls = %v, want %v", urls, resp.Member.PeerURLs)
+	}
+}
+
+func TestMemberAddWithExistingURLs(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	capi := clus.RandClient()
+
+	resp, err := capi.MemberList(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list member %v", err)
+	}
+
+	existingURL := resp.Members[0].PeerURLs[0]
+	_, err = capi.MemberAdd(context.Background(), []string{existingURL})
+	expectedErrKeywords := "Peer URLs already exists"
+	if err == nil {
+		t.Fatalf("expecting add member to fail, got no error")
+	}
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Errorf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 }
 
