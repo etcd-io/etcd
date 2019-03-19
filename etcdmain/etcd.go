@@ -313,7 +313,7 @@ func startProxy(cfg *config) error {
 		go func() {
 			plog.Info("proxy: listening for client requests on ", host)
 			mux := http.NewServeMux()
-			mux.Handle("/metrics", prometheus.Handler())
+			mux.Handle("/metrics", prometheus.Handler()) // v2 proxy just uses the same port
 			mux.Handle("/", ph)
 			plog.Fatal(http.Serve(l, mux))
 		}()

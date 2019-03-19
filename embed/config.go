@@ -167,7 +167,7 @@ type Config struct {
 
 	// debug
 
-    Debug        bool   `json:"debug"`
+	Debug        bool   `json:"debug"`
 	LogPkgLevels string `json:"log-package-levels"`
 	EnablePprof  bool   `json:"enable-pprof"`
 	Metrics      string `json:"metrics"`
