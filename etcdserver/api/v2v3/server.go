@@ -63,7 +63,7 @@ func (s *v2v3Server) Leader() types.ID {
 }
 
 func (s *v2v3Server) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
-	resp, err := s.c.MemberAdd(ctx, memb.PeerURLs)
+	resp, err := s.c.MemberAdd(ctx, memb.PeerURLs, memb.IsLearner)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,8 @@ func v3MembersToMembership(v3membs []*pb.Member) []*membership.Member {
 		membs[i] = &membership.Member{
 			ID: types.ID(m.ID),
 			RaftAttributes: membership.RaftAttributes{
-				PeerURLs: m.PeerURLs,
+				PeerURLs:  m.PeerURLs,
+				IsLearner: m.IsLearner,
 			},
 			Attributes: membership.Attributes{
 				Name:       m.Name,

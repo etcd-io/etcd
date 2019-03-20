@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -52,7 +53,7 @@ func TestMemberAdd(t *testing.T) {
 	capi := clus.RandClient()
 
 	urls := []string{"http://127.0.0.1:1234"}
-	resp, err := capi.MemberAdd(context.Background(), urls)
+	resp, err := capi.MemberAdd(context.Background(), urls, false)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
@@ -174,7 +175,7 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 		{"localhost:1234"},
 	}
 	for i := range tt {
-		_, err := capi.MemberAdd(context.Background(), tt[i])
+		_, err := capi.MemberAdd(context.Background(), tt[i], false)
 		if err == nil {
 			t.Errorf("#%d: MemberAdd err = nil, but error", i)
 		}
@@ -183,4 +184,48 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 			t.Errorf("#%d: MemberUpdate err = nil, but error", i)
 		}
 	}
+}
+
+func TestMemberAddForLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	capi := clus.RandClient()
+
+	urls := []string{"http://127.0.0.1:1234"}
+	isLearner := true
+	resp, err := capi.MemberAdd(context.Background(), urls, isLearner)
+	if err != nil {
+		t.Fatalf("failed to add member %v", err)
+	}
+
+	if resp.Member.IsLearner != isLearner {
+		t.Errorf("Added a member with IsLearner = %v, got %v", isLearner, resp.Member.IsLearner)
+	}
+
+	numOfLearners, err := getNumberOfLearners(clus)
+	if err != nil {
+		t.Fatalf("failed to get the number of learners in cluster: %v", err)
+	}
+	if numOfLearners != 1 {
+		t.Errorf("Added 1 learner node to cluster, got %d", numOfLearners)
+	}
+}
+
+// getNumberOfLearners return the number of learner nodes in cluster using MemberList API
+func getNumberOfLearners(clus *integration.ClusterV3) (int, error) {
+	cli := clus.RandClient()
+	resp, err := cli.MemberList(context.Background())
+	if err != nil {
+		return 0, fmt.Errorf("failed to list member %v", err)
+	}
+	numberOfLearners := 0
+	for _, m := range resp.Members {
+		if m.IsLearner {
+			numberOfLearners++
+		}
+	}
+	return numberOfLearners, nil
 }

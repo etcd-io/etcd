@@ -118,7 +118,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
-	resp, err := cli.MemberAdd(ctx, urls)
+	resp, err := cli.MemberAdd(ctx, urls, false)
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
