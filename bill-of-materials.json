@@ -36,7 +36,7 @@
 		]
 	},
 	{
-		"project": "github.com/coreos/pkg",
+		"project": "github.com/coreos/pkg/capnslog",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
