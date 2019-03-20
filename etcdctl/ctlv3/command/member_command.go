@@ -23,7 +23,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var memberPeerURLs string
+var (
+	memberPeerURLs string
+	isLearner      bool
+)
 
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
@@ -50,6 +53,7 @@ func NewMemberAddCommand() *cobra.Command {
 	}
 
 	cc.Flags().StringVar(&memberPeerURLs, "peer-urls", "", "comma separated peer URLs for the new member.")
+	cc.Flags().BoolVar(&isLearner, "learner", false, "indicates if the new member is raft learner")
 
 	return cc
 }
@@ -118,7 +122,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
-	resp, err := cli.MemberAdd(ctx, urls, false)
+	resp, err := cli.MemberAdd(ctx, urls, isLearner)
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
