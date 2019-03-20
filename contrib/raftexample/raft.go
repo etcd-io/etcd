@@ -126,7 +126,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 
 func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 	if len(ents) == 0 {
-		return
+		return ents
 	}
 	firstIdx := ents[0].Index
 	if firstIdx > rc.appliedIndex+1 {
