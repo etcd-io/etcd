@@ -38,7 +38,7 @@ type Cluster interface {
 	MemberList(ctx context.Context) (*MemberListResponse, error)
 
 	// MemberAdd adds a new member into the cluster.
-	MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
+	MemberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error)
 
 	// MemberRemove removes an existing member from the cluster.
 	MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error)
@@ -71,13 +71,16 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 	return api
 }
 
-func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error) {
 	// fail-fast before panic in rafthttp
 	if _, err := types.NewURLs(peerAddrs); err != nil {
 		return nil, err
 	}
 
-	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
+	r := &pb.MemberAddRequest{
+		PeerURLs:  peerAddrs,
+		IsLearner: isLearner,
+	}
 	resp, err := c.remote.MemberAdd(ctx, r, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)

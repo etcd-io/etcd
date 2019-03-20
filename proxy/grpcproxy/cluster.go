@@ -109,7 +109,7 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 }
 
 func (cp *clusterProxy) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
-	mresp, err := cp.clus.MemberAdd(ctx, r.PeerURLs)
+	mresp, err := cp.clus.MemberAdd(ctx, r.PeerURLs, r.IsLearner)
 	if err != nil {
 		return nil, err
 	}

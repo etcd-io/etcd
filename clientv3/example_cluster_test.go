@@ -51,7 +51,7 @@ func ExampleCluster_memberAdd() {
 	defer cli.Close()
 
 	peerURLs := endpoints[2:]
-	mresp, err := cli.MemberAdd(context.Background(), peerURLs)
+	mresp, err := cli.MemberAdd(context.Background(), peerURLs, false)
 	if err != nil {
 		log.Fatal(err)
 	}
