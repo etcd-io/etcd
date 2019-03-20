@@ -359,7 +359,7 @@ For example, it may panic if other members in the cluster are still alive.
 Follow the instructions when using these flags.
 
 ### --force-new-cluster
-+ Force to create a new one-member cluster. It commits configuration changes forcing to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
++ Force to create a new one-member cluster. It commits configuration changes forcing to remove all existing members in the cluster and add itself, but is strongly discouraged. Please review the [disaster recovery][recovery] documentation for preferred v3 recovery procedures.
 + default: false
 + env variable: ETCD_FORCE_NEW_CLUSTER
 
@@ -428,3 +428,4 @@ Follow the instructions when using these flags.
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
 [tuning]: ../tuning.md#time-parameters
 [sample-config-file]: ../../etcd.conf.yml.sample
+[recovery]: recovery.md#disaster-recovery
