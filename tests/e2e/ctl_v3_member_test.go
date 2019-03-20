@@ -59,9 +59,10 @@ func TestCtlV3MemberAddClientTLS(t *testing.T) { testCtl(t, memberAddTest, withC
 func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
 	testCtl(t, memberAddTest, withCfg(configClientAutoTLS))
 }
-func TestCtlV3MemberAddPeerTLS(t *testing.T)  { testCtl(t, memberAddTest, withCfg(configPeerTLS)) }
-func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
-func TestCtlV3MemberUpdateNoTLS(t *testing.T) { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
+func TestCtlV3MemberAddPeerTLS(t *testing.T)    { testCtl(t, memberAddTest, withCfg(configPeerTLS)) }
+func TestCtlV3MemberAddForLearner(t *testing.T) { testCtl(t, memberAddForLearnerTest) }
+func TestCtlV3MemberUpdate(t *testing.T)        { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdateNoTLS(t *testing.T)   { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
 func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(configClientTLS))
 }
@@ -122,13 +123,22 @@ func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 }
 
 func memberAddTest(cx ctlCtx) {
-	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)); err != nil {
+	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11), false); err != nil {
 		cx.t.Fatal(err)
 	}
 }
 
-func ctlV3MemberAdd(cx ctlCtx, peerURL string) error {
+func memberAddForLearnerTest(cx ctlCtx) {
+	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11), true); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL))
+	if isLearner {
+		cmdArgs = append(cmdArgs, "--learner")
+	}
 	return spawnWithExpect(cmdArgs, " added to cluster ")
 }
 

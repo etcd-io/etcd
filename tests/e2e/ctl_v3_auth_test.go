@@ -510,13 +510,13 @@ func authTestMemberAdd(cx ctlCtx) {
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
 	// ordinary user cannot add a new member
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3MemberAdd(cx, peerURL); err == nil {
+	if err := ctlV3MemberAdd(cx, peerURL, false); err == nil {
 		cx.t.Fatalf("ordinary user must not be allowed to add a member")
 	}
 
 	// root can add a new member
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3MemberAdd(cx, peerURL); err != nil {
+	if err := ctlV3MemberAdd(cx, peerURL, false); err != nil {
 		cx.t.Fatal(err)
 	}
 }
