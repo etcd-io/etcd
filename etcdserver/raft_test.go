@@ -268,3 +268,175 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 		t.Errorf("count = %d, want %d", got, want)
 	}
 }
+
+func TestGetEntriesOverlapped(t *testing.T) {
+	testcases := []struct {
+		Entries          []raftpb.Entry
+		CommittedEntries []raftpb.Entry
+		Want             []uint64
+	}{
+		{
+			Entries:          []raftpb.Entry{},
+			CommittedEntries: []raftpb.Entry{},
+			Want:             nil,
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 4},
+				{Index: 5},
+				{Index: 6},
+			},
+			Want: nil,
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 4},
+				{Index: 5},
+				{Index: 6},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			Want: nil,
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			Want: []uint64{1, 2, 3},
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+			},
+			Want: []uint64{1, 2},
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+				{Index: 4},
+			},
+			Want: []uint64{1, 2, 3},
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 2},
+			},
+			Want: []uint64{2},
+		},
+		{
+			Entries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Index: 1},
+				{Index: 2},
+				{Index: 3},
+			},
+			Want: []uint64{1, 2},
+		},
+	}
+
+	for i := range testcases {
+		tc := &testcases[i]
+		got := getEntriesOverlapped(tc.Entries, tc.CommittedEntries)
+		var ids []uint64
+		if got != nil {
+			ids = make([]uint64, 0, len(got))
+			for _, v := range got {
+				ids = append(ids, v.Index)
+			}
+		}
+
+		if !reflect.DeepEqual(ids, tc.Want) {
+			t.Errorf("#%d: got = %#v, want %#v", i, ids, tc.Want)
+		}
+	}
+}
+
+func TestApplyCommittedEntriesAfterPersistedToWAL(t *testing.T) {
+	n := newNopReadyNode()
+
+	st := mockstorage.NewStorageRecorder("")
+	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
+		Node:        n,
+		storage:     st,
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   newNopTransporter(),
+	})
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
+
+	srv.r.start(&raftReadyHandler{
+		getLead:              func() uint64 { return 0 },
+		updateLead:           func(uint64) {},
+		updateLeadership:     func(bool) {},
+		updateCommittedIndex: func(uint64) {},
+	})
+	defer srv.r.Stop()
+
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
+		Entries: []raftpb.Entry{
+			{Type: raftpb.EntryNormal, Data: []byte("Test"), Index: 1},
+			{Type: raftpb.EntryNormal, Data: []byte("Test"), Index: 2},
+		},
+		CommittedEntries: []raftpb.Entry{
+			{Type: raftpb.EntryNormal, Data: []byte("Test"), Index: 1},
+		},
+	}
+	// Before we get the apply, entries must has been saved to the
+	// storage since the applyc is a blocking channel
+	time.Sleep(time.Millisecond * 100)
+	if len(st.Action()) != 1 {
+		t.Fatal("entries are not persisted to WAL before applying")
+	}
+	var applyEvent apply
+	select {
+	case applyEvent = <-srv.r.applyc:
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected blocking on processing Ready")
+	}
+	// Wait left entries are persisted to WAL
+	select {
+	case <-applyEvent.notifyc:
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected blocking on waiting for notifyc")
+	}
+	if len(st.Action()) != 2 {
+		t.Fatal("left entries are not persisted to WAL after applying")
+	}
+}

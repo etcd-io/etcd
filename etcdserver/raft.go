@@ -203,6 +203,33 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					}
 				}
 
+				// Before triggering applyAll we should make sure all committed entries are
+				// persisted to WAL. It happens when the node is in a single node cluster,
+				// the committed entries maybe applied before the entries are persisted to WAL,
+				// it will cause the entries are applied to the state machine but not in the WAL.
+				overlappedEntries := getEntriesOverlapped(rd.Entries, rd.CommittedEntries)
+				if nil != overlappedEntries && islead {
+					// Ignore case that the follower is catching up the cluster because
+					// the entries are committed over the cluster
+					hardState := rd.HardState
+					if len(overlappedEntries) != len(rd.Entries) {
+						// Not all entries are committed, save left entries with HardState later
+						hardState = raftpb.HardState{}
+					} else {
+						rd.HardState = raftpb.HardState{}
+					}
+					if err := r.storage.Save(hardState, overlappedEntries); err != nil {
+						if r.lg != nil {
+							r.lg.Fatal("failed to save overlapped entries", zap.Error(err))
+						} else {
+							plog.Fatalf("raft save overlapped entries error: %v", err)
+						}
+					}
+					r.raftStorage.Append(overlappedEntries)
+					// Other entries are not committed now
+					rd.Entries = rd.Entries[len(overlappedEntries):]
+				}
+
 				notifyc := make(chan struct{}, 1)
 				ap := apply{
 					entries:  rd.CommittedEntries,
@@ -729,4 +756,31 @@ func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 		ents = append(ents, e)
 	}
 	return ents
+}
+
+// getEntriesOverlapped returns entires that are both in l and r
+func getEntriesOverlapped(l []raftpb.Entry, r []raftpb.Entry) []raftpb.Entry {
+	if len(l) == 0 || len(r) == 0 {
+		return nil
+	}
+	lo := l
+	hi := r
+	if hi[0].Index < lo[0].Index {
+		lo = r
+		hi = l
+	}
+	if hi[0].Index > lo[len(lo)-1].Index {
+		return nil
+	}
+	// lo: | 5 | 6 | 7 | 8 |
+	// hi:         | 7 | 8 | 9 | 10 |
+	// lo: | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+	// hi:         | 7 | 8 | 9 | 10 |
+	//             | Count |
+	// Count = min(Index of the tail of lo - Index of the head of hi + 1, len(hi))
+	count := int(lo[len(lo)-1].Index - hi[0].Index + 1)
+	if count > len(hi) {
+		count = len(hi)
+	}
+	return hi[:count]
 }
