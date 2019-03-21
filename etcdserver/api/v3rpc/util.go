@@ -35,6 +35,7 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrIDNotFound:              rpctypes.ErrGRPCMemberNotFound,
 	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
 	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
+	membership.ErrPromotionFailed:         rpctypes.ErrGRPCMemberPromtotionFailed,
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,

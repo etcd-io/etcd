@@ -40,6 +40,7 @@ var (
 	ErrGRPCMemberNotEnoughStarted = status.New(codes.FailedPrecondition, "etcdserver: re-configuration failed due to not enough started members").Err()
 	ErrGRPCMemberBadURLs          = status.New(codes.InvalidArgument, "etcdserver: given member URLs are invalid").Err()
 	ErrGRPCMemberNotFound         = status.New(codes.NotFound, "etcdserver: member not found").Err()
+	ErrGRPCMemberPromtotionFailed = status.New(codes.FailedPrecondition, "etcdserver: learner member promotion failed").Err()
 
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()

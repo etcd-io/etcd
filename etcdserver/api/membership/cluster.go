@@ -252,6 +252,16 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	}
 }
 
+// IsPromoteChange checks if m is a promoteChange
+func (c *RaftCluster) IsPromoteChange(m *Member) bool {
+	members, _ := membersFromStore(c.lg, c.v2store)
+
+	if members[m.ID] != nil && members[m.ID].IsLearner && !m.IsLearner {
+		return true
+	}
+	return false
+}
+
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
@@ -262,9 +272,6 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
-		if members[id] != nil {
-			return ErrIDExists
-		}
 		urls := make(map[string]bool)
 		for _, m := range members {
 			for _, u := range m.PeerURLs {
@@ -279,12 +286,21 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				plog.Panicf("unmarshal member should never fail: %v", err)
 			}
 		}
-		for _, u := range m.PeerURLs {
-			if urls[u] {
-				return ErrPeerURLexists
+
+		if members[id] != nil && members[id].IsLearner && cc.Type == raftpb.ConfChangeAddNode {
+			// TODO promote a learner node case check
+		} else {
+			// add a member leanrner or a follower case
+			if members[id] != nil {
+				return ErrIDExists
+			}
+
+			for _, u := range m.PeerURLs {
+				if urls[u] {
+					return ErrPeerURLexists
+				}
 			}
 		}
-
 	case raftpb.ConfChangeRemoveNode:
 		if members[id] == nil {
 			return ErrIDNotFound
