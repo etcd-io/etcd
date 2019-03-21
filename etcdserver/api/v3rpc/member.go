@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"errors"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
@@ -89,8 +88,11 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 }
 
 func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
-	// TODO: implement
-	return nil, errors.New("not implemented")
+	membs, err := cs.server.PromoteMember(ctx, r.ID)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
 }
 
 func (cs *ClusterServer) header() *pb.ResponseHeader {

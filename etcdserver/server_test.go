@@ -1318,6 +1318,54 @@ func TestRemoveMember(t *testing.T) {
 	}
 }
 
+// TestPromoteMember tests PromoteMember can propose and perform learner node promotion.
+func TestPromoteMember(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
+	}
+	cl := newTestCluster(nil)
+	st := v2store.New()
+	cl.SetStore(v2store.New())
+	cl.AddMember(&membership.Member{
+		ID: 1234,
+		RaftAttributes: membership.RaftAttributes{
+			IsLearner: true,
+		},
+	})
+	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
+		Node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		storage:     mockstorage.NewStorageRecorder(""),
+		transport:   newNopTransporter(),
+	})
+	s := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		r:          *r,
+		v2store:    st,
+		cluster:    cl,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+	}
+	s.start()
+	_, err := s.PromoteMember(context.TODO(), 1234)
+	gaction := n.Action()
+	s.Stop()
+
+	if err != nil {
+		t.Fatalf("PromoteMember error: %v", err)
+	}
+	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeAddNode"}, {Name: "ApplyConfChange:ConfChangeAddNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	if cl.Member(1234).IsLearner == true {
+		t.Errorf("member with id 1234 is not promoted")
+	}
+}
+
 // TestUpdateMember tests RemoveMember can propose and perform node update.
 func TestUpdateMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()

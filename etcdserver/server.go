@@ -156,6 +156,10 @@ type Server interface {
 	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error)
+	// PromoteMember attempts to promote a non-voting node to a voting node. It will
+	// return ErrIDNotFound if the member ID does not exist.
+	// return ErrPromotionFailed if the member can't be promoted.
+	PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error)
 
 	// ClusterVersion is the cluster-wide minimum major.minor version.
 	// Cluster version is set to the min version that an etcd member is
@@ -1611,6 +1615,56 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 	return s.configure(ctx, cc)
 }
 
+// PromoteMember promotes a learner node to a voting node.
+func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+		return nil, err
+	}
+
+	if err := s.mayPromoteMember(types.ID(id)); err != nil {
+		return nil, err
+	}
+
+	var memb membership.Member
+	members := s.cluster.Members()
+	isExist := false
+	for _, member := range members {
+		if uint64(member.ID) == id {
+			memb = *member
+			isExist = true
+			break
+		}
+	}
+
+	if !isExist {
+		return nil, membership.ErrIDNotFound
+	}
+	memb.IsLearner = false
+
+	b, err := json.Marshal(memb)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  id,
+		Context: b,
+	}
+
+	return s.configure(ctx, cc)
+}
+
+func (s *EtcdServer) mayPromoteMember(id types.ID) error {
+	if !s.Cfg.StrictReconfigCheck {
+		return nil
+	}
+	// TODO add more checks whether the member can be promoted.
+	// like learner progress check or if cluster is ready to promote a learner
+
+	return nil
+}
+
 func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	if !s.Cfg.StrictReconfigCheck {
 		return nil
@@ -2080,7 +2134,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 				plog.Panicf("nodeID should always be equal to member ID")
 			}
 		}
-		s.cluster.AddMember(m)
+		if s.cluster.IsPromoteChange(m) {
+			s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
+		} else {
+			s.cluster.AddMember(m)
+		}
+
 		if m.ID != s.id {
 			s.r.transport.AddPeer(m.ID, m.PeerURLs)
 		}
