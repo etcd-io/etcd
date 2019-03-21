@@ -158,11 +158,15 @@ func (p *printerUnsupported) DBStatus(snapshot.Status)  { p.p(nil) }
 func (p *printerUnsupported) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) { p.p(nil) }
 
 func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string) {
-	hdr = []string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs"}
+	hdr = []string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Learner"}
 	for _, m := range r.Members {
 		status := "started"
 		if len(m.Name) == 0 {
 			status = "unstarted"
+		}
+		isLearner := "false"
+		if m.IsLearner {
+			isLearner = "true"
 		}
 		rows = append(rows, []string{
 			fmt.Sprintf("%x", m.ID),
@@ -170,6 +174,7 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 			m.Name,
 			strings.Join(m.PeerURLs, ","),
 			strings.Join(m.ClientURLs, ","),
+			isLearner,
 		})
 	}
 	return hdr, rows
