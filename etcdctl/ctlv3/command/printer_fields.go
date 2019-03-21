@@ -137,6 +137,7 @@ func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
 		for _, u := range m.ClientURLs {
 			fmt.Printf("\"ClientURL\" : %q\n", u)
 		}
+		fmt.Println(`"IsLearner" :`, m.IsLearner)
 		fmt.Println()
 	}
 }
