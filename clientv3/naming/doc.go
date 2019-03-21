@@ -43,7 +43,7 @@
 //
 //	func etcdDelete(c *clientv3, service, addr string) error {
 //		r := &etcdnaming.GRPCResolver{Client: c}
-//		return r.Update(c.Ctx(), "my-service", naming.Update{Op: naming.Delete, Addr: "1.2.3.4"})
+//		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Delete, Addr: "1.2.3.4"})
 //	}
 //
 // Or register an expiring endpoint with a lease:
