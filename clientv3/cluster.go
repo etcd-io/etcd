@@ -17,8 +17,6 @@ package clientv3
 import (
 	"context"
 
-	"errors"
-
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/types"
 
@@ -123,6 +121,10 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 }
 
 func (c *cluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
-	// TODO: implement
-	return nil, errors.New("not implemented")
+	r := &pb.MemberPromoteRequest{ID: id}
+	resp, err := c.remote.MemberPromote(ctx, r, c.callOpts...)
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+	return (*MemberPromoteResponse)(resp), nil
 }

@@ -21,11 +21,12 @@ import (
 )
 
 var (
-	ErrIDRemoved       = errors.New("membership: ID removed")
-	ErrIDExists        = errors.New("membership: ID exists")
-	ErrIDNotFound      = errors.New("membership: ID not found")
-	ErrPeerURLexists   = errors.New("membership: peerURL exists")
-	ErrPromotionFailed = errors.New("membership: promotion failed")
+	ErrIDRemoved        = errors.New("membership: ID removed")
+	ErrIDExists         = errors.New("membership: ID exists")
+	ErrIDNotFound       = errors.New("membership: ID not found")
+	ErrPeerURLexists    = errors.New("membership: peerURL exists")
+	ErrMemberNotLearner = errors.New("membership: can only promote a learner member")
+	ErrLearnerNotReady  = errors.New("membership: can only promote a learner member which catches up with leader")
 )
 
 func isKeyNotFound(err error) bool {
