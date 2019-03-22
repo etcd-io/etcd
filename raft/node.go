@@ -504,9 +504,9 @@ func (n *node) stepWithWaitOption(ctx context.Context, m pb.Message, wait bool) 
 		return ErrStopped
 	}
 	select {
-	case rsp := <-pm.result:
-		if rsp != nil {
-			return rsp
+	case err := <-pm.result:
+		if err != nil {
+			return err
 		}
 	case <-ctx.Done():
 		return ctx.Err()
