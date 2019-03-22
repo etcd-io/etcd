@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+# Specify GOOS and GOARCH to run build
+#
+# ./build [GOOS] [GOARCH]
+
+if [[ -z "$1" ]] || [[ -z "$2" ]]; then
+    DEFAULT_GOOS=$(go env | grep GOOS)
+    DEFAULT_GOARCH=$(go env | grep GOARCH)
+    echo "GOOS or GOARCH is omitted, defaulting to $DEFAULT_GOOS $DEFAULT_GOARCH"
+else
+    BUILD_ENV="GOOS=$1 GOARCH=$2"
+fi
+
 # set some environment variables
 ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
@@ -53,12 +65,12 @@ etcd_build() {
 
 	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+	env $BUILD_ENV CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcd" ${REPO_PATH} || return
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+	env $BUILD_ENV CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
