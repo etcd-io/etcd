@@ -1,4 +1,6 @@
-﻿# etcd v3 authentication design
+﻿---
+title: etcd v3 authentication design
+---
 
 ## Why not reuse the v2 auth system?
 

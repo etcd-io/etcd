@@ -1,4 +1,6 @@
-# Configuration flags
+---
+title: Configuration flags
+---
 
 etcd is configurable through a configuration file, various command-line flags, and environment variables.
 

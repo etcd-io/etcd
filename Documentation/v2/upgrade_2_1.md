@@ -1,9 +1,10 @@
+---
+title: Upgrade etcd from 2.1 to 2.2
+---
+
 **This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
 
 [v3-docs]: ../docs.md#documentation
-
-
-# Upgrade etcd to 2.1
 
 In the general case, upgrading from etcd 2.0 to 2.1 can be a zero-downtime, rolling upgrade:
  - one by one, stop the etcd v2.0 processes and replace them with etcd v2.1 processes
