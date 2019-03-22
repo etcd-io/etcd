@@ -290,6 +290,12 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	ctx1, err := json.Marshal(&Member{ID: types.ID(1), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx5, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
 	if err != nil {
@@ -304,6 +310,16 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx2to5, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx3, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(3), RaftAttributes: attr}, IsPromote: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx6, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(6), RaftAttributes: attr}, IsPromote: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,8 +351,9 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 1,
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  1,
+				Context: ctx1,
 			},
 			ErrIDExists,
 		},
@@ -387,6 +404,22 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 				Context: ctx2to5,
 			},
 			nil,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  3,
+				Context: ctx3,
+			},
+			ErrMemberNotLearner,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  6,
+				Context: ctx6,
+			},
+			ErrIDNotFound,
 		},
 	}
 	for i, tt := range tests {
