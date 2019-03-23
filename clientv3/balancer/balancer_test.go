@@ -108,8 +108,7 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 				prev = picked
 			}
 			if tc.serverCount > 1 && switches < tc.reqN-3 { // -3 for initial resolutions
-				// TODO: FIX ME
-				t.Skipf("expected balanced loads for %d requests, got switches %d", tc.reqN, switches)
+				t.Fatalf("expected balanced loads for %d requests, got switches %d", tc.reqN, switches)
 			}
 		})
 	}
@@ -190,8 +189,7 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 		prev = picked
 	}
 	if switches < reqN-3 { // -3 for initial resolutions + failover
-		// TODO: FIX ME!
-		t.Skipf("expected balanced loads for %d requests, got switches %d", reqN, switches)
+		t.Fatalf("expected balanced loads for %d requests, got switches %d", reqN, switches)
 	}
 
 	// now failed server comes back
