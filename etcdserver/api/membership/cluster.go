@@ -693,3 +693,22 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 		}
 	}
 }
+
+// IsLearner returns if the local member is raft learner
+func (c *RaftCluster) IsLearner() bool {
+	c.Lock()
+	defer c.Unlock()
+	localMember, ok := c.members[c.localID]
+	if !ok {
+		if c.lg != nil {
+			c.lg.Panic(
+				"failed to find local ID in cluster members",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Panicf("failed to find local ID %s in cluster %s", c.localID.String(), c.cid.String())
+		}
+	}
+	return localMember.IsLearner
+}
