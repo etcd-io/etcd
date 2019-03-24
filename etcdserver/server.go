@@ -2440,3 +2440,8 @@ func (s *EtcdServer) Alarms() []*pb.AlarmMember {
 func (s *EtcdServer) Logger() *zap.Logger {
 	return s.lg
 }
+
+// IsLearner returns if the local member is raft learner
+func (s *EtcdServer) IsLearner() bool {
+	return s.cluster.IsLearner()
+}

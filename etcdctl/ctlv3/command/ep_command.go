@@ -60,7 +60,7 @@ func newEpStatusCommand() *cobra.Command {
 		Use:   "status",
 		Short: "Prints out the status of endpoints specified in `--endpoints` flag",
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
-The items in the lists are endpoint, ID, version, db size, is leader, raft term, raft index.
+The items in the lists are endpoint, ID, version, db size, is leader, is learner, raft term, raft index, raft applied index, errors.
 `,
 		Run: epStatusCommandFunc,
 	}
