@@ -287,7 +287,7 @@ func startEtcdOrProxyV2() {
 	case lerr := <-errc:
 		// fatal out on listener errors
 		if lg != nil {
-			lg.Fatal("listener failed", zap.Error(err))
+			lg.Fatal("listener failed", zap.Error(lerr))
 		} else {
 			plog.Fatal(lerr)
 		}
