@@ -108,7 +108,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	if err = s.doSerialize(ctx, chk, get); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	return resp, err
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -155,7 +155,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		if err = s.doSerialize(ctx, chk, get); err != nil {
 			return nil, err
 		}
-		return resp, nil
+		return resp, err
 	}
 
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
