@@ -403,7 +403,7 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 		},
 	)
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
-		plog.Fatalf("create wal error: %v", err)
+		plog.Panicf("create wal error: %v", err)
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
