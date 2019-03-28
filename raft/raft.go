@@ -1044,8 +1044,12 @@ func stepLeader(r *raft, m pb.Message) error {
 					r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
 				}
 			}
-		} else {
-			r.readStates = append(r.readStates, ReadState{Index: r.raftLog.committed, RequestCtx: m.Entries[0].Data})
+		} else { // there is only one voting member (the leader) in the cluster
+			if m.From == None || m.From == r.id { // from leader itself
+				r.readStates = append(r.readStates, ReadState{Index: r.raftLog.committed, RequestCtx: m.Entries[0].Data})
+			} else { // from learner member
+				r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: r.raftLog.committed, Entries: m.Entries})
+			}
 		}
 
 		return nil
