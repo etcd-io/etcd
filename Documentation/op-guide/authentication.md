@@ -1,4 +1,6 @@
-# Role-based access control
+---
+title: Role-based access control
+---
 
 ## Overview
 

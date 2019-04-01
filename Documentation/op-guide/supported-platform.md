@@ -1,4 +1,6 @@
-# Supported systems
+---
+title: Supported systems
+---
 
 ## Current support
 

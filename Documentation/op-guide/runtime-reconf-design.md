@@ -1,4 +1,6 @@
-# Design of runtime reconfiguration
+---
+title: Design of runtime reconfiguration
+---
 
 Runtime reconfiguration is one of the hardest and most error prone features in a distributed system, especially in a consensus based system like etcd.
 

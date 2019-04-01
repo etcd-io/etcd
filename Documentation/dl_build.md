@@ -1,4 +1,6 @@
-# Download and build
+---
+title: Download and build
+---
 
 ## System requirements
 

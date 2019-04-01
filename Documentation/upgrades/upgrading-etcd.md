@@ -1,8 +1,11 @@
-# Upgrading etcd clusters and applications
+---
+title: Upgrading etcd clusters and applications
+---
 
 This section contains documents specific to upgrading etcd clusters and applications.
 
 ## Moving from etcd API v2 to API v3
+
 * [Migrate applications from using API v2 to API v3][migrate-apps]
 
 ## Upgrading an etcd v3.x cluster
