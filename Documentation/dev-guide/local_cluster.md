@@ -26,7 +26,7 @@ Use `etcdctl` to interact with the running cluster:
 1. Store an example key-value pair in the cluster:
 
     ```
-      $ ./etcdctl put foo bar
+      $ ./etcdctl set foo bar
       OK
     ```
 
@@ -85,7 +85,7 @@ Use `etcdctl` to interact with the running cluster:
 2. Store an example key-value pair in the cluster:
 
     ```
-    $ etcdctl put foo bar
+    $ etcdctl set foo bar
     OK
     ```
 
@@ -109,7 +109,7 @@ To exercise etcd's fault tolerance, kill a member and attempt to retrieve the ke
 3. Store a key:
 
     ```
-    $ etcdctl put key hello
+    $ etcdctl set key hello
     OK
     ```
 
