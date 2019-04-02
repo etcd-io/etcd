@@ -42,6 +42,7 @@ type printer interface {
 	MemberAdd(v3.MemberAddResponse)
 	MemberRemove(id uint64, r v3.MemberRemoveResponse)
 	MemberUpdate(id uint64, r v3.MemberUpdateResponse)
+	MemberPromote(id uint64, r v3.MemberPromoteResponse)
 	MemberList(v3.MemberListResponse)
 
 	EndpointHealth([]epHealth)
