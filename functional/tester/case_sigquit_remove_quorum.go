@@ -191,7 +191,7 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 			zap.Strings("peer-urls", clus.Members[idx].Etcd.AdvertisePeerURLs),
 		)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		_, err := leaderc.MemberAdd(ctx, clus.Members[idx].Etcd.AdvertisePeerURLs)
+		_, err := leaderc.MemberAdd(ctx, clus.Members[idx].Etcd.AdvertisePeerURLs, false)
 		cancel()
 		clus.lg.Info(
 			"member add request DONE",

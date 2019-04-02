@@ -133,7 +133,7 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 	}
 	defer cli2.Close()
 
-	_, err = cli2.MemberAdd(context.Background(), clus.Members[idx1].Etcd.AdvertisePeerURLs)
+	_, err = cli2.MemberAdd(context.Background(), clus.Members[idx1].Etcd.AdvertisePeerURLs, false)
 	clus.lg.Info(
 		"member add before fresh restart",
 		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
