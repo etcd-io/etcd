@@ -40,6 +40,7 @@ func NewMemberCommand() *cobra.Command {
 	mc.AddCommand(NewMemberRemoveCommand())
 	mc.AddCommand(NewMemberUpdateCommand())
 	mc.AddCommand(NewMemberListCommand())
+	mc.AddCommand(NewMemberPromoteCommand())
 
 	return mc
 }
@@ -95,6 +96,20 @@ The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs, Is Learne
 `,
 
 		Run: memberListCommandFunc,
+	}
+
+	return cc
+}
+
+// NewMemberPromoteCommand returns the cobra command for "member promote".
+func NewMemberPromoteCommand() *cobra.Command {
+	cc := &cobra.Command{
+		Use:   "promote <memberID>",
+		Short: "Promotes a non-voting member in the cluster",
+		Long: `Promotes a non-voting learner member to a voting one in the cluster.
+`,
+
+		Run: memberPromoteCommandFunc,
 	}
 
 	return cc
@@ -237,4 +252,24 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	display.MemberList(*resp)
+}
+
+// memberPromoteCommandFunc executes the "member promote" command.
+func memberPromoteCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("member ID is not provided"))
+	}
+
+	id, err := strconv.ParseUint(args[0], 16, 64)
+	if err != nil {
+		ExitWithError(ExitBadArgs, fmt.Errorf("bad member ID arg (%v), expecting ID in Hex", err))
+	}
+
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberPromote(ctx, id)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	display.MemberPromote(id, *resp)
 }

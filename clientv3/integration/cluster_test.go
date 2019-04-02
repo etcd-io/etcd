@@ -202,6 +202,27 @@ func TestMemberAddForLearner(t *testing.T) {
 	if !resp.Member.IsLearner {
 		t.Errorf("Added a member as learner, got resp.Member.IsLearner = %v", resp.Member.IsLearner)
 	}
+}
+
+func TestMemberPromoteForLearner(t *testing.T) {
+	// TODO test not ready learner promotion.
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+	// TODO change the random client to client that talk to leader directly.
+	capi := clus.RandClient()
+
+	urls := []string{"http://127.0.0.1:1234"}
+	isLearner := true
+	resp, err := capi.MemberAddAsLearner(context.Background(), urls)
+	if err != nil {
+		t.Fatalf("failed to add member %v", err)
+	}
+
+	if !resp.Member.IsLearner {
+		t.Errorf("Added a member as learner, got resp.Member.IsLearner = %v", resp.Member.IsLearner)
+	}
 
 	learners, err := clus.GetLearnerMembers()
 	if err != nil {
@@ -210,4 +231,18 @@ func TestMemberAddForLearner(t *testing.T) {
 	if len(learners) != 1 {
 		t.Errorf("Added 1 learner node to cluster, got %d", len(learners))
 	}
+	_, err = capi.MemberPromote(context.Background(), resp.Member.ID)
+
+	if err != nil {
+		t.Fatalf("failed to promote member error: %v", err)
+	}
+
+	learners, err = clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the number of learners in cluster: %v", err)
+	}
+	if len(learners) != 0 {
+		t.Errorf("learner promoted, expect 0 learner, got %d", len(learners))
+	}
+
 }

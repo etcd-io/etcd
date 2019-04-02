@@ -136,6 +136,10 @@ func (s *simplePrinter) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
 	fmt.Printf("Member %16x updated in cluster %16x\n", id, r.Header.ClusterId)
 }
 
+func (s *simplePrinter) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+	fmt.Printf("Member %16x promoted in cluster %16x\n", id, r.Header.ClusterId)
+}
+
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	_, rows := makeMemberListTable(resp)
 	for _, row := range rows {
