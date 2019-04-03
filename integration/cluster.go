@@ -559,6 +559,8 @@ type member struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+
+	isLearner bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -1272,3 +1274,121 @@ type grpcAPI struct {
 	// Election is the election API for the client's connection.
 	Election epb.ElectionClient
 }
+
+// GetLearnerMembers returns the list of learner members in cluster using MemberList API.
+func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
+	cli := c.Client(0)
+	resp, err := cli.MemberList(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list member %v", err)
+	}
+	var learners []*pb.Member
+	for _, m := range resp.Members {
+		if m.IsLearner {
+			learners = append(learners, m)
+		}
+	}
+	return learners, nil
+}
+
+// AddAndLaunchLearnerMember creates a leaner member, adds it to cluster
+// via v3 MemberAdd API, and then launches the new member.
+func (c *ClusterV3) AddAndLaunchLearnerMember(t testing.TB) {
+	m := c.mustNewMember(t)
+	m.isLearner = true
+
+	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
+	peerURLs := []string{scheme + "://" + m.PeerListeners[0].Addr().String()}
+
+	cli := c.Client(0)
+	_, err := cli.MemberAddAsLearner(context.Background(), peerURLs)
+	if err != nil {
+		t.Fatalf("failed to add learner member %v", err)
+	}
+
+	m.InitialPeerURLsMap = types.URLsMap{}
+	for _, mm := range c.Members {
+		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
+	}
+	m.InitialPeerURLsMap[m.Name] = m.PeerURLs
+	m.NewCluster = false
+
+	if err := m.Launch(); err != nil {
+		t.Fatal(err)
+	}
+
+	c.Members = append(c.Members, m)
+
+	c.waitMembersMatch(t)
+}
+
+// getMembers returns a list of members in cluster, in format of etcdserverpb.Member
+func (c *ClusterV3) getMembers() []*pb.Member {
+	var mems []*pb.Member
+	for _, m := range c.Members {
+		mem := &pb.Member{
+			Name:       m.Name,
+			PeerURLs:   m.PeerURLs.StringSlice(),
+			ClientURLs: m.ClientURLs.StringSlice(),
+			IsLearner:  m.isLearner,
+		}
+		mems = append(mems, mem)
+	}
+	return mems
+}
+
+// waitMembersMatch waits until v3rpc MemberList returns the 'same' members info as the
+// local 'c.Members', which is the local recording of members in the testing cluster. With
+// the exception that the local recording c.Members does not have info on Member.ID, which
+// is generated when the member is been added to cluster.
+//
+// Note:
+// A successful match means the Member.clientURLs are matched. This means member has already
+// finished publishing its server attributes to cluster. Publishing attributes is a cluster-wide
+// write request (in v2 server). Therefore, at this point, any raft log entries prior to this
+// would have already been applied.
+//
+// If a new member was added to an existing cluster, at this point, it has finished publishing
+// its own server attributes to the cluster. And therefore by the same argument, it has already
+// applied the raft log entries (especially those of type raftpb.ConfChangeType). At this point,
+// the new member has the correct view of the cluster configuration.
+//
+// Special note on learner member:
+// Learner member is only added to a cluster via v3rpc MemberAdd API (as of v3.4). When starting
+// the learner member, its initial view of the cluster created by peerURLs map does not have info
+// on whether or not the new member itself is learner. But at this point, a successful match does
+// indicate that the new learner member has applied the raftpb.ConfChangeAddLearnerNode entry
+// which was used to add the learner itself to the cluster, and therefore it has the correct info
+// on learner.
+func (c *ClusterV3) waitMembersMatch(t testing.TB) {
+	wMembers := c.getMembers()
+	sort.Sort(SortableProtoMemberSliceByPeerURLs(wMembers))
+	cli := c.Client(0)
+	for {
+		resp, err := cli.MemberList(context.Background())
+		if err != nil {
+			t.Fatalf("failed to list member %v", err)
+		}
+
+		if len(resp.Members) != len(wMembers) {
+			continue
+		}
+		sort.Sort(SortableProtoMemberSliceByPeerURLs(resp.Members))
+		for _, m := range resp.Members {
+			m.ID = 0
+		}
+		if reflect.DeepEqual(resp.Members, wMembers) {
+			return
+		}
+
+		time.Sleep(tickDuration)
+	}
+}
+
+type SortableProtoMemberSliceByPeerURLs []*pb.Member
+
+func (p SortableProtoMemberSliceByPeerURLs) Len() int { return len(p) }
+func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
+	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
+}
+func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }

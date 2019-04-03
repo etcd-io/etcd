@@ -16,7 +16,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -204,27 +203,11 @@ func TestMemberAddForLearner(t *testing.T) {
 		t.Errorf("Added a member as learner, got resp.Member.IsLearner = %v", resp.Member.IsLearner)
 	}
 
-	numOfLearners, err := getNumberOfLearners(clus)
+	learners, err := clus.GetLearnerMembers()
 	if err != nil {
-		t.Fatalf("failed to get the number of learners in cluster: %v", err)
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
 	}
-	if numOfLearners != 1 {
-		t.Errorf("Added 1 learner node to cluster, got %d", numOfLearners)
+	if len(learners) != 1 {
+		t.Errorf("Added 1 learner node to cluster, got %d", len(learners))
 	}
-}
-
-// getNumberOfLearners return the number of learner nodes in cluster using MemberList API
-func getNumberOfLearners(clus *integration.ClusterV3) (int, error) {
-	cli := clus.RandClient()
-	resp, err := cli.MemberList(context.Background())
-	if err != nil {
-		return 0, fmt.Errorf("failed to list member %v", err)
-	}
-	numberOfLearners := 0
-	for _, m := range resp.Members {
-		if m.IsLearner {
-			numberOfLearners++
-		}
-	}
-	return numberOfLearners, nil
 }
