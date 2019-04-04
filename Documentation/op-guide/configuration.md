@@ -270,6 +270,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: ""
 + env variable: ETCD_CLIENT_CRL_FILE
 
+### --client-cert-allowed-name
++ Allowed Allowed TLS name for client cert authentication.
++ default: ""
++ env variable: ETCD_CLIENT_CERT_ALLOWED_NAME
+
 ### --trusted-ca-file
 + Path to the client server TLS trusted CA cert file.
 + default: ""
@@ -320,8 +325,13 @@ The security flags help to [build a secure etcd cluster][security].
 
 ### --peer-cert-allowed-cn
 + Allowed CommonName for inter peer authentication.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_CERT_ALLOWED_CN
+
+### --peer-cert-allowed-name
++ Allowed TLS certificate name for inter peer authentication.
++ default: ""
++ env variable: ETCD_PEER_CERT_ALLOWED_NAME
 
 ### --cipher-suites
 + Comma-separated list of supported TLS cipher suites between server/client and peers.

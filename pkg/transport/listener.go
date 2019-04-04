@@ -88,6 +88,10 @@ type TLSInfo struct {
 	// AllowedCN is a CN which must be provided by a client.
 	AllowedCN string
 
+	// AllowedName is an IP address or hostname that must match the TLS
+	// certificate provided by a client.
+	AllowedName string
+
 	// Logger logs TLS errors.
 	// If nil, all logs are discarded.
 	Logger *zap.Logger
@@ -256,16 +260,32 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		cfg.CipherSuites = info.CipherSuites
 	}
 
+	// Client certificates may be verified by either an exact match on the CN,
+	// or a more general check of the CN and SANs.
+	var verifyCertificate func(*x509.Certificate) bool
 	if info.AllowedCN != "" {
+		if info.AllowedName != "" {
+			return nil, fmt.Errorf("AllowedCN and AllowedName are mutually exclusive (cn=%q, name=%q)", info.AllowedCN, info.AllowedName)
+		}
+		verifyCertificate = func(cert *x509.Certificate) bool {
+			return info.AllowedCN == cert.Subject.CommonName
+		}
+	}
+	if info.AllowedName != "" {
+		verifyCertificate = func(cert *x509.Certificate) bool {
+			return cert.VerifyHostname(info.AllowedName) == nil
+		}
+	}
+	if verifyCertificate != nil {
 		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			for _, chains := range verifiedChains {
 				if len(chains) != 0 {
-					if info.AllowedCN == chains[0].Subject.CommonName {
+					if verifyCertificate(chains[0]) {
 						return nil
 					}
 				}
 			}
-			return errors.New("CommonName authentication failed")
+			return errors.New("client certificate authentication failed")
 		}
 	}
 
