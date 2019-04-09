@@ -6,8 +6,8 @@ if ! [[ "$0" =~ scripts/updatedep.sh ]]; then
   exit 255
 fi
 
-if [[ $(go version) != "go version go1.11"* ]]; then
-  echo "expect Go 1.11+, got:" "$(go version)"
+if [[ $(go version) != "go version go1.12"* ]]; then
+  echo "expect Go 1.12+, got:" "$(go version)"
   exit 255
 fi
 
