@@ -16,6 +16,8 @@ package etcdmain
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -30,7 +32,6 @@ import (
 	"github.com/coreos/etcd/clientv3/leasing"
 	"github.com/coreos/etcd/clientv3/namespace"
 	"github.com/coreos/etcd/clientv3/ordering"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -110,7 +111,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&grpcProxyListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
 	cmd.Flags().StringVar(&grpcProxyDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
-	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for /metrics requests on an additional interface")
+	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for endpoint /metrics requests on an additional interface")
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().StringVar(&grpcProxyAdvertiseClientURL, "advertise-client-url", "127.0.0.1:23790", "advertise address to register (must be reachable by client)")
@@ -180,6 +181,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 
 	client := mustNewClient()
+	httpClient := mustNewHTTPClient()
 
 	srvhttp, httpl := mustHTTPListener(m, tlsinfo, client)
 	errc := make(chan error)
@@ -190,7 +192,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		mhttpl := mustMetricsListener(tlsinfo)
 		go func() {
 			mux := http.NewServeMux()
-			etcdhttp.HandlePrometheus(mux)
+			grpcproxy.HandleMetrics(mux, httpClient, client.Endpoints())
 			grpcproxy.HandleHealth(mux, client)
 			plog.Fatal(http.Serve(mhttpl, mux))
 		}()
@@ -352,16 +354,14 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 	v3electionpb.RegisterElectionServer(server, electionp)
 	v3lockpb.RegisterLockServer(server, lockp)
 
-	// set zero values for metrics registered for this grpc server
-	grpc_prometheus.Register(server)
-
 	return server
 }
 
 func mustHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client) (*http.Server, net.Listener) {
+	httpClient := mustNewHTTPClient()
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
-	etcdhttp.HandlePrometheus(httpmux)
+	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
 	grpcproxy.HandleHealth(httpmux, c)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
@@ -381,6 +381,43 @@ func mustHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Clien
 	}
 	srvhttp.TLSConfig = srvTLS
 	return srvhttp, m.Match(cmux.Any())
+}
+
+func mustNewHTTPClient() *http.Client {
+	transport, err := newHTTPTransport(grpcProxyCA, grpcProxyCert, grpcProxyKey)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	return &http.Client{Transport: transport}
+}
+
+func newHTTPTransport(ca, cert, key string) (*http.Transport, error) {
+	tr := &http.Transport{}
+
+	if ca != "" && cert != "" && key != "" {
+		caCert, err := ioutil.ReadFile(ca)
+		if err != nil {
+			return nil, err
+		}
+		keyPair, err := tls.LoadX509KeyPair(cert, key)
+		if err != nil {
+			return nil, err
+		}
+		caPool := x509.NewCertPool()
+		caPool.AppendCertsFromPEM(caCert)
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{keyPair},
+			RootCAs:      caPool,
+		}
+		tlsConfig.BuildNameToCertificate()
+		tr.TLSClientConfig = tlsConfig
+	} else if grpcProxyInsecureSkipTLSVerify {
+		tlsConfig := &tls.Config{InsecureSkipVerify: grpcProxyInsecureSkipTLSVerify}
+		tr.TLSClientConfig = tlsConfig
+	}
+	return tr, nil
 }
 
 func mustMetricsListener(tlsinfo *transport.TLSInfo) net.Listener {
