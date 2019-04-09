@@ -221,6 +221,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix missing [`etcd_network_peer_sent_failures_total`](https://github.com/etcd-io/etcd/pull/9437) Prometheus metric count.
 - Fix [`etcd_debugging_server_lease_expired_total`](https://github.com/etcd-io/etcd/pull/9557) Prometheus metric.
 - Fix [race conditions in v2 server stat collecting](https://github.com/etcd-io/etcd/pull/9562).
+- Change [gRPC proxy to expose etcd server endpoint /metrics](https://github.com/etcd-io/etcd/pull/10618).
+  - The metrics that were exposed via the proxy were not etcd server members but instead the proxy itself.
 
 ### Security, Authentication
 
@@ -438,6 +440,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Especially, gRPC proxy was affected, since it detects a leader loss with a key `"proxy-namespace__lostleader"` and a watch revision `"int64(math.MaxInt64 - 2)"`.
   - Now, this server-side panic has been fixed.
 - Fix [memory leak in cache layer](https://github.com/etcd-io/etcd/pull/10327).
+- Change [gRPC proxy to expose etcd server endpoint /metrics](https://github.com/etcd-io/etcd/pull/10618).
+  - The metrics that were exposed via the proxy were not etcd server members but instead the proxy itself.
 
 ### gRPC gateway
 
