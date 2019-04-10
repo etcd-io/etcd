@@ -15,13 +15,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/discovery.etcd.io/handlers/httperror"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"go.etcd.io/etcd/client"
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/discovery/handlers/httperror"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
+
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/grpclog"
 )
 
