@@ -54,7 +54,7 @@ func (b *builder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balan
 	bb := &baseBalancer{
 		id:     strconv.FormatInt(time.Now().UnixNano(), 36),
 		policy: b.cfg.Policy,
-		name:   b.cfg.Policy.String(),
+		name:   b.cfg.Name,
 		lg:     b.cfg.Logger,
 
 		addrToSc: make(map[resolver.Address]balancer.SubConn),
@@ -66,9 +66,6 @@ func (b *builder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balan
 
 		// initialize picker always returns "ErrNoSubConnAvailable"
 		Picker: picker.NewErr(balancer.ErrNoSubConnAvailable),
-	}
-	if b.cfg.Name != "" {
-		bb.name = b.cfg.Name
 	}
 	if bb.lg == nil {
 		bb.lg = zap.NewNop()
