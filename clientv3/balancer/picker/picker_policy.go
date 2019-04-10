@@ -31,7 +31,7 @@ const (
 	// TODO: only send loads to pinned address "RoundrobinFailover"
 	// just like how 3.3 client works
 	//
-	// TODO: priotize leader
+	// TODO: prioritize leader
 	// TODO: health-check
 	// TODO: weighted roundrobin
 	// TODO: power of two random choice
