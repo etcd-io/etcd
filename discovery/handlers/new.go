@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.etcd.io/etcd/client"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/discovery/handlers/httperror"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
@@ -79,36 +78,16 @@ func (st *State) setupToken(size int) (string, error) {
 		return "", errors.New("Couldn't generate a token")
 	}
 
-	println("philips create")
-
-	ev, err := st.v2.Create(path.Join(token, "config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
+	ev, err := st.v2.Create(path.Join("/", token, "config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
 	if err != nil {
 		return "", fmt.Errorf("Couldn't setup state %v %v", ev, err)
 	}
-
-	println("philips create done")
 
 	return token, nil
 }
 
 func (st *State) deleteToken(token string) error {
-	c, _ := client.New(client.Config{
-		Endpoints: []string{st.endpoint()},
-		Transport: client.DefaultTransport,
-		// set timeout per request to fail fast when the target endpoint is unavailable
-		HeaderTimeoutPerRequest: time.Second,
-	})
-	kapi := client.NewKeysAPI(c)
-
-	if token == "" {
-		return errors.New("No token given")
-	}
-
-	_, err := kapi.Delete(
-		context.Background(),
-		path.Join("_etcd", "registry", token),
-		&client.DeleteOptions{Recursive: true},
-	)
+	_, err := st.v2.Delete(path.Join("/", token), true, true)
 	return err
 }
 
