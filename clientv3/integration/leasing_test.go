@@ -310,7 +310,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "abc" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 	// check current revision
 	getResp, gerr = lkv.Get(context.TODO(), "k")
@@ -318,7 +318,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "def" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 }
 
