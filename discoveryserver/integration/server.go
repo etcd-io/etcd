@@ -49,7 +49,6 @@ func NewService(t *testing.T, etcdClientPort, etcdPeerPort, httpPort int) *Servi
 	purl := url.URL{Scheme: "http", Host: fmt.Sprintf("localhost:%d", etcdPeerPort)}
 	cfg.APUrls, cfg.LPUrls = []url.URL{purl}, []url.URL{purl}
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, cfg.APUrls[0].String())
-	cfg.SnapCount = 1000 // single-node, keep minimum snapshot
 
 	// TODO: enable this with etcd v3.3+
 	// cfg.AutoCompactionMode = compactor.ModePeriodic
