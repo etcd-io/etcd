@@ -78,7 +78,7 @@ func (st *State) setupToken(size int) (string, error) {
 		return "", errors.New("Couldn't generate a token")
 	}
 
-	ev, err := st.v2.Create(path.Join("/", token, "config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
+	ev, err := st.v2.Create(path.Join("/", token, "_config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
 	if err != nil {
 		return "", fmt.Errorf("Couldn't setup state %v %v", ev, err)
 	}
