@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"os"
 
-	handling "go.etcd.io/etcd/discovery/http"
+	handling "go.etcd.io/etcd/discoveryserver/http"
 
 	"github.com/coreos/go-systemd/activation"
 	"github.com/spf13/pflag"

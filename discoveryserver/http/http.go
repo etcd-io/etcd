@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"go.etcd.io/etcd/discovery/handlers"
+	"go.etcd.io/etcd/discoveryserver/handlers"
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"

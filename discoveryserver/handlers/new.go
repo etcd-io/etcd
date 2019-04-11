@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/discovery/handlers/httperror"
+	"go.etcd.io/etcd/discoveryserver/handlers/httperror"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
 
