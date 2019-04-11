@@ -44,7 +44,9 @@ ANNOTATIONS {
 # alert if more than 1% of gRPC method calls have failed within the last 5 minutes
 ALERT HighNumberOfFailedGRPCRequests
 IF 100 * (sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
-  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 1
+  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 0
+  or sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m])) > bool 0
+  > 1
 FOR 10m
 LABELS {
   severity = "warning"
@@ -57,7 +59,9 @@ ANNOTATIONS {
 # alert if more than 5% of gRPC method calls have failed within the last 5 minutes
 ALERT HighNumberOfFailedGRPCRequests
 IF 100 * (sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
-  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 5
+  / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m]))) > 0
+  or sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m])) > bool 0
+  > 5
 FOR 5m
 LABELS {
   severity = "critical"

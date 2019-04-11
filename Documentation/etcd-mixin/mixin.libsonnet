@@ -51,9 +51,9 @@
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
               100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
-                /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
-                > 1
+              / sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method) > 0
+              or sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method) > bool 0
+              > 1
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -67,9 +67,9 @@
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
               100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
-                /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
-                > 5
+              / sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method) > 0
+              or sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method) > bool 0
+              > 5
             ||| % $._config,
             'for': '5m',
             labels: {
@@ -151,8 +151,9 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              BY (method) > 0.01
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m])) BY (method)
+              or sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) > bool 0
+              > 0.01
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -165,8 +166,9 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              BY (method) > 0.05
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m])) BY (method)
+              or sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) > bool 0
+              > 0.05
             ||| % $._config,
             'for': '10m',
             labels: {
