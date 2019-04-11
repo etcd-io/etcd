@@ -10,7 +10,6 @@ import (
 
 	handling "go.etcd.io/etcd/discoveryserver/http"
 
-	"github.com/coreos/go-systemd/activation"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -76,15 +75,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	listeners, err := activation.Listeners()
-	if err != nil {
-		panic(err)
-	}
-
-	if len(listeners) != 1 {
-		panic("Unexpected number of socket activation fds")
-	}
-
-	http.Serve(listeners[0], nil)
 }
