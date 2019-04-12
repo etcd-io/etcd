@@ -754,3 +754,25 @@ func (c *RaftCluster) IsLearner() bool {
 	}
 	return localMember.IsLearner
 }
+
+// IsMemberExist returns if the member with the given id exists in cluster.
+func (c *RaftCluster) IsMemberExist(id types.ID) bool {
+	c.Lock()
+	defer c.Unlock()
+	_, ok := c.members[id]
+	return ok
+}
+
+// VotingMemberIDs returns the ID of voting members in cluster.
+func (c *RaftCluster) VotingMemberIDs() []types.ID {
+	c.Lock()
+	defer c.Unlock()
+	var ids []types.ID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ids = append(ids, m.ID)
+		}
+	}
+	sort.Sort(types.IDSlice(ids))
+	return ids
+}
