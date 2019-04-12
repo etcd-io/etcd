@@ -37,6 +37,7 @@ var (
 	ErrUnhealthy                  = errors.New("etcdserver: unhealthy cluster")
 	ErrKeyNotFound                = errors.New("etcdserver: key not found")
 	ErrCorrupt                    = errors.New("etcdserver: corrupt cluster")
+	ErrBadLeaderTransferee        = errors.New("etcdserver: bad leader transferee")
 )
 
 type DiscoveryError struct {

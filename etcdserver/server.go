@@ -1377,16 +1377,16 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	ep.snapi = ep.appliedi
 }
 
-func (s *EtcdServer) isMultiNode() bool {
-	return s.cluster != nil && len(s.cluster.MemberIDs()) > 1
-}
-
 func (s *EtcdServer) isLeader() bool {
 	return uint64(s.ID()) == s.Lead()
 }
 
 // MoveLeader transfers the leader to the given transferee.
 func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) error {
+	if !s.cluster.IsMemberExist(types.ID(transferee)) || s.cluster.Member(types.ID(transferee)).IsLearner {
+		return ErrBadLeaderTransferee
+	}
+
 	now := time.Now()
 	interval := time.Duration(s.Cfg.TickMs) * time.Millisecond
 
@@ -1440,20 +1440,20 @@ func (s *EtcdServer) TransferLeadership() error {
 		return nil
 	}
 
-	if !s.isMultiNode() {
+	if s.cluster == nil || len(s.cluster.VotingMemberIDs()) <= 1 {
 		if lg := s.getLogger(); lg != nil {
 			lg.Info(
-				"skipped leadership transfer; it's a single-node cluster",
+				"skipped leadership transfer for single voting member cluster",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("current-leader-member-id", types.ID(s.Lead()).String()),
 			)
 		} else {
-			plog.Printf("skipped leadership transfer for single member cluster")
+			plog.Printf("skipped leadership transfer for single voting member cluster")
 		}
 		return nil
 	}
 
-	transferee, ok := longestConnected(s.r.transport, s.cluster.MemberIDs())
+	transferee, ok := longestConnected(s.r.transport, s.cluster.VotingMemberIDs())
 	if !ok {
 		return ErrUnhealthy
 	}
