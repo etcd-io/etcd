@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"path"
@@ -109,6 +110,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Etcd-Index", fmt.Sprintf("%d", ev.EtcdIndex))
 	w.WriteHeader(http.StatusOK)
 	w.Write(n)
 }
