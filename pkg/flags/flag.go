@@ -49,8 +49,8 @@ func SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error {
 }
 
 // SetPflagsFromEnv is similar to SetFlagsFromEnv. However, the accepted flagset type is pflag.FlagSet
-// and it does not do any logging.
-func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
+// and the caller can choose to do logging or not.
+func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet, log bool) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	usedEnvKey := make(map[string]bool)
@@ -58,7 +58,7 @@ func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
 		if f.Changed {
 			alreadySet[FlagToEnv(prefix, f.Name)] = true
 		}
-		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, false); serr != nil {
+		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, log); serr != nil {
 			err = serr
 		}
 	})
@@ -100,7 +100,7 @@ func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet 
 		if val != "" {
 			usedEnvKey[key] = true
 			if serr := fs.Set(fname, val); serr != nil {
-				return fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
+				return fmt.Errorf("invalid value %q for %s from environment variable: %v", val, key, serr)
 			}
 			if log {
 				plog.Infof("recognized and used environment variable %s=%s", key, val)

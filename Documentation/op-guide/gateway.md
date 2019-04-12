@@ -68,18 +68,30 @@ $ etcd gateway start --discovery-srv=example.com
 
 ## Configuration flags
 
+etcd gateway is configurable through command-line flags and environment variables. Options set on the command line take precedence over those from the environment.
+
+The format of environment variable for flag `--my-flag` is `ETCD_GATEWAY_MY_FLAG`. It applies to all flags.
+
 ### etcd cluster
 
 #### --endpoints
 
  * Comma-separated list of etcd server targets for forwarding client connections.
  * Default: `127.0.0.1:2379`
+ * Env variable: ETCD_GATEWAY_ENDPOINTS
  * Invalid example: `https://127.0.0.1:2379` (gateway does not terminate TLS)
 
 #### --discovery-srv
 
  * DNS domain used to bootstrap cluster endpoints through SRV recrods.
  * Default: (not set)
+ * Env variable: ETCD_GATEWAY_DISCOVERY_SRV
+
+#### --discovery-srv-name
+
+ * Service name to query when using DNS discovery
+ * Default: (not set)
+ * Env variable: ETCD_GATEWAY_DISCOVERY_SRV_NAME
 
 ### Network
 
@@ -87,11 +99,13 @@ $ etcd gateway start --discovery-srv=example.com
 
  * Interface and port to bind for accepting client requests.
  * Default: `127.0.0.1:23790`
+ * Env variable: ETCD_GATEWAY_LISTEN_ADDR
 
 #### --retry-delay
 
  * Duration of delay before retrying to connect to failed endpoints.
  * Default: 1m0s
+ * Env variable: ETCD_GATEWAY_RETRY_DELAY
  * Invalid example: "123" (expects time unit in format)
 
 ### Security
@@ -100,8 +114,10 @@ $ etcd gateway start --discovery-srv=example.com
 
  * Accept SRV records that are insecure or susceptible to man-in-the-middle attacks.
  * Default: `false`
+ * Env variable: ETCD_GATEWAY_INSECURE_DISCOVERY
 
 #### --trusted-ca-file
 
  * Path to the client TLS CA file for the etcd cluster. Used to authenticate endpoints.
  * Default: (not set)
+ * Env variable: ETCD_GATEWAY_TRUSTED_CA_FILE

@@ -85,7 +85,7 @@ type epHealth struct {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags(), false)
 	initDisplayFromCmd(cmd)
 
 	sec := secureCfgFromCmd(cmd)

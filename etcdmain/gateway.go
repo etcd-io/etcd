@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"go.etcd.io/etcd/pkg/flags"
 	"go.etcd.io/etcd/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
@@ -94,6 +95,14 @@ func stripSchema(eps []string) []string {
 func startGateway(cmd *cobra.Command, args []string) {
 	var lg *zap.Logger
 	lg, err := zap.NewProduction()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	// attempt to set the flag's value from environment variables,
+	// only for the flag's value which is not already set from custom settings at startup.
+	err = flags.SetPflagsFromEnv("ETCD_GATEWAY", cmd.Flags(), true)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -120,7 +120,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		fs.AddFlag(&pflag.Flag{Name: "watch-key", Value: &discardValue{}})
 		fs.AddFlag(&pflag.Flag{Name: "watch-range-end", Value: &discardValue{}})
 	}
-	flags.SetPflagsFromEnv("ETCDCTL", fs)
+	flags.SetPflagsFromEnv("ETCDCTL", fs, false)
 
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
