@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,5 +105,37 @@ func TestMoveLeaderError(t *testing.T) {
 	_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCNotLeader) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCNotLeader)
+	}
+}
+
+// TestMoveLeaderToLearnerError ensures that leader transfer to learner member will fail.
+func TestMoveLeaderToLearnerError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// we have to add and launch learner member after initial cluster was created, because
+	// bootstrapping a cluster with learner member is not supported.
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	learnerID := learners[0].ID
+	leaderIdx := clus.WaitLeader(t)
+	cli := clus.Client(leaderIdx)
+	_, err = cli.MoveLeader(context.Background(), uint64(learnerID))
+	if err == nil {
+		t.Fatalf("expecting leader transfer to learner to fail, got no error")
+	}
+	expectedErrKeywords := "bad leader transferee"
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Errorf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 }
