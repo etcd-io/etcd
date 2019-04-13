@@ -44,25 +44,28 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			recursive = false
 		}
 
-		pq := r.URL.Query().Get("prevIndex")
-		prevIndex, err := strconv.ParseUint(pq, 10, 64)
+		pq := r.URL.Query().Get("waitIndex")
+		waitIndex, err := strconv.ParseUint(pq, 10, 64)
 		if err != nil {
-			prevIndex = 0
+			waitIndex = 0
 		}
 
-		wq := r.URL.Query().Get("watch")
+		wq := r.URL.Query().Get("wait")
 		if wq != "" {
-			watcher, err := st.v2.Watch(r.URL.Path, recursive, false, uint64(prevIndex))
+			watcher, err := st.v2.Watch(r.URL.Path, recursive, false, waitIndex+1)
 			go func() {
 				time.Sleep(time.Minute)
 				watcher.Remove()
 			}()
-			<-watcher.EventChan()
-			if err != nil {
+			ev = <-watcher.EventChan()
+			watcher.Remove()
+			if err != nil || ev == nil {
 				log.Printf("TokenHandler: %v", err)
 				w.WriteHeader(http.StatusOK)
 				return
 			}
+
+			break
 		}
 
 		ev, err = st.v2.Get(r.URL.Path, recursive, true)
@@ -98,7 +101,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		log.Printf("TokenHandler: %v", err)
+		log.Printf("TokenHandler bad HTTP method: %v", r.Method)
 		httperror.Error(w, r, "Unable to GET token", 400, tokenCounter)
 	}
 
