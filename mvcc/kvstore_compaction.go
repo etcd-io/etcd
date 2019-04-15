@@ -21,7 +21,7 @@ import (
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
 	totalStart := time.Now()
-	defer dbCompactionTotalDurations.Observe(float64(time.Since(totalStart) / time.Millisecond))
+	defer func() { dbCompactionTotalDurations.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
 
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
