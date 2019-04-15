@@ -109,7 +109,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	n, err := json.Marshal(ev)
 	if err != nil {
 		log.Printf("TokenHandler: %v", err)
-		httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
+		httperror.Error(w, r, "unable to serialize token", 400, tokenCounter)
 		return
 	}
 
