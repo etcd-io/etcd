@@ -103,6 +103,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	default:
 		log.Printf("TokenHandler bad HTTP method: %v", r.Method)
 		httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
+		return
 	}
 
 	n, err := json.Marshal(ev)
