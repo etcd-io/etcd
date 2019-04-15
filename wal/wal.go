@@ -311,6 +311,7 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 
 	// create a WAL ready for reading
 	w := &WAL{
+		lg:        lg,
 		dir:       dirpath,
 		start:     snap,
 		decoder:   newDecoder(rs...),
