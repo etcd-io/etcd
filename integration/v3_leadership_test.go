@@ -139,3 +139,38 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 		t.Errorf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 }
+
+// TestTransferLeadershipWithLearner ensures TransferLeadership does not timeout due to learner is
+// automatically picked by leader as transferee.
+func TestTransferLeadershipWithLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	leaderIdx := clus.WaitLeader(t)
+	errCh := make(chan error, 1)
+	go func() {
+		// note that this cluster has 1 leader and 1 learner. TransferLeadership should return nil.
+		// Leadership transfer is skipped in cluster with 1 voting member.
+		errCh <- clus.Members[leaderIdx].s.TransferLeadership()
+	}()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("got error during leadership transfer: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("timed out waiting for leader transition")
+	}
+}
