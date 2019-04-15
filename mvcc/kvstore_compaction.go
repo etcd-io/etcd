@@ -23,7 +23,7 @@ import (
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
 	totalStart := time.Now()
-	defer dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
+	defer func() { dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
 	keyCompactions := 0
 	defer func() { dbCompactionKeysCounter.Add(float64(keyCompactions)) }()
 
