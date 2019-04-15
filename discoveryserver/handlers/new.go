@@ -75,12 +75,12 @@ func Setup(etcdCURL, disc string) *State {
 func (st *State) setupToken(size int) (string, error) {
 	token := generateCluster()
 	if token == "" {
-		return "", errors.New("Couldn't generate a token")
+		return "", errors.New("couldn't generate a token")
 	}
 
 	ev, err := st.v2.Create(path.Join("/", token, "_config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
 	if err != nil {
-		return "", fmt.Errorf("Couldn't setup state %v %v", ev, err)
+		return "", fmt.Errorf("couldn't setup state %v %v", ev, err)
 	}
 
 	return token, nil
@@ -108,7 +108,7 @@ func NewTokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		log.Printf("setupToken returned: %v", err)
-		httperror.Error(w, r, "Unable to generate token", 400, newCounter)
+		httperror.Error(w, r, "unable to generate token", 400, newCounter)
 		return
 	}
 

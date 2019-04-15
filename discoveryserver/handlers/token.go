@@ -71,7 +71,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		ev, err = st.v2.Get(r.URL.Path, recursive, true)
 		if err != nil {
 			log.Printf("TokenHandler: %v", err)
-			httperror.Error(w, r, "Unable to GET token", 400, tokenCounter)
+			httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
 			return
 		}
 
@@ -90,25 +90,25 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		ev, err = st.v2.Delete(r.URL.Path, true, true)
 		if err != nil {
 			log.Printf("TokenHandler: %v", err)
-			httperror.Error(w, r, "Unable to DELETE token", 400, tokenCounter)
+			httperror.Error(w, r, "unable to DELETE token", 400, tokenCounter)
 			return
 		}
 	case http.MethodPut:
 		ev, err = st.v2.Set(r.URL.Path, false, r.FormValue("value"), v2store.TTLOptionSet{})
 		if err != nil {
 			log.Printf("TokenHandler: %v", err)
-			httperror.Error(w, r, "Unable to PUT token", 400, tokenCounter)
+			httperror.Error(w, r, "unable to PUT token", 400, tokenCounter)
 			return
 		}
 	default:
 		log.Printf("TokenHandler bad HTTP method: %v", r.Method)
-		httperror.Error(w, r, "Unable to GET token", 400, tokenCounter)
+		httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
 	}
 
 	n, err := json.Marshal(ev)
 	if err != nil {
 		log.Printf("TokenHandler: %v", err)
-		httperror.Error(w, r, "Unable to GET token", 400, tokenCounter)
+		httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
 		return
 	}
 
