@@ -97,6 +97,8 @@ const (
 	maxPendingRevokes = 16
 
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
+
+	readyPercent = 0.9
 )
 
 var (
@@ -1637,7 +1639,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 		return nil, err
 	}
 
-	// check if we can promote this learner
+	// check if we can promote this learner.
 	if err := s.mayPromoteMember(types.ID(id)); err != nil {
 		return nil, err
 	}
@@ -1665,10 +1667,65 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 }
 
 func (s *EtcdServer) mayPromoteMember(id types.ID) error {
+	err := isLearnerReady(uint64(id))
+	if err != nil {
+		return err
+	}
+
 	if !s.Cfg.StrictReconfigCheck {
 		return nil
 	}
-	// TODO add more checks whether the member can be promoted.
+	if !s.cluster.IsReadyToPromoteMember(uint64(id)) {
+		if lg := s.getLogger(); lg != nil {
+			lg.Warn(
+				"rejecting member promote request; not enough healthy members",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("requested-member-remove-id", id.String()),
+				zap.Error(ErrNotEnoughStartedMembers),
+			)
+		} else {
+			plog.Warningf("not enough started members, rejecting promote member %s", id)
+		}
+		return ErrNotEnoughStartedMembers
+	}
+
+	return nil
+}
+
+// check whether the learner catches up with leader or not.
+// Note: it will return nil if member is not found in cluster or if member is not learner.
+// These two conditions will be checked before apply phase later.
+func isLearnerReady(id uint64) error {
+	// sanity check, this can happen in the unit test when we do not start node.
+	if raftStatus == nil {
+		return nil
+	}
+	rs := raftStatus()
+
+	// leader's raftStatus.Progress is not nil
+	if rs.Progress == nil {
+		return ErrNotLeader
+	}
+
+	var learnerMatch uint64
+	isFound := false
+	leaderID := rs.ID
+	for memberID, progress := range rs.Progress {
+		if id == memberID {
+			// check its status
+			learnerMatch = progress.Match
+			isFound = true
+			break
+		}
+	}
+
+	if isFound {
+		leaderMatch := rs.Progress[leaderID].Match
+		// the learner's Match not caught up with leader yet
+		if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
+			return ErrLearnerNotReady
+		}
+	}
 
 	return nil
 }

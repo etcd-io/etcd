@@ -214,14 +214,13 @@ func TestMemberAddForLearner(t *testing.T) {
 	}
 }
 
-func TestMemberPromoteForLearner(t *testing.T) {
-	// TODO test not ready learner promotion.
+func TestMemberPromoteForNotReadyLearner(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
-	// TODO change the random client to client that talk to leader directly.
-	capi := clus.RandClient()
+	// first client is talked to leader because cluster size is 1
+	capi := clus.Client(0)
 
 	urls := []string{"http://127.0.0.1:1234"}
 	memberAddResp, err := capi.MemberAddAsLearner(context.Background(), urls)
@@ -244,19 +243,14 @@ func TestMemberPromoteForLearner(t *testing.T) {
 		t.Fatalf("Added 1 learner node to cluster, got %d", numberOfLearners)
 	}
 
-	memberPromoteResp, err := capi.MemberPromote(context.Background(), learnerID)
-	if err != nil {
-		t.Fatalf("failed to promote member: %v", err)
+	// since we do not start learner, learner must be not ready.
+	_, err = capi.MemberPromote(context.Background(), learnerID)
+	expectedErrKeywords := "can only promote a learner member which catches up with leader"
+	if err == nil {
+		t.Fatalf("expecting promote not ready learner to fail, got no error")
 	}
-
-	numberOfLearners = 0
-	for _, m := range memberPromoteResp.Members {
-		if m.IsLearner {
-			numberOfLearners++
-		}
-	}
-	if numberOfLearners != 0 {
-		t.Errorf("learner promoted, expect 0 learner, got %d", numberOfLearners)
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Errorf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 }
 

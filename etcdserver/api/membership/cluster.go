@@ -652,6 +652,36 @@ func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	return true
 }
 
+func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
+	nmembers := 1
+	nstarted := 0
+
+	for _, member := range c.VotingMembers() {
+		if member.IsStarted() {
+			nstarted++
+		}
+		nmembers++
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		if c.lg != nil {
+			c.lg.Warn(
+				"rejecting member promote; started member will be less than quorum",
+				zap.Int("number-of-started-member", nstarted),
+				zap.Int("quorum", nquorum),
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Warningf("Reject promote member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		}
+		return false
+	}
+
+	return true
+}
+
 func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)

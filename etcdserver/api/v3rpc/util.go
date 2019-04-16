@@ -39,6 +39,7 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 	membership.ErrTooManyLearners:         rpctypes.ErrGRPCTooManyLearners,
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
+	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
 	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
