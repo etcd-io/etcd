@@ -60,7 +60,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			ev = <-watcher.EventChan()
 			watcher.Remove()
 			if err != nil || ev == nil {
-				log.Printf("TokenHandler: %v", err)
+				log.Printf("TokenHandler: GET+wait: %v", err)
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -70,7 +70,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 		ev, err = st.v2.Get(r.URL.Path, recursive, true)
 		if err != nil {
-			log.Printf("TokenHandler: %v", err)
+			log.Printf("TokenHandler: GET: %v", err)
 			httperror.Error(w, r, "unable to GET token", 400, tokenCounter)
 			return
 		}
@@ -89,14 +89,14 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		ev, err = st.v2.Delete(r.URL.Path, true, true)
 		if err != nil {
-			log.Printf("TokenHandler: %v", err)
+			log.Printf("TokenHandler: DELETE: %v", err)
 			httperror.Error(w, r, "unable to DELETE token", 400, tokenCounter)
 			return
 		}
 	case http.MethodPut:
 		ev, err = st.v2.Set(r.URL.Path, false, r.FormValue("value"), v2store.TTLOptionSet{})
 		if err != nil {
-			log.Printf("TokenHandler: %v", err)
+			log.Printf("TokenHandler: PUT: %v", err)
 			httperror.Error(w, r, "unable to PUT token", 400, tokenCounter)
 			return
 		}
@@ -108,7 +108,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 	n, err := json.Marshal(ev)
 	if err != nil {
-		log.Printf("TokenHandler: %v", err)
+		log.Printf("TokenHandler: marshal: %v", err)
 		httperror.Error(w, r, "unable to serialize token", 400, tokenCounter)
 		return
 	}
