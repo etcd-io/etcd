@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -55,7 +56,7 @@ func testHandlersV2(t *testing.T, size int) {
 		t.Fatalf("expected 'OK', got %q", string(bts))
 	}
 
-	// create a token, etcd key will be '/_etcd/registry/[token]' format
+	// create a token
 	resp, err = http.Get(svs.httpEp + fmt.Sprintf("/new?size=%d", size))
 	if err != nil {
 		t.Fatal(err)
@@ -92,8 +93,8 @@ func testHandlersV2(t *testing.T, size int) {
 		if cresp.Node == nil {
 			t.Fatalf("#%d: token response returned <nil> node", i)
 		}
-		exp := "/" + path.Join("_etcd", "registry", token)
-		if cresp.Node.Key != exp {
+		exp := "/" + path.Join(token)
+		if !(cresp.Node.Key == exp || cresp.Node.Key == (exp+"/")) {
 			t.Fatalf("key expected %q, got %q", exp, cresp.Node.Key)
 		}
 		if !cresp.Node.Dir {
@@ -103,10 +104,10 @@ func testHandlersV2(t *testing.T, size int) {
 			t.Fatalf("#%d: unexpected cluster members found, got %+v", i, cresp.Node.Nodes)
 		}
 		// index must have increased after health check
-		if cresp.Node.CreatedIndex != 6 {
+		if cresp.Node.CreatedIndex != 3 {
 			t.Fatalf("cresp.Node.CreatedIndex expected 6, got %d", cresp.Node.CreatedIndex)
 		}
-		if cresp.Node.ModifiedIndex != 6 {
+		if cresp.Node.ModifiedIndex != 3 {
 			t.Fatalf("cresp.Node.ModifiedIndex expected 6, got %d", cresp.Node.ModifiedIndex)
 		}
 	}
@@ -135,30 +136,26 @@ func testHandlersV2(t *testing.T, size int) {
 	// 'curl http://127.0.0.1:2379/v2/keys/foo'
 	for i := 0; i < size; i++ {
 		memberID := fmt.Sprintf("id%d", i)
-		node := client.Node{
-			Key:   "/" + path.Join("_etcd", "registry", token+memberID),
-			Value: fmt.Sprintf("%s=http://test.com:%d", memberID, i),
+		form := url.Values{}
+		form.Add("value", fmt.Sprintf("%s=http://test.com:%d", memberID, i))
+
+		req, err := http.NewRequest(http.MethodPut, svs.httpEp+fmt.Sprintf("/%s", path.Join(token, memberID)), strings.NewReader(form.Encode()))
+
+		if err != nil {
+			t.Fatal(err)
 		}
-		cresp.Node.Nodes = append(cresp.Node.Nodes, &node)
-	}
-	bts, err = json.Marshal(&cresp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req, err := http.NewRequest(http.MethodPut, svs.httpEp+fmt.Sprintf("/%s", token), bytes.NewReader(bts))
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 	}
 
-	// query the token to check if writes are proxied from/to etcd/discovery server
 	for i, ep := range []string{
 		svs.httpEp + fmt.Sprintf("/%s", token),
-		svs.etcdCURL.String() + "/" + path.Join("v2", "keys", "_etcd", "registry", token),
 	} {
+		var cresp client.Response
+		t.Logf("endpoint: %v\n\n", ep)
 		resp, err = http.Get(ep)
 		if err != nil {
 			t.Fatalf("#%d: %v", i, err)
@@ -167,11 +164,13 @@ func testHandlersV2(t *testing.T, size int) {
 			t.Fatalf("#%d: %v", i, err)
 		}
 		gracefulClose(resp)
+		t.Logf("#%d: token response returned %v", i, cresp)
 		if cresp.Node == nil {
 			t.Fatalf("#%d: token response returned <nil> node", i)
 		}
-		exp := "/" + path.Join("_etcd", "registry", token)
+		exp := "/" + token
 		if cresp.Node.Key != exp {
+			t.Logf("#%d: key expected %q, got %q", i, exp, cresp.Node.Key)
 			t.Fatalf("#%d: key expected %q, got %q", i, exp, cresp.Node.Key)
 		}
 		if !cresp.Node.Dir {
