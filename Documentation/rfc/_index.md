@@ -1,5 +1,5 @@
 ---
-title: Overview
+title: etcd v3 API
 ---
 
 The etcd v3 API is designed to give users a more efficient and cleaner abstraction compared to etcd v2. There are a number of semantic and protocol changes in this new API. For an overview [see Xiang Li's video](https://youtu.be/J5AioGtEPeQ?t=211).
@@ -54,6 +54,7 @@ the size in the future a little bit or make it configurable.
 ## Examples
 
 ### Put a key (foo=bar)
+
 ```
 // A put is always successful
 Put( PutRequest { key = foo, value = bar } )
