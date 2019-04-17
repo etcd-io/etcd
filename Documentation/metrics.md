@@ -1,6 +1,5 @@
 ---
 title: Metrics
-weight: 3
 ---
 
 etcd uses [Prometheus][prometheus] for metrics reporting. The metrics can be used for real-time monitoring and debugging. etcd does not persist its metrics; if a member restarts, the metrics will be reset.
