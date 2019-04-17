@@ -1383,7 +1383,7 @@ func TestPromoteMember(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
-	if cl.Member(1234).IsLearner == true {
+	if cl.Member(1234).IsLearner {
 		t.Errorf("member with id 1234 is not promoted")
 	}
 }
