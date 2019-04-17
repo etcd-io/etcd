@@ -104,11 +104,11 @@ func testHandlersV2(t *testing.T, size int) {
 			t.Fatalf("#%d: unexpected cluster members found, got %+v", i, cresp.Node.Nodes)
 		}
 		// index must have increased after health check
-		if cresp.Node.CreatedIndex != 3 {
-			t.Fatalf("cresp.Node.CreatedIndex expected 6, got %d", cresp.Node.CreatedIndex)
+		if cresp.Node.CreatedIndex != 5 {
+			t.Fatalf("cresp.Node.CreatedIndex expected 5, got %d", cresp.Node.CreatedIndex)
 		}
-		if cresp.Node.ModifiedIndex != 3 {
-			t.Fatalf("cresp.Node.ModifiedIndex expected 6, got %d", cresp.Node.ModifiedIndex)
+		if cresp.Node.ModifiedIndex != 5 {
+			t.Fatalf("cresp.Node.ModifiedIndex expected 5, got %d", cresp.Node.ModifiedIndex)
 		}
 	}
 
@@ -180,6 +180,19 @@ func testHandlersV2(t *testing.T, size int) {
 			t.Fatalf("#%d: expected %d cluster members found, got %+v", i, size, cresp.Node.Nodes)
 		}
 	}
+
+	time.Sleep(3 * time.Second)
+	svs.state.GarbageCollect(time.Second, time.Minute)
+
+	// query the size
+	resp, err = http.Get(svs.httpEp + fmt.Sprintf("/%s/_config/size", token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expecting 400 after GC got %v", resp.StatusCode)
+	}
+
 }
 
 var isAlphanumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString

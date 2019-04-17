@@ -3,8 +3,10 @@ package handlers
 import (
 	"net/url"
 	"sync"
+	"time"
 
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 )
 
@@ -16,6 +18,8 @@ type State struct {
 	etcdCURL      *url.URL
 	currentLeader string
 	discHost      string
+	maxAge        time.Duration
+	session       *concurrency.Session
 	client        *clientv3.Client
 	v2            v2store.Store
 }

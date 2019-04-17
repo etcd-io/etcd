@@ -17,6 +17,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/discoveryserver/handlers/httperror"
+	"go.etcd.io/etcd/discoveryserver/timeprefix"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
 
@@ -72,22 +73,39 @@ func Setup(etcdCURL, disc string) *State {
 	}
 }
 
-func (st *State) setupToken(size int) (string, error) {
+func (st *State) setupToken(size int) (string, string, error) {
 	token := generateCluster()
 	if token == "" {
-		return "", errors.New("couldn't generate a token")
+		return "", "", errors.New("couldn't generate a token")
 	}
 
 	ev, err := st.v2.Create(path.Join("/", token, "_config", "size"), false, strconv.Itoa(size), false, v2store.TTLOptionSet{})
 	if err != nil {
-		return "", fmt.Errorf("couldn't setup state %v %v", ev, err)
+		return "", "", fmt.Errorf("couldn't setup state %v %v", ev, err)
 	}
 
-	return token, nil
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	gckey := path.Join(discoveryGCPath(), timeprefix.Now(), token)
+	_, err = st.client.Put(ctx, gckey, "")
+	cancel()
+	if err != nil {
+		return "", "", fmt.Errorf("couldn't setup state %v %v", ev, err)
+	}
+
+	return token, gckey, nil
 }
 
-func (st *State) deleteToken(token string) error {
+func (st *State) deleteToken(token string, gckey string) error {
+	// TODO(philips): potential orphan index if v2.Delete
+	// succeeds but gckey deletion doesn't.
 	_, err := st.v2.Delete(path.Join("/", token), true, true)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, err = st.client.Delete(ctx, gckey)
+	cancel()
 	return err
 }
 
@@ -104,7 +122,7 @@ func NewTokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-	token, err := st.setupToken(size)
+	token, _, err := st.setupToken(size)
 
 	if err != nil {
 		log.Printf("setupToken returned: %v", err)

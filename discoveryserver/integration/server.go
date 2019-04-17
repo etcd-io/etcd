@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/discoveryserver/handlers"
 	discoveryhttp "go.etcd.io/etcd/discoveryserver/http"
 
 	"go.etcd.io/etcd/embed"
@@ -29,6 +30,7 @@ type Service struct {
 	httpEp     string
 	httpServer *http.Server
 	httpErrc   chan error
+	state      *handlers.State
 }
 
 const testDiscoveryHost = "handler-test"
@@ -55,6 +57,7 @@ func NewService(t *testing.T, etcdClientPort, etcdPeerPort, httpPort int) *Servi
 	// cfg.AutoCompactionRetention = 1
 
 	ctx, cancel := context.WithCancel(context.Background())
+	h, state := discoveryhttp.RegisterHandlers(ctx, cfg.LCUrls[0].String(), testDiscoveryHost)
 	return &Service{
 		rootCtx:    ctx,
 		rootCancel: cancel,
@@ -66,9 +69,10 @@ func NewService(t *testing.T, etcdClientPort, etcdPeerPort, httpPort int) *Servi
 		httpEp: fmt.Sprintf("http://localhost:%d", httpPort),
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf("localhost:%d", httpPort),
-			Handler: discoveryhttp.RegisterHandlers(ctx, cfg.LCUrls[0].String(), testDiscoveryHost),
+			Handler: h,
 		},
 		httpErrc: make(chan error),
+		state:    state,
 	}
 }
 

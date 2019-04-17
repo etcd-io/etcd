@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	handling "go.etcd.io/etcd/discoveryserver/http"
 
@@ -53,10 +54,14 @@ func init() {
 	pflag.StringP("etcd", "e", "http://127.0.0.1:2379", "etcd endpoint location")
 	pflag.StringP("host", "h", "https://discovery.etcd.io", "discovery url prefix")
 	pflag.StringP("addr", "a", ":8087", "web service address")
+	pflag.StringP("minage", "m", "168h", "min age of a token for garbage collection")
+	pflag.StringP("gcfreq", "g", "5m", "garbage collection frequency")
 
 	viper.BindPFlag("etcd", pflag.Lookup("etcd"))
 	viper.BindPFlag("host", pflag.Lookup("host"))
 	viper.BindPFlag("addr", pflag.Lookup("addr"))
+	viper.BindPFlag("minage", pflag.Lookup("minage"))
+	viper.BindPFlag("gcfreq", pflag.Lookup("gcfreq"))
 
 	pflag.Parse()
 }
@@ -65,13 +70,29 @@ func main() {
 	log.SetFlags(0)
 	etcdHost := mustHostOnlyURL(viper.GetString("etcd"))
 	discHost := mustHostOnlyURL(viper.GetString("host"))
+	minAge, err := time.ParseDuration(viper.GetString("minage"))
+	if err != nil {
+		panic(err)
+	}
+	gcFreq, err := time.ParseDuration(viper.GetString("gcfreq"))
+	if err != nil {
+		panic(err)
+	}
 	webAddr := viper.GetString("addr")
 
-	handling.Setup(context.Background(), etcdHost, discHost)
+	state := handling.Setup(context.Background(), etcdHost, discHost)
+
+	go func() {
+		c := time.Tick(gcFreq)
+		for range c {
+			log.Printf("garbage collection running")
+			state.GarbageCollect(minAge, 10*minAge)
+		}
+	}()
 
 	log.Printf("discovery server started with etcd %q and host %q", etcdHost, discHost)
 	log.Printf("discovery serving on %s", webAddr)
-	err := http.ListenAndServe(webAddr, nil)
+	err = http.ListenAndServe(webAddr, nil)
 	if err != nil {
 		panic(err)
 	}
