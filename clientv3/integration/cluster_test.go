@@ -76,7 +76,7 @@ func TestMemberAddWithExistingURLs(t *testing.T) {
 	}
 
 	existingURL := resp.Members[0].PeerURLs[0]
-	_, err = capi.MemberAdd(context.Background(), []string{existingURL})
+	_, err = capi.MemberAdd(context.Background(), []string{existingURL}, false)
 	expectedErrKeywords := "Peer URLs already exists"
 	if err == nil {
 		t.Fatalf("expecting add member to fail, got no error")
