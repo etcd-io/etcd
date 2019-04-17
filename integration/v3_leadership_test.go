@@ -130,7 +130,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 	learnerID := learners[0].ID
 	leaderIdx := clus.WaitLeader(t)
 	cli := clus.Client(leaderIdx)
-	_, err = cli.MoveLeader(context.Background(), uint64(learnerID))
+	_, err = cli.MoveLeader(context.Background(), learnerID)
 	if err == nil {
 		t.Fatalf("expecting leader transfer to learner to fail, got no error")
 	}
