@@ -15,6 +15,10 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 
 - [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
 
+### Metrics, Monitoring
+
+- Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
+
 <hr>
 
 

@@ -21,6 +21,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 
 - Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
 
+### Metrics, Monitoring
+
+- Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 
 <hr>
 
