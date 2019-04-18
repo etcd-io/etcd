@@ -1004,12 +1004,15 @@ func TestKVForLearner(t *testing.T) {
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	// this cli only has endpoint of the learner member
+	// this client only has endpoint of the learner member
 	cli, err := clientv3.New(cfg)
 	if err != nil {
 		t.Fatalf("failed to create clientv3: %v", err)
 	}
 	defer cli.Close()
+
+	// waiting for learner member to catch up applying the config change entries in raft log.
+	time.Sleep(3 * time.Second)
 
 	tests := []struct {
 		op   clientv3.Op
