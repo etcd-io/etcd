@@ -12,14 +12,9 @@ runtime arguments or environment variables.
 * `--host` / `DISC_HOST`: the host url to prepend to `/new` requests.
 * `--etcd` / `DISC_ETCD`: the url of the etcd endpoint backing the instance.
 
-## Docker Container
+# Production Configuration
 
-You may run the service in a docker container:
-
-```
-docker pull quay.io/coreos/discovery.etcd.io
-docker run -d -p 80:8087 -e DISC_ETCD=http://etcd.example.com:2379 -e DISC_HOST=http://discovery.example.com quay.io/coreos/discovery.etcd.io
-```
+See https://github.com/etcd-io/discovery.etcd.io for how the service is ran on Kubernetes
 
 # History
 
