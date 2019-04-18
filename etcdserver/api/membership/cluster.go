@@ -123,6 +123,19 @@ func (c *RaftCluster) Member(id types.ID) *Member {
 	return c.members[id].Clone()
 }
 
+func (c *RaftCluster) VotingMembers() []*Member {
+	c.Lock()
+	defer c.Unlock()
+	var ms MembersByID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ms = append(ms, m.Clone())
+		}
+	}
+	sort.Sort(ms)
+	return []*Member(ms)
+}
+
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
 func (c *RaftCluster) MemberByName(name string) *Member {
@@ -551,11 +564,11 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	onSet(c.lg, ver)
 }
 
-func (c *RaftCluster) IsReadyToAddNewMember() bool {
+func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 	nmembers := 1
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if member.IsStarted() {
 			nstarted++
 		}
@@ -592,11 +605,11 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	return true
 }
 
-func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	nmembers := 0
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if uint64(member.ID) == id {
 			continue
 		}

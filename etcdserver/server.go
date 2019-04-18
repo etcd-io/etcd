@@ -1553,43 +1553,17 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*
 		return nil, err
 	}
 
-	// TODO: might switch to less strict check when adding raft learner
-	if s.Cfg.StrictReconfigCheck {
-		// by default StrictReconfigCheck is enabled; reject new members if unhealthy
-		if !s.cluster.IsReadyToAddNewMember() {
-			if lg := s.getLogger(); lg != nil {
-				lg.Warn(
-					"rejecting member add request; not enough healthy members",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
-					zap.Error(ErrNotEnoughStartedMembers),
-				)
-			} else {
-				plog.Warningf("not enough started members, rejecting member add %+v", memb)
-			}
-			return nil, ErrNotEnoughStartedMembers
-		}
-
-		if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.Members()) {
-			if lg := s.getLogger(); lg != nil {
-				lg.Warn(
-					"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
-					zap.Error(ErrUnhealthy),
-				)
-			} else {
-				plog.Warningf("not healthy for reconfigure, rejecting member add %+v", memb)
-			}
-			return nil, ErrUnhealthy
-		}
-	}
-
 	// TODO: move Member to protobuf type
 	b, err := json.Marshal(memb)
 	if err != nil {
 		return nil, err
 	}
+
+	// by default StrictReconfigCheck is enabled; reject new members if unhealthy.
+	if err := s.mayAddMember(memb); err != nil {
+		return nil, err
+	}
+
 	cc := raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  uint64(memb.ID),
@@ -1601,6 +1575,43 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*
 	}
 
 	return s.configure(ctx, cc)
+}
+
+func (s *EtcdServer) mayAddMember(memb membership.Member) error {
+	if !s.Cfg.StrictReconfigCheck {
+		return nil
+	}
+
+	// protect quorum when adding voting member
+	if !memb.IsLearner && !s.cluster.IsReadyToAddVotingMember() {
+		if lg := s.getLogger(); lg != nil {
+			lg.Warn(
+				"rejecting member add request; not enough healthy members",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
+				zap.Error(ErrNotEnoughStartedMembers),
+			)
+		} else {
+			plog.Warningf("not enough started members, rejecting member add %+v", memb)
+		}
+		return ErrNotEnoughStartedMembers
+	}
+
+	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.VotingMembers()) {
+		if lg := s.getLogger(); lg != nil {
+			lg.Warn(
+				"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
+				zap.Error(ErrUnhealthy),
+			)
+		} else {
+			plog.Warningf("not healthy for reconfigure, rejecting member add %+v", memb)
+		}
+		return ErrUnhealthy
+	}
+
+	return nil
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
@@ -1667,7 +1678,13 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 		return nil
 	}
 
-	if !s.cluster.IsReadyToRemoveMember(uint64(id)) {
+	isLearner := s.cluster.IsMemberExist(id) && s.cluster.Member(id).IsLearner
+	// no need to check quorum when removing non-voting member
+	if isLearner {
+		return nil
+	}
+
+	if !s.cluster.IsReadyToRemoveVotingMember(uint64(id)) {
 		if lg := s.getLogger(); lg != nil {
 			lg.Warn(
 				"rejecting member remove request; not enough healthy members",
@@ -1687,7 +1704,7 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	// protect quorum if some members are down
-	m := s.cluster.Members()
+	m := s.cluster.VotingMembers()
 	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), m)
 	if (active - 1) < 1+((len(m)-1)/2) {
 		if lg := s.getLogger(); lg != nil {

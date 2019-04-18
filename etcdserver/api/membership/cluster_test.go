@@ -626,7 +626,7 @@ func newTestCluster(membs []*Member) *RaftCluster {
 
 func stringp(s string) *string { return &s }
 
-func TestIsReadyToAddNewMember(t *testing.T) {
+func TestIsReadyToAddVotingMember(t *testing.T) {
 	tests := []struct {
 		members []*Member
 		want    bool
@@ -697,16 +697,38 @@ func TestIsReadyToAddNewMember(t *testing.T) {
 			[]*Member{},
 			false,
 		},
+		{
+			// 2 voting members ready in cluster with 2 voting members and 2 unstarted learner member, should succeed
+			// (the status of learner members does not affect the readiness of adding voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "", nil),
+			},
+			true,
+		},
+		{
+			// 1 voting member ready in cluster with 2 voting members and 2 ready learner member, should fail
+			// (the status of learner members does not affect the readiness of adding voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			false,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.IsReadyToAddNewMember(); got != tt.want {
+		if got := c.IsReadyToAddVotingMember(); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
 	}
 }
 
-func TestIsReadyToRemoveMember(t *testing.T) {
+func TestIsReadyToRemoveVotingMember(t *testing.T) {
 	tests := []struct {
 		members  []*Member
 		removeID uint64
@@ -782,10 +804,57 @@ func TestIsReadyToRemoveMember(t *testing.T) {
 			4,
 			true,
 		},
+		{
+			// 1 voting members ready in cluster with 1 voting member and 1 ready learner,
+			// removing voting member should fail
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 ready learner,
+			// removing ready voting member should fail
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 ready learner,
+			// removing unstarted voting member should be fine. (Actual operation will fail)
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 unstarted learner,
+			// removing not-ready voting member should be fine. (Actual operation will fail)
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "", nil),
+			},
+			2,
+			true,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.IsReadyToRemoveMember(tt.removeID); got != tt.want {
+		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
 	}
