@@ -64,12 +64,11 @@ func Setup(etcdCURL, disc string) *State {
 	v2 := v2v3.NewStore(cli, prefix)
 
 	return &State{
-		etcdHost:      etcdCURL,
-		etcdCURL:      u,
-		currentLeader: u.Host,
-		discHost:      disc,
-		client:        cli,
-		v2:            v2,
+		etcdHost: etcdCURL,
+		etcdCURL: u,
+		discHost: disc,
+		client:   cli,
+		v2:       v2,
 	}
 }
 
