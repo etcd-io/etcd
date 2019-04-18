@@ -8,6 +8,7 @@
 [![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/master/LICENSE)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fetcd-io%2Fetcd.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fetcd-io%2Fetcd?ref=badge_shield)
 
 **Note**: The `master` branch may be in an *unstable or even broken state* during development. Please use [releases][github-release] instead of the `master` branch in order to get stable binaries.
 
@@ -178,3 +179,6 @@ Due to their public nature, GitHub and mailing lists are NOT appropriate places 
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fetcd-io%2Fetcd.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fetcd-io%2Fetcd?ref=badge_large)
