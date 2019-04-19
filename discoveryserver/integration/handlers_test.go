@@ -144,7 +144,7 @@ func testHandlersV2(t *testing.T, size int) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err = http.DefaultClient.Do(req)
+		_, err = http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
 		}

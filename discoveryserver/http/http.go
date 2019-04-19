@@ -9,7 +9,7 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Setup(ctx context.Context, etcdHost, discHost string) *handlers.State {
@@ -17,7 +17,7 @@ func Setup(ctx context.Context, etcdHost, discHost string) *handlers.State {
 	logH := gorillaHandlers.LoggingHandler(os.Stdout, handler)
 
 	http.Handle("/", logH)
-	http.Handle("/metrics", prometheus.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 
 	return st
 }

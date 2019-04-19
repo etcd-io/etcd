@@ -96,7 +96,7 @@ func (sv *Service) Start(t *testing.T) <-chan error {
 
 	// issue linearized read to ensure leader election
 	cli := v3client.New(srv.Server)
-	_, err = cli.Get(context.Background(), "foo")
+	_, _ = cli.Get(context.Background(), "foo")
 
 	go func() {
 		defer close(sv.httpErrc)
