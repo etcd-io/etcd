@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
@@ -357,12 +358,13 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 				if r.lg != nil {
 					r.lg.Warn(
 						"leader failed to send out heartbeat on time; took too long, leader is overloaded likely from slow disk",
+						zap.String("to", fmt.Sprintf("%x", ms[i].To)),
 						zap.Duration("heartbeat-interval", r.heartbeat),
 						zap.Duration("expected-duration", 2*r.heartbeat),
 						zap.Duration("exceeded-duration", exceed),
 					)
 				} else {
-					plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v)", r.heartbeat, exceed)
+					plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v, to %x)", r.heartbeat, exceed, ms[i].To)
 					plog.Warningf("server is likely overloaded")
 				}
 				heartbeatSendFailures.Inc()
