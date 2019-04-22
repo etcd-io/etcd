@@ -14,8 +14,6 @@
 
 package client
 
-//go:generate codecgen -d 1819 -r "Node|Response|Nodes" -o keys.generated.go keys.go
-
 import (
 	"context"
 	"encoding/json"
