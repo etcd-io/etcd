@@ -23,6 +23,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.4.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0
+	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/kr/pty v1.0.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect

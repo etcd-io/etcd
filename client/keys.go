@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ugorji/go/codec"
+	jsoniter "github.com/json-iterator/go"
 	"go.etcd.io/etcd/pkg/pathutil"
 )
 
@@ -658,7 +658,8 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	err := codec.NewDecoderBytes(body, new(codec.JsonHandle)).Decode(&res)
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	err := json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}
