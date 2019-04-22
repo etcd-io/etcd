@@ -422,7 +422,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			tt.ctx = context.Background()
 		}
 		resp, _, err := tt.client.Do(tt.ctx, nil)
-		if !reflect.DeepEqual(tt.wantErr, err) {
+		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
@@ -726,7 +726,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 	for i, tt := range tests {
 		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
 		resp, _, err := client.Do(context.Background(), nil)
-		if !reflect.DeepEqual(tt.wantErr, err) {
+		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
