@@ -448,7 +448,7 @@ func stopServers(ctx context.Context, ss *servers) {
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
-	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
+	if err = UpdateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
 		return nil, err
 	}
 	if err = cfg.PeerSelfCert(); err != nil {
@@ -585,7 +585,7 @@ func (e *Etcd) servePeers() (err error) {
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
-	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
+	if err = UpdateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
 		return nil, err
 	}
 	if err = cfg.ClientSelfCert(); err != nil {

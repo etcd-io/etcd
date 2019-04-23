@@ -527,6 +527,23 @@ func startProxy(cfg *config) error {
 		}
 	}
 
+	if len(cfg.ec.CipherSuites) == 0 {
+		if lg != nil {
+			lg.Info("proxy using default cipher suites")
+		} else {
+			plog.Info("proxy: using default cipher suites")
+		}
+	} else {
+		if lg != nil {
+			lg.Info("proxy using cipher suites:", zap.Strings("cipher-suites", cfg.ec.CipherSuites))
+		} else {
+			plog.Infof("proxy: using cipher suites: %v", cfg.ec.CipherSuites)
+		}
+		if err = embed.UpdateCipherSuites(&listenerTLS, cfg.ec.CipherSuites); err != nil {
+			return err
+		}
+	}
+
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.ec.LCUrls {
 		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)

@@ -531,7 +531,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
-func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
+func UpdateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	if len(tls.CipherSuites) > 0 && len(ss) > 0 {
 		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
 	}
@@ -761,7 +761,7 @@ func (cfg *Config) ClientSelfCert() (err error) {
 	if err != nil {
 		return err
 	}
-	return updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites)
+	return UpdateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites)
 }
 
 func (cfg *Config) PeerSelfCert() (err error) {
@@ -784,7 +784,7 @@ func (cfg *Config) PeerSelfCert() (err error) {
 	if err != nil {
 		return err
 	}
-	return updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites)
+	return UpdateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites)
 }
 
 // UpdateDefaultClusterFromName updates cluster advertise URLs with, if available, default host,
