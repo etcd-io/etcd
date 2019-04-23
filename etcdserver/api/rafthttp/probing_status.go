@@ -87,8 +87,8 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string, roundTrip
 						"prober found high clock drift",
 						zap.String("round-tripper-name", roundTripperName),
 						zap.String("remote-peer-id", id),
-						zap.Duration("clock-drift", s.SRTT()),
-						zap.Duration("rtt", s.ClockDiff()),
+						zap.Duration("clock-drift", s.ClockDiff()),
+						zap.Duration("rtt", s.SRTT()),
 						zap.Error(s.Err()),
 					)
 				} else {
