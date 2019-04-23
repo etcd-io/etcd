@@ -223,6 +223,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [race conditions in v2 server stat collecting](https://github.com/etcd-io/etcd/pull/9562).
 - Change [gRPC proxy to expose etcd server endpoint /metrics](https://github.com/etcd-io/etcd/pull/10618).
   - The metrics that were exposed via the proxy were not etcd server members but instead the proxy itself.
+- Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 
 ### Security, Authentication
 
