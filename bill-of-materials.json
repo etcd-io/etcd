@@ -193,6 +193,15 @@
 		]
 	},
 	{
+		"project": "github.com/json-iterator/go",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/mattn/go-runewidth",
 		"licenses": [
 			{
@@ -203,6 +212,24 @@
 	},
 	{
 		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/modern-go/concurrent",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/modern-go/reflect2",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -306,15 +333,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
-		"project": "github.com/ugorji/go/codec",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9946524064171123
 			}
 		]
 	},
