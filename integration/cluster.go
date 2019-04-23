@@ -1166,6 +1166,10 @@ func (m *member) RecoverPartition(t testing.TB, others ...*member) {
 	}
 }
 
+func (m *member) ReadyNotify() <-chan struct{} {
+	return m.s.ReadyNotify()
+}
+
 func MustNewHTTPClient(t testing.TB, eps []string, tls *transport.TLSInfo) client.Client {
 	cfgtls := transport.TLSInfo{}
 	if tls != nil {
