@@ -119,7 +119,7 @@ func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	if len(ms.ents) == 1 {
 		return nil, ErrUnavailable
 	}
-
+	//获取一个区间的条目
 	ents := ms.ents[lo-offset : hi-offset]
 	return limitSize(ents, maxSize), nil
 }
@@ -174,6 +174,7 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 	defer ms.Unlock()
 
 	//handle check for old snapshot being applied
+	//@todo 怎么解决日志丢失问题
 	msIndex := ms.snapshot.Metadata.Index
 	snapIndex := snap.Metadata.Index
 	if msIndex >= snapIndex {
@@ -202,6 +203,9 @@ func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte)
 	}
 
 	ms.snapshot.Metadata.Index = i
+	//@todo Term 为什么 i-offset   为什么是这样子的？？？？？
+
+	// Snapshot 里面保存了节点，学习者，数据，索引任期号
 	ms.snapshot.Metadata.Term = ms.ents[i-offset].Term
 	if cs != nil {
 		ms.snapshot.Metadata.ConfState = *cs
@@ -226,6 +230,7 @@ func (ms *MemoryStorage) Compact(compactIndex uint64) error {
 
 	i := compactIndex - offset
 	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)
+	// ents 开头只记录索引和任期号
 	ents[0].Index = ms.ents[i].Index
 	ents[0].Term = ms.ents[i].Term
 	ents = append(ents, ms.ents[i+1:]...)
@@ -245,6 +250,8 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 	defer ms.Unlock()
 
 	first := ms.firstIndex()
+
+	//@todo last 为什么这样算
 	last := entries[0].Index + uint64(len(entries)) - 1
 
 	// shortcut if there is no new entry.
@@ -252,6 +259,7 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 		return nil
 	}
 	// truncate compacted entries
+	//@todo 怎么理解    表示截取重复的日志
 	if first > entries[0].Index {
 		entries = entries[first-entries[0].Index:]
 	}

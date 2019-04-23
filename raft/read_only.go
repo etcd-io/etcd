@@ -21,6 +21,7 @@ import pb "go.etcd.io/etcd/raft/raftpb"
 // this state from ready, it's also caller's duty to differentiate if this
 // state is what it requests through RequestCtx, eg. given a unique id as
 // RequestCtx
+
 type ReadState struct {
 	Index      uint64
 	RequestCtx []byte
@@ -32,6 +33,7 @@ type readIndexStatus struct {
 	acks  map[uint64]struct{}
 }
 
+//是一个只读请求队列
 type readOnly struct {
 	option           ReadOnlyOption
 	pendingReadIndex map[string]*readIndexStatus
@@ -75,6 +77,11 @@ func (ro *readOnly) recvAck(m pb.Message) int {
 // advance advances the read only request queue kept by the readonly struct.
 // It dequeues the requests until it finds the read only request that has
 // the same context as the given `m`.
+
+// advance推进readonly结构保存的只读请求队列。 它将请求出列，直到找到具有的只读请求 与给定的`m`相同的上下文。
+
+
+// 就是从只读请求队列拿走m 前的数据，并从pendingReadIndex 中移除
 func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 	var (
 		i     int

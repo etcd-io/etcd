@@ -91,64 +91,7 @@ var globalRand = &lockedRand{
 }
 
 // CampaignType represents the type of campaigning
-// the reason we use the type of string instead of uint64
-// is because it's simpler to compare and fill in raft entries
-type CampaignType string
-
-// StateType represents the role of a node in a cluster.
-type StateType uint64
-
-var stmap = [...]string{
-	"StateFollower",
-	"StateCandidate",
-	"StateLeader",
-	"StatePreCandidate",
-}
-
-func (st StateType) String() string {
-	return stmap[uint64(st)]
-}
-
-// Config contains the parameters to start a raft.
-type Config struct {
-	// ID is the identity of the local raft. ID cannot be 0.
-	ID uint64
-
-	// peers contains the IDs of all nodes (including self) in the raft cluster. It
-	// should only be set when starting a new raft cluster. Restarting raft from
-	// previous configuration will panic if peers is set. peer is private and only
-	// used for testing right now.
-	peers []uint64
-
-	// learners contains the IDs of all learner nodes (including self if the
-	// local node is a learner) in the raft cluster. learners only receives
-	// entries from the leader node. It does not vote or promote itself.
-	learners []uint64
-
-	// ElectionTick is the number of Node.Tick invocations that must pass between
-	// elections. That is, if a follower does not receive any message from the
-	// leader of current term before ElectionTick has elapsed, it will become
-	// candidate and start an election. ElectionTick must be greater than
-	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
-	// unnecessary leader switching.
-	ElectionTick int
-	// HeartbeatTick is the number of Node.Tick invocations that must pass between
-	// heartbeats. That is, a leader sends heartbeat messages to maintain its
-	// leadership every HeartbeatTick ticks.
-	HeartbeatTick int
-
-	// Storage is the storage for raft. raft generates entries and states to be
-	// stored in storage. raft reads the persisted entries and states out of
-	// Storage when it needs. raft reads out the previous state and configuration
-	// out of storage when restarting.
-	Storage Storage
-	// Applied is the last applied index. It should only be set when restarting
-	// raft. raft will not return entries to the application smaller or equal to
-	// Applied. If Applied is unset when restarting, raft might return previous
-	// applied entries. This is a very application dependent configuration.
-	Applied uint64
-
-	// MaxSizePerMsg limits the max byte size of each append message. Smaller
+// the reaePerMsg limits the max byte size of each append message. Smaller
 	// value lowers the raft recovery cost(initial probing and message lost
 	// during normal operation). On the other side, it might affect the
 	// throughput during normal replication. Note: math.MaxUint64 for unlimited,
@@ -254,7 +197,7 @@ type raft struct {
 	Term uint64
 	Vote uint64
 
-	readStates []ReadState    //ä¸»è¦ç»´æŠ¤ä¸€ä¸ªåªè¯»è¯·æ±‚å§é˜Ÿåˆ—
+	readStates []ReadState    //‘Ö÷‘Òª‘Î¬‘»¤‘Ò»‘¸ö‘Ö»‘¶Á‘Çë‘Çó‘°É‘¶Ó‘ÁĞ
 
 	// the log
 	raftLog *raftLog
