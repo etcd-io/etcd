@@ -23,14 +23,14 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.4.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0
-	github.com/json-iterator/go v1.1.5 // indirect
+	github.com/json-iterator/go v1.1.5
 	github.com/kr/pty v1.0.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-runewidth v0.0.2 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/modern-go/reflect2 v1.0.1
 	github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
 	github.com/onsi/gomega v1.4.2 // indirect
 	github.com/pkg/errors v0.8.0 // indirect
@@ -45,7 +45,6 @@ require (
 	github.com/spf13/pflag v1.0.1
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8
-	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/urfave/cli v1.20.0
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.2
