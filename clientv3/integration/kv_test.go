@@ -1051,3 +1051,49 @@ func TestKVForLearner(t *testing.T) {
 		}
 	}
 }
+
+// TestBalancerSupportLearner verifies that balancer's retry and failover mechanism supports cluster with learner member
+func TestBalancerSupportLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// we have to add and launch learner member after initial cluster was created, because
+	// bootstrapping a cluster with learner member is not supported.
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	// clus.Members[3] is the newly added learner member, which was appended to clus.Members
+	learnerEp := clus.Members[3].GRPCAddr()
+	cfg := clientv3.Config{
+		Endpoints:   []string{learnerEp},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create clientv3: %v", err)
+	}
+	defer cli.Close()
+
+	// wait until learner member is ready
+	<-clus.Members[3].ReadyNotify()
+
+	if _, err := cli.Get(context.Background(), "foo"); err == nil {
+		t.Fatalf("expect Get request to learner to fail, got no error")
+	}
+
+	eps := []string{learnerEp, clus.Members[0].GRPCAddr()}
+	cli.SetEndpoints(eps...)
+	if _, err := cli.Get(context.Background(), "foo"); err != nil {
+		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)
+	}
+}
