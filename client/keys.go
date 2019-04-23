@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/pathutil"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -654,10 +653,11 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 	return res, err
 }
 
+var jsonIterator = caseSensitiveJsonIterator()
+
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	err := json.Unmarshal(body, &res)
+	err := jsonIterator.Unmarshal(body, &res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}
