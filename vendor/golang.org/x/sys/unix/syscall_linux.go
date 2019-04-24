@@ -12,6 +12,8 @@
 package unix
 
 import (
+	"encoding/binary"
+	"net"
 	"syscall"
 	"unsafe"
 )
@@ -54,6 +56,15 @@ func Fchmodat(dirfd int, path string, mode uint32, flags int) (err error) {
 
 // ioctl itself should not be exposed directly, but additional get/set
 // functions for specific types are permissible.
+
+// IoctlSetPointerInt performs an ioctl operation which sets an
+// integer value on fd, using the specified request number. The ioctl
+// argument is called with a pointer to the integer value, rather than
+// passing the integer value directly.
+func IoctlSetPointerInt(fd int, req uint, value int) error {
+	v := int32(value)
+	return ioctl(fd, req, uintptr(unsafe.Pointer(&v)))
+}
 
 // IoctlSetInt performs an ioctl operation which sets an integer value
 // on fd, using the specified request number.
@@ -692,6 +703,69 @@ func (sa *SockaddrVM) sockaddr() (unsafe.Pointer, _Socklen, error) {
 	return unsafe.Pointer(&sa.raw), SizeofSockaddrVM, nil
 }
 
+type SockaddrXDP struct {
+	Flags        uint16
+	Ifindex      uint32
+	QueueID      uint32
+	SharedUmemFD uint32
+	raw          RawSockaddrXDP
+}
+
+func (sa *SockaddrXDP) sockaddr() (unsafe.Pointer, _Socklen, error) {
+	sa.raw.Family = AF_XDP
+	sa.raw.Flags = sa.Flags
+	sa.raw.Ifindex = sa.Ifindex
+	sa.raw.Queue_id = sa.QueueID
+	sa.raw.Shared_umem_fd = sa.SharedUmemFD
+
+	return unsafe.Pointer(&sa.raw), SizeofSockaddrXDP, nil
+}
+
+// This constant mirrors the #define of PX_PROTO_OE in
+// linux/if_pppox.h. We're defining this by hand here instead of
+// autogenerating through mkerrors.sh because including
+// linux/if_pppox.h causes some declaration conflicts with other
+// includes (linux/if_pppox.h includes linux/in.h, which conflicts
+// with netinet/in.h). Given that we only need a single zero constant
+// out of that file, it's cleaner to just define it by hand here.
+const px_proto_oe = 0
+
+type SockaddrPPPoE struct {
+	SID    uint16
+	Remote net.HardwareAddr
+	Dev    string
+	raw    RawSockaddrPPPoX
+}
+
+func (sa *SockaddrPPPoE) sockaddr() (unsafe.Pointer, _Socklen, error) {
+	if len(sa.Remote) != 6 {
+		return nil, 0, EINVAL
+	}
+	if len(sa.Dev) > IFNAMSIZ-1 {
+		return nil, 0, EINVAL
+	}
+
+	*(*uint16)(unsafe.Pointer(&sa.raw[0])) = AF_PPPOX
+	// This next field is in host-endian byte order. We can't use the
+	// same unsafe pointer cast as above, because this value is not
+	// 32-bit aligned and some architectures don't allow unaligned
+	// access.
+	//
+	// However, the value of px_proto_oe is 0, so we can use
+	// encoding/binary helpers to write the bytes without worrying
+	// about the ordering.
+	binary.BigEndian.PutUint32(sa.raw[2:6], px_proto_oe)
+	// This field is deliberately big-endian, unlike the previous
+	// one. The kernel expects SID to be in network byte order.
+	binary.BigEndian.PutUint16(sa.raw[6:8], sa.SID)
+	copy(sa.raw[8:14], sa.Remote)
+	for i := 14; i < 14+IFNAMSIZ; i++ {
+		sa.raw[i] = 0
+	}
+	copy(sa.raw[14:], sa.Dev)
+	return unsafe.Pointer(&sa.raw), SizeofSockaddrPPPoX, nil
+}
+
 func anyToSockaddr(fd int, rsa *RawSockaddrAny) (Sockaddr, error) {
 	switch rsa.Addr.Family {
 	case AF_NETLINK:
@@ -793,6 +867,31 @@ func anyToSockaddr(fd int, rsa *RawSockaddrAny) (Sockaddr, error) {
 			}
 			return sa, nil
 		}
+	case AF_XDP:
+		pp := (*RawSockaddrXDP)(unsafe.Pointer(rsa))
+		sa := &SockaddrXDP{
+			Flags:        pp.Flags,
+			Ifindex:      pp.Ifindex,
+			QueueID:      pp.Queue_id,
+			SharedUmemFD: pp.Shared_umem_fd,
+		}
+		return sa, nil
+	case AF_PPPOX:
+		pp := (*RawSockaddrPPPoX)(unsafe.Pointer(rsa))
+		if binary.BigEndian.Uint32(pp[2:6]) != px_proto_oe {
+			return nil, EINVAL
+		}
+		sa := &SockaddrPPPoE{
+			SID:    binary.BigEndian.Uint16(pp[6:8]),
+			Remote: net.HardwareAddr(pp[8:14]),
+		}
+		for i := 14; i < 14+IFNAMSIZ; i++ {
+			if pp[i] == 0 {
+				sa.Dev = string(pp[14:i])
+				break
+			}
+		}
+		return sa, nil
 	}
 	return nil, EAFNOSUPPORT
 }
@@ -1095,7 +1194,7 @@ func ptracePeek(req int, pid int, addr uintptr, out []byte) (count int, err erro
 	// The ptrace syscall differs from glibc's ptrace.
 	// Peeks returns the word in *data, not as the return value.
 
-	var buf [sizeofPtr]byte
+	var buf [SizeofPtr]byte
 
 	// Leading edge. PEEKTEXT/PEEKDATA don't require aligned
 	// access (PEEKUSER warns that it might), but if we don't
@@ -1103,12 +1202,12 @@ func ptracePeek(req int, pid int, addr uintptr, out []byte) (count int, err erro
 	// boundary and not get the bytes leading up to the page
 	// boundary.
 	n := 0
-	if addr%sizeofPtr != 0 {
-		err = ptrace(req, pid, addr-addr%sizeofPtr, uintptr(unsafe.Pointer(&buf[0])))
+	if addr%SizeofPtr != 0 {
+		err = ptrace(req, pid, addr-addr%SizeofPtr, uintptr(unsafe.Pointer(&buf[0])))
 		if err != nil {
 			return 0, err
 		}
-		n += copy(out, buf[addr%sizeofPtr:])
+		n += copy(out, buf[addr%SizeofPtr:])
 		out = out[n:]
 	}
 
@@ -1146,15 +1245,15 @@ func ptracePoke(pokeReq int, peekReq int, pid int, addr uintptr, data []byte) (c
 
 	// Leading edge.
 	n := 0
-	if addr%sizeofPtr != 0 {
-		var buf [sizeofPtr]byte
-		err = ptrace(peekReq, pid, addr-addr%sizeofPtr, uintptr(unsafe.Pointer(&buf[0])))
+	if addr%SizeofPtr != 0 {
+		var buf [SizeofPtr]byte
+		err = ptrace(peekReq, pid, addr-addr%SizeofPtr, uintptr(unsafe.Pointer(&buf[0])))
 		if err != nil {
 			return 0, err
 		}
-		n += copy(buf[addr%sizeofPtr:], data)
+		n += copy(buf[addr%SizeofPtr:], data)
 		word := *((*uintptr)(unsafe.Pointer(&buf[0])))
-		err = ptrace(pokeReq, pid, addr-addr%sizeofPtr, word)
+		err = ptrace(pokeReq, pid, addr-addr%SizeofPtr, word)
 		if err != nil {
 			return 0, err
 		}
@@ -1162,19 +1261,19 @@ func ptracePoke(pokeReq int, peekReq int, pid int, addr uintptr, data []byte) (c
 	}
 
 	// Interior.
-	for len(data) > sizeofPtr {
+	for len(data) > SizeofPtr {
 		word := *((*uintptr)(unsafe.Pointer(&data[0])))
 		err = ptrace(pokeReq, pid, addr+uintptr(n), word)
 		if err != nil {
 			return n, err
 		}
-		n += sizeofPtr
-		data = data[sizeofPtr:]
+		n += SizeofPtr
+		data = data[SizeofPtr:]
 	}
 
 	// Trailing edge.
 	if len(data) > 0 {
-		var buf [sizeofPtr]byte
+		var buf [SizeofPtr]byte
 		err = ptrace(peekReq, pid, addr+uintptr(n), uintptr(unsafe.Pointer(&buf[0])))
 		if err != nil {
 			return n, err
@@ -1273,9 +1372,11 @@ func Mount(source string, target string, fstype string, flags uintptr, data stri
 //sys	Adjtimex(buf *Timex) (state int, err error)
 //sys	Chdir(path string) (err error)
 //sys	Chroot(path string) (err error)
+//sys	ClockGetres(clockid int32, res *Timespec) (err error)
 //sys	ClockGettime(clockid int32, time *Timespec) (err error)
 //sys	Close(fd int) (err error)
 //sys	CopyFileRange(rfd int, roff *int64, wfd int, woff *int64, len int, flags int) (n int, err error)
+//sys	DeleteModule(name string, flags int) (err error)
 //sys	Dup(oldfd int) (fd int, err error)
 //sys	Dup3(oldfd int, newfd int, flags int) (err error)
 //sysnb	EpollCreate1(flag int) (fd int, err error)
@@ -1289,6 +1390,7 @@ func Mount(source string, target string, fstype string, flags uintptr, data stri
 //sys	fcntl(fd int, cmd int, arg int) (val int, err error)
 //sys	Fdatasync(fd int) (err error)
 //sys	Fgetxattr(fd int, attr string, dest []byte) (sz int, err error)
+//sys	FinitModule(fd int, params string, flags int) (err error)
 //sys	Flistxattr(fd int, dest []byte) (sz int, err error)
 //sys	Flock(fd int, how int) (err error)
 //sys	Fremovexattr(fd int, attr string) (err error)
@@ -1310,6 +1412,7 @@ func Getpgrp() (pid int) {
 //sysnb	Getsid(pid int) (sid int, err error)
 //sysnb	Gettid() (tid int)
 //sys	Getxattr(path string, attr string, dest []byte) (sz int, err error)
+//sys	InitModule(moduleImage []byte, params string) (err error)
 //sys	InotifyAddWatch(fd int, pathname string, mask uint32) (watchdesc int, err error)
 //sysnb	InotifyInit1(flags int) (fd int, err error)
 //sysnb	InotifyRmWatch(fd int, watchdesc uint32) (success int, err error)
@@ -1320,6 +1423,7 @@ func Getpgrp() (pid int) {
 //sys	Llistxattr(path string, dest []byte) (sz int, err error)
 //sys	Lremovexattr(path string, attr string) (err error)
 //sys	Lsetxattr(path string, attr string, data []byte, flags int) (err error)
+//sys	MemfdCreate(name string, flags int) (fd int, err error)
 //sys	Mkdirat(dirfd int, path string, mode uint32) (err error)
 //sys	Mknodat(dirfd int, path string, mode uint32, dev int) (err error)
 //sys	Nanosleep(time *Timespec, leftover *Timespec) (err error)
@@ -1495,12 +1599,9 @@ func Faccessat(dirfd int, path string, mode uint32, flags int) (err error) {
 // Brk
 // Capget
 // Capset
-// ClockGetres
 // ClockNanosleep
 // ClockSettime
 // Clone
-// CreateModule
-// DeleteModule
 // EpollCtlOld
 // EpollPwait
 // EpollWaitOld
@@ -1544,7 +1645,6 @@ func Faccessat(dirfd int, path string, mode uint32, flags int) (err error) {
 // Pselect6
 // Ptrace
 // Putpmsg
-// QueryModule
 // Quotactl
 // Readahead
 // Readv
