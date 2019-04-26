@@ -16,6 +16,11 @@ package grpcproxy
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 
@@ -72,4 +77,39 @@ func AuthStreamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc 
 		opts = append(opts, grpc.PerRPCCredentials(tokenCred))
 	}
 	return streamer(ctx, desc, cc, method, opts...)
+}
+
+func shuffleEndpoints(r *rand.Rand, eps []string) []string {
+	// copied from Go 1.9<= rand.Rand.Perm
+	n := len(eps)
+	p := make([]int, n)
+	for i := 0; i < n; i++ {
+		j := r.Intn(i + 1)
+		p[i] = p[j]
+		p[j] = i
+	}
+	neps := make([]string, n)
+	for i, k := range p {
+		neps[i] = eps[k]
+	}
+	return neps
+}
+
+func createTarget(eps []string, path string, tls *tls.ConnectionState, random bool) string {
+	if random {
+		// random shuffle endpoints
+		r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+		if len(eps) > 1 {
+			eps = shuffleEndpoints(r, eps)
+		}
+	}
+	target := fmt.Sprintf("%s%s", eps[0], path)
+	if !strings.HasPrefix(target, "http") {
+		scheme := "http"
+		if tls != nil {
+			scheme = "https"
+		}
+		target = fmt.Sprintf("%s://%s", scheme, target)
+	}
+	return target
 }

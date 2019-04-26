@@ -15,27 +15,28 @@
 package grpcproxy
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
-	"time"
 
-	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 // HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
-	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(func() etcdhttp.Health { return checkHealth(c) }))
-}
-
-func checkHealth(c *clientv3.Client) etcdhttp.Health {
-	h := etcdhttp.Health{Health: "false"}
-	ctx, cancel := context.WithTimeout(c.Ctx(), time.Second)
-	_, err := c.Get(ctx, "a")
-	cancel()
-	if err == nil || err == rpctypes.ErrPermissionDenied {
-		h.Health = "true"
-	}
-	return h
+func HandleHealth(mux *http.ServeMux, c *http.Client, eps []string) {
+	pathHealth := etcdhttp.PathHealth
+	mux.HandleFunc(pathHealth, func(w http.ResponseWriter, r *http.Request) {
+		target := createTarget(eps, pathHealth, r.TLS, true)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		resp, err := c.Get(target)
+		if err != nil {
+			body, _ := json.Marshal(etcdhttp.Health{Health: "false"})
+			fmt.Fprintf(w, "%s", body)
+		} else {
+			defer resp.Body.Close()
+			body, _ := ioutil.ReadAll(resp.Body)
+			fmt.Fprintf(w, "%s", body)
+		}
+	})
 }
