@@ -310,6 +310,12 @@ func makePRS(maxInflight int) prs {
 	return p
 }
 
+// isSingleton returns true if (and only if) there is only one voting member
+// (i.e. the leader) in the current configuration.
+func (p *prs) isSingleton() bool {
+	return len(p.nodes) == 1
+}
+
 func (p *prs) quorum() int {
 	return len(p.nodes)/2 + 1
 }
