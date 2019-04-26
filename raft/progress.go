@@ -301,11 +301,13 @@ type prs struct {
 }
 
 func makePRS(maxInflight int) prs {
-	return prs{
+	p := prs{
+		maxInflight: maxInflight,
 		nodes:       map[uint64]*Progress{},
 		learners:    map[uint64]*Progress{},
-		maxInflight: maxInflight,
+		votes:       map[uint64]bool{},
 	}
+	return p
 }
 
 func (p *prs) quorum() int {
@@ -379,12 +381,6 @@ func (p *prs) visit(f func(id uint64, pr *Progress)) {
 	}
 }
 
-func (p *prs) reset() {
-	p.nodes = map[uint64]*Progress{}
-	p.learners = map[uint64]*Progress{}
-	p.matchBuf = nil
-}
-
 func (p *prs) voterNodes() []uint64 {
 	nodes := make([]uint64, 0, len(p.nodes))
 	for id := range p.nodes {
@@ -401,4 +397,40 @@ func (p *prs) learnerNodes() []uint64 {
 	}
 	sort.Sort(uint64Slice(nodes))
 	return nodes
+}
+
+// resetVotes prepares for a new round of vote counting via recordVote.
+func (p *prs) resetVotes() {
+	p.votes = map[uint64]bool{}
+}
+
+// recordVote records that the node with the given id voted for this Raft
+// instance if v == true (and declined it otherwise).
+func (p *prs) recordVote(id uint64, v bool) {
+	_, ok := p.votes[id]
+	if !ok {
+		p.votes[id] = v
+	}
+}
+
+// tallyVotes returns the number of granted and rejected votes, and whether the
+// election outcome is known.
+func (p *prs) tallyVotes() (granted int, rejected int, result electionResult) {
+	for _, v := range p.votes {
+		if v {
+			granted++
+		} else {
+			rejected++
+		}
+	}
+
+	q := p.quorum()
+
+	result = electionIndeterminate
+	if granted >= q {
+		result = electionWon
+	} else if rejected >= q {
+		result = electionLost
+	}
+	return granted, rejected, result
 }
