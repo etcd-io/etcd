@@ -291,15 +291,17 @@ func (in *inflights) reset() {
 // the nodes and learners in it. In particular, it tracks the match index for
 // each peer which in turn allows reasoning about the committed index.
 type prs struct {
-	nodes    map[uint64]*Progress
-	learners map[uint64]*Progress
-	matchBuf uint64Slice
+	nodes       map[uint64]*Progress
+	learners    map[uint64]*Progress
+	maxInflight int
+	matchBuf    uint64Slice
 }
 
-func makePRS() prs {
+func makePRS(maxInflight int) prs {
 	return prs{
-		nodes:    map[uint64]*Progress{},
-		learners: map[uint64]*Progress{},
+		nodes:       map[uint64]*Progress{},
+		learners:    map[uint64]*Progress{},
+		maxInflight: maxInflight,
 	}
 }
 
@@ -307,6 +309,8 @@ func (p *prs) quorum() int {
 	return len(p.nodes)/2 + 1
 }
 
+// committed returns the largest log index known to be committed based on what
+// the voting members of the group have acknowledged.
 func (p *prs) committed() uint64 {
 	// Preserving matchBuf across calls is an optimization
 	// used to avoid allocating a new slice on each call.
@@ -326,4 +330,57 @@ func (p *prs) committed() uint64 {
 func (p *prs) removeAny(id uint64) {
 	delete(p.nodes, id)
 	delete(p.learners, id)
+}
+
+func (p *prs) getProgress(id uint64) *Progress {
+	if pr, ok := p.nodes[id]; ok {
+		return pr
+	}
+
+	return p.learners[id]
+}
+
+// initProgress initializes a new progress for the given node, replacing any that
+// may exist. It is invalid to replace a voter by a learner and attempts to do so
+// will result in a panic.
+func (p *prs) initProgress(id, match, next uint64, isLearner bool) {
+	if !isLearner {
+		delete(p.learners, id)
+		p.nodes[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight)}
+		return
+	}
+
+	if _, ok := p.nodes[id]; ok {
+		panic(fmt.Sprintf("changing from voter to learner for %x", id))
+	}
+	p.learners[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: true}
+}
+
+func (p *prs) voterNodes() []uint64 {
+	nodes := make([]uint64, 0, len(p.nodes))
+	for id := range p.nodes {
+		nodes = append(nodes, id)
+	}
+	sort.Sort(uint64Slice(nodes))
+	return nodes
+}
+
+func (p *prs) learnerNodes() []uint64 {
+	nodes := make([]uint64, 0, len(p.learners))
+	for id := range p.learners {
+		nodes = append(nodes, id)
+	}
+	sort.Sort(uint64Slice(nodes))
+	return nodes
+}
+
+// visit invokes the supplied closure for all tracked progresses.
+func (p *prs) visit(f func(id uint64, pr *Progress)) {
+	for id, pr := range p.nodes {
+		f(id, pr)
+	}
+
+	for id, pr := range p.learners {
+		f(id, pr)
+	}
 }

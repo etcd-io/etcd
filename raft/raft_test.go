@@ -889,7 +889,7 @@ func TestLearnerLogReplication(t *testing.T) {
 		t.Errorf("peer 2 wants committed to %d, but still %d", n1.raftLog.committed, n2.raftLog.committed)
 	}
 
-	match := n1.getProgress(2).Match
+	match := n1.prs.getProgress(2).Match
 	if match != n2.raftLog.committed {
 		t.Errorf("progress 2 of leader 1 wants match %d, but got %d", n2.raftLog.committed, match)
 	}
@@ -1352,7 +1352,7 @@ func TestCommit(t *testing.T) {
 
 		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
+			sm.prs.initProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -2931,7 +2931,7 @@ func TestRestore(t *testing.T) {
 	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
-	sg := sm.nodes()
+	sg := sm.prs.voterNodes()
 	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Nodes) {
 		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Metadata.ConfState.Nodes)
 	}
@@ -2963,11 +2963,11 @@ func TestRestoreWithLearner(t *testing.T) {
 	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
-	sg := sm.nodes()
+	sg := sm.prs.voterNodes()
 	if len(sg) != len(s.Metadata.ConfState.Nodes) {
 		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Nodes)
 	}
-	lns := sm.learnerNodes()
+	lns := sm.prs.learnerNodes()
 	if len(lns) != len(s.Metadata.ConfState.Learners) {
 		t.Errorf("sm.LearnerNodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Learners)
 	}
@@ -3192,7 +3192,7 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.nodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.voterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()
@@ -3287,7 +3287,7 @@ func TestNewLeaderPendingConfig(t *testing.T) {
 func TestAddNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.addNode(2)
-	nodes := r.nodes()
+	nodes := r.prs.voterNodes()
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
@@ -3298,7 +3298,7 @@ func TestAddNode(t *testing.T) {
 func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.addLearner(2)
-	nodes := r.learnerNodes()
+	nodes := r.prs.learnerNodes()
 	wnodes := []uint64{2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
@@ -3348,14 +3348,14 @@ func TestRemoveNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	r.removeNode(2)
 	w := []uint64{1}
-	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+	if g := r.prs.voterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
 	// remove all nodes from cluster
 	r.removeNode(1)
 	w = []uint64{}
-	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+	if g := r.prs.voterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 }
@@ -3366,18 +3366,18 @@ func TestRemoveLearner(t *testing.T) {
 	r := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
 	r.removeNode(2)
 	w := []uint64{1}
-	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+	if g := r.prs.voterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
 	w = []uint64{}
-	if g := r.learnerNodes(); !reflect.DeepEqual(g, w) {
+	if g := r.prs.learnerNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
 	// remove all nodes from cluster
 	r.removeNode(1)
-	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+	if g := r.prs.voterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 }
@@ -3416,8 +3416,8 @@ func TestRaftNodes(t *testing.T) {
 	}
 	for i, tt := range tests {
 		r := newTestRaft(1, tt.ids, 10, 1, NewMemoryStorage())
-		if !reflect.DeepEqual(r.nodes(), tt.wids) {
-			t.Errorf("#%d: nodes = %+v, want %+v", i, r.nodes(), tt.wids)
+		if !reflect.DeepEqual(r.prs.voterNodes(), tt.wids) {
+			t.Errorf("#%d: nodes = %+v, want %+v", i, r.prs.voterNodes(), tt.wids)
 		}
 	}
 }
@@ -3637,7 +3637,7 @@ func TestLeaderTransferAfterSnapshot(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.nodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.voterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()

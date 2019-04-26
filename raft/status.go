@@ -33,15 +33,18 @@ type Status struct {
 }
 
 func getProgressCopy(r *raft) map[uint64]Progress {
-	prs := make(map[uint64]Progress)
-	for id, p := range r.prs.nodes {
-		prs[id] = *p
-	}
+	m := make(map[uint64]Progress)
+	r.prs.visit(func(id uint64, pr *Progress) {
+		var p Progress
+		p, pr = *pr, nil /* avoid accidental reuse below */
 
-	for id, p := range r.prs.learners {
-		prs[id] = *p
-	}
-	return prs
+		// The inflight buffer is tricky to copy and besides, it isn't exposed
+		// to the client, so pretend it's nil.
+		p.ins = nil
+
+		m[id] = p
+	})
+	return m
 }
 
 func getStatusWithoutProgress(r *raft) Status {

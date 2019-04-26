@@ -33,7 +33,7 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window
-	for i := 0; i < r.maxInflight; i++ {
+	for i := 0; i < r.prs.maxInflight; i++ {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		ms := r.readMessages()
 		if len(ms) != 1 {
@@ -69,14 +69,14 @@ func TestMsgAppFlowControlMoveForward(t *testing.T) {
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window
-	for i := 0; i < r.maxInflight; i++ {
+	for i := 0; i < r.prs.maxInflight; i++ {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		r.readMessages()
 	}
 
 	// 1 is noop, 2 is the first proposal we just sent.
 	// so we start with 2.
-	for tt := 2; tt < r.maxInflight; tt++ {
+	for tt := 2; tt < r.prs.maxInflight; tt++ {
 		// move forward the window
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: uint64(tt)})
 		r.readMessages()
@@ -114,7 +114,7 @@ func TestMsgAppFlowControlRecvHeartbeat(t *testing.T) {
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window
-	for i := 0; i < r.maxInflight; i++ {
+	for i := 0; i < r.prs.maxInflight; i++ {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		r.readMessages()
 	}
