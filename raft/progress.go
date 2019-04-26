@@ -328,8 +328,33 @@ func (p *prs) committed() uint64 {
 }
 
 func (p *prs) removeAny(id uint64) {
+	pN := p.nodes[id]
+	pL := p.learners[id]
+
+	if pN == nil && pL == nil {
+		panic("attempting to remove unknown peer %x")
+	} else if pN != nil && pL != nil {
+		panic(fmt.Sprintf("peer %x is both voter and learner", id))
+	}
+
 	delete(p.nodes, id)
 	delete(p.learners, id)
+}
+
+// initProgress initializes a new progress for the given node or learner. The
+// node may not exist yet in either form or a panic will ensue.
+func (p *prs) initProgress(id, match, next uint64, isLearner bool) {
+	if pr := p.nodes[id]; pr != nil {
+		panic(fmt.Sprintf("peer %x already tracked as node %v", id, pr))
+	}
+	if pr := p.learners[id]; pr != nil {
+		panic(fmt.Sprintf("peer %x already tracked as learner %v", id, pr))
+	}
+	if !isLearner {
+		p.nodes[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight)}
+		return
+	}
+	p.learners[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: true}
 }
 
 func (p *prs) getProgress(id uint64) *Progress {
@@ -340,20 +365,21 @@ func (p *prs) getProgress(id uint64) *Progress {
 	return p.learners[id]
 }
 
-// initProgress initializes a new progress for the given node, replacing any that
-// may exist. It is invalid to replace a voter by a learner and attempts to do so
-// will result in a panic.
-func (p *prs) initProgress(id, match, next uint64, isLearner bool) {
-	if !isLearner {
-		delete(p.learners, id)
-		p.nodes[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight)}
-		return
+// visit invokes the supplied closure for all tracked progresses.
+func (p *prs) visit(f func(id uint64, pr *Progress)) {
+	for id, pr := range p.nodes {
+		f(id, pr)
 	}
 
-	if _, ok := p.nodes[id]; ok {
-		panic(fmt.Sprintf("changing from voter to learner for %x", id))
+	for id, pr := range p.learners {
+		f(id, pr)
 	}
-	p.learners[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: true}
+}
+
+func (p *prs) reset() {
+	p.nodes = map[uint64]*Progress{}
+	p.learners = map[uint64]*Progress{}
+	p.matchBuf = nil
 }
 
 func (p *prs) voterNodes() []uint64 {
@@ -372,15 +398,4 @@ func (p *prs) learnerNodes() []uint64 {
 	}
 	sort.Sort(uint64Slice(nodes))
 	return nodes
-}
-
-// visit invokes the supplied closure for all tracked progresses.
-func (p *prs) visit(f func(id uint64, pr *Progress)) {
-	for id, pr := range p.nodes {
-		f(id, pr)
-	}
-
-	for id, pr := range p.learners {
-		f(id, pr)
-	}
 }

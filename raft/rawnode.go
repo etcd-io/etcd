@@ -257,16 +257,15 @@ const (
 // WithProgress is a helper to introspect the Progress for this node and its
 // peers.
 func (rn *RawNode) WithProgress(visitor func(id uint64, typ ProgressType, pr Progress)) {
-	for id, pr := range rn.raft.prs.nodes {
-		pr := *pr
-		pr.ins = nil
-		visitor(id, ProgressTypePeer, pr)
-	}
-	for id, pr := range rn.raft.prs.learners {
-		pr := *pr
-		pr.ins = nil
-		visitor(id, ProgressTypeLearner, pr)
-	}
+	rn.raft.prs.visit(func(id uint64, pr *Progress) {
+		typ := ProgressTypePeer
+		if pr.IsLearner {
+			typ = ProgressTypeLearner
+		}
+		p := *pr
+		p.ins = nil
+		visitor(id, typ, p)
+	})
 }
 
 // ReportUnreachable reports the given node is not reachable for the last send.

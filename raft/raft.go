@@ -577,7 +577,12 @@ func (r *raft) reset(term uint64) {
 
 	r.votes = make(map[uint64]bool)
 	r.prs.visit(func(id uint64, pr *Progress) {
-		*pr = Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.prs.maxInflight), IsLearner: pr.IsLearner}
+		*pr = Progress{
+			Match:     0,
+			Next:      r.raftLog.lastIndex() + 1,
+			ins:       newInflights(r.prs.maxInflight),
+			IsLearner: pr.IsLearner,
+		}
 		if id == r.id {
 			pr.Match = r.raftLog.lastIndex()
 		}
@@ -938,7 +943,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		if len(m.Entries) == 0 {
 			r.logger.Panicf("%x stepped empty MsgProp", r.id)
 		}
-		if _, ok := r.prs.nodes[r.id]; !ok {
+		if r.prs.getProgress(r.id) == nil {
 			// If we are not currently a member of the range (i.e. this node
 			// was removed from the configuration while serving as leader),
 			// drop any new proposals.
@@ -1314,8 +1319,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		r.id, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 
 	r.raftLog.restore(s)
-	r.prs.nodes = make(map[uint64]*Progress)
-	r.prs.learners = make(map[uint64]*Progress)
+	r.prs.reset()
 	r.restoreNode(s.Metadata.ConfState.Nodes, false)
 	r.restoreNode(s.Metadata.ConfState.Learners, true)
 	return true
@@ -1385,7 +1389,7 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 func (r *raft) removeNode(id uint64) {
 	r.prs.removeAny(id)
 
-	// do not try to commit or abort transferring if there is no nodes in the cluster.
+	// Do not try to commit or abort transferring if the cluster is now empty.
 	if len(r.prs.nodes) == 0 && len(r.prs.learners) == 0 {
 		return
 	}

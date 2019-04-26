@@ -1351,6 +1351,7 @@ func TestCommit(t *testing.T) {
 		storage.hardState = pb.HardState{Term: tt.smTerm}
 
 		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
+		sm.prs.removeAny(1)
 		for j := 0; j < len(tt.matches); j++ {
 			sm.prs.initProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
 		}
