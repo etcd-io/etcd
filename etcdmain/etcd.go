@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/pkg/fileutil"
 	pkgioutil "go.etcd.io/etcd/pkg/ioutil"
 	"go.etcd.io/etcd/pkg/osutil"
+	"go.etcd.io/etcd/pkg/tlsutil"
 	"go.etcd.io/etcd/pkg/transport"
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/proxy/httpproxy"
@@ -526,7 +527,19 @@ func startProxy(cfg *config) error {
 			}
 		}
 	}
-
+	if cTLS && cfg.ec.CipherSuites != nil {
+		var (
+			ok bool
+			cs = make([]uint16, len(cfg.ec.CipherSuites))
+		)
+		for i, s := range cfg.ec.CipherSuites {
+			cs[i], ok = tlsutil.GetCipherSuite(s)
+			if !ok {
+				return fmt.Errorf("unexpected TLS cipher suite %q", s)
+			}
+		}
+		listenerTLS.CipherSuites = cs
+	}
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.ec.LCUrls {
 		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)
