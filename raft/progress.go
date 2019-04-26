@@ -381,6 +381,20 @@ func (p *prs) visit(f func(id uint64, pr *Progress)) {
 	}
 }
 
+// checkQuorumActive returns true if the quorum is active from
+// the view of the local raft state machine. Otherwise, it returns
+// false.
+func (p *prs) quorumActive() bool {
+	var act int
+	p.visit(func(id uint64, pr *Progress) {
+		if pr.RecentActive && !pr.IsLearner {
+			act++
+		}
+	})
+
+	return act >= p.quorum()
+}
+
 func (p *prs) voterNodes() []uint64 {
 	nodes := make([]uint64, 0, len(p.nodes))
 	for id := range p.nodes {

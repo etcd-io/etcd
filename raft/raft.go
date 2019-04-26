@@ -933,10 +933,26 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastHeartbeat()
 		return nil
 	case pb.MsgCheckQuorum:
-		if !r.checkQuorumActive() {
+		// The leader should always see itself as active. As a precaution, handle
+		// the case in which the leader isn't in the configuration any more (for
+		// example if it just removed itself).
+		//
+		// TODO(tbg): I added a TODO in removeNode, it doesn't seem that the
+		// leader steps down when removing itself. I might be missing something.
+		if pr := r.prs.getProgress(r.id); pr != nil {
+			pr.RecentActive = true
+		}
+		if !r.prs.quorumActive() {
 			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
 			r.becomeFollower(r.Term, None)
 		}
+		// Mark everyone (but ourselves) as inactive in preparation for the next
+		// CheckQuorum.
+		r.prs.visit(func(id uint64, pr *Progress) {
+			if id != r.id {
+				pr.RecentActive = false
+			}
+		})
 		return nil
 	case pb.MsgProp:
 		if len(m.Entries) == 0 {
@@ -1393,6 +1409,9 @@ func (r *raft) removeNode(id uint64) {
 		return
 	}
 
+	// TODO(tbg): won't bad (or at least unfortunate) things happen if the
+	// leader just removed itself?
+
 	// The quorum size is now smaller, so see if any pending entries can
 	// be committed.
 	if r.maybeCommit() {
@@ -1422,29 +1441,6 @@ func (r *raft) pastElectionTimeout() bool {
 
 func (r *raft) resetRandomizedElectionTimeout() {
 	r.randomizedElectionTimeout = r.electionTimeout + globalRand.Intn(r.electionTimeout)
-}
-
-// checkQuorumActive returns true if the quorum is active from
-// the view of the local raft state machine. Otherwise, it returns
-// false.
-// checkQuorumActive also resets all RecentActive to false.
-func (r *raft) checkQuorumActive() bool {
-	var act int
-
-	r.prs.visit(func(id uint64, pr *Progress) {
-		if id == r.id { // self is always active
-			act++
-			return
-		}
-
-		if pr.RecentActive && !pr.IsLearner {
-			act++
-		}
-
-		pr.RecentActive = false
-	})
-
-	return act >= r.prs.quorum()
 }
 
 func (r *raft) sendTimeoutNow(to uint64) {
