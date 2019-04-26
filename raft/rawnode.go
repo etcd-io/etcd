@@ -257,12 +257,12 @@ const (
 // WithProgress is a helper to introspect the Progress for this node and its
 // peers.
 func (rn *RawNode) WithProgress(visitor func(id uint64, typ ProgressType, pr Progress)) {
-	for id, pr := range rn.raft.prs {
+	for id, pr := range rn.raft.prs.nodes {
 		pr := *pr
 		pr.ins = nil
 		visitor(id, ProgressTypePeer, pr)
 	}
-	for id, pr := range rn.raft.learnerPrs {
+	for id, pr := range rn.raft.prs.learners {
 		pr := *pr
 		pr.ins = nil
 		visitor(id, ProgressTypeLearner, pr)

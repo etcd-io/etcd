@@ -29,7 +29,7 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 	r.becomeCandidate()
 	r.becomeLeader()
 
-	pr2 := r.prs[2]
+	pr2 := r.prs.nodes[2]
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window
@@ -65,7 +65,7 @@ func TestMsgAppFlowControlMoveForward(t *testing.T) {
 	r.becomeCandidate()
 	r.becomeLeader()
 
-	pr2 := r.prs[2]
+	pr2 := r.prs.nodes[2]
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window
@@ -110,7 +110,7 @@ func TestMsgAppFlowControlRecvHeartbeat(t *testing.T) {
 	r.becomeCandidate()
 	r.becomeLeader()
 
-	pr2 := r.prs[2]
+	pr2 := r.prs.nodes[2]
 	// force the progress to be in replicate state
 	pr2.becomeReplicate()
 	// fill in the inflights window

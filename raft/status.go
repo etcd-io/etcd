@@ -34,11 +34,11 @@ type Status struct {
 
 func getProgressCopy(r *raft) map[uint64]Progress {
 	prs := make(map[uint64]Progress)
-	for id, p := range r.prs {
+	for id, p := range r.prs.nodes {
 		prs[id] = *p
 	}
 
-	for id, p := range r.learnerPrs {
+	for id, p := range r.prs.learners {
 		prs[id] = *p
 	}
 	return prs

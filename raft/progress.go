@@ -14,7 +14,10 @@
 
 package raft
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 const (
 	ProgressStateProbe ProgressStateType = iota
@@ -282,4 +285,45 @@ func (in *inflights) full() bool {
 func (in *inflights) reset() {
 	in.count = 0
 	in.start = 0
+}
+
+// prs tracks the currently active configuration and the information known about
+// the nodes and learners in it. In particular, it tracks the match index for
+// each peer which in turn allows reasoning about the committed index.
+type prs struct {
+	nodes    map[uint64]*Progress
+	learners map[uint64]*Progress
+	matchBuf uint64Slice
+}
+
+func makePRS() prs {
+	return prs{
+		nodes:    map[uint64]*Progress{},
+		learners: map[uint64]*Progress{},
+	}
+}
+
+func (p *prs) quorum() int {
+	return len(p.nodes)/2 + 1
+}
+
+func (p *prs) committed() uint64 {
+	// Preserving matchBuf across calls is an optimization
+	// used to avoid allocating a new slice on each call.
+	if cap(p.matchBuf) < len(p.nodes) {
+		p.matchBuf = make(uint64Slice, len(p.nodes))
+	}
+	p.matchBuf = p.matchBuf[:len(p.nodes)]
+	idx := 0
+	for _, pr := range p.nodes {
+		p.matchBuf[idx] = pr.Match
+		idx++
+	}
+	sort.Sort(&p.matchBuf)
+	return p.matchBuf[len(p.matchBuf)-p.quorum()]
+}
+
+func (p *prs) removeAny(id uint64) {
+	delete(p.nodes, id)
+	delete(p.learners, id)
 }
