@@ -617,6 +617,9 @@ function commit_title_pass {
 	done
 }
 
+# tools gosimple,unused,staticheck,unconvert,ineffasign,nakedret
+# are not module-aware. See https://github.com/golang/go/issues/24661
+# The module-aware versions need to be used when they become available
 function fmt_pass {
 	toggle_failpoints disable
 
@@ -628,13 +631,7 @@ function fmt_pass {
 			gofmt \
 			govet \
 			govet_shadow \
-			gosimple \
-			unused \
-			staticcheck \
 			revive \
-			unconvert \
-			ineffassign \
-			nakedret \
 			license_header \
 			receiver_name \
 			commit_title \
@@ -647,6 +644,12 @@ function fmt_pass {
 
 function bom_pass {
 	if ! command -v license-bill-of-materials >/dev/null; then
+		return
+	fi
+	if [ "${GO111MODULE}" == "on" ]; then
+		# license-bill-off-materials calls "go list std cmd" which cannot handle modules
+		# Please see https://github.com/golang/go/issues/26924
+		echo "Skipping license-bill-of-materials with go modules..."
 		return
 	fi
 	echo "Checking bill of materials..."
@@ -694,3 +697,4 @@ for pass in $PASSES; do
 done
 
 echo "Success"
+

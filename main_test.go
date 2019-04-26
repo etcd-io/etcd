@@ -24,7 +24,8 @@ import (
 
 func TestMain(t *testing.T) {
 	// don't launch etcd server when invoked via go test
-	if strings.HasSuffix(os.Args[0], "etcd.test") {
+	// Note: module name has /v3 now
+	if strings.HasSuffix(os.Args[0], "v3.test") {
 		return
 	}
 

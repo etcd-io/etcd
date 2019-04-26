@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/v3/pkg/logutil"
 
 	"go.uber.org/zap/zapcore"
 )

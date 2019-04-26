@@ -2,8 +2,8 @@ syntax = "proto3";
 package etcdserverpb;
 
 import "gogoproto/gogo.proto";
-import "etcd/mvcc/mvccpb/kv.proto";
-import "etcd/auth/authpb/auth.proto";
+import "etcd/v3/mvcc/mvccpb/kv.proto";
+import "etcd/v3/auth/authpb/auth.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";

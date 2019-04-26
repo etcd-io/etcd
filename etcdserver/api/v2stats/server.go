@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/v3/raft"
 )
 
 // ServerStats encapsulates various statistics about an EtcdServer and its

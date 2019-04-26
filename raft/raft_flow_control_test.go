@@ -17,12 +17,13 @@ package raft
 import (
 	"testing"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 // TestMsgAppFlowControlFull ensures:
 // 1. msgApp can fill the sending window until full
 // 2. when the window is full, no more msgApp can be sent.
+
 func TestMsgAppFlowControlFull(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()

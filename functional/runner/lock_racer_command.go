@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/v3/clientv3/concurrency"
 
 	"github.com/spf13/cobra"
 )

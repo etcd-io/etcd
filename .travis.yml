@@ -1,5 +1,5 @@
 language: go
-go_import_path: go.etcd.io/etcd
+go_import_path: go.etcd.io/etcd/v3
 
 sudo: required
 
@@ -14,6 +14,8 @@ notifications:
   on_failure: never
 
 env:
+  global:
+  - GO111MODULE=on
   matrix:
   - TARGET=linux-amd64-fmt
   - TARGET=linux-amd64-integration-1-cpu
@@ -65,45 +67,45 @@ matrix:
 before_install:
 - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
 
-install:
-- go get -t -d ./...
+install: true
+
 
 script:
  - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"
  - >
     case "${TARGET}" in
       linux-amd64-fmt)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='fmt bom dep' ./test"
         ;;
       linux-amd64-integration-1-cpu)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 CPU=1 PASSES='integration' ./test"
         ;;
       linux-amd64-integration-2-cpu)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 CPU=2 PASSES='integration' ./test"
         ;;
       linux-amd64-integration-4-cpu)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 CPU=4 PASSES='integration' ./test"
         ;;
       linux-amd64-functional)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
         ;;
       linux-amd64-unit)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='unit' ./test"
         ;;
       all-build)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='build' ./test \
             && GOARCH=386 PASSES='build' ./test \
@@ -123,7 +125,7 @@ script:
         GOARCH=amd64 PASSES='fmt unit' ./test
         ;;
       linux-386-unit)
-        docker run --rm \
+        docker run --rm -e GO111MODULE \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=386 PASSES='unit' ./test"
         ;;
