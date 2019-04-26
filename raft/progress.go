@@ -291,8 +291,11 @@ func (in *inflights) reset() {
 // the nodes and learners in it. In particular, it tracks the match index for
 // each peer which in turn allows reasoning about the committed index.
 type prs struct {
-	nodes       map[uint64]*Progress
-	learners    map[uint64]*Progress
+	nodes    map[uint64]*Progress
+	learners map[uint64]*Progress
+
+	votes map[uint64]bool
+
 	maxInflight int
 	matchBuf    uint64Slice
 }

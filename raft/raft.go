@@ -267,8 +267,6 @@ type raft struct {
 	// isLearner is true if the local raft node is a learner.
 	isLearner bool
 
-	votes map[uint64]bool
-
 	msgs []pb.Message
 
 	// the leader id
@@ -575,7 +573,7 @@ func (r *raft) reset(term uint64) {
 
 	r.abortLeaderTransfer()
 
-	r.votes = make(map[uint64]bool)
+	r.prs.votes = make(map[uint64]bool)
 	r.prs.visit(func(id uint64, pr *Progress) {
 		*pr = Progress{
 			Match:     0,
@@ -683,7 +681,7 @@ func (r *raft) becomePreCandidate() {
 	// but doesn't change anything else. In particular it does not increase
 	// r.Term or change r.Vote.
 	r.step = stepCandidate
-	r.votes = make(map[uint64]bool)
+	r.prs.votes = make(map[uint64]bool)
 	r.tick = r.tickElection
 	r.lead = None
 	r.state = StatePreCandidate
@@ -770,10 +768,10 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int) {
 	} else {
 		r.logger.Infof("%x received %s rejection from %x at term %d", r.id, t, id, r.Term)
 	}
-	if _, ok := r.votes[id]; !ok {
-		r.votes[id] = v
+	if _, ok := r.prs.votes[id]; !ok {
+		r.prs.votes[id] = v
 	}
-	for _, vv := range r.votes {
+	for _, vv := range r.prs.votes {
 		if vv {
 			granted++
 		}
@@ -1181,7 +1179,7 @@ func stepCandidate(r *raft, m pb.Message) error {
 		r.handleSnapshot(m)
 	case myVoteRespType:
 		gr := r.poll(m.From, m.Type, !m.Reject)
-		r.logger.Infof("%x [quorum:%d] has received %d %s votes and %d vote rejections", r.id, r.prs.quorum(), gr, m.Type, len(r.votes)-gr)
+		r.logger.Infof("%x [quorum:%d] has received %d %s votes and %d vote rejections", r.id, r.prs.quorum(), gr, m.Type, len(r.prs.votes)-gr)
 		switch r.prs.quorum() {
 		case gr:
 			if r.state == StatePreCandidate {
@@ -1190,7 +1188,7 @@ func stepCandidate(r *raft, m pb.Message) error {
 				r.becomeLeader()
 				r.bcastAppend()
 			}
-		case len(r.votes) - gr:
+		case len(r.prs.votes) - gr:
 			// pb.MsgPreVoteResp contains future term of pre-candidate
 			// m.Term > r.Term; reuse r.Term
 			r.becomeFollower(r.Term, None)
