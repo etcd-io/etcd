@@ -320,6 +320,10 @@ func (p *prs) quorum() int {
 	return len(p.nodes)/2 + 1
 }
 
+func (p *prs) hasQuorum(m map[uint64]struct{}) bool {
+	return len(m) >= p.quorum()
+}
+
 // committed returns the largest log index known to be committed based on what
 // the voting members of the group have acknowledged.
 func (p *prs) committed() uint64 {

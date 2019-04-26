@@ -1000,6 +1000,8 @@ func stepLeader(r *raft, m pb.Message) error {
 			switch r.readOnly.option {
 			case ReadOnlySafe:
 				r.readOnly.addRequest(r.raftLog.committed, m)
+				// The local node automatically acks the request.
+				r.readOnly.recvAck(r.id, m.Entries[0].Data)
 				r.bcastHeartbeatWithCtx(m.Entries[0].Data)
 			case ReadOnlyLeaseBased:
 				ri := r.raftLog.committed
@@ -1097,8 +1099,7 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
-		ackCount := r.readOnly.recvAck(m)
-		if ackCount < r.prs.quorum() {
+		if !r.prs.hasQuorum(r.readOnly.recvAck(m.From, m.Context)) {
 			return nil
 		}
 
