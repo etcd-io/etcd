@@ -66,8 +66,9 @@ func Setup(etcdCURL, disc string) *State {
 	u, _ := url.Parse(etcdCURL)
 
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdCURL},
-		DialTimeout: 5 * time.Second,
+		Endpoints:        []string{etcdCURL},
+		DialTimeout:      5 * time.Second,
+		AutoSyncInterval: 30 * time.Second,
 	})
 	clientv3.SetLogger(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stdout))
 	if err != nil {
