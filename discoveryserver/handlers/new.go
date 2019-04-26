@@ -31,6 +31,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/discoveryserver/handlers/httperror"
+	"go.etcd.io/etcd/discoveryserver/metrics"
 	"go.etcd.io/etcd/discoveryserver/timeprefix"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
@@ -49,7 +50,7 @@ func init() {
 		},
 		[]string{"code", "method"},
 	)
-	prometheus.MustRegister(newCounter)
+	metrics.Registry.MustRegister(newCounter)
 }
 
 func generateCluster() string {

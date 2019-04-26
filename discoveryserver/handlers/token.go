@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/discoveryserver/handlers/httperror"
+	"go.etcd.io/etcd/discoveryserver/metrics"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -39,7 +40,7 @@ func init() {
 		},
 		[]string{"code", "method"},
 	)
-	prometheus.MustRegister(tokenCounter)
+	metrics.Registry.MustRegister(tokenCounter)
 }
 
 var tokenCounter *prometheus.CounterVec
@@ -127,6 +128,7 @@ func TokenHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenCounter.WithLabelValues("200", r.Method).Add(1)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Etcd-Index", fmt.Sprintf("%d", ev.EtcdIndex))
 	w.WriteHeader(http.StatusOK)

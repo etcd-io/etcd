@@ -21,7 +21,9 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
+
 	"go.etcd.io/etcd/discoveryserver/handlers/httperror"
+	"go.etcd.io/etcd/discoveryserver/metrics"
 )
 
 var healthCounter *prometheus.CounterVec
@@ -34,7 +36,7 @@ func init() {
 		},
 		[]string{"code", "method"},
 	)
-	prometheus.MustRegister(healthCounter)
+	metrics.Registry.MustRegister(healthCounter)
 }
 
 func HealthHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {

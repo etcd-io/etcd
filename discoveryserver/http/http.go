@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"go.etcd.io/etcd/discoveryserver/handlers"
+	"go.etcd.io/etcd/discoveryserver/metrics"
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -31,7 +32,7 @@ func Setup(ctx context.Context, etcdHost, discHost string) *handlers.State {
 	logH := gorillaHandlers.LoggingHandler(os.Stdout, handler)
 
 	http.Handle("/", logH)
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
 
 	return st
 }
