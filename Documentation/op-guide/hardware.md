@@ -19,7 +19,7 @@ etcd has a relatively small memory footprint but its performance still depends o
 
 Fast disks are the most critical factor for etcd deployment performance and stability. 
 
-A slow disk will increase etcd request latency and potentially hurt cluster stability. Since etcd’s consensus protocol depends on persistently storing metadata to a log, a majority of etcd cluster members must write every request down to disk. Additionally, etcd will also incrementally checkpoint its state to disk so it can truncate this log. If these writes take too long, heartbeats may time out and trigger an election, undermining the stability of the cluster.
+A slow disk will increase etcd request latency and potentially hurt cluster stability. Since etcd’s consensus protocol depends on persistently storing metadata to a log, a majority of etcd cluster members must write every request down to disk. Additionally, etcd will also incrementally checkpoint its state to disk so it can truncate this log. If these writes take too long, heartbeats may time out and trigger an election, undermining the stability of the cluster. In general, to tell whether a disk is fast enough for etcd, a benchmarking tool such as [fio][fio] can be used. Read [here][fio-blog-post] for an example.
 
 etcd is very sensitive to disk write latency. Typically 50 sequential IOPS (e.g., a 7200 RPM disk) is required. For heavily loaded clusters, 500 sequential IOPS (e.g., a typical local SSD or a high performance virtualized block device) is recommended. Note that most cloud providers publish concurrent IOPS rather than sequential IOPS; the published concurrent IOPS can be 10x greater than the sequential IOPS. To measure actual sequential IOPS, we suggest using a disk benchmarking tool such as [diskbench][diskbench] or [fio][fio].
 
@@ -91,5 +91,6 @@ Example application workload: A 3,000 node Kubernetes cluster
 
 [diskbench]: https://github.com/ongardie/diskbenchmark
 [fio]: https://github.com/axboe/fio
+[fio-blog-post]: https://www.ibm.com/blogs/bluemix/2019/04/using-fio-to-tell-whether-your-storage-is-fast-enough-for-etcd/
 [tuning]: ../tuning.md
 
