@@ -40,6 +40,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const maxLearners = 1
+
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
 	lg *zap.Logger
@@ -292,16 +294,15 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				plog.Panicf("unmarshal confChangeContext should never fail: %v", err)
 			}
 		}
-		// A ConfChangeAddNode to a existing learner node promotes it to a voting member.
-		if confChangeContext.IsPromote {
+
+		if confChangeContext.IsPromote { // promoting a learner member to voting member
 			if members[id] == nil {
 				return ErrIDNotFound
 			}
 			if !members[id].IsLearner {
 				return ErrMemberNotLearner
 			}
-		} else {
-			// add a learner or a follower case
+		} else { // adding a new member
 			if members[id] != nil {
 				return ErrIDExists
 			}
@@ -315,6 +316,18 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			for _, u := range confChangeContext.Member.PeerURLs {
 				if urls[u] {
 					return ErrPeerURLexists
+				}
+			}
+
+			if confChangeContext.Member.IsLearner { // the new member is a learner
+				numLearners := 0
+				for _, m := range members {
+					if m.IsLearner {
+						numLearners++
+					}
+				}
+				if numLearners+1 > maxLearners {
+					return ErrTooManyLearners
 				}
 			}
 		}

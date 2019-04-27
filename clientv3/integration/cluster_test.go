@@ -259,3 +259,43 @@ func TestMemberPromoteForLearner(t *testing.T) {
 		t.Errorf("learner promoted, expect 0 learner, got %d", numberOfLearners)
 	}
 }
+
+// TestMaxLearnerInCluster verifies that the maximum number of learners allowed in a cluster is 1
+func TestMaxLearnerInCluster(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	// 1. start with a cluster with 3 voting member and 0 learner member
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// 2. adding a learner member should succeed
+	resp1, err := clus.Client(0).MemberAddAsLearner(context.Background(), []string{"http://127.0.0.1:1234"})
+	if err != nil {
+		t.Fatalf("failed to add learner member %v", err)
+	}
+	numberOfLearners := 0
+	for _, m := range resp1.Members {
+		if m.IsLearner {
+			numberOfLearners++
+		}
+	}
+	if numberOfLearners != 1 {
+		t.Fatalf("Added 1 learner node to cluster, got %d", numberOfLearners)
+	}
+
+	// 3. cluster has 3 voting member and 1 learner, adding another learner should fail
+	_, err = clus.Client(0).MemberAddAsLearner(context.Background(), []string{"http://127.0.0.1:2345"})
+	if err == nil {
+		t.Fatalf("expect member add to fail, got no error")
+	}
+	expectedErrKeywords := "too many learner members in cluster"
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Fatalf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
+	}
+
+	// 4. cluster has 3 voting member and 1 learner, adding a voting member should succeed
+	_, err = clus.Client(0).MemberAdd(context.Background(), []string{"http://127.0.0.1:3456"})
+	if err != nil {
+		t.Errorf("failed to add member %v", err)
+	}
+}

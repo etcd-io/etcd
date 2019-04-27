@@ -42,6 +42,7 @@ var (
 	ErrGRPCMemberNotFound         = status.New(codes.NotFound, "etcdserver: member not found").Err()
 	ErrGRPCMemberNotLearner       = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member").Err()
 	ErrGRPCLearnerNotReady        = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader").Err()
+	ErrGRPCTooManyLearners        = status.New(codes.FailedPrecondition, "etcdserver: too many learner members in cluster").Err()
 
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
@@ -97,6 +98,7 @@ var (
 		ErrorDesc(ErrGRPCMemberNotFound):         ErrGRPCMemberNotFound,
 		ErrorDesc(ErrGRPCMemberNotLearner):       ErrGRPCMemberNotLearner,
 		ErrorDesc(ErrGRPCLearnerNotReady):        ErrGRPCLearnerNotReady,
+		ErrorDesc(ErrGRPCTooManyLearners):        ErrGRPCTooManyLearners,
 
 		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
@@ -154,6 +156,7 @@ var (
 	ErrMemberNotFound         = Error(ErrGRPCMemberNotFound)
 	ErrMemberNotLearner       = Error(ErrGRPCMemberNotLearner)
 	ErrMemberLearnerNotReady  = Error(ErrGRPCLearnerNotReady)
+	ErrTooManyLearners        = Error(ErrGRPCTooManyLearners)
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
