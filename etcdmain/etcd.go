@@ -283,15 +283,26 @@ func startEtcdOrProxyV2() {
 	// connections.
 	notifySystemd(lg)
 
-	select {
-	case lerr := <-errc:
-		// fatal out on listener errors
-		if lg != nil {
-			lg.Fatal("listener failed", zap.Error(lerr))
-		} else {
-			plog.Fatal(lerr)
+	var timeoutc <-chan time.Time = nil
+	for {
+		select {
+		case lerr := <-errc:
+			// fatal out on listener errors
+			if lg != nil {
+				lg.Error("listener failed", zap.Error(lerr))
+			} else {
+				plog.Error(lerr)
+			}
+			// It may be the case that several listeners have failed at
+			// once. Exiting as soon as the first one fails would
+			// potentially lose valuable diagnostics, so we wait for a
+			// second and log all available errors on errc before exiting.
+			timeoutc = time.After(1 * time.Second)
+		case <-timeoutc:
+			osutil.Exit(1)
+		case <-stopped:
+			osutil.Exit(0)
 		}
-	case <-stopped:
 	}
 
 	osutil.Exit(0)
