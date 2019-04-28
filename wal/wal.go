@@ -195,6 +195,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 				zap.Error(perr),
 			)
 		}
+		w.cleanupWAL(lg)
 		return nil, perr
 	}
 	if perr = fileutil.Fsync(pdir); perr != nil {
@@ -206,9 +207,10 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 				zap.Error(perr),
 			)
 		}
+		w.cleanupWAL(lg)
 		return nil, perr
 	}
-	if perr = pdir.Close(); err != nil {
+	if perr = pdir.Close(); perr != nil {
 		if lg != nil {
 			lg.Warn(
 				"failed to close the parent data directory file",
@@ -217,10 +219,29 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 				zap.Error(perr),
 			)
 		}
+		w.cleanupWAL(lg)
 		return nil, perr
 	}
 
 	return w, nil
+}
+
+func (w *WAL) cleanupWAL(lg *zap.Logger) {
+	var err error
+	if err = w.Close(); err != nil {
+		if lg != nil {
+			lg.Panic("failed to cleanup WAL", zap.Error(err))
+		} else {
+			plog.Panicf("failed to cleanup WAL: %v", err)
+		}
+	}
+	if err = os.RemoveAll(w.dir); err != nil {
+		if lg != nil {
+			lg.Panic("failed to cleanup WAL", zap.Error(err))
+		} else {
+			plog.Panicf("failed to cleanup WAL: %v", err)
+		}
+	}
 }
 
 func (w *WAL) renameWAL(tmpdirpath string) (*WAL, error) {
