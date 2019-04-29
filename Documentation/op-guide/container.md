@@ -1,4 +1,6 @@
-# Run etcd clusters inside containers
+---
+title: Run etcd clusters inside containers
+---
 
 The following guide shows how to run etcd with rkt and Docker using the [static bootstrap process](clustering.md#static).
 

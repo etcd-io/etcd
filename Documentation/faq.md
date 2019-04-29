@@ -1,4 +1,6 @@
-# Frequently Asked Questions (FAQ)
+---
+title: Frequently Asked Questions (FAQ)
+---
 
 ## etcd, general
 
@@ -106,7 +108,7 @@ To recover from the low space quota alarm:
 
 This is gRPC-side warning when a server receives a TCP RST flag with client-side streams being prematurely closed. For example, a client closes its connection, while gRPC server has not yet processed all HTTP/2 frames in the TCP queue. Some data may have been lost in server side, but it is ok so long as client connection has already been closed.
 
-Only [old versions of gRPC](https://github.com/grpc/grpc-go/issues/1362) log this. etcd [>=v3.2.13 by default log this with DEBUG level](https://github.com/coreos/etcd/pull/9080), thus only visible with `--debug` flag enabled.
+Only [old versions of gRPC](https://github.com/grpc/grpc-go/issues/1362) log this. etcd [>=v3.2.13 by default log this with DEBUG level](https://github.com/etcd-io/etcd/pull/9080), thus only visible with `--debug` flag enabled.
 
 ## Performance
 
@@ -147,14 +149,14 @@ etcd sends a snapshot of its complete key-value store to refresh slow followers 
 [supported-platform]: ./op-guide/supported-platform.md
 [wal_fsync_duration_seconds]: ./metrics.md#disk
 [tuning]: ./tuning.md
-[new_issue]: https://github.com/coreos/etcd/issues/new
+[new_issue]: https://github.com/etcd-io/etcd/issues/new
 [backend_commit_metrics]: ./metrics.md#disk
 [raft]: https://raft.github.io/raft.pdf
-[backup]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
+[backup]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
 [chubby]: http://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf
-[runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
+[runtime reconfiguration]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
 [benchmark]: https://github.com/coreos/etcd/tree/master/tools/benchmark
-[benchmark-result]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/performance.md
+[benchmark-result]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/performance.md
 [api-mvcc]: learning/api.md#revisions
 [maintenance-compact]:  op-guide/maintenance.md#history-compaction
 [maintenance-defragment]: op-guide/maintenance.md#defragmentation

@@ -1,4 +1,6 @@
-### etcd API Reference
+---
+title: etcd API Reference
+---
 
 
 This is a generated documentation. Please read the proto files for more.
@@ -69,8 +71,8 @@ This is a generated documentation. Please read the proto files for more.
 | Alarm | AlarmRequest | AlarmResponse | Alarm activates, deactivates, and queries alarms regarding cluster health. |
 | Status | StatusRequest | StatusResponse | Status gets the status of the member. |
 | Defragment | DefragmentRequest | DefragmentResponse | Defragment defragments a member's backend database to recover storage space. |
-| Hash | HashRequest | HashResponse | Hash computes the hash of the KV's backend. This is designed for testing; do not use this in production when there are ongoing transactions. |
-| HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. |
+| Hash | HashRequest | HashResponse | Hash computes the hash of whole backend keyspace, including key, lease, and other buckets in storage. This is designed for testing ONLY! Do not rely on this in production with ongoing transactions, since Hash operation does not hold MVCC locks. Use "HashKV" API instead for "key" bucket consistency checks. |
+| HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. It only iterates "key" bucket in backend storage. |
 | Snapshot | SnapshotRequest | SnapshotResponse | Snapshot sends a snapshot of the entire backend from a member over a stream to a client. |
 | MoveLeader | MoveLeaderRequest | MoveLeaderResponse | MoveLeader requests current leader node to transfer its leadership to transferee. |
 
@@ -226,8 +228,8 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | role |  | string |
-| key |  | string |
-| range_end |  | string |
+| key |  | bytes |
+| range_end |  | bytes |
 
 
 
@@ -476,6 +478,31 @@ Empty field.
 
 
 
+##### message `LeaseCheckpoint` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the lease ID to checkpoint. | int64 |
+| remaining_TTL | Remaining_TTL is the remaining time until expiry of the lease. | int64 |
+
+
+
+##### message `LeaseCheckpointRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| checkpoints |  | (slice of) LeaseCheckpoint |
+
+
+
+##### message `LeaseCheckpointResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
 ##### message `LeaseGrantRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
@@ -706,7 +733,7 @@ Empty field.
 | count_only | count_only when set returns only the count of the keys in the range. | bool |
 | min_mod_revision | min_mod_revision is the lower bound for returned key mod revisions; all keys with lesser mod revisions will be filtered away. | int64 |
 | max_mod_revision | max_mod_revision is the upper bound for returned key mod revisions; all keys with greater mod revisions will be filtered away. | int64 |
-| min_create_revision | min_create_revision is the lower bound for returned key create revisions; all keys with lesser create trevisions will be filtered away. | int64 |
+| min_create_revision | min_create_revision is the lower bound for returned key create revisions; all keys with lesser create revisions will be filtered away. | int64 |
 | max_create_revision | max_create_revision is the upper bound for returned key create revisions; all keys with greater create revisions will be filtered away. | int64 |
 
 
@@ -740,7 +767,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | cluster_id | cluster_id is the ID of the cluster which sent the response. | uint64 |
 | member_id | member_id is the ID of the member which sent the response. | uint64 |
-| revision | revision is the key-value store revision when the request was applied. | int64 |
+| revision | revision is the key-value store revision when the request was applied. For watch progress responses, the header.revision indicates progress. All future events recieved in this stream are guaranteed to have a higher revision number than the header.revision number. | int64 |
 | raft_term | raft_term is the raft term when the request was applied. | uint64 |
 
 
@@ -785,10 +812,13 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | version | version is the cluster protocol version used by the responding member. | string |
-| dbSize | dbSize is the size of the backend database, in bytes, of the responding member. | int64 |
+| dbSize | dbSize is the size of the backend database physically allocated, in bytes, of the responding member. | int64 |
 | leader | leader is the member ID which the responding member believes is the current leader. | uint64 |
-| raftIndex | raftIndex is the current raft index of the responding member. | uint64 |
+| raftIndex | raftIndex is the current raft committed index of the responding member. | uint64 |
 | raftTerm | raftTerm is the current raft term of the responding member. | uint64 |
+| raftAppliedIndex | raftAppliedIndex is the current raft applied index of the responding member. | uint64 |
+| errors | errors contains alarm/health information and status. | (slice of) string |
+| dbSizeInUse | dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member. | int64 |
 
 
 
@@ -832,6 +862,16 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | progress_notify | progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. It is useful when clients wish to recover a disconnected watcher starting from a recent known revision. The etcd server may decide how often it will send notifications based on current load. | bool |
 | filters | filters filter the events at server side before it sends back to the watcher. | (slice of) FilterType |
 | prev_kv | If prev_kv is set, created watcher gets the previous KV before the event happens. If the previous KV is already compacted, nothing will be returned. | bool |
+| watch_id | If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. | int64 |
+| fragment | fragment enables splitting large revisions into multiple watch responses. | bool |
+
+
+
+##### message `WatchProgressRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Requests the a watch stream progress status be sent in the watch response stream as soon as possible.
+
+Empty field.
 
 
 
@@ -842,6 +882,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | request_union | request_union is a request to either create a new watcher or cancel an existing watcher. | oneof |
 | create_request |  | WatchCreateRequest |
 | cancel_request |  | WatchCancelRequest |
+| progress_request |  | WatchProgressRequest |
 
 
 
@@ -855,6 +896,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | canceled | canceled is set to true if the response is for a cancel watch request. No further events will be sent to the canceled watcher. | bool |
 | compact_revision | compact_revision is set to the minimum index if a watcher tries to watch at a compacted index.  This happens when creating a watcher at a compacted revision or the watcher cannot catch up with the progress of the key-value store.  The client should treat the watcher as canceled and should not try to create any watcher with the same start_revision again. | int64 |
 | cancel_reason | cancel_reason indicates the reason for canceling the watcher. | string |
+| fragment | framgment is true if large watch response was split over multiple responses. | bool |
 | events |  | (slice of) mvccpb.Event |
 
 
@@ -888,6 +930,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | ----- | ----------- | ---- |
 | ID |  | int64 |
 | TTL |  | int64 |
+| RemainingTTL |  | int64 |
 
 
 

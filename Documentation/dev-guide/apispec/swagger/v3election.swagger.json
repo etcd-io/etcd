@@ -15,13 +15,13 @@
     "application/json"
   ],
   "paths": {
-    "/v3beta/election/campaign": {
+    "/v3/election/campaign": {
       "post": {
         "summary": "Campaign waits to acquire leadership in an election, returning a LeaderKey\nrepresenting the leadership if successful. The LeaderKey can then be used\nto issue new values on the election, transactionally guard API requests on\nleadership still being held, and resign from the election.",
         "operationId": "Campaign",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbCampaignResponse"
             }
@@ -42,13 +42,13 @@
         ]
       }
     },
-    "/v3beta/election/leader": {
+    "/v3/election/leader": {
       "post": {
         "summary": "Leader returns the current election proclamation, if any.",
         "operationId": "Leader",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbLeaderResponse"
             }
@@ -69,13 +69,13 @@
         ]
       }
     },
-    "/v3beta/election/observe": {
+    "/v3/election/observe": {
       "post": {
         "summary": "Observe streams election proclamations in-order as made by the election's\nelected leaders.",
         "operationId": "Observe",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/v3electionpbLeaderResponse"
             }
@@ -96,13 +96,13 @@
         ]
       }
     },
-    "/v3beta/election/proclaim": {
+    "/v3/election/proclaim": {
       "post": {
         "summary": "Proclaim updates the leader's posted value with a new value.",
         "operationId": "Proclaim",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbProclaimResponse"
             }
@@ -123,13 +123,13 @@
         ]
       }
     },
-    "/v3beta/election/resign": {
+    "/v3/election/resign": {
       "post": {
         "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
         "operationId": "Resign",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbResignResponse"
             }
@@ -168,7 +168,7 @@
         "revision": {
           "type": "string",
           "format": "int64",
-          "description": "revision is the key-value store revision when the request was applied."
+          "description": "revision is the key-value store revision when the request was applied.\nFor watch progress responses, the header.revision indicates progress. All future events\nrecieved in this stream are guaranteed to have a higher revision number than the\nheader.revision number."
         },
         "raft_term": {
           "type": "string",

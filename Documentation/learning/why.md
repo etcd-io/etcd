@@ -1,6 +1,8 @@
-# etcd versus other key-value stores
+---
+title: etcd versus other key-value stores
+---
 
-The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istibuted systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".
+The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istributed systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".
 
 etcd is designed as a general substrate for large scale distributed systems. These are systems that will never tolerate split-brain operation and are willing to sacrifice availability to achieve this end. etcd stores metadata in a consistent and fault-tolerant way. An etcd cluster is meant to provide key-value storage with best of class stability, reliability, scalability and performance.
 
@@ -76,18 +78,18 @@ In theory, it’s possible to build these primitives atop any storage systems pr
 For distributed coordination, choosing etcd can help prevent operational headaches and save engineering effort.
 
 [production-users]: ../production-users.md
-[grpc]: http://www.grpc.io
+[grpc]: https://www.grpc.io
 [consul-bulletproof]: https://www.consul.io/docs/internals/sessions.html
 [curator]: http://curator.apache.org/
 [cockroach]: https://github.com/cockroachdb/cockroach
 [spanner]: https://cloud.google.com/spanner/
 [tidb]: https://github.com/pingcap/tidb
-[etcd-v3lock]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb
-[etcd-v3election]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb
+[etcd-v3lock]: https://godoc.org/github.com/etcd-io/etcd/etcdserver/api/v3lock/v3lockpb
+[etcd-v3election]: https://godoc.org/github.com/coreos/etcd-io/etcdserver/api/v3election/v3electionpb
 [etcd-etcdctl-lock]: ../../etcdctl/README.md#lock-lockname-command-arg1-arg2-
 [etcd-etcdctl-elect]: ../../etcdctl/README.md#elect-options-election-name-proposal
 [etcd-mvcc]: data_model.md
-[etcd-recipe]: https://godoc.org/github.com/coreos/etcd/contrib/recipes
+[etcd-recipe]: https://godoc.org/github.com/etcd-io/etcd/contrib/recipes
 [consul-lock]: https://www.consul.io/docs/commands/lock.html
 [newsql-leader]: http://dl.acm.org/citation.cfm?id=2960999
 [etcd-reconfig]: ../op-guide/runtime-configuration.md
@@ -112,5 +114,5 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [zk-bindings]: https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#ch_bindings
 [container-linux]: https://coreos.com/why
 [locksmith]: https://github.com/coreos/locksmith
-[kubernetes]: http://kubernetes.io/docs/whatisk8s
+[kubernetes]: https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
 [dbtester-comparison-results]: https://github.com/coreos/dbtester/tree/master/test-results/2018Q1-02-etcd-zookeeper-consul

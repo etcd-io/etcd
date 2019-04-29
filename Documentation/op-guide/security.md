@@ -1,4 +1,6 @@
-# Transport security model
+---
+title: Transport security model
+---
 
 etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication.
 
@@ -37,6 +39,8 @@ The peer options work the same way as the client-to-server options:
 `--peer-auto-tls`: Use automatically generated self-signed certificates for TLS connections between peers.
 
 If either a client-to-server or peer certificate is supplied the key must also be set. All of these configuration options are also available through the environment variables, `ETCD_CA_FILE`, `ETCD_PEER_CA_FILE` and so on.
+
+`--cipher-suites`: Comma-separated list of supported TLS cipher suites between server/client and peers (empty will be auto-populated by Go). Available from v3.2.22+, v3.3.7+, and v3.4+.
 
 ## Example 1: Client-to-server transport security with HTTPS
 
@@ -122,6 +126,49 @@ And also the response from the server:
 }
 ```
 
+Specify cipher suites to block [weak TLS cipher suites](https://github.com/etcd-io/etcd/issues/8320).
+
+TLS handshake would fail when client hello is requested with invalid cipher suites.
+
+For instance:
+
+```bash
+$ etcd \
+  --cert-file ./server.crt \
+  --key-file ./server.key \
+  --trusted-ca-file ./ca.crt \
+  --cipher-suites TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+```
+
+Then, client requests must specify one of the cipher suites specified in the server:
+
+```bash
+# valid cipher suite
+$ curl \
+  --cacert ./ca.crt \
+  --cert ./server.crt \
+  --key ./server.key \
+  -L [CLIENT-URL]/metrics \
+  --ciphers ECDHE-RSA-AES128-GCM-SHA256
+
+# request succeeds
+etcd_server_version{server_version="3.2.22"} 1
+...
+```
+
+```bash
+# invalid cipher suite
+$ curl \
+  --cacert ./ca.crt \
+  --cert ./server.crt \
+  --key ./server.key \
+  -L [CLIENT-URL]/metrics \
+  --ciphers ECDHE-RSA-DES-CBC3-SHA
+
+# request fails with
+(35) error:14094410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure
+```
+
 ## Example 3: Transport security & client certificates in a cluster
 
 etcd supports the same model as above for **peer communication**, that means the communication between etcd members in a cluster.
@@ -195,9 +242,9 @@ When client authentication is enabled for an etcd member, the administrator must
 
 ## Notes for TLS authentication
 
-Since [v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [TLS certificates get reloaded on every client connection](https://github.com/coreos/etcd/pull/7829). This is useful when replacing expiry certs without stopping etcd servers; it can be done by overwriting old certs with new ones. Refreshing certs for every connection should not have too much overhead, but can be improved in the future, with caching layer. Example tests can be found [here](https://github.com/coreos/etcd/blob/b041ce5d514a4b4aaeefbffb008f0c7570a18986/integration/v3_grpc_test.go#L1601-L1757).
+Since [v3.2.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [TLS certificates get reloaded on every client connection](https://github.com/etcd-io/etcd/pull/7829). This is useful when replacing expiry certs without stopping etcd servers; it can be done by overwriting old certs with new ones. Refreshing certs for every connection should not have too much overhead, but can be improved in the future, with caching layer. Example tests can be found [here](https://github.com/coreos/etcd/blob/b041ce5d514a4b4aaeefbffb008f0c7570a18986/integration/v3_grpc_test.go#L1601-L1757).
 
-Since [v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [server denies incoming peer certs with wrong IP `SAN`](https://github.com/coreos/etcd/pull/7687). For instance, if peer cert contains any IP addresses in Subject Alternative Name (SAN) field, server authenticates a peer only when the remote IP address matches one of those IP addresses. This is to prevent unauthorized endpoints from joining the cluster. For example, peer B's CSR (with `cfssl`) is:
+Since [v3.2.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [server denies incoming peer certs with wrong IP `SAN`](https://github.com/etcd-io/etcd/pull/7687). For instance, if peer cert contains any IP addresses in Subject Alternative Name (SAN) field, server authenticates a peer only when the remote IP address matches one of those IP addresses. This is to prevent unauthorized endpoints from joining the cluster. For example, peer B's CSR (with `cfssl`) is:
 
 ```json
 {
@@ -223,7 +270,7 @@ Since [v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v320-
 
 when peer B's actual IP address is `10.138.0.2`, not `10.138.0.27`. When peer B tries to join the cluster, peer A will reject B with the error `x509: certificate is valid for 10.138.0.27, not 10.138.0.2`, because B's remote IP address does not match the one in Subject Alternative Name (SAN) field.
 
-Since [v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [server resolves TLS `DNSNames` when checking `SAN`](https://github.com/coreos/etcd/pull/7767). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server authenticates a peer only when forward-lookups (`dig b.com`) on those DNS names have matching IP with the remote IP address. For example, peer B's CSR (with `cfssl`) is:
+Since [v3.2.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md#v320-2017-06-09), [server resolves TLS `DNSNames` when checking `SAN`](https://github.com/etcd-io/etcd/pull/7767). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server authenticates a peer only when forward-lookups (`dig b.com`) on those DNS names have matching IP with the remote IP address. For example, peer B's CSR (with `cfssl`) is:
 
 ```json
 {
@@ -235,7 +282,7 @@ Since [v3.2.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v320-
 
 when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A looks up the incoming host `b.com` to get the list of IP addresses (e.g. `dig b.com`). And rejects B if the list does not contain the IP `10.138.0.2`, with the error `tls: 10.138.0.2 does not match any of DNSNames ["b.com"]`.
 
-Since [v3.2.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v322-2017-07-07), [server accepts connections if IP matches, without checking DNS entries](https://github.com/coreos/etcd/pull/8223). For instance, if peer cert contains IP addresses and DNS names in Subject Alternative Name (SAN) field, and the remote IP address matches one of those IP addresses, server just accepts connection without further checking the DNS names. For example, peer B's CSR (with `cfssl`) is:
+Since [v3.2.2](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md#v322-2017-07-07), [server accepts connections if IP matches, without checking DNS entries](https://github.com/etcd-io/etcd/pull/8223). For instance, if peer cert contains IP addresses and DNS names in Subject Alternative Name (SAN) field, and the remote IP address matches one of those IP addresses, server just accepts connection without further checking the DNS names. For example, peer B's CSR (with `cfssl`) is:
 
 ```json
 {
@@ -246,9 +293,9 @@ Since [v3.2.2](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v322-
   ],
 ```
 
-when peer B's remote IP address is `10.138.0.2` and `invalid.domain` is a invalid host. When peer B tries to join the cluster, peer A successfully authenticates B, since Subject Alternative Name (SAN) field has a valid matching IP address. See [issue#8206](https://github.com/coreos/etcd/issues/8206) for more detail.
+when peer B's remote IP address is `10.138.0.2` and `invalid.domain` is a invalid host. When peer B tries to join the cluster, peer A successfully authenticates B, since Subject Alternative Name (SAN) field has a valid matching IP address. See [issue#8206](https://github.com/etcd-io/etcd/issues/8206) for more detail.
 
-Since [v3.2.5](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v325-2017-08-04), [server supports reverse-lookup on wildcard DNS `SAN`](https://github.com/coreos/etcd/pull/8281). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server first reverse-lookups the remote IP address to get a list of names mapping to that address (e.g. `nslookup IPADDR`). Then accepts the connection if those names have a matching name with peer cert's DNS names (either by exact or wildcard match). If none is matched, server forward-lookups each DNS entry in peer cert (e.g. look up `example.default.svc` when the entry is `*.example.default.svc`), and accepts connection only when the host's resolved addresses have the matching IP address with the peer's remote IP address. For example, peer B's CSR (with `cfssl`) is:
+Since [v3.2.5](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md#v325-2017-08-04), [server supports reverse-lookup on wildcard DNS `SAN`](https://github.com/etcd-io/etcd/pull/8281). For instance, if peer cert contains only DNS names (no IP addresses) in Subject Alternative Name (SAN) field, server first reverse-lookups the remote IP address to get a list of names mapping to that address (e.g. `nslookup IPADDR`). Then accepts the connection if those names have a matching name with peer cert's DNS names (either by exact or wildcard match). If none is matched, server forward-lookups each DNS entry in peer cert (e.g. look up `example.default.svc` when the entry is `*.example.default.svc`), and accepts connection only when the host's resolved addresses have the matching IP address with the peer's remote IP address. For example, peer B's CSR (with `cfssl`) is:
 
 ```json
 {
@@ -259,9 +306,9 @@ Since [v3.2.5](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.2.md#v325-
   ],
 ```
 
-when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A reverse-lookup the IP `10.138.0.2` to get the list of host names. And either exact or wildcard match the host names with peer B's cert DNS names in Subject Alternative Name (SAN) field. If none of reverse/forward lookups worked, it returns an error `"tls: "10.138.0.2" does not match any of DNSNames ["*.example.default.svc","*.example.default.svc.cluster.local"]`. See [issue#8268](https://github.com/coreos/etcd/issues/8268) for more detail.
+when peer B's remote IP address is `10.138.0.2`. When peer B tries to join the cluster, peer A reverse-lookup the IP `10.138.0.2` to get the list of host names. And either exact or wildcard match the host names with peer B's cert DNS names in Subject Alternative Name (SAN) field. If none of reverse/forward lookups worked, it returns an error `"tls: "10.138.0.2" does not match any of DNSNames ["*.example.default.svc","*.example.default.svc.cluster.local"]`. See [issue#8268](https://github.com/etcd-io/etcd/issues/8268) for more detail.
 
-[v3.3.0](https://github.com/coreos/etcd/blob/master/CHANGELOG-3.3.md) adds [`etcd --peer-cert-allowed-cn`](https://github.com/coreos/etcd/pull/8616) flag to support [CN(Common Name)-based auth for inter-peer connections](https://github.com/coreos/etcd/issues/8262). Kubernetes TLS bootstrapping involves generating dynamic certificates for etcd members and other system components (e.g. API server, kubelet, etc.). Maintaining different CAs for each component provides tighter access control to etcd cluster but often tedious. When `--peer-cert-allowed-cn` flag is specified, node can only join with matching common name even with shared CAs. For example, each member in 3-node cluster is set up with CSRs (with `cfssl`) as below:
+[v3.3.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md) adds [`etcd --peer-cert-allowed-cn`](https://github.com/etcd-io/etcd/pull/8616) flag to support [CN(Common Name)-based auth for inter-peer connections](https://github.com/etcd-io/etcd/issues/8262). Kubernetes TLS bootstrapping involves generating dynamic certificates for etcd members and other system components (e.g. API server, kubelet, etc.). Maintaining different CAs for each component provides tighter access control to etcd cluster but often tedious. When `--peer-cert-allowed-cn` flag is specified, node can only join with matching common name even with shared CAs. For example, each member in 3-node cluster is set up with CSRs (with `cfssl`) as below:
 
 ```json
 {
@@ -320,6 +367,35 @@ I | embed: serving client requests on 127.0.0.1:32379
 I | embed: serving client requests on 127.0.0.1:22379
 I | embed: serving client requests on 127.0.0.1:2379
 ```
+
+[v3.2.19](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md) and [v3.3.4](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md) fixes TLS reload when [certificate SAN field only includes IP addresses but no domain names](https://github.com/etcd-io/etcd/issues/9541). For example, a member is set up with CSRs (with `cfssl`) as below:
+
+```json
+{
+  "CN": "etcd.local",
+  "hosts": [
+    "127.0.0.1"
+  ],
+```
+
+In Go, server calls `(*tls.Config).GetCertificate` for TLS reload if and only if server's `(*tls.Config).Certificates` field is not empty, or `(*tls.ClientHelloInfo).ServerName` is not empty with a valid SNI from the client. Previously, etcd always populates `(*tls.Config).Certificates` on the initial client TLS handshake, as non-empty. Thus, client was always expected to supply a matching SNI in order to pass the TLS verification and to trigger `(*tls.Config).GetCertificate` to reload TLS assets.
+
+However, a certificate whose SAN field does [not include any domain names but only IP addresses](https://github.com/etcd-io/etcd/issues/9541) would request `*tls.ClientHelloInfo` with an empty `ServerName` field, thus failing to trigger the TLS reload on initial TLS handshake; this becomes a problem when expired certificates need to be replaced online.
+
+Now, `(*tls.Config).Certificates` is created empty on initial TLS client handshake, first to trigger `(*tls.Config).GetCertificate`, and then to populate rest of the certificates on every new TLS connection, even when client SNI is empty (e.g. cert only includes IPs).
+
+## Notes for Host Whitelist
+
+`etcd --host-whitelist` flag specifies acceptable hostnames from HTTP client requests. Client origin policy protects against ["DNS Rebinding"](https://en.wikipedia.org/wiki/DNS_rebinding) attacks to insecure etcd servers. That is, any website can simply create an authorized DNS name, and direct DNS to `"localhost"` (or any other address). Then, all HTTP endpoints of etcd server listening on `"localhost"` becomes accessible, thus vulnerable to DNS rebinding attacks. See [CVE-2018-5702](https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2) for more detail.
+
+Client origin policy works as follows:
+
+1. If client connection is secure via HTTPS, allow any hostnames.
+2. If client connection is not secure and `"HostWhitelist"` is not empty, only allow HTTP requests whose Host field is listed in whitelist.
+
+Note that the client origin policy is enforced whether authentication is enabled or not, for tighter controls.
+
+By default, `etcd --host-whitelist` and `embed.Config.HostWhitelist` are set *empty* to allow all hostnames. Note that when specifying hostnames, loopback addresses are not added automatically. To allow loopback interfaces, add them to whitelist manually (e.g. `"localhost"`, `"127.0.0.1"`, etc.).
 
 ## Frequently asked questions
 
