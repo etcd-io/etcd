@@ -607,14 +607,14 @@ func (r *raft) maybeCommit() bool {
 	if cap(r.matchBuf) < len(r.prs) {
 		r.matchBuf = make(uint64Slice, len(r.prs))
 	}
-	mis := r.matchBuf[:len(r.prs)]
+	r.matchBuf = r.matchBuf[:len(r.prs)]
 	idx := 0
 	for _, p := range r.prs {
-		mis[idx] = p.Match
+		r.matchBuf[idx] = p.Match
 		idx++
 	}
-	sort.Sort(mis)
-	mci := mis[len(mis)-r.quorum()]
+	sort.Sort(&r.matchBuf)
+	mci := r.matchBuf[len(r.matchBuf)-r.quorum()]
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
