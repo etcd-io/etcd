@@ -1,4 +1,6 @@
-# Setup a local cluster
+---
+title: Set up a local cluster
+---
 
 For testing and development deployments, the quickest and easiest way is to set up a local cluster. For a production deployment, refer to the [clustering][clustering] section.
 

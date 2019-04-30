@@ -1,4 +1,6 @@
-## Upgrade etcd from 3.1 to 3.2
+---
+title: Upgrade etcd from 3.1 to 3.2
+---
 
 In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, rolling upgrade:
  - one by one, stop the etcd v3.1 processes and replace them with etcd v3.2 processes

@@ -1,4 +1,6 @@
-# Authentication Guide
+---
+title: Authentication Guide
+---
 
 ## Overview
 
