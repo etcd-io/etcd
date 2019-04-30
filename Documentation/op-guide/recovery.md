@@ -1,4 +1,6 @@
-# Disaster recovery
+---
+title: Disaster recovery
+---
 
 etcd is designed to withstand machine failures. An etcd cluster automatically recovers from temporary failures (e.g., machine reboots) and tolerates up to *(N-1)/2* permanent failures for a cluster of N members. When a member permanently fails, whether due to hardware failure or disk corruption, it loses access to the cluster. If the cluster permanently loses more than *(N-1)/2* members then it disastrously fails, irrevocably losing quorum. Once quorum is lost, the cluster cannot reach consensus and therefore cannot continue accepting updates.
 
@@ -61,3 +63,9 @@ $ etcd \
 ```
 
 Now the restored etcd cluster should be available and serving the keyspace given by the snapshot.
+
+## Restoring a cluster from membership mis-reconfiguration with wrong URLs
+
+Previously, etcd panics on [membership mis-reconfiguration with wrong URLs](https://github.com/etcd-io/etcd/issues/9173) (v3.2.15 or later returns [error early in client-side](https://github.com/etcd-io/etcd/pull/9174) before etcd server panic).
+
+Recommended way is restore from [snapshot](#snapshotting-the-keyspace). `--force-new-cluster` can be used to overwrite cluster membership while keeping existing application data, but is strongly discouraged because it will panic if other members from previous cluster are still alive. Make sure to save snapshot periodically.

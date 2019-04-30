@@ -1,4 +1,6 @@
-# Clustering Guide
+---
+title: Clustering Guide
+---
 
 ## Overview
 
@@ -342,8 +344,8 @@ etcdserver: discovery token ignored since a cluster has already been initialized
 ### DNS discovery
 
 DNS [SRV records][rfc-srv] can be used as a discovery mechanism.
-The `-discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
-The following DNS SRV records are looked up in the listed order:
+The `--discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
+Setting `--discovery-srv example.com` causes DNS SRV records to be looked up in the listed order:
 
 * _etcd-server-ssl._tcp.example.com
 * _etcd-server._tcp.example.com
@@ -357,7 +359,20 @@ To help clients discover the etcd cluster, the following DNS SRV records are loo
 
 If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over SSL/TLS.
 
+If etcd is using TLS, the discovery SRV record (e.g. `example.com`) must be included in the SSL certificate DNS SAN along with the hostname, or clustering will fail with log messages like the following:
+
+```
+[...] rejected connection from "10.0.1.11:53162" (error "remote error: tls: bad certificate", ServerName "example.com")
+```
+
 If etcd is using TLS without a custom certificate authority, the discovery domain (e.g., example.com) must match the SRV record domain (e.g., infra1.example.com). This is to mitigate attacks that forge SRV records to point to a different domain; the domain would have a valid certificate under PKI but be controlled by an unknown third party.
+
+The `-discovery-srv-name` flag additionally configures a suffix to the SRV name that is queried during discovery.
+Use this flag to differentiate between multiple etcd clusters under the same domain.
+For example, if `discovery-srv=example.com` and `-discovery-srv-name=foo` are set, the following DNS SRV queries are made:
+
+* _etcd-server-ssl-foo._tcp.example.com
+* _etcd-server-foo._tcp.example.com
 
 #### Create DNS SRV records
 
@@ -384,7 +399,8 @@ infra2.example.com.  300  IN  A  10.0.1.12
 
 #### Bootstrap the etcd cluster using DNS
 
-etcd cluster members can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
+etcd cluster members can advertise domain names or IP address, the bootstrap process will resolve DNS A records.
+Since 3.2 (3.1 prints warnings) `--listen-peer-urls` and `--listen-client-urls` will reject domain name for the network interface binding.
 
 The resolved address in `--initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets. The etcd member reads the resolved address to find out if it belongs to the cluster defined in the SRV records.
 
@@ -395,8 +411,8 @@ $ etcd --name infra0 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra0.example.com:2379 \
---listen-client-urls http://infra0.example.com:2379 \
---listen-peer-urls http://infra0.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -406,8 +422,8 @@ $ etcd --name infra1 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra1.example.com:2379 \
---listen-client-urls http://infra1.example.com:2379 \
---listen-peer-urls http://infra1.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -417,8 +433,8 @@ $ etcd --name infra2 \
 --initial-cluster-token etcd-cluster-1 \
 --initial-cluster-state new \
 --advertise-client-urls http://infra2.example.com:2379 \
---listen-client-urls http://infra2.example.com:2379 \
---listen-peer-urls http://infra2.example.com:2380
+--listen-client-urls http://0.0.0.0:2379 \
+--listen-peer-urls http://0.0.0.0:2380
 ```
 
 The cluster can also bootstrap using IP addresses instead of domain names:

@@ -1,4 +1,6 @@
-# gRPC proxy
+---
+title: gRPC proxy
+---
 
 The gRPC proxy is a stateless etcd reverse proxy operating at the gRPC layer (L7). The proxy is designed to reduce the total processing load on the core etcd cluster. For horizontal scalability, it coalesces watch and lease API requests. To protect the cluster against abusive clients, it caches key range requests.
 
@@ -85,7 +87,7 @@ Start the etcd gRPC proxy to use these static endpoints with the command:
 $ etcd grpc-proxy start --endpoints=infra0.example.com,infra1.example.com,infra2.example.com --listen-addr=127.0.0.1:2379
 ```
 
-The etcd gRPC proxy starts and listens on port 8080. It forwards client requests to one of the three endpoints provided above.
+The etcd gRPC proxy starts and listens on port 2379. It forwards client requests to one of the three endpoints provided above.
 
 Sending requests through the proxy:
 
@@ -194,7 +196,7 @@ $ ETCDCTL_API=3 etcdctl --endpoints=localhost:2379 get my-prefix/my-key
 
 ## TLS termination
 
-Terminate TLS from a secure etcd cluster with the grpc proxy by serving an unencrypted local endpoint.
+Terminate TLS from a secure etcd cluster with the gRPC proxy by serving an unencrypted local endpoint.
 
 To try it out, start a single member etcd cluster with client https:
 
@@ -211,7 +213,7 @@ $ ETCDCTL_API=3 etcdctl --endpoints=http://localhost:2379 endpoint status
 $ ETCDCTL_API=3 etcdctl --endpoints=https://localhost:2379 --cert=client.crt --key=client.key --cacert=ca.crt endpoint status
 ```
 
-Next, start a grpc proxy on `localhost:12379` by connecting to the etcd endpoint `https://localhost:2379` using the client certificates:
+Next, start a gRPC proxy on `localhost:12379` by connecting to the etcd endpoint `https://localhost:2379` using the client certificates:
 
 ```sh
 $ etcd grpc-proxy start --endpoints=https://localhost:2379 --listen-addr localhost:12379 --cert client.crt --key client.key --cacert=ca.crt --insecure-skip-tls-verify &

@@ -79,47 +79,6 @@ ANNOTATIONS {
   description = "on etcd instance {{ $labels.instance }} gRPC requests to {{ $labels.grpc_method }} are slow",
 }
 
-# HTTP requests alerts
-# ====================
-
-# alert if more than 1% of requests to an HTTP endpoint have failed within the last 5 minutes
-ALERT HighNumberOfFailedHTTPRequests
-IF 100 * (sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
-  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method)) > 1
-FOR 10m
-LABELS {
-  severity = "warning"
-}
-ANNOTATIONS {
-  summary = "a high number of HTTP requests are failing",
-  description = "{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}",
-}
-
-# alert if more than 5% of requests to an HTTP endpoint have failed within the last 5 minutes
-ALERT HighNumberOfFailedHTTPRequests
-IF 100 * (sum(rate(grpc_server_handled_total{grpc_code!="OK",job="etcd"}[5m])) BY (grpc_service, grpc_method)
-  / sum(rate(grpc_server_handled_total{job="etcd"}[5m])) BY (grpc_service, grpc_method))  > 5
-FOR 5m
-LABELS {
-  severity = "critical"
-}
-ANNOTATIONS {
-  summary = "a high number of HTTP requests are failing",
-  description = "{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}",
-}
-
-# alert if the 99th percentile of HTTP requests take more than 150ms
-ALERT HTTPRequestsSlow
-IF histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m])) > 0.15
-FOR 10m
-LABELS {
-  severity = "warning"
-}
-ANNOTATIONS {
-  summary = "slow HTTP requests",
-  description = "on etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow",
-}
-
 # file descriptor alerts
 # ======================
 

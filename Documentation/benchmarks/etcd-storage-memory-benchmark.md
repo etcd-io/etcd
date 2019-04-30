@@ -1,4 +1,6 @@
-# Storage Memory Usage Benchmark
+---
+title: Storage Memory Usage Benchmark
+---
 
 <!---todo: link storage to storage design doc-->
 Two components of etcd storage consume physical memory. The etcd process allocates an *in-memory index* to speed key lookup. The process's *page cache*, managed by the operating system, stores recently-accessed data from disk for quick re-use.

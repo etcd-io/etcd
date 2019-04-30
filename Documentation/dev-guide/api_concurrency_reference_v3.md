@@ -1,4 +1,6 @@
-### etcd concurrency API Reference
+---
+title: etcd concurrency API Reference
+---
 
 
 This is a generated documentation. Please read the proto files for more.
@@ -20,7 +22,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | name | name is the identifier for the distributed shared lock to be acquired. | bytes |
-| lease | lease is the ID of the lease that will be attached to ownership of the lock. If the lease expires or is revoked and currently holds the lock, the lock is automatically released. Calls to Lock with the same lease will be treated as a single acquistion; locking twice with the same lease is a no-op. | int64 |
+| lease | lease is the ID of the lease that will be attached to ownership of the lock. If the lease expires or is revoked and currently holds the lock, the lock is automatically released. Calls to Lock with the same lease will be treated as a single acquisition; locking twice with the same lease is a no-op. | int64 |
 
 
 
