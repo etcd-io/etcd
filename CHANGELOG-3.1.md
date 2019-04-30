@@ -3,7 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.0.md).
 
 
-The [minimum recommended etcd versions to run in **production**](https://groups.google.com/d/msg/etcd-dev/nZQl17RjxHQ/FkC_rZ_4AwAJT) is 3.1.11+, 3.2.10+, and 3.3.0+.
+The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
 
 
 <hr>
