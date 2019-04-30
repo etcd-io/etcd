@@ -1,4 +1,6 @@
-# Migrate applications from using API v2 to API v3
+---
+title: Migrate applications from using API v2 to API v3
+---
 
 The data store v2 is still accessible from the API v2 after upgrading to etcd3. Thus, it will work as before and require no application changes. With etcd 3, applications use the new grpc API v3 to access the mvcc store, which provides more features and improved performance. The mvcc store and the old store v2 are separate and isolated; writes to the store v2 will not affect the mvcc store and, similarly, writes to the mvcc store will not affect the store v2.
 

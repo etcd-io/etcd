@@ -1,4 +1,6 @@
-## Supported platforms
+---
+title: Supported platforms
+---
 
 ### Current support
 

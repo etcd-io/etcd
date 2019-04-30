@@ -1,4 +1,6 @@
-# Run etcd on Container Linux with systemd
+---
+title: Run etcd on Container Linux with systemd
+---
 
 The following guide shows how to run etcd with [systemd][systemd-docs] under [Container Linux][container-linux-docs].
 

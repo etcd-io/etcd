@@ -1,3 +1,7 @@
+---
+title: etcd API reference
+---
+
 ### etcd API Reference
 
 
