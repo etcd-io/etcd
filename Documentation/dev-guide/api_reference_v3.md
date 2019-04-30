@@ -1,4 +1,6 @@
-### etcd API Reference
+---
+title: etcd API Reference
+---
 
 
 This is a generated documentation. Please read the proto files for more.

@@ -1,3 +1,8 @@
+---
+title: etcd v2.1.0-alpha benchmarks
+---
+
+
 ## Physical machines
 
 GCE n1-highcpu-2 machine type

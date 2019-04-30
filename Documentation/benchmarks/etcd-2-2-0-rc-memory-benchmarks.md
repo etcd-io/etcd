@@ -1,3 +1,7 @@
+---
+title: etcd v2.2.0-rc-memory benchmarks
+---
+
 ## Physical machine
 
 GCE n1-standard-2 machine type

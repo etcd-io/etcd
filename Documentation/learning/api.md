@@ -1,4 +1,6 @@
-# etcd3 API
+---
+title: etcd3 API
+---
 
 NOTE: this doc is not finished!
 

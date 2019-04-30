@@ -1,4 +1,6 @@
-# etcd release guide
+---
+title: etcd release guide
+---
 
 The guide talks about how to release a new version of etcd.
 
