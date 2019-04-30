@@ -1,4 +1,6 @@
-# Upgrading etcd clusters and applications
+---
+title: Upgrading etcd clusters and applications
+---
 
 This section contains documents specific to upgrading etcd clusters and applications.
 

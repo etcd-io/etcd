@@ -1,4 +1,6 @@
-# FreeBSD
+---
+title: FreeBSD
+---
 
 Starting with version 0.1.2 both etcd and etcdctl have been ported to FreeBSD and can
 be installed either via packages or ports system. Their versions have been recently

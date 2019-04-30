@@ -1,4 +1,6 @@
-# Tuning
+---
+title: Tuning
+---
 
 The default settings in etcd should work well for installations on a local network where the average network latency is low. However, when using etcd across multiple data centers or over networks with high latency, the heartbeat interval and election timeout settings may need tuning.
 

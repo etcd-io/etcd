@@ -1,4 +1,6 @@
-# Benchmarking etcd v2.2.0
+---
+title: etcd v2.2.0 benchmarks
+---
 
 ## Physical Machines
 

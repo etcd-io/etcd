@@ -1,4 +1,6 @@
-# gRPC proxy
+---
+title: gRPC proxy
+---
 
 *This is an alpha feature, we are looking for early feedback.*
 

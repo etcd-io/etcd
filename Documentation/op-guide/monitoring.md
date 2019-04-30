@@ -1,4 +1,6 @@
-# Monitoring etcd
+---
+title: Monitoring etcd
+---
 
 Each etcd server exports metrics under the `/metrics` path on its client port.
 

@@ -1,4 +1,6 @@
-## Upgrade etcd from 3.3 to 3.4
+---
+title: Upgrade etcd from 3.3 to 3.4
+---
 
 In the general case, upgrading from etcd 3.3 to 3.4 can be a zero-downtime, rolling upgrade:
  - one by one, stop the etcd v3.3 processes and replace them with etcd v3.4 processes
