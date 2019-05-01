@@ -260,7 +260,7 @@ type raft struct {
 
 	maxMsgSize         uint64
 	maxUncommittedSize uint64
-	prs                prs
+	prs                progressTracker
 
 	state StateType
 

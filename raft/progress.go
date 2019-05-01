@@ -287,10 +287,10 @@ func (in *inflights) reset() {
 	in.start = 0
 }
 
-// prs tracks the currently active configuration and the information known about
-// the nodes and learners in it. In particular, it tracks the match index for
-// each peer which in turn allows reasoning about the committed index.
-type prs struct {
+// progressTracker tracks the currently active configuration and the information
+// known about the nodes and learners in it. In particular, it tracks the match
+// index for each peer which in turn allows reasoning about the committed index.
+type progressTracker struct {
 	nodes    map[uint64]*Progress
 	learners map[uint64]*Progress
 
@@ -300,8 +300,8 @@ type prs struct {
 	matchBuf    uint64Slice
 }
 
-func makePRS(maxInflight int) prs {
-	p := prs{
+func makePRS(maxInflight int) progressTracker {
+	p := progressTracker{
 		maxInflight: maxInflight,
 		nodes:       map[uint64]*Progress{},
 		learners:    map[uint64]*Progress{},
@@ -312,21 +312,21 @@ func makePRS(maxInflight int) prs {
 
 // isSingleton returns true if (and only if) there is only one voting member
 // (i.e. the leader) in the current configuration.
-func (p *prs) isSingleton() bool {
+func (p *progressTracker) isSingleton() bool {
 	return len(p.nodes) == 1
 }
 
-func (p *prs) quorum() int {
+func (p *progressTracker) quorum() int {
 	return len(p.nodes)/2 + 1
 }
 
-func (p *prs) hasQuorum(m map[uint64]struct{}) bool {
+func (p *progressTracker) hasQuorum(m map[uint64]struct{}) bool {
 	return len(m) >= p.quorum()
 }
 
 // committed returns the largest log index known to be committed based on what
 // the voting members of the group have acknowledged.
-func (p *prs) committed() uint64 {
+func (p *progressTracker) committed() uint64 {
 	// Preserving matchBuf across calls is an optimization
 	// used to avoid allocating a new slice on each call.
 	if cap(p.matchBuf) < len(p.nodes) {
@@ -342,7 +342,7 @@ func (p *prs) committed() uint64 {
 	return p.matchBuf[len(p.matchBuf)-p.quorum()]
 }
 
-func (p *prs) removeAny(id uint64) {
+func (p *progressTracker) removeAny(id uint64) {
 	pN := p.nodes[id]
 	pL := p.learners[id]
 
@@ -358,7 +358,7 @@ func (p *prs) removeAny(id uint64) {
 
 // initProgress initializes a new progress for the given node or learner. The
 // node may not exist yet in either form or a panic will ensue.
-func (p *prs) initProgress(id, match, next uint64, isLearner bool) {
+func (p *progressTracker) initProgress(id, match, next uint64, isLearner bool) {
 	if pr := p.nodes[id]; pr != nil {
 		panic(fmt.Sprintf("peer %x already tracked as node %v", id, pr))
 	}
@@ -372,7 +372,7 @@ func (p *prs) initProgress(id, match, next uint64, isLearner bool) {
 	p.learners[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: true}
 }
 
-func (p *prs) getProgress(id uint64) *Progress {
+func (p *progressTracker) getProgress(id uint64) *Progress {
 	if pr, ok := p.nodes[id]; ok {
 		return pr
 	}
@@ -381,7 +381,7 @@ func (p *prs) getProgress(id uint64) *Progress {
 }
 
 // visit invokes the supplied closure for all tracked progresses.
-func (p *prs) visit(f func(id uint64, pr *Progress)) {
+func (p *progressTracker) visit(f func(id uint64, pr *Progress)) {
 	for id, pr := range p.nodes {
 		f(id, pr)
 	}
@@ -394,7 +394,7 @@ func (p *prs) visit(f func(id uint64, pr *Progress)) {
 // checkQuorumActive returns true if the quorum is active from
 // the view of the local raft state machine. Otherwise, it returns
 // false.
-func (p *prs) quorumActive() bool {
+func (p *progressTracker) quorumActive() bool {
 	var act int
 	p.visit(func(id uint64, pr *Progress) {
 		if pr.RecentActive && !pr.IsLearner {
@@ -405,7 +405,7 @@ func (p *prs) quorumActive() bool {
 	return act >= p.quorum()
 }
 
-func (p *prs) voterNodes() []uint64 {
+func (p *progressTracker) voterNodes() []uint64 {
 	nodes := make([]uint64, 0, len(p.nodes))
 	for id := range p.nodes {
 		nodes = append(nodes, id)
@@ -414,7 +414,7 @@ func (p *prs) voterNodes() []uint64 {
 	return nodes
 }
 
-func (p *prs) learnerNodes() []uint64 {
+func (p *progressTracker) learnerNodes() []uint64 {
 	nodes := make([]uint64, 0, len(p.learners))
 	for id := range p.learners {
 		nodes = append(nodes, id)
@@ -424,13 +424,13 @@ func (p *prs) learnerNodes() []uint64 {
 }
 
 // resetVotes prepares for a new round of vote counting via recordVote.
-func (p *prs) resetVotes() {
+func (p *progressTracker) resetVotes() {
 	p.votes = map[uint64]bool{}
 }
 
 // recordVote records that the node with the given id voted for this Raft
 // instance if v == true (and declined it otherwise).
-func (p *prs) recordVote(id uint64, v bool) {
+func (p *progressTracker) recordVote(id uint64, v bool) {
 	_, ok := p.votes[id]
 	if !ok {
 		p.votes[id] = v
@@ -439,7 +439,7 @@ func (p *prs) recordVote(id uint64, v bool) {
 
 // tallyVotes returns the number of granted and rejected votes, and whether the
 // election outcome is known.
-func (p *prs) tallyVotes() (granted int, rejected int, result electionResult) {
+func (p *progressTracker) tallyVotes() (granted int, rejected int, result electionResult) {
 	for _, v := range p.votes {
 		if v {
 			granted++
