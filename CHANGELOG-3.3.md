@@ -9,6 +9,43 @@ The [minimum recommended etcd versions to run in **production**](https://groups.
 <hr>
 
 
+## [v3.3.13](https://github.com/etcd-io/etcd/releases/tag/v3.3.13) (2019-05-02)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.12...v3.3.13) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### Improved
+
+- Improve [heartbeat send failure logging](https://github.com/etcd-io/etcd/pull/10663).
+- Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
+- Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
+
+### client v3
+
+- Fix [`(*Client).Endpoints()` method race condition](https://github.com/etcd-io/etcd/pull/10595).
+
+### Package `wal`
+
+- Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
+
+### Dependency
+
+- Migrate [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`github.com/json-iterator/go`**](https://github.com/json-iterator/go) (See [#10667](https://github.com/etcd-io/etcd/pull/10667) for more).
+
+### Go
+
+- Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
+
+
+<hr>
+
+
 ## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-02-07)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
@@ -21,9 +58,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 
 - Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
 
-### Metrics, Monitoring
-
-- Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 
 <hr>
 

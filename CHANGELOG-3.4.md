@@ -52,6 +52,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Add [Lease checkpointing](https://github.com/etcd-io/etcd/pull/9924) to persist remaining TTLs to the consensus log periodically so that long lived leases progress toward expiry in the presence of leader elections and server restarts.
 - Add [gRPC interceptor for debugging logs](https://github.com/etcd-io/etcd/pull/9990); enable `etcd --debug` flag to see per-request debug information.
 - Add [consistency check in snapshot status](https://github.com/etcd-io/etcd/pull/10109). If consistency check on snapshot file fails, `snapshot status` returns `"snapshot file integrity check failed..."` error.
+- Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
+- Improve [heartbeat send failure logging](https://github.com/etcd-io/etcd/pull/10663).
 
 ### Breaking Changes
 
@@ -60,6 +62,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Move [`"github.com/coreos/etcd"`](https://github.com/etcd-io/etcd/issues/9965) to [`"github.com/etcd-io/etcd"`](https://github.com/etcd-io/etcd/issues/9965).
   - Change import path to `"go.etcd.io/etcd"`.
   - e.g. `import "go.etcd.io/etcd/raft"`.
+  - Updated [module path to comply with Go module specification](https://github.com/etcd-io/etcd/pull/10640).
+    - e.g. `import "go.etcd.io/etcd/mvcc/backend"` is now `import "go.etcd.io/etcd/v3/mvcc/backend"`.
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/etcd-io/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
@@ -135,6 +139,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.13.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.13.0).
 - Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.1.0`**](https://github.com/golang/protobuf/releases/tag/v1.1.0).
 - Migrate [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`github.com/json-iterator/go`**](https://github.com/json-iterator/go), to [regenerate v2 `client`](https://github.com/etcd-io/etcd/pull/9494) (See [#10667](https://github.com/etcd-io/etcd/pull/10667) for more).
+- Migrate [`github.com/ghodss/yaml`](https://github.com/ghodss/yaml/releases) to [**`sigs.k8s.io/yaml`**](https://github.com/kubernetes-sigs/yaml) (See [#10687](https://github.com/etcd-io/etcd/pull/10687) for more).
 - Upgrade [`golang.org/x/crypto`](https://github.com/golang/crypto) from [**`crypto@9419663f5`**](https://github.com/golang/crypto/commit/9419663f5a44be8b34ca85f08abc5fe1be11f8a3) to [**`crypto@8ac0e0d97`**](https://github.com/golang/crypto/commit/8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9).
 - Upgrade [`golang.org/x/net`](https://github.com/golang/net) from [**`net@66aacef3d`**](https://github.com/golang/net/commit/66aacef3dd8a676686c7ae3716979581e8b03c47) to [**`net@db08ff08e`**](https://github.com/golang/net/commit/db08ff08e8622530d9ed3a0e8ac279f6d4c02196).
 - Upgrade [`golang.org/x/sys`](https://github.com/golang/sys) from [**`sys@ebfc5b463`**](https://github.com/golang/sys/commit/ebfc5b4631820b793c9010c87fd8fef0f39eb082) to [**`sys@56ede360e`**](https://github.com/golang/sys/commit/56ede360ec1c541828fb88741b3f1049406d28f5).
@@ -404,6 +409,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - By setting `PermitWithoutStream` to true, client can send keepalive pings to server without any active streams(RPCs). In other words, it allows sending keepalive pings with unary or simple RPC calls.
   - `PermitWithoutStream` is set to false by default.
 - Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in `clientv3/concurrency` package.
+- Fix [`(*Client).Endpoints()` method race condition](https://github.com/etcd-io/etcd/pull/10595).
 
 ### etcdctl v3
 
@@ -473,6 +479,15 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Optimize [message send flow control](https://github.com/etcd-io/etcd/pull/9985).
   - Leader now sends more append entries if it has more non-empty entries to send after updating flow control information.
   - Now, Raft allows multiple in-flight append messages.
+- Optimize [memory allocation when boxing slice in `maybeCommit`](https://github.com/etcd-io/etcd/pull/10679).
+  - By boxing a heap-allocated slice header instead of the slice header on the stack, we can avoid an allocation when passing through the sort.Interface interface.
+- Avoid [memory allocation in Raft entry `String` method](https://github.com/etcd-io/etcd/pull/10680).
+- Avoid [multiple memory allocations when merging stable and unstable log](https://github.com/etcd-io/etcd/pull/10684).
+- Extract [progress tracking into own component](https://github.com/etcd-io/etcd/pull/10683).
+
+### Package `wal`
+
+- Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
 
 ### Tooling
 
