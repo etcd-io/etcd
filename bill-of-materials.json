@@ -63,15 +63,6 @@
 		]
 	},
 	{
-		"project": "github.com/ghodss/yaml",
-		"licenses": [
-			{
-				"type": "MIT License and BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/gogo/protobuf",
 		"licenses": [
 			{
@@ -450,6 +441,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.8975609756097561
+			}
+		]
+	},
+	{
+		"project": "sigs.k8s.io/yaml",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 1
 			}
 		]
 	}

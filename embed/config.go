@@ -36,12 +36,12 @@ import (
 	"go.etcd.io/etcd/v3/pkg/transport"
 	"go.etcd.io/etcd/v3/pkg/types"
 
-	"github.com/ghodss/yaml"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
+	"sigs.k8s.io/yaml"
 )
 
 const (
