@@ -344,7 +344,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 			ok, exceed := r.td.Observe(ms[i].To)
 			if !ok {
 				// TODO: limit request rate.
-				plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v)", r.heartbeat, exceed)
+				plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v, to %x)", r.heartbeat, exceed, ms[i].To)
 				plog.Warningf("server is likely overloaded")
 				heartbeatSendFailures.Inc()
 			}
