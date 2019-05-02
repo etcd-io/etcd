@@ -2,7 +2,7 @@
 
 # set some environment variables
 ORG_PATH="go.etcd.io"
-REPO_PATH="${ORG_PATH}/etcd"
+REPO_PATH="${ORG_PATH}/etcd/v3"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
 if [[ -n "$FAILPOINTS" ]]; then

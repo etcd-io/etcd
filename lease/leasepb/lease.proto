@@ -2,7 +2,7 @@ syntax = "proto3";
 package leasepb;
 
 import "gogoproto/gogo.proto";
-import "etcd/etcdserver/etcdserverpb/rpc.proto";
+import "etcd/v3/etcdserver/etcdserverpb/rpc.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;

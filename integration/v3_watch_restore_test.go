@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 // TestV3WatchRestoreSnapshotUnsync tests whether slow follower can restore

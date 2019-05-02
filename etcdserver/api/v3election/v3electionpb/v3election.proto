@@ -2,8 +2,8 @@ syntax = "proto3";
 package v3electionpb;
 
 import "gogoproto/gogo.proto";
-import "etcd/etcdserver/etcdserverpb/rpc.proto";
-import "etcd/mvcc/mvccpb/kv.proto";
+import "etcd/v3/etcdserver/etcdserverpb/rpc.proto";
+import "etcd/v3/mvcc/mvccpb/kv.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";

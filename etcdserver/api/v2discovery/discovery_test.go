@@ -28,7 +28,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/v3/client"
 
 	"github.com/jonboulle/clockwork"
 )

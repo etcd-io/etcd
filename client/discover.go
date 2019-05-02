@@ -15,7 +15,7 @@
 package client
 
 import (
-	"go.etcd.io/etcd/pkg/srv"
+	"go.etcd.io/etcd/v3/pkg/srv"
 )
 
 // Discoverer is an interface that wraps the Discover method.
