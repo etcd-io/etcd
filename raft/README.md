@@ -3,7 +3,7 @@
 Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
 For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
-(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+(https://raft.github.io/raft.pdf) by Diego Ongaro and John Ousterhout.
 
 This Raft library is stable and feature complete. As of 2016, it is **the most widely used** Raft library in production, serving tens of thousands clusters each day. It powers distributed systems such as etcd, Kubernetes, Docker Swarm, Cloud Foundry Diego, CockroachDB, TiDB, Project Calico, Flannel, and more.
 
