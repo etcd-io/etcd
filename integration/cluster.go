@@ -1396,3 +1396,18 @@ func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
 	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
 }
 func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// MustNewMember creates a new member instance based on the response of V3 Member Add API.
+func (c *ClusterV3) MustNewMember(t testing.TB, resp *clientv3.MemberAddResponse) *member {
+	m := c.mustNewMember(t)
+	m.isLearner = resp.Member.IsLearner
+	m.NewCluster = false
+
+	m.InitialPeerURLsMap = types.URLsMap{}
+	for _, mm := range c.Members {
+		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
+	}
+	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
+
+	return m
+}
