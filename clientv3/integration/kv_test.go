@@ -1011,8 +1011,8 @@ func TestKVForLearner(t *testing.T) {
 	}
 	defer cli.Close()
 
-	// waiting for learner member to catch up applying the config change entries in raft log.
-	time.Sleep(3 * time.Second)
+	// wait until learner member is ready
+	<-clus.Members[3].ReadyNotify()
 
 	tests := []struct {
 		op   clientv3.Op
