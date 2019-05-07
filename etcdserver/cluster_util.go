@@ -395,6 +395,10 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		return nil, membership.ErrIDNotFound
 	}
 
+	if resp.StatusCode != http.StatusOK { // all other types of errors
+		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+	}
+
 	var membs []*membership.Member
 	if err := json.Unmarshal(b, &membs); err != nil {
 		return nil, err
