@@ -130,7 +130,7 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusNotFound)
 		case membership.ErrMemberNotLearner:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		case membership.ErrLearnerNotReady:
+		case etcdserver.ErrLearnerNotReady:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		default:
 			WriteError(h.lg, w, r, err)

@@ -1654,7 +1654,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 				return resp, nil
 			}
 			// If member promotion failed, return early. Otherwise keep retry.
-			if err == membership.ErrIDNotFound || err == membership.ErrLearnerNotReady || err == membership.ErrMemberNotLearner {
+			if err == ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
 				return nil, err
 			}
 		}

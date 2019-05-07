@@ -245,7 +245,7 @@ func TestMemberPromoteForNotReadyLearner(t *testing.T) {
 
 	// since we do not start learner, learner must be not ready.
 	_, err = capi.MemberPromote(context.Background(), learnerID)
-	expectedErrKeywords := "can only promote a learner member which catches up with leader"
+	expectedErrKeywords := "can only promote a learner member which is in sync with leader"
 	if err == nil {
 		t.Fatalf("expecting promote not ready learner to fail, got no error")
 	}

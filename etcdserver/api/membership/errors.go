@@ -26,7 +26,6 @@ var (
 	ErrIDNotFound       = errors.New("membership: ID not found")
 	ErrPeerURLexists    = errors.New("membership: peerURL exists")
 	ErrMemberNotLearner = errors.New("membership: can only promote a learner member")
-	ErrLearnerNotReady  = errors.New("membership: can only promote a learner member which is in sync with leader")
 	ErrTooManyLearners  = errors.New("membership: too many learner members in cluster")
 )
 
