@@ -1263,7 +1263,7 @@
       annotations: {
         list: [],
       },
-      refresh: false,
+      refresh: '10s',
       schemaVersion: 13,
       version: 215,
       links: [],
