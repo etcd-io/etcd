@@ -383,8 +383,8 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		// both ErrMemberNotLearner and ErrLearnerNotReady have same http status code
-		if strings.Contains(string(b), membership.ErrLearnerNotReady.Error()) {
-			return nil, membership.ErrLearnerNotReady
+		if strings.Contains(string(b), ErrLearnerNotReady.Error()) {
+			return nil, ErrLearnerNotReady
 		}
 		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
 			return nil, membership.ErrMemberNotLearner
