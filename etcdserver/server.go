@@ -1699,7 +1699,7 @@ func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membershi
 }
 
 func (s *EtcdServer) mayPromoteMember(id types.ID) error {
-	err := isLearnerReady(uint64(id))
+	err := s.isLearnerReady(uint64(id))
 	if err != nil {
 		return err
 	}
@@ -1727,12 +1727,8 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 // check whether the learner catches up with leader or not.
 // Note: it will return nil if member is not found in cluster or if member is not learner.
 // These two conditions will be checked before apply phase later.
-func isLearnerReady(id uint64) error {
-	// sanity check, this can happen in the unit test when we do not start node.
-	if raftStatus == nil {
-		return nil
-	}
-	rs := raftStatus()
+func (s *EtcdServer) isLearnerReady(id uint64) error {
+	rs := s.raftStatus()
 
 	// leader's raftStatus.Progress is not nil
 	if rs.Progress == nil {
@@ -2611,4 +2607,9 @@ func (s *EtcdServer) IsLearner() bool {
 // IsMemberExist returns if the member with the given id exists in cluster.
 func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 	return s.cluster.IsMemberExist(id)
+}
+
+// raftStatus returns the raft status of this etcd node.
+func (s *EtcdServer) raftStatus() raft.Status {
+	return s.r.Node.Status()
 }
