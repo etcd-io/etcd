@@ -288,7 +288,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	if cfg.MaxRequestBytes > recommendedMaxRequestBytes {
 		if cfg.Logger != nil {
 			cfg.Logger.Warn(
-				"exceeded recommended requet limit",
+				"exceeded recommended request limit",
 				zap.Uint("max-request-bytes", cfg.MaxRequestBytes),
 				zap.String("max-request-size", humanize.Bytes(uint64(cfg.MaxRequestBytes))),
 				zap.Int("recommended-request-bytes", recommendedMaxRequestBytes),
