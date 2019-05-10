@@ -234,9 +234,9 @@ func (w *WAL) cleanupWAL(lg *zap.Logger) {
 	var err error
 	if err = w.Close(); err != nil {
 		if lg != nil {
-			lg.Panic("failed to closeup WAL during cleanup", zap.Error(err))
+			lg.Panic("failed to close WAL during cleanup", zap.Error(err))
 		} else {
-			plog.Panicf("failed to closeup WAL during cleanup: %v", err)
+			plog.Panicf("failed to close WAL during cleanup: %v", err)
 		}
 	}
 	brokenDirName := fmt.Sprintf("%s.broken.%v", w.dir, time.Now().Format("20060102.150405.999999"))
