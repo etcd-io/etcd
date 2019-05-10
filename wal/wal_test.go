@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
@@ -23,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"go.etcd.io/etcd/v3/pkg/fileutil"
@@ -98,6 +100,37 @@ func TestCreateFailFromPollutedDir(t *testing.T) {
 	_, err = Create(zap.NewExample(), p, []byte("data"))
 	if err != os.ErrExist {
 		t.Fatalf("expected %v, got %v", os.ErrExist, err)
+	}
+}
+
+func TestWalCleanup(t *testing.T) {
+	testRoot, err := ioutil.TempDir(os.TempDir(), "waltestroot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := ioutil.TempDir(testRoot, "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(testRoot)
+
+	logger := zap.NewExample()
+	w, err := Create(logger, p, []byte(""))
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	w.cleanupWAL(logger)
+	fnames, err := fileutil.ReadDir(testRoot)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if len(fnames) != 1 {
+		t.Fatalf("expected 1 file under %v, got %v", testRoot, len(fnames))
+	}
+	pattern := fmt.Sprintf(`%s.broken\.[\d]{8}\.[\d]{6}\.[\d]{1,6}?`, filepath.Base(p))
+	match, _ := regexp.MatchString(pattern, fnames[0])
+	if !match {
+		t.Errorf("match = false, expected true for %v with pattern %v", fnames[0], pattern)
 	}
 }
 

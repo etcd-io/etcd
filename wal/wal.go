@@ -184,6 +184,13 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, err
 	}
 
+	var perr error
+	defer func() {
+		if perr != nil {
+			w.cleanupWAL(lg)
+		}
+	}()
+
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
@@ -208,7 +215,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		}
 		return nil, perr
 	}
-	if perr = pdir.Close(); err != nil {
+	if perr = pdir.Close(); perr != nil {
 		if lg != nil {
 			lg.Warn(
 				"failed to close the parent data directory file",
@@ -221,6 +228,30 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	return w, nil
+}
+
+func (w *WAL) cleanupWAL(lg *zap.Logger) {
+	var err error
+	if err = w.Close(); err != nil {
+		if lg != nil {
+			lg.Panic("failed to close WAL during cleanup", zap.Error(err))
+		} else {
+			plog.Panicf("failed to close WAL during cleanup: %v", err)
+		}
+	}
+	brokenDirName := fmt.Sprintf("%s.broken.%v", w.dir, time.Now().Format("20060102.150405.999999"))
+	if err = os.Rename(w.dir, brokenDirName); err != nil {
+		if lg != nil {
+			lg.Panic(
+				"failed to rename WAL during cleanup",
+				zap.Error(err),
+				zap.String("source-path", w.dir),
+				zap.String("rename-path", brokenDirName),
+			)
+		} else {
+			plog.Panicf("failed to rename WAL during cleanup: %v", err)
+		}
+	}
 }
 
 func (w *WAL) renameWAL(tmpdirpath string) (*WAL, error) {
