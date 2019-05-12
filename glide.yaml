@@ -26,8 +26,8 @@ import:
   version: 23709d0847197db6021a51fdb193e66e9222d4e7
 - package: github.com/dustin/go-humanize
   version: bb3d318650d48840a39aa21a027c6630e198e626
-- package: github.com/ghodss/yaml
-  version: v1.0.0
+- package: sigs.k8s.io/yaml
+  version: v1.1.0
 - package: github.com/gogo/protobuf
   version: v0.5
   subpackages:
@@ -126,7 +126,7 @@ import:
 - package: gopkg.in/cheggaaa/pb.v1
   version: v1.0.2
 - package: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
 - package: github.com/dgrijalva/jwt-go
   version: v3.0.0
 - package: google.golang.org/genproto
