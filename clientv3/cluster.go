@@ -16,11 +16,11 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/types"
 
-	"errors"
 	"google.golang.org/grpc"
 )
 
@@ -38,7 +38,10 @@ type Cluster interface {
 	MemberList(ctx context.Context) (*MemberListResponse, error)
 
 	// MemberAdd adds a new member into the cluster.
-	MemberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error)
+	MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
+
+	// MemberAddAsLearner adds a new learner member into the cluster.
+	MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
 
 	// MemberRemove removes an existing member from the cluster.
 	MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error)
@@ -71,7 +74,15 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 	return api
 }
 
-func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error) {
+func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return c.memberAdd(ctx, peerAddrs, false)
+}
+
+func (c *cluster) MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return c.memberAdd(ctx, peerAddrs, true)
+}
+
+func (c *cluster) memberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error) {
 	// fail-fast before panic in rafthttp
 	if _, err := types.NewURLs(peerAddrs); err != nil {
 		return nil, err

@@ -55,7 +55,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	urls := newEmbedURLs(2)
 	newCURLs, newPURLs := urls[:1], urls[1:]
-	if _, err = cli.MemberAdd(context.Background(), []string{newPURLs[0].String()}, false); err != nil {
+	if _, err = cli.MemberAdd(context.Background(), []string{newPURLs[0].String()}); err != nil {
 		t.Fatal(err)
 	}
 

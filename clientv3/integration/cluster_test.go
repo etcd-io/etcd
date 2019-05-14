@@ -53,7 +53,7 @@ func TestMemberAdd(t *testing.T) {
 	capi := clus.RandClient()
 
 	urls := []string{"http://127.0.0.1:1234"}
-	resp, err := capi.MemberAdd(context.Background(), urls, false)
+	resp, err := capi.MemberAdd(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
@@ -175,7 +175,7 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 		{"localhost:1234"},
 	}
 	for i := range tt {
-		_, err := capi.MemberAdd(context.Background(), tt[i], false)
+		_, err := capi.MemberAdd(context.Background(), tt[i])
 		if err == nil {
 			t.Errorf("#%d: MemberAdd err = nil, but error", i)
 		}
@@ -195,14 +195,13 @@ func TestMemberAddForLearner(t *testing.T) {
 	capi := clus.RandClient()
 
 	urls := []string{"http://127.0.0.1:1234"}
-	isLearner := true
-	resp, err := capi.MemberAdd(context.Background(), urls, isLearner)
+	resp, err := capi.MemberAddAsLearner(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
 
-	if resp.Member.IsLearner != isLearner {
-		t.Errorf("Added a member with IsLearner = %v, got %v", isLearner, resp.Member.IsLearner)
+	if !resp.Member.IsLearner {
+		t.Errorf("Added a member as learner, got resp.Member.IsLearner = %v", resp.Member.IsLearner)
 	}
 
 	numOfLearners, err := getNumberOfLearners(clus)

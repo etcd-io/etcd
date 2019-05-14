@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/v3/clientv3"
 )
 
 var (
@@ -122,7 +123,15 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
-	resp, err := cli.MemberAdd(ctx, urls, isLearner)
+	var (
+		resp *clientv3.MemberAddResponse
+		err  error
+	)
+	if isLearner {
+		resp, err = cli.MemberAddAsLearner(ctx, urls)
+	} else {
+		resp, err = cli.MemberAdd(ctx, urls)
+	}
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
