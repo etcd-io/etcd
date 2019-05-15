@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -25,7 +26,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
-	"errors"
 	"golang.org/x/time/rate"
 	gnaming "google.golang.org/grpc/naming"
 )

@@ -46,7 +46,12 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	}
 
 	now := time.Now()
-	m := membership.NewMember("", urls, "", &now, r.IsLearner)
+	var m *membership.Member
+	if r.IsLearner {
+		m = membership.NewMemberAsLearner("", urls, "", &now)
+	} else {
+		m = membership.NewMember("", urls, "", &now)
+	}
 	membs, merr := cs.server.AddMember(ctx, *m)
 	if merr != nil {
 		return nil, togRPCError(merr)

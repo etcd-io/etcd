@@ -238,7 +238,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		now := h.clock.Now()
-		m := membership.NewMember("", req.PeerURLs, "", &now, false) // does not support adding learner via v2http
+		m := membership.NewMember("", req.PeerURLs, "", &now)
 		_, err := h.server.AddMember(ctx, *m)
 		switch {
 		case err == membership.ErrIDExists || err == membership.ErrPeerURLexists:
