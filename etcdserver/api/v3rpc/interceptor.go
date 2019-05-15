@@ -49,7 +49,7 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 		}
 
 		// TODO: add test in clientv3/integration to verify behavior
-		if s.IsLearner() && !isRPCEnabledForLearner(req) {
+		if s.IsLearner() && !isRPCSupportedForLearner(req) {
 			return nil, rpctypes.ErrGPRCNotSupportedForLearner
 		}
 

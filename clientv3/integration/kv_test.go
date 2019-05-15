@@ -1011,6 +1011,7 @@ func TestKVForLearner(t *testing.T) {
 	}
 	defer cli.Close()
 
+	// TODO: expose servers's ReadyNotify() in test and use it instead.
 	// waiting for learner member to catch up applying the config change entries in raft log.
 	time.Sleep(3 * time.Second)
 

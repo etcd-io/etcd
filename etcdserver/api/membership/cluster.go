@@ -62,6 +62,9 @@ type RaftCluster struct {
 // ConfigChangeContext represents a context for confChange.
 type ConfigChangeContext struct {
 	Member
+	// IsPromote indicates if the config change is for promoting a learner member.
+	// This flag is needed because both adding a new member and promoting a learner member
+	// uses the same config change type 'ConfChangeAddNode'.
 	IsPromote bool `json:"isPromote"`
 }
 
@@ -268,13 +271,6 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
-		urls := make(map[string]bool)
-		for _, m := range members {
-			for _, u := range m.PeerURLs {
-				urls[u] = true
-			}
-		}
-
 		confChangeContext := new(ConfigChangeContext)
 		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			if c.lg != nil {
@@ -297,7 +293,13 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				return ErrIDExists
 			}
 
-			for _, u := range confChangeContext.PeerURLs {
+			urls := make(map[string]bool)
+			for _, m := range members {
+				for _, u := range m.PeerURLs {
+					urls[u] = true
+				}
+			}
+			for _, u := range confChangeContext.Member.PeerURLs {
 				if urls[u] {
 					return ErrPeerURLexists
 				}
@@ -736,8 +738,8 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 	}
 }
 
-// IsLearner returns if the local member is raft learner
-func (c *RaftCluster) IsLearner() bool {
+// IsLocalMemberLearner returns if the local member is raft learner
+func (c *RaftCluster) IsLocalMemberLearner() bool {
 	c.Lock()
 	defer c.Unlock()
 	localMember, ok := c.members[c.localID]

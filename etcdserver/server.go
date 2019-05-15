@@ -1377,6 +1377,10 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	ep.snapi = ep.appliedi
 }
 
+func (s *EtcdServer) hasMultipleVotingMembers() bool {
+	return s.cluster != nil && len(s.cluster.VotingMemberIDs()) > 1
+}
+
 func (s *EtcdServer) isLeader() bool {
 	return uint64(s.ID()) == s.Lead()
 }
@@ -1440,7 +1444,7 @@ func (s *EtcdServer) TransferLeadership() error {
 		return nil
 	}
 
-	if s.cluster == nil || len(s.cluster.VotingMemberIDs()) <= 1 {
+	if !s.hasMultipleVotingMembers() {
 		if lg := s.getLogger(); lg != nil {
 			lg.Info(
 				"skipped leadership transfer for single voting member cluster",
@@ -1654,9 +1658,6 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 		return nil
 	}
 	// TODO add more checks whether the member can be promoted.
-	// like learner progress check or if cluster is ready to promote a learner
-	// this is an example to get progress
-	fmt.Printf("raftStatus, %#v\n", raftStatus())
 
 	return nil
 }
@@ -2498,5 +2499,5 @@ func (s *EtcdServer) Logger() *zap.Logger {
 
 // IsLearner returns if the local member is raft learner
 func (s *EtcdServer) IsLearner() bool {
-	return s.cluster.IsLearner()
+	return s.cluster.IsLocalMemberLearner()
 }

@@ -122,7 +122,7 @@ func isClientCtxErr(ctxErr error, err error) bool {
 }
 
 // in v3.4, learner is allowed to serve serializable read and endpoint status
-func isRPCEnabledForLearner(req interface{}) bool {
+func isRPCSupportedForLearner(req interface{}) bool {
 	switch r := req.(type) {
 	case *pb.StatusRequest:
 		return true
