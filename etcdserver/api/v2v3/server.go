@@ -79,6 +79,14 @@ func (s *v2v3Server) RemoveMember(ctx context.Context, id uint64) ([]*membership
 	return v3MembersToMembership(resp.Members), nil
 }
 
+func (s *v2v3Server) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	resp, err := s.c.MemberPromote(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return v3MembersToMembership(resp.Members), nil
+}
+
 func (s *v2v3Server) UpdateMember(ctx context.Context, m membership.Member) ([]*membership.Member, error) {
 	resp, err := s.c.MemberUpdate(ctx, uint64(m.ID), m.PeerURLs)
 	if err != nil {

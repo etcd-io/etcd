@@ -16,7 +16,6 @@ package v3rpc
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go.etcd.io/etcd/v3/etcdserver"
@@ -94,8 +93,11 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 }
 
 func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
-	// TODO: implement
-	return nil, errors.New("not implemented")
+	membs, err := cs.server.PromoteMember(ctx, r.ID)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
 }
 
 func (cs *ClusterServer) header() *pb.ResponseHeader {

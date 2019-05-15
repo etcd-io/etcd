@@ -971,3 +971,83 @@ func TestKVLargeRequests(t *testing.T) {
 		clus.Terminate(t)
 	}
 }
+
+// TestKVForLearner ensures learner member only accepts serializable read request.
+func TestKVForLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// we have to add and launch learner member after initial cluster was created, because
+	// bootstrapping a cluster with learner member is not supported.
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	if len(clus.Members) != 4 {
+		t.Fatalf("expecting 4 members in cluster after adding the learner member, got %d", len(clus.Members))
+	}
+	// note:
+	// 1. clus.Members[3] is the newly added learner member, which was appended to clus.Members
+	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for clientv3.Config,
+	// because the implementation of integration test has diverged from embed/etcd.go.
+	learnerEp := clus.Members[3].GRPCAddr()
+	cfg := clientv3.Config{
+		Endpoints:   []string{learnerEp},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	// this client only has endpoint of the learner member
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create clientv3: %v", err)
+	}
+	defer cli.Close()
+
+	// TODO: expose servers's ReadyNotify() in test and use it instead.
+	// waiting for learner member to catch up applying the config change entries in raft log.
+	time.Sleep(3 * time.Second)
+
+	tests := []struct {
+		op   clientv3.Op
+		wErr bool
+	}{
+		{
+			op:   clientv3.OpGet("foo", clientv3.WithSerializable()),
+			wErr: false,
+		},
+		{
+			op:   clientv3.OpGet("foo"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpPut("foo", "bar"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpDelete("foo"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpTxn([]clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("foo"), "=", 0)}, nil, nil),
+			wErr: true,
+		},
+	}
+
+	for idx, test := range tests {
+		_, err := cli.Do(context.TODO(), test.op)
+		if err != nil && !test.wErr {
+			t.Errorf("%d: expect no error, got %v", idx, err)
+		}
+		if err == nil && test.wErr {
+			t.Errorf("%d: expect error, got nil", idx)
+		}
+	}
+}

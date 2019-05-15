@@ -156,6 +156,11 @@ type Server interface {
 	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error)
+	// PromoteMember attempts to promote a non-voting node to a voting node. It will
+	// return ErrIDNotFound if the member ID does not exist.
+	// return ErrLearnerNotReady if the member are not ready.
+	// return ErrMemberNotLearner if the member is not a learner.
+	PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error)
 
 	// ClusterVersion is the cluster-wide minimum major.minor version.
 	// Cluster version is set to the min version that an etcd member is
@@ -1372,8 +1377,8 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	ep.snapi = ep.appliedi
 }
 
-func (s *EtcdServer) isMultiNode() bool {
-	return s.cluster != nil && len(s.cluster.MemberIDs()) > 1
+func (s *EtcdServer) hasMultipleVotingMembers() bool {
+	return s.cluster != nil && len(s.cluster.VotingMemberIDs()) > 1
 }
 
 func (s *EtcdServer) isLeader() bool {
@@ -1382,6 +1387,10 @@ func (s *EtcdServer) isLeader() bool {
 
 // MoveLeader transfers the leader to the given transferee.
 func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) error {
+	if !s.cluster.IsMemberExist(types.ID(transferee)) || s.cluster.Member(types.ID(transferee)).IsLearner {
+		return ErrBadLeaderTransferee
+	}
+
 	now := time.Now()
 	interval := time.Duration(s.Cfg.TickMs) * time.Millisecond
 
@@ -1435,20 +1444,20 @@ func (s *EtcdServer) TransferLeadership() error {
 		return nil
 	}
 
-	if !s.isMultiNode() {
+	if !s.hasMultipleVotingMembers() {
 		if lg := s.getLogger(); lg != nil {
 			lg.Info(
-				"skipped leadership transfer; it's a single-node cluster",
+				"skipped leadership transfer for single voting member cluster",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("current-leader-member-id", types.ID(s.Lead()).String()),
 			)
 		} else {
-			plog.Printf("skipped leadership transfer for single member cluster")
+			plog.Printf("skipped leadership transfer for single voting member cluster")
 		}
 		return nil
 	}
 
-	transferee, ok := longestConnected(s.r.transport, s.cluster.MemberIDs())
+	transferee, ok := longestConnected(s.r.transport, s.cluster.VotingMemberIDs())
 	if !ok {
 		return ErrUnhealthy
 	}
@@ -1609,6 +1618,48 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 		NodeID: id,
 	}
 	return s.configure(ctx, cc)
+}
+
+// PromoteMember promotes a learner node to a voting node.
+func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+		return nil, err
+	}
+
+	// check if we can promote this learner
+	if err := s.mayPromoteMember(types.ID(id)); err != nil {
+		return nil, err
+	}
+
+	// build the context for the promote confChange. mark IsLearner to false and IsPromote to true.
+	promoteChangeContext := membership.ConfigChangeContext{
+		Member: membership.Member{
+			ID: types.ID(id),
+		},
+		IsPromote: true,
+	}
+
+	b, err := json.Marshal(promoteChangeContext)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  id,
+		Context: b,
+	}
+
+	return s.configure(ctx, cc)
+}
+
+func (s *EtcdServer) mayPromoteMember(id types.ID) error {
+	if !s.Cfg.StrictReconfigCheck {
+		return nil
+	}
+	// TODO add more checks whether the member can be promoted.
+
+	return nil
 }
 
 func (s *EtcdServer) mayRemoveMember(id types.ID) error {
@@ -2061,28 +2112,33 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	*confState = *s.r.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
-		m := new(membership.Member)
-		if err := json.Unmarshal(cc.Context, m); err != nil {
+		confChangeContext := new(membership.ConfigChangeContext)
+		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			if lg != nil {
 				lg.Panic("failed to unmarshal member", zap.Error(err))
 			} else {
 				plog.Panicf("unmarshal member should never fail: %v", err)
 			}
 		}
-		if cc.NodeID != uint64(m.ID) {
+		if cc.NodeID != uint64(confChangeContext.Member.ID) {
 			if lg != nil {
 				lg.Panic(
 					"got different member ID",
 					zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
-					zap.String("member-id-from-message", m.ID.String()),
+					zap.String("member-id-from-message", confChangeContext.Member.ID.String()),
 				)
 			} else {
 				plog.Panicf("nodeID should always be equal to member ID")
 			}
 		}
-		s.cluster.AddMember(m)
-		if m.ID != s.id {
-			s.r.transport.AddPeer(m.ID, m.PeerURLs)
+		if confChangeContext.IsPromote {
+			s.cluster.PromoteMember(confChangeContext.Member.ID)
+		} else {
+			s.cluster.AddMember(&confChangeContext.Member)
+
+			if confChangeContext.Member.ID != s.id {
+				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
+			}
 		}
 
 	case raftpb.ConfChangeRemoveNode:
@@ -2439,4 +2495,9 @@ func (s *EtcdServer) Alarms() []*pb.AlarmMember {
 
 func (s *EtcdServer) Logger() *zap.Logger {
 	return s.lg
+}
+
+// IsLearner returns if the local member is raft learner
+func (s *EtcdServer) IsLearner() bool {
+	return s.cluster.IsLocalMemberLearner()
 }

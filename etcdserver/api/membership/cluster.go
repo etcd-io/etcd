@@ -59,6 +59,15 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 }
 
+// ConfigChangeContext represents a context for confChange.
+type ConfigChangeContext struct {
+	Member
+	// IsPromote indicates if the config change is for promoting a learner member.
+	// This flag is needed because both adding a new member and promoting a learner member
+	// uses the same config change type 'ConfChangeAddNode'.
+	IsPromote bool `json:"isPromote"`
+}
+
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
@@ -262,29 +271,40 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
-		if members[id] != nil {
-			return ErrIDExists
-		}
-		urls := make(map[string]bool)
-		for _, m := range members {
-			for _, u := range m.PeerURLs {
-				urls[u] = true
-			}
-		}
-		m := new(Member)
-		if err := json.Unmarshal(cc.Context, m); err != nil {
+		confChangeContext := new(ConfigChangeContext)
+		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			if c.lg != nil {
-				c.lg.Panic("failed to unmarshal member", zap.Error(err))
+				c.lg.Panic("failed to unmarshal confChangeContext", zap.Error(err))
 			} else {
-				plog.Panicf("unmarshal member should never fail: %v", err)
+				plog.Panicf("unmarshal confChangeContext should never fail: %v", err)
 			}
 		}
-		for _, u := range m.PeerURLs {
-			if urls[u] {
-				return ErrPeerURLexists
+		// A ConfChangeAddNode to a existing learner node promotes it to a voting member.
+		if confChangeContext.IsPromote {
+			if members[id] == nil {
+				return ErrIDNotFound
 			}
-		}
+			if !members[id].IsLearner {
+				return ErrMemberNotLearner
+			}
+		} else {
+			// add a learner or a follower case
+			if members[id] != nil {
+				return ErrIDExists
+			}
 
+			urls := make(map[string]bool)
+			for _, m := range members {
+				for _, u := range m.PeerURLs {
+					urls[u] = true
+				}
+			}
+			for _, u := range confChangeContext.Member.PeerURLs {
+				if urls[u] {
+					return ErrPeerURLexists
+				}
+			}
+		}
 	case raftpb.ConfChangeRemoveNode:
 		if members[id] == nil {
 			return ErrIDNotFound
@@ -431,6 +451,30 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 		)
 	} else {
 		plog.Warningf("skipped updating attributes of removed member %s", id)
+	}
+}
+
+// PromoteMember marks the member's IsLearner RaftAttributes to false.
+func (c *RaftCluster) PromoteMember(id types.ID) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.members[id].RaftAttributes.IsLearner = false
+	if c.v2store != nil {
+		mustUpdateMemberInStore(c.v2store, c.members[id])
+	}
+	if c.be != nil {
+		mustSaveMemberToBackend(c.be, c.members[id])
+	}
+
+	if c.lg != nil {
+		c.lg.Info(
+			"promote member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	} else {
+		plog.Noticef("promote member %s in cluster %s", id, c.cid)
 	}
 }
 
@@ -692,4 +736,45 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
 		}
 	}
+}
+
+// IsLocalMemberLearner returns if the local member is raft learner
+func (c *RaftCluster) IsLocalMemberLearner() bool {
+	c.Lock()
+	defer c.Unlock()
+	localMember, ok := c.members[c.localID]
+	if !ok {
+		if c.lg != nil {
+			c.lg.Panic(
+				"failed to find local ID in cluster members",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Panicf("failed to find local ID %s in cluster %s", c.localID.String(), c.cid.String())
+		}
+	}
+	return localMember.IsLearner
+}
+
+// IsMemberExist returns if the member with the given id exists in cluster.
+func (c *RaftCluster) IsMemberExist(id types.ID) bool {
+	c.Lock()
+	defer c.Unlock()
+	_, ok := c.members[id]
+	return ok
+}
+
+// VotingMemberIDs returns the ID of voting members in cluster.
+func (c *RaftCluster) VotingMemberIDs() []types.ID {
+	c.Lock()
+	defer c.Unlock()
+	var ids []types.ID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ids = append(ids, m.ID)
+		}
+	}
+	sort.Sort(types.IDSlice(ids))
+	return ids
 }

@@ -55,6 +55,10 @@ type AuthGetter interface {
 	AuthStore() auth.AuthStore
 }
 
+type ClusterStatusGetter interface {
+	IsLearner() bool
+}
+
 type maintenanceServer struct {
 	lg  *zap.Logger
 	rg  etcdserver.RaftStatusGetter
@@ -63,10 +67,11 @@ type maintenanceServer struct {
 	a   Alarmer
 	lt  LeaderTransferrer
 	hdr header
+	cs  ClusterStatusGetter
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s)}
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s}
 	return &authMaintenanceServer{srv, s}
 }
 
@@ -179,6 +184,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		RaftTerm:         ms.rg.Term(),
 		DbSize:           ms.bg.Backend().Size(),
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
+		IsLearner:        ms.cs.IsLearner(),
 	}
 	if resp.Leader == raft.None {
 		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())

@@ -508,35 +508,57 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 	cl.RemoveMember(4)
 
+	attr := membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	ctx, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 4)}}
+	ctx4, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
+	ctx5, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
 	}{
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 4,
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  4,
+				Context: ctx4,
 			},
 			membership.ErrIDRemoved,
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeUpdateNode,
-				NodeID: 4,
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  4,
+				Context: ctx4,
 			},
 			membership.ErrIDRemoved,
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 1,
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  1,
+				Context: ctx,
 			},
 			membership.ErrIDExists,
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
-				NodeID: 5,
+				Type:    raftpb.ConfChangeRemoveNode,
+				NodeID:  5,
+				Context: ctx5,
 			},
 			membership.ErrIDNotFound,
 		},
@@ -553,7 +575,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
-		cc := raftpb.ConfChange{Type: tt.cc.Type, NodeID: raft.None}
+		cc := raftpb.ConfChange{Type: tt.cc.Type, NodeID: raft.None, Context: tt.cc.Context}
 		w := []testutil.Action{
 			{
 				Name:   "ApplyConfChange",
@@ -1315,6 +1337,54 @@ func TestRemoveMember(t *testing.T) {
 	}
 	if cl.Member(1234) != nil {
 		t.Errorf("member with id 1234 is not removed")
+	}
+}
+
+// TestPromoteMember tests PromoteMember can propose and perform learner node promotion.
+func TestPromoteMember(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
+	}
+	cl := newTestCluster(nil)
+	st := v2store.New()
+	cl.SetStore(v2store.New())
+	cl.AddMember(&membership.Member{
+		ID: 1234,
+		RaftAttributes: membership.RaftAttributes{
+			IsLearner: true,
+		},
+	})
+	r := newRaftNode(raftNodeConfig{
+		lg:          zap.NewExample(),
+		Node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		storage:     mockstorage.NewStorageRecorder(""),
+		transport:   newNopTransporter(),
+	})
+	s := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		r:          *r,
+		v2store:    st,
+		cluster:    cl,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+	}
+	s.start()
+	_, err := s.PromoteMember(context.TODO(), 1234)
+	gaction := n.Action()
+	s.Stop()
+
+	if err != nil {
+		t.Fatalf("PromoteMember error: %v", err)
+	}
+	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeAddNode"}, {Name: "ApplyConfChange:ConfChangeAddNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	if cl.Member(1234).IsLearner {
+		t.Errorf("member with id 1234 is not promoted")
 	}
 }
 

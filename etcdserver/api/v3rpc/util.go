@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc"
 
@@ -34,6 +35,8 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrIDNotFound:              rpctypes.ErrGRPCMemberNotFound,
 	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
 	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
+	membership.ErrMemberNotLearner:        rpctypes.ErrGRPCMemberNotLearner,
+	membership.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
@@ -52,6 +55,7 @@ var toGRPCErrorMap = map[error]error{
 	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
 	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
 	etcdserver.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
+	etcdserver.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
 
 	lease.ErrLeaseNotFound:    rpctypes.ErrGRPCLeaseNotFound,
 	lease.ErrLeaseExists:      rpctypes.ErrGRPCLeaseExist,
@@ -115,4 +119,16 @@ func isClientCtxErr(ctxErr error, err error) bool {
 		}
 	}
 	return false
+}
+
+// in v3.4, learner is allowed to serve serializable read and endpoint status
+func isRPCSupportedForLearner(req interface{}) bool {
+	switch r := req.(type) {
+	case *pb.StatusRequest:
+		return true
+	case *pb.RangeRequest:
+		return r.Serializable
+	default:
+		return false
+	}
 }
