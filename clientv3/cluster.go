@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/types"
@@ -24,11 +25,12 @@ import (
 )
 
 type (
-	Member               pb.Member
-	MemberListResponse   pb.MemberListResponse
-	MemberAddResponse    pb.MemberAddResponse
-	MemberRemoveResponse pb.MemberRemoveResponse
-	MemberUpdateResponse pb.MemberUpdateResponse
+	Member                pb.Member
+	MemberListResponse    pb.MemberListResponse
+	MemberAddResponse     pb.MemberAddResponse
+	MemberRemoveResponse  pb.MemberRemoveResponse
+	MemberUpdateResponse  pb.MemberUpdateResponse
+	MemberPromoteResponse pb.MemberPromoteResponse
 )
 
 type Cluster interface {
@@ -38,11 +40,17 @@ type Cluster interface {
 	// MemberAdd adds a new member into the cluster.
 	MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
 
+	// MemberAddAsLearner adds a new learner member into the cluster.
+	MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
+
 	// MemberRemove removes an existing member from the cluster.
 	MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error)
 
 	// MemberUpdate updates the peer addresses of the member.
 	MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error)
+
+	// MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
+	MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error)
 }
 
 type cluster struct {
@@ -67,12 +75,23 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return c.memberAdd(ctx, peerAddrs, false)
+}
+
+func (c *cluster) MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return c.memberAdd(ctx, peerAddrs, true)
+}
+
+func (c *cluster) memberAdd(ctx context.Context, peerAddrs []string, isLearner bool) (*MemberAddResponse, error) {
 	// fail-fast before panic in rafthttp
 	if _, err := types.NewURLs(peerAddrs); err != nil {
 		return nil, err
 	}
 
-	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
+	r := &pb.MemberAddRequest{
+		PeerURLs:  peerAddrs,
+		IsLearner: isLearner,
+	}
 	resp, err := c.remote.MemberAdd(ctx, r, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
@@ -111,4 +130,9 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 		return (*MemberListResponse)(resp), nil
 	}
 	return nil, toErr(ctx, err)
+}
+
+func (c *cluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }

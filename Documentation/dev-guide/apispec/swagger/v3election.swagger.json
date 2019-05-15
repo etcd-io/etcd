@@ -77,7 +77,7 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/v3electionpbLeaderResponse"
+              "$ref": "#/x-stream-definitions/v3electionpbLeaderResponse"
             }
           }
         },
@@ -212,6 +212,43 @@
         }
       }
     },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
     "v3electionpbCampaignRequest": {
       "type": "object",
       "properties": {
@@ -329,6 +366,20 @@
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
+    }
+  },
+  "x-stream-definitions": {
+    "v3electionpbLeaderResponse": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/v3electionpbLeaderResponse"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of v3electionpbLeaderResponse"
     }
   }
 }

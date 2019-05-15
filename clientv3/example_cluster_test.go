@@ -59,6 +59,27 @@ func ExampleCluster_memberAdd() {
 	// added member.PeerURLs: [http://localhost:32380]
 }
 
+func ExampleCluster_memberAddAsLearner() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints[:2],
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	peerURLs := endpoints[2:]
+	mresp, err := cli.MemberAddAsLearner(context.Background(), peerURLs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("added member.PeerURLs:", mresp.Member.PeerURLs)
+	fmt.Println("added member.IsLearner:", mresp.Member.IsLearner)
+	// added member.PeerURLs: [http://localhost:32380]
+	// added member.IsLearner: true
+}
+
 func ExampleCluster_memberRemove() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints[1:],

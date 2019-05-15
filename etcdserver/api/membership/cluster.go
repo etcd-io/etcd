@@ -59,6 +59,8 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 }
 
+// NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
+// cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
 	c := NewCluster(lg, token)
 	for name, urls := range urlsmap {
@@ -259,7 +261,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
-	case raftpb.ConfChangeAddNode:
+	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
 		if members[id] != nil {
 			return ErrIDExists
 		}

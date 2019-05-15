@@ -21,9 +21,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/v3/clientv3"
 )
 
-var memberPeerURLs string
+var (
+	memberPeerURLs string
+	isLearner      bool
+)
 
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
@@ -50,6 +54,7 @@ func NewMemberAddCommand() *cobra.Command {
 	}
 
 	cc.Flags().StringVar(&memberPeerURLs, "peer-urls", "", "comma separated peer URLs for the new member.")
+	cc.Flags().BoolVar(&isLearner, "learner", false, "indicates if the new member is raft learner")
 
 	return cc
 }
@@ -86,7 +91,7 @@ func NewMemberListCommand() *cobra.Command {
 		Use:   "list",
 		Short: "Lists all members in the cluster",
 		Long: `When --write-out is set to simple, this command prints out comma-separated member lists for each endpoint.
-The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs.
+The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs, Is Learner.
 `,
 
 		Run: memberListCommandFunc,
@@ -118,7 +123,15 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
-	resp, err := cli.MemberAdd(ctx, urls)
+	var (
+		resp *clientv3.MemberAddResponse
+		err  error
+	)
+	if isLearner {
+		resp, err = cli.MemberAddAsLearner(ctx, urls)
+	} else {
+		resp, err = cli.MemberAdd(ctx, urls)
+	}
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)

@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.etcd.io/etcd/v3/etcdserver"
@@ -45,15 +46,24 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	}
 
 	now := time.Now()
-	m := membership.NewMember("", urls, "", &now)
+	var m *membership.Member
+	if r.IsLearner {
+		m = membership.NewMemberAsLearner("", urls, "", &now)
+	} else {
+		m = membership.NewMember("", urls, "", &now)
+	}
 	membs, merr := cs.server.AddMember(ctx, *m)
 	if merr != nil {
 		return nil, togRPCError(merr)
 	}
 
 	return &pb.MemberAddResponse{
-		Header:  cs.header(),
-		Member:  &pb.Member{ID: uint64(m.ID), PeerURLs: m.PeerURLs},
+		Header: cs.header(),
+		Member: &pb.Member{
+			ID:        uint64(m.ID),
+			PeerURLs:  m.PeerURLs,
+			IsLearner: m.IsLearner,
+		},
 		Members: membersToProtoMembers(membs),
 	}, nil
 }
@@ -83,6 +93,11 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }
 
+func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
+}
+
 func (cs *ClusterServer) header() *pb.ResponseHeader {
 	return &pb.ResponseHeader{ClusterId: uint64(cs.cluster.ID()), MemberId: uint64(cs.server.ID()), RaftTerm: cs.server.Term()}
 }
@@ -95,6 +110,7 @@ func membersToProtoMembers(membs []*membership.Member) []*pb.Member {
 			ID:         uint64(membs[i].ID),
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
+			IsLearner:  membs[i].IsLearner,
 		}
 	}
 	return protoMembs

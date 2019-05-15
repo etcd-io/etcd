@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -108,7 +109,23 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 }
 
 func (cp *clusterProxy) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
-	mresp, err := cp.clus.MemberAdd(ctx, r.PeerURLs)
+	if r.IsLearner {
+		return cp.memberAddAsLearner(ctx, r.PeerURLs)
+	}
+	return cp.memberAdd(ctx, r.PeerURLs)
+}
+
+func (cp *clusterProxy) memberAdd(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAdd(ctx, peerURLs)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberAddResponse)(*mresp)
+	return &resp, err
+}
+
+func (cp *clusterProxy) memberAddAsLearner(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAddAsLearner(ctx, peerURLs)
 	if err != nil {
 		return nil, err
 	}
@@ -174,4 +191,9 @@ func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest)
 	}
 	resp := (pb.MemberListResponse)(*mresp)
 	return &resp, err
+}
+
+func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }

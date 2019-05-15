@@ -37,6 +37,7 @@ This is a generated documentation. Please read the proto files for more.
 | MemberRemove | MemberRemoveRequest | MemberRemoveResponse | MemberRemove removes an existing member from the cluster. |
 | MemberUpdate | MemberUpdateRequest | MemberUpdateResponse | MemberUpdate updates the member configuration. |
 | MemberList | MemberListRequest | MemberListResponse | MemberList lists all the members in the cluster. |
+| MemberPromote | MemberPromoteRequest | MemberPromoteResponse | MemberPromote promotes a member from raft learner (non-voting) to raft voting member. |
 
 
 
@@ -609,6 +610,7 @@ Empty field.
 | name | name is the human-readable name of the member. If the member is not started, the name will be an empty string. | string |
 | peerURLs | peerURLs is the list of URLs the member exposes to the cluster for communication. | (slice of) string |
 | clientURLs | clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty. | (slice of) string |
+| isLearner | isLearner indicates if the member is raft learner. | bool |
 
 
 
@@ -617,6 +619,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | peerURLs | peerURLs is the list of URLs the added member will use to communicate with the cluster. | (slice of) string |
+| isLearner | isLearner indicates if the added member is raft learner. | bool |
 
 
 
@@ -642,6 +645,23 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | members | members is a list of all members associated with the cluster. | (slice of) Member |
+
+
+
+##### message `MemberPromoteRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the member ID of the member to promote. | uint64 |
+
+
+
+##### message `MemberPromoteResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| members | members is a list of all members after promoting the member. | (slice of) Member |
 
 
 
@@ -819,6 +839,7 @@ Empty field.
 | raftAppliedIndex | raftAppliedIndex is the current raft applied index of the responding member. | uint64 |
 | errors | errors contains alarm/health information and status. | (slice of) string |
 | dbSizeInUse | dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member. | int64 |
+| isLearner | isLearner indicates if the member is raft learner. | bool |
 
 
 

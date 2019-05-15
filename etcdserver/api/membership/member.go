@@ -35,6 +35,8 @@ type RaftAttributes struct {
 	// PeerURLs is the list of peers in the raft cluster.
 	// TODO(philips): ensure these are URLs
 	PeerURLs []string `json:"peerURLs"`
+	// IsLearner indicates if the member is raft learner.
+	IsLearner bool `json:"isLearner,omitempty"`
 }
 
 // Attributes represents all the non-raft related attributes of an etcd member.
@@ -52,9 +54,22 @@ type Member struct {
 // NewMember creates a Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
+	return newMember(name, peerURLs, clusterName, now, false)
+}
+
+// NewMemberAsLearner creates a learner Member without an ID and generates one based on the
+// cluster name, peer URLs, and time. This is used for adding new learner member.
+func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
+	return newMember(name, peerURLs, clusterName, now, true)
+}
+
+func newMember(name string, peerURLs types.URLs, clusterName string, now *time.Time, isLearner bool) *Member {
 	m := &Member{
-		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
-		Attributes:     Attributes{Name: name},
+		RaftAttributes: RaftAttributes{
+			PeerURLs:  peerURLs.StringSlice(),
+			IsLearner: isLearner,
+		},
+		Attributes: Attributes{Name: name},
 	}
 
 	var b []byte
@@ -88,6 +103,9 @@ func (m *Member) Clone() *Member {
 	}
 	mm := &Member{
 		ID: m.ID,
+		RaftAttributes: RaftAttributes{
+			IsLearner: m.IsLearner,
+		},
 		Attributes: Attributes{
 			Name: m.Name,
 		},
