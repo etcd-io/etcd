@@ -44,6 +44,26 @@ var (
 		Name:      "leader_changes_seen_total",
 		Help:      "The number of leader changes seen.",
 	})
+	isLearner = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "is_learner",
+		Help:      "Whether or not this member is a learner. 1 if is, 0 otherwise.",
+	})
+	learnerPromoteFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "learner_promote_failures",
+		Help:      "The total number of failed learner promotions (likely learner not ready) while this member is leader.",
+	},
+		[]string{"Reason"},
+	)
+	learnerPromoteSucceed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "learner_promote_successes",
+		Help:      "The total number of successful learner promotions while this member is leader.",
+	})
 	heartbeatSendFailures = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -144,6 +164,9 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
+	prometheus.MustRegister(isLearner)
+	prometheus.MustRegister(learnerPromoteSucceed)
+	prometheus.MustRegister(learnerPromoteFailed)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
