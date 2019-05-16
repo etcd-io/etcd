@@ -132,8 +132,6 @@ and to reduce cluster downtime when the new member is added, it is recommended t
 as a learner until it catches up. This can be described as a three step process:
 
  * Add the new member as learner via [gRPC members API][member-api-grpc] or the `etcdctl member add --learner` command.
- Note that v2 [HTTP member API][member-api] does not support this feature. (If user wants to use HTTP,
- etcd provides a JSON [gRPC gateway][grpc-gateway], which serves a RESTful proxy that translates HTTP/JSON requests into gRPC messages.)
 
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
  This step is exactly the same as before.
@@ -244,5 +242,4 @@ It is enabled by default.
 [member migration]: ../v2/admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
-[grpc-gateway]: https://github.com/grpc-ecosystem/grpc-gateway
 [error cases when promoting a member]: #error-cases-when-promoting-a-learner-member

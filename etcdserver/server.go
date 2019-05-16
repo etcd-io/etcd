@@ -1635,6 +1635,9 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 
 // PromoteMember promotes a learner node to a voting node.
 func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	// only raft leader has information on whether the to-be-promoted learner node is ready. If promoteMember call
+	// fails with ErrNotLeader, forward the request to leader node via HTTP. If promoteMember call fails with error
+	// other than ErrNotLeader, return the error.
 	resp, err := s.promoteMember(ctx, id)
 	if err != ErrNotLeader {
 		return resp, err
@@ -1666,6 +1669,12 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 	return nil, ErrCanceled
 }
 
+// promoteMember checks whether the to-be-promoted learner node is ready before sending the promote
+// request to raft.
+// The function returns ErrNotLeader if the local node is not raft leader (therefore does not have
+// enough information to determine if the learner node is ready), returns ErrLearnerNotReady if the
+// local node is leader (therefore has enough information) but decided the learner node is not ready
+// to be promoted.
 func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
 	if err := s.checkMembershipOperationPermission(ctx); err != nil {
 		return nil, err
