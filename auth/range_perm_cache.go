@@ -70,21 +70,38 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 	}
 }
 
-func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type, partial bool) (*adt.IntervalTree, bool) {
 	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
 		rangeEnd = nil
 	}
 
 	ivl := adt.NewBytesAffineInterval(key, rangeEnd)
+
 	switch permtyp {
 	case authpb.READ:
-		return cachedPerms.readPerms.Contains(ivl)
+		if partial {
+			ranges := &adt.IntervalTree{}
+			ranges.Union(*cachedPerms.readPerms, ivl, true)
+			if ranges.Len() > 0 {
+				return ranges, true
+			}
+		} else {
+			return nil, cachedPerms.readPerms.Contains(ivl)
+		}
 	case authpb.WRITE:
-		return cachedPerms.writePerms.Contains(ivl)
+		if partial {
+			ranges := &adt.IntervalTree{}
+			ranges.Union(*cachedPerms.writePerms, ivl, true)
+			if ranges.Len() > 0 {
+				return ranges, true
+			}
+		} else {
+			return nil, cachedPerms.writePerms.Contains(ivl)
+		}
 	default:
 		plog.Panicf("unknown auth type: %v", permtyp)
 	}
-	return false
+	return nil, false
 }
 
 func checkKeyPoint(cachedPerms *unifiedRangePermissions, key []byte, permtyp authpb.Permission_Type) bool {
@@ -100,23 +117,23 @@ func checkKeyPoint(cachedPerms *unifiedRangePermissions, key []byte, permtyp aut
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type, partial bool) (*adt.IntervalTree, bool) {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {
 		perms := getMergedPerms(tx, userName)
 		if perms == nil {
 			plog.Errorf("failed to create a unified permission of user %s", userName)
-			return false
+			return nil, false
 		}
 		as.rangePermCache[userName] = perms
 	}
 
 	if len(rangeEnd) == 0 {
-		return checkKeyPoint(as.rangePermCache[userName], key, permtyp)
+		return nil, checkKeyPoint(as.rangePermCache[userName], key, permtyp)
 	}
 
-	return checkKeyInterval(as.rangePermCache[userName], key, rangeEnd, permtyp)
+	return checkKeyInterval(as.rangePermCache[userName], key, rangeEnd, permtyp, partial)
 }
 
 func (as *authStore) clearCachedPerm() {

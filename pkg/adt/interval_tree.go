@@ -486,9 +486,18 @@ func (ivt *IntervalTree) Stab(iv Interval) (ivs []*IntervalValue) {
 }
 
 // Union merges a given interval tree into the receiver.
-func (ivt *IntervalTree) Union(inIvt IntervalTree, ivl Interval) {
+func (ivt *IntervalTree) Union(inIvt IntervalTree, ivl Interval, truncate bool) {
 	f := func(n *IntervalValue) bool {
-		ivt.Insert(n.Ivl, n.Val)
+		finalIv := n.Ivl
+		if truncate {
+			if n.Ivl.Begin.Compare(ivl.Begin) < 0 {
+				finalIv.Begin = ivl.Begin
+			}
+			if n.Ivl.End.Compare(ivl.End) > 0 {
+				finalIv.End = ivl.End
+			}
+		}
+		ivt.Insert(finalIv, n.Val)
 		return true
 	}
 	inIvt.Visit(ivl, f)
@@ -545,6 +554,9 @@ func NewStringAffineInterval(begin, end string) Interval {
 }
 func NewStringAffinePoint(s string) Interval {
 	return NewStringAffineInterval(s, s+"\x00")
+}
+func NewStringAffineIntervalFromBytesInterval(ivl Interval) Interval {
+	return NewStringAffineInterval(string(ivl.Begin.(BytesAffineComparable)), string(ivl.End.(BytesAffineComparable)))
 }
 
 func NewInt64Interval(a int64, b int64) Interval {

@@ -163,22 +163,27 @@ func newWatcherGroup() watcherGroup {
 // add puts a watcher in the group.
 func (wg *watcherGroup) add(wa *watcher) {
 	wg.watchers.add(wa)
-	if wa.end == nil {
+	if wa.ranges == nil {
 		wg.keyWatchers.add(wa)
 		return
 	}
 
-	// interval already registered?
-	ivl := adt.NewStringAffineInterval(string(wa.key), string(wa.end))
-	if iv := wg.ranges.Find(ivl); iv != nil {
-		iv.Val.(watcherSet).add(wa)
-		return
-	}
+	wa.ranges.Visit(adt.NewBytesAffineInterval([]byte{0}, nil),
+		func(iter *adt.IntervalValue) bool {
+			strIvl := adt.NewStringAffineIntervalFromBytesInterval(iter.Ivl)
 
-	// not registered, put in interval tree
-	ws := make(watcherSet)
-	ws.add(wa)
-	wg.ranges.Insert(ivl, ws)
+			// interval already registered?
+			if iv := wg.ranges.Find(strIvl); iv != nil {
+				iv.Val.(watcherSet).add(wa)
+			} else {
+				// not registered, put in interval tree
+				ws := make(watcherSet)
+				ws.add(wa)
+				wg.ranges.Insert(strIvl, ws)
+			}
+
+			return true
+		})
 }
 
 // contains is whether the given key has a watcher in the group.
@@ -196,27 +201,36 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 		return false
 	}
 	wg.watchers.delete(wa)
-	if wa.end == nil {
+	if wa.ranges == nil {
 		wg.keyWatchers.delete(wa)
 		return true
 	}
 
-	ivl := adt.NewStringAffineInterval(string(wa.key), string(wa.end))
-	iv := wg.ranges.Find(ivl)
-	if iv == nil {
-		return false
-	}
+	res := true
 
-	ws := iv.Val.(watcherSet)
-	delete(ws, wa)
-	if len(ws) == 0 {
-		// remove interval missing watchers
-		if ok := wg.ranges.Delete(ivl); !ok {
-			panic("could not remove watcher from interval tree")
-		}
-	}
+	wa.ranges.Visit(adt.NewBytesAffineInterval([]byte{0}, nil),
+		func(iter *adt.IntervalValue) bool {
+			strIvl := adt.NewStringAffineIntervalFromBytesInterval(iter.Ivl)
 
-	return true
+			iv := wg.ranges.Find(strIvl)
+			if iv == nil {
+				res = false
+				return false
+			}
+
+			ws := iv.Val.(watcherSet)
+			delete(ws, wa)
+			if len(ws) == 0 {
+				// remove interval missing watchers
+				if ok := wg.ranges.Delete(strIvl); !ok {
+					panic("could not remove watcher from interval tree")
+				}
+			}
+
+			return true
+		})
+
+	return res
 }
 
 // choose selects watchers from the watcher group to update

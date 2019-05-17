@@ -716,7 +716,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	wid := w.Watch([]byte("foo"), []byte("fop"), 0)
+	wid := w.Watch(nil, MakeWatchRange([]byte("foo"), []byte("fop")), 0)
 
 	wev := []mvccpb.Event{
 		{Type: mvccpb.PUT,
@@ -783,7 +783,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	}
 
 	w = s.NewWatchStream()
-	wid = w.Watch([]byte("foo1"), []byte("foo2"), 3)
+	wid = w.Watch(nil, MakeWatchRange([]byte("foo1"), []byte("foo2")), 3)
 
 	select {
 	case resp := <-w.Chan():

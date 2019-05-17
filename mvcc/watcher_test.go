@@ -95,7 +95,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	keyWatch, keyEnd, keyPut := []byte("foo"), []byte("fop"), []byte("foobar")
 
 	for i := 0; i < 10; i++ {
-		id := w.Watch(keyWatch, keyEnd, 0)
+		id := w.Watch(nil, MakeWatchRange(keyWatch, keyEnd), 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: unexpected duplicated id %x", i, id)
 		}
@@ -127,7 +127,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 
 	// unsynced watchers
 	for i := 10; i < 15; i++ {
-		id := w.Watch(keyWatch1, keyEnd1, 1)
+		id := w.Watch(nil, MakeWatchRange(keyWatch1, keyEnd1), 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -163,14 +163,14 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	if id := w.Watch([]byte("foa"), []byte("foa"), 1); id != -1 {
+	if id := w.Watch(nil, MakeWatchRange([]byte("foa"), []byte("foa")), 1); id != -1 {
 		t.Fatalf("key == end range given; id expected -1, got %d", id)
 	}
-	if id := w.Watch([]byte("fob"), []byte("foa"), 1); id != -1 {
+	if id := w.Watch(nil, MakeWatchRange([]byte("fob"), []byte("foa")), 1); id != -1 {
 		t.Fatalf("key > end range given; id expected -1, got %d", id)
 	}
 	// watch request with 'WithFromKey' has empty-byte range end
-	if id := w.Watch([]byte("foo"), []byte{}, 1); id != 0 {
+	if id := w.Watch(nil, MakeWatchRange([]byte("foo"), []byte{}), 1); id != 0 {
 		t.Fatalf("\x00 is range given; id expected 0, got %d", id)
 	}
 }
@@ -192,7 +192,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	w := s.NewWatchStream()
 	from, to := []byte(testKeyPrefix), []byte(fmt.Sprintf("%s_%d", testKeyPrefix, 99))
-	w.Watch(from, to, 0)
+	w.Watch(nil, MakeWatchRange(from, to), 0)
 
 	s.DeleteRange(from, to)
 

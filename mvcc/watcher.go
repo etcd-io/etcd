@@ -15,11 +15,11 @@
 package mvcc
 
 import (
-	"bytes"
 	"errors"
 	"sync"
 
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/pkg/adt"
 )
 
 var (
@@ -33,7 +33,7 @@ type FilterFunc func(e mvccpb.Event) bool
 
 type WatchStream interface {
 	// Watch creates a watcher. The watcher watches the events happening or
-	// happened on the given key or range [key, end) from the given startRev.
+	// happened on the given key or ranges from the given startRev.
 	//
 	// The whole event history can be watched unless compacted.
 	// If `startRev` <=0, watch observes events after currentRev.
@@ -41,7 +41,7 @@ type WatchStream interface {
 	// The returned `id` is the ID of this watcher. It appears as WatchID
 	// in events that are sent to the created watcher through stream channel.
 	//
-	Watch(key, end []byte, startRev int64, fcs ...FilterFunc) WatchID
+	Watch(key []byte, ranges *adt.IntervalTree, startRev int64, fcs ...FilterFunc) WatchID
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
@@ -97,13 +97,32 @@ type watchStream struct {
 	watchers map[WatchID]*watcher
 }
 
+func MakeWatchRange(key, rangeEnd []byte) *adt.IntervalTree {
+	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
+		rangeEnd = nil
+	}
+	ranges := &adt.IntervalTree{}
+	ranges.Insert(adt.NewBytesAffineInterval(key, rangeEnd), struct{}{})
+	return ranges
+}
+
 // Watch creates a new watcher in the stream and returns its WatchID.
 // TODO: return error if ws is closed?
-func (ws *watchStream) Watch(key, end []byte, startRev int64, fcs ...FilterFunc) WatchID {
-	// prevent wrong range where key >= end lexicographically
+func (ws *watchStream) Watch(key []byte, ranges *adt.IntervalTree, startRev int64, fcs ...FilterFunc) WatchID {
+	// prevent wrong ranges where start >= end lexicographically
 	// watch request with 'WithFromKey' has empty-byte range end
-	if len(end) != 0 && bytes.Compare(key, end) != -1 {
-		return -1
+	if ranges != nil {
+		numGoodRanges := 0
+		ranges.Visit(adt.NewBytesAffineInterval([]byte{0}, nil),
+			func(iv *adt.IntervalValue) bool {
+				if iv.Ivl.Begin.Compare(iv.Ivl.End) < 0 {
+					numGoodRanges++
+				}
+				return true
+			})
+		if (numGoodRanges != ranges.Len()) || (numGoodRanges == 0) {
+			return -1
+		}
 	}
 
 	ws.mu.Lock()
@@ -115,7 +134,7 @@ func (ws *watchStream) Watch(key, end []byte, startRev int64, fcs ...FilterFunc)
 	id := ws.nextID
 	ws.nextID++
 
-	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+	w, c := ws.watchable.watch(key, ranges, startRev, id, ws.ch, fcs...)
 
 	ws.cancels[id] = c
 	ws.watchers[id] = w
