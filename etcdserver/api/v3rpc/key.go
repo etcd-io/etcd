@@ -237,8 +237,8 @@ func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree
 			}
 			puts[k] = struct{}{}
 		}
-		dels.Union(delsThen, adt.NewStringAffineInterval("\x00", ""))
-		dels.Union(delsElse, adt.NewStringAffineInterval("\x00", ""))
+		dels.Union(delsThen, adt.NewStringAffineInterval("\x00", ""), false)
+		dels.Union(delsElse, adt.NewStringAffineInterval("\x00", ""), false)
 	}
 
 	// collect and check this level's puts

@@ -26,7 +26,9 @@ import (
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/adt"
 
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
@@ -147,6 +149,9 @@ type AuthStore interface {
 
 	// IsRangePermitted checks range permission of the user
 	IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error
+
+	// Same as IsRangePermitted, but returns success if at least some keys within [key, rangeEnd) are permitted
+	IsRangePartiallyPermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*adt.IntervalTree, error)
 
 	// IsDeleteRangePermitted checks delete-range permission of the user
 	IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error
@@ -733,19 +738,26 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) error {
+func makePermittedRange(key, rangeEnd []byte, partial bool) *adt.IntervalTree {
+	if !partial || (len(rangeEnd) == 0) {
+		return nil
+	}
+	return mvcc.MakeWatchRange(key, rangeEnd)
+}
+
+func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type, partial bool) (*adt.IntervalTree, error) {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
-		return nil
+		return makePermittedRange(key, rangeEnd, partial), nil
 	}
 
 	// only gets rev == 0 when passed AuthInfo{}; no user given
 	if revision == 0 {
-		return ErrUserEmpty
+		return nil, ErrUserEmpty
 	}
 
 	if revision < as.Revision() {
-		return ErrAuthOldRevision
+		return nil, ErrAuthOldRevision
 	}
 
 	tx := as.be.BatchTx()
@@ -755,31 +767,38 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	user := getUser(tx, userName)
 	if user == nil {
 		plog.Errorf("invalid user name %s for permission checking", userName)
-		return ErrPermissionDenied
+		return nil, ErrPermissionDenied
 	}
 
 	// root role should have permission on all ranges
 	if hasRootRole(user) {
-		return nil
+		return makePermittedRange(key, rangeEnd, partial), nil
 	}
 
-	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
-		return nil
+	if ranges, ok := as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp, partial); ok {
+		return ranges, nil
 	}
 
-	return ErrPermissionDenied
+	return nil, ErrPermissionDenied
 }
 
 func (as *authStore) IsPutPermitted(authInfo *AuthInfo, key []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, nil, authpb.WRITE)
+	_, err := as.isOpPermitted(authInfo.Username, authInfo.Revision, key, nil, authpb.WRITE, false)
+	return err
 }
 
 func (as *authStore) IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.READ)
+	_, err := as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.READ, false)
+	return err
+}
+
+func (as *authStore) IsRangePartiallyPermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*adt.IntervalTree, error) {
+	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.READ, true)
 }
 
 func (as *authStore) IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.WRITE)
+	_, err := as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.WRITE, false)
+	return err
 }
 
 func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {

@@ -26,6 +26,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/pkg/adt"
 )
 
 type watchServer struct {
@@ -162,17 +163,18 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	return err
 }
 
-func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) bool {
+func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) (*adt.IntervalTree, bool) {
 	authInfo, err := sws.ag.AuthInfoFromCtx(sws.gRPCStream.Context())
 	if err != nil {
-		return false
+		return nil, false
 	}
 	if authInfo == nil {
-		// if auth is enabled, IsRangePermitted() can cause an error
+		// if auth is enabled, IsRangePartiallyPermitted() can cause an error
 		authInfo = &auth.AuthInfo{}
 	}
 
-	return sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd) == nil
+	ranges, err := sws.ag.AuthStore().IsRangePartiallyPermitted(authInfo, wcr.Key, wcr.RangeEnd)
+	return ranges, err == nil
 }
 
 func (sws *serverWatchStream) recvLoop() error {
@@ -201,12 +203,9 @@ func (sws *serverWatchStream) recvLoop() error {
 				// between nil and []byte{} for single key / >=
 				creq.RangeEnd = nil
 			}
-			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
-				// support  >= key queries
-				creq.RangeEnd = []byte{}
-			}
+			ranges, ok := sws.isWatchPermitted(creq)
 
-			if !sws.isWatchPermitted(creq) {
+			if !ok {
 				wr := &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
 					WatchId:      -1,
@@ -229,7 +228,8 @@ func (sws *serverWatchStream) recvLoop() error {
 			if rev == 0 {
 				rev = wsrev + 1
 			}
-			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev, filters...)
+
+			id := sws.watchStream.Watch(creq.Key, ranges, rev, filters...)
 			if id != -1 {
 				sws.mu.Lock()
 				if creq.ProgressNotify {

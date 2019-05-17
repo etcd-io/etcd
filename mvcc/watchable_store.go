@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/pkg/adt"
 )
 
 // non-const so modifiable by tests
@@ -36,7 +37,7 @@ var (
 )
 
 type watchable interface {
-	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
+	watch(key []byte, ranges *adt.IntervalTree, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
 	rev() int64
 }
@@ -107,10 +108,10 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	}
 }
 
-func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(key []byte, ranges *adt.IntervalTree, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
 	wa := &watcher{
 		key:    key,
-		end:    end,
+		ranges: ranges,
 		minRev: startRev,
 		id:     id,
 		ch:     ch,
@@ -473,9 +474,9 @@ func (s *watchableStore) progress(w *watcher) {
 type watcher struct {
 	// the watcher key
 	key []byte
-	// end indicates the end of the range to watch.
-	// If end is set, the watcher is on a range.
-	end []byte
+	// If ranges is set, the watcher is on a range. ranges contain subranges
+	// of the desired range, carved out by read permissions.
+	ranges *adt.IntervalTree
 
 	// victim is set when ch is blocked and undergoing victim processing
 	victim bool

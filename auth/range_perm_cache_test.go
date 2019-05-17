@@ -51,7 +51,7 @@ func TestRangePermission(t *testing.T) {
 			readPerms.Insert(p, struct{}{})
 		}
 
-		result := checkKeyInterval(&unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
+		_, result := checkKeyInterval(&unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ, false)
 		if result != tt.want {
 			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}

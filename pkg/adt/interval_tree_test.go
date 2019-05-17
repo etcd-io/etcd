@@ -293,3 +293,60 @@ func TestIntervalTreeContains(t *testing.T) {
 		}
 	}
 }
+
+func TestIntervalTreeUnions(t *testing.T) {
+	tests := []struct {
+		ivls1               []Interval
+		ivls2               []Interval
+		limitIvl            Interval
+		truncate            bool
+		chkIvlsContained    []Interval
+		chkIvlsNotContained []Interval
+	}{
+		{
+			ivls1:               []Interval{},
+			ivls2:               []Interval{NewInt64Interval(1, 5), NewInt64Interval(6, 10)},
+			limitIvl:            NewInt64Interval(-100, 100),
+			truncate:            false,
+			chkIvlsContained:    []Interval{NewInt64Interval(1, 5), NewInt64Interval(6, 10)},
+			chkIvlsNotContained: []Interval{NewInt64Interval(5, 8)},
+		},
+		{
+			ivls1:               []Interval{},
+			ivls2:               []Interval{NewInt64Interval(1, 5), NewInt64Interval(6, 10), NewInt64Interval(2, 12), NewInt64Interval(15, 22)},
+			limitIvl:            NewInt64Interval(3, 20),
+			truncate:            true,
+			chkIvlsContained:    []Interval{NewInt64Interval(3, 12), NewInt64Interval(15, 20)},
+			chkIvlsNotContained: []Interval{NewInt64Interval(2, 3), NewInt64Interval(21, 22)},
+		},
+		{
+			ivls1:               []Interval{},
+			ivls2:               []Interval{NewBytesAffineInterval([]byte("a"), []byte("f")), NewBytesAffineInterval([]byte("k"), []byte("q"))},
+			limitIvl:            NewBytesAffineInterval([]byte("c"), nil),
+			truncate:            true,
+			chkIvlsContained:    []Interval{NewBytesAffineInterval([]byte("c"), []byte("f")), NewBytesAffineInterval([]byte("k"), []byte("q"))},
+			chkIvlsNotContained: []Interval{NewBytesAffineInterval([]byte("b"), []byte("c")), NewBytesAffineInterval([]byte("q"), []byte("r"))},
+		},
+	}
+	for i, tt := range tests {
+		ivt1 := &IntervalTree{}
+		for _, ivl := range tt.ivls1 {
+			ivt1.Insert(ivl, struct{}{})
+		}
+		ivt2 := &IntervalTree{}
+		for _, ivl := range tt.ivls2 {
+			ivt2.Insert(ivl, struct{}{})
+		}
+		ivt1.Union(*ivt2, tt.limitIvl, tt.truncate)
+		for _, ivl := range tt.chkIvlsContained {
+			if !ivt1.Contains(ivl) {
+				t.Errorf("#%d: ivt.Contains returned false instead of true", i)
+			}
+		}
+		for _, ivl := range tt.chkIvlsNotContained {
+			if ivt1.Contains(ivl) {
+				t.Errorf("#%d: ivt.Contains returned true instead of false", i)
+			}
+		}
+	}
+}
