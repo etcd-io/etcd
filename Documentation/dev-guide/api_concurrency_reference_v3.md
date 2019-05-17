@@ -1,6 +1,4 @@
----
-title: etcd concurrency API Reference
----
+### etcd concurrency API Reference
 
 
 This is a generated documentation. Please read the proto files for more.
