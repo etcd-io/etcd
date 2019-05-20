@@ -95,7 +95,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.9...v3.3.10) and
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -140,7 +140,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.8...v3.3.9) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -267,7 +267,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.3...v3.3.4) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -328,7 +328,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.2...v3.3.3) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -453,7 +453,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 

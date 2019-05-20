@@ -159,8 +159,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#latest) for all metrics per release.
-
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_snap_db_fsync_duration_seconds_count`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
