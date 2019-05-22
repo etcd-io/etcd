@@ -166,7 +166,7 @@ func (rn *RawNode) ProposeConfChange(cc pb.ConfChange) error {
 // ApplyConfChange applies a config change to the local node.
 func (rn *RawNode) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 	if cc.NodeID == None {
-		return &pb.ConfState{Nodes: rn.raft.nodes(), Learners: rn.raft.learnerNodes()}
+		return &pb.ConfState{Nodes: rn.raft.prs.voterNodes(), Learners: rn.raft.prs.learnerNodes()}
 	}
 	switch cc.Type {
 	case pb.ConfChangeAddNode:
@@ -179,7 +179,7 @@ func (rn *RawNode) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 	default:
 		panic("unexpected conf type")
 	}
-	return &pb.ConfState{Nodes: rn.raft.nodes(), Learners: rn.raft.learnerNodes()}
+	return &pb.ConfState{Nodes: rn.raft.prs.voterNodes(), Learners: rn.raft.prs.learnerNodes()}
 }
 
 // Step advances the state machine using the given message.
@@ -188,7 +188,7 @@ func (rn *RawNode) Step(m pb.Message) error {
 	if IsLocalMsg(m.Type) {
 		return ErrStepLocalMsg
 	}
-	if pr := rn.raft.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
+	if pr := rn.raft.prs.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
 		return rn.raft.Step(m)
 	}
 	return ErrStepPeerNotFound
@@ -257,16 +257,15 @@ const (
 // WithProgress is a helper to introspect the Progress for this node and its
 // peers.
 func (rn *RawNode) WithProgress(visitor func(id uint64, typ ProgressType, pr Progress)) {
-	for id, pr := range rn.raft.prs {
-		pr := *pr
-		pr.ins = nil
-		visitor(id, ProgressTypePeer, pr)
-	}
-	for id, pr := range rn.raft.learnerPrs {
-		pr := *pr
-		pr.ins = nil
-		visitor(id, ProgressTypeLearner, pr)
-	}
+	rn.raft.prs.visit(func(id uint64, pr *Progress) {
+		typ := ProgressTypePeer
+		if pr.IsLearner {
+			typ = ProgressTypeLearner
+		}
+		p := *pr
+		p.ins = nil
+		visitor(id, typ, p)
+	})
 }
 
 // ReportUnreachable reports the given node is not reachable for the last send.
