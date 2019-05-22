@@ -175,6 +175,10 @@ Due to their public nature, GitHub and mailing lists are NOT appropriate places 
 
 [disclosure]: https://coreos.com/security/disclosure/
 
+## etcd Emeritus
+
+Fanmin Shi
+
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
