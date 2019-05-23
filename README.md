@@ -175,9 +175,11 @@ Due to their public nature, GitHub and mailing lists are NOT appropriate places 
 
 [disclosure]: https://coreos.com/security/disclosure/
 
-## etcd Emeritus
+## etcd Emeritus Maintainers
 
-Fanmin Shi
+These emeritus maintainers dedicated a part of their career to etcd and reviewed code, triaged bugs, and pushed the project forward over a substantial period of time. Thank you.
+
+* Fanmin Shi 
 
 ### License
 
