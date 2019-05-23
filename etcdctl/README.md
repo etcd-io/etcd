@@ -1118,6 +1118,14 @@ LOCK returns a zero exit code only if it is terminated by a signal and releases 
 
 If LOCK is abnormally terminated or fails to contact the cluster to release the lock, the lock will remain held until the lease expires. Progress may be delayed by up to the default lease length of 60 seconds.
 
+#### How to grant permission to create locks to a role?
+￼
+The following command will allow locks to be created under  `/my_service_locks/*`:
+
+```bash
+etcdctl role grant-permission my_rw_locks --prefix=true readwrite _locks//my_service_locks/
+```
+
 ### ELECT [options] \<election-name\> [proposal]
 
 ELECT participates on a named election. A node announces its candidacy in the election by providing
