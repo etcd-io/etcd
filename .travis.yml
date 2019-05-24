@@ -14,6 +14,9 @@ notifications:
   on_failure: never
 
 env:
+  global:
+  - GOPROXY=off
+  - GO_BUILD_FLAGS='-v -mod=vendor'
   matrix:
   - TARGET=linux-amd64-fmt
   - TARGET=linux-amd64-integration-1-cpu
@@ -75,43 +78,43 @@ script:
       linux-amd64-fmt)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='fmt bom dep' ./test"
+          /bin/bash -c "GOPROXY=off GO_BUILD_FLAGS='-mod vendor' GOARCH=amd64 PASSES='fmt bom dep' ./test"
         ;;
       linux-amd64-integration-1-cpu)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 CPU=1 PASSES='integration' ./test"
+          /bin/bash -c "GOPROXY=off GOARCH=amd64 CPU=1 PASSES='integration' ./test"
         ;;
       linux-amd64-integration-2-cpu)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 CPU=2 PASSES='integration' ./test"
+          /bin/bash -c "GOPROXY=off GOARCH=amd64 CPU=2 PASSES='integration' ./test"
         ;;
       linux-amd64-integration-4-cpu)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 CPU=4 PASSES='integration' ./test"
+          /bin/bash -c "GOPROXY=off GOARCH=amd64 CPU=4 PASSES='integration' ./test"
         ;;
       linux-amd64-functional)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
+          /bin/bash -c "./build && GOPROXY=off GOARCH=amd64 PASSES='functional' ./test"
         ;;
       linux-amd64-unit)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='unit' ./test"
+          /bin/bash -c "GOPROXY=off GOARCH=amd64 PASSES='unit' ./test"
         ;;
       all-build)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='build' ./test \
             && GOARCH=386 PASSES='build' ./test \
-            && GO_BUILD_FLAGS='-v' GOOS=darwin GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOOS=windows GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build"
+            && GO_BUILD_FLAGS=${GO_BUILD_FLAGS} GOOS=darwin GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS=${GO_BUILD_FLAGS} GOOS=windows GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS=${GO_BUILD_FLAGS} GOARCH=arm ./build \
+            && GO_BUILD_FLAGS=${GO_BUILD_FLAGS} GOARCH=arm64 ./build \
+            && GO_BUILD_FLAGS=${GO_BUILD_FLAGS} GOARCH=ppc64le ./build"
         ;;
       linux-amd64-grpcproxy)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
