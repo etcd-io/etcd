@@ -283,6 +283,11 @@ func (cfg *config) parse(arguments []string) error {
 	}
 
 	var err error
+
+	if cfg.configFile == "" {
+		cfg.configFile = os.Getenv("ETCD_CONFIG_FILE")
+	}
+
 	if cfg.configFile != "" {
 		err = cfg.configFromFile(cfg.configFile)
 		if lg := cfg.ec.GetLogger(); lg != nil {
