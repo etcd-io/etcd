@@ -17,7 +17,7 @@ package raft
 import (
 	"fmt"
 
-	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 type Status struct {

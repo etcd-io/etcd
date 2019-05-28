@@ -62,8 +62,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Move [`"github.com/coreos/etcd"`](https://github.com/etcd-io/etcd/issues/9965) to [`"github.com/etcd-io/etcd"`](https://github.com/etcd-io/etcd/issues/9965).
   - Change import path to `"go.etcd.io/etcd"`.
   - e.g. `import "go.etcd.io/etcd/raft"`.
-  - Updated [module path to comply with Go module specification](https://github.com/etcd-io/etcd/pull/10640).
-    - e.g. `import "go.etcd.io/etcd/mvcc/backend"` is now `import "go.etcd.io/etcd/v3/mvcc/backend"`.
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/etcd-io/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
