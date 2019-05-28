@@ -35,7 +35,7 @@ var (
     Show the help information about etcd.
 
   etcd --config-file
-    Path to the server configuration file.
+    Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
 
   etcd gateway
     Run the stateless pass-through etcd TCP connection forwarding proxy.

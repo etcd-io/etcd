@@ -127,7 +127,7 @@ func newConfig() *config {
 		fmt.Fprintln(os.Stderr, usageline)
 	}
 
-	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file")
+	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.")
 
 	// member
 	fs.StringVar(&cfg.ec.Dir, "data-dir", cfg.ec.Dir, "Path to the data directory.")
