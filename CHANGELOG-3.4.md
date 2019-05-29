@@ -12,7 +12,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 ### Improved
 
-- Add [Raft learner](TODO).
+- Add Raft learner: [#10725](https://github.com/etcd-io/etcd/pull/10725), [#10727](https://github.com/etcd-io/etcd/pull/10727), [#10730](https://github.com/etcd-io/etcd/pull/10730).
+  - User guide: [runtime-configuration document](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member-as-learner).
+  - API change: [API reference document](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md).
+  - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/docs/server-learner.rst) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
 - Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/etcd-io/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/etcd-io/etcd/issues/9246).
@@ -339,6 +342,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 ### API
 
+- Add `isLearner` field to `etcdserverpb.Member`, `etcdserverpb.MemberAddRequest` and `etcdserverpb.StatusResponse` as part of [raft learner implementation](https://github.com/etcd-io/etcd/pull/10725).
+- Add `MemberPromote` rpc to `etcdserverpb.Cluster` interface and the corresponding `MemberPromoteRequest` and `MemberPromoteResponse` as part of [raft learner implementation](https://github.com/etcd-io/etcd/pull/10725).
 - Add [`snapshot`](https://github.com/etcd-io/etcd/pull/9118) package for snapshot restore/save operations (see [`godoc.org/github.com/etcd/clientv3/snapshot`](https://godoc.org/github.com/coreos/etcd/clientv3/snapshot) for more).
 - Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/etcd-io/etcd/pull/9065) to allow user-provided watch ID to `mvcc`.
   - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
@@ -386,6 +391,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### client v3
 
+- Add [`MemberAddAsLearner`](https://github.com/etcd-io/etcd/pull/10725) to `Clientv3.Cluster` interface. This API is used to add a learner member to etcd cluster.
+- Add [`MemberPromote`](https://github.com/etcd-io/etcd/pull/10727) to `Clientv3.Cluster` interface. This API is used to promote a learner member in etcd cluster.
 - Client may receive [`rpctypes.ErrLeaderChanged`](https://github.com/etcd-io/etcd/pull/10094) from server.
   - Now linearizable requests with read index would fail fast when there is a leadership change, instead of waiting until context timeout.
 - Add [`WithFragment` `OpOption`](https://github.com/etcd-io/etcd/pull/9291) to support [watch events fragmentation](https://github.com/etcd-io/etcd/issues/9294) when the total size of events exceeds `etcd --max-request-bytes` flag value plus gRPC-overhead 512 bytes.
@@ -412,6 +419,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/etcd-io/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
+- Add [`etcdctl member add --learner` and `etcdctl member promote`](https://github.com/etcd-io/etcd/pull/10725) to add and promote raft learner member in etcd cluster.
 - Add [`etcdctl --password`](https://github.com/etcd-io/etcd/pull/9730) flag.
   - To support [`:` character in user name](https://github.com/etcd-io/etcd/issues/9691).
   - e.g. `etcdctl --user user --password password get foo`
