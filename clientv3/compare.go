@@ -42,6 +42,10 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 		r = pb.Compare_GREATER
 	case "<":
 		r = pb.Compare_LESS
+	case "ie":
+		r = pb.Compare_IS_EXIST
+	case "ne":
+		r = pb.Compare_NOT_EXIST
 	default:
 		panic("Unknown result op")
 	}
