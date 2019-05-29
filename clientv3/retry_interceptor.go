@@ -79,7 +79,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 						zap.String("target", cc.Target()),
 						zap.Error(gterr),
 					)
-					return lastErr // return the original error for simplicity
+					return gterr // lastErr must be invalid auth token
 				}
 				continue
 			}
