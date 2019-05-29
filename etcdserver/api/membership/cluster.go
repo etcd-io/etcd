@@ -40,6 +40,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const maxLearners = 1
+
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
 	lg *zap.Logger
@@ -121,6 +123,19 @@ func (c *RaftCluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
 	return c.members[id].Clone()
+}
+
+func (c *RaftCluster) VotingMembers() []*Member {
+	c.Lock()
+	defer c.Unlock()
+	var ms MembersByID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ms = append(ms, m.Clone())
+		}
+	}
+	sort.Sort(ms)
+	return []*Member(ms)
 }
 
 // MemberByName returns a Member with the given name if exists.
@@ -279,16 +294,15 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				plog.Panicf("unmarshal confChangeContext should never fail: %v", err)
 			}
 		}
-		// A ConfChangeAddNode to a existing learner node promotes it to a voting member.
-		if confChangeContext.IsPromote {
+
+		if confChangeContext.IsPromote { // promoting a learner member to voting member
 			if members[id] == nil {
 				return ErrIDNotFound
 			}
 			if !members[id].IsLearner {
 				return ErrMemberNotLearner
 			}
-		} else {
-			// add a learner or a follower case
+		} else { // adding a new member
 			if members[id] != nil {
 				return ErrIDExists
 			}
@@ -302,6 +316,18 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			for _, u := range confChangeContext.Member.PeerURLs {
 				if urls[u] {
 					return ErrPeerURLexists
+				}
+			}
+
+			if confChangeContext.Member.IsLearner { // the new member is a learner
+				numLearners := 0
+				for _, m := range members {
+					if m.IsLearner {
+						numLearners++
+					}
+				}
+				if numLearners+1 > maxLearners {
+					return ErrTooManyLearners
 				}
 			}
 		}
@@ -551,11 +577,11 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	onSet(c.lg, ver)
 }
 
-func (c *RaftCluster) IsReadyToAddNewMember() bool {
+func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 	nmembers := 1
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if member.IsStarted() {
 			nstarted++
 		}
@@ -592,11 +618,11 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	return true
 }
 
-func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	nmembers := 0
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if uint64(member.ID) == id {
 			continue
 		}
@@ -619,6 +645,36 @@ func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 			)
 		} else {
 			plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		}
+		return false
+	}
+
+	return true
+}
+
+func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
+	nmembers := 1
+	nstarted := 0
+
+	for _, member := range c.VotingMembers() {
+		if member.IsStarted() {
+			nstarted++
+		}
+		nmembers++
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		if c.lg != nil {
+			c.lg.Warn(
+				"rejecting member promote; started member will be less than quorum",
+				zap.Int("number-of-started-member", nstarted),
+				zap.Int("quorum", nquorum),
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Warningf("Reject promote member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
 		}
 		return false
 	}

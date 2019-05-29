@@ -15,11 +15,13 @@
 package etcdserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/membership"
@@ -354,4 +356,52 @@ func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*ve
 		return &vers, nil
 	}
 	return nil, err
+}
+
+func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.RoundTripper) ([]*membership.Member, error) {
+	cc := &http.Client{Transport: peerRt}
+	// TODO: refactor member http handler code
+	// cannot import etcdhttp, so manually construct url
+	requestUrl := url + "/members/promote/" + fmt.Sprintf("%d", id)
+	req, err := http.NewRequest("POST", requestUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	resp, err := cc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusRequestTimeout {
+		return nil, ErrTimeout
+	}
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		// both ErrMemberNotLearner and ErrLearnerNotReady have same http status code
+		if strings.Contains(string(b), ErrLearnerNotReady.Error()) {
+			return nil, ErrLearnerNotReady
+		}
+		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
+			return nil, membership.ErrMemberNotLearner
+		}
+		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, membership.ErrIDNotFound
+	}
+
+	if resp.StatusCode != http.StatusOK { // all other types of errors
+		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+	}
+
+	var membs []*membership.Member
+	if err := json.Unmarshal(b, &membs); err != nil {
+		return nil, err
+	}
+	return membs, nil
 }

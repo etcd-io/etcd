@@ -15,19 +15,24 @@
 package etcdhttp
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"path"
 	"sort"
+	"strings"
 	"testing"
 
 	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
+	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/types"
 )
@@ -51,13 +56,34 @@ func (c *fakeCluster) Members() []*membership.Member {
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
 
+type fakeServer struct {
+	cluster api.Cluster
+}
+
+func (s *fakeServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
+	return nil, fmt.Errorf("AddMember not implemented in fakeServer")
+}
+func (s *fakeServer) RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	return nil, fmt.Errorf("RemoveMember not implemented in fakeServer")
+}
+func (s *fakeServer) UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error) {
+	return nil, fmt.Errorf("UpdateMember not implemented in fakeServer")
+}
+func (s *fakeServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	return nil, fmt.Errorf("PromoteMember not implemented in fakeServer")
+}
+func (s *fakeServer) ClusterVersion() *semver.Version { return nil }
+func (s *fakeServer) Cluster() api.Cluster            { return s.cluster }
+func (s *fakeServer) Alarms() []*pb.AlarmMember       { return nil }
+
+var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("test data"))
+})
+
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.
 func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test data"))
-	})
-	ph := newPeerHandler(zap.NewExample(), &fakeCluster{}, h, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -80,6 +106,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	}
 }
 
+// TestServeMembersFails ensures peerMembersHandler only accepts GET request
 func TestServeMembersFails(t *testing.T) {
 	tests := []struct {
 		method string
@@ -87,6 +114,10 @@ func TestServeMembersFails(t *testing.T) {
 	}{
 		{
 			"POST",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"PUT",
 			http.StatusMethodNotAllowed,
 		},
 		{
@@ -100,8 +131,12 @@ func TestServeMembersFails(t *testing.T) {
 	}
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		h := &peerMembersHandler{cluster: nil}
-		h.ServeHTTP(rw, &http.Request{Method: tt.method})
+		h := newPeerMembersHandler(nil, &fakeCluster{})
+		req, err := http.NewRequest(tt.method, "", nil)
+		if err != nil {
+			t.Fatalf("#%d: failed to create http request: %v", i, err)
+		}
+		h.ServeHTTP(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
 		}
@@ -115,7 +150,7 @@ func TestServeMembersGet(t *testing.T) {
 		id:      1,
 		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
-	h := &peerMembersHandler{cluster: cluster}
+	h := newPeerMembersHandler(nil, cluster)
 	msb, err := json.Marshal([]membership.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)
@@ -128,8 +163,8 @@ func TestServeMembersGet(t *testing.T) {
 		wct   string
 		wbody string
 	}{
-		{peerMembersPrefix, http.StatusOK, "application/json", wms},
-		{path.Join(peerMembersPrefix, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
+		{peerMembersPath, http.StatusOK, "application/json", wms},
+		{path.Join(peerMembersPath, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
 	}
 
 	for i, tt := range tests {
@@ -153,6 +188,93 @@ func TestServeMembersGet(t *testing.T) {
 		wcid := cluster.ID().String()
 		if gcid != wcid {
 			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+		}
+	}
+}
+
+// TestServeMemberPromoteFails ensures peerMemberPromoteHandler only accepts POST request
+func TestServeMemberPromoteFails(t *testing.T) {
+	tests := []struct {
+		method string
+		wcode  int
+	}{
+		{
+			"GET",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"PUT",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"DELETE",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"BAD",
+			http.StatusMethodNotAllowed,
+		},
+	}
+	for i, tt := range tests {
+		rw := httptest.NewRecorder()
+		h := newPeerMemberPromoteHandler(nil, &fakeServer{cluster: &fakeCluster{}})
+		req, err := http.NewRequest(tt.method, "", nil)
+		if err != nil {
+			t.Fatalf("#%d: failed to create http request: %v", i, err)
+		}
+		h.ServeHTTP(rw, req)
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+	}
+}
+
+// TestNewPeerHandlerOnMembersPromotePrefix verifies the request with members promote prefix is routed correctly
+func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil)
+	srv := httptest.NewServer(ph)
+	defer srv.Close()
+
+	tests := []struct {
+		path      string
+		wcode     int
+		checkBody bool
+		wKeyWords string
+	}{
+		{
+			// does not contain member id in path
+			peerMemberPromotePrefix,
+			http.StatusNotFound,
+			false,
+			"",
+		},
+		{
+			// try to promote member id = 1
+			peerMemberPromotePrefix + "1",
+			http.StatusInternalServerError,
+			true,
+			"PromoteMember not implemented in fakeServer",
+		},
+	}
+	for i, tt := range tests {
+		req, err := http.NewRequest("POST", srv.URL+tt.path, nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("failed to get http response: %v", err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("unexpected ioutil.ReadAll error: %v", err)
+		}
+		if resp.StatusCode != tt.wcode {
+			t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
+		}
+		if tt.checkBody && strings.Contains(string(body), tt.wKeyWords) {
+			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
 		}
 	}
 }

@@ -260,7 +260,11 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 			}
 		}
 	}
-	return -1, ErrTimeout
+
+	if cctx.Err() == context.DeadlineExceeded {
+		return -1, ErrTimeout
+	}
+	return -1, ErrCanceled
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
@@ -303,7 +307,11 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 			}
 		}
 	}
-	return nil, ErrTimeout
+
+	if cctx.Err() == context.DeadlineExceeded {
+		return nil, ErrTimeout
+	}
+	return nil, ErrCanceled
 }
 
 func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {

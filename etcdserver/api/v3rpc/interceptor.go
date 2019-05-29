@@ -48,8 +48,7 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 			return nil, rpctypes.ErrGRPCNotCapable
 		}
 
-		// TODO: add test in clientv3/integration to verify behavior
-		if s.IsLearner() && !isRPCSupportedForLearner(req) {
+		if s.IsMemberExist(s.ID()) && s.IsLearner() && !isRPCSupportedForLearner(req) {
 			return nil, rpctypes.ErrGPRCNotSupportedForLearner
 		}
 
@@ -195,7 +194,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 			return rpctypes.ErrGRPCNotCapable
 		}
 
-		if s.IsLearner() { // learner does not support Watch and LeaseKeepAlive RPC
+		if s.IsMemberExist(s.ID()) && s.IsLearner() { // learner does not support stream RPC
 			return rpctypes.ErrGPRCNotSupportedForLearner
 		}
 
