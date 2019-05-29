@@ -446,11 +446,6 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 		return false
 	}
 	if len(rr.KVs) == 0 {
-		if c.Target == pb.Compare_VALUE {
-			// Always fail if comparing a value on a key/keys that doesn't exist;
-			// nil == empty string in grpc; no way to represent missing value
-			return false
-		}
 		return compareKV(c, mvccpb.KeyValue{})
 	}
 	for _, kv := range rr.KVs {
@@ -501,6 +496,10 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 		return result > 0
 	case pb.Compare_LESS:
 		return result < 0
+	case pb.Compare_IS_EXIST:
+		return ckv.Value!=nil
+	case pb.Compare_NOT_EXIST:
+		return ckv.Value==nil
 	}
 	return true
 }
