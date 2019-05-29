@@ -180,6 +180,7 @@ Due to their public nature, GitHub and mailing lists are NOT appropriate places 
 These emeritus maintainers dedicated a part of their career to etcd and reviewed code, triaged bugs, and pushed the project forward over a substantial period of time. Their contribution is greatly appreciated.
 
 * Fanmin Shi 
+* Anthony Romano 
 
 ### License
 
