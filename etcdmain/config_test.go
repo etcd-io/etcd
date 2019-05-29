@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/embed"
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 func TestConfigParsingMemberFlags(t *testing.T) {

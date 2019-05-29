@@ -8,10 +8,10 @@
 		]
 	},
 	{
-		"project": "github.com/ghodss/yaml",
+		"project": "sigs.k8s.io/yaml",
 		"licenses": [
 			{
-				"type": "MIT License and BSD 3-clause \"New\" or \"Revised\" License"
+				"type": "BSD 3-clause \"New\" or \"Revised\" License"
 			}
 		]
 	},

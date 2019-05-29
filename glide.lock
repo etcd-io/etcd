@@ -1,5 +1,5 @@
-hash: f0697416d74e4c0fb9d6471c39c3e005ecdeccc8a864c1b0b65e0087b3242027
-updated: 2018-04-10T23:45:04.40596807-07:00
+hash: e4e6496ba18b18f0f6a2c486f28eb9590571c772ba13cdaefe616b1445807187
+updated: 2019-05-29T20:06:14.737777704+05:30
 imports:
 - name: github.com/beorn7/perks
   version: 3a771d992973f24aa725d07868b467d1ddfceafb
@@ -32,8 +32,6 @@ imports:
   version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/dustin/go-humanize
   version: bb3d318650d48840a39aa21a027c6630e198e626
-- name: github.com/ghodss/yaml
-  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -195,5 +193,7 @@ imports:
 - name: gopkg.in/cheggaaa/pb.v1
   version: 226d21d43a305fac52b3a104ef83e721b15275e0
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
+- name: sigs.k8s.io/yaml
+  version: fd68e9863619f6ec2fdd8625fe1f02e7c877e480
 testImports: []
