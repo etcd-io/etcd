@@ -538,6 +538,8 @@ message Compare {
     GREATER = 1;
     LESS = 2;
     NOT_EQUAL = 3;
+    IS_EXIST = 4;
+    NOT_EXIST = 5;
   }
   enum CompareTarget {
     VERSION = 0;

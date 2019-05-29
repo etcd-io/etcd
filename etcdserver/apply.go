@@ -497,9 +497,9 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 	case pb.Compare_LESS:
 		return result < 0
 	case pb.Compare_IS_EXIST:
-		return ckv.Value!=nil
+		return ckv.Value != nil
 	case pb.Compare_NOT_EXIST:
-		return ckv.Value==nil
+		return ckv.Value == nil
 	}
 	return true
 }
