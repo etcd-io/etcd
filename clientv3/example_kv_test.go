@@ -259,6 +259,43 @@ func ExampleKV_txn() {
 	// Output: key : XYZ
 }
 
+func ExampleKV_txn_notexist() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = kvc.Txn(ctx).
+	// txn value comparisons are lexical
+		If(clientv3.CompareExist(clientv3.Value("key"), "ne")).
+	// the "Then" runs, since "xyz" > "abc"
+		Then(clientv3.OpPut("key", "XYZ")).
+	// the "Else" does not run
+		Else(clientv3.OpDelete("key" )).
+		Commit()
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	gresp, err := kvc.Get(context.TODO(), "key")
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range gresp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// Output: key : XYZ
+}
+
 func ExampleKV_do() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
