@@ -61,3 +61,10 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0
 )
+
+// go-resty is imported under its old import path by grpc-gateway.
+// This works around that problem until we pick up a version of
+// grpc-gateway that has the imports fixed.
+//
+// See: https://github.com/go-resty/resty/issues/230
+replace github.com/go-resty/resty => gopkg.in/resty.v1 v1.11.0
