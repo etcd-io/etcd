@@ -15,17 +15,18 @@
 package lease
 
 import (
-	"container/heap"
 	"testing"
 	"time"
 )
 
 func TestLeaseQueue(t *testing.T) {
+	expiredRetryInterval := 100 * time.Millisecond
 	le := &lessor{
-		leaseHeap: make(LeaseQueue, 0),
-		leaseMap:  make(map[LeaseID]*Lease),
+		leaseExpiredNotifier:      newLeaseExpiredNotifier(),
+		leaseMap:                  make(map[LeaseID]*Lease),
+		expiredLeaseRetryInterval: expiredRetryInterval,
 	}
-	heap.Init(&le.leaseHeap)
+	le.leaseExpiredNotifier.Init()
 
 	// insert in reverse order of expiration time
 	for i := 50; i >= 1; i-- {
@@ -34,26 +35,48 @@ func TestLeaseQueue(t *testing.T) {
 			exp = time.Now().UnixNano()
 		}
 		le.leaseMap[LeaseID(i)] = &Lease{ID: LeaseID(i)}
-		heap.Push(&le.leaseHeap, &LeaseWithTime{id: LeaseID(i), time: exp})
+		le.leaseExpiredNotifier.RegisterOrUpdate(&LeaseWithTime{id: LeaseID(i), time: exp})
 	}
 
-	// first element must be front
-	if le.leaseHeap[0].id != LeaseID(1) {
-		t.Fatalf("first item expected lease ID %d, got %d", LeaseID(1), le.leaseHeap[0].id)
+	// first element is expired.
+	if le.leaseExpiredNotifier.Poll().id != LeaseID(1) {
+		t.Fatalf("first item expected lease ID %d, got %d", LeaseID(1), le.leaseExpiredNotifier.Poll().id)
 	}
 
-	l, ok, more := le.expireExists()
-	if l.ID != 1 {
-		t.Fatalf("first item expected lease ID %d, got %d", 1, l.ID)
-	}
-	if !ok {
-		t.Fatal("expect expiry lease exists")
-	}
-	if more {
-		t.Fatal("expect no more expiry lease")
+	existExpiredEvent := func() {
+		l, ok, more := le.expireExists()
+		if l.ID != 1 {
+			t.Fatalf("first item expected lease ID %d, got %d", 1, l.ID)
+		}
+		if !ok {
+			t.Fatal("expect expiry lease exists")
+		}
+		if more {
+			t.Fatal("expect no more expiry lease")
+		}
+
+		if le.leaseExpiredNotifier.Len() != 50 {
+			t.Fatalf("expected the expired lease to be pushed back to the heap, heap size got %d", le.leaseExpiredNotifier.Len())
+		}
+
+		if le.leaseExpiredNotifier.Poll().id != LeaseID(1) {
+			t.Fatalf("first item expected lease ID %d, got %d", LeaseID(1), le.leaseExpiredNotifier.Poll().id)
+		}
 	}
 
-	if le.leaseHeap.Len() != 49 {
-		t.Fatalf("expected lease heap pop, got %d", le.leaseHeap.Len())
+	noExpiredEvent := func() {
+		// re-acquire the expired item, nothing exists
+		_, ok, more := le.expireExists()
+		if ok {
+			t.Fatal("expect no expiry lease exists")
+		}
+		if more {
+			t.Fatal("expect no more expiry lease")
+		}
 	}
+
+	existExpiredEvent() // first acquire
+	noExpiredEvent()    // second acquire
+	time.Sleep(expiredRetryInterval)
+	existExpiredEvent() // acquire after retry interval
 }
