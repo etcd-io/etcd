@@ -171,9 +171,7 @@ See [reporting bugs](Documentation/reporting_bugs.md) for details about reportin
 
 ## Reporting a security vulnerability
 
-Due to their public nature, GitHub and mailing lists are NOT appropriate places for reporting vulnerabilities. Please refer to CoreOS's [security disclosure][disclosure] process when reporting issues that may be security related.
-
-[disclosure]: https://coreos.com/security/disclosure/
+A security vulnerability can be reported as an issue, however, GitHub and mailing lists may NOT always be an appropriate place for reporting vulnerabilities. In that case, please reach out to the project [MAINTAINERS](https://github.com/etcd-io/etcd/blob/master/MAINTAINERS) to first discuss the vulnerabilities with them and take necessary action per such discussion.
 
 ## etcd Emeritus Maintainers
 
