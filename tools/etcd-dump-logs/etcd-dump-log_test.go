@@ -203,7 +203,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrauthenticate := &etcdserverpb.InternalAuthenticateRequest{Name: "myname", Password: "password", SimpleToken: "token"}
 
-	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1"}
+	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1", Options: &authpb.UserAddOptions{NoPassword: false}}
 
 	irrauthuserdelete := &etcdserverpb.AuthUserDeleteRequest{Name: "name1"}
 

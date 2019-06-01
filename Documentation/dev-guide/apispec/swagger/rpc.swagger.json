@@ -1219,6 +1219,15 @@
         "READWRITE"
       ]
     },
+    "authpbUserAddOptions": {
+      "type": "object",
+      "properties": {
+        "no_password": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "etcdserverpbAlarmMember": {
       "type": "object",
       "properties": {
@@ -1419,6 +1428,9 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/authpbUserAddOptions"
         },
         "password": {
           "type": "string"
