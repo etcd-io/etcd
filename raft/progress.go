@@ -301,7 +301,7 @@ type progressTracker struct {
 	matchBuf    uint64Slice
 }
 
-func makePRS(maxInflight int) progressTracker {
+func makeProgressTracker(maxInflight int) progressTracker {
 	p := progressTracker{
 		maxInflight: maxInflight,
 		prs:         map[uint64]*Progress{},
