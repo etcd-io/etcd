@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -289,6 +290,91 @@ func TestMemberPromote(t *testing.T) {
 		if !strings.Contains(err.Error(), expectedErrKeywords) {
 			t.Fatalf("unexpected error when promoting learner member: %v", err)
 		}
+	}
+}
+
+// TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
+func TestMemberPromoteMemberNotLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// member promote request can be sent to any server in cluster,
+	// the request will be auto-forwarded to leader on server-side.
+	// This test explicitly includes the server-side forwarding by
+	// sending the request to follower.
+	leaderIdx := clus.WaitLeader(t)
+	followerIdx := (leaderIdx + 1) % 3
+	cli := clus.Client(followerIdx)
+
+	resp, err := cli.MemberList(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list member %v", err)
+	}
+	if len(resp.Members) != 3 {
+		t.Fatalf("number of members = %d, want %d", len(resp.Members), 3)
+	}
+
+	// promoting any of the voting members in cluster should fail
+	expectedErrKeywords := "can only promote a learner member"
+	for _, m := range resp.Members {
+		_, err = cli.MemberPromote(context.Background(), m.ID)
+		if err == nil {
+			t.Fatalf("expect promoting voting member to fail, got no error")
+		}
+		if !strings.Contains(err.Error(), expectedErrKeywords) {
+			t.Fatalf("expect error to contain %s, got %s", expectedErrKeywords, err.Error())
+		}
+	}
+}
+
+// TestMemberPromoteMemberNotExist ensures that promoting a member that does not exist in cluster fails.
+func TestMemberPromoteMemberNotExist(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// member promote request can be sent to any server in cluster,
+	// the request will be auto-forwarded to leader on server-side.
+	// This test explicitly includes the server-side forwarding by
+	// sending the request to follower.
+	leaderIdx := clus.WaitLeader(t)
+	followerIdx := (leaderIdx + 1) % 3
+	cli := clus.Client(followerIdx)
+
+	resp, err := cli.MemberList(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list member %v", err)
+	}
+	if len(resp.Members) != 3 {
+		t.Fatalf("number of members = %d, want %d", len(resp.Members), 3)
+	}
+
+	// generate an random ID that does not exist in cluster
+	var randID uint64
+	for {
+		randID = rand.Uint64()
+		notExist := true
+		for _, m := range resp.Members {
+			if m.ID == randID {
+				notExist = false
+				break
+			}
+		}
+		if notExist {
+			break
+		}
+	}
+
+	expectedErrKeywords := "member not found"
+	_, err = cli.MemberPromote(context.Background(), randID)
+	if err == nil {
+		t.Fatalf("expect promoting voting member to fail, got no error")
+	}
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Errorf("expect error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 }
 
