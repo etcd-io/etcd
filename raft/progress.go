@@ -291,8 +291,9 @@ func (in *inflights) reset() {
 // known about the nodes and learners in it. In particular, it tracks the match
 // index for each peer which in turn allows reasoning about the committed index.
 type progressTracker struct {
-	nodes    map[uint64]*Progress
-	learners map[uint64]*Progress
+	nodes    map[uint64]struct{}
+	learners map[uint64]struct{}
+	prs      map[uint64]*Progress
 
 	votes map[uint64]bool
 
@@ -303,8 +304,9 @@ type progressTracker struct {
 func makePRS(maxInflight int) progressTracker {
 	p := progressTracker{
 		maxInflight: maxInflight,
-		nodes:       map[uint64]*Progress{},
-		learners:    map[uint64]*Progress{},
+		prs:         map[uint64]*Progress{},
+		nodes:       map[uint64]struct{}{},
+		learners:    map[uint64]struct{}{},
 		votes:       map[uint64]bool{},
 	}
 	return p
@@ -334,8 +336,8 @@ func (p *progressTracker) committed() uint64 {
 	}
 	p.matchBuf = p.matchBuf[:len(p.nodes)]
 	idx := 0
-	for _, pr := range p.nodes {
-		p.matchBuf[idx] = pr.Match
+	for id := range p.nodes {
+		p.matchBuf[idx] = p.prs[id].Match
 		idx++
 	}
 	sort.Sort(&p.matchBuf)
@@ -343,50 +345,44 @@ func (p *progressTracker) committed() uint64 {
 }
 
 func (p *progressTracker) removeAny(id uint64) {
-	pN := p.nodes[id]
-	pL := p.learners[id]
+	_, okPR := p.prs[id]
+	_, okV := p.nodes[id]
+	_, okL := p.learners[id]
 
-	if pN == nil && pL == nil {
+	if !okPR {
 		panic("attempting to remove unknown peer %x")
-	} else if pN != nil && pL != nil {
+	} else if !okV && !okL {
+		panic("attempting to remove unknown peer %x")
+	} else if okV && okL {
 		panic(fmt.Sprintf("peer %x is both voter and learner", id))
 	}
 
 	delete(p.nodes, id)
 	delete(p.learners, id)
+	delete(p.prs, id)
 }
 
 // initProgress initializes a new progress for the given node or learner. The
 // node may not exist yet in either form or a panic will ensue.
 func (p *progressTracker) initProgress(id, match, next uint64, isLearner bool) {
-	if pr := p.nodes[id]; pr != nil {
+	if pr := p.prs[id]; pr != nil {
 		panic(fmt.Sprintf("peer %x already tracked as node %v", id, pr))
 	}
-	if pr := p.learners[id]; pr != nil {
-		panic(fmt.Sprintf("peer %x already tracked as learner %v", id, pr))
-	}
 	if !isLearner {
-		p.nodes[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight)}
-		return
+		p.nodes[id] = struct{}{}
+	} else {
+		p.learners[id] = struct{}{}
 	}
-	p.learners[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: true}
+	p.prs[id] = &Progress{Next: next, Match: match, ins: newInflights(p.maxInflight), IsLearner: isLearner}
 }
 
 func (p *progressTracker) getProgress(id uint64) *Progress {
-	if pr, ok := p.nodes[id]; ok {
-		return pr
-	}
-
-	return p.learners[id]
+	return p.prs[id]
 }
 
 // visit invokes the supplied closure for all tracked progresses.
 func (p *progressTracker) visit(f func(id uint64, pr *Progress)) {
-	for id, pr := range p.nodes {
-		f(id, pr)
-	}
-
-	for id, pr := range p.learners {
+	for id, pr := range p.prs {
 		f(id, pr)
 	}
 }
