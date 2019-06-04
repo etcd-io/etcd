@@ -37,6 +37,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Dependency
 
 - Migrate [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`github.com/json-iterator/go`**](https://github.com/json-iterator/go) (See [#10667](https://github.com/etcd-io/etcd/pull/10667) for more).
+- Migrate [`github.com/ghodss/yaml`](https://github.com/ghodss/yaml/releases) to [**`sigs.k8s.io/yaml`**](https://github.com/kubernetes-sigs/yaml) (See [#10718](https://github.com/etcd-io/etcd/pull/10718) for more).
 
 ### Go
 
