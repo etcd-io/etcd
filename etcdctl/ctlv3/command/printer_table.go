@@ -34,6 +34,16 @@ func (tp *tablePrinter) MemberList(r v3.MemberListResponse) {
 	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
+func (tp *tablePrinter) EndpointHealth(r []epHealth) {
+	hdr, rows := makeEndpointHealthTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
+	table.Render()
+}
 func (tp *tablePrinter) EndpointStatus(r []epStatus) {
 	hdr, rows := makeEndpointStatusTable(r)
 	table := tablewriter.NewWriter(os.Stdout)

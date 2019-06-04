@@ -42,6 +42,7 @@ type printer interface {
 	MemberUpdate(id uint64, r v3.MemberUpdateResponse)
 	MemberList(v3.MemberListResponse)
 
+	EndpointHealth([]epHealth)
 	EndpointStatus([]epStatus)
 
 	Alarm(v3.AlarmResponse)
@@ -142,6 +143,7 @@ func newPrinterUnsupported(n string) printer {
 	return &printerUnsupported{printerRPC{nil, f}}
 }
 
+func (p *printerUnsupported) EndpointHealth([]epHealth) { p.p(nil) }
 func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
 func (p *printerUnsupported) DBStatus(dbstatus)         { p.p(nil) }
 
@@ -161,6 +163,19 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 		})
 	}
 	return
+}
+
+func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]string) {
+	hdr = []string{"endpoint", "health", "took", "error"}
+	for _, h := range healthList {
+		rows = append(rows, []string{
+			h.Ep,
+			fmt.Sprintf("%v", h.Health),
+			h.Took,
+			h.Error,
+		})
+	}
+	return hdr, rows
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
