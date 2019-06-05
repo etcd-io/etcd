@@ -159,7 +159,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			if _, err := clus.Client(0).Put(context.TODO(), "k", "v"); err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 		}()
 	}

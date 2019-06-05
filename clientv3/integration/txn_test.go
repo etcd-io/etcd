@@ -67,7 +67,7 @@ func TestTxnWriteFail(t *testing.T) {
 		defer cancel()
 		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
-			t.Fatalf("expected error, got response %v", resp)
+			t.Errorf("expected error, got response %v", resp)
 		}
 		close(txnc)
 	}()
@@ -76,16 +76,16 @@ func TestTxnWriteFail(t *testing.T) {
 		defer close(getc)
 		select {
 		case <-time.After(5 * time.Second):
-			t.Fatalf("timed out waiting for txn fail")
+			t.Errorf("timed out waiting for txn fail")
 		case <-txnc:
 		}
 		// and ensure the put didn't take
 		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
 		if gerr != nil {
-			t.Fatal(gerr)
+			t.Error(gerr)
 		}
 		if len(gresp.Kvs) != 0 {
-			t.Fatalf("expected no keys, got %v", gresp.Kvs)
+			t.Errorf("expected no keys, got %v", gresp.Kvs)
 		}
 	}()
 
@@ -123,7 +123,7 @@ func TestTxnReadRetry(t *testing.T) {
 		go func() {
 			_, err := kv.Txn(context.TODO()).Then(thenOps[i]...).Commit()
 			if err != nil {
-				t.Fatalf("expected response, got error %v", err)
+				t.Errorf("expected response, got error %v", err)
 			}
 			donec <- struct{}{}
 		}()

@@ -623,7 +623,7 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 		defer close(donec)
 		resp, err := lac.Recv()
 		if err == nil {
-			t.Fatalf("got response %+v, expected error", resp)
+			t.Errorf("got response %+v, expected error", resp)
 		}
 		if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 			t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)

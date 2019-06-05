@@ -77,7 +77,6 @@ type Client struct {
 
 	cfg           Config
 	creds         *credentials.TransportCredentials
-	balancer      balancer.Balancer
 	resolverGroup *endpoint.ResolverGroup
 	mu            *sync.RWMutex
 

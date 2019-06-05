@@ -80,13 +80,13 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		go func(key string) {
 			ch := wctx.w.Watch(context.TODO(), key)
 			if ch == nil {
-				t.Fatalf("expected watcher channel, got nil")
+				t.Errorf("expected watcher channel, got nil")
 			}
 			readyc <- struct{}{}
 			for i := 0; i < numKeyUpdates; i++ {
 				resp, ok := <-ch
 				if !ok {
-					t.Fatalf("watcher unexpectedly closed")
+					t.Errorf("watcher unexpectedly closed")
 				}
 				v := fmt.Sprintf("%s-%d", key, i)
 				gotv := string(resp.Events[0].Kv.Value)
@@ -101,14 +101,14 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	go func() {
 		prefixc := wctx.w.Watch(context.TODO(), "b", clientv3.WithPrefix())
 		if prefixc == nil {
-			t.Fatalf("expected watcher channel, got nil")
+			t.Errorf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
 		evs := []*clientv3.Event{}
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
-				t.Fatalf("watcher unexpectedly closed")
+				t.Errorf("watcher unexpectedly closed")
 			}
 			evs = append(evs, resp.Events...)
 		}
@@ -134,9 +134,9 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		select {
 		case resp, ok := <-prefixc:
 			if !ok {
-				t.Fatalf("watcher unexpectedly closed")
+				t.Errorf("watcher unexpectedly closed")
 			}
-			t.Fatalf("unexpected event %+v", resp)
+			t.Errorf("unexpected event %+v", resp)
 		case <-time.After(time.Second):
 		}
 		donec <- struct{}{}
@@ -740,7 +740,7 @@ func TestWatchErrConnClosed(t *testing.T) {
 		ch := cli.Watch(context.TODO(), "foo")
 
 		if wr := <-ch; !isCanceled(wr.Err()) {
-			t.Fatalf("expected context canceled, got %v", wr.Err())
+			t.Errorf("expected context canceled, got %v", wr.Err())
 		}
 	}()
 
@@ -772,7 +772,7 @@ func TestWatchAfterClose(t *testing.T) {
 	go func() {
 		cli.Watch(context.TODO(), "foo")
 		if err := cli.Close(); err != nil && err != context.Canceled {
-			t.Fatalf("expected %v, got %v", context.Canceled, err)
+			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()
@@ -1036,7 +1036,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 			select {
 			case _, ok := <-wch:
 				if !ok {
-					t.Fatalf("unexpected closed channel %p", wch)
+					t.Errorf("unexpected closed channel %p", wch)
 				}
 			// may take a second or two to reestablish a watcher because of
 			// grpc back off policies for disconnects
@@ -1078,10 +1078,10 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 		select {
 		case wr, ok := <-wch:
 			if ok {
-				t.Fatalf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
+				t.Errorf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
 			}
 		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for closed channel")
+			t.Error("timed out waiting for closed channel")
 		}
 	}()
 	cancel()

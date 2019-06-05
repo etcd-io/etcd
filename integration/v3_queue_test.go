@@ -42,7 +42,7 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 		q := recipe.NewQueue(etcdc, "testq")
 		for i := 0; i < 5; i++ {
 			if err := q.Enqueue(fmt.Sprintf("%d", i)); err != nil {
-				t.Fatalf("error enqueuing (%v)", err)
+				t.Errorf("error enqueuing (%v)", err)
 			}
 		}
 	}()

@@ -62,7 +62,7 @@ func (e Error) Error() string {
 }
 
 var (
-	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint")
 	ErrEmptyBody   = errors.New("client: response body is empty")
 )
 

@@ -463,7 +463,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 		defer close(donec)
 		_, err := cli.Get(context.TODO(), "foo")
 		if !clientv3.IsConnCanceled(err) {
-			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
+			t.Errorf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 	}()
 
@@ -490,7 +490,7 @@ func TestKVNewAfterClose(t *testing.T) {
 	go func() {
 		_, err := cli.Get(context.TODO(), "foo")
 		if !clientv3.IsConnCanceled(err) {
-			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
+			t.Errorf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -704,7 +704,7 @@ func TestKVGetRetry(t *testing.T) {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
-			t.Fatal(gerr)
+			t.Error(gerr)
 		}
 		wkvs := []*mvccpb.KeyValue{
 			{
@@ -716,7 +716,7 @@ func TestKVGetRetry(t *testing.T) {
 			},
 		}
 		if !reflect.DeepEqual(gresp.Kvs, wkvs) {
-			t.Fatalf("bad get: got %v, want %v", gresp.Kvs, wkvs)
+			t.Errorf("bad get: got %v, want %v", gresp.Kvs, wkvs)
 		}
 		donec <- struct{}{}
 	}()
@@ -754,10 +754,10 @@ func TestKVPutFailGetRetry(t *testing.T) {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
-			t.Fatal(gerr)
+			t.Error(gerr)
 		}
 		if len(gresp.Kvs) != 0 {
-			t.Fatalf("bad get kvs: got %+v, want empty", gresp.Kvs)
+			t.Errorf("bad get kvs: got %+v, want empty", gresp.Kvs)
 		}
 		donec <- struct{}{}
 	}()

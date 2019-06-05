@@ -53,7 +53,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 	}
 
 	if len(clus.Tester.Cases) == 0 {
-		return nil, errors.New("Cases not found")
+		return nil, errors.New("cases not found")
 	}
 	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
 		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
@@ -227,7 +227,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, fmt.Errorf("Etcd.PeerClientCertAuth and Etcd.PeerAutoTLS cannot be both 'true'")
 		}
 		if (mem.Etcd.PeerCertFile == "") != (mem.Etcd.PeerKeyFile == "") {
-			return nil, fmt.Errorf("Both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
+			return nil, fmt.Errorf("both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientAutoTLS {
 			return nil, fmt.Errorf("Etcd.ClientCertAuth and Etcd.ClientAutoTLS cannot be both 'true'")
@@ -251,7 +251,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if (mem.Etcd.ClientCertFile == "") != (mem.Etcd.ClientKeyFile == "") {
-			return nil, fmt.Errorf("Both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
+			return nil, fmt.Errorf("both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
 		}
 
 		peerTLS := mem.Etcd.PeerAutoTLS ||

@@ -295,7 +295,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		go func(idx int) {
 			srv, err := embed.StartEtcd(cfgs[idx])
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 
 			<-srv.Server.ReadyNotify()

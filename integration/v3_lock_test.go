@@ -57,7 +57,7 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 			}
 			m := concurrency.NewMutex(session, "test-mutex")
 			if err := m.Lock(context.TODO()); err != nil {
-				t.Fatalf("could not wait on lock (%v)", err)
+				t.Errorf("could not wait on lock (%v)", err)
 			}
 			lockedC <- m
 		}()
@@ -248,12 +248,12 @@ func testRWMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 			rwm := recipe.NewRWMutex(session, "test-rwmutex")
 			if rand.Intn(2) == 0 {
 				if err := rwm.RLock(); err != nil {
-					t.Fatalf("could not rlock (%v)", err)
+					t.Errorf("could not rlock (%v)", err)
 				}
 				rlockedC <- rwm
 			} else {
 				if err := rwm.Lock(); err != nil {
-					t.Fatalf("could not lock (%v)", err)
+					t.Errorf("could not lock (%v)", err)
 				}
 				wlockedC <- rwm
 			}

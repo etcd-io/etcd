@@ -109,7 +109,7 @@ func TestSignal(t *testing.T) {
 		defer close(donec)
 		werr := "signal: interrupt"
 		if cerr := ep.Close(); cerr == nil || cerr.Error() != werr {
-			t.Fatalf("got error %v, wanted error %s", cerr, werr)
+			t.Errorf("got error %v, wanted error %s", cerr, werr)
 		}
 	}()
 	select {

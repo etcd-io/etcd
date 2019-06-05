@@ -250,7 +250,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				kvc := toGRPC(clus.RandClient()).KV
 				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
 				if _, err := kvc.Put(context.TODO(), req); err != nil {
-					t.Fatalf("#%d: couldn't put key (%v)", i, err)
+					t.Errorf("#%d: couldn't put key (%v)", i, err)
 				}
 			}
 		}()
@@ -484,7 +484,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 			kvc := toGRPC(clus.RandClient()).KV
 			req := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 			if _, err := kvc.Put(context.TODO(), req); err != nil {
-				t.Fatalf("couldn't put key (%v)", err)
+				t.Errorf("couldn't put key (%v)", err)
 			}
 		}()
 	}
@@ -927,7 +927,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 			wStream := streams[i]
 			wresp, err := wStream.Recv()
 			if err != nil {
-				t.Fatalf("wStream.Recv error: %v", err)
+				t.Errorf("wStream.Recv error: %v", err)
 			}
 			if wresp.WatchId != 0 {
 				t.Errorf("watchId got = %d, want = 0", wresp.WatchId)
@@ -1090,7 +1090,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 		// check received PUT
 		resp, rerr := ws.Recv()
 		if rerr != nil {
-			t.Fatal(rerr)
+			t.Error(rerr)
 		}
 		recv <- resp
 	}()
@@ -1183,7 +1183,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 			// check received PUT
 			resp, rerr := ws.Recv()
 			if rerr != nil {
-				t.Fatal(rerr)
+				t.Error(rerr)
 			}
 			recv <- resp
 		}()

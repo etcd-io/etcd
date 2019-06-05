@@ -47,7 +47,7 @@ var (
 	// client-side streaming retry limit, only applied to requests where server responds with
 	// a error code clearly indicating it was unable to process the request such as codes.Unavailable.
 	// If set to 0, retry is disabled.
-	defaultStreamMaxRetries = uint(^uint(0)) // max uint
+	defaultStreamMaxRetries = ^uint(0) // max uint
 
 	// client-side retry backoff wait between requests.
 	defaultBackoffWaitBetween = 25 * time.Millisecond

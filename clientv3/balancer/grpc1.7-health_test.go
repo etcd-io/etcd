@@ -281,7 +281,7 @@ func (kcl *killConnListener) listen(l net.Listener) {
 			default:
 			}
 			if err != nil {
-				kcl.t.Fatal(err)
+				kcl.t.Error(err)
 			}
 			time.Sleep(1 * time.Millisecond)
 			conn.Close()
