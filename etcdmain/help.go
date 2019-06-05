@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/embed"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -35,7 +35,7 @@ var (
     Show the help information about etcd.
 
   etcd --config-file
-    Path to the server configuration file.
+    Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
 
   etcd gateway
     Run the stateless pass-through etcd TCP connection forwarding proxy.

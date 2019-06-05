@@ -33,7 +33,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.19...v3.1.20) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -75,7 +75,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.18...v3.1.19) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -115,7 +115,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.17...v3.1.18) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -191,7 +191,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.13...v3.1.14) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -229,7 +229,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.12...v3.1.13) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-1) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 

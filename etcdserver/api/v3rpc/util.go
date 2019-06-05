@@ -18,13 +18,13 @@ import (
 	"context"
 	"strings"
 
-	"go.etcd.io/etcd/v3/auth"
-	"go.etcd.io/etcd/v3/etcdserver"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/lease"
-	"go.etcd.io/etcd/v3/mvcc"
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,8 +36,9 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
 	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
 	membership.ErrMemberNotLearner:        rpctypes.ErrGRPCMemberNotLearner,
-	membership.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
+	membership.ErrTooManyLearners:         rpctypes.ErrGRPCTooManyLearners,
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
+	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
 	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,

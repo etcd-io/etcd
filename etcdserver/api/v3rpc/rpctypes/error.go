@@ -42,6 +42,7 @@ var (
 	ErrGRPCMemberNotFound         = status.New(codes.NotFound, "etcdserver: member not found").Err()
 	ErrGRPCMemberNotLearner       = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member").Err()
 	ErrGRPCLearnerNotReady        = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader").Err()
+	ErrGRPCTooManyLearners        = status.New(codes.FailedPrecondition, "etcdserver: too many learner members in cluster").Err()
 
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
@@ -71,7 +72,7 @@ var (
 	ErrGRPCTimeoutDueToConnectionLost = status.New(codes.Unavailable, "etcdserver: request timed out, possibly due to connection lost").Err()
 	ErrGRPCUnhealthy                  = status.New(codes.Unavailable, "etcdserver: unhealthy cluster").Err()
 	ErrGRPCCorrupt                    = status.New(codes.DataLoss, "etcdserver: corrupt cluster").Err()
-	ErrGPRCNotSupportedForLearner     = status.New(codes.FailedPrecondition, "etcdserver: rpc not supported for learner").Err()
+	ErrGPRCNotSupportedForLearner     = status.New(codes.Unavailable, "etcdserver: rpc not supported for learner").Err()
 	ErrGRPCBadLeaderTransferee        = status.New(codes.FailedPrecondition, "etcdserver: bad leader transferee").Err()
 
 	errStringToError = map[string]error{
@@ -97,6 +98,7 @@ var (
 		ErrorDesc(ErrGRPCMemberNotFound):         ErrGRPCMemberNotFound,
 		ErrorDesc(ErrGRPCMemberNotLearner):       ErrGRPCMemberNotLearner,
 		ErrorDesc(ErrGRPCLearnerNotReady):        ErrGRPCLearnerNotReady,
+		ErrorDesc(ErrGRPCTooManyLearners):        ErrGRPCTooManyLearners,
 
 		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
@@ -126,6 +128,7 @@ var (
 		ErrorDesc(ErrGRPCTimeoutDueToConnectionLost): ErrGRPCTimeoutDueToConnectionLost,
 		ErrorDesc(ErrGRPCUnhealthy):                  ErrGRPCUnhealthy,
 		ErrorDesc(ErrGRPCCorrupt):                    ErrGRPCCorrupt,
+		ErrorDesc(ErrGPRCNotSupportedForLearner):     ErrGPRCNotSupportedForLearner,
 		ErrorDesc(ErrGRPCBadLeaderTransferee):        ErrGRPCBadLeaderTransferee,
 	}
 )
@@ -153,6 +156,7 @@ var (
 	ErrMemberNotFound         = Error(ErrGRPCMemberNotFound)
 	ErrMemberNotLearner       = Error(ErrGRPCMemberNotLearner)
 	ErrMemberLearnerNotReady  = Error(ErrGRPCLearnerNotReady)
+	ErrTooManyLearners        = Error(ErrGRPCTooManyLearners)
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)

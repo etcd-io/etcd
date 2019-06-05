@@ -4,7 +4,7 @@ title: Configuration flags
 
 etcd is configurable through a configuration file, various command-line flags, and environment variables.
 
-A reusable configuration file is a YAML file made with name and value of one or more command-line flags described below. In order to use this file, specify the file path as a value to the `--config-file` flag. The [sample configuration file][sample-config-file] can be used as a starting point to create a new configuration file as needed.
+A reusable configuration file is a YAML file made with name and value of one or more command-line flags described below. In order to use this file, specify the file path as a value to the `--config-file` flag or `ETCD_CONFIG_FILE` environment variable. The [sample configuration file][sample-config-file] can be used as a starting point to create a new configuration file as needed.
 
 Options set on the command line take precedence over those from the environment. If a configuration file is provided, other command line flags and environment variables will be ignored.
 For example, `etcd --config-file etcd.conf.yml.sample --data-dir /tmp` will ignore the `--data-dir` flag.
@@ -372,7 +372,7 @@ Follow the instructions when using these flags.
 + default: false
 
 ### --config-file
-+ Load server configuration from a file.
++ Load server configuration from a file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
 + default: ""
 + example: [sample configuration file][sample-config-file]
 + env variable: ETCD_CONFIG_FILE

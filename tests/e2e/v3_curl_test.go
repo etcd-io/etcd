@@ -22,10 +22,11 @@ import (
 	"strconv"
 	"testing"
 
-	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/auth/authpb"
+	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
@@ -187,7 +188,7 @@ func testV3CurlAuth(cx ctlCtx) {
 	p := cx.apiPrefix
 
 	// create root user
-	rootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor")})
+	rootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	testutil.AssertNil(cx.t, err)
 
 	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(rootuser), expected: "revision"}); err != nil {

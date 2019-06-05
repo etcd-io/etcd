@@ -55,7 +55,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.24...v3.2.25) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.17/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -97,7 +97,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.23...v3.2.24) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -155,7 +155,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.22...v3.2.23) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -233,7 +233,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.18...v3.2.19) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -280,7 +280,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.17...v3.2.18) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -563,7 +563,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.5...v3.2.6) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -593,7 +593,7 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -704,7 +704,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.2.1) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -745,7 +745,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.0...v3.2.0) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-2) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.2.27/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 

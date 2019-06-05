@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -79,7 +79,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 						zap.String("target", cc.Target()),
 						zap.Error(gterr),
 					)
-					return lastErr // return the original error for simplicity
+					return gterr // lastErr must be invalid auth token
 				}
 				continue
 			}

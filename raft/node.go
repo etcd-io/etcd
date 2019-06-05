@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 type SnapshotStatus int
@@ -353,15 +353,15 @@ func (n *node) run(r *raft) {
 			}
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
-			if pr := r.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
+			if pr := r.prs.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
 				r.Step(m)
 			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {
 				select {
 				case n.confstatec <- pb.ConfState{
-					Nodes:    r.nodes(),
-					Learners: r.learnerNodes()}:
+					Nodes:    r.prs.voterNodes(),
+					Learners: r.prs.learnerNodes()}:
 				case <-n.done:
 				}
 				break
@@ -384,8 +384,8 @@ func (n *node) run(r *raft) {
 			}
 			select {
 			case n.confstatec <- pb.ConfState{
-				Nodes:    r.nodes(),
-				Learners: r.learnerNodes()}:
+				Nodes:    r.prs.voterNodes(),
+				Learners: r.prs.learnerNodes()}:
 			case <-n.done:
 			}
 		case <-n.tickc:

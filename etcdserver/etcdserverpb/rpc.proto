@@ -2,8 +2,8 @@ syntax = "proto3";
 package etcdserverpb;
 
 import "gogoproto/gogo.proto";
-import "etcd/v3/mvcc/mvccpb/kv.proto";
-import "etcd/v3/auth/authpb/auth.proto";
+import "etcd/mvcc/mvccpb/kv.proto";
+import "etcd/auth/authpb/auth.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";
@@ -1008,6 +1008,7 @@ message AuthenticateRequest {
 message AuthUserAddRequest {
   string name = 1;
   string password = 2;
+  authpb.UserAddOptions options = 3;
 }
 
 message AuthUserGetRequest {

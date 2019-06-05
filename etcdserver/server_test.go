@@ -30,25 +30,25 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/lease"
-	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
-	"go.etcd.io/etcd/v3/pkg/idutil"
-	"go.etcd.io/etcd/v3/pkg/mock/mockstorage"
-	"go.etcd.io/etcd/v3/pkg/mock/mockstore"
-	"go.etcd.io/etcd/v3/pkg/mock/mockwait"
-	"go.etcd.io/etcd/v3/pkg/pbutil"
-	"go.etcd.io/etcd/v3/pkg/testutil"
-	"go.etcd.io/etcd/v3/pkg/types"
-	"go.etcd.io/etcd/v3/pkg/wait"
-	"go.etcd.io/etcd/v3/raft"
-	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/idutil"
+	"go.etcd.io/etcd/pkg/mock/mockstorage"
+	"go.etcd.io/etcd/pkg/mock/mockstore"
+	"go.etcd.io/etcd/pkg/mock/mockwait"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/wait"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -1337,54 +1337,6 @@ func TestRemoveMember(t *testing.T) {
 	}
 	if cl.Member(1234) != nil {
 		t.Errorf("member with id 1234 is not removed")
-	}
-}
-
-// TestPromoteMember tests PromoteMember can propose and perform learner node promotion.
-func TestPromoteMember(t *testing.T) {
-	n := newNodeConfChangeCommitterRecorder()
-	n.readyc <- raft.Ready{
-		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
-	}
-	cl := newTestCluster(nil)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{
-		ID: 1234,
-		RaftAttributes: membership.RaftAttributes{
-			IsLearner: true,
-		},
-	})
-	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
-		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     mockstorage.NewStorageRecorder(""),
-		transport:   newNopTransporter(),
-	})
-	s := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zap.NewExample(),
-		r:          *r,
-		v2store:    st,
-		cluster:    cl,
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
-	}
-	s.start()
-	_, err := s.PromoteMember(context.TODO(), 1234)
-	gaction := n.Action()
-	s.Stop()
-
-	if err != nil {
-		t.Fatalf("PromoteMember error: %v", err)
-	}
-	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeAddNode"}, {Name: "ApplyConfChange:ConfChangeAddNode"}}
-	if !reflect.DeepEqual(gaction, wactions) {
-		t.Errorf("action = %v, want %v", gaction, wactions)
-	}
-	if cl.Member(1234).IsLearner {
-		t.Errorf("member with id 1234 is not promoted")
 	}
 }
 

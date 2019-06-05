@@ -1,6 +1,4 @@
----
-title: etcd API Reference
----
+### etcd API Reference
 
 
 This is a generated documentation. Please read the proto files for more.
@@ -248,6 +246,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | name |  | string |
 | password |  | string |
+| options |  | authpb.UserAddOptions |
 
 
 
@@ -1003,6 +1002,15 @@ User is a single entry in the bucket authUsers
 | name |  | bytes |
 | password |  | bytes |
 | roles |  | (slice of) string |
+| options |  | UserAddOptions |
+
+
+
+##### message `UserAddOptions` (auth/authpb/auth.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| no_password |  | bool |
 
 
 

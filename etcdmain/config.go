@@ -26,10 +26,10 @@ import (
 	"runtime"
 	"strings"
 
-	"go.etcd.io/etcd/v3/embed"
-	"go.etcd.io/etcd/v3/pkg/flags"
-	"go.etcd.io/etcd/v3/pkg/types"
-	"go.etcd.io/etcd/v3/version"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/version"
 
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"
@@ -127,7 +127,7 @@ func newConfig() *config {
 		fmt.Fprintln(os.Stderr, usageline)
 	}
 
-	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file")
+	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.")
 
 	// member
 	fs.StringVar(&cfg.ec.Dir, "data-dir", cfg.ec.Dir, "Path to the data directory.")

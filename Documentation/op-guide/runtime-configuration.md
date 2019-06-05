@@ -123,6 +123,46 @@ The new member will run as a part of the cluster and immediately begin catching 
 
 If adding multiple members the best practice is to configure a single member at a time and verify it starts correctly before adding more new members. If adding a new member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus. This behavior only happens between the time `etcdctl member add` informs the cluster about the new member and the new member successfully establishing a connection to the existing one.
 
+#### Add a new member as learner
+
+Starting from v3.4, etcd supports adding a new member as learner / non-voting member.
+The motivation and design can be found in [design doc](https://etcd.readthedocs.io/en/latest/server-learner.html).
+In order to make the process of adding a new member safer,
+and to reduce cluster downtime when the new member is added, it is recommended that the new member is added to cluster
+as a learner until it catches up. This can be described as a three step process:
+
+ * Add the new member as learner via [gRPC members API][member-api-grpc] or the `etcdctl member add --learner` command.
+
+ * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
+ This step is exactly the same as before.
+
+ * Promote the newly added learner to voting member via [gRPC members API][member-api-grpc] or the `etcdctl member promote` command.
+ etcd server validates promote request to ensure its operational safety.
+ Only after its raft log has caught up to leader’s can learner be promoted to a voting member.
+ If a learner member has not caught up to leader's raft log, member promote request will fail
+ (see [error cases when promoting a member] section for more details).
+ In this case, user should wait and retry later.
+
+In v3.4, etcd server limits the number of learners that cluster can have to one. The main consideration is to limit the
+extra workload on leader due to propagating data from leader to learner.
+
+Use `etcdctl member add` with flag `--learner` to add new member to cluster as learner.
+
+```sh
+$ etcdctl member add infra3 --peer-urls=http://10.0.1.13:2380 --learner
+Member 9bf1b35fc7761a23 added to cluster a7ef944b95711739
+
+ETCD_NAME="infra3"
+ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
+ETCD_INITIAL_CLUSTER_STATE=existing
+```
+
+After new etcd process is started for the newly added learner member, use `etcdctl member promote` to promote learner to voting member.
+```
+$ etcdctl member promote 9bf1b35fc7761a23
+Member 9e29bbaa45d74461 promoted in cluster a7ef944b95711739
+```
+
 #### Error cases when adding members
 
 In the following case a new host is not included in the list of enumerated nodes. If this is a new cluster, the node must be added to the list of initial cluster members.
@@ -153,6 +193,35 @@ etcd: this member has been permanently removed from the cluster. Exiting.
 exit 1
 ```
 
+#### Error cases when adding a learner member
+
+Cannot add learner to cluster if the cluster already has 1 learner (v3.4).
+```
+$ etcdctl member add infra4 --peer-urls=http://10.0.1.14:2380 --learner
+Error: etcdserver: too many learner members in cluster
+```
+
+#### Error cases when promoting a learner member
+
+Learner can only be promoted to voting member if it is in sync with leader.
+```
+$ etcdctl member promote 9bf1b35fc7761a23
+Error: etcdserver: can only promote a learner member which is in sync with leader
+```
+
+Promoting a member that is not a learner will fail.
+```
+$ etcdctl member promote 9bf1b35fc7761a23
+Error: etcdserver: can only promote a learner member
+```
+
+Promoting a member that does not exist in cluster will fail.
+```
+$ etcdctl member promote 12345abcde
+Error: etcdserver: member not found
+```
+
+
 ### Strict reconfiguration check mode (`-strict-reconfig-check`)
 
 As described in the above, the best practice of adding new members is to configure a single member at a time and verify it starts correctly before adding more new members. This step by step approach is very important because if newly added members is not configured correctly (for example the peer URLs are incorrect), the cluster can lose quorum. The quorum loss happens since the newly added member are counted in the quorum even if that member is not reachable from other existing members. Also quorum loss might happen if there is a connectivity issue or there are operational issues.
@@ -173,3 +242,4 @@ It is enabled by default.
 [member migration]: ../v2/admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
+[error cases when promoting a member]: #error-cases-when-promoting-a-learner-member
