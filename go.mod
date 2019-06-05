@@ -61,3 +61,16 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0
 )
+
+replace (
+	golang.org/x/crypto => github.com/golang/crypto v0.0.0-20180608092829-8ac0e0d97ce4
+	golang.org/x/net => github.com/golang/net v0.0.0-20180906233101-161cd47e91fd
+	golang.org/x/sync => github.com/golang/sync v0.0.0-20180314180146-1d60e4601c6f
+	golang.org/x/sys => github.com/golang/sys v0.0.0-20180909124046-d0be0721c37e
+	golang.org/x/text => github.com/golang/text v0.3.0
+	golang.org/x/time => github.com/golang/time v0.0.0-20180412165947-fbb02b2291d2
+	google.golang.org/genproto => github.com/google/go-genproto v0.0.0-20180608181217-32ee49c4dd80 // indirect
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.14.0
+	sigs.k8s.io/yaml => github.com/kubernetes-sigs/yaml v1.1.0
+
+)
