@@ -13,6 +13,11 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 ### etcdctl
 
 - [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
+- Add [`etcdctl endpoint health --write-out` support](https://github.com/etcd-io/etcd/pull/9540).
+  - Previously, [`etcdctl endpoint health --write-out json` did not work](https://github.com/etcd-io/etcd/issues/9532).
+  - The command output is changed. Previously, if endpoint is unreachable, the command output is
+  "\<endpoint\> is unhealthy: failed to connect: \<error message\>". This change unified the error message, all error types
+  now have the same output "\<endpoint\> is unhealthy: failed to commit proposal: \<error message\>".
 
 ### Metrics, Monitoring
 
