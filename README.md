@@ -173,6 +173,12 @@ See [reporting bugs](Documentation/reporting_bugs.md) for details about reportin
 
 A security vulnerability can be reported as an issue, however, GitHub and mailing lists may NOT always be an appropriate place for reporting vulnerabilities. In that case, please reach out to the project [MAINTAINERS](https://github.com/etcd-io/etcd/blob/master/MAINTAINERS) to first discuss the vulnerabilities with them and take necessary action per such discussion.
 
+## Issue and PR management
+
+See [issue triage guidelines](Documentation/triage/issues.md) for details on how issues are managed.
+
+See [PR management](Documentation/triage/PRs.md) for guidelines on how pull requests are managed.
+
 ## etcd Emeritus Maintainers
 
 These emeritus maintainers dedicated a part of their career to etcd and reviewed code, triaged bugs, and pushed the project forward over a substantial period of time. Their contribution is greatly appreciated.
