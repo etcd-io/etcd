@@ -230,7 +230,11 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 	var ttl int64 = 300
 	leaseInterval := 2 * time.Second
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3, LeaseCheckpointInterval: leaseInterval})
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:                    3,
+		EnableLeaseCheckpoint:   true,
+		LeaseCheckpointInterval: leaseInterval,
+	})
 	defer clus.Terminate(t)
 
 	// create lease

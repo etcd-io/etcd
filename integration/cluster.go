@@ -150,6 +150,7 @@ type ClusterConfig struct {
 	// UseIP is true to use only IP for gRPC requests.
 	UseIP bool
 
+	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
 }
 
@@ -293,6 +294,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
 			useIP:                    c.cfg.UseIP,
+			enableLeaseCheckpoint:    c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:  c.cfg.LeaseCheckpointInterval,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
@@ -581,6 +583,7 @@ type memberConfig struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+	enableLeaseCheckpoint    bool
 	leaseCheckpointInterval  time.Duration
 }
 
@@ -672,6 +675,7 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
+	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
 
 	m.InitialCorruptCheck = true
