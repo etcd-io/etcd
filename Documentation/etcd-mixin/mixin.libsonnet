@@ -48,38 +48,6 @@
             },
           },
           {
-            alert: 'etcdHighNumberOfFailedGRPCRequests',
-            expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
-                /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
-                > 1
-            ||| % $._config,
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-            annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
-            },
-          },
-          {
-            alert: 'etcdHighNumberOfFailedGRPCRequests',
-            expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
-                /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
-                > 5
-            ||| % $._config,
-            'for': '5m',
-            labels: {
-              severity: 'critical',
-            },
-            annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
-            },
-          },
-          {
             alert: 'etcdGRPCRequestsSlow',
             expr: |||
               histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_type="unary"}[5m])) by (job, instance, grpc_service, grpc_method, le))
