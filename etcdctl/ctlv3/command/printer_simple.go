@@ -152,7 +152,7 @@ func (s *simplePrinter) EndpointHealth(hs []epHealth) {
 		if h.Error == "" {
 			fmt.Fprintf(os.Stderr, "%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
 		} else {
-			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v", h.Ep, h.Error)
+			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v\n", h.Ep, h.Error)
 		}
 	}
 }
