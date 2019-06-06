@@ -221,6 +221,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_debugging_lease_revoked_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_renewed_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_ttl_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
+- Add [`etcd_server_is_learner`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
+- Add [`etcd_server_learner_promote_failures`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
+- Add [`etcd_server_learner_promote_successes`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
 - Increase [`etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds`](https://github.com/etcd-io/etcd/pull/9762) Prometheus metric histogram upper-bound.
   - Previously, highest bucket only collects requests taking 1.024 seconds or more.
   - Now, highest buckets collect 1.024 seconds, 2.048 seconds, and 4.096 seconds or more.
