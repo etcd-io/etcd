@@ -196,7 +196,7 @@ func testV3CurlAuth(cx ctlCtx) {
 	}
 
 	// create non root user
-	nonrootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("example.com"), Password: string("example")})
+	nonrootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("example.com"), Password: string("example"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	testutil.AssertNil(cx.t, err)
 
 	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(nonrootuser), expected: "revision"}); err != nil {
