@@ -202,6 +202,8 @@ Experimental feature:
     Serve v2 requests through the v3 backend under a given prefix.
   --experimental-backend-bbolt-freelist-type
     ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
+  --experimental-enable-lease-checkpoint
+    ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
 
 Unsafe feature:
   --force-new-cluster 'false'

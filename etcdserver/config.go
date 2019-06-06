@@ -150,6 +150,8 @@ type ServerConfig struct {
 
 	ForceNewCluster bool
 
+	// EnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+	EnableLeaseCheckpoint bool
 	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
 	LeaseCheckpointInterval time.Duration
 

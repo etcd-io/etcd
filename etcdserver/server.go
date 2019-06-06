@@ -595,9 +595,12 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		return nil, err
 	}
 
-	srv.lessor.SetCheckpointer(func(ctx context.Context, cp *pb.LeaseCheckpointRequest) {
-		srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
-	})
+	if srv.Cfg.EnableLeaseCheckpoint {
+		// setting checkpointer enables lease checkpoint feature.
+		srv.lessor.SetCheckpointer(func(ctx context.Context, cp *pb.LeaseCheckpointRequest) {
+			srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
+		})
+	}
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
