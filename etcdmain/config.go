@@ -284,6 +284,14 @@ func (cfg *config) parse(arguments []string) error {
 	}
 
 	var err error
+
+	// This env variable must be parsed separately
+	// because we need to determine whether to use or
+	// ignore the env variables based on if the config file is set.
+	if cfg.configFile == "" {
+		cfg.configFile = os.Getenv(flags.FlagToEnv("ETCD", "config-file"))
+	}
+
 	if cfg.configFile != "" {
 		err = cfg.configFromFile(cfg.configFile)
 		if lg := cfg.ec.GetLogger(); lg != nil {
