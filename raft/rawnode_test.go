@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/tracker"
 )
 
 // rawNodeAdapter is essentially a lint that makes sure that RawNode implements
@@ -638,7 +639,7 @@ func BenchmarkStatusProgress(b *testing.B) {
 
 			b.Run("WithProgress", func(b *testing.B) {
 				b.ReportAllocs()
-				visit := func(uint64, ProgressType, Progress) {}
+				visit := func(uint64, ProgressType, tracker.Progress) {}
 
 				for i := 0; i < b.N; i++ {
 					rn.WithProgress(visit)
@@ -648,7 +649,7 @@ func BenchmarkStatusProgress(b *testing.B) {
 				b.ReportAllocs()
 				for i := 0; i < b.N; i++ {
 					var n uint64
-					visit := func(_ uint64, _ ProgressType, pr Progress) {
+					visit := func(_ uint64, _ ProgressType, pr tracker.Progress) {
 						n += pr.Match
 					}
 					rn.WithProgress(visit)

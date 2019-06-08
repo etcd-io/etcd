@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2019 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raft
+package tracker
 
 import (
 	"reflect"
@@ -21,16 +21,16 @@ import (
 
 func TestInflightsAdd(t *testing.T) {
 	// no rotating case
-	in := &inflights{
+	in := &Inflights{
 		size:   10,
 		buffer: make([]uint64, 10),
 	}
 
 	for i := 0; i < 5; i++ {
-		in.add(uint64(i))
+		in.Add(uint64(i))
 	}
 
-	wantIn := &inflights{
+	wantIn := &Inflights{
 		start: 0,
 		count: 5,
 		size:  10,
@@ -43,10 +43,10 @@ func TestInflightsAdd(t *testing.T) {
 	}
 
 	for i := 5; i < 10; i++ {
-		in.add(uint64(i))
+		in.Add(uint64(i))
 	}
 
-	wantIn2 := &inflights{
+	wantIn2 := &Inflights{
 		start: 0,
 		count: 10,
 		size:  10,
@@ -59,17 +59,17 @@ func TestInflightsAdd(t *testing.T) {
 	}
 
 	// rotating case
-	in2 := &inflights{
+	in2 := &Inflights{
 		start:  5,
 		size:   10,
 		buffer: make([]uint64, 10),
 	}
 
 	for i := 0; i < 5; i++ {
-		in2.add(uint64(i))
+		in2.Add(uint64(i))
 	}
 
-	wantIn21 := &inflights{
+	wantIn21 := &Inflights{
 		start: 5,
 		count: 5,
 		size:  10,
@@ -82,10 +82,10 @@ func TestInflightsAdd(t *testing.T) {
 	}
 
 	for i := 5; i < 10; i++ {
-		in2.add(uint64(i))
+		in2.Add(uint64(i))
 	}
 
-	wantIn22 := &inflights{
+	wantIn22 := &Inflights{
 		start: 5,
 		count: 10,
 		size:  10,
@@ -100,14 +100,14 @@ func TestInflightsAdd(t *testing.T) {
 
 func TestInflightFreeTo(t *testing.T) {
 	// no rotating case
-	in := newInflights(10)
+	in := NewInflights(10)
 	for i := 0; i < 10; i++ {
-		in.add(uint64(i))
+		in.Add(uint64(i))
 	}
 
-	in.freeTo(4)
+	in.FreeLE(4)
 
-	wantIn := &inflights{
+	wantIn := &Inflights{
 		start: 5,
 		count: 5,
 		size:  10,
@@ -119,9 +119,9 @@ func TestInflightFreeTo(t *testing.T) {
 		t.Fatalf("in = %+v, want %+v", in, wantIn)
 	}
 
-	in.freeTo(8)
+	in.FreeLE(8)
 
-	wantIn2 := &inflights{
+	wantIn2 := &Inflights{
 		start: 9,
 		count: 1,
 		size:  10,
@@ -135,12 +135,12 @@ func TestInflightFreeTo(t *testing.T) {
 
 	// rotating case
 	for i := 10; i < 15; i++ {
-		in.add(uint64(i))
+		in.Add(uint64(i))
 	}
 
-	in.freeTo(12)
+	in.FreeLE(12)
 
-	wantIn3 := &inflights{
+	wantIn3 := &Inflights{
 		start: 3,
 		count: 2,
 		size:  10,
@@ -152,9 +152,9 @@ func TestInflightFreeTo(t *testing.T) {
 		t.Fatalf("in = %+v, want %+v", in, wantIn3)
 	}
 
-	in.freeTo(14)
+	in.FreeLE(14)
 
-	wantIn4 := &inflights{
+	wantIn4 := &Inflights{
 		start: 0,
 		count: 0,
 		size:  10,
@@ -168,14 +168,14 @@ func TestInflightFreeTo(t *testing.T) {
 }
 
 func TestInflightFreeFirstOne(t *testing.T) {
-	in := newInflights(10)
+	in := NewInflights(10)
 	for i := 0; i < 10; i++ {
-		in.add(uint64(i))
+		in.Add(uint64(i))
 	}
 
-	in.freeFirstOne()
+	in.FreeFirstOne()
 
-	wantIn := &inflights{
+	wantIn := &Inflights{
 		start: 1,
 		count: 9,
 		size:  10,
