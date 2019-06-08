@@ -924,3 +924,10 @@ func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }
 func (fl *FakeLessor) Recover(b backend.Backend, rd RangeDeleter) {}
 
 func (fl *FakeLessor) Stop() {}
+
+type FakeTxnDelete struct {
+	backend.BatchTx
+}
+
+func (ftd *FakeTxnDelete) DeleteRange(key, end []byte) (n, rev int64) { return 0, 0 }
+func (ftd *FakeTxnDelete) End()                                       { ftd.Unlock() }

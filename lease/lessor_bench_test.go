@@ -15,112 +15,207 @@
 package lease
 
 import (
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.uber.org/zap"
 )
 
-func BenchmarkLessorFindExpired1(b *testing.B)       { benchmarkLessorFindExpired(1, b) }
-func BenchmarkLessorFindExpired10(b *testing.B)      { benchmarkLessorFindExpired(10, b) }
-func BenchmarkLessorFindExpired100(b *testing.B)     { benchmarkLessorFindExpired(100, b) }
-func BenchmarkLessorFindExpired1000(b *testing.B)    { benchmarkLessorFindExpired(1000, b) }
-func BenchmarkLessorFindExpired10000(b *testing.B)   { benchmarkLessorFindExpired(10000, b) }
-func BenchmarkLessorFindExpired100000(b *testing.B)  { benchmarkLessorFindExpired(100000, b) }
-func BenchmarkLessorFindExpired1000000(b *testing.B) { benchmarkLessorFindExpired(1000000, b) }
+func BenchmarkLessorGrant1000(b *testing.B)   { benchmarkLessorGrant(1000, b) }
+func BenchmarkLessorGrant100000(b *testing.B) { benchmarkLessorGrant(100000, b) }
 
-func BenchmarkLessorGrant1(b *testing.B)       { benchmarkLessorGrant(1, b) }
-func BenchmarkLessorGrant10(b *testing.B)      { benchmarkLessorGrant(10, b) }
-func BenchmarkLessorGrant100(b *testing.B)     { benchmarkLessorGrant(100, b) }
-func BenchmarkLessorGrant1000(b *testing.B)    { benchmarkLessorGrant(1000, b) }
-func BenchmarkLessorGrant10000(b *testing.B)   { benchmarkLessorGrant(10000, b) }
-func BenchmarkLessorGrant100000(b *testing.B)  { benchmarkLessorGrant(100000, b) }
-func BenchmarkLessorGrant1000000(b *testing.B) { benchmarkLessorGrant(1000000, b) }
+func BenchmarkLessorRevoke1000(b *testing.B)   { benchmarkLessorRevoke(1000, b) }
+func BenchmarkLessorRevoke100000(b *testing.B) { benchmarkLessorRevoke(100000, b) }
 
-func BenchmarkLessorRenew1(b *testing.B)       { benchmarkLessorRenew(1, b) }
-func BenchmarkLessorRenew10(b *testing.B)      { benchmarkLessorRenew(10, b) }
-func BenchmarkLessorRenew100(b *testing.B)     { benchmarkLessorRenew(100, b) }
-func BenchmarkLessorRenew1000(b *testing.B)    { benchmarkLessorRenew(1000, b) }
-func BenchmarkLessorRenew10000(b *testing.B)   { benchmarkLessorRenew(10000, b) }
-func BenchmarkLessorRenew100000(b *testing.B)  { benchmarkLessorRenew(100000, b) }
-func BenchmarkLessorRenew1000000(b *testing.B) { benchmarkLessorRenew(1000000, b) }
+func BenchmarkLessorRenew1000(b *testing.B)   { benchmarkLessorRenew(1000, b) }
+func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) }
 
-func BenchmarkLessorRevoke1(b *testing.B)       { benchmarkLessorRevoke(1, b) }
-func BenchmarkLessorRevoke10(b *testing.B)      { benchmarkLessorRevoke(10, b) }
-func BenchmarkLessorRevoke100(b *testing.B)     { benchmarkLessorRevoke(100, b) }
-func BenchmarkLessorRevoke1000(b *testing.B)    { benchmarkLessorRevoke(1000, b) }
-func BenchmarkLessorRevoke10000(b *testing.B)   { benchmarkLessorRevoke(10000, b) }
-func BenchmarkLessorRevoke100000(b *testing.B)  { benchmarkLessorRevoke(100000, b) }
-func BenchmarkLessorRevoke1000000(b *testing.B) { benchmarkLessorRevoke(1000000, b) }
+// Use findExpired10000 replace findExpired1000, which takes too long.
+func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
+func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
 
-func benchmarkLessorFindExpired(size int, b *testing.B) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
-	defer le.Stop()
-	defer cleanup(be, tmpPath)
-	le.Promote(0)
-	for i := 0; i < size; i++ {
-		le.Grant(LeaseID(i), int64(100+i))
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
+const (
+	// minTTL keep lease will not auto expire in benchmark
+	minTTL = 1000
+	// maxTTL control repeat probability of ttls
+	maxTTL = 2000
+)
+
+func randomTTL(n int, min, max int64) (out []int64) {
+	for i := 0; i < n; i++ {
+		out = append(out, rand.Int63n(max-min)+min)
 	}
-	le.mu.Lock() //Stop the findExpiredLeases call in the runloop
+	return out
+}
+
+// demote lessor from being the primary, but don't change any lease's expiry
+func demote(le *lessor) {
+	le.mu.Lock()
 	defer le.mu.Unlock()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		le.findExpiredLeases(1000)
-	}
+	close(le.demotec)
+	le.demotec = nil
 }
 
-func benchmarkLessorGrant(size int, b *testing.B) {
+// return new lessor and tearDown to release resource
+func setUp() (le *lessor, tearDown func()) {
 	lg := zap.NewNop()
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
-	defer le.Stop()
-	defer cleanup(be, tmpPath)
-	for i := 0; i < size; i++ {
-		le.Grant(LeaseID(i), int64(100+i))
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		le.Grant(LeaseID(i+size), int64(100+i+size))
+	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
+	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
+	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
+	le.SetRangeDeleter(func() TxnDelete {
+		ftd := &FakeTxnDelete{be.BatchTx()}
+		ftd.Lock()
+		return ftd
+	})
+	le.Promote(0)
+
+	return le, func() {
+		le.Stop()
+		be.Close()
+		os.Remove(tmpPath)
 	}
 }
 
-func benchmarkLessorRevoke(size int, b *testing.B) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
-	defer le.Stop()
-	defer cleanup(be, tmpPath)
-	for i := 0; i < size; i++ {
-		le.Grant(LeaseID(i), int64(100+i))
-	}
-	for i := 0; i < b.N; i++ {
-		le.Grant(LeaseID(i+size), int64(100+i+size))
-	}
+func benchmarkLessorGrant(benchSize int, b *testing.B) {
+	ttls := randomTTL(benchSize, minTTL, maxTTL)
+
+	var le *lessor
+	var tearDown func()
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		le.Revoke(LeaseID(i + size))
+	for i := 0; i < b.N; {
+		b.StopTimer()
+		if tearDown != nil {
+			tearDown()
+			tearDown = nil
+		}
+		le, tearDown = setUp()
+		b.StartTimer()
+
+		for j := 1; j <= benchSize; j++ {
+			le.Grant(LeaseID(j), ttls[j-1])
+		}
+		i += benchSize
+	}
+	b.StopTimer()
+
+	if tearDown != nil {
+		tearDown()
 	}
 }
 
-func benchmarkLessorRenew(size int, b *testing.B) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
-	defer le.Stop()
-	defer cleanup(be, tmpPath)
-	for i := 0; i < size; i++ {
-		le.Grant(LeaseID(i), int64(100+i))
-	}
+func benchmarkLessorRevoke(benchSize int, b *testing.B) {
+	ttls := randomTTL(benchSize, minTTL, maxTTL)
+
+	var le *lessor
+	var tearDown func()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		le.Renew(LeaseID(i))
+		b.StopTimer()
+		if tearDown != nil {
+			tearDown()
+			tearDown = nil
+		}
+		le, tearDown = setUp()
+		for j := 1; j <= benchSize; j++ {
+			le.Grant(LeaseID(j), ttls[j-1])
+		}
+		b.StartTimer()
+
+		for j := 1; j <= benchSize; j++ {
+			le.Revoke(LeaseID(j))
+		}
+		i += benchSize
+	}
+	b.StopTimer()
+
+	if tearDown != nil {
+		tearDown()
 	}
 }
 
-func cleanup(b backend.Backend, path string) {
-	b.Close()
-	os.Remove(path)
+func benchmarkLessorRenew(benchSize int, b *testing.B) {
+	ttls := randomTTL(benchSize, minTTL, maxTTL)
+
+	var le *lessor
+	var tearDown func()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; {
+		b.StopTimer()
+		if tearDown != nil {
+			tearDown()
+			tearDown = nil
+		}
+		le, tearDown = setUp()
+		for j := 1; j <= benchSize; j++ {
+			le.Grant(LeaseID(j), ttls[j-1])
+		}
+		b.StartTimer()
+
+		for j := 1; j <= benchSize; j++ {
+			le.Renew(LeaseID(j))
+		}
+		i += benchSize
+	}
+	b.StopTimer()
+
+	if tearDown != nil {
+		tearDown()
+	}
+}
+
+func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
+	// 50% lease are expired.
+	ttls := randomTTL(benchSize, -500, 500)
+	findExpiredLimit := 50
+
+	var le *lessor
+	var tearDown func()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; {
+		b.StopTimer()
+		if tearDown != nil {
+			tearDown()
+			tearDown = nil
+		}
+		le, tearDown = setUp()
+		for j := 1; j <= benchSize; j++ {
+			le.Grant(LeaseID(j), ttls[j-1])
+		}
+		// lessor's runLoop should not call findExpired
+		demote(le)
+		b.StartTimer()
+
+		// refresh fixture after pop all expired lease
+		for ; ; i++ {
+			le.mu.Lock()
+			ls := le.findExpiredLeases(findExpiredLimit)
+			if len(ls) == 0 {
+				break
+			}
+			le.mu.Unlock()
+
+			// simulation: revoke lease after expired
+			b.StopTimer()
+			for _, lease := range ls {
+				le.Revoke(lease.ID)
+			}
+			b.StartTimer()
+		}
+	}
+	b.StopTimer()
+
+	if tearDown != nil {
+		tearDown()
+	}
 }
