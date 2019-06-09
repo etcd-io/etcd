@@ -1649,7 +1649,12 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 	// fails with ErrNotLeader, forward the request to leader node via HTTP. If promoteMember call fails with error
 	// other than ErrNotLeader, return the error.
 	resp, err := s.promoteMember(ctx, id)
+	if err == nil {
+		learnerPromoteSucceed.Inc()
+		return resp, nil
+	}
 	if err != ErrNotLeader {
+		learnerPromoteFailed.WithLabelValues(err.Error()).Inc()
 		return resp, err
 	}
 
@@ -2259,6 +2264,15 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 			if confChangeContext.Member.ID != s.id {
 				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
+			}
+		}
+
+		// update the isLearner metric when this server id is equal to the id in raft member confChange
+		if confChangeContext.Member.ID == s.id {
+			if cc.Type == raftpb.ConfChangeAddLearnerNode {
+				isLearner.Set(1)
+			} else {
+				isLearner.Set(0)
 			}
 		}
 
