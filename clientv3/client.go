@@ -539,37 +539,52 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 }
 
 func (c *Client) checkVersion() (err error) {
-	var wg sync.WaitGroup
-	errc := make(chan error, len(c.cfg.Endpoints))
-	ctx, cancel := context.WithCancel(c.ctx)
+	var (
+		wg   sync.WaitGroup
+		eps  = c.Endpoints()
+		errC = make(chan error, len(eps))
+
+		ctx, cancel = context.WithCancel(c.ctx)
+	)
+	defer close(errC)
+
 	if c.cfg.DialTimeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
+		cancel()
+		ctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
 	}
-	wg.Add(len(c.cfg.Endpoints))
-	for _, ep := range c.cfg.Endpoints {
+
+	wg.Add(len(eps))
+	for _, ep := range eps {
 		// if cluster is current, any endpoint gives a recent version
 		go func(e string) {
 			defer wg.Done()
 			resp, rerr := c.Status(ctx, e)
 			if rerr != nil {
-				errc <- rerr
+				errC <- rerr
 				return
 			}
 			vs := strings.Split(resp.Version, ".")
 			maj, min := 0, 0
 			if len(vs) >= 2 {
-				maj, _ = strconv.Atoi(vs[0])
-				min, rerr = strconv.Atoi(vs[1])
+				if maj, err = strconv.Atoi(vs[0]); err != nil {
+					errC <- err
+					return
+				}
+				if min, err = strconv.Atoi(vs[1]); err != nil {
+					errC <- err
+					return
+				}
 			}
 			if maj < 3 || (maj == 3 && min < 2) {
-				rerr = ErrOldCluster
+				errC <- ErrOldCluster
 			}
-			errc <- rerr
+			errC <- nil
 		}(ep)
 	}
+
 	// wait for success
-	for i := 0; i < len(c.cfg.Endpoints); i++ {
-		if err = <-errc; err == nil {
+	for range eps {
+		if err = <-errC; err == nil {
 			break
 		}
 	}
