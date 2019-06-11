@@ -78,18 +78,18 @@ func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 	}
 	defer conn.Close()
 	if _, ok := conn.(*tls.Conn); !ok {
-		t.Errorf("failed to accept *tls.Conn")
+		t.Error("failed to accept *tls.Conn")
 	}
 }
 
-// TestNewListenerTLSInfoSkipClientVerify tests that if client IP address mismatches
+// TestNewListenerTLSInfoSkipClientSANVerify tests that if client IP address mismatches
 // with specified address in its certificate the connection is still accepted
-// if the flag SkipClientVerify is set (i.e. checkSAN() is disabled for the client side)
-func TestNewListenerTLSInfoSkipClientVerify(t *testing.T) {
+// if the flag SkipClientSANVerify is set (i.e. checkSAN() is disabled for the client side)
+func TestNewListenerTLSInfoSkipClientSANVerify(t *testing.T) {
 	tests := []struct {
-		skipClientVerify bool
-		goodClientHost   bool
-		acceptExpected   bool
+		skipClientSANVerify bool
+		goodClientHost      bool
+		acceptExpected      bool
 	}{
 		{false, true, true},
 		{false, false, false},
@@ -97,11 +97,11 @@ func TestNewListenerTLSInfoSkipClientVerify(t *testing.T) {
 		{true, false, true},
 	}
 	for _, test := range tests {
-		testNewListenerTLSInfoClientCheck(t, test.skipClientVerify, test.goodClientHost, test.acceptExpected)
+		testNewListenerTLSInfoClientCheck(t, test.skipClientSANVerify, test.goodClientHost, test.acceptExpected)
 	}
 }
 
-func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientVerify, goodClientHost, acceptExpected bool) {
+func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodClientHost, acceptExpected bool) {
 	tlsInfo, del, err := createSelfCert()
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
@@ -118,7 +118,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientVerify, goodClien
 	}
 	defer del2()
 
-	tlsInfo.SkipClientVerify = skipClientVerify
+	tlsInfo.SkipClientSANVerify = skipClientSANVerify
 	tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
 
 	rootCAs := x509.NewCertPool()
@@ -166,7 +166,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientVerify, goodClien
 	select {
 	case <-chClientErr:
 		if acceptExpected {
-			t.Errorf("accepted for good client address: skipClientVerify=%t, goodClientHost=%t", skipClientVerify, goodClientHost)
+			t.Errorf("accepted for good client address: skipClientSANVerify=%t, goodClientHost=%t", skipClientSANVerify, goodClientHost)
 		}
 	case acceptErr := <-chAcceptErr:
 		t.Fatalf("unexpected Accept error: %v", acceptErr)
@@ -176,7 +176,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientVerify, goodClien
 			t.Errorf("failed to accept *tls.Conn")
 		}
 		if !acceptExpected {
-			t.Errorf("accepted for bad client address: skipClientVerify=%t, goodClientHost=%t", skipClientVerify, goodClientHost)
+			t.Errorf("accepted for bad client address: skipClientSANVerify=%t, goodClientHost=%t", skipClientSANVerify, goodClientHost)
 		}
 	}
 }
