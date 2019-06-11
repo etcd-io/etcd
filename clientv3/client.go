@@ -289,8 +289,7 @@ func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
 	var auth *authenticator
 
-	for i := 0; i < len(c.cfg.Endpoints); i++ {
-		ep := c.cfg.Endpoints[i]
+	for _, ep := range c.Endpoints() {
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
 		_, host, _ := endpoint.ParseEndpoint(ep)
