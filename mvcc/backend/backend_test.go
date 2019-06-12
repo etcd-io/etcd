@@ -241,9 +241,9 @@ func TestBackendWriteback(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	for i, tt := range keys {
-		rtx.Lock()
+		rtx.RLock()
 		k, v := rtx.UnsafeRange([]byte("key"), tt.key, tt.end, tt.limit)
-		rtx.Unlock()
+		rtx.RUnlock()
 		if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
 			t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
 		}
@@ -282,9 +282,9 @@ func TestBackendWritebackForEach(t *testing.T) {
 		return nil
 	}
 	rtx := b.ReadTx()
-	rtx.Lock()
+	rtx.RLock()
 	rtx.UnsafeForEach([]byte("key"), getSeq)
-	rtx.Unlock()
+	rtx.RUnlock()
 
 	partialSeq := seq
 
