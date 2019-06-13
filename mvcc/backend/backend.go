@@ -49,6 +49,7 @@ var (
 )
 
 type Backend interface {
+	// ReadTx returns a read transaction. It is replaced by ConcurrentReadTx in the main data path, see #10523.
 	ReadTx() ReadTx
 	BatchTx() BatchTx
 	// ConcurrentReadTx returns a non-blocking read transaction.
@@ -200,7 +201,7 @@ func (b *backend) ReadTx() ReadTx { return b.readTx }
 func (b *backend) ConcurrentReadTx() ReadTx {
 	b.readTx.RLock()
 	defer b.readTx.RUnlock()
-	// prevent boltdb read Tx from been rolled back until store read Tx is done.
+	// prevent boltdb read Tx from been rolled back until store read Tx is done. Needs to be called when holding readTx.RLock().
 	b.readTx.txWg.Add(1)
 	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
 	return &concurrentReadTx{
@@ -516,9 +517,10 @@ func (b *backend) begin(write bool) *bolt.Tx {
 
 	size := tx.Size()
 	db := tx.DB()
+	stats := db.Stats()
 	atomic.StoreInt64(&b.size, size)
-	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
-	atomic.StoreInt64(&b.openReadTxN, int64(db.Stats().OpenTxN))
+	atomic.StoreInt64(&b.sizeInUse, size-(int64(stats.FreePageN)*int64(db.Info().PageSize)))
+	atomic.StoreInt64(&b.openReadTxN, int64(stats.OpenTxN))
 
 	return tx
 }

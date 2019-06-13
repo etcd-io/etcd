@@ -132,13 +132,17 @@ type concurrentReadTx struct {
 	buf     txReadBuffer
 	txMu    *sync.RWMutex
 	tx      *bolt.Tx
-	buckets map[string]*bolt.Bucket // note: A map value is a pointer
+	buckets map[string]*bolt.Bucket
 	txWg    *sync.WaitGroup
 }
 
-func (rt *concurrentReadTx) Lock()    {}
-func (rt *concurrentReadTx) Unlock()  {}
-func (rt *concurrentReadTx) RLock()   {}
+func (rt *concurrentReadTx) Lock()   {}
+func (rt *concurrentReadTx) Unlock() {}
+
+// RLock is no-op. concurrentReadTx does not need to be locked after it is created.
+func (rt *concurrentReadTx) RLock() {}
+
+// RUnlock signals the end of concurrentReadTx.
 func (rt *concurrentReadTx) RUnlock() { rt.txWg.Done() }
 
 func (rt *concurrentReadTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
