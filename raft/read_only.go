@@ -29,7 +29,11 @@ type ReadState struct {
 type readIndexStatus struct {
 	req   pb.Message
 	index uint64
-	acks  map[uint64]struct{}
+	// NB: this never records 'false', but it's more convenient to use this
+	// instead of a map[uint64]struct{} due to the API of quorum.VoteResult. If
+	// this becomes performance sensitive enough (doubtful), quorum.VoteResult
+	// can change to an API that is closer to that of CommittedIndex.
+	acks map[uint64]bool
 }
 
 type readOnly struct {
@@ -54,20 +58,20 @@ func (ro *readOnly) addRequest(index uint64, m pb.Message) {
 	if _, ok := ro.pendingReadIndex[s]; ok {
 		return
 	}
-	ro.pendingReadIndex[s] = &readIndexStatus{index: index, req: m, acks: make(map[uint64]struct{})}
+	ro.pendingReadIndex[s] = &readIndexStatus{index: index, req: m, acks: make(map[uint64]bool)}
 	ro.readIndexQueue = append(ro.readIndexQueue, s)
 }
 
 // recvAck notifies the readonly struct that the raft state machine received
 // an acknowledgment of the heartbeat that attached with the read only request
 // context.
-func (ro *readOnly) recvAck(id uint64, context []byte) map[uint64]struct{} {
+func (ro *readOnly) recvAck(id uint64, context []byte) map[uint64]bool {
 	rs, ok := ro.pendingReadIndex[string(context)]
 	if !ok {
 		return nil
 	}
 
-	rs.acks[id] = struct{}{}
+	rs.acks[id] = true
 	return rs.acks
 }
 

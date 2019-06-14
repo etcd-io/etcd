@@ -4334,7 +4334,8 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 				learners[i] = true
 			}
 			v.id = id
-			v.prs.nodes = make(map[uint64]struct{})
+			v.prs.voters[0] = make(map[uint64]struct{})
+			v.prs.voters[1] = make(map[uint64]struct{})
 			v.prs.learners = make(map[uint64]struct{})
 			v.prs.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
@@ -4343,7 +4344,7 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 					pr.IsLearner = true
 					v.prs.learners[peerAddrs[i]] = struct{}{}
 				} else {
-					v.prs.nodes[peerAddrs[i]] = struct{}{}
+					v.prs.voters[0][peerAddrs[i]] = struct{}{}
 				}
 				v.prs.prs[peerAddrs[i]] = pr
 			}

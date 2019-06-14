@@ -17,6 +17,8 @@ package raft
 import (
 	"fmt"
 	"sort"
+
+	"go.etcd.io/etcd/raft/quorum"
 )
 
 const (
@@ -291,23 +293,25 @@ func (in *inflights) reset() {
 // known about the nodes and learners in it. In particular, it tracks the match
 // index for each peer which in turn allows reasoning about the committed index.
 type progressTracker struct {
-	nodes    map[uint64]struct{}
+	voters   quorum.JointConfig
 	learners map[uint64]struct{}
 	prs      map[uint64]*Progress
 
 	votes map[uint64]bool
 
 	maxInflight int
-	matchBuf    uint64Slice
 }
 
 func makeProgressTracker(maxInflight int) progressTracker {
 	p := progressTracker{
 		maxInflight: maxInflight,
-		prs:         map[uint64]*Progress{},
-		nodes:       map[uint64]struct{}{},
-		learners:    map[uint64]struct{}{},
-		votes:       map[uint64]bool{},
+		voters: quorum.JointConfig{
+			quorum.MajorityConfig{},
+			quorum.MajorityConfig{},
+		},
+		learners: map[uint64]struct{}{},
+		votes:    map[uint64]bool{},
+		prs:      map[uint64]*Progress{},
 	}
 	return p
 }
@@ -315,39 +319,34 @@ func makeProgressTracker(maxInflight int) progressTracker {
 // isSingleton returns true if (and only if) there is only one voting member
 // (i.e. the leader) in the current configuration.
 func (p *progressTracker) isSingleton() bool {
-	return len(p.nodes) == 1
+	return len(p.voters[0]) == 1 && len(p.voters[1]) == 0
 }
 
-func (p *progressTracker) quorum() int {
-	return len(p.nodes)/2 + 1
-}
+type progressAckIndexer map[uint64]*Progress
 
-func (p *progressTracker) hasQuorum(m map[uint64]struct{}) bool {
-	return len(m) >= p.quorum()
+var _ quorum.AckedIndexer = progressAckIndexer(nil)
+
+func (l progressAckIndexer) AckedIndex(id uint64) (quorum.Index, bool) {
+	pr, ok := l[id]
+	if !ok {
+		return 0, false
+	}
+	return quorum.Index(pr.Match), true
 }
 
 // committed returns the largest log index known to be committed based on what
 // the voting members of the group have acknowledged.
 func (p *progressTracker) committed() uint64 {
-	// Preserving matchBuf across calls is an optimization
-	// used to avoid allocating a new slice on each call.
-	if cap(p.matchBuf) < len(p.nodes) {
-		p.matchBuf = make(uint64Slice, len(p.nodes))
-	}
-	p.matchBuf = p.matchBuf[:len(p.nodes)]
-	idx := 0
-	for id := range p.nodes {
-		p.matchBuf[idx] = p.prs[id].Match
-		idx++
-	}
-	sort.Sort(&p.matchBuf)
-	return p.matchBuf[len(p.matchBuf)-p.quorum()]
+	return uint64(p.voters.CommittedIndex(progressAckIndexer(p.prs)))
 }
 
 func (p *progressTracker) removeAny(id uint64) {
 	_, okPR := p.prs[id]
-	_, okV := p.nodes[id]
+	_, okV1 := p.voters[0][id]
+	_, okV2 := p.voters[1][id]
 	_, okL := p.learners[id]
+
+	okV := okV1 || okV2
 
 	if !okPR {
 		panic("attempting to remove unknown peer %x")
@@ -357,7 +356,8 @@ func (p *progressTracker) removeAny(id uint64) {
 		panic(fmt.Sprintf("peer %x is both voter and learner", id))
 	}
 
-	delete(p.nodes, id)
+	delete(p.voters[0], id)
+	delete(p.voters[1], id)
 	delete(p.learners, id)
 	delete(p.prs, id)
 }
@@ -369,7 +369,7 @@ func (p *progressTracker) initProgress(id, match, next uint64, isLearner bool) {
 		panic(fmt.Sprintf("peer %x already tracked as node %v", id, pr))
 	}
 	if !isLearner {
-		p.nodes[id] = struct{}{}
+		p.voters[0][id] = struct{}{}
 	} else {
 		p.learners[id] = struct{}{}
 	}
@@ -391,19 +391,21 @@ func (p *progressTracker) visit(f func(id uint64, pr *Progress)) {
 // the view of the local raft state machine. Otherwise, it returns
 // false.
 func (p *progressTracker) quorumActive() bool {
-	var act int
+	votes := map[uint64]bool{}
 	p.visit(func(id uint64, pr *Progress) {
-		if pr.RecentActive && !pr.IsLearner {
-			act++
+		if pr.IsLearner {
+			return
 		}
+		votes[id] = pr.RecentActive
 	})
 
-	return act >= p.quorum()
+	return p.voters.VoteResult(votes) == quorum.VoteWon
 }
 
 func (p *progressTracker) voterNodes() []uint64 {
-	nodes := make([]uint64, 0, len(p.nodes))
-	for id := range p.nodes {
+	m := p.voters.IDs()
+	nodes := make([]uint64, 0, len(m))
+	for id := range m {
 		nodes = append(nodes, id)
 	}
 	sort.Sort(uint64Slice(nodes))
@@ -435,22 +437,21 @@ func (p *progressTracker) recordVote(id uint64, v bool) {
 
 // tallyVotes returns the number of granted and rejected votes, and whether the
 // election outcome is known.
-func (p *progressTracker) tallyVotes() (granted int, rejected int, result electionResult) {
-	for _, v := range p.votes {
-		if v {
+func (p *progressTracker) tallyVotes() (granted int, rejected int, _ quorum.VoteResult) {
+	// Make sure to populate granted/rejected correctly even if the votes slice
+	// contains members no longer part of the configuration. This doesn't really
+	// matter in the way the numbers are used (they're informational), but might
+	// as well get it right.
+	for id, pr := range p.prs {
+		if pr.IsLearner {
+			continue
+		}
+		if p.votes[id] {
 			granted++
 		} else {
 			rejected++
 		}
 	}
-
-	q := p.quorum()
-
-	result = electionIndeterminate
-	if granted >= q {
-		result = electionWon
-	} else if rejected >= q {
-		result = electionLost
-	}
+	result := p.voters.VoteResult(p.votes)
 	return granted, rejected, result
 }
