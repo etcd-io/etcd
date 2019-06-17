@@ -4082,6 +4082,40 @@ func TestPreVoteWithCheckQuorum(t *testing.T) {
 	}
 }
 
+// TestLearnerCampaign verifies that a learner won't campaign even if it receives
+// a MsgHup or MsgTimeoutNow.
+func TestLearnerCampaign(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n1.addLearner(2)
+	n2 := newTestRaft(2, []uint64{1}, 10, 1, NewMemoryStorage())
+	n2.addLearner(2)
+	nt := newNetwork(n1, n2)
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+
+	if !n2.isLearner {
+		t.Fatalf("failed to make n2 a learner")
+	}
+
+	if n2.state != StateFollower {
+		t.Fatalf("n2 campaigned despite being learner")
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if n1.state != StateLeader || n1.lead != 1 {
+		t.Fatalf("n1 did not become leader")
+	}
+
+	// NB: TransferLeader already checks that the recipient is not a learner, but
+	// the check could have happened by the time the recipient becomes a learner,
+	// in which case it will receive MsgTimeoutNow as in this test case and we
+	// verify that it's ignored.
+	nt.send(pb.Message{From: 1, To: 2, Type: pb.MsgTimeoutNow})
+
+	if n2.state != StateFollower {
+		t.Fatalf("n2 accepted leadership transfer despite being learner")
+	}
+}
+
 // simulate rolling update a cluster for Pre-Vote. cluster has 3 nodes [n1, n2, n3].
 // n1 is leader with term 2
 // n2 is follower with term 2
