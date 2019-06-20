@@ -195,14 +195,14 @@ func TestDataDriven(t *testing.T) {
 						return ll
 					}
 					for id := range c {
-						idx, _ := l.AckedIndex(id)
-						if idx > idx && idx > 0 {
+						iidx, _ := l.AckedIndex(id)
+						if idx > iidx && iidx > 0 {
 							// If the committed index was definitely above the currently
 							// inspected idx, the result shouldn't change if we lower it
 							// further.
-							lo := overlay(c, l, id, idx-1)
+							lo := overlay(c, l, id, iidx-1)
 							if aIdx := c.CommittedIndex(lo); aIdx != idx {
-								fmt.Fprintf(&buf, "%s <-- overlaying %d->%d", aIdx, id, idx)
+								fmt.Fprintf(&buf, "%s <-- overlaying %d->%d", aIdx, id, iidx)
 							}
 							lo = overlay(c, l, id, 0)
 							if aIdx := c.CommittedIndex(lo); aIdx != idx {
