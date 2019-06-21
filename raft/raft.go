@@ -26,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/raft/quorum"
 	pb "go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/tracker"
 )
 
 // None is a placeholder node ID used when there is no leader.
@@ -261,7 +262,7 @@ type raft struct {
 
 	maxMsgSize         uint64
 	maxUncommittedSize uint64
-	prs                progressTracker
+	prs                tracker.ProgressTracker
 
 	state StateType
 
@@ -344,7 +345,7 @@ func newRaft(c *Config) *raft {
 		raftLog:                   raftlog,
 		maxMsgSize:                c.MaxSizePerMsg,
 		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
-		prs:                       makeProgressTracker(c.MaxInflightMsgs),
+		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs),
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
 		logger:                    c.Logger,
@@ -355,11 +356,11 @@ func newRaft(c *Config) *raft {
 	}
 	for _, p := range peers {
 		// Add node to active config.
-		r.prs.initProgress(p, 0 /* match */, 1 /* next */, false /* isLearner */)
+		r.prs.InitProgress(p, 0 /* match */, 1 /* next */, false /* isLearner */)
 	}
 	for _, p := range learners {
 		// Add learner to active config.
-		r.prs.initProgress(p, 0 /* match */, 1 /* next */, true /* isLearner */)
+		r.prs.InitProgress(p, 0 /* match */, 1 /* next */, true /* isLearner */)
 
 		if r.id == p {
 			r.isLearner = true
@@ -375,7 +376,7 @@ func newRaft(c *Config) *raft {
 	r.becomeFollower(r.Term, None)
 
 	var nodesStrs []string
-	for _, n := range r.prs.voterNodes() {
+	for _, n := range r.prs.VoterNodes() {
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
 
@@ -442,7 +443,7 @@ func (r *raft) sendAppend(to uint64) {
 // ("empty" messages are useful to convey updated Commit indexes, but
 // are undesirable when we're sending multiple messages in a batch).
 func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
-	pr := r.prs.getProgress(to)
+	pr := r.prs.Progress[to]
 	if pr.IsPaused() {
 		return false
 	}
@@ -477,7 +478,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
 		r.logger.Debugf("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
 			r.id, r.raftLog.firstIndex(), r.raftLog.committed, sindex, sterm, to, pr)
-		pr.becomeSnapshot(sindex)
+		pr.BecomeSnapshot(sindex)
 		r.logger.Debugf("%x paused sending replication messages to %x [%s]", r.id, to, pr)
 	} else {
 		m.Type = pb.MsgApp
@@ -487,13 +488,13 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 		m.Commit = r.raftLog.committed
 		if n := len(m.Entries); n != 0 {
 			switch pr.State {
-			// optimistically increase the next when in ProgressStateReplicate
-			case ProgressStateReplicate:
+			// optimistically increase the next when in StateReplicate
+			case tracker.StateReplicate:
 				last := m.Entries[n-1].Index
-				pr.optimisticUpdate(last)
-				pr.ins.add(last)
-			case ProgressStateProbe:
-				pr.pause()
+				pr.OptimisticUpdate(last)
+				pr.Inflights.Add(last)
+			case tracker.StateProbe:
+				pr.ProbeSent = true
 			default:
 				r.logger.Panicf("%x is sending append in unhandled state %s", r.id, pr.State)
 			}
@@ -511,7 +512,7 @@ func (r *raft) sendHeartbeat(to uint64, ctx []byte) {
 	// or it might not have all the committed entries.
 	// The leader MUST NOT forward the follower's commit to
 	// an unmatched index.
-	commit := min(r.prs.getProgress(to).Match, r.raftLog.committed)
+	commit := min(r.prs.Progress[to].Match, r.raftLog.committed)
 	m := pb.Message{
 		To:      to,
 		Type:    pb.MsgHeartbeat,
@@ -525,7 +526,7 @@ func (r *raft) sendHeartbeat(to uint64, ctx []byte) {
 // bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
-	r.prs.visit(func(id uint64, _ *Progress) {
+	r.prs.Visit(func(id uint64, _ *tracker.Progress) {
 		if id == r.id {
 			return
 		}
@@ -545,7 +546,7 @@ func (r *raft) bcastHeartbeat() {
 }
 
 func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
-	r.prs.visit(func(id uint64, _ *Progress) {
+	r.prs.Visit(func(id uint64, _ *tracker.Progress) {
 		if id == r.id {
 			return
 		}
@@ -557,7 +558,7 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 // the commit index changed (in which case the caller should call
 // r.bcastAppend).
 func (r *raft) maybeCommit() bool {
-	mci := r.prs.committed()
+	mci := r.prs.Committed()
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
@@ -574,12 +575,12 @@ func (r *raft) reset(term uint64) {
 
 	r.abortLeaderTransfer()
 
-	r.prs.resetVotes()
-	r.prs.visit(func(id uint64, pr *Progress) {
-		*pr = Progress{
+	r.prs.ResetVotes()
+	r.prs.Visit(func(id uint64, pr *tracker.Progress) {
+		*pr = tracker.Progress{
 			Match:     0,
 			Next:      r.raftLog.lastIndex() + 1,
-			ins:       newInflights(r.prs.maxInflight),
+			Inflights: tracker.NewInflights(r.prs.MaxInflight),
 			IsLearner: pr.IsLearner,
 		}
 		if id == r.id {
@@ -609,7 +610,7 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	}
 	// use latest "last" index after truncate/append
 	li = r.raftLog.append(es...)
-	r.prs.getProgress(r.id).maybeUpdate(li)
+	r.prs.Progress[r.id].MaybeUpdate(li)
 	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 	return true
@@ -682,7 +683,7 @@ func (r *raft) becomePreCandidate() {
 	// but doesn't change anything else. In particular it does not increase
 	// r.Term or change r.Vote.
 	r.step = stepCandidate
-	r.prs.resetVotes()
+	r.prs.ResetVotes()
 	r.tick = r.tickElection
 	r.lead = None
 	r.state = StatePreCandidate
@@ -703,7 +704,7 @@ func (r *raft) becomeLeader() {
 	// (perhaps after having received a snapshot as a result). The leader is
 	// trivially in this state. Note that r.reset() has initialized this
 	// progress with the last index already.
-	r.prs.getProgress(r.id).becomeReplicate()
+	r.prs.Progress[r.id].BecomeReplicate()
 
 	// Conservatively set the pendingConfIndex to the last index in the
 	// log. There may or may not be a pending config change, but it's
@@ -755,7 +756,7 @@ func (r *raft) campaign(t CampaignType) {
 		}
 		return
 	}
-	for id := range r.prs.voters.IDs() {
+	for id := range r.prs.Voters.IDs() {
 		if id == r.id {
 			continue
 		}
@@ -776,8 +777,8 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int, rejected 
 	} else {
 		r.logger.Infof("%x received %s rejection from %x at term %d", r.id, t, id, r.Term)
 	}
-	r.prs.recordVote(id, v)
-	return r.prs.tallyVotes()
+	r.prs.RecordVote(id, v)
+	return r.prs.TallyVotes()
 }
 
 func (r *raft) Step(m pb.Message) error {
@@ -943,16 +944,16 @@ func stepLeader(r *raft, m pb.Message) error {
 		//
 		// TODO(tbg): I added a TODO in removeNode, it doesn't seem that the
 		// leader steps down when removing itself. I might be missing something.
-		if pr := r.prs.getProgress(r.id); pr != nil {
+		if pr := r.prs.Progress[r.id]; pr != nil {
 			pr.RecentActive = true
 		}
-		if !r.prs.quorumActive() {
+		if !r.prs.QuorumActive() {
 			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
 			r.becomeFollower(r.Term, None)
 		}
 		// Mark everyone (but ourselves) as inactive in preparation for the next
 		// CheckQuorum.
-		r.prs.visit(func(id uint64, pr *Progress) {
+		r.prs.Visit(func(id uint64, pr *tracker.Progress) {
 			if id != r.id {
 				pr.RecentActive = false
 			}
@@ -962,7 +963,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		if len(m.Entries) == 0 {
 			r.logger.Panicf("%x stepped empty MsgProp", r.id)
 		}
-		if r.prs.getProgress(r.id) == nil {
+		if r.prs.Progress[r.id] == nil {
 			// If we are not currently a member of the range (i.e. this node
 			// was removed from the configuration while serving as leader),
 			// drop any new proposals.
@@ -994,7 +995,7 @@ func stepLeader(r *raft, m pb.Message) error {
 	case pb.MsgReadIndex:
 		// If more than the local vote is needed, go through a full broadcast,
 		// otherwise optimize.
-		if !r.prs.isSingleton() {
+		if !r.prs.IsSingleton() {
 			if r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) != r.Term {
 				// Reject read only request when this leader has not committed any log entry at its term.
 				return nil
@@ -1029,7 +1030,7 @@ func stepLeader(r *raft, m pb.Message) error {
 	}
 
 	// All other message types require a progress for m.From (pr).
-	pr := r.prs.getProgress(m.From)
+	pr := r.prs.Progress[m.From]
 	if pr == nil {
 		r.logger.Debugf("%x no progress available for %x", r.id, m.From)
 		return nil
@@ -1041,30 +1042,30 @@ func stepLeader(r *raft, m pb.Message) error {
 		if m.Reject {
 			r.logger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
-			if pr.maybeDecrTo(m.Index, m.RejectHint) {
+			if pr.MaybeDecrTo(m.Index, m.RejectHint) {
 				r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
-				if pr.State == ProgressStateReplicate {
-					pr.becomeProbe()
+				if pr.State == tracker.StateReplicate {
+					pr.BecomeProbe()
 				}
 				r.sendAppend(m.From)
 			}
 		} else {
 			oldPaused := pr.IsPaused()
-			if pr.maybeUpdate(m.Index) {
+			if pr.MaybeUpdate(m.Index) {
 				switch {
-				case pr.State == ProgressStateProbe:
-					pr.becomeReplicate()
-				case pr.State == ProgressStateSnapshot && pr.needSnapshotAbort():
-					r.logger.Debugf("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+				case pr.State == tracker.StateProbe:
+					pr.BecomeReplicate()
+				case pr.State == tracker.StateSnapshot && pr.Match >= pr.PendingSnapshot:
+					r.logger.Debugf("%x recovered from needing snapshot, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					// Transition back to replicating state via probing state
 					// (which takes the snapshot into account). If we didn't
 					// move to replicating state, that would only happen with
 					// the next round of appends (but there may not be a next
 					// round for a while, exposing an inconsistent RaftStatus).
-					pr.becomeProbe()
-					pr.becomeReplicate()
-				case pr.State == ProgressStateReplicate:
-					pr.ins.freeTo(m.Index)
+					pr.BecomeProbe()
+					pr.BecomeReplicate()
+				case pr.State == tracker.StateReplicate:
+					pr.Inflights.FreeLE(m.Index)
 				}
 
 				if r.maybeCommit() {
@@ -1091,11 +1092,11 @@ func stepLeader(r *raft, m pb.Message) error {
 		}
 	case pb.MsgHeartbeatResp:
 		pr.RecentActive = true
-		pr.resume()
+		pr.ProbeSent = false
 
 		// free one slot for the full inflights window to allow progress.
-		if pr.State == ProgressStateReplicate && pr.ins.full() {
-			pr.ins.freeFirstOne()
+		if pr.State == tracker.StateReplicate && pr.Inflights.Full() {
+			pr.Inflights.FreeFirstOne()
 		}
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
@@ -1105,7 +1106,7 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
-		if r.prs.voters.VoteResult(r.readOnly.recvAck(m.From, m.Context)) != quorum.VoteWon {
+		if r.prs.Voters.VoteResult(r.readOnly.recvAck(m.From, m.Context)) != quorum.VoteWon {
 			return nil
 		}
 
@@ -1119,26 +1120,32 @@ func stepLeader(r *raft, m pb.Message) error {
 			}
 		}
 	case pb.MsgSnapStatus:
-		if pr.State != ProgressStateSnapshot {
+		if pr.State != tracker.StateSnapshot {
 			return nil
 		}
+		// TODO(tbg): this code is very similar to the snapshot handling in
+		// MsgAppResp above. In fact, the code there is more correct than the
+		// code here and should likely be updated to match (or even better, the
+		// logic pulled into a newly created Progress state machine handler).
 		if !m.Reject {
-			pr.becomeProbe()
+			pr.BecomeProbe()
 			r.logger.Debugf("%x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		} else {
-			pr.snapshotFailure()
-			pr.becomeProbe()
+			// NB: the order here matters or we'll be probing erroneously from
+			// the snapshot index, but the snapshot never applied.
+			pr.PendingSnapshot = 0
+			pr.BecomeProbe()
 			r.logger.Debugf("%x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		}
 		// If snapshot finish, wait for the msgAppResp from the remote node before sending
 		// out the next msgApp.
 		// If snapshot failure, wait for a heartbeat interval before next try
-		pr.pause()
+		pr.ProbeSent = true
 	case pb.MsgUnreachable:
 		// During optimistic replication, if the remote becomes unreachable,
 		// there is huge probability that a MsgApp is lost.
-		if pr.State == ProgressStateReplicate {
-			pr.becomeProbe()
+		if pr.State == tracker.StateReplicate {
+			pr.BecomeProbe()
 		}
 		r.logger.Debugf("%x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
 	case pb.MsgTransferLeader:
@@ -1341,7 +1348,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		r.id, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 
 	r.raftLog.restore(s)
-	r.prs = makeProgressTracker(r.prs.maxInflight)
+	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
 	r.restoreNode(s.Metadata.ConfState.Nodes, false)
 	r.restoreNode(s.Metadata.ConfState.Learners, true)
 	return true
@@ -1354,15 +1361,15 @@ func (r *raft) restoreNode(nodes []uint64, isLearner bool) {
 			match = next - 1
 			r.isLearner = isLearner
 		}
-		r.prs.initProgress(n, match, next, isLearner)
-		r.logger.Infof("%x restored progress of %x [%s]", r.id, n, r.prs.getProgress(n))
+		r.prs.InitProgress(n, match, next, isLearner)
+		r.logger.Infof("%x restored progress of %x [%s]", r.id, n, r.prs.Progress[n])
 	}
 }
 
 // promotable indicates whether state machine can be promoted to leader,
 // which is true when its own id is in progress list.
 func (r *raft) promotable() bool {
-	pr := r.prs.getProgress(r.id)
+	pr := r.prs.Progress[r.id]
 	return pr != nil && !pr.IsLearner
 }
 
@@ -1375,9 +1382,9 @@ func (r *raft) addLearner(id uint64) {
 }
 
 func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
-	pr := r.prs.getProgress(id)
+	pr := r.prs.Progress[id]
 	if pr == nil {
-		r.prs.initProgress(id, 0, r.raftLog.lastIndex()+1, isLearner)
+		r.prs.InitProgress(id, 0, r.raftLog.lastIndex()+1, isLearner)
 	} else {
 		if isLearner && !pr.IsLearner {
 			// Can only change Learner to Voter.
@@ -1392,10 +1399,10 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 		}
 
 		// Change Learner to Voter, use origin Learner progress.
-		r.prs.removeAny(id)
-		r.prs.initProgress(id, 0 /* match */, 1 /* next */, false /* isLearner */)
+		r.prs.RemoveAny(id)
+		r.prs.InitProgress(id, 0 /* match */, 1 /* next */, false /* isLearner */)
 		pr.IsLearner = false
-		*r.prs.getProgress(id) = *pr
+		*r.prs.Progress[id] = *pr
 	}
 
 	if r.id == id {
@@ -1405,14 +1412,14 @@ func (r *raft) addNodeOrLearnerNode(id uint64, isLearner bool) {
 	// When a node is first added, we should mark it as recently active.
 	// Otherwise, CheckQuorum may cause us to step down if it is invoked
 	// before the added node has a chance to communicate with us.
-	r.prs.getProgress(id).RecentActive = true
+	r.prs.Progress[id].RecentActive = true
 }
 
 func (r *raft) removeNode(id uint64) {
-	r.prs.removeAny(id)
+	r.prs.RemoveAny(id)
 
 	// Do not try to commit or abort transferring if the cluster is now empty.
-	if len(r.prs.voters[0]) == 0 && len(r.prs.learners) == 0 {
+	if len(r.prs.Voters[0]) == 0 && len(r.prs.Learners) == 0 {
 		return
 	}
 

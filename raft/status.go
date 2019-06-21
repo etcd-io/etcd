@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	pb "go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/tracker"
 )
 
 type Status struct {
@@ -27,20 +28,20 @@ type Status struct {
 	SoftState
 
 	Applied  uint64
-	Progress map[uint64]Progress
+	Progress map[uint64]tracker.Progress
 
 	LeadTransferee uint64
 }
 
-func getProgressCopy(r *raft) map[uint64]Progress {
-	m := make(map[uint64]Progress)
-	r.prs.visit(func(id uint64, pr *Progress) {
-		var p Progress
+func getProgressCopy(r *raft) map[uint64]tracker.Progress {
+	m := make(map[uint64]tracker.Progress)
+	r.prs.Visit(func(id uint64, pr *tracker.Progress) {
+		var p tracker.Progress
 		p, pr = *pr, nil /* avoid accidental reuse below */
 
 		// The inflight buffer is tricky to copy and besides, it isn't exposed
 		// to the client, so pretend it's nil.
-		p.ins = nil
+		p.Inflights = nil
 
 		m[id] = p
 	})
