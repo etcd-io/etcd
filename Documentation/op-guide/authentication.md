@@ -119,7 +119,7 @@ $ etcdctl role revoke-permission myrolename /foo/bar
 As is removing a role entirely:
 
 ```
-$ etcdctl role remove myrolename
+$ etcdctl role delete myrolename
 ```
 
 ## Enabling authentication
