@@ -96,7 +96,7 @@ type Ready struct {
 	// TODO(tbg): rearrange these fields in an order reflecting the lists above.
 
 	// Information about the node that is not persisted. This may be nil when
-	// nothing change from the previously emitted SoftState.
+	// there is no change from the most recently emitted SoftState.
 	*SoftState
 
 	// The updated state of the Node to be persisted. If zero, there is no

@@ -387,6 +387,8 @@ func newRaft(c *Config) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
+// TODO(tbg): it's silly that this allocates. Plenty of callers have this in the
+// hot path to check whether SoftState changes, which it barely ever does.
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 
 func (r *raft) hardState() pb.HardState {
