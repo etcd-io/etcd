@@ -37,7 +37,7 @@ func getProgressCopy(r *raft) map[uint64]tracker.Progress {
 	m := make(map[uint64]tracker.Progress)
 	r.prs.Visit(func(id uint64, pr *tracker.Progress) {
 		var p tracker.Progress
-		p, pr = *pr, nil /* avoid accidental reuse below */
+		p, _ = *pr, nil /* avoid accidental reuse below */
 
 		// The inflight buffer is tricky to copy and besides, it isn't exposed
 		// to the client, so pretend it's nil.
