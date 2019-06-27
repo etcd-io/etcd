@@ -29,11 +29,19 @@ type raftLog struct {
 	// they will be saved into storage.
 	unstable unstable
 
-	// committed is the highest log position that is known to be in
-	// stable storage on a quorum of nodes.
+	// committed is the highest log position that is known to be in stable
+	// storage on a quorum of nodes *pending the application of all outstanding
+	// Ready structs*, that is, treating entries on the local unstable storage
+	// as if they had already been persisted.
+	//
+	// For example, in a single node group, committed will increase immediately
+	// with each added proposal, even though that proposal will truly only be
+	// committed when the next Ready has been handled.
+	//
+	// See Ready.HardState for an explanation of why this is safe.
 	committed uint64
 	// applied is the highest log position that the application has
-	// been instructed to apply to its state machine.
+	// applied to its state machine (as confirmed via advance).
 	// Invariant: applied <= committed
 	applied uint64
 
@@ -142,6 +150,10 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 	if len(l.unstable.entries) == 0 {
 		return nil
 	}
+	// NB: it's important for correctness that we always return all unstable
+	// entries. This is because the committed index handed out as part of a
+	// Ready implicitly assumes that all unstable entries will be reflected
+	// in the Ready.
 	return l.unstable.entries
 }
 

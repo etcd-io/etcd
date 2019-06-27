@@ -49,43 +49,90 @@ func (a *SoftState) equal(b *SoftState) bool {
 // Ready encapsulates the entries and messages that are ready to read,
 // be saved to stable storage, committed or sent to other peers.
 // All fields in Ready are read-only.
+//
+// Handling the Ready can be done with or without performance optimizations.
+// Applications that don't need high throughput should eschew performance
+// optimizations for simplicity. These applications will use the following
+// sequence of steps:
+//
+// 1 apply snapshot (if any) and sync
+// 2 atomically append Entries (if any) and update HardState (if any).
+// 3. sync the Entries and HardState if MustSync is set.
+// 4. send messages
+// 5. apply CommittedEntries
+//
+// If for some reason it is impossible to append the Entries atomically with
+// updating the HardState, the entries (which are always synced) must be
+// appended and synced before the HardState is updated. This avoids the
+// situation in which the HardState references a Commit index which is not
+// durably appended yet. This does not penalize performance because updates to
+// the HardState must only be synced when MustSync is set, and those occur only
+// during elections and membership changes.
+//
+// For performance, applications may also split the messages to be sent in
+// MsgApp and a remainder, and introduce a step 1½ in the above list:
+//
+// 1.  unchanged
+// 1½. send all MsgApp
+// 2.  unchanged
+// 3.  unchanged
+// 4.  send remaining messages
+// 5.  unchanged
+//
+// This reduces replication latency because the MsgApp are no longer delayed by
+// the disk sync in step 3. This optimization is safe because a corresponding
+// MsgAppResp can (at the earliest) be processed in the next Ready cycle, at
+// which point the previous Ready is fully synced. Should the leader (which is
+// the only peer sending MsgApp) have crashed after sending the MsgApp but
+// before persisting its Entries, it won't be the leader for its old term any
+// more and thus will not handle the MsgAppResp. Additionally, the fact that a
+// commit index that is higher than that ultimately persisted on the crashed
+// leader is now known to a follower (via the MsgApp) is benign. And, for one
+// more obscure corner case, we may also "lose" the HardState update that
+// persists the leadership of the node in the first place, which also leaks to
+// followers through the fact that they receive a MsgApp. This too is benign
+// since the leader stepped down via the crash and the term is over.
 type Ready struct {
-	// The current volatile state of a Node.
-	// SoftState will be nil if there is no update.
-	// It is not required to consume or store SoftState.
+	// TODO(tbg): rearrange these fields in an order reflecting the lists above.
+
+	// Information about the node that is not persisted. This may be nil when
+	// nothing change from the previously emitted SoftState.
 	*SoftState
 
-	// The current state of a Node to be saved to stable storage BEFORE
-	// Messages are sent.
-	// HardState will be equal to empty state if there is no update.
+	// The updated state of the Node to be persisted. If zero, there is no
+	// update. The update must be synced if MustSync is true, even if only
+	// Commit changed.
 	pb.HardState
 
-	// ReadStates can be used for node to serve linearizable read requests locally
-	// when its applied index is greater than the index in ReadState.
-	// Note that the readState will be returned when raft receives msgReadIndex.
-	// The returned is only valid for the request that requested to read.
+	// ReadStates are emitted in response to a MsgReadIndex and are keyed on the
+	// user-supplied RequestCtx field (which must be unique). The requester of a
+	// given ReadState may serve a linearizable read from the local state
+	// machine once the applied index has reached the index denoted in the
+	// ReadState. The index referred to by a ReadState may not be available for
+	// application yet (or even exist in the local Raft log), though since it is
+	// known to be committed it should be available soon.
 	ReadStates []ReadState
 
-	// Entries specifies entries to be saved to stable storage BEFORE
-	// Messages are sent.
+	// Entries specifies entries that need to be persisted durably to storage.
 	Entries []pb.Entry
 
-	// Snapshot specifies the snapshot to be saved to stable storage.
+	// Snapshot, if nonzero, is a Snapshot that needs to be persisted durably to
+	// storage.
 	Snapshot pb.Snapshot
 
-	// CommittedEntries specifies entries to be committed to a
-	// store/state-machine. These have previously been committed to stable
-	// store.
+	// CommittedEntries specifies entries to be applied to the state machine.
+	// These entries were either previously appended to the log or are present
+	// in the current Entries slice.
 	CommittedEntries []pb.Entry
 
-	// Messages specifies outbound messages to be sent AFTER Entries are
-	// committed to stable storage.
-	// If it contains a MsgSnap message, the application MUST report back to raft
-	// when the snapshot has been received or has failed by calling ReportSnapshot.
+	// Messages specifies messages to be sent to peers. For each contained
+	// MsgSnap message, the application MUST call ReportSnapshot with the
+	// outcome of the snapshot attempt. Failure to do so can stall the process
+	// of catching up the affected follower.
 	Messages []pb.Message
 
-	// MustSync indicates whether the HardState and Entries must be synchronously
-	// written to disk or if an asynchronous write is permissible.
+	// MustSync is true if Entries is nonempty or the HardState contains an
+	// update that needs to be durably written.
 	MustSync bool
 }
 
