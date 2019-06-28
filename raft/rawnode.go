@@ -101,7 +101,7 @@ func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
 		r.raftLog.append(ents...)
 		r.raftLog.committed = uint64(len(ents))
 		for _, peer := range peers {
-			r.addNode(peer.ID)
+			r.applyConfChange(pb.ConfChange{NodeID: peer.ID, Type: pb.ConfChangeAddNode})
 		}
 	}
 
@@ -166,21 +166,8 @@ func (rn *RawNode) ProposeConfChange(cc pb.ConfChange) error {
 
 // ApplyConfChange applies a config change to the local node.
 func (rn *RawNode) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
-	if cc.NodeID == None {
-		return &pb.ConfState{Nodes: rn.raft.prs.VoterNodes(), Learners: rn.raft.prs.LearnerNodes()}
-	}
-	switch cc.Type {
-	case pb.ConfChangeAddNode:
-		rn.raft.addNode(cc.NodeID)
-	case pb.ConfChangeAddLearnerNode:
-		rn.raft.addLearner(cc.NodeID)
-	case pb.ConfChangeRemoveNode:
-		rn.raft.removeNode(cc.NodeID)
-	case pb.ConfChangeUpdateNode:
-	default:
-		panic("unexpected conf type")
-	}
-	return &pb.ConfState{Nodes: rn.raft.prs.VoterNodes(), Learners: rn.raft.prs.LearnerNodes()}
+	cs := rn.raft.applyConfChange(cc)
+	return &cs
 }
 
 // Step advances the state machine using the given message.
