@@ -1461,6 +1461,7 @@ func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
 		}
 	}
 
+	r.logger.Infof("%x switched to configuration %s", r.id, r.prs.Config)
 	// Now that the configuration is updated, handle any side effects.
 
 	cs := pb.ConfState{Nodes: r.prs.VoterNodes(), Learners: r.prs.LearnerNodes()}

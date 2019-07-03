@@ -21,12 +21,72 @@ import (
 	"go.etcd.io/etcd/raft/quorum"
 )
 
+// Config reflects the configuration tracked in a ProgressTracker.
+type Config struct {
+	Voters quorum.JointConfig
+	// Learners is a set of IDs corresponding to the learners active in the
+	// current configuration.
+	//
+	// Invariant: Learners and Voters does not intersect, i.e. if a peer is in
+	// either half of the joint config, it can't be a learner; if it is a
+	// learner it can't be in either half of the joint config. This invariant
+	// simplifies the implementation since it allows peers to have clarity about
+	// its current role without taking into account joint consensus.
+	Learners map[uint64]struct{}
+	// TODO(tbg): when we actually carry out joint consensus changes and turn a
+	// voter into a learner, we cannot add the learner when entering the joint
+	// state. This is because this would violate the invariant that the inter-
+	// section of voters and learners is empty. For example, assume a Voter is
+	// removed and immediately re-added as a learner (or in other words, it is
+	// demoted).
+	//
+	// Initially, the configuration will be
+	//
+	//   voters:   {1 2 3}
+	//   learners: {}
+	//
+	// and we want to demote 3. Entering the joint configuration, we naively get
+	//
+	//   voters:   {1 2} & {1 2 3}
+	//   learners: {3}
+	//
+	// but this violates the invariant (3 is both voter and learner). Instead,
+	// we have
+	//
+	//   voters:   {1 2} & {1 2 3}
+	//   learners: {}
+	//   next_learners: {3}
+	//
+	// Where 3 is now still purely a voter, but we are remembering the intention
+	// to make it a learner upon transitioning into the final configuration:
+	//
+	//   voters:   {1 2}
+	//   learners: {3}
+	//   next_learners: {}
+	//
+	// Note that next_learners is not used while adding a learner that is not
+	// also a voter in the joint config. In this case, the learner is added
+	// to Learners right away when entering the joint configuration, so that it
+	// is caught up as soon as possible.
+	//
+	// NextLearners        map[uint64]struct{}
+}
+
+func (c *Config) String() string {
+	if len(c.Learners) == 0 {
+		return fmt.Sprintf("voters=%s", c.Voters)
+	}
+	return fmt.Sprintf(
+		"voters=%s learners=%s",
+		c.Voters, quorum.MajorityConfig(c.Learners).String(),
+	)
+}
+
 // ProgressTracker tracks the currently active configuration and the information
 // known about the nodes and learners in it. In particular, it tracks the match
 // index for each peer which in turn allows reasoning about the committed index.
 type ProgressTracker struct {
-	Voters   quorum.JointConfig
-	Learners map[uint64]struct{}
+	Config
 
 	Progress map[uint64]*Progress
 
@@ -39,11 +99,15 @@ type ProgressTracker struct {
 func MakeProgressTracker(maxInflight int) ProgressTracker {
 	p := ProgressTracker{
 		MaxInflight: maxInflight,
-		Voters: quorum.JointConfig{
-			quorum.MajorityConfig{},
-			quorum.MajorityConfig{},
+		Config: Config{
+			Voters: quorum.JointConfig{
+				quorum.MajorityConfig{},
+				// TODO(tbg): this will be mostly empty, so make it a nil pointer
+				// in the common case.
+				quorum.MajorityConfig{},
+			},
+			Learners: map[uint64]struct{}{},
 		},
-		Learners: map[uint64]struct{}{},
 		Votes:    map[uint64]bool{},
 		Progress: map[uint64]*Progress{},
 	}
