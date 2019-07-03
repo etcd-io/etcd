@@ -78,7 +78,7 @@ As seen above, a simple misconfiguration can fail the whole cluster into an inop
 Raft Learner
 ============
 
-In order to mitigate such availability gaps in the previous section, `Raft §4.2.1 <https://ramcloud.stanford.edu/~ongaro/thesis.pdf>`_ introduces a new node state “Learner”, which joins the cluster as a **non-voting member** until it catches up to leader’s logs.
+In order to mitigate such availability gaps in the previous section, `Raft §4.2.1 <https://github.com/ongardie/dissertation/blob/master/stanford.pdf>`_ introduces a new node state “Learner”, which joins the cluster as a **non-voting member** until it catches up to leader’s logs.
 
 Features in v3.4
 ----------------

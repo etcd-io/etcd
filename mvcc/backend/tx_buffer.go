@@ -88,6 +88,19 @@ func (txr *txReadBuffer) ForEach(bucketName []byte, visitor func(k, v []byte) er
 	return nil
 }
 
+// unsafeCopy returns a copy of txReadBuffer, caller should acquire backend.readTx.RLock()
+func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
+	txrCopy := txReadBuffer{
+		txBuffer: txBuffer{
+			buckets: make(map[string]*bucketBuffer, len(txr.txBuffer.buckets)),
+		},
+	}
+	for bucketName, bucket := range txr.txBuffer.buckets {
+		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
+	}
+	return txrCopy
+}
+
 type kv struct {
 	key []byte
 	val []byte
@@ -179,3 +192,12 @@ func (bb *bucketBuffer) Less(i, j int) bool {
 	return bytes.Compare(bb.buf[i].key, bb.buf[j].key) < 0
 }
 func (bb *bucketBuffer) Swap(i, j int) { bb.buf[i], bb.buf[j] = bb.buf[j], bb.buf[i] }
+
+func (bb *bucketBuffer) Copy() *bucketBuffer {
+	bbCopy := bucketBuffer{
+		buf:  make([]kv, len(bb.buf)),
+		used: bb.used,
+	}
+	copy(bbCopy.buf, bb.buf)
+	return &bbCopy
+}

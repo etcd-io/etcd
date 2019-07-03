@@ -194,6 +194,23 @@ var (
 	reportDbTotalSizeInUseInBytesMu sync.RWMutex
 	reportDbTotalSizeInUseInBytes   = func() float64 { return 0 }
 
+	dbOpenReadTxN = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "mvcc",
+		Name:      "db_open_read_transactions",
+		Help:      "The number of currently open read transactions",
+	},
+
+		func() float64 {
+			reportDbOpenReadTxNMu.RLock()
+			defer reportDbOpenReadTxNMu.RUnlock()
+			return reportDbOpenReadTxN()
+		},
+	)
+	// overridden by mvcc initialization
+	reportDbOpenReadTxNMu sync.RWMutex
+	reportDbOpenReadTxN   = func() float64 { return 0 }
+
 	hashSec = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "mvcc",
@@ -237,6 +254,7 @@ func init() {
 	prometheus.MustRegister(dbTotalSize)
 	prometheus.MustRegister(dbTotalSizeDebugging)
 	prometheus.MustRegister(dbTotalSizeInUse)
+	prometheus.MustRegister(dbOpenReadTxN)
 	prometheus.MustRegister(hashSec)
 	prometheus.MustRegister(hashRevSec)
 }

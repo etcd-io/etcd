@@ -49,8 +49,11 @@ var (
 )
 
 type Backend interface {
+	// ReadTx returns a read transaction. It is replaced by ConcurrentReadTx in the main data path, see #10523.
 	ReadTx() ReadTx
 	BatchTx() BatchTx
+	// ConcurrentReadTx returns a non-blocking read transaction.
+	ConcurrentReadTx() ReadTx
 
 	Snapshot() Snapshot
 	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
@@ -63,6 +66,8 @@ type Backend interface {
 	// Since the backend can manage free space in a non-byte unit such as
 	// number of pages, the returned value can be not exactly accurate in bytes.
 	SizeInUse() int64
+	// OpenReadTxN returns the number of currently open read transactions in the backend.
+	OpenReadTxN() int64
 	Defrag() error
 	ForceCommit()
 	Close() error
@@ -87,6 +92,8 @@ type backend struct {
 	sizeInUse int64
 	// commits counts number of commits since start
 	commits int64
+	// openReadTxN is the number of currently open read transactions in the backend
+	openReadTxN int64
 
 	mu sync.RWMutex
 	db *bolt.DB
@@ -166,6 +173,7 @@ func newBackend(bcfg BackendConfig) *backend {
 				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
 			},
 			buckets: make(map[string]*bolt.Bucket),
+			txWg:    new(sync.WaitGroup),
 		},
 
 		stopc: make(chan struct{}),
@@ -186,6 +194,24 @@ func (b *backend) BatchTx() BatchTx {
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
+
+// ConcurrentReadTx creates and returns a new ReadTx, which:
+// A) creates and keeps a copy of backend.readTx.txReadBuffer,
+// B) references the boltdb read Tx (and its bucket cache) of current batch interval.
+func (b *backend) ConcurrentReadTx() ReadTx {
+	b.readTx.RLock()
+	defer b.readTx.RUnlock()
+	// prevent boltdb read Tx from been rolled back until store read Tx is done. Needs to be called when holding readTx.RLock().
+	b.readTx.txWg.Add(1)
+	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
+	return &concurrentReadTx{
+		buf:     b.readTx.buf.unsafeCopy(),
+		tx:      b.readTx.tx,
+		txMu:    &b.readTx.txMu,
+		buckets: b.readTx.buckets,
+		txWg:    b.readTx.txWg,
+	}
+}
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
@@ -491,8 +517,10 @@ func (b *backend) begin(write bool) *bolt.Tx {
 
 	size := tx.Size()
 	db := tx.DB()
+	stats := db.Stats()
 	atomic.StoreInt64(&b.size, size)
-	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
+	atomic.StoreInt64(&b.sizeInUse, size-(int64(stats.FreePageN)*int64(db.Info().PageSize)))
+	atomic.StoreInt64(&b.openReadTxN, int64(stats.OpenTxN))
 
 	return tx
 }
@@ -507,6 +535,10 @@ func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 		}
 	}
 	return tx
+}
+
+func (b *backend) OpenReadTxN() int64 {
+	return atomic.LoadInt64(&b.openReadTxN)
 }
 
 // NewTmpBackend creates a backend implementation for testing.

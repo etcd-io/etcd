@@ -353,15 +353,15 @@ func (n *node) run(r *raft) {
 			}
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
-			if pr := r.prs.getProgress(m.From); pr != nil || !IsResponseMsg(m.Type) {
+			if pr := r.prs.Progress[m.From]; pr != nil || !IsResponseMsg(m.Type) {
 				r.Step(m)
 			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {
 				select {
 				case n.confstatec <- pb.ConfState{
-					Nodes:    r.prs.voterNodes(),
-					Learners: r.prs.learnerNodes()}:
+					Nodes:    r.prs.VoterNodes(),
+					Learners: r.prs.LearnerNodes()}:
 				case <-n.done:
 				}
 				break
@@ -384,8 +384,8 @@ func (n *node) run(r *raft) {
 			}
 			select {
 			case n.confstatec <- pb.ConfState{
-				Nodes:    r.prs.voterNodes(),
-				Learners: r.prs.learnerNodes()}:
+				Nodes:    r.prs.VoterNodes(),
+				Learners: r.prs.LearnerNodes()}:
 			case <-n.done:
 			}
 		case <-n.tickc:
