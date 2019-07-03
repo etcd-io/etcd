@@ -278,7 +278,6 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	}
 	if verifyCertificate != nil {
 		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			fmt.Fprintf(os.Stderr, "== VERIFY PEER CERT (%d verified chains)\n", len(verifiedChains))
 			for _, chains := range verifiedChains {
 				if len(chains) != 0 {
 					if verifyCertificate(chains[0]) {
@@ -286,7 +285,6 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 					}
 				}
 			}
-			fmt.Fprintf(os.Stderr, "== VERIFY PEER CERT\n")
 			return errors.New("client certificate authentication failed")
 		}
 	}
@@ -364,7 +362,6 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	}
 
 	cs := info.cafiles()
-	fmt.Fprintf(os.Stderr, "== CAFILES: %v\n", cs)
 	if len(cs) > 0 {
 		cp, err := tlsutil.NewCertPool(cs)
 		if err != nil {

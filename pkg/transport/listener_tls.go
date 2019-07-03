@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os"
 	"strings"
 	"sync"
 )
@@ -99,7 +98,6 @@ func checkSAN(ctx context.Context, tlsConn *tls.Conn) error {
 	st := tlsConn.ConnectionState()
 	if certs := st.PeerCertificates; len(certs) > 0 {
 		addr := tlsConn.RemoteAddr().String()
-		fmt.Fprintf(os.Stderr, "checkSAN(addr=%q, certs=%v)\n", addr, certs)
 		return checkCertSAN(ctx, certs[0], addr)
 	}
 	return nil
