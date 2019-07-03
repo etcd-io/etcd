@@ -128,8 +128,8 @@ Security:
     Enable client cert authentication.
   --client-crl-file ''
     Path to the client certificate revocation list file.
-  --client-cert-allowed-name ''
-    Allowed TLS name for client cert authentication.
+  --client-cert-allowed-hostname ''
+    Allowed TLS hostname for client cert authentication.
   --trusted-ca-file ''
     Path to the client server TLS trusted CA cert file.
   --auto-tls 'false'
@@ -144,8 +144,8 @@ Security:
     Path to the peer server TLS trusted CA file.
   --peer-cert-allowed-cn ''
     Required CN for client certs connecting to the peer endpoint.
-  --peer-cert-allowed-name ''
-    Allowed TLS name for inter peer authentication.
+  --peer-cert-allowed-hostname ''
+    Allowed TLS hostname for inter peer authentication.
   --peer-auto-tls 'false'
     Peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
   --peer-crl-file ''

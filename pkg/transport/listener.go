@@ -88,9 +88,9 @@ type TLSInfo struct {
 	// AllowedCN is a CN which must be provided by a client.
 	AllowedCN string
 
-	// AllowedName is an IP address or hostname that must match the TLS
+	// AllowedHostname is an IP address or hostname that must match the TLS
 	// certificate provided by a client.
-	AllowedName string
+	AllowedHostname string
 
 	// Logger logs TLS errors.
 	// If nil, all logs are discarded.
@@ -264,20 +264,21 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	// or a more general check of the CN and SANs.
 	var verifyCertificate func(*x509.Certificate) bool
 	if info.AllowedCN != "" {
-		if info.AllowedName != "" {
-			return nil, fmt.Errorf("AllowedCN and AllowedName are mutually exclusive (cn=%q, name=%q)", info.AllowedCN, info.AllowedName)
+		if info.AllowedHostname != "" {
+			return nil, fmt.Errorf("AllowedCN and AllowedHostname are mutually exclusive (cn=%q, hostname=%q)", info.AllowedCN, info.AllowedHostname)
 		}
 		verifyCertificate = func(cert *x509.Certificate) bool {
 			return info.AllowedCN == cert.Subject.CommonName
 		}
 	}
-	if info.AllowedName != "" {
+	if info.AllowedHostname != "" {
 		verifyCertificate = func(cert *x509.Certificate) bool {
-			return cert.VerifyHostname(info.AllowedName) == nil
+			return cert.VerifyHostname(info.AllowedHostname) == nil
 		}
 	}
 	if verifyCertificate != nil {
 		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			fmt.Fprintf(os.Stderr, "== VERIFY PEER CERT (%d verified chains)\n", len(verifiedChains))
 			for _, chains := range verifiedChains {
 				if len(chains) != 0 {
 					if verifyCertificate(chains[0]) {
@@ -285,6 +286,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 					}
 				}
 			}
+			fmt.Fprintf(os.Stderr, "== VERIFY PEER CERT\n")
 			return errors.New("client certificate authentication failed")
 		}
 	}
@@ -362,6 +364,7 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	}
 
 	cs := info.cafiles()
+	fmt.Fprintf(os.Stderr, "== CAFILES: %v\n", cs)
 	if len(cs) > 0 {
 		cp, err := tlsutil.NewCertPool(cs)
 		if err != nil {
