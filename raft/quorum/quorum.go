@@ -19,6 +19,7 @@ import (
 	"strconv"
 )
 
+// Index is a Raft log position.
 type Index uint64
 
 func (i Index) String() string {

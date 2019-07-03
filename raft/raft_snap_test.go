@@ -118,30 +118,38 @@ func TestSnapshotSucceed(t *testing.T) {
 // in the past left the follower in probing status until the next log entry was
 // committed.
 func TestSnapshotSucceedViaAppResp(t *testing.T) {
-	snap := pb.Snapshot{
-		Metadata: pb.SnapshotMetadata{
-			Index:     11, // magic number
-			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
-		},
-	}
-
 	s1 := NewMemoryStorage()
-	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, s1)
-
-	// Become follower because otherwise the way this test sets things up the
-	// leadership term will be 1 (which is stale). We want it to match the snap-
-	// shot term in this test.
-	n1.becomeFollower(snap.Metadata.Term-1, 2)
+	// Create a single-node leader.
+	n1 := newTestRaft(1, []uint64{1}, 10, 1, s1)
 	n1.becomeCandidate()
 	n1.becomeLeader()
+	// We need to add a second empty entry so that we can truncate the first
+	// one away.
+	n1.Step(pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 
-	// Apply a snapshot on the leader. This is a workaround against the fact that
-	// the leader will always append an empty entry, but that empty entry works
-	// against what we're trying to assert in this test, namely that a snapshot
-	// at the latest committed index leaves the follower in probing state.
-	// With the snapshot, the empty entry is fully committed.
-	n1.restore(snap)
+	rd := newReady(n1, &SoftState{}, pb.HardState{})
+	s1.Append(rd.Entries)
+	s1.SetHardState(rd.HardState)
+
+	if exp, ci := s1.lastIndex(), n1.raftLog.committed; ci != exp {
+		t.Fatalf("unexpected committed index %d, wanted %d: %+v", ci, exp, s1)
+	}
+
+	// Force a log truncation.
+	if err := s1.Compact(1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a follower to the group. Do this in a clandestine way for simplicity.
+	// Also set up a snapshot that will be sent to the follower.
+	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode})
+	s1.snapshot = pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			Index:     s1.lastIndex(),
+			Term:      s1.ents[len(s1.ents)-1].Term,
+		},
+	}
 
 	noMessage := pb.MessageType(-1)
 	mustSend := func(from, to *raft, typ pb.MessageType) pb.Message {
@@ -151,6 +159,9 @@ func TestSnapshotSucceedViaAppResp(t *testing.T) {
 				continue
 			}
 			t.Log(DescribeMessage(msg, func([]byte) string { return "" }))
+			if len(msg.Entries) > 0 {
+				t.Log(DescribeEntries(msg.Entries, func(b []byte) string { return string(b) }))
+			}
 			if err := to.Step(msg); err != nil {
 				t.Fatalf("%v: %s", msg, err)
 			}
@@ -169,7 +180,7 @@ func TestSnapshotSucceedViaAppResp(t *testing.T) {
 
 	// Create the follower that will receive the snapshot.
 	s2 := NewMemoryStorage()
-	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, s2)
+	n2 := newTestRaft(2, []uint64{1, 2}, 10, 1, s2)
 
 	// Let the leader probe the follower.
 	if !n1.maybeSendAppend(2, true /* sendIfEmpty */) {
@@ -186,9 +197,9 @@ func TestSnapshotSucceedViaAppResp(t *testing.T) {
 		t.Fatalf("expected a rejection with zero hint, got reject=%t hint=%d", msg.Reject, msg.RejectHint)
 	}
 
-	expIdx := snap.Metadata.Index
-	// Leader sends snapshot due to RejectHint of zero (the storage we use here
-	// has index zero compacted).
+	const expIdx = 2
+	// Leader sends snapshot due to RejectHint of zero (we set up the raft log
+	// to start at index 2).
 	if msg := mustSend(n1, n2, pb.MsgSnap); msg.Snapshot.Metadata.Index != expIdx {
 		t.Fatalf("expected snapshot at index %d, got %d", expIdx, msg.Snapshot.Metadata.Index)
 	}

@@ -208,7 +208,19 @@ func StartNode(c *Config, peers []Peer) Node {
 		if err != nil {
 			panic("unexpected marshal error")
 		}
-		e := pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: r.raftLog.lastIndex() + 1, Data: d}
+		// TODO(tbg): this should append the ConfChange for the own node first
+		// and also call applyConfChange below for that node first. Otherwise
+		// we have a Raft group (for a little while) that doesn't have itself
+		// in its config, which is bad.
+		// This whole way of setting things up is rickety. The app should just
+		// populate the initial ConfState appropriately and then all of this
+		// goes away.
+		e := pb.Entry{
+			Type:  pb.EntryConfChange,
+			Term:  1,
+			Index: r.raftLog.lastIndex() + 1,
+			Data:  d,
+		}
 		r.raftLog.append(e)
 	}
 	// Mark these initial entries as committed.
@@ -225,7 +237,7 @@ func StartNode(c *Config, peers []Peer) Node {
 	// We do not set raftLog.applied so the application will be able
 	// to observe all conf changes via Ready.CommittedEntries.
 	for _, peer := range peers {
-		r.addNode(peer.ID)
+		r.applyConfChange(pb.ConfChange{NodeID: peer.ID, Type: pb.ConfChangeAddNode})
 	}
 
 	n := newNode()
@@ -357,35 +369,16 @@ func (n *node) run(r *raft) {
 				r.Step(m)
 			}
 		case cc := <-n.confc:
-			if cc.NodeID == None {
-				select {
-				case n.confstatec <- pb.ConfState{
-					Nodes:    r.prs.VoterNodes(),
-					Learners: r.prs.LearnerNodes()}:
-				case <-n.done:
-				}
-				break
-			}
-			switch cc.Type {
-			case pb.ConfChangeAddNode:
-				r.addNode(cc.NodeID)
-			case pb.ConfChangeAddLearnerNode:
-				r.addLearner(cc.NodeID)
-			case pb.ConfChangeRemoveNode:
+			cs := r.applyConfChange(cc)
+			if _, ok := r.prs.Progress[r.id]; !ok {
 				// block incoming proposal when local node is
 				// removed
 				if cc.NodeID == r.id {
 					propc = nil
 				}
-				r.removeNode(cc.NodeID)
-			case pb.ConfChangeUpdateNode:
-			default:
-				panic("unexpected conf type")
 			}
 			select {
-			case n.confstatec <- pb.ConfState{
-				Nodes:    r.prs.VoterNodes(),
-				Learners: r.prs.LearnerNodes()}:
+			case n.confstatec <- cs:
 			case <-n.done:
 			}
 		case <-n.tickc:
