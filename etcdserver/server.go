@@ -1210,6 +1210,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// on the backend are finished.
 	// We do not want to wait on closing the old backend.
 	s.bemu.Lock()
+	defer s.bemu.Unlock()
 	oldbe := s.be
 	go func() {
 		if lg != nil {
@@ -1234,7 +1235,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}()
 
 	s.be = newbe
-	s.bemu.Unlock()
 
 	if lg != nil {
 		lg.Info("restoring alarm store")
