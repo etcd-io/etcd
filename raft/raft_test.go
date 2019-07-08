@@ -2777,9 +2777,15 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 }
 
-// TestRestoreInvalidLearner verfies that a normal peer can't become learner again
-// when restores snapshot.
-func TestRestoreInvalidLearner(t *testing.T) {
+// TestRestoreVoterToLearner verifies that a normal peer can be downgraded to a
+// learner through a snapshot. At the time of writing, we don't allow
+// configuration changes to do this directly, but note that the snapshot may
+// compress multiple changes to the configuration into one: the voter could have
+// been removed, then readded as a learner and the snapshot reflects both
+// changes. In that case, a voter receives a snapshot telling it that it is now
+// a learner. In fact, the node has to accept that snapshot, or it is
+// permanently cut off from the Raft log.
+func TestRestoreVoterToLearner(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
@@ -2794,8 +2800,8 @@ func TestRestoreInvalidLearner(t *testing.T) {
 	if sm.isLearner {
 		t.Errorf("%x is learner, want not", sm.id)
 	}
-	if ok := sm.restore(s); ok {
-		t.Error("restore succeed, want fail")
+	if ok := sm.restore(s); !ok {
+		t.Error("restore failed unexpectedly")
 	}
 }
 
