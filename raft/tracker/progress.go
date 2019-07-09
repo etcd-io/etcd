@@ -14,7 +14,10 @@
 
 package tracker
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Progress represents a follower’s progress in the view of the leader. Leader
 // maintains progresses of all followers, and sends entries to the follower
@@ -50,7 +53,7 @@ type Progress struct {
 	// RecentActive can be reset to false after an election timeout.
 	RecentActive bool
 
-	// ProbeSent is used while this follow is in StateProbe. When ProbeSent is
+	// ProbeSent is used while this follower is in StateProbe. When ProbeSent is
 	// true, raft should pause sending replication message to this peer until
 	// ProbeSent is reset. See ProbeAcked() and IsPaused().
 	ProbeSent bool
@@ -210,6 +213,25 @@ func (pr *Progress) IsPaused() bool {
 }
 
 func (pr *Progress) String() string {
-	return fmt.Sprintf("next = %d, match = %d, state = %s, waiting = %v, pendingSnapshot = %d, recentActive = %v, isLearner = %v",
-		pr.Next, pr.Match, pr.State, pr.IsPaused(), pr.PendingSnapshot, pr.RecentActive, pr.IsLearner)
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "%s match=%d next=%d", pr.State, pr.Match, pr.Next)
+	if pr.IsLearner {
+		fmt.Fprint(&buf, " learner")
+	}
+	if pr.IsPaused() {
+		fmt.Fprint(&buf, " paused")
+	}
+	if pr.PendingSnapshot > 0 {
+		fmt.Fprintf(&buf, " pendingSnap=%d", pr.PendingSnapshot)
+	}
+	if !pr.RecentActive {
+		fmt.Fprintf(&buf, " inactive")
+	}
+	if n := pr.Inflights.Count(); n > 0 {
+		fmt.Fprintf(&buf, " inflight=%d", n)
+		if pr.Inflights.Full() {
+			fmt.Fprint(&buf, "[full]")
+		}
+	}
+	return buf.String()
 }
