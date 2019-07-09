@@ -34,3 +34,5 @@ vendor/**/*
 vendor/**/*_test.go
 
 *.bak
+
+.vscode/

@@ -65,7 +65,7 @@ type cache struct {
 	lru *lru.Cache
 
 	// a reverse index for cache invalidation
-	cachedRanges adt.IntervalTree
+	cachedRanges *adt.IntervalTree
 
 	compactedRev int64
 }
