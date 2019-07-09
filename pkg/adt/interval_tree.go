@@ -182,9 +182,9 @@ func NewIntervalTree() *IntervalTree {
 	tree.nilNode = &intervalNode{}
 
 	tree.root = tree.nilNode
-	tree.nilNode.left = tree.root
-	tree.nilNode.right = tree.root
-	tree.nilNode.parent = tree.root
+	//tree.nilNode.left = tree.root
+	//tree.nilNode.right = tree.root
+	//tree.nilNode.parent = tree.root
 	tree.nilNode.c = black
 
 	return tree
@@ -203,8 +203,14 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 		y = z.successor(ivt.nilNode)
 	}
 
-	x := y.left
-	if x == ivt.nilNode {
+	// x := y.left
+	// if x == ivt.nilNode {
+	// 	x = y.right
+	// }
+	x := ivt.nilNode
+	if y.left != ivt.nilNode {
+		x = y.left
+	} else if y.right != ivt.nilNode {
 		x = y.right
 	}
 
@@ -212,9 +218,9 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 
 	if y.parent == ivt.nilNode {
 		ivt.root = x
-		ivt.nilNode.left = ivt.root
-		ivt.nilNode.right = ivt.root
-		ivt.nilNode.parent = ivt.root
+		//ivt.nilNode.left = ivt.root
+		//ivt.nilNode.right = ivt.root
+		//ivt.nilNode.parent = ivt.root
 	} else {
 		if y == y.parent.left {
 			y.parent.left = x
@@ -229,7 +235,7 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 	}
 
 	//if y.color() == black && x != nil {
-	if y.color(ivt.nilNode) == black && !(x == ivt.nilNode && x.parent == ivt.nilNode) {
+	if y.color(ivt.nilNode) == black { //&& !(x == ivt.nilNode && x.parent == ivt.nilNode) {
 		ivt.deleteFixup(x)
 	}
 
@@ -247,9 +253,9 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 				ivt.rotateLeft(x.parent)
 				w = x.parent.right
 			}
-			if w == ivt.nilNode {
-				break
-			}
+			// if w == ivt.nilNode {
+			// 	break
+			// }
 			if w.left.color(ivt.nilNode) == black && w.right.color(ivt.nilNode) == black {
 				w.c = red
 				x = x.parent
@@ -275,9 +281,9 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 				ivt.rotateRight(x.parent)
 				w = x.parent.left
 			}
-			if w == ivt.nilNode {
-				break
-			}
+			// if w == ivt.nilNode {
+			// 	break
+			// }
 			if w.left.color(ivt.nilNode) == black && w.right.color(ivt.nilNode) == black {
 				w.c = red
 				x = x.parent
@@ -297,6 +303,7 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 		}
 	}
 	//if x != nil {
+	//ivt.nilNode.parent = ivt.root
 	x.c = black
 	//}
 }
@@ -305,11 +312,12 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 func (ivt *IntervalTree) Insert(ivl Interval, val interface{}) {
 	y := ivt.nilNode
 	z := &intervalNode{
-		iv:    IntervalValue{ivl, val},
-		max:   ivl.End,
-		c:     red,
-		left:  ivt.nilNode,
-		right: ivt.nilNode,
+		iv:     IntervalValue{ivl, val},
+		max:    ivl.End,
+		c:      red,
+		left:   ivt.nilNode,
+		right:  ivt.nilNode,
+		parent: ivt.nilNode,
 	}
 	x := ivt.root
 	for x != ivt.nilNode {
@@ -324,10 +332,10 @@ func (ivt *IntervalTree) Insert(ivl Interval, val interface{}) {
 	z.parent = y
 	if y == ivt.nilNode {
 		ivt.root = z
-		ivt.root.parent = ivt.nilNode
-		ivt.nilNode.parent = ivt.root
-		ivt.nilNode.left = ivt.root
-		ivt.nilNode.right = ivt.root
+		//ivt.root.parent = ivt.nilNode
+		//ivt.nilNode.parent = ivt.root
+		//ivt.nilNode.left = ivt.root
+		//ivt.nilNode.right = ivt.root
 	} else {
 		if z.iv.Ivl.Begin.Compare(y.iv.Ivl.Begin) < 0 {
 			y.left = z
@@ -385,7 +393,7 @@ func (ivt *IntervalTree) insertFixup(z *intervalNode) {
 func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
 
 	// rotateLeft x must have right child
-	if x == ivt.nilNode || x.right == ivt.nilNode {
+	if x.right == ivt.nilNode {
 		return
 	}
 
@@ -404,7 +412,7 @@ func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
 func (ivt *IntervalTree) rotateRight(x *intervalNode) {
 
 	// rotateRight x must have left child
-	if x == ivt.nilNode || x.left == ivt.nilNode {
+	if x.left == ivt.nilNode {
 		return
 	}
 
@@ -424,9 +432,9 @@ func (ivt *IntervalTree) replaceParent(x *intervalNode, y *intervalNode) {
 	y.parent = x.parent
 	if x.parent == ivt.nilNode {
 		ivt.root = y
-		ivt.nilNode.left = ivt.root
-		ivt.nilNode.right = ivt.root
-		ivt.nilNode.parent = ivt.root
+		//ivt.nilNode.left = ivt.root
+		//ivt.nilNode.right = ivt.root
+		//ivt.nilNode.parent = ivt.root
 	} else {
 		if x == x.parent.left {
 			x.parent.left = y
