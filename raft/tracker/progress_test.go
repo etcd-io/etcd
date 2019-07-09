@@ -18,6 +18,25 @@ import (
 	"testing"
 )
 
+func TestProgressString(t *testing.T) {
+	ins := NewInflights(1)
+	ins.Add(123)
+	pr := &Progress{
+		Match:           1,
+		Next:            2,
+		State:           StateSnapshot,
+		PendingSnapshot: 123,
+		RecentActive:    false,
+		ProbeSent:       true,
+		IsLearner:       true,
+		Inflights:       ins,
+	}
+	const exp = `StateSnapshot match=1 next=2 learner paused pendingSnap=123 inactive inflight=1[full]`
+	if act := pr.String(); act != exp {
+		t.Errorf("exp: %s\nact: %s", exp, act)
+	}
+}
+
 func TestProgressIsPaused(t *testing.T) {
 	tests := []struct {
 		state  StateType
