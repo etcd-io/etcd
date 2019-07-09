@@ -157,6 +157,11 @@ func (p *ProgressTracker) RemoveAny(id uint64) {
 		panic(fmt.Sprintf("peer %x is both voter and learner", id))
 	}
 
+	if okV1 && len(p.Voters[0]) == 1 {
+		// Never remove the last voter.
+		return
+	}
+
 	delete(p.Voters[0], id)
 	delete(p.Voters[1], id)
 	delete(p.Learners, id)

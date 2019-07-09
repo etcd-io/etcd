@@ -1139,10 +1139,16 @@ func TestCommit(t *testing.T) {
 		storage.Append(tt.logs)
 		storage.hardState = pb.HardState{Term: tt.smTerm}
 
-		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
-		sm.prs.RemoveAny(1)
+		var ids []uint64
 		for j := 0; j < len(tt.matches); j++ {
-			sm.prs.InitProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
+			ids = append(ids, uint64(j+1))
+		}
+		sm := newTestRaft(1, ids, 10, 2, storage)
+
+		for j := 0; j < len(tt.matches); j++ {
+			id := uint64(j + 1)
+			sm.prs.Progress[id].Match = tt.matches[j]
+			sm.prs.Progress[id].Next = tt.matches[j] + 1
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -3142,9 +3148,8 @@ func TestRemoveNode(t *testing.T) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
+	// The last remaining node will refuse to remove itself.
 	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode})
-	w = []uint64{}
 	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
@@ -3160,14 +3165,13 @@ func TestRemoveLearner(t *testing.T) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	w = []uint64{}
-	if g := r.prs.LearnerNodes(); !reflect.DeepEqual(g, w) {
+	if w, g := []uint64{}, r.prs.LearnerNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
+	// The remaining voter will refuse to remove itself.
 	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode})
-	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
+	if w, g := []uint64{1}, r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 }
