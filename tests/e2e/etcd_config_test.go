@@ -234,7 +234,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 				"--peer-key-file", privateKeyPath,
 				"--peer-trusted-ca-file", caPath,
 				"--peer-client-cert-auth",
-				"--peer-cert-allowed-hostname", "example.com",
+				"--peer-cert-allowed-hostname", "localhost",
 			}
 		} else {
 			args = []string{
