@@ -440,7 +440,7 @@ func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 }
 
 // find the exact node for a given interval
-func (ivt *IntervalTree) find(ivl Interval) (ret *intervalNode) {
+func (ivt *IntervalTree) find(ivl Interval) *intervalNode {
 
 	x := ivt.root
 
