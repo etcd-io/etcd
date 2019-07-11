@@ -468,15 +468,32 @@ func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 
 // find the exact node for a given interval
 func (ivt *IntervalTree) find(ivl Interval) (ret *intervalNode) {
-	f := func(n *intervalNode) bool {
-		if n.iv.Ivl != ivl {
-			return true
+	// f := func(n *intervalNode) bool {
+	// 	if n.iv.Ivl != ivl {
+	// 		return true
+	// 	}
+	// 	ret = n
+	// 	return false
+	// }
+	// ivt.root.visit(&ivl, ivt.nilNode, f)
+
+	x := ivt.root
+
+	for x != ivt.nilNode {
+		if ivl.Begin.Compare(x.iv.Ivl.Begin) == 0 && ivl.End.Compare(x.iv.Ivl.End) == 0 {
+			break
 		}
-		ret = n
-		return false
+
+		if ivl.End.Compare(x.max) > 0 {
+			x = ivt.nilNode
+		} else if ivl.Begin.Compare(x.iv.Ivl.Begin) < 0 {
+			x = x.left
+		} else {
+			x = x.right
+		}
 	}
-	ivt.root.visit(&ivl, ivt.nilNode, f)
-	return ret
+
+	return x
 }
 
 // Find gets the IntervalValue for the node matching the given interval
