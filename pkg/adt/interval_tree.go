@@ -182,9 +182,6 @@ func NewIntervalTree() *IntervalTree {
 	tree.nilNode = &intervalNode{}
 
 	tree.root = tree.nilNode
-	//tree.nilNode.left = tree.root
-	//tree.nilNode.right = tree.root
-	//tree.nilNode.parent = tree.root
 	tree.nilNode.c = black
 
 	return tree
@@ -203,10 +200,6 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 		y = z.successor(ivt.nilNode)
 	}
 
-	// x := y.left
-	// if x == ivt.nilNode {
-	// 	x = y.right
-	// }
 	x := ivt.nilNode
 	if y.left != ivt.nilNode {
 		x = y.left
@@ -218,9 +211,6 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 
 	if y.parent == ivt.nilNode {
 		ivt.root = x
-		//ivt.nilNode.left = ivt.root
-		//ivt.nilNode.right = ivt.root
-		//ivt.nilNode.parent = ivt.root
 	} else {
 		if y == y.parent.left {
 			y.parent.left = x
@@ -234,8 +224,7 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 		z.updateMax(ivt.nilNode)
 	}
 
-	//if y.color() == black && x != nil {
-	if y.color(ivt.nilNode) == black { //&& !(x == ivt.nilNode && x.parent == ivt.nilNode) {
+	if y.color(ivt.nilNode) == black {
 		ivt.deleteFixup(x)
 	}
 
@@ -253,9 +242,6 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 				ivt.rotateLeft(x.parent)
 				w = x.parent.right
 			}
-			// if w == ivt.nilNode {
-			// 	break
-			// }
 			if w.left.color(ivt.nilNode) == black && w.right.color(ivt.nilNode) == black {
 				w.c = red
 				x = x.parent
@@ -281,9 +267,6 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 				ivt.rotateRight(x.parent)
 				w = x.parent.left
 			}
-			// if w == ivt.nilNode {
-			// 	break
-			// }
 			if w.left.color(ivt.nilNode) == black && w.right.color(ivt.nilNode) == black {
 				w.c = red
 				x = x.parent
@@ -302,10 +285,7 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 			}
 		}
 	}
-	//if x != nil {
-	//ivt.nilNode.parent = ivt.root
 	x.c = black
-	//}
 }
 
 // Insert adds a node with the given interval into the tree.
@@ -332,10 +312,6 @@ func (ivt *IntervalTree) Insert(ivl Interval, val interface{}) {
 	z.parent = y
 	if y == ivt.nilNode {
 		ivt.root = z
-		//ivt.root.parent = ivt.nilNode
-		//ivt.nilNode.parent = ivt.root
-		//ivt.nilNode.left = ivt.root
-		//ivt.nilNode.right = ivt.root
 	} else {
 		if z.iv.Ivl.Begin.Compare(y.iv.Ivl.Begin) < 0 {
 			y.left = z
@@ -432,9 +408,6 @@ func (ivt *IntervalTree) replaceParent(x *intervalNode, y *intervalNode) {
 	y.parent = x.parent
 	if x.parent == ivt.nilNode {
 		ivt.root = y
-		//ivt.nilNode.left = ivt.root
-		//ivt.nilNode.right = ivt.root
-		//ivt.nilNode.parent = ivt.root
 	} else {
 		if x == x.parent.left {
 			x.parent.left = y
@@ -468,29 +441,48 @@ func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 
 // find the exact node for a given interval
 func (ivt *IntervalTree) find(ivl Interval) (ret *intervalNode) {
-	// f := func(n *intervalNode) bool {
-	// 	if n.iv.Ivl != ivl {
-	// 		return true
-	// 	}
-	// 	ret = n
-	// 	return false
-	// }
-	// ivt.root.visit(&ivl, ivt.nilNode, f)
 
 	x := ivt.root
 
+	ok := false
 	for x != ivt.nilNode {
 		if ivl.Begin.Compare(x.iv.Ivl.Begin) == 0 && ivl.End.Compare(x.iv.Ivl.End) == 0 {
+			ok = true
 			break
 		}
 
 		if ivl.End.Compare(x.max) > 0 {
 			x = ivt.nilNode
-		} else if ivl.Begin.Compare(x.iv.Ivl.Begin) < 0 {
-			x = x.left
-		} else {
-			x = x.right
+			break
 		}
+
+		if ivl.Begin.Compare(x.iv.Ivl.Begin) < 0 {
+			x = x.left
+			continue
+		}
+
+		if ivl.Begin.Compare(x.iv.Ivl.Begin) > 0 {
+			x = x.right
+			continue
+		}
+
+		// when ivt.Begin == x.iv.Ivl.Begin need visit all nodes x-subtree
+		break
+	}
+
+	if !ok {
+		ret := ivt.nilNode
+		f := func(n *intervalNode) bool {
+			if n.iv.Ivl != ivl {
+				return true
+			}
+			ret = n
+			return false
+		}
+
+		x.visit(&ivl, ivt.nilNode, f)
+
+		return ret
 	}
 
 	return x
