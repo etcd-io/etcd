@@ -484,7 +484,7 @@ func (w *WAL) sync() error {
 		}
 	}
 	start := time.Now()
-	err := fileutil.Fdatasync(w.tail().File)
+//	err := fileutil.Fdatasync(w.tail().File)
 
 	duration := time.Since(start)
 	if duration > warnSyncDuration {
@@ -492,7 +492,7 @@ func (w *WAL) sync() error {
 	}
 	syncDurations.Observe(duration.Seconds())
 
-	return err
+	return nil
 }
 
 // ReleaseLockTo releases the locks, which has smaller index than the given index

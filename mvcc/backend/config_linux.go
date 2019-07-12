@@ -29,6 +29,7 @@ import (
 var boltOpenOptions = &bolt.Options{
 	MmapFlags:      syscall.MAP_POPULATE,
 	NoFreelistSync: true,
+	NoSync: true,
 }
 
 func (bcfg *BackendConfig) mmapSize() int { return int(bcfg.MmapSize) }
