@@ -76,7 +76,7 @@ type Client struct {
 	conn *grpc.ClientConn
 
 	cfg           Config
-	creds         *credentials.TransportCredentials
+	creds         credentials.TransportCredentials
 	resolverGroup *endpoint.ResolverGroup
 	mu            *sync.RWMutex
 
@@ -210,7 +210,7 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	}, nil
 }
 
-func (c *Client) processCreds(scheme string) (creds *credentials.TransportCredentials) {
+func (c *Client) processCreds(scheme string) (creds credentials.TransportCredentials) {
 	creds = c.creds
 	switch scheme {
 	case "unix":
@@ -220,9 +220,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 		if creds != nil {
 			break
 		}
-		tlsconfig := &tls.Config{}
-		emptyCreds := credentials.NewTLS(tlsconfig)
-		creds = &emptyCreds
+		creds = credentials.NewTLS(&tls.Config{})
 	default:
 		creds = nil
 	}
@@ -230,7 +228,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds credentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:                c.cfg.DialKeepAliveTime,
@@ -255,7 +253,7 @@ func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ..
 	opts = append(opts, grpc.WithDialer(f))
 
 	if creds != nil {
-		opts = append(opts, grpc.WithTransportCredentials(*creds))
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
@@ -338,7 +336,7 @@ func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.Cl
 }
 
 // dial configures and dials any grpc balancer target.
-func (c *Client) dial(target string, creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (c *Client) dial(target string, creds credentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts, err := c.dialSetupOpts(creds, dopts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure dialer: %v", err)
@@ -385,26 +383,25 @@ func (c *Client) dial(target string, creds *credentials.TransportCredentials, do
 	return conn, nil
 }
 
-func (c *Client) directDialCreds(ep string) *credentials.TransportCredentials {
+func (c *Client) directDialCreds(ep string) credentials.TransportCredentials {
 	_, hostPort, scheme := endpoint.ParseEndpoint(ep)
 	creds := c.creds
 	if len(scheme) != 0 {
 		creds = c.processCreds(scheme)
 		if creds != nil {
-			c := *creds
-			clone := c.Clone()
+			clone := creds.Clone()
 			// Set the server name must to the endpoint hostname without port since grpc
 			// otherwise attempts to check if x509 cert is valid for the full endpoint
 			// including the scheme and port, which fails.
 			host, _ := endpoint.ParseHostPort(hostPort)
 			clone.OverrideServerName(host)
-			creds = &clone
+			creds = clone
 		}
 	}
 	return creds
 }
 
-func (c *Client) dialWithBalancerCreds(ep string) *credentials.TransportCredentials {
+func (c *Client) dialWithBalancerCreds(ep string) credentials.TransportCredentials {
 	_, _, scheme := endpoint.ParseEndpoint(ep)
 	creds := c.creds
 	if len(scheme) != 0 {
@@ -424,10 +421,9 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	var creds *credentials.TransportCredentials
+	var creds credentials.TransportCredentials
 	if cfg.TLS != nil {
-		c := credentials.NewTLS(cfg.TLS)
-		creds = &c
+		creds = credentials.NewTLS(cfg.TLS)
 	}
 
 	// use a temporary skeleton client to bootstrap first connection
