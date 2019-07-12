@@ -452,6 +452,7 @@ func (ivt *IntervalTree) find(ivl Interval) *intervalNode {
 		}
 
 		if ivl.End.Compare(x.max) > 0 {
+			ok = true
 			x = ivt.nilNode
 			break
 		}

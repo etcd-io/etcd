@@ -294,6 +294,7 @@ func TestIntervalTreeContains(t *testing.T) {
 	}
 }
 
+// TestIntervalTreeDeleteFixUp tests that delete some interval the tree is red-black tree
 func TestIntervalTreeDeleteFixUp(t *testing.T) {
 	ivt := NewIntervalTree()
 	ivt.Insert(NewInt64Interval(510, 511), 123)
@@ -321,42 +322,42 @@ func TestIntervalTreeDeleteFixUp(t *testing.T) {
 	rawTreeLevels := make([][]*intervalNodeValue, ivt.Height())
 
 	rawTreeLevels[0] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(510, 511), 123}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(510, 511), 123}}, black},
 	}
 
 	rawTreeLevels[1] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(82, 83), 456}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(830, 831), 789}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(82, 83), 456}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(830, 831), 789}}, black},
 	}
 
 	rawTreeLevels[2] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(11, 12), 999}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(383, 384), 1}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(647, 648), 2}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(899, 900), 3}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(11, 12), 999}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(383, 384), 1}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(647, 648), 2}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(899, 900), 3}}, red},
 	}
 
 	rawTreeLevels[3] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(261, 262), 4}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(410, 411), 5}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(514, 515), 6}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(815, 816), 7}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(888, 889), 8}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(972, 973), 9}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(261, 262), 4}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(410, 411), 5}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(514, 515), 6}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(815, 816), 7}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(888, 889), 8}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(972, 973), 9}}, black},
 	}
 
 	rawTreeLevels[4] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(238, 239), 10}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(292, 293), 11}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(238, 239), 10}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(292, 293), 11}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
 	}
 
 	/*
-		{Ivl:{Begin:510 End:511} Val:123}
-		{Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
-		{Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-		{Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:514 End:515} Val:6}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-		{Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
+	   {Ivl:{Begin:510 End:511} Val:123}
+	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
+	   {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:514 End:515} Val:6}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
 	*/
 
 	levels := ivt.LevelOrder()
@@ -376,56 +377,56 @@ func TestIntervalTreeDeleteFixUp(t *testing.T) {
 	ivt.Delete(NewInt64Interval(514, 515))
 
 	/*
-		After Delete (514, 515) node:
+	   After Delete (514, 515) node:
 
-		{Ivl:{Begin:510 End:511} Val:123}
-		{Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
-		{Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-		{Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-		{Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
+	   {Ivl:{Begin:510 End:511} Val:123}
+	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
+	   {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
 	*/
 
 	ivt.Delete(NewInt64Interval(11, 12))
 
 	/*
-		After Delete (11, 12) node:
+	   After Delete (11, 12) node:
 
-		{Ivl:{Begin:510 End:511} Val:123}
-		{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:830 End:831} Val:789}
-		{Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-		{Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-		{Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:953 End:954} Val:12}
+	   {Ivl:{Begin:510 End:511} Val:123}
+	   {Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:830 End:831} Val:789}
+	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:953 End:954} Val:12}
 	*/
 
 	delTreeLevels := make([][]*intervalNodeValue, ivt.Height())
 
 	delTreeLevels[0] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(510, 511), 123}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(510, 511), 123}}, black},
 	}
 
 	delTreeLevels[1] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(383, 384), 1}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(830, 831), 789}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(383, 384), 1}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(830, 831), 789}}, black},
 	}
 
 	delTreeLevels[2] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(261, 262), 4}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(410, 411), 5}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(647, 648), 2}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(899, 900), 3}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(261, 262), 4}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(410, 411), 5}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(647, 648), 2}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(899, 900), 3}}, red},
 	}
 
 	delTreeLevels[3] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(82, 83), 456}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(292, 293), 11}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(815, 816), 7}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(888, 889), 8}}, black},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(972, 973), 9}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(82, 83), 456}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(292, 293), 11}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(815, 816), 7}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(888, 889), 8}}, black},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(972, 973), 9}}, black},
 	}
 
 	delTreeLevels[4] = []*intervalNodeValue{
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(238, 239), 10}}, red},
-		&intervalNodeValue{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(238, 239), 10}}, red},
+		{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
 	}
 
 	levels = ivt.LevelOrder()
