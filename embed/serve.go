@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strings"
 
+	"go.etcd.io/etcd/clientv3/credentials"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/v3client"
 	"go.etcd.io/etcd/etcdserver/api/v3election"
@@ -43,7 +44,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 type serveCtx struct {
@@ -163,8 +163,8 @@ func (sctx *serveCtx) serve(
 			dtls := tlscfg.Clone()
 			// trust local server
 			dtls.InsecureSkipVerify = true
-			creds := credentials.NewTLS(dtls)
-			opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+			bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
+			opts := []grpc.DialOption{grpc.WithTransportCredentials(bundle.TransportCredentials())}
 			gwmux, err = sctx.registerGateway(opts)
 			if err != nil {
 				return err
