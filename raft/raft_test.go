@@ -4310,3 +4310,12 @@ func newTestLearnerRaft(id uint64, peers []uint64, learners []uint64, election, 
 	cfg.learners = learners
 	return newRaft(cfg)
 }
+
+func newTestRawNode(id uint64, peers []uint64, election, heartbeat int, storage Storage) *RawNode {
+	cfg := newTestConfig(id, peers, election, heartbeat, storage)
+	rn, err := NewRawNode(cfg, nil)
+	if err != nil {
+		panic(err)
+	}
+	return rn
+}
