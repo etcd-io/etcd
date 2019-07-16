@@ -17,6 +17,7 @@ package tracker
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"go.etcd.io/etcd/raft/quorum"
 )
@@ -33,12 +34,11 @@ type Config struct {
 	// simplifies the implementation since it allows peers to have clarity about
 	// its current role without taking into account joint consensus.
 	Learners map[uint64]struct{}
-	// TODO(tbg): when we actually carry out joint consensus changes and turn a
-	// voter into a learner, we cannot add the learner when entering the joint
-	// state. This is because this would violate the invariant that the inter-
-	// section of voters and learners is empty. For example, assume a Voter is
-	// removed and immediately re-added as a learner (or in other words, it is
-	// demoted).
+	// When we turn a voter into a learner during a joint consensus transition,
+	// we cannot add the learner directly when entering the joint state. This is
+	// because this would violate the invariant that the intersection of
+	// voters and learners is empty. For example, assume a Voter is removed and
+	// immediately re-added as a learner (or in other words, it is demoted):
 	//
 	// Initially, the configuration will be
 	//
@@ -51,7 +51,7 @@ type Config struct {
 	//   learners: {3}
 	//
 	// but this violates the invariant (3 is both voter and learner). Instead,
-	// we have
+	// we get
 	//
 	//   voters:   {1 2} & {1 2 3}
 	//   learners: {}
@@ -66,20 +66,40 @@ type Config struct {
 	//
 	// Note that next_learners is not used while adding a learner that is not
 	// also a voter in the joint config. In this case, the learner is added
-	// to Learners right away when entering the joint configuration, so that it
-	// is caught up as soon as possible.
-	//
-	// NextLearners        map[uint64]struct{}
+	// right away when entering the joint configuration, so that it is caught up
+	// as soon as possible.
+	LearnersNext map[uint64]struct{}
 }
 
-func (c *Config) String() string {
-	if len(c.Learners) == 0 {
-		return fmt.Sprintf("voters=%s", c.Voters)
+func (c Config) String() string {
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "voters=%s", c.Voters)
+	if c.Learners != nil {
+		fmt.Fprintf(&buf, " learners=%s", quorum.MajorityConfig(c.Learners).String())
 	}
-	return fmt.Sprintf(
-		"voters=%s learners=%s",
-		c.Voters, quorum.MajorityConfig(c.Learners).String(),
-	)
+	if c.LearnersNext != nil {
+		fmt.Fprintf(&buf, " learners_next=%s", quorum.MajorityConfig(c.LearnersNext).String())
+	}
+	return buf.String()
+}
+
+// Clone returns a copy of the Config that shares no memory with the original.
+func (c *Config) Clone() Config {
+	clone := func(m map[uint64]struct{}) map[uint64]struct{} {
+		if m == nil {
+			return nil
+		}
+		mm := make(map[uint64]struct{}, len(m))
+		for k := range m {
+			mm[k] = struct{}{}
+		}
+		return mm
+	}
+	return Config{
+		Voters:       quorum.JointConfig{clone(c.Voters[0]), clone(c.Voters[1])},
+		Learners:     clone(c.Learners),
+		LearnersNext: clone(c.LearnersNext),
+	}
 }
 
 // ProgressTracker tracks the currently active configuration and the information
@@ -88,7 +108,7 @@ func (c *Config) String() string {
 type ProgressTracker struct {
 	Config
 
-	Progress map[uint64]*Progress
+	Progress ProgressMap
 
 	Votes map[uint64]bool
 
@@ -102,11 +122,10 @@ func MakeProgressTracker(maxInflight int) ProgressTracker {
 		Config: Config{
 			Voters: quorum.JointConfig{
 				quorum.MajorityConfig{},
-				// TODO(tbg): this will be mostly empty, so make it a nil pointer
-				// in the common case.
-				quorum.MajorityConfig{},
+				nil, // only populated when used
 			},
-			Learners: map[uint64]struct{}{},
+			Learners:     nil, // only populated when used
+			LearnersNext: nil, // only populated when used
 		},
 		Votes:    map[uint64]bool{},
 		Progress: map[uint64]*Progress{},
@@ -137,44 +156,6 @@ func (l matchAckIndexer) AckedIndex(id uint64) (quorum.Index, bool) {
 // the voting members of the group have acknowledged.
 func (p *ProgressTracker) Committed() uint64 {
 	return uint64(p.Voters.CommittedIndex(matchAckIndexer(p.Progress)))
-}
-
-// RemoveAny removes this peer, which *must* be tracked as a voter or learner,
-// from the tracker.
-func (p *ProgressTracker) RemoveAny(id uint64) {
-	_, okPR := p.Progress[id]
-	_, okV1 := p.Voters[0][id]
-	_, okV2 := p.Voters[1][id]
-	_, okL := p.Learners[id]
-
-	okV := okV1 || okV2
-
-	if !okPR {
-		panic("attempting to remove unknown peer %x")
-	} else if !okV && !okL {
-		panic("attempting to remove unknown peer %x")
-	} else if okV && okL {
-		panic(fmt.Sprintf("peer %x is both voter and learner", id))
-	}
-
-	delete(p.Voters[0], id)
-	delete(p.Voters[1], id)
-	delete(p.Learners, id)
-	delete(p.Progress, id)
-}
-
-// InitProgress initializes a new progress for the given node or learner. The
-// node may not exist yet in either form or a panic will ensue.
-func (p *ProgressTracker) InitProgress(id, match, next uint64, isLearner bool) {
-	if pr := p.Progress[id]; pr != nil {
-		panic(fmt.Sprintf("peer %x already tracked as node %v", id, pr))
-	}
-	if !isLearner {
-		p.Voters[0][id] = struct{}{}
-	} else {
-		p.Learners[id] = struct{}{}
-	}
-	p.Progress[id] = &Progress{Next: next, Match: match, Inflights: NewInflights(p.MaxInflight), IsLearner: isLearner}
 }
 
 // Visit invokes the supplied closure for all tracked progresses.
