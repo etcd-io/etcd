@@ -491,7 +491,6 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 			}
 		}()
 	}
-	wg.Wait()
 
 	// maps watcher to current expected revision
 	progress := make(map[int64]int64)
@@ -544,6 +543,8 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	if rok, nr := waitResponse(wStream, time.Second); !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
+
+	wg.Wait()
 }
 
 // TestV3WatchEmptyKey ensures synced watchers see empty key PUTs as PUT events
