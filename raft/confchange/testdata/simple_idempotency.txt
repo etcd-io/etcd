@@ -1,0 +1,69 @@
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=1
+
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=1
+
+simple
+v2
+----
+voters=(1 2)
+1: StateProbe match=0 next=1
+2: StateProbe match=0 next=3
+
+simple
+l1
+----
+voters=(2) learners=(1)
+1: StateProbe match=0 next=1 learner
+2: StateProbe match=0 next=3
+
+simple
+l1
+----
+voters=(2) learners=(1)
+1: StateProbe match=0 next=1 learner
+2: StateProbe match=0 next=3
+
+simple
+r1
+----
+voters=(2)
+2: StateProbe match=0 next=3
+
+simple
+r1
+----
+voters=(2)
+2: StateProbe match=0 next=3
+
+simple
+v3
+----
+voters=(2 3)
+2: StateProbe match=0 next=3
+3: StateProbe match=0 next=8
+
+simple
+r3
+----
+voters=(2)
+2: StateProbe match=0 next=3
+
+simple
+r3
+----
+voters=(2)
+2: StateProbe match=0 next=3
+
+simple
+r4
+----
+voters=(2)
+2: StateProbe match=0 next=3

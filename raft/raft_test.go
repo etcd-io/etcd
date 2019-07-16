@@ -1140,9 +1140,13 @@ func TestCommit(t *testing.T) {
 		storage.hardState = pb.HardState{Term: tt.smTerm}
 
 		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
-		sm.prs.RemoveAny(1)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.prs.InitProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
+			id := uint64(j) + 1
+			if id > 1 {
+				sm.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: id})
+			}
+			pr := sm.prs.Progress[id]
+			pr.Match, pr.Next = tt.matches[j], tt.matches[j]+1
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -1927,7 +1931,7 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	nt := newNetwork(a, b)
 	setRandomizedElectionTimeout(b, b.electionTimeout+1)
 	// Need to remove 2 again to make it a non-promotable node since newNetwork overwritten some internal states
-	b.prs.RemoveAny(2)
+	b.applyConfChange(pb.ConfChange{Type: pb.ConfChangeRemoveNode, NodeID: 2})
 
 	if b.promotable() {
 		t.Fatalf("promotable = %v, want false", b.promotable())
@@ -3093,14 +3097,42 @@ func TestAddNode(t *testing.T) {
 // TestAddLearner tests that addLearner could update nodes correctly.
 func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	// Add new learner peer.
 	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddLearnerNode})
+	if r.isLearner {
+		t.Fatal("expected 1 to be voter")
+	}
 	nodes := r.prs.LearnerNodes()
 	wnodes := []uint64{2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
 	}
 	if !r.prs.Progress[2].IsLearner {
-		t.Errorf("node 2 is learner %t, want %t", r.prs.Progress[2].IsLearner, true)
+		t.Fatal("expected 2 to be learner")
+	}
+
+	// Promote peer to voter.
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode})
+	if r.prs.Progress[2].IsLearner {
+		t.Fatal("expected 2 to be voter")
+	}
+
+	// Demote r.
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeAddLearnerNode})
+	if !r.prs.Progress[1].IsLearner {
+		t.Fatal("expected 1 to be learner")
+	}
+	if !r.isLearner {
+		t.Fatal("expected 1 to be learner")
+	}
+
+	// Promote r again.
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeAddNode})
+	if r.prs.Progress[1].IsLearner {
+		t.Fatal("expected 1 to be voter")
+	}
+	if r.isLearner {
+		t.Fatal("expected 1 to be voter")
 	}
 }
 
@@ -3148,12 +3180,13 @@ func TestRemoveNode(t *testing.T) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
+	// Removing the remaining voter will panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("did not panic")
+		}
+	}()
 	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode})
-	w = []uint64{}
-	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
-		t.Errorf("nodes = %v, want %v", g, w)
-	}
 }
 
 // TestRemoveLearner tests that removeNode could update nodes and
@@ -3171,12 +3204,15 @@ func TestRemoveLearner(t *testing.T) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
+	// Removing the remaining voter will panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("did not panic")
+		}
+	}()
 	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode})
-	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
-		t.Errorf("nodes = %v, want %v", g, w)
-	}
 }
+
 func TestPromotable(t *testing.T) {
 	id := uint64(1)
 	tests := []struct {
@@ -4124,12 +4160,16 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
+			// TODO(tbg): this is all pretty confused. Clean this up.
 			learners := make(map[uint64]bool, len(v.prs.Learners))
 			for i := range v.prs.Learners {
 				learners[i] = true
 			}
 			v.id = id
 			v.prs = tracker.MakeProgressTracker(v.prs.MaxInflight)
+			if len(learners) > 0 {
+				v.prs.Learners = map[uint64]struct{}{}
+			}
 			for i := 0; i < size; i++ {
 				pr := &tracker.Progress{}
 				if _, ok := learners[peerAddrs[i]]; ok {
