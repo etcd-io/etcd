@@ -479,8 +479,11 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	// last mod_revision that will be observed
 	nrRevisions := 32
 	// first revision already allocated as empty revision
+	var wg sync.WaitGroup
 	for i := 1; i < nrRevisions; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			kvc := toGRPC(clus.RandClient()).KV
 			req := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 			if _, err := kvc.Put(context.TODO(), req); err != nil {
@@ -488,6 +491,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 			}
 		}()
 	}
+	wg.Wait()
 
 	// maps watcher to current expected revision
 	progress := make(map[int64]int64)
