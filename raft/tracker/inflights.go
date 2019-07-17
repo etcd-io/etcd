@@ -40,6 +40,14 @@ func NewInflights(size int) *Inflights {
 	}
 }
 
+// Clone returns an *Inflights that is identical to but shares no memory with
+// the receiver.
+func (in *Inflights) Clone() *Inflights {
+	ins := *in
+	ins.buffer = append([]uint64(nil), in.buffer...)
+	return &ins
+}
+
 // Add notifies the Inflights that a new message with the given index is being
 // dispatched. Full() must be called prior to Add() to verify that there is room
 // for one more message, and consecutive calls to add Add() must provide a

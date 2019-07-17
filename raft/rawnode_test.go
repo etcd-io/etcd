@@ -439,14 +439,26 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 // no dependency check between Ready() and Advance()
 
 func TestRawNodeStatus(t *testing.T) {
-	storage := NewMemoryStorage()
-	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
+	s := NewMemoryStorage()
+	rn, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	status := rawNode.Status()
-	if status == nil {
-		t.Errorf("expected status struct, got nil")
+	if status := rn.Status(); status.Progress != nil {
+		t.Fatalf("expected no Progress because not leader: %+v", status.Progress)
+	}
+	if err := rn.Campaign(); err != nil {
+		t.Fatal(err)
+	}
+	status := rn.Status()
+	if status.Lead != 1 {
+		t.Fatal("not lead")
+	}
+	if status.RaftState != StateLeader {
+		t.Fatal("not leader")
+	}
+	if exp, act := *rn.raft.prs.Progress[1], status.Progress[1]; !reflect.DeepEqual(exp, act) {
+		t.Fatalf("want: %+v\ngot:  %+v", exp, act)
 	}
 }
 
