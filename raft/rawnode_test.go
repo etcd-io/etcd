@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"go.etcd.io/etcd/raft/quorum"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/raft/tracker"
 )
@@ -459,6 +460,13 @@ func TestRawNodeStatus(t *testing.T) {
 	}
 	if exp, act := *rn.raft.prs.Progress[1], status.Progress[1]; !reflect.DeepEqual(exp, act) {
 		t.Fatalf("want: %+v\ngot:  %+v", exp, act)
+	}
+	expCfg := tracker.Config{Voters: quorum.JointConfig{
+		quorum.MajorityConfig{1: {}},
+		nil,
+	}}
+	if !reflect.DeepEqual(expCfg, status.Config) {
+		t.Fatalf("want: %+v\ngot:  %+v", expCfg, status.Config)
 	}
 }
 

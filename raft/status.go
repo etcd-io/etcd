@@ -28,6 +28,7 @@ type Status struct {
 	SoftState
 
 	Applied  uint64
+	Config   tracker.Config
 	Progress map[uint64]tracker.Progress
 
 	LeadTransferee uint64
@@ -54,6 +55,7 @@ func getStatusWithoutProgress(r *raft) Status {
 	s.HardState = r.hardState()
 	s.SoftState = *r.softState()
 	s.Applied = r.raftLog.applied
+	s.Config = r.prs.Config.Clone()
 	return s
 }
 
