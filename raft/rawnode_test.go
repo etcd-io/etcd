@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"go.etcd.io/etcd/raft/quorum"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/raft/tracker"
 )
@@ -43,7 +44,7 @@ func (a *rawNodeAdapter) TransferLeadership(ctx context.Context, lead, transfere
 func (a *rawNodeAdapter) Stop() {}
 
 // RawNode returns a *Status.
-func (a *rawNodeAdapter) Status() Status { return *a.RawNode.Status() }
+func (a *rawNodeAdapter) Status() Status { return a.RawNode.Status() }
 
 // RawNode takes a Ready. It doesn't really have to do that I think? It can hold on
 // to it internally. But maybe that approach is frail.
@@ -439,14 +440,33 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 // no dependency check between Ready() and Advance()
 
 func TestRawNodeStatus(t *testing.T) {
-	storage := NewMemoryStorage()
-	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
+	s := NewMemoryStorage()
+	rn, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	status := rawNode.Status()
-	if status == nil {
-		t.Errorf("expected status struct, got nil")
+	if status := rn.Status(); status.Progress != nil {
+		t.Fatalf("expected no Progress because not leader: %+v", status.Progress)
+	}
+	if err := rn.Campaign(); err != nil {
+		t.Fatal(err)
+	}
+	status := rn.Status()
+	if status.Lead != 1 {
+		t.Fatal("not lead")
+	}
+	if status.RaftState != StateLeader {
+		t.Fatal("not leader")
+	}
+	if exp, act := *rn.raft.prs.Progress[1], status.Progress[1]; !reflect.DeepEqual(exp, act) {
+		t.Fatalf("want: %+v\ngot:  %+v", exp, act)
+	}
+	expCfg := tracker.Config{Voters: quorum.JointConfig{
+		quorum.MajorityConfig{1: {}},
+		nil,
+	}}
+	if !reflect.DeepEqual(expCfg, status.Config) {
+		t.Fatalf("want: %+v\ngot:  %+v", expCfg, status.Config)
 	}
 }
 
@@ -590,7 +610,7 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	checkUncommitted(0)
 }
 
-func BenchmarkStatusProgress(b *testing.B) {
+func BenchmarkStatus(b *testing.B) {
 	setup := func(members int) *RawNode {
 		peers := make([]uint64, members)
 		for i := range peers {
@@ -607,8 +627,6 @@ func BenchmarkStatusProgress(b *testing.B) {
 
 	for _, members := range []int{1, 3, 5, 100} {
 		b.Run(fmt.Sprintf("members=%d", members), func(b *testing.B) {
-			// NB: call getStatus through rn.Status because that incurs an additional
-			// allocation.
 			rn := setup(members)
 
 			b.Run("Status", func(b *testing.B) {
@@ -630,10 +648,10 @@ func BenchmarkStatusProgress(b *testing.B) {
 				}
 			})
 
-			b.Run("StatusWithoutProgress", func(b *testing.B) {
+			b.Run("BasicStatus", func(b *testing.B) {
 				b.ReportAllocs()
 				for i := 0; i < b.N; i++ {
-					_ = rn.StatusWithoutProgress()
+					_ = rn.BasicStatus()
 				}
 			})
 
