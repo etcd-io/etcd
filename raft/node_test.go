@@ -910,7 +910,7 @@ func TestCommitPagination(t *testing.T) {
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
 	cfg.MaxCommittedSizePerReady = 2048
-	rn, err := NewRawNode(cfg, nil)
+	rn, err := NewRawNode(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1002,7 +1002,7 @@ func TestNodeCommitPaginationAfterRestart(t *testing.T) {
 	// this and *will* return it (which is how the Commit index ended up being 10 initially).
 	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
 
-	rn, err := NewRawNode(cfg, nil)
+	rn, err := NewRawNode(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1032,7 +1032,7 @@ func TestNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
 	cfg.MaxUncommittedEntriesSize = maxEntrySize
-	rn, err := NewRawNode(cfg, nil)
+	rn, err := NewRawNode(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
