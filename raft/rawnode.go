@@ -218,18 +218,17 @@ func (rn *RawNode) Advance(rd Ready) {
 	rn.commitReady(rd)
 }
 
-// Status returns the current status of the given group.
-func (rn *RawNode) Status() *Status {
+// Status returns the current status of the given group. This allocates, see
+// BasicStatus and WithProgress for allocation-friendlier choices.
+func (rn *RawNode) Status() Status {
 	status := getStatus(rn.raft)
-	return &status
+	return status
 }
 
-// StatusWithoutProgress returns a Status without populating the Progress field
-// (and returns the Status as a value to avoid forcing it onto the heap). This
-// is more performant if the Progress is not required. See WithProgress for an
-// allocation-free way to introspect the Progress.
-func (rn *RawNode) StatusWithoutProgress() Status {
-	return getStatusWithoutProgress(rn.raft)
+// BasicStatus returns a BasicStatus. Notably this does not contain the
+// Progress map; see WithProgress for an allocation-free way to inspect it.
+func (rn *RawNode) BasicStatus() BasicStatus {
+	return getBasicStatus(rn.raft)
 }
 
 // ProgressType indicates the type of replica a Progress corresponds to.

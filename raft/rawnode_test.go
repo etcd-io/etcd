@@ -44,7 +44,7 @@ func (a *rawNodeAdapter) TransferLeadership(ctx context.Context, lead, transfere
 func (a *rawNodeAdapter) Stop() {}
 
 // RawNode returns a *Status.
-func (a *rawNodeAdapter) Status() Status { return *a.RawNode.Status() }
+func (a *rawNodeAdapter) Status() Status { return a.RawNode.Status() }
 
 // RawNode takes a Ready. It doesn't really have to do that I think? It can hold on
 // to it internally. But maybe that approach is frail.
@@ -610,7 +610,7 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	checkUncommitted(0)
 }
 
-func BenchmarkStatusProgress(b *testing.B) {
+func BenchmarkStatus(b *testing.B) {
 	setup := func(members int) *RawNode {
 		peers := make([]uint64, members)
 		for i := range peers {
@@ -627,8 +627,6 @@ func BenchmarkStatusProgress(b *testing.B) {
 
 	for _, members := range []int{1, 3, 5, 100} {
 		b.Run(fmt.Sprintf("members=%d", members), func(b *testing.B) {
-			// NB: call getStatus through rn.Status because that incurs an additional
-			// allocation.
 			rn := setup(members)
 
 			b.Run("Status", func(b *testing.B) {
@@ -650,10 +648,10 @@ func BenchmarkStatusProgress(b *testing.B) {
 				}
 			})
 
-			b.Run("StatusWithoutProgress", func(b *testing.B) {
+			b.Run("BasicStatus", func(b *testing.B) {
 				b.ReportAllocs()
 				for i := 0; i < b.N; i++ {
-					_ = rn.StatusWithoutProgress()
+					_ = rn.BasicStatus()
 				}
 			})
 
