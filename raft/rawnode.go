@@ -38,6 +38,12 @@ type RawNode struct {
 }
 
 // NewRawNode instantiates a RawNode from the given configuration.
+//
+// See Bootstrap() for bootstrapping an initial state; this replaces the former
+// 'peers' argument to this method (with identical behavior). However, It is
+// recommended that instead of calling Bootstrap, applications bootstrap their
+// state manually by setting up a Storage that has a first index > 1 and which
+// stores the desired ConfState as its InitialState.
 func NewRawNode(config *Config) (*RawNode, error) {
 	if config.ID == 0 {
 		panic("config.ID must not be zero")
