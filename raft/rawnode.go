@@ -37,40 +37,14 @@ type RawNode struct {
 	prevHardSt pb.HardState
 }
 
-func (rn *RawNode) newReady() Ready {
-	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
-}
-
-func (rn *RawNode) commitReady(rd Ready) {
-	if rd.SoftState != nil {
-		rn.prevSoftSt = rd.SoftState
-	}
-	if !IsEmptyHardState(rd.HardState) {
-		rn.prevHardSt = rd.HardState
-	}
-
-	// If entries were applied (or a snapshot), update our cursor for
-	// the next Ready. Note that if the current HardState contains a
-	// new Commit index, this does not mean that we're also applying
-	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		rn.raft.raftLog.appliedTo(index)
-	}
-
-	if len(rd.Entries) > 0 {
-		e := rd.Entries[len(rd.Entries)-1]
-		rn.raft.raftLog.stableTo(e.Index, e.Term)
-	}
-	if !IsEmptySnap(rd.Snapshot) {
-		rn.raft.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
-	}
-	if len(rd.ReadStates) != 0 {
-		rn.raft.readStates = nil
-	}
-}
-
-// NewRawNode returns a new RawNode given configuration and a list of raft peers.
-func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
+// NewRawNode instantiates a RawNode from the given configuration.
+//
+// See Bootstrap() for bootstrapping an initial state; this replaces the former
+// 'peers' argument to this method (with identical behavior). However, It is
+// recommended that instead of calling Bootstrap, applications bootstrap their
+// state manually by setting up a Storage that has a first index > 1 and which
+// stores the desired ConfState as its InitialState.
+func NewRawNode(config *Config) (*RawNode, error) {
 	if config.ID == 0 {
 		panic("config.ID must not be zero")
 	}
@@ -78,41 +52,8 @@ func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
 	rn := &RawNode{
 		raft: r,
 	}
-	lastIndex, err := config.Storage.LastIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	// If the log is empty, this is a new RawNode (like StartNode); otherwise it's
-	// restoring an existing RawNode (like RestartNode).
-	// TODO(bdarnell): rethink RawNode initialization and whether the application needs
-	// to be able to tell us when it expects the RawNode to exist.
-	if lastIndex == 0 {
-		r.becomeFollower(1, None)
-		ents := make([]pb.Entry, len(peers))
-		for i, peer := range peers {
-			cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
-			data, err := cc.Marshal()
-			if err != nil {
-				panic("unexpected marshal error")
-			}
-
-			ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
-		}
-		r.raftLog.append(ents...)
-		r.raftLog.committed = uint64(len(ents))
-		for _, peer := range peers {
-			r.applyConfChange(pb.ConfChange{NodeID: peer.ID, Type: pb.ConfChangeAddNode})
-		}
-	}
-
-	// Set the initial hard and soft states after performing all initialization.
 	rn.prevSoftSt = r.softState()
-	if lastIndex == 0 {
-		rn.prevHardSt = emptyState
-	} else {
-		rn.prevHardSt = r.hardState()
-	}
-
+	rn.prevHardSt = r.hardState()
 	return rn, nil
 }
 
@@ -182,12 +123,59 @@ func (rn *RawNode) Step(m pb.Message) error {
 	return ErrStepPeerNotFound
 }
 
-// Ready returns the current point-in-time state of this RawNode.
+// Ready returns the outstanding work that the application needs to handle. This
+// includes appending and applying entries or a snapshot, updating the HardState,
+// and sending messages. Ready() is a read-only operation, that is, it does not
+// require the caller to actually handle the result. Typically, a caller will
+// want to handle the Ready and must pass the Ready to Advance *after* having
+// done so. While a Ready is being handled, the RawNode must not be used for
+// operations that may alter its state. For example, it is illegal to call
+// Ready, followed by Step, followed by Advance.
 func (rn *RawNode) Ready() Ready {
 	rd := rn.newReady()
-	rn.raft.msgs = nil
-	rn.raft.reduceUncommittedSize(rd.CommittedEntries)
 	return rd
+}
+
+func (rn *RawNode) newReady() Ready {
+	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
+}
+
+// acceptReady is called when the consumer of the RawNode has decided to go
+// ahead and handle a Ready. Nothing must alter the state of the RawNode between
+// this call and the prior call to Ready().
+func (rn *RawNode) acceptReady(rd Ready) {
+	if rd.SoftState != nil {
+		rn.prevSoftSt = rd.SoftState
+	}
+	if len(rd.ReadStates) != 0 {
+		rn.raft.readStates = nil
+	}
+	rn.raft.msgs = nil
+}
+
+// commitReady is called when the consumer of the RawNode has successfully
+// handled a Ready (having previously called acceptReady).
+func (rn *RawNode) commitReady(rd Ready) {
+	if !IsEmptyHardState(rd.HardState) {
+		rn.prevHardSt = rd.HardState
+	}
+
+	// If entries were applied (or a snapshot), update our cursor for
+	// the next Ready. Note that if the current HardState contains a
+	// new Commit index, this does not mean that we're also applying
+	// all of the new entries due to commit pagination by size.
+	if index := rd.appliedCursor(); index > 0 {
+		rn.raft.raftLog.appliedTo(index)
+	}
+	rn.raft.reduceUncommittedSize(rd.CommittedEntries)
+
+	if len(rd.Entries) > 0 {
+		e := rd.Entries[len(rd.Entries)-1]
+		rn.raft.raftLog.stableTo(e.Index, e.Term)
+	}
+	if !IsEmptySnap(rd.Snapshot) {
+		rn.raft.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
+	}
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.
@@ -215,6 +203,11 @@ func (rn *RawNode) HasReady() bool {
 // Advance notifies the RawNode that the application has applied and saved progress in the
 // last Ready results.
 func (rn *RawNode) Advance(rd Ready) {
+	// Advance combines accept and commit. Callers can't mutate the RawNode
+	// between the call to Ready and the matching call to Advance, or the work
+	// done in acceptReady will clobber potentially newer data that has not been
+	// emitted in a Ready yet.
+	rn.acceptReady(rd)
 	rn.commitReady(rd)
 }
 
