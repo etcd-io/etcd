@@ -71,7 +71,34 @@ func newTransportCredential(cfg *tls.Config) *transportCredential {
 }
 
 func (tc *transportCredential) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, grpccredentials.AuthInfo, error) {
+	// Only overwrite when authority is an IP address!
+	// Let's say, a server runs SRV records on "etcd.local" that resolves
+	// to "m1.etcd.local", and its SAN field also includes "m1.etcd.local".
+	// But what if SAN does not include its resolved IP address (e.g. 127.0.0.1)?
+	// Then, the server should only authenticate using its DNS hostname "m1.etcd.local",
+	// instead of overwriting it with its IP address.
+	// And we do not overwrite "localhost" either. Only overwrite IP addresses!
+	if isIP(authority) {
+		target := rawConn.RemoteAddr().String()
+		if authority != target {
+			// When user dials with "grpc.WithDialer", "grpc.DialContext" "cc.parsedTarget"
+			// update only happens once. This is problematic, because when TLS is enabled,
+			// retries happen through "grpc.WithDialer" with static "cc.parsedTarget" from
+			// the initial dial call.
+			// If the server authenticates by IP addresses, we want to set a new endpoint as
+			// a new authority. Otherwise
+			// "transport: authentication handshake failed: x509: certificate is valid for 127.0.0.1, 192.168.121.180, not 192.168.223.156"
+			// when the new dial target is "192.168.121.180" whose certificate host name is also "192.168.121.180"
+			// but client tries to authenticate with previously set "cc.parsedTarget" field "192.168.223.156"
+			authority = target
+		}
+	}
 	return tc.gtc.ClientHandshake(ctx, authority, rawConn)
+}
+
+// return true if given string is an IP.
+func isIP(ep string) bool {
+	return net.ParseIP(ep) != nil
 }
 
 func (tc *transportCredential) ServerHandshake(rawConn net.Conn) (net.Conn, grpccredentials.AuthInfo, error) {
