@@ -269,6 +269,12 @@ func TestRoleAdd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// add a role with empty name
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: ""})
+	if err != ErrRoleEmpty {
+		t.Fatal(err)
+	}
 }
 
 func TestUserGrant(t *testing.T) {

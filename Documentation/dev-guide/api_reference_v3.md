@@ -11,14 +11,14 @@ This is a generated documentation. Please read the proto files for more.
 | AuthEnable | AuthEnableRequest | AuthEnableResponse | AuthEnable enables authentication. |
 | AuthDisable | AuthDisableRequest | AuthDisableResponse | AuthDisable disables authentication. |
 | Authenticate | AuthenticateRequest | AuthenticateResponse | Authenticate processes an authenticate request. |
-| UserAdd | AuthUserAddRequest | AuthUserAddResponse | UserAdd adds a new user. |
+| UserAdd | AuthUserAddRequest | AuthUserAddResponse | UserAdd adds a new user. User name cannot be empty. |
 | UserGet | AuthUserGetRequest | AuthUserGetResponse | UserGet gets detailed user information. |
 | UserList | AuthUserListRequest | AuthUserListResponse | UserList gets a list of all users. |
 | UserDelete | AuthUserDeleteRequest | AuthUserDeleteResponse | UserDelete deletes a specified user. |
 | UserChangePassword | AuthUserChangePasswordRequest | AuthUserChangePasswordResponse | UserChangePassword changes the password of a specified user. |
 | UserGrantRole | AuthUserGrantRoleRequest | AuthUserGrantRoleResponse | UserGrant grants a role to a specified user. |
 | UserRevokeRole | AuthUserRevokeRoleRequest | AuthUserRevokeRoleResponse | UserRevokeRole revokes a role of specified user. |
-| RoleAdd | AuthRoleAddRequest | AuthRoleAddResponse | RoleAdd adds a new role. |
+| RoleAdd | AuthRoleAddRequest | AuthRoleAddResponse | RoleAdd adds a new role. Role name cannot be empty. |
 | RoleGet | AuthRoleGetRequest | AuthRoleGetResponse | RoleGet gets detailed role information. |
 | RoleList | AuthRoleListRequest | AuthRoleListResponse | RoleList gets lists of all roles. |
 | RoleDelete | AuthRoleDeleteRequest | AuthRoleDeleteResponse | RoleDelete deletes a specified role. |
