@@ -48,7 +48,7 @@ func TestConfChangeDataDriven(t *testing.T) {
 			defer func() {
 				c.LastIndex++
 			}()
-			var ccs []pb.ConfChange
+			var ccs []pb.ConfChangeSingle
 			toks := strings.Split(strings.TrimSpace(d.Input), " ")
 			if toks[0] == "" {
 				toks = nil
@@ -57,7 +57,7 @@ func TestConfChangeDataDriven(t *testing.T) {
 				if len(tok) < 2 {
 					return fmt.Sprintf("unknown token %s", tok)
 				}
-				var cc pb.ConfChange
+				var cc pb.ConfChangeSingle
 				switch tok[0] {
 				case 'v':
 					cc.Type = pb.ConfChangeAddNode

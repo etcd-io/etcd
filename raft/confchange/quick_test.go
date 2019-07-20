@@ -35,7 +35,7 @@ func TestConfChangeQuick(t *testing.T) {
 	// as intended.
 	const infoCount = 5
 
-	runWithJoint := func(c *Changer, ccs []pb.ConfChange) error {
+	runWithJoint := func(c *Changer, ccs []pb.ConfChangeSingle) error {
 		cfg, prs, err := c.EnterJoint(ccs...)
 		if err != nil {
 			return err
@@ -51,7 +51,7 @@ func TestConfChangeQuick(t *testing.T) {
 		return nil
 	}
 
-	runWithSimple := func(c *Changer, ccs []pb.ConfChange) error {
+	runWithSimple := func(c *Changer, ccs []pb.ConfChangeSingle) error {
 		for _, cc := range ccs {
 			cfg, prs, err := c.Simple(cc)
 			if err != nil {
@@ -62,7 +62,7 @@ func TestConfChangeQuick(t *testing.T) {
 		return nil
 	}
 
-	type testFunc func(*Changer, []pb.ConfChange) error
+	type testFunc func(*Changer, []pb.ConfChangeSingle) error
 
 	wrapper := func(invoke testFunc) func(setup initialChanges, ccs confChanges) (*Changer, error) {
 		return func(setup initialChanges, ccs confChanges) (*Changer, error) {
@@ -112,8 +112,8 @@ func TestConfChangeQuick(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Error("setup:", Describe(cErr.In[0].([]pb.ConfChange)...))
-	t.Error("ccs:", Describe(cErr.In[1].([]pb.ConfChange)...))
+	t.Error("setup:", Describe(cErr.In[0].([]pb.ConfChangeSingle)...))
+	t.Error("ccs:", Describe(cErr.In[1].([]pb.ConfChangeSingle)...))
 	t.Errorf("out1: %+v\nout2: %+v", cErr.Out1, cErr.Out2)
 }
 
@@ -123,13 +123,13 @@ func (confChangeTyp) Generate(rand *rand.Rand, _ int) reflect.Value {
 	return reflect.ValueOf(confChangeTyp(rand.Intn(4)))
 }
 
-type confChanges []pb.ConfChange
+type confChanges []pb.ConfChangeSingle
 
-func genCC(num func() int, id func() uint64, typ func() pb.ConfChangeType) []pb.ConfChange {
-	var ccs []pb.ConfChange
+func genCC(num func() int, id func() uint64, typ func() pb.ConfChangeType) []pb.ConfChangeSingle {
+	var ccs []pb.ConfChangeSingle
 	n := num()
 	for i := 0; i < n; i++ {
-		ccs = append(ccs, pb.ConfChange{Type: typ(), NodeID: id()})
+		ccs = append(ccs, pb.ConfChangeSingle{Type: typ(), NodeID: id()})
 	}
 	return ccs
 }
@@ -150,7 +150,7 @@ func (confChanges) Generate(rand *rand.Rand, _ int) reflect.Value {
 	return reflect.ValueOf(genCC(num, id, typ))
 }
 
-type initialChanges []pb.ConfChange
+type initialChanges []pb.ConfChangeSingle
 
 func (initialChanges) Generate(rand *rand.Rand, _ int) reflect.Value {
 	num := func() int {
@@ -163,6 +163,6 @@ func (initialChanges) Generate(rand *rand.Rand, _ int) reflect.Value {
 	// NodeID one is special - it's in the initial config and will be a voter
 	// always (this is to avoid uninteresting edge cases where the simple conf
 	// changes can't easily make progress).
-	ccs := append([]pb.ConfChange{{Type: pb.ConfChangeAddNode, NodeID: 1}}, genCC(num, id, typ)...)
+	ccs := append([]pb.ConfChangeSingle{{Type: pb.ConfChangeAddNode, NodeID: 1}}, genCC(num, id, typ)...)
 	return reflect.ValueOf(ccs)
 }

@@ -1401,7 +1401,10 @@ func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
 	cfg, prs, err := confchange.Changer{
 		Tracker:   r.prs,
 		LastIndex: r.raftLog.lastIndex(),
-	}.Simple(cc)
+	}.Simple(pb.ConfChangeSingle{
+		Type:   cc.Type,
+		NodeID: cc.NodeID,
+	})
 	if err != nil {
 		panic(err)
 	}
