@@ -27,7 +27,6 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
-
 	"go.uber.org/zap"
 )
 
@@ -97,7 +96,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			1,
 			1, 1,
 
-			[]raftpb.Entry{},
+			nil,
 		},
 		{
 			[]uint64{1, 2},
@@ -138,9 +137,9 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			2, 2,
 
 			[]raftpb.Entry{
-				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
-				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
-				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
+				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
+				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
+				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
 			},
 		},
 	}
