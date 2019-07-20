@@ -245,6 +245,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		}
 
 		// asynchronously create keys
+		ch := make(chan struct{}, 1)
 		go func() {
 			for _, k := range tt.putKeys {
 				kvc := toGRPC(clus.RandClient()).KV
@@ -253,6 +254,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					t.Errorf("#%d: couldn't put key (%v)", i, err)
 				}
 			}
+			ch <- struct{}{}
 		}()
 
 		// check stream results
@@ -285,6 +287,9 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		if !rok {
 			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 		}
+
+		// wait for the client to finish sending the keys before terminating the cluster
+		<-ch
 
 		// can't defer because tcp ports will be in use
 		clus.Terminate(t)
