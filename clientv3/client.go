@@ -51,12 +51,17 @@ var (
 func init() {
 	lg := zap.NewNop()
 	if os.Getenv("ETCD_CLIENT_DEBUG") != "" {
+		lcfg := logutil.DefaultZapLoggerConfig
+		lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+
 		var err error
-		lg, err = zap.NewProductionConfig().Build() // info level logging
+		lg, err = lcfg.Build() // info level logging
 		if err != nil {
 			panic(err)
 		}
 	}
+
+	// TODO: support custom balancer
 	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
 		Name:   roundRobinBalancerName,
