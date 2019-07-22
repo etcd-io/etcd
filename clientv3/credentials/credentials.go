@@ -29,14 +29,19 @@ import (
 // Config defines gRPC credential configuration.
 type Config struct {
 	TLSConfig *tls.Config
-	AuthToken string
+}
+
+// Bundle defines gRPC credential interface.
+type Bundle interface {
+	grpccredentials.Bundle
+	UpdateAuthToken(token string)
 }
 
 // NewBundle constructs a new gRPC credential bundle.
-func NewBundle(cfg Config) grpccredentials.Bundle {
+func NewBundle(cfg Config) Bundle {
 	return &bundle{
 		tc: newTransportCredential(cfg.TLSConfig),
-		rc: newPerRPCCredential(cfg.AuthToken),
+		rc: newPerRPCCredential(),
 	}
 }
 
@@ -125,14 +130,7 @@ type perRPCCredential struct {
 	authTokenMu sync.RWMutex
 }
 
-func newPerRPCCredential(authToken string) *perRPCCredential {
-	if authToken == "" {
-		return nil
-	}
-	return &perRPCCredential{
-		authToken: authToken,
-	}
-}
+func newPerRPCCredential() *perRPCCredential { return &perRPCCredential{} }
 
 func (rc *perRPCCredential) RequireTransportSecurity() bool { return false }
 
@@ -141,4 +139,17 @@ func (rc *perRPCCredential) GetRequestMetadata(ctx context.Context, s ...string)
 	authToken := rc.authToken
 	rc.authTokenMu.RUnlock()
 	return map[string]string{rpctypes.TokenFieldNameGRPC: authToken}, nil
+}
+
+func (b *bundle) UpdateAuthToken(token string) {
+	if b.rc == nil {
+		return
+	}
+	b.rc.UpdateAuthToken(token)
+}
+
+func (rc *perRPCCredential) UpdateAuthToken(token string) {
+	rc.authTokenMu.Lock()
+	rc.authToken = token
+	rc.authTokenMu.Unlock()
 }

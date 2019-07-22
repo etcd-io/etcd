@@ -86,9 +86,8 @@ type Client struct {
 	// Username is a user name for authentication.
 	Username string
 	// Password is a password for authentication.
-	Password string
-	// tokenCred is an instance of WithPerRPCCredentials()'s argument
-	tokenCred *authTokenCredential
+	Password        string
+	authTokenBundle credentials.Bundle
 
 	callOpts []grpc.CallOption
 
@@ -191,23 +190,6 @@ func (c *Client) autoSync() {
 			}
 		}
 	}
-}
-
-type authTokenCredential struct {
-	token   string
-	tokenMu *sync.RWMutex
-}
-
-func (cred authTokenCredential) RequireTransportSecurity() bool {
-	return false
-}
-
-func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...string) (map[string]string, error) {
-	cred.tokenMu.RLock()
-	defer cred.tokenMu.RUnlock()
-	return map[string]string{
-		rpctypes.TokenFieldNameGRPC: cred.token,
-	}, nil
 }
 
 func (c *Client) processCreds(scheme string) (creds grpccredentials.TransportCredentials) {
@@ -316,10 +298,7 @@ func (c *Client) getToken(ctx context.Context) error {
 			continue
 		}
 
-		c.tokenCred.tokenMu.Lock()
-		c.tokenCred.token = resp.Token
-		c.tokenCred.tokenMu.Unlock()
-
+		c.authTokenBundle.UpdateAuthToken(resp.Token)
 		return nil
 	}
 
@@ -343,9 +322,7 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 	}
 
 	if c.Username != "" && c.Password != "" {
-		c.tokenCred = &authTokenCredential{
-			tokenMu: &sync.RWMutex{},
-		}
+		c.authTokenBundle = credentials.NewBundle(credentials.Config{})
 
 		ctx, cancel := c.ctx, func() {}
 		if c.cfg.DialTimeout > 0 {
@@ -362,7 +339,7 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 				return nil, err
 			}
 		} else {
-			opts = append(opts, grpc.WithPerRPCCredentials(c.tokenCred))
+			opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 		}
 		cancel()
 	}
