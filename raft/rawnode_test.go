@@ -64,7 +64,7 @@ func (a *rawNodeAdapter) ReadIndex(_ context.Context, rctx []byte) error {
 }
 func (a *rawNodeAdapter) Step(_ context.Context, m pb.Message) error   { return a.RawNode.Step(m) }
 func (a *rawNodeAdapter) Propose(_ context.Context, data []byte) error { return a.RawNode.Propose(data) }
-func (a *rawNodeAdapter) ProposeConfChange(_ context.Context, cc pb.ConfChange) error {
+func (a *rawNodeAdapter) ProposeConfChange(_ context.Context, cc pb.ConfChangeI) error {
 	return a.RawNode.ProposeConfChange(cc)
 }
 
@@ -105,65 +105,257 @@ func TestRawNodeStep(t *testing.T) {
 // TestNodeStepUnblock from node_test.go has no equivalent in rawNode because there is
 // no goroutine in RawNode.
 
-// TestRawNodeProposeAndConfChange ensures that RawNode.Propose and RawNode.ProposeConfChange
-// send the given proposal and ConfChange to the underlying raft.
+// TestRawNodeProposeAndConfChange tests the configuration change mechanism. Each
+// test case sends a configuration change which is either simple or joint, verifies
+// that it applies and that the resulting ConfState matches expectations, and for
+// joint configurations makes sure that they are exited successfully.
 func TestRawNodeProposeAndConfChange(t *testing.T) {
-	s := NewMemoryStorage()
-	var err error
-	rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
-	if err != nil {
-		t.Fatal(err)
+	testCases := []struct {
+		cc   pb.ConfChangeI
+		exp  pb.ConfState
+		exp2 *pb.ConfState
+	}{
+		// V1 config change.
+		{
+			pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: 2},
+			pb.ConfState{Nodes: []uint64{1, 2}},
+			nil,
+		},
+		// Proposing the same as a V2 change works just the same, without entering
+		// a joint config.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{Type: pb.ConfChangeAddNode, NodeID: 2},
+			},
+			},
+			pb.ConfState{Nodes: []uint64{1, 2}},
+			nil,
+		},
+		// Ditto if we add it as a learner instead.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{Type: pb.ConfChangeAddLearnerNode, NodeID: 2},
+			},
+			},
+			pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			nil,
+		},
+		// We can ask explicitly for joint consensus if we want it.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{Type: pb.ConfChangeAddLearnerNode, NodeID: 2},
+			},
+				Transition: pb.ConfChangeTransitionJointExplicit,
+			},
+			pb.ConfState{Nodes: []uint64{1}, NodesJoint: []uint64{1}, Learners: []uint64{2}},
+			&pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+		},
+		// Ditto, but with implicit transition (the harness checks this).
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{Type: pb.ConfChangeAddLearnerNode, NodeID: 2},
+			},
+				Transition: pb.ConfChangeTransitionJointImplicit,
+			},
+			pb.ConfState{
+				Nodes: []uint64{1}, NodesJoint: []uint64{1}, Learners: []uint64{2},
+				AutoLeave: true,
+			},
+			&pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+		},
+		// Add a new node and demote n1. This exercises the interesting case in
+		// which we really need joint config changes and also need LearnersNext.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{NodeID: 2, Type: pb.ConfChangeAddNode},
+				{NodeID: 1, Type: pb.ConfChangeAddLearnerNode},
+				{NodeID: 3, Type: pb.ConfChangeAddLearnerNode},
+			},
+			},
+			pb.ConfState{
+				Nodes:        []uint64{2},
+				NodesJoint:   []uint64{1},
+				Learners:     []uint64{3},
+				LearnersNext: []uint64{1},
+				AutoLeave:    true,
+			},
+			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+		},
+		// Ditto explicit.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{NodeID: 2, Type: pb.ConfChangeAddNode},
+				{NodeID: 1, Type: pb.ConfChangeAddLearnerNode},
+				{NodeID: 3, Type: pb.ConfChangeAddLearnerNode},
+			},
+				Transition: pb.ConfChangeTransitionJointExplicit,
+			},
+			pb.ConfState{
+				Nodes:        []uint64{2},
+				NodesJoint:   []uint64{1},
+				Learners:     []uint64{3},
+				LearnersNext: []uint64{1},
+			},
+			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+		},
+		// Ditto implicit.
+		{
+			pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+				{NodeID: 2, Type: pb.ConfChangeAddNode},
+				{NodeID: 1, Type: pb.ConfChangeAddLearnerNode},
+				{NodeID: 3, Type: pb.ConfChangeAddLearnerNode},
+			},
+				Transition: pb.ConfChangeTransitionJointImplicit,
+			},
+			pb.ConfState{
+				Nodes:        []uint64{2},
+				NodesJoint:   []uint64{1},
+				Learners:     []uint64{3},
+				LearnersNext: []uint64{1},
+				AutoLeave:    true,
+			},
+			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+		},
 	}
 
-	rawNode.Campaign()
-	proposed := false
-	var (
-		lastIndex uint64
-		ccdata    []byte
-	)
-	for {
-		rd := rawNode.Ready()
-		s.Append(rd.Entries)
-		rawNode.Advance(rd)
-		// Once we are the leader, propose a command and a ConfChange.
-		if !proposed && rd.SoftState.Lead == rawNode.raft.id {
-			if err = rawNode.Propose([]byte("somedata")); err != nil {
-				t.Fatal(err)
-			}
-			cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: 1}
-			ccdata, err = cc.Marshal()
+	for _, tc := range testCases {
+		t.Run("", func(t *testing.T) {
+			s := NewMemoryStorage()
+			rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
 			if err != nil {
 				t.Fatal(err)
 			}
-			rawNode.ProposeConfChange(cc)
 
-			proposed = true
-		} else if proposed {
-			// We proposed last cycle, which means we appended the conf change
-			// in this cycle.
+			rawNode.Campaign()
+			proposed := false
+			var (
+				lastIndex uint64
+				ccdata    []byte
+			)
+			// Propose the ConfChange, wait until it applies, save the resulting
+			// ConfState.
+			var cs *pb.ConfState
+			for cs == nil {
+				rd := rawNode.Ready()
+				s.Append(rd.Entries)
+				for _, ent := range rd.CommittedEntries {
+					var cc pb.ConfChangeI
+					if ent.Type == pb.EntryConfChange {
+						var ccc pb.ConfChange
+						if err = ccc.Unmarshal(ent.Data); err != nil {
+							t.Fatal(err)
+						}
+						cc = ccc
+					} else if ent.Type == pb.EntryConfChangeV2 {
+						var ccc pb.ConfChangeV2
+						if err = ccc.Unmarshal(ent.Data); err != nil {
+							t.Fatal(err)
+						}
+						cc = ccc
+					}
+					if cc != nil {
+						cs = rawNode.ApplyConfChange(cc)
+					}
+				}
+				rawNode.Advance(rd)
+				// Once we are the leader, propose a command and a ConfChange.
+				if !proposed && rd.SoftState.Lead == rawNode.raft.id {
+					if err = rawNode.Propose([]byte("somedata")); err != nil {
+						t.Fatal(err)
+					}
+					if ccv1, ok := tc.cc.AsV1(); ok {
+						ccdata, err = ccv1.Marshal()
+						if err != nil {
+							t.Fatal(err)
+						}
+						rawNode.ProposeConfChange(ccv1)
+					} else {
+						ccv2 := tc.cc.AsV2()
+						ccdata, err = ccv2.Marshal()
+						if err != nil {
+							t.Fatal(err)
+						}
+						rawNode.ProposeConfChange(ccv2)
+					}
+					proposed = true
+				}
+			}
+
+			// Check that the last index is exactly the conf change we put in,
+			// down to the bits.
 			lastIndex, err = s.LastIndex()
 			if err != nil {
 				t.Fatal(err)
 			}
-			break
-		}
-	}
 
-	entries, err := s.Entries(lastIndex-1, lastIndex+1, noLimit)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 2 {
-		t.Fatalf("len(entries) = %d, want %d", len(entries), 2)
-	}
-	if !bytes.Equal(entries[0].Data, []byte("somedata")) {
-		t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, []byte("somedata"))
-	}
-	if entries[1].Type != pb.EntryConfChange {
-		t.Fatalf("type = %v, want %v", entries[1].Type, pb.EntryConfChange)
-	}
-	if !bytes.Equal(entries[1].Data, ccdata) {
-		t.Errorf("data = %v, want %v", entries[1].Data, ccdata)
+			entries, err := s.Entries(lastIndex-1, lastIndex+1, noLimit)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 2 {
+				t.Fatalf("len(entries) = %d, want %d", len(entries), 2)
+			}
+			if !bytes.Equal(entries[0].Data, []byte("somedata")) {
+				t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, []byte("somedata"))
+			}
+			typ := pb.EntryConfChange
+			if _, ok := tc.cc.AsV1(); !ok {
+				typ = pb.EntryConfChangeV2
+			}
+			if entries[1].Type != typ {
+				t.Fatalf("type = %v, want %v", entries[1].Type, typ)
+			}
+			if !bytes.Equal(entries[1].Data, ccdata) {
+				t.Errorf("data = %v, want %v", entries[1].Data, ccdata)
+			}
+
+			if exp := &tc.exp; !reflect.DeepEqual(exp, cs) {
+				t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
+			}
+
+			if exp, act := lastIndex, rawNode.raft.pendingConfIndex; exp != act {
+				t.Fatalf("pendingConfIndex: expected %d, got %d", exp, act)
+			}
+
+			// Move the RawNode along. If the ConfChange was simple, nothing else
+			// should happen. Otherwise, we're in a joint state, which is either
+			// left automatically or not. If not, we add the proposal that leaves
+			// it manually.
+			rd := rawNode.Ready()
+			var context []byte
+			if !tc.exp.AutoLeave {
+				if len(rd.Entries) > 0 {
+					t.Fatal("expected no more entries")
+				}
+				if tc.exp2 == nil {
+					return
+				}
+				context = []byte("manual")
+				t.Log("leaving joint state manually")
+				if err := rawNode.ProposeConfChange(pb.ConfChangeV2{Context: context}); err != nil {
+					t.Fatal(err)
+				}
+				rd = rawNode.Ready()
+			}
+
+			// Check that the right ConfChange comes out.
+			if len(rd.Entries) != 1 || rd.Entries[0].Type != pb.EntryConfChangeV2 {
+				t.Fatalf("expected exactly one more entry, got %+v", rd)
+			}
+			var cc pb.ConfChangeV2
+			if err := cc.Unmarshal(rd.Entries[0].Data); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(cc, pb.ConfChangeV2{Context: context}) {
+				t.Fatalf("expected zero ConfChangeV2, got %+v", cc)
+			}
+			// Lie and pretend the ConfChange applied. It won't do so because now
+			// we require the joint quorum and we're only running one node.
+			cs = rawNode.ApplyConfChange(cc)
+			if exp := tc.exp2; !reflect.DeepEqual(exp, cs) {
+				t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
+			}
+		})
 	}
 }
 

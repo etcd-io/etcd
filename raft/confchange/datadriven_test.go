@@ -85,7 +85,11 @@ func TestConfChangeDataDriven(t *testing.T) {
 			case "simple":
 				cfg, prs, err = c.Simple(ccs...)
 			case "enter-joint":
-				cfg, prs, err = c.EnterJoint(ccs...)
+				var autoLeave bool
+				if len(d.CmdArgs) > 0 {
+					d.ScanArgs(t, "autoleave", &autoLeave)
+				}
+				cfg, prs, err = c.EnterJoint(autoLeave, ccs...)
 			case "leave-joint":
 				if len(ccs) > 0 {
 					err = errors.New("this command takes no input")

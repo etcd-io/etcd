@@ -20,7 +20,7 @@ voters=(1 2) learners=(3)
 simple
 r1 v5
 ----
-more than voter changed without entering joint config
+more than one voter changed without entering joint config
 
 simple
 r1 r2
@@ -30,12 +30,12 @@ removed all voters
 simple
 v3 v4
 ----
-more than voter changed without entering joint config
+more than one voter changed without entering joint config
 
 simple
 l1 v5
 ----
-more than voter changed without entering joint config
+more than one voter changed without entering joint config
 
 simple
 l1 l2

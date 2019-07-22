@@ -178,8 +178,8 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-// TestConfgChangeBlocksApply ensures apply blocks if committed entries contain config-change.
-func TestConfgChangeBlocksApply(t *testing.T) {
+// TestConfigChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{

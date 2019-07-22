@@ -132,10 +132,20 @@ type Node interface {
 	// Propose proposes that data be appended to the log. Note that proposals can be lost without
 	// notice, therefore it is user's job to ensure proposal retries.
 	Propose(ctx context.Context, data []byte) error
-	// ProposeConfChange proposes config change.
-	// At most one ConfChange can be in the process of going through consensus.
-	// Application needs to call ApplyConfChange when applying EntryConfChange type entry.
-	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
+	// ProposeConfChange proposes a configuration change. Like any proposal, the
+	// configuration change may be dropped with or without an error being
+	// returned. In particular, configuration changes are dropped unless the
+	// leader has certainty that there is no prior unapplied configuration
+	// change in its log.
+	//
+	// The method accepts either a pb.ConfChange (deprecated) or pb.ConfChangeV2
+	// message. The latter allows arbitrary configuration changes via joint
+	// consensus, notably including replacing a voter. Passing a ConfChangeV2
+	// message is only allowed if all Nodes participating in the cluster run a
+	// version of this library aware of the V2 API. See pb.ConfChangeV2 for
+	// usage details and semantics.
+	ProposeConfChange(ctx context.Context, cc pb.ConfChangeI) error
+
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 
@@ -156,11 +166,13 @@ type Node interface {
 	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
 	// progress, it can call Advance before finishing applying the last ready.
 	Advance()
-	// ApplyConfChange applies config change to the local node.
-	// Returns an opaque ConfState protobuf which must be recorded
-	// in snapshots. Will never return nil; it returns a pointer only
-	// to match MemoryStorage.Compact.
-	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
+	// ApplyConfChange applies a config change (previously passed to
+	// ProposeConfChange) to the node. This must be called whenever a config
+	// change is observed in Ready.CommittedEntries.
+	//
+	// Returns an opaque non-nil ConfState protobuf which must be recorded in
+	// snapshots.
+	ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState
 
 	// TransferLeadership attempts to transfer leadership to the given transferee.
 	TransferLeadership(ctx context.Context, lead, transferee uint64)
@@ -240,7 +252,7 @@ type msgWithResult struct {
 type node struct {
 	propc      chan msgWithResult
 	recvc      chan pb.Message
-	confc      chan pb.ConfChange
+	confc      chan pb.ConfChangeV2
 	confstatec chan pb.ConfState
 	readyc     chan Ready
 	advancec   chan struct{}
@@ -256,7 +268,7 @@ func newNode() node {
 	return node{
 		propc:      make(chan msgWithResult),
 		recvc:      make(chan pb.Message),
-		confc:      make(chan pb.ConfChange),
+		confc:      make(chan pb.ConfChangeV2),
 		confstatec: make(chan pb.ConfState),
 		readyc:     make(chan Ready),
 		advancec:   make(chan struct{}),
@@ -341,11 +353,27 @@ func (n *node) run(rn *RawNode) {
 				r.Step(m)
 			}
 		case cc := <-n.confc:
+			_, okBefore := r.prs.Progress[r.id]
 			cs := r.applyConfChange(cc)
-			if _, ok := r.prs.Progress[r.id]; !ok {
-				// block incoming proposal when local node is
-				// removed
-				if cc.NodeID == r.id {
+			// If the node was removed, block incoming proposals. Note that we
+			// only do this if the node was in the config before. Nodes may be
+			// a member of the group without knowing this (when they're catching
+			// up on the log and don't have the latest config) and we don't want
+			// to block the proposal channel in that case.
+			//
+			// NB: propc is reset when the leader changes, which, if we learn
+			// about it, sort of implies that we got readded, maybe? This isn't
+			// very sound and likely has bugs.
+			if _, okAfter := r.prs.Progress[r.id]; okBefore && !okAfter {
+				var found bool
+				for _, sl := range [][]uint64{cs.Nodes, cs.NodesJoint} {
+					for _, id := range sl {
+						if id == r.id {
+							found = true
+						}
+					}
+				}
+				if !found {
 					propc = nil
 				}
 			}
@@ -397,12 +425,20 @@ func (n *node) Step(ctx context.Context, m pb.Message) error {
 	return n.step(ctx, m)
 }
 
-func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
-	data, err := cc.Marshal()
+func confChangeToMsg(c pb.ConfChangeI) (pb.Message, error) {
+	typ, data, err := pb.MarshalConfChange(c)
+	if err != nil {
+		return pb.Message{}, err
+	}
+	return pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Type: typ, Data: data}}}, nil
+}
+
+func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChangeI) error {
+	msg, err := confChangeToMsg(cc)
 	if err != nil {
 		return err
 	}
-	return n.Step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
+	return n.Step(ctx, msg)
 }
 
 func (n *node) step(ctx context.Context, m pb.Message) error {
@@ -463,10 +499,10 @@ func (n *node) Advance() {
 	}
 }
 
-func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
+func (n *node) ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState {
 	var cs pb.ConfState
 	select {
-	case n.confc <- cc:
+	case n.confc <- cc.AsV2():
 	case <-n.done:
 	}
 	select {

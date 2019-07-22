@@ -15,6 +15,7 @@
 package confchange
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -36,15 +37,37 @@ func TestConfChangeQuick(t *testing.T) {
 	const infoCount = 5
 
 	runWithJoint := func(c *Changer, ccs []pb.ConfChangeSingle) error {
-		cfg, prs, err := c.EnterJoint(ccs...)
+		cfg, prs, err := c.EnterJoint(false /* autoLeave */, ccs...)
 		if err != nil {
 			return err
 		}
+		// Also do this with autoLeave on, just to check that we'd get the same
+		// result.
+		cfg2a, prs2a, err := c.EnterJoint(true /* autoLeave */, ccs...)
+		if err != nil {
+			return err
+		}
+		cfg2a.AutoLeave = false
+		if !reflect.DeepEqual(cfg, cfg2a) || !reflect.DeepEqual(prs, prs2a) {
+			return fmt.Errorf("cfg: %+v\ncfg2a: %+v\nprs: %+v\nprs2a: %+v",
+				cfg, cfg2a, prs, prs2a)
+		}
+		c.Tracker.Config = cfg
+		c.Tracker.Progress = prs
+		cfg2b, prs2b, err := c.LeaveJoint()
+		if err != nil {
+			return err
+		}
+		// Reset back to the main branch with autoLeave=false.
 		c.Tracker.Config = cfg
 		c.Tracker.Progress = prs
 		cfg, prs, err = c.LeaveJoint()
 		if err != nil {
 			return err
+		}
+		if !reflect.DeepEqual(cfg, cfg2b) || !reflect.DeepEqual(prs, prs2b) {
+			return fmt.Errorf("cfg: %+v\ncfg2b: %+v\nprs: %+v\nprs2b: %+v",
+				cfg, cfg2b, prs, prs2b)
 		}
 		c.Tracker.Config = cfg
 		c.Tracker.Progress = prs

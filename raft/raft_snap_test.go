@@ -142,7 +142,7 @@ func TestSnapshotSucceedViaAppResp(t *testing.T) {
 
 	// Add a follower to the group. Do this in a clandestine way for simplicity.
 	// Also set up a snapshot that will be sent to the follower.
-	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode})
+	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
 	s1.snapshot = pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
 			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
