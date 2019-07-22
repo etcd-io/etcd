@@ -1016,7 +1016,7 @@ func TestSnapshot(t *testing.T) {
 		}
 	}()
 
-	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
+	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
 	<-ch
 }

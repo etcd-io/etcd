@@ -77,7 +77,7 @@ func TestRawNodeStep(t *testing.T) {
 			s.Append([]pb.Entry{{Term: 1, Index: 1}})
 			if err := s.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{
 				ConfState: pb.ConfState{
-					Nodes: []uint64{1},
+					Voters: []uint64{1},
 				},
 				Index: 1,
 				Term:  1,
@@ -118,7 +118,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 		// V1 config change.
 		{
 			pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: 2},
-			pb.ConfState{Nodes: []uint64{1, 2}},
+			pb.ConfState{Voters: []uint64{1, 2}},
 			nil,
 		},
 		// Proposing the same as a V2 change works just the same, without entering
@@ -128,7 +128,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				{Type: pb.ConfChangeAddNode, NodeID: 2},
 			},
 			},
-			pb.ConfState{Nodes: []uint64{1, 2}},
+			pb.ConfState{Voters: []uint64{1, 2}},
 			nil,
 		},
 		// Ditto if we add it as a learner instead.
@@ -137,7 +137,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				{Type: pb.ConfChangeAddLearnerNode, NodeID: 2},
 			},
 			},
-			pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}},
 			nil,
 		},
 		// We can ask explicitly for joint consensus if we want it.
@@ -147,8 +147,8 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 			},
 				Transition: pb.ConfChangeTransitionJointExplicit,
 			},
-			pb.ConfState{Nodes: []uint64{1}, NodesJoint: []uint64{1}, Learners: []uint64{2}},
-			&pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			pb.ConfState{Voters: []uint64{1}, VotersOutgoing: []uint64{1}, Learners: []uint64{2}},
+			&pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}},
 		},
 		// Ditto, but with implicit transition (the harness checks this).
 		{
@@ -158,10 +158,10 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				Transition: pb.ConfChangeTransitionJointImplicit,
 			},
 			pb.ConfState{
-				Nodes: []uint64{1}, NodesJoint: []uint64{1}, Learners: []uint64{2},
+				Voters: []uint64{1}, VotersOutgoing: []uint64{1}, Learners: []uint64{2},
 				AutoLeave: true,
 			},
-			&pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			&pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}},
 		},
 		// Add a new node and demote n1. This exercises the interesting case in
 		// which we really need joint config changes and also need LearnersNext.
@@ -173,13 +173,13 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 			},
 			},
 			pb.ConfState{
-				Nodes:        []uint64{2},
-				NodesJoint:   []uint64{1},
-				Learners:     []uint64{3},
-				LearnersNext: []uint64{1},
-				AutoLeave:    true,
+				Voters:         []uint64{2},
+				VotersOutgoing: []uint64{1},
+				Learners:       []uint64{3},
+				LearnersNext:   []uint64{1},
+				AutoLeave:      true,
 			},
-			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+			&pb.ConfState{Voters: []uint64{2}, Learners: []uint64{1, 3}},
 		},
 		// Ditto explicit.
 		{
@@ -191,12 +191,12 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				Transition: pb.ConfChangeTransitionJointExplicit,
 			},
 			pb.ConfState{
-				Nodes:        []uint64{2},
-				NodesJoint:   []uint64{1},
-				Learners:     []uint64{3},
-				LearnersNext: []uint64{1},
+				Voters:         []uint64{2},
+				VotersOutgoing: []uint64{1},
+				Learners:       []uint64{3},
+				LearnersNext:   []uint64{1},
 			},
-			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+			&pb.ConfState{Voters: []uint64{2}, Learners: []uint64{1, 3}},
 		},
 		// Ditto implicit.
 		{
@@ -208,13 +208,13 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				Transition: pb.ConfChangeTransitionJointImplicit,
 			},
 			pb.ConfState{
-				Nodes:        []uint64{2},
-				NodesJoint:   []uint64{1},
-				Learners:     []uint64{3},
-				LearnersNext: []uint64{1},
-				AutoLeave:    true,
+				Voters:         []uint64{2},
+				VotersOutgoing: []uint64{1},
+				Learners:       []uint64{3},
+				LearnersNext:   []uint64{1},
+				AutoLeave:      true,
 			},
-			&pb.ConfState{Nodes: []uint64{2}, Learners: []uint64{1, 3}},
+			&pb.ConfState{Voters: []uint64{2}, Learners: []uint64{1, 3}},
 		},
 	}
 
@@ -542,7 +542,7 @@ func TestRawNodeStart(t *testing.T) {
 		ApplySnapshot(pb.Snapshot) error
 	}
 	bootstrap := func(storage appenderStorage, cs pb.ConfState) error {
-		if len(cs.Nodes) == 0 {
+		if len(cs.Voters) == 0 {
 			return fmt.Errorf("no voters specified")
 		}
 		fi, err := storage.FirstIndex()
@@ -570,7 +570,7 @@ func TestRawNodeStart(t *testing.T) {
 		if !IsEmptyHardState(hs) {
 			return fmt.Errorf("HardState not empty")
 		}
-		if len(ics.Nodes) != 0 {
+		if len(ics.Voters) != 0 {
 			return fmt.Errorf("ConfState not empty")
 		}
 
@@ -583,7 +583,7 @@ func TestRawNodeStart(t *testing.T) {
 		return storage.ApplySnapshot(snap)
 	}
 
-	if err := bootstrap(storage, pb.ConfState{Nodes: []uint64{1}}); err != nil {
+	if err := bootstrap(storage, pb.ConfState{Voters: []uint64{1}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -648,7 +648,7 @@ func TestRawNodeRestart(t *testing.T) {
 func TestRawNodeRestartFromSnapshot(t *testing.T) {
 	snap := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 			Index:     2,
 			Term:      1,
 		},

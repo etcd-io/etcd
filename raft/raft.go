@@ -329,14 +329,14 @@ func newRaft(c *Config) *raft {
 	}
 	peers := c.peers
 	learners := c.learners
-	if len(cs.Nodes) > 0 || len(cs.Learners) > 0 {
+	if len(cs.Voters) > 0 || len(cs.Learners) > 0 {
 		if len(peers) > 0 || len(learners) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
 			// tests; the argument should be removed and these tests should be
 			// updated to specify their nodes through a snapshot.
-			panic("cannot specify both newRaft(peers, learners) and ConfState.(Nodes, Learners)")
+			panic("cannot specify both newRaft(peers, learners) and ConfState.(Voters, Learners)")
 		}
-		peers = cs.Nodes
+		peers = cs.Voters
 		learners = cs.Learners
 	}
 	r := &raft{
@@ -1384,7 +1384,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	found := false
 	cs := s.Metadata.ConfState
 	for _, set := range [][]uint64{
-		cs.Nodes,
+		cs.Voters,
 		cs.Learners,
 	} {
 		for _, id := range set {
@@ -1415,7 +1415,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 
 	// Reset the configuration and add the (potentially updated) peers in anew.
 	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
-	for _, id := range s.Metadata.ConfState.Nodes {
+	for _, id := range s.Metadata.ConfState.Voters {
 		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddNode}.AsV2())
 	}
 	for _, id := range s.Metadata.ConfState.Learners {
@@ -1463,11 +1463,11 @@ func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {
 	// Now that the configuration is updated, handle any side effects.
 
 	cs := pb.ConfState{
-		Nodes:        r.prs.Voters[0].Slice(),
-		NodesJoint:   r.prs.Voters[1].Slice(),
-		Learners:     quorum.MajorityConfig(r.prs.Learners).Slice(),
-		LearnersNext: quorum.MajorityConfig(r.prs.LearnersNext).Slice(),
-		AutoLeave:    r.prs.AutoLeave,
+		Voters:         r.prs.Voters[0].Slice(),
+		VotersOutgoing: r.prs.Voters[1].Slice(),
+		Learners:       quorum.MajorityConfig(r.prs.Learners).Slice(),
+		LearnersNext:   quorum.MajorityConfig(r.prs.LearnersNext).Slice(),
+		AutoLeave:      r.prs.AutoLeave,
 	}
 	pr, ok := r.prs.Progress[r.id]
 
@@ -1490,7 +1490,7 @@ func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {
 
 	// The remaining steps only make sense if this node is the leader and there
 	// are other nodes.
-	if r.state != StateLeader || len(cs.Nodes) == 0 {
+	if r.state != StateLeader || len(cs.Voters) == 0 {
 		return cs
 	}
 	if r.maybeCommit() {

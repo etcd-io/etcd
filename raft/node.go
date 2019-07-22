@@ -366,7 +366,7 @@ func (n *node) run(rn *RawNode) {
 			// very sound and likely has bugs.
 			if _, okAfter := r.prs.Progress[r.id]; okBefore && !okAfter {
 				var found bool
-				for _, sl := range [][]uint64{cs.Nodes, cs.NodesJoint} {
+				for _, sl := range [][]uint64{cs.Voters, cs.VotersOutgoing} {
 					for _, id := range sl {
 						if id == r.id {
 							found = true

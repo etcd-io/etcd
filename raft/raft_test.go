@@ -2458,7 +2458,7 @@ func TestBcastBeat(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     offset,
 			Term:      1,
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2709,7 +2709,7 @@ func TestRestore(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 
@@ -2726,8 +2726,8 @@ func TestRestore(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
 	sg := sm.prs.VoterNodes()
-	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Nodes) {
-		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Metadata.ConfState.Nodes)
+	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Voters) {
+		t.Errorf("sm.Voters = %+v, want %+v", sg, s.Metadata.ConfState.Voters)
 	}
 
 	if ok := sm.restore(s); ok {
@@ -2741,7 +2741,7 @@ func TestRestoreWithLearner(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}, Learners: []uint64{3}},
 		},
 	}
 
@@ -2758,14 +2758,14 @@ func TestRestoreWithLearner(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
 	sg := sm.prs.VoterNodes()
-	if len(sg) != len(s.Metadata.ConfState.Nodes) {
-		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Nodes)
+	if len(sg) != len(s.Metadata.ConfState.Voters) {
+		t.Errorf("sm.Voters = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Voters)
 	}
 	lns := sm.prs.LearnerNodes()
 	if len(lns) != len(s.Metadata.ConfState.Learners) {
 		t.Errorf("sm.LearnerNodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Learners)
 	}
-	for _, n := range s.Metadata.ConfState.Nodes {
+	for _, n := range s.Metadata.ConfState.Voters {
 		if sm.prs.Progress[n].IsLearner {
 			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs.Progress[n], false)
 		}
@@ -2794,7 +2794,7 @@ func TestRestoreVoterToLearner(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}, Learners: []uint64{3}},
 		},
 	}
 
@@ -2816,7 +2816,7 @@ func TestRestoreLearnerPromotion(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 
@@ -2843,7 +2843,7 @@ func TestLearnerReceiveSnapshot(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			ConfState: pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}},
 		},
 	}
 
@@ -2881,7 +2881,7 @@ func TestRestoreIgnoreSnapshot(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     commit,
 			Term:      1,
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 
@@ -2909,7 +2909,7 @@ func TestProvideSnap(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2939,7 +2939,7 @@ func TestIgnoreProvidingSnap(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2967,7 +2967,7 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	m := pb.Message{Type: pb.MsgSnap, From: 1, Term: 2, Snapshot: s}
@@ -2992,7 +2992,7 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.VoterNodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Voters: lead.prs.VoterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()
@@ -3469,7 +3469,7 @@ func TestLeaderTransferAfterSnapshot(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.VoterNodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Voters: lead.prs.VoterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()

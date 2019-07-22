@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/membership"
@@ -43,8 +44,6 @@ import (
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/wal"
 	"go.etcd.io/etcd/wal/walpb"
-
-	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 )
 
@@ -482,7 +481,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 			Index: commit,
 			Term:  term,
 			ConfState: raftpb.ConfState{
-				Nodes: nodeIDs,
+				Voters: nodeIDs,
 			},
 		},
 	}

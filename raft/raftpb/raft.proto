@@ -99,18 +99,18 @@ enum ConfChangeTransition {
 message ConfState {
 	// The voters in the incoming config. (If the configuration is not joint,
 	// then the outgoing config is empty).
-	repeated uint64 nodes          = 1;
-	// The voters in the outgoing config.
-	repeated uint64 nodes_joint    = 3;
+	repeated uint64 voters = 1;
 	// The learners in the incoming config.
-	repeated uint64 learners       = 2;
+	repeated uint64 learners          = 2;
+	// The voters in the outgoing config.
+	repeated uint64 voters_outgoing   = 3;
 	// The nodes that will become learners when the outgoing config is removed.
 	// These nodes are necessarily currently in nodes_joint (or they would have
 	// been added to the incoming config right away).
-	repeated uint64 learners_next  = 4;
+	repeated uint64 learners_next     = 4;
 	// If set, the config is joint and Raft will automatically transition into
 	// the final config (i.e. remove the outgoing config) when this is safe.
-	optional bool   auto_leave     = 5 [(gogoproto.nullable) = false];
+	optional bool   auto_leave        = 5 [(gogoproto.nullable) = false];
 }
 
 enum ConfChangeType {

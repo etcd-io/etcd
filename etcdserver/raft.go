@@ -647,7 +647,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Nodes {
+		for _, id := range snap.Metadata.ConfState.Voters {
 			ids[id] = true
 		}
 	}

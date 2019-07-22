@@ -26,7 +26,7 @@ var (
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 )
@@ -145,7 +145,7 @@ func TestSnapshotSucceedViaAppResp(t *testing.T) {
 	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
 	s1.snapshot = pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 			Index:     s1.lastIndex(),
 			Term:      s1.ents[len(s1.ents)-1].Term,
 		},

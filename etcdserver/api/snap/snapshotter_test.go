@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/raft/raftpb"
-
 	"go.uber.org/zap"
 )
 
@@ -32,7 +31,7 @@ var testSnap = &raftpb.Snapshot{
 	Data: []byte("some snapshot"),
 	Metadata: raftpb.SnapshotMetadata{
 		ConfState: raftpb.ConfState{
-			Nodes: []uint64{1, 2, 3},
+			Voters: []uint64{1, 2, 3},
 		},
 		Index: 1,
 		Term:  1,
