@@ -3562,6 +3562,55 @@ func TestPreVoteWithSplitVote(t *testing.T) {
 	}
 }
 
+// TestPreVoteWithCheckQuorum ensures that after a node become pre-candidate,
+// it will checkQuorum correctly.
+func TestPreVoteWithCheckQuorum(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	n1.preVote = true
+	n2.preVote = true
+	n3.preVote = true
+
+	n1.checkQuorum = true
+	n2.checkQuorum = true
+	n3.checkQuorum = true
+
+	nt := newNetwork(n1, n2, n3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// isolate node 1. node 2 and node 3 have leader info
+	nt.isolate(1)
+
+	// check state
+	sm := nt.peers[1].(*raft)
+	if sm.state != StateLeader {
+		t.Fatalf("peer 1 state: %s, want %s", sm.state, StateLeader)
+	}
+	sm = nt.peers[2].(*raft)
+	if sm.state != StateFollower {
+		t.Fatalf("peer 2 state: %s, want %s", sm.state, StateFollower)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateFollower {
+		t.Fatalf("peer 3 state: %s, want %s", sm.state, StateFollower)
+	}
+
+	// node 2 will ignore node 3's PreVote
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+
+	// Do we have a leader?
+	if n2.state != StateLeader && n3.state != StateFollower {
+		t.Errorf("no leader")
+	}
+}
+
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
