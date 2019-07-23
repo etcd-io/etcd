@@ -508,6 +508,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
 - Compile with [*Go 1.11*](https://golang.org/doc/devel/release.html#go1.11).
 
+### Dockerfile
+
+- [Rebase etcd image from Alpine to Debian](https://github.com/etcd-io/etcd/pull/10805) to improve security and maintenance effort for etcd release.
 
 <hr>
 
