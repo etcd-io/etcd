@@ -924,3 +924,37 @@ func BenchmarkStatus(b *testing.B) {
 		})
 	}
 }
+
+func TestRawNodeConsumeReady(t *testing.T) {
+	// Check that readyWithoutAccept() does not call acceptReady (which resets
+	// the messages) but Ready() does.
+	s := NewMemoryStorage()
+	rn := newTestRawNode(1, []uint64{1}, 3, 1, s)
+	m1 := pb.Message{Context: []byte("foo")}
+	m2 := pb.Message{Context: []byte("bar")}
+
+	// Inject first message, make sure it's visible via readyWithoutAccept.
+	rn.raft.msgs = append(rn.raft.msgs, m1)
+	rd := rn.readyWithoutAccept()
+	if len(rd.Messages) != 1 || !reflect.DeepEqual(rd.Messages[0], m1) {
+		t.Fatalf("expected only m1 sent, got %+v", rd.Messages)
+	}
+	if len(rn.raft.msgs) != 1 || !reflect.DeepEqual(rn.raft.msgs[0], m1) {
+		t.Fatalf("expected only m1 in raft.msgs, got %+v", rn.raft.msgs)
+	}
+	// Now call Ready() which should move the message into the Ready (as opposed
+	// to leaving it in both places).
+	rd = rn.Ready()
+	if len(rn.raft.msgs) > 0 {
+		t.Fatalf("messages not reset: %+v", rn.raft.msgs)
+	}
+	if len(rd.Messages) != 1 || !reflect.DeepEqual(rd.Messages[0], m1) {
+		t.Fatalf("expected only m1 sent, got %+v", rd.Messages)
+	}
+	// Add a message to raft to make sure that Advance() doesn't drop it.
+	rn.raft.msgs = append(rn.raft.msgs, m2)
+	rn.Advance(rd)
+	if len(rn.raft.msgs) != 1 || !reflect.DeepEqual(rn.raft.msgs[0], m2) {
+		t.Fatalf("expected only m2 in raft.msgs, got %+v", rn.raft.msgs)
+	}
+}

@@ -316,7 +316,7 @@ func (n *node) run(rn *RawNode) {
 			// handled first, but it's generally good to emit larger Readys plus
 			// it simplifies testing (by emitting less frequently and more
 			// predictably).
-			rd = rn.Ready()
+			rd = rn.readyWithoutAccept()
 			readyc = n.readyc
 		}
 
@@ -387,7 +387,7 @@ func (n *node) run(rn *RawNode) {
 			rn.acceptReady(rd)
 			advancec = n.advancec
 		case <-advancec:
-			rn.commitReady(rd)
+			rn.Advance(rd)
 			rd = Ready{}
 			advancec = nil
 		case c := <-n.status:
