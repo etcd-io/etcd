@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.12.5
+- 1.12.7
 - tip
 
 notifications:
@@ -30,15 +30,15 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.12.5
+  - go: 1.12.7
     env: TARGET=linux-amd64-integration-4-cpu
-  - go: 1.12.5
+  - go: 1.12.7
     env: TARGET=linux-amd64-grpcproxy
-  - go: 1.12.5
+  - go: 1.12.7
     env: TARGET=linux-amd64-coverage
   - go: tip
     env: TARGET=linux-amd64-fmt-unit-go-tip
-  - go: 1.12.5
+  - go: 1.12.7
     env: TARGET=linux-386-unit
   exclude:
   - go: tip
@@ -59,7 +59,7 @@ matrix:
     env: TARGET=linux-amd64-grpcproxy
   - go: tip
     env: TARGET=linux-amd64-coverage
-  - go: 1.12.5
+  - go: 1.12.7
     env: TARGET=linux-amd64-fmt-unit-go-tip
   - go: tip
     env: TARGET=linux-386-unit
