@@ -91,23 +91,19 @@ func (rn *RawNode) Propose(data []byte) error {
 		}})
 }
 
-// ProposeConfChange proposes a config change.
-func (rn *RawNode) ProposeConfChange(cc pb.ConfChange) error {
-	data, err := cc.Marshal()
+// ProposeConfChange proposes a config change. See (Node).ProposeConfChange for
+// details.
+func (rn *RawNode) ProposeConfChange(cc pb.ConfChangeI) error {
+	m, err := confChangeToMsg(cc)
 	if err != nil {
 		return err
 	}
-	return rn.raft.Step(pb.Message{
-		Type: pb.MsgProp,
-		Entries: []pb.Entry{
-			{Type: pb.EntryConfChange, Data: data},
-		},
-	})
+	return rn.raft.Step(m)
 }
 
 // ApplyConfChange applies a config change to the local node.
-func (rn *RawNode) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
-	cs := rn.raft.applyConfChange(cc)
+func (rn *RawNode) ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState {
+	cs := rn.raft.applyConfChange(cc.AsV2())
 	return &cs
 }
 
@@ -159,23 +155,7 @@ func (rn *RawNode) commitReady(rd Ready) {
 	if !IsEmptyHardState(rd.HardState) {
 		rn.prevHardSt = rd.HardState
 	}
-
-	// If entries were applied (or a snapshot), update our cursor for
-	// the next Ready. Note that if the current HardState contains a
-	// new Commit index, this does not mean that we're also applying
-	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		rn.raft.raftLog.appliedTo(index)
-	}
-	rn.raft.reduceUncommittedSize(rd.CommittedEntries)
-
-	if len(rd.Entries) > 0 {
-		e := rd.Entries[len(rd.Entries)-1]
-		rn.raft.raftLog.stableTo(e.Index, e.Term)
-	}
-	if !IsEmptySnap(rd.Snapshot) {
-		rn.raft.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
-	}
+	rn.raft.advance(rd)
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.

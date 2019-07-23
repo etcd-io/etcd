@@ -46,17 +46,17 @@ func TestGetIDs(t *testing.T) {
 		widSet []uint64
 	}{
 		{nil, []raftpb.Entry{}, []uint64{}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{}, []uint64{1}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry, updateEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
 
@@ -178,8 +178,8 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-// TestConfgChangeBlocksApply ensures apply blocks if committed entries contain config-change.
-func TestConfgChangeBlocksApply(t *testing.T) {
+// TestConfigChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{

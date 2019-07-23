@@ -691,7 +691,7 @@ func TestNodeRestart(t *testing.T) {
 func TestNodeRestartFromSnapshot(t *testing.T) {
 	snap := raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{
-			ConfState: raftpb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: raftpb.ConfState{Voters: []uint64{1, 2}},
 			Index:     2,
 			Term:      1,
 		},
@@ -845,7 +845,7 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 						t.Errorf("apply conf change should return new added learner: %v", state.String())
 					}
 
-					if len(state.Nodes) != 1 {
+					if len(state.Voters) != 1 {
 						t.Errorf("add learner should not change the nodes: %v", state.String())
 					}
 					t.Logf("apply raft conf %v changed to: %v", cc, state.String())

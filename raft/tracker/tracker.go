@@ -25,6 +25,11 @@ import (
 // Config reflects the configuration tracked in a ProgressTracker.
 type Config struct {
 	Voters quorum.JointConfig
+	// AutoLeave is true if the configuration is joint and a transition to the
+	// incoming configuration should be carried out automatically by Raft when
+	// this is possible. If false, the configuration will be joint until the
+	// application initiates the transition manually.
+	AutoLeave bool
 	// Learners is a set of IDs corresponding to the learners active in the
 	// current configuration.
 	//
@@ -79,6 +84,9 @@ func (c Config) String() string {
 	}
 	if c.LearnersNext != nil {
 		fmt.Fprintf(&buf, " learners_next=%s", quorum.MajorityConfig(c.LearnersNext).String())
+	}
+	if c.AutoLeave {
+		fmt.Fprintf(&buf, " autoleave")
 	}
 	return buf.String()
 }
@@ -192,6 +200,9 @@ func (p *ProgressTracker) VoterNodes() []uint64 {
 
 // LearnerNodes returns a sorted slice of learners.
 func (p *ProgressTracker) LearnerNodes() []uint64 {
+	if len(p.Learners) == 0 {
+		return nil
+	}
 	nodes := make([]uint64, 0, len(p.Learners))
 	for id := range p.Learners {
 		nodes = append(nodes, id)

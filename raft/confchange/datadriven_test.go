@@ -48,7 +48,7 @@ func TestConfChangeDataDriven(t *testing.T) {
 			defer func() {
 				c.LastIndex++
 			}()
-			var ccs []pb.ConfChange
+			var ccs []pb.ConfChangeSingle
 			toks := strings.Split(strings.TrimSpace(d.Input), " ")
 			if toks[0] == "" {
 				toks = nil
@@ -57,7 +57,7 @@ func TestConfChangeDataDriven(t *testing.T) {
 				if len(tok) < 2 {
 					return fmt.Sprintf("unknown token %s", tok)
 				}
-				var cc pb.ConfChange
+				var cc pb.ConfChangeSingle
 				switch tok[0] {
 				case 'v':
 					cc.Type = pb.ConfChangeAddNode
@@ -85,7 +85,11 @@ func TestConfChangeDataDriven(t *testing.T) {
 			case "simple":
 				cfg, prs, err = c.Simple(ccs...)
 			case "enter-joint":
-				cfg, prs, err = c.EnterJoint(ccs...)
+				var autoLeave bool
+				if len(d.CmdArgs) > 0 {
+					d.ScanArgs(t, "autoleave", &autoLeave)
+				}
+				cfg, prs, err = c.EnterJoint(autoLeave, ccs...)
 			case "leave-joint":
 				if len(ccs) > 0 {
 					err = errors.New("this command takes no input")

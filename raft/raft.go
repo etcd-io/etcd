@@ -329,14 +329,14 @@ func newRaft(c *Config) *raft {
 	}
 	peers := c.peers
 	learners := c.learners
-	if len(cs.Nodes) > 0 || len(cs.Learners) > 0 {
+	if len(cs.Voters) > 0 || len(cs.Learners) > 0 {
 		if len(peers) > 0 || len(learners) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
 			// tests; the argument should be removed and these tests should be
 			// updated to specify their nodes through a snapshot.
-			panic("cannot specify both newRaft(peers, learners) and ConfState.(Nodes, Learners)")
+			panic("cannot specify both newRaft(peers, learners) and ConfState.(Voters, Learners)")
 		}
-		peers = cs.Nodes
+		peers = cs.Voters
 		learners = cs.Learners
 	}
 	r := &raft{
@@ -357,11 +357,11 @@ func newRaft(c *Config) *raft {
 	}
 	for _, p := range peers {
 		// Add node to active config.
-		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: p})
+		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: p}.AsV2())
 	}
 	for _, p := range learners {
 		// Add learner to active config.
-		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddLearnerNode, NodeID: p})
+		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddLearnerNode, NodeID: p}.AsV2())
 	}
 
 	if !isHardStateEqual(hs, emptyState) {
@@ -549,6 +549,46 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 		}
 		r.sendHeartbeat(id, ctx)
 	})
+}
+
+func (r *raft) advance(rd Ready) {
+	// If entries were applied (or a snapshot), update our cursor for
+	// the next Ready. Note that if the current HardState contains a
+	// new Commit index, this does not mean that we're also applying
+	// all of the new entries due to commit pagination by size.
+	if index := rd.appliedCursor(); index > 0 {
+		r.raftLog.appliedTo(index)
+		if r.prs.Config.AutoLeave && index >= r.pendingConfIndex && r.state == StateLeader {
+			// If the current (and most recent, at least for this leader's term)
+			// configuration should be auto-left, initiate that now.
+			ccdata, err := (&pb.ConfChangeV2{}).Marshal()
+			if err != nil {
+				panic(err)
+			}
+			ent := pb.Entry{
+				Type: pb.EntryConfChangeV2,
+				Data: ccdata,
+			}
+			if !r.appendEntry(ent) {
+				// If we could not append the entry, bump the pending conf index
+				// so that we'll try again later.
+				//
+				// TODO(tbg): test this case.
+				r.pendingConfIndex = r.raftLog.lastIndex()
+			} else {
+				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
+			}
+		}
+	}
+	r.reduceUncommittedSize(rd.CommittedEntries)
+
+	if len(rd.Entries) > 0 {
+		e := rd.Entries[len(rd.Entries)-1]
+		r.raftLog.stableTo(e.Index, e.Term)
+	}
+	if !IsEmptySnap(rd.Snapshot) {
+		r.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
+	}
 }
 
 // maybeCommit attempts to advance the commit index. Returns true if
@@ -973,10 +1013,10 @@ func stepLeader(r *raft, m pb.Message) error {
 
 		for i := range m.Entries {
 			e := &m.Entries[i]
-			if e.Type == pb.EntryConfChange {
+			if e.Type == pb.EntryConfChange || e.Type == pb.EntryConfChangeV2 {
 				if r.pendingConfIndex > r.raftLog.applied {
-					r.logger.Infof("propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
-						e, r.pendingConfIndex, r.raftLog.applied)
+					r.logger.Infof("%x propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
+						r.id, e, r.pendingConfIndex, r.raftLog.applied)
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				} else {
 					r.pendingConfIndex = r.raftLog.lastIndex() + uint64(i) + 1
@@ -1344,7 +1384,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	found := false
 	cs := s.Metadata.ConfState
 	for _, set := range [][]uint64{
-		cs.Nodes,
+		cs.Voters,
 		cs.Learners,
 	} {
 		for _, id := range set {
@@ -1375,11 +1415,11 @@ func (r *raft) restore(s pb.Snapshot) bool {
 
 	// Reset the configuration and add the (potentially updated) peers in anew.
 	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
-	for _, id := range s.Metadata.ConfState.Nodes {
-		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddNode})
+	for _, id := range s.Metadata.ConfState.Voters {
+		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddNode}.AsV2())
 	}
 	for _, id := range s.Metadata.ConfState.Learners {
-		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddLearnerNode})
+		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddLearnerNode}.AsV2())
 	}
 
 	pr := r.prs.Progress[r.id]
@@ -1397,21 +1437,38 @@ func (r *raft) promotable() bool {
 	return pr != nil && !pr.IsLearner
 }
 
-func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
-	cfg, prs, err := confchange.Changer{
-		Tracker:   r.prs,
-		LastIndex: r.raftLog.lastIndex(),
-	}.Simple(cc)
+func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {
+	cfg, prs, err := func() (tracker.Config, tracker.ProgressMap, error) {
+		changer := confchange.Changer{
+			Tracker:   r.prs,
+			LastIndex: r.raftLog.lastIndex(),
+		}
+		if cc.LeaveJoint() {
+			return changer.LeaveJoint()
+		} else if autoLeave, ok := cc.EnterJoint(); ok {
+			return changer.EnterJoint(autoLeave, cc.Changes...)
+		}
+		return changer.Simple(cc.Changes...)
+	}()
+
 	if err != nil {
+		// TODO(tbg): return the error to the caller.
 		panic(err)
 	}
+
 	r.prs.Config = cfg
 	r.prs.Progress = prs
 
 	r.logger.Infof("%x switched to configuration %s", r.id, r.prs.Config)
 	// Now that the configuration is updated, handle any side effects.
 
-	cs := pb.ConfState{Nodes: r.prs.VoterNodes(), Learners: r.prs.LearnerNodes()}
+	cs := pb.ConfState{
+		Voters:         r.prs.Voters[0].Slice(),
+		VotersOutgoing: r.prs.Voters[1].Slice(),
+		Learners:       quorum.MajorityConfig(r.prs.Learners).Slice(),
+		LearnersNext:   quorum.MajorityConfig(r.prs.LearnersNext).Slice(),
+		AutoLeave:      r.prs.AutoLeave,
+	}
 	pr, ok := r.prs.Progress[r.id]
 
 	// Update whether the node itself is a learner, resetting to false when the
@@ -1433,7 +1490,7 @@ func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
 
 	// The remaining steps only make sense if this node is the leader and there
 	// are other nodes.
-	if r.state != StateLeader || len(cs.Nodes) == 0 {
+	if r.state != StateLeader || len(cs.Voters) == 0 {
 		return cs
 	}
 	if r.maybeCommit() {
