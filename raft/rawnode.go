@@ -121,18 +121,17 @@ func (rn *RawNode) Step(m pb.Message) error {
 
 // Ready returns the outstanding work that the application needs to handle. This
 // includes appending and applying entries or a snapshot, updating the HardState,
-// and sending messages. Ready() is a read-only operation, that is, it does not
-// require the caller to actually handle the result. Typically, a caller will
-// want to handle the Ready and must pass the Ready to Advance *after* having
-// done so. While a Ready is being handled, the RawNode must not be used for
-// operations that may alter its state. For example, it is illegal to call
-// Ready, followed by Step, followed by Advance.
+// and sending messages. The returned Ready() *must* be handled and subsequently
+// passed back via Advance().
 func (rn *RawNode) Ready() Ready {
-	rd := rn.newReady()
+	rd := rn.readyWithoutAccept()
+	rn.acceptReady(rd)
 	return rd
 }
 
-func (rn *RawNode) newReady() Ready {
+// readyWithoutAccept returns a Ready. This is a read-only operation, i.e. there
+// is no obligation that the Ready must be handled.
+func (rn *RawNode) readyWithoutAccept() Ready {
 	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
 }
 
@@ -147,15 +146,6 @@ func (rn *RawNode) acceptReady(rd Ready) {
 		rn.raft.readStates = nil
 	}
 	rn.raft.msgs = nil
-}
-
-// commitReady is called when the consumer of the RawNode has successfully
-// handled a Ready (having previously called acceptReady).
-func (rn *RawNode) commitReady(rd Ready) {
-	if !IsEmptyHardState(rd.HardState) {
-		rn.prevHardSt = rd.HardState
-	}
-	rn.raft.advance(rd)
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.
@@ -183,12 +173,10 @@ func (rn *RawNode) HasReady() bool {
 // Advance notifies the RawNode that the application has applied and saved progress in the
 // last Ready results.
 func (rn *RawNode) Advance(rd Ready) {
-	// Advance combines accept and commit. Callers can't mutate the RawNode
-	// between the call to Ready and the matching call to Advance, or the work
-	// done in acceptReady will clobber potentially newer data that has not been
-	// emitted in a Ready yet.
-	rn.acceptReady(rd)
-	rn.commitReady(rd)
+	if !IsEmptyHardState(rd.HardState) {
+		rn.prevHardSt = rd.HardState
+	}
+	rn.raft.advance(rd)
 }
 
 // Status returns the current status of the given group. This allocates, see
