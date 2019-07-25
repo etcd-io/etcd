@@ -87,10 +87,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
   - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
-- [`etcd --experimental-initial-corrupt-check`](TODO) has been  deprecated.
+- [`etcd --experimental-initial-corrupt-check`](https://github.com/etcd-io/etcd/pull/10934) has been  deprecated.
   - Use `etcd --initial-corrupt-check` instead.
   - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`etcd --experimental-corrupt-check-time`](TODO) has been  deprecated.
+- [`etcd --experimental-corrupt-check-time`](https://github.com/etcd-io/etcd/pull/10934) has been  deprecated.
   - Use `etcd --corrupt-check-time` instead.
   - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
 - Drop [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
@@ -292,9 +292,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `etcd --pre-vote=false` by default.
   - v3.5 will enable `etcd --pre-vote=true` by default.
-- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check` has been  deprecated).
+- [`etcd --initial-corrupt-check`](https://github.com/etcd-io/etcd/pull/10934) flag is now stable (`etcd --experimental-initial-corrupt-check` has been  deprecated).
   - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time` has been  deprecated).
+- [`etcd --corrupt-check-time`](https://github.com/etcd-io/etcd/pull/10934) flag is now stable (`etcd --experimental-corrupt-check-time` has been  deprecated).
   - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
 - Add [`etcd --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
