@@ -355,6 +355,9 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - Now, WAL directory that contains only `lost+found` or a file that's not suffixed with `.wal` is considered non-initialized.
 - Fix [`ETCD_CONFIG_FILE` env variable parsing in `etcd`](https://github.com/etcd-io/etcd/pull/10762).
 - Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
+- Fix [server crash from creating an empty role](https://github.com/etcd-io/etcd/pull/10907).
+  - Previously, creating a role with an empty name crashed etcd server with an error code `Unavailable`.
+  - Now, creating a role with an empty name is not allowed with an error code `InvalidArgument`.
 
 ### API
 

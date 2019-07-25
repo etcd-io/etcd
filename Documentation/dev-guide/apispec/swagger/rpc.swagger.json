@@ -101,7 +101,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "RoleAdd adds a new role.",
+        "summary": "RoleAdd adds a new role. Role name cannot be empty.",
         "operationId": "RoleAdd",
         "parameters": [
           {
@@ -263,7 +263,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserAdd adds a new user.",
+        "summary": "UserAdd adds a new user. User name cannot be empty.",
         "operationId": "UserAdd",
         "parameters": [
           {
