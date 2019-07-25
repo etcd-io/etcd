@@ -69,9 +69,8 @@ const (
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
 	// DefaultEnableV2 is the default value for "--enable-v2" flag.
-	// v2 is enabled by default.
-	// TODO: disable v2 when deprecated.
-	DefaultEnableV2 = true
+	// v2 API is disabled by default.
+	DefaultEnableV2 = false
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
