@@ -242,7 +242,7 @@ func (cfg *Config) setupLogging() error {
 			serverName := state.ServerName
 			if len(state.PeerCertificates) > 0 {
 				cert := state.PeerCertificates[0]
-				ips := make([]string, 0, len(cert.IPAddresses))
+				ips := make([]string, len(cert.IPAddresses))
 				for i := range cert.IPAddresses {
 					ips[i] = cert.IPAddresses[i].String()
 				}
