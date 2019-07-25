@@ -199,7 +199,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --enable-v2
 + Accept etcd V2 client requests
-+ default: true
++ default: false
 + env variable: ETCD_ENABLE_V2
 
 ## Proxy flags
