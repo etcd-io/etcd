@@ -39,6 +39,18 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric. Instead, use `etcd_mvcc_db_total_size_in_bytes`.
 
+### etcd server
+
+- [`etcd --enable-v2v3`](TODO) flag is now stable.
+  - `etcd --experimental-enable-v2v3` has been deprecated.
+  - Added [more v2v3 integration tests](https://github.com/etcd-io/etcd/pull/9634).
+  - `etcd --enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
+  - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+  - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
+  - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
+  - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+
 ### gRPC gateway
 
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.

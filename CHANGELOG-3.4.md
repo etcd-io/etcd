@@ -286,19 +286,10 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `etcd --pre-vote=false` by default.
   - v3.5 will enable `etcd --pre-vote=true` by default.
-- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check`haisbeen  deprecated).
+- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check` has been  deprecated).
   - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time`haisbeen  deprecated).
+- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time` has been  deprecated).
   - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- [`etcd --enable-v2v3`](TODO) flag is now stable.
-  - `etcd --experimental-enable-v2v3` has been deprecated.
-  - Added [more v2v3 integration tests](https://github.com/etcd-io/etcd/pull/9634).
-  - `etcd --enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
-  - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
-  - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
-  - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
-  - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
-  - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - Add [`etcd --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `etcd --discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
