@@ -221,10 +221,9 @@ func StartNode(c *Config, peers []Peer) Node {
 	}
 	rn.Bootstrap(peers)
 
-	n := newNode()
-	n.logger = c.Logger
+	n := newNode(rn)
 
-	go n.run(rn)
+	go n.run()
 	return &n
 }
 
@@ -237,9 +236,8 @@ func RestartNode(c *Config) Node {
 	if err != nil {
 		panic(err)
 	}
-	n := newNode()
-	n.logger = c.Logger
-	go n.run(rn)
+	n := newNode(rn)
+	go n.run()
 	return &n
 }
 
@@ -261,10 +259,10 @@ type node struct {
 	stop       chan struct{}
 	status     chan chan Status
 
-	logger Logger
+	rn *RawNode
 }
 
-func newNode() node {
+func newNode(rn *RawNode) node {
 	return node{
 		propc:      make(chan msgWithResult),
 		recvc:      make(chan pb.Message),
@@ -279,6 +277,7 @@ func newNode() node {
 		done:   make(chan struct{}),
 		stop:   make(chan struct{}),
 		status: make(chan chan Status),
+		rn:     rn,
 	}
 }
 
@@ -294,20 +293,20 @@ func (n *node) Stop() {
 	<-n.done
 }
 
-func (n *node) run(rn *RawNode) {
+func (n *node) run() {
 	var propc chan msgWithResult
 	var readyc chan Ready
 	var advancec chan struct{}
 	var rd Ready
 
-	r := rn.raft
+	r := n.rn.raft
 
 	lead := None
 
 	for {
 		if advancec != nil {
 			readyc = nil
-		} else if rn.HasReady() {
+		} else if n.rn.HasReady() {
 			// Populate a Ready. Note that this Ready is not guaranteed to
 			// actually be handled. We will arm readyc, but there's no guarantee
 			// that we will actually send on it. It's possible that we will
@@ -316,7 +315,7 @@ func (n *node) run(rn *RawNode) {
 			// handled first, but it's generally good to emit larger Readys plus
 			// it simplifies testing (by emitting less frequently and more
 			// predictably).
-			rd = rn.readyWithoutAccept()
+			rd = n.rn.readyWithoutAccept()
 			readyc = n.readyc
 		}
 
@@ -382,12 +381,12 @@ func (n *node) run(rn *RawNode) {
 			case <-n.done:
 			}
 		case <-n.tickc:
-			rn.Tick()
+			n.rn.Tick()
 		case readyc <- rd:
-			rn.acceptReady(rd)
+			n.rn.acceptReady(rd)
 			advancec = n.advancec
 		case <-advancec:
-			rn.Advance(rd)
+			n.rn.Advance(rd)
 			rd = Ready{}
 			advancec = nil
 		case c := <-n.status:
@@ -406,7 +405,7 @@ func (n *node) Tick() {
 	case n.tickc <- struct{}{}:
 	case <-n.done:
 	default:
-		n.logger.Warningf("A tick missed to fire. Node blocks too long!")
+		n.rn.raft.logger.Warningf("%x (leader %v) A tick missed to fire. Node blocks too long!", n.rn.raft.id, n.rn.raft.id == n.rn.raft.lead)
 	}
 }
 
