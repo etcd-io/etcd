@@ -87,6 +87,12 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
   - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
+- [`etcd --experimental-initial-corrupt-check`](TODO) has been  deprecated.
+  - Use `etcd --initial-corrupt-check` instead.
+  - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
+- [`etcd --experimental-corrupt-check-time`](TODO) has been  deprecated.
+  - Use `etcd --corrupt-check-time` instead.
+  - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
 - Drop [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
