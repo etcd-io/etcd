@@ -242,7 +242,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			args = append(args, "--strict-reconfig-check=false")
 		}
 		if cfg.initialCorruptCheck {
-			args = append(args, "--experimental-initial-corrupt-check")
+			args = append(args, "--initial-corrupt-check")
 		}
 		var murl string
 		if cfg.metricsURLScheme != "" {
