@@ -55,7 +55,7 @@ func TestEtcd(t *testing.T) {
 		QuotaBackendBytes: 10740000000,
 
 		PreVote:             true,
-		InitialCorruptCheck: true,
+		InitialCorruptCheck: false,
 
 		Logger:     "zap",
 		LogOutputs: []string{"/tmp/etcd-functional-1/etcd.log"},
@@ -82,7 +82,7 @@ func TestEtcd(t *testing.T) {
 		"--snapshot-count=10000",
 		"--quota-backend-bytes=10740000000",
 		"--pre-vote=true",
-		"--experimental-initial-corrupt-check=true",
+		"--initial-corrupt-check=false",
 		"--logger=zap",
 		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
 		"--debug=true",
@@ -131,7 +131,7 @@ func TestEtcd(t *testing.T) {
 	expc.SnapshotCount = 10000
 	expc.QuotaBackendBytes = 10740000000
 	expc.PreVote = true
-	expc.ExperimentalInitialCorruptCheck = true
+	expc.InitialCorruptCheck = false
 	expc.Logger = "zap"
 	expc.LogOutputs = []string{"/tmp/etcd-functional-1/etcd.log"}
 	expc.Debug = true

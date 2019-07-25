@@ -164,7 +164,7 @@ func (e *Etcd) EmbedConfig() (cfg *embed.Config, err error) {
 	cfg.QuotaBackendBytes = e.QuotaBackendBytes
 
 	cfg.PreVote = e.PreVote
-	cfg.ExperimentalInitialCorruptCheck = e.InitialCorruptCheck
+	cfg.InitialCorruptCheck = e.InitialCorruptCheck
 
 	cfg.Logger = e.Logger
 	cfg.LogOutputs = e.LogOutputs
