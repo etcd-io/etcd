@@ -182,6 +182,16 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: ""
 + env variable: ETCD_DISCOVERY_PROXY
 
+### --initial-corrupt-check
++ Enable to check data corruption before serving any client/peer traffic.
++ default: true
++ env variable: ETCD_INITIAL_CORRUPT_CHECK
+
+### --corrupt-check-time
++ Duration of time between cluster corruption check passes
++ default: 0s
++ env variable: ETCD_CORRUPT_CHECK_TIME
+
 ### --strict-reconfig-check
 + Reject reconfiguration requests that would cause quorum loss.
 + default: true
@@ -424,11 +434,6 @@ Follow the instructions when using these flags.
 + The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
 + default: array
 + env variable: ETCD_EXPERIMENTAL_BACKEND_BBOLT_FREELIST_TYPE
-
-### --experimental-corrupt-check-time
-+ Duration of time between cluster corruption check passes
-+ default: 0s
-+ env variable: ETCD_EXPERIMENTAL_CORRUPT_CHECK_TIME
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
