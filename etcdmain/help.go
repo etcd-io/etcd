@@ -83,6 +83,10 @@ Member:
     Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).
   --grpc-keepalive-timeout '20s'
     Additional duration of wait before closing a non-responsive connection (0 to disable).
+  --initial-corrupt-check 'true'
+    Enable to check data corruption before serving any client/peer traffic.
+  --corrupt-check-time '0s'
+    Duration of time between cluster corruption check passes.
 
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'
@@ -198,10 +202,6 @@ v2 Proxy (to be deprecated in v4):
     Time (in milliseconds) for a read to timeout.
 
 Experimental feature:
-  --experimental-initial-corrupt-check 'false'
-    Enable to check data corruption before serving any client/peer traffic.
-  --experimental-corrupt-check-time '0s'
-    Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
   --experimental-backend-bbolt-freelist-type

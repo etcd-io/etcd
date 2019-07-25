@@ -65,6 +65,8 @@ const (
 	StdErrLogOutput  = "stderr"
 	StdOutLogOutput  = "stdout"
 
+	// DefaultInitialCorruptCheck is the default value for "--initial-corrupt-check" flag.
+	DefaultInitialCorruptCheck = true
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
@@ -188,15 +190,17 @@ type Config struct {
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
 
-	ClusterState          string `json:"initial-cluster-state"`
-	DNSCluster            string `json:"discovery-srv"`
-	DNSClusterServiceName string `json:"discovery-srv-name"`
-	Dproxy                string `json:"discovery-proxy"`
-	Durl                  string `json:"discovery"`
-	InitialCluster        string `json:"initial-cluster"`
-	InitialClusterToken   string `json:"initial-cluster-token"`
-	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
-	EnableV2              bool   `json:"enable-v2"`
+	ClusterState          string        `json:"initial-cluster-state"`
+	DNSCluster            string        `json:"discovery-srv"`
+	DNSClusterServiceName string        `json:"discovery-srv-name"`
+	Dproxy                string        `json:"discovery-proxy"`
+	Durl                  string        `json:"discovery"`
+	InitialCluster        string        `json:"initial-cluster"`
+	InitialClusterToken   string        `json:"initial-cluster-token"`
+	StrictReconfigCheck   bool          `json:"strict-reconfig-check"`
+	InitialCorruptCheck   bool          `json:"initial-corrupt-check"`
+	CorruptCheckTime      time.Duration `json:"corrupt-check-time"`
+	EnableV2              bool          `json:"enable-v2"`
 
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
@@ -273,9 +277,7 @@ type Config struct {
 	AuthToken  string `json:"auth-token"`
 	BcryptCost uint   `json:"bcrypt-cost"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	ExperimentalEnableV2V3 string `json:"experimental-enable-v2v3"`
 	// ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
 	ExperimentalBackendFreelistType string `json:"experimental-backend-bbolt-freelist-type"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
@@ -399,6 +401,7 @@ func NewConfig() *Config {
 		InitialClusterToken: "etcd-cluster",
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
+		InitialCorruptCheck: DefaultInitialCorruptCheck,
 		Metrics:             "basic",
 		EnableV2:            DefaultEnableV2,
 
