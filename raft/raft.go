@@ -1093,6 +1093,9 @@ func stepLeader(r *raft, m pb.Message) error {
 				case pr.State == tracker.StateProbe:
 					pr.BecomeReplicate()
 				case pr.State == tracker.StateSnapshot && pr.Match >= pr.PendingSnapshot:
+					// TODO(tbg): we should also enter this branch if a snapshot is
+					// received that is below pr.PendingSnapshot but which makes it
+					// possible to use the log again.
 					r.logger.Debugf("%x recovered from needing snapshot, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					// Transition back to replicating state via probing state
 					// (which takes the snapshot into account). If we didn't
