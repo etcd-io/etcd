@@ -19,7 +19,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Add Raft learner: [#10725](https://github.com/etcd-io/etcd/pull/10725), [#10727](https://github.com/etcd-io/etcd/pull/10727), [#10730](https://github.com/etcd-io/etcd/pull/10730).
   - User guide: [runtime-configuration document](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member-as-learner).
   - API change: [API reference document](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md).
-  - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/docs/server-learner.rst) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
+  - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-learner.md) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
 - Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
   - Upgrade [gRPC to v1.22.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
