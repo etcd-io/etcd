@@ -342,7 +342,8 @@ The security flags help to [build a secure etcd cluster][security].
 
 ### --logger
 
-**Available from v3.4**
+**Available from v3.4.**
+**WARNING: `--logger=capnslog` to be deprecated in v3.5.**
 
 + Specify 'zap' for structured logging or 'capnslog'.
 + default: capnslog
@@ -354,12 +355,27 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_LOG_OUTPUTS
 + 'default' use 'stderr' config for v3.4 during zap logger migraion
 
+### --log-level
+
+**Available from v3.4.**
+
++ Configures log level. Only supports debug, info, warn, error, panic, or fatal.
++ default: info
++ env variable: ETCD_LOG_LEVEL
++ 'default' use 'info'.
+
 ### --debug
+
+**WARNING: to be deprecated in v3.5.**
+
 + Drop the default log level to DEBUG for all subpackages.
 + default: false (INFO for all packages)
 + env variable: ETCD_DEBUG
 
 ### --log-package-levels
+
+**WARNING: to be deprecated in v3.5.**
+
 + Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
 + default: "" (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
