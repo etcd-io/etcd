@@ -133,4 +133,6 @@ Improvements can be made by caching the status of each endpoint. For instance, b
 
 Client-side keepalive ping still does not reason about network partitions. Streaming request may get stuck with a partitioned node. Advanced health checking service need to be implemented to understand the cluster membership (see [etcd#8673](https://github.com/etcd-io/etcd/issues/8673) for more detail).
 
+![client-balancer-figure-07.png](img/client-balancer-figure-07.png)
+
 Currently, retry logic is handled manually as an interceptor. This may be simplified via [official gRPC retries](https://github.com/grpc/proposal/blob/master/A6-client-retries.md).
