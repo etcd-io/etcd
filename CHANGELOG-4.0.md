@@ -8,7 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.x](https://github.com/etcd-io/
 
 ## v4.0.0 (TBD)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v4.0.0) and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v4.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_4_0.md).**
 
 ### Breaking Changes
 
@@ -25,6 +25,17 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v4.0.0) and 
   - Similar to `Watch`, [`KeepAlive` does not return errors](https://github.com/etcd-io/etcd/issues/7488).
   - If there's an unknown server error, kill all open channels and create a new stream on the next `KeepAlive` call.
 - Rename `github.com/coreos/client` to `github.com/coreos/clientv2`.
+- [`etcd --experimental-initial-corrupt-check`](TODO) has been  deprecated.
+  - Use [`etcd --initial-corrupt-check`](TODO) instead.
+- [`etcd --experimental-corrupt-check-time`](TODO) has been  deprecated.
+  - Use [`etcd --corrupt-check-time`](TODO) instead.
+
+### etcd server
+
+- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check` has been  deprecated).
+  - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
+- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time` has been  deprecated).
+  - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
 
 ### Go
 
