@@ -43,7 +43,7 @@ func NewMapObjectEncoder() *MapObjectEncoder {
 
 // AddArray implements ObjectEncoder.
 func (m *MapObjectEncoder) AddArray(key string, v ArrayMarshaler) error {
-	arr := &sliceArrayEncoder{}
+	arr := &sliceArrayEncoder{elems: make([]interface{}, 0)}
 	err := v.MarshalLogArray(arr)
 	m.cur[key] = arr.elems
 	return err
@@ -158,7 +158,7 @@ func (s *sliceArrayEncoder) AppendReflected(v interface{}) error {
 }
 
 func (s *sliceArrayEncoder) AppendBool(v bool)              { s.elems = append(s.elems, v) }
-func (s *sliceArrayEncoder) AppendByteString(v []byte)      { s.elems = append(s.elems, v) }
+func (s *sliceArrayEncoder) AppendByteString(v []byte)      { s.elems = append(s.elems, string(v)) }
 func (s *sliceArrayEncoder) AppendComplex128(v complex128)  { s.elems = append(s.elems, v) }
 func (s *sliceArrayEncoder) AppendComplex64(v complex64)    { s.elems = append(s.elems, v) }
 func (s *sliceArrayEncoder) AppendDuration(v time.Duration) { s.elems = append(s.elems, v) }

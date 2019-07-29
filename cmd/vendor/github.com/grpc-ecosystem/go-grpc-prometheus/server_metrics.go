@@ -4,6 +4,7 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 // ServerMetrics represents a collection of metrics to be registered on a
@@ -22,28 +23,29 @@ type ServerMetrics struct {
 // ServerMetrics when not using the default Prometheus metrics registry, for
 // example when wanting to control which metrics are added to a registry as
 // opposed to automatically adding metrics via init functions.
-func NewServerMetrics() *ServerMetrics {
+func NewServerMetrics(counterOpts ...CounterOption) *ServerMetrics {
+	opts := counterOptions(counterOpts)
 	return &ServerMetrics{
 		serverStartedCounter: prom.NewCounterVec(
-			prom.CounterOpts{
+			opts.apply(prom.CounterOpts{
 				Name: "grpc_server_started_total",
 				Help: "Total number of RPCs started on the server.",
-			}, []string{"grpc_type", "grpc_service", "grpc_method"}),
+			}), []string{"grpc_type", "grpc_service", "grpc_method"}),
 		serverHandledCounter: prom.NewCounterVec(
-			prom.CounterOpts{
+			opts.apply(prom.CounterOpts{
 				Name: "grpc_server_handled_total",
 				Help: "Total number of RPCs completed on the server, regardless of success or failure.",
-			}, []string{"grpc_type", "grpc_service", "grpc_method", "grpc_code"}),
+			}), []string{"grpc_type", "grpc_service", "grpc_method", "grpc_code"}),
 		serverStreamMsgReceived: prom.NewCounterVec(
-			prom.CounterOpts{
+			opts.apply(prom.CounterOpts{
 				Name: "grpc_server_msg_received_total",
 				Help: "Total number of RPC stream messages received on the server.",
-			}, []string{"grpc_type", "grpc_service", "grpc_method"}),
+			}), []string{"grpc_type", "grpc_service", "grpc_method"}),
 		serverStreamMsgSent: prom.NewCounterVec(
-			prom.CounterOpts{
+			opts.apply(prom.CounterOpts{
 				Name: "grpc_server_msg_sent_total",
 				Help: "Total number of gRPC stream messages sent by the server.",
-			}, []string{"grpc_type", "grpc_service", "grpc_method"}),
+			}), []string{"grpc_type", "grpc_service", "grpc_method"}),
 		serverHandledHistogramEnabled: false,
 		serverHandledHistogramOpts: prom.HistogramOpts{
 			Name:    "grpc_server_handling_seconds",
@@ -52,13 +54,6 @@ func NewServerMetrics() *ServerMetrics {
 		},
 		serverHandledHistogram: nil,
 	}
-}
-
-type HistogramOption func(*prom.HistogramOpts)
-
-// WithHistogramBuckets allows you to specify custom bucket ranges for histograms if EnableHandlingTimeHistogram is on.
-func WithHistogramBuckets(buckets []float64) HistogramOption {
-	return func(o *prom.HistogramOpts) { o.Buckets = buckets }
 }
 
 // EnableHandlingTimeHistogram enables histograms being registered when
@@ -110,7 +105,8 @@ func (m *ServerMetrics) UnaryServerInterceptor() func(ctx context.Context, req i
 		monitor := newServerReporter(m, Unary, info.FullMethod)
 		monitor.ReceivedMessage()
 		resp, err := handler(ctx, req)
-		monitor.Handled(grpc.Code(err))
+		st, _ := status.FromError(err)
+		monitor.Handled(st.Code())
 		if err == nil {
 			monitor.SentMessage()
 		}
@@ -121,9 +117,10 @@ func (m *ServerMetrics) UnaryServerInterceptor() func(ctx context.Context, req i
 // StreamServerInterceptor is a gRPC server-side interceptor that provides Prometheus monitoring for Streaming RPCs.
 func (m *ServerMetrics) StreamServerInterceptor() func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		monitor := newServerReporter(m, streamRpcType(info), info.FullMethod)
+		monitor := newServerReporter(m, streamRPCType(info), info.FullMethod)
 		err := handler(srv, &monitoredServerStream{ss, monitor})
-		monitor.Handled(grpc.Code(err))
+		st, _ := status.FromError(err)
+		monitor.Handled(st.Code())
 		return err
 	}
 }
@@ -140,27 +137,7 @@ func (m *ServerMetrics) InitializeMetrics(server *grpc.Server) {
 	}
 }
 
-// Register registers all server metrics in a given metrics registry. Depending
-// on histogram options and whether they are enabled, histogram metrics are
-// also registered.
-//
-// Deprecated: ServerMetrics implements Prometheus Collector interface. You can
-// register an instance of ServerMetrics directly by using
-// prometheus.Register(m).
-func (m *ServerMetrics) Register(r prom.Registerer) error {
-	return r.Register(m)
-}
-
-// MustRegister tries to register all server metrics and panics on an error.
-//
-// Deprecated: ServerMetrics implements Prometheus Collector interface. You can
-// register an instance of ServerMetrics directly by using
-// prometheus.MustRegister(m).
-func (m *ServerMetrics) MustRegister(r prom.Registerer) {
-	r.MustRegister(m)
-}
-
-func streamRpcType(info *grpc.StreamServerInfo) grpcType {
+func streamRPCType(info *grpc.StreamServerInfo) grpcType {
 	if info.IsClientStream && !info.IsServerStream {
 		return ClientStream
 	} else if !info.IsClientStream && info.IsServerStream {

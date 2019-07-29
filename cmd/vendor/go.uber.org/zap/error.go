@@ -31,7 +31,7 @@ var _errArrayElemPool = sync.Pool{New: func() interface{} {
 }}
 
 // Error is shorthand for the common idiom NamedError("error", err).
-func Error(err error) zapcore.Field {
+func Error(err error) Field {
 	return NamedError("error", err)
 }
 
@@ -42,11 +42,11 @@ func Error(err error) zapcore.Field {
 //
 // For the common case in which the key is simply "error", the Error function
 // is shorter and less repetitive.
-func NamedError(key string, err error) zapcore.Field {
+func NamedError(key string, err error) Field {
 	if err == nil {
 		return Skip()
 	}
-	return zapcore.Field{Key: key, Type: zapcore.ErrorType, Interface: err}
+	return Field{Key: key, Type: zapcore.ErrorType, Interface: err}
 }
 
 type errArray []error

@@ -21,7 +21,7 @@
 // Package buffer provides a thin wrapper around a byte slice. Unlike the
 // standard library's bytes.Buffer, it supports a portion of the strconv
 // package's zero-allocation formatters.
-package buffer
+package buffer // import "go.uber.org/zap/buffer"
 
 import "strconv"
 
@@ -96,6 +96,15 @@ func (b *Buffer) Reset() {
 func (b *Buffer) Write(bs []byte) (int, error) {
 	b.bs = append(b.bs, bs...)
 	return len(bs), nil
+}
+
+// TrimNewline trims any final "\n" byte from the end of the buffer.
+func (b *Buffer) TrimNewline() {
+	if i := len(b.bs) - 1; i >= 0 {
+		if b.bs[i] == '\n' {
+			b.bs = b.bs[:i]
+		}
+	}
 }
 
 // Free returns the Buffer to its Pool.
