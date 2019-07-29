@@ -23,7 +23,7 @@ import (
 
 // DefaultZapLoggerConfig defines default zap logger configuration.
 var DefaultZapLoggerConfig = zap.Config{
-	Level: zap.NewAtomicLevelAt(zap.InfoLevel),
+	Level: zap.NewAtomicLevelAt(ConvertToZapLevel(DefaultLogLevel)),
 
 	Development: false,
 	Sampling: &zap.SamplingConfig{

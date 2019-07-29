@@ -28,6 +28,7 @@ import (
 
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/version"
 
@@ -221,11 +222,12 @@ func newConfig() *config {
 	fs.Var(flags.NewUniqueStringsValue("*"), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
 
 	// logging
-	fs.StringVar(&cfg.ec.Logger, "logger", "capnslog", "Specify 'zap' for structured logging or 'capnslog'.")
-	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-output", "DEPRECATED: use '--log-outputs'.")
+	fs.StringVar(&cfg.ec.Logger, "logger", "capnslog", "Specify 'zap' for structured logging or 'capnslog'. WARN: 'capnslog' is being deprecated in v3.5.")
+	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-output", "[TO BE DEPRECATED IN v3.5] use '--log-outputs'.")
 	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-outputs", "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.")
-	fs.BoolVar(&cfg.ec.Debug, "debug", false, "Enable debug-level logging for etcd.")
-	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "(To be deprecated) Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
+	fs.BoolVar(&cfg.ec.Debug, "debug", false, "[TO BE DEPRECATED IN v3.5] Enable debug-level logging for etcd. Use '--log-level=debug' instead.")
+	fs.StringVar(&cfg.ec.LogLevel, "log-level", logutil.DefaultLogLevel, "Configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.")
+	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "[TO BE DEPRECATED IN v3.5] Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
 
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")

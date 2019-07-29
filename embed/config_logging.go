@@ -69,9 +69,23 @@ func (cfg *Config) setupLogging() error {
 			return fmt.Errorf("'--log-output=%q' and '--log-outputs=%q' are incompatible; only set --log-outputs", cfg.DeprecatedLogOutput, cfg.LogOutputs)
 		}
 		if !reflect.DeepEqual(cfg.DeprecatedLogOutput, []string{DefaultLogOutput}) {
-			fmt.Fprintf(os.Stderr, "Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
+			fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
 			fmt.Fprintln(os.Stderr, "Please use '--log-outputs' flag")
 		}
+	}
+
+	// TODO: remove after deprecating log related flags in v3.5
+	if cfg.Debug {
+		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--debug' flag is set to %v (use '--log-level=debug' instead\n", cfg.Debug)
+	}
+	if cfg.Debug && cfg.LogLevel != "debug" {
+		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--debug' flag is set to %v with inconsistent '--log-level=%s' flag\n", cfg.Debug, cfg.LogLevel)
+	}
+	if cfg.Logger == "capnslog" {
+		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--logger=%s' flag is set; use '--logger=zap' flag instead\n", cfg.Logger)
+	}
+	if cfg.LogPkgLevels != "" {
+		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--log-package-levels=%s' flag is set; use '--logger=zap' flag instead\n", cfg.LogPkgLevels)
 	}
 
 	switch cfg.Logger {
@@ -85,7 +99,7 @@ func (cfg *Config) setupLogging() error {
 			// enable info, warning, error
 			grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 		} else {
-			capnslog.SetGlobalLogLevel(capnslog.INFO)
+			capnslog.SetGlobalLogLevel(logutil.ConvertToCapnslogLogLevel(cfg.LogLevel))
 			// only discard info
 			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
 		}
@@ -157,13 +171,15 @@ func (cfg *Config) setupLogging() error {
 
 		if !isJournal {
 			copied := logutil.AddOutputPaths(logutil.DefaultZapLoggerConfig, outputPaths, errOutputPaths)
-
-			if cfg.Debug {
-				copied.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			if cfg.Debug || cfg.LogLevel == "debug" {
+				// enable tracing even when "--debug --log-level info"
+				// in order to keep backward compatibility with <= v3.3
+				// TODO: remove "Debug" check in v3.5
 				grpc.EnableTracing = true
 			}
-			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
+			if cfg.zapLoggerBuilder == nil {
+				cfg.zapLoggerBuilder = func(c *Config) error {
 					var err error
 					c.logger, err = copied.Build()
 					if err != nil {
@@ -201,9 +217,11 @@ func (cfg *Config) setupLogging() error {
 				return lerr
 			}
 
-			lvl := zap.NewAtomicLevelAt(zap.InfoLevel)
-			if cfg.Debug {
-				lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
+			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			if cfg.Debug || cfg.LogLevel == "debug" {
+				// enable tracing even when "--debug --log-level info"
+				// in order to keep backward compatibility with <= v3.3
+				// TODO: remove "Debug" check in v3.5
 				grpc.EnableTracing = true
 			}
 
@@ -214,8 +232,8 @@ func (cfg *Config) setupLogging() error {
 				syncer,
 				lvl,
 			)
-			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
+			if cfg.zapLoggerBuilder == nil {
+				cfg.zapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
@@ -231,7 +249,7 @@ func (cfg *Config) setupLogging() error {
 			}
 		}
 
-		err := cfg.ZapLoggerBuilder(cfg)
+		err := cfg.zapLoggerBuilder(cfg)
 		if err != nil {
 			return err
 		}
