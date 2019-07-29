@@ -6,7 +6,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 <hr>
 
 
-## v3.4.0 (TBD 2019)
+## v3.4.0 (2019-08-30)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
@@ -16,12 +16,12 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 ### Improved
 
-- Add Raft learner: [#10725](https://github.com/etcd-io/etcd/pull/10725), [#10727](https://github.com/etcd-io/etcd/pull/10727), [#10730](https://github.com/etcd-io/etcd/pull/10730).
+- Add Raft learner: [etcd#10725](https://github.com/etcd-io/etcd/pull/10725), [etcd#10727](https://github.com/etcd-io/etcd/pull/10727), [etcd#10730](https://github.com/etcd-io/etcd/pull/10730).
   - User guide: [runtime-configuration document](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member-as-learner).
   - API change: [API reference document](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md).
   - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-learner.md) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
 - Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
-  - Upgrade [gRPC to v1.22.0](https://github.com/etcd-io/etcd/pull/10911).
+  - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
@@ -146,7 +146,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 ### Dependency
 
 - Upgrade [`github.com/coreos/bbolt`](https://github.com/etcd-io/bbolt/releases) from [**`v1.3.1-coreos.6`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.1-coreos.6) to [`go.etcd.io/bbolt`](https://github.com/etcd-io/bbolt/releases) [**`v1.3.3`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3).
-- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.22.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.22.0).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0).
 - Migrate [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`github.com/json-iterator/go`**](https://github.com/json-iterator/go), to [regenerate v2 `client`](https://github.com/etcd-io/etcd/pull/9494) (See [#10667](https://github.com/etcd-io/etcd/pull/10667) for more).
 - Migrate [`github.com/ghodss/yaml`](https://github.com/ghodss/yaml/releases) to [**`sigs.k8s.io/yaml`**](https://github.com/kubernetes-sigs/yaml) (See [#10687](https://github.com/etcd-io/etcd/pull/10687) for more).
 - Upgrade [`golang.org/x/crypto`](https://github.com/golang/crypto) from [**`crypto@9419663f5`**](https://github.com/golang/crypto/commit/9419663f5a44be8b34ca85f08abc5fe1be11f8a3) to [**`crypto@0709b304e793`**](https://github.com/golang/crypto/commit/0709b304e793a5edb4a2c0145f281ecdc20838a4).
@@ -313,6 +313,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - `etcd --logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
   - `etcd --logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/etcd-io/etcd/pull/9579) and outputs to `os.Stderr`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - `etcd --logger=zap --log-outputs=/dev/null` will discard all server logs.
+- Add [`etcd --log-level`](https://github.com/etcd-io/etcd/pull/10947) flag to support log level.
+  - v3.5 will deprecate `etcd --debug` flag in favor of `etcd --log-level=debug`.
 - Add [`etcd --backend-batch-limit`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Add [`etcd --backend-batch-interval`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/etcd-io/etcd/pull/9281).
@@ -385,6 +387,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Remove [`embed.Config.SetupLogging`](https://github.com/etcd-io/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/etcd-io/etcd/pull/9572).
 - Add [`embed.Config.Logger`](https://github.com/etcd-io/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
+- Add [`embed.Config.LogLevel`](https://github.com/etcd-io/etcd/pull/10947).
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
@@ -448,8 +451,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Think of it as `WithProgressNotify` that can be triggered manually.
 - Add [timeout](https://github.com/etcd-io/etcd/pull/10301) to `etcdctl snapshot
   save`.
-  - User can specify timeout of `etcdctl snapshot save` command using flag
-    `--command-timeout`.
+  - User can specify timeout of `etcdctl snapshot save` command using flag `--command-timeout`.
   - Fix etcdctl to [strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443)
 
 ### gRPC proxy
@@ -527,8 +529,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### Go
 
-- Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
-- Compile with [*Go 1.11*](https://golang.org/doc/devel/release.html#go1.11).
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+- Compile with [*Go 1.12*](https://golang.org/doc/devel/release.html#go1.12).
 
 ### Dockerfile
 
