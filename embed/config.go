@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/pkg/netutil"
 	"go.etcd.io/etcd/pkg/srv"
 	"go.etcd.io/etcd/pkg/tlsutil"
@@ -291,11 +292,8 @@ type Config struct {
 	// Logger is logger options: "zap", "capnslog".
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
-
-	// DeprecatedLogOutput is to be deprecated in v3.5.
-	// Just here for safe migration in v3.4.
-	DeprecatedLogOutput []string `json:"log-output"`
-
+	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
+	LogLevel string `json:"log-level"`
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
@@ -303,9 +301,6 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
-
-	// Debug is true, to enable debug level logging.
-	Debug bool `json:"debug"`
 
 	// zapLoggerBuilder is used to build the zap logger.
 	zapLoggerBuilder func(*Config) error
@@ -329,6 +324,12 @@ type Config struct {
 
 	// TO BE DEPRECATED
 
+	// DeprecatedLogOutput is to be deprecated in v3.5.
+	// Just here for safe migration in v3.4.
+	DeprecatedLogOutput []string `json:"log-output"`
+	// Debug is true, to enable debug level logging.
+	// WARNING: to be deprecated in 3.5. Use "--log-level=debug" instead.
+	Debug bool `json:"debug"`
 	// LogPkgLevels is being deprecated in v3.5.
 	// Only valid if "logger" option is "capnslog".
 	// WARN: DO NOT USE THIS!
@@ -415,6 +416,7 @@ func NewConfig() *Config {
 		DeprecatedLogOutput: []string{DefaultLogOutput},
 		LogOutputs:          []string{DefaultLogOutput},
 		Debug:               false,
+		LogLevel:            logutil.DefaultLogLevel,
 		LogPkgLevels:        "",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
