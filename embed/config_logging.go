@@ -162,8 +162,8 @@ func (cfg *Config) setupLogging() error {
 				copied.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 				grpc.EnableTracing = true
 			}
-			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
+			if cfg.zapLoggerBuilder == nil {
+				cfg.zapLoggerBuilder = func(c *Config) error {
 					var err error
 					c.logger, err = copied.Build()
 					if err != nil {
@@ -214,8 +214,8 @@ func (cfg *Config) setupLogging() error {
 				syncer,
 				lvl,
 			)
-			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
+			if cfg.zapLoggerBuilder == nil {
+				cfg.zapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
@@ -231,7 +231,7 @@ func (cfg *Config) setupLogging() error {
 			}
 		}
 
-		err := cfg.ZapLoggerBuilder(cfg)
+		err := cfg.zapLoggerBuilder(cfg)
 		if err != nil {
 			return err
 		}

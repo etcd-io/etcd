@@ -307,8 +307,8 @@ type Config struct {
 	// Debug is true, to enable debug level logging.
 	Debug bool `json:"debug"`
 
-	// ZapLoggerBuilder is used to build the zap logger.
-	ZapLoggerBuilder func(*Config) error
+	// zapLoggerBuilder is used to build the zap logger.
+	zapLoggerBuilder func(*Config) error
 
 	// logger logs server-side operations. The default is nil,
 	// and "setupLogging" must be called before starting server.
