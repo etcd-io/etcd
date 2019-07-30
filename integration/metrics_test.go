@@ -206,11 +206,11 @@ func TestMetricsHealth(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hv, err := clus.Members[0].Metric("etcd_server_health_failure")
+	hv, err := clus.Members[0].Metric("etcd_server_health_failures")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if hv != "0" {
-		t.Fatalf("expected '0' from etcd_server_health_failure, got %q", hv)
+		t.Fatalf("expected '0' from etcd_server_health_failures, got %q", hv)
 	}
 }
