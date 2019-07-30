@@ -457,3 +457,12 @@ Follow the instructions when using these flags.
 [tuning]: ../tuning.md#time-parameters
 [sample-config-file]: ../../etcd.conf.yml.sample
 [recovery]: recovery.md#disaster-recovery
+
+### --experimental-peer-skip-client-san-verification
++ Skip verification of SAN field in client certificate for peer connections. This can be helpful e.g. if
+cluster members run in different networks behind a NAT.
+
+  In this case make sure to use peer certificates based on
+a private certificate authority using `--peer-cert-file`, `--peer-key-file`, `--peer-trusted-ca-file`
++ default: false
++ env variable: ETCD_EXPERIMENTAL_PEER_SKIP_CLIENT_SAN_VERIFICATION

@@ -213,7 +213,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedCN, "peer-cert-allowed-cn", "", "Allowed CN for inter peer authentication.")
 	fs.StringVar(&cfg.ec.PeerTLSInfo.AllowedHostname, "peer-cert-allowed-hostname", "", "Allowed TLS hostname for inter peer authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
-	fs.BoolVar(&cfg.ec.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
+	fs.BoolVar(&cfg.ec.PeerTLSInfo.SkipClientSANVerify, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 
 	fs.Var(
 		flags.NewUniqueURLsWithExceptions("*", "*"),
