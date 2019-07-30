@@ -367,7 +367,6 @@ func (ivt *IntervalTree) insertFixup(z *intervalNode) {
 
 // rotateLeft moves x so it is left of its right child
 func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
-
 	// rotateLeft x must have right child
 	if x.right == ivt.nilNode {
 		return
@@ -386,7 +385,6 @@ func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
 
 // rotateRight moves x so it is right of its left child
 func (ivt *IntervalTree) rotateRight(x *intervalNode) {
-
 	// rotateRight x must have left child
 	if x.left == ivt.nilNode {
 		return
@@ -441,7 +439,6 @@ func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 
 // find the exact node for a given interval
 func (ivt *IntervalTree) find(ivl Interval) *intervalNode {
-
 	x := ivt.root
 
 	ok := false
@@ -552,33 +549,6 @@ func (ivt *IntervalTree) Union(inIvt *IntervalTree, ivl Interval) {
 		return true
 	}
 	inIvt.Visit(ivl, f)
-}
-
-func (ivt *IntervalTree) LevelOrder() [][]*intervalNode {
-
-	levels := make([][]*intervalNode, ivt.Height())
-
-	queue := []*intervalNode{ivt.root}
-	cur, last := 0, 1
-	level := 0
-	for cur < len(queue) {
-		last = len(queue)
-		levels[level] = []*intervalNode{}
-		for cur < last {
-			levels[level] = append(levels[level], queue[cur])
-			if queue[cur].left != ivt.nilNode {
-				queue = append(queue, queue[cur].left)
-			}
-			if queue[cur].right != ivt.nilNode {
-				queue = append(queue, queue[cur].right)
-			}
-			cur++
-		}
-
-		level++
-	}
-
-	return levels
 }
 
 type StringComparable string

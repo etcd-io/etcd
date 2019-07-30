@@ -294,6 +294,32 @@ func TestIntervalTreeContains(t *testing.T) {
 	}
 }
 
+func (ivt *IntervalTree) levelOrder() [][]*intervalNode {
+	levels := make([][]*intervalNode, ivt.Height())
+
+	queue := []*intervalNode{ivt.root}
+	cur, last := 0, 1
+	level := 0
+	for cur < len(queue) {
+		last = len(queue)
+		levels[level] = []*intervalNode{}
+		for cur < last {
+			levels[level] = append(levels[level], queue[cur])
+			if queue[cur].left != ivt.nilNode {
+				queue = append(queue, queue[cur].left)
+			}
+			if queue[cur].right != ivt.nilNode {
+				queue = append(queue, queue[cur].right)
+			}
+			cur++
+		}
+
+		level++
+	}
+
+	return levels
+}
+
 // TestIntervalTreeDeleteFixUp tests that delete some interval the tree is red-black tree
 func TestIntervalTreeDeleteFixUp(t *testing.T) {
 	ivt := NewIntervalTree()
@@ -352,15 +378,13 @@ func TestIntervalTreeDeleteFixUp(t *testing.T) {
 		{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
 	}
 
-	/*
-	   {Ivl:{Begin:510 End:511} Val:123}
-	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
-	   {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:514 End:515} Val:6}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
-	*/
+	//    {Ivl:{Begin:510 End:511} Val:123}
+	//    {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
+	//    {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	//    {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:514 End:515} Val:6}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	//    {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
 
-	levels := ivt.LevelOrder()
+	levels := ivt.levelOrder()
 	for i, curLevels := range levels {
 		if len(curLevels) != len(rawTreeLevels[i]) {
 			t.Errorf("#%d: interval tree level, expected %d=%d", i, len(curLevels), len(rawTreeLevels[i]))
@@ -376,27 +400,21 @@ func TestIntervalTreeDeleteFixUp(t *testing.T) {
 
 	ivt.Delete(NewInt64Interval(514, 515))
 
-	/*
-	   After Delete (514, 515) node:
-
-	   {Ivl:{Begin:510 End:511} Val:123}
-	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
-	   {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
-	*/
+	//    After Delete (514, 515) node:
+	//    {Ivl:{Begin:510 End:511} Val:123}
+	//    {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:830 End:831} Val:789}
+	//    {Ivl:{Begin:11 End:12} Val:999}{Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	//    {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	//    {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:953 End:954} Val:12}
 
 	ivt.Delete(NewInt64Interval(11, 12))
 
-	/*
-	   After Delete (11, 12) node:
-
-	   {Ivl:{Begin:510 End:511} Val:123}
-	   {Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:830 End:831} Val:789}
-	   {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
-	   {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
-	   {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:953 End:954} Val:12}
-	*/
+	//    After Delete (11, 12) node:
+	//    {Ivl:{Begin:510 End:511} Val:123}
+	//    {Ivl:{Begin:383 End:384} Val:1}{Ivl:{Begin:830 End:831} Val:789}
+	//    {Ivl:{Begin:261 End:262} Val:4}{Ivl:{Begin:410 End:411} Val:5}{Ivl:{Begin:647 End:648} Val:2}{Ivl:{Begin:899 End:900} Val:3}
+	//    {Ivl:{Begin:82 End:83} Val:456}{Ivl:{Begin:292 End:293} Val:11}{Ivl:{Begin:815 End:816} Val:7}{Ivl:{Begin:888 End:889} Val:8}{Ivl:{Begin:972 End:973} Val:9}
+	//    {Ivl:{Begin:238 End:239} Val:10}{Ivl:{Begin:953 End:954} Val:12}
 
 	delTreeLevels := make([][]*intervalNodeValue, ivt.Height())
 
@@ -429,7 +447,7 @@ func TestIntervalTreeDeleteFixUp(t *testing.T) {
 		{&intervalNode{iv: IntervalValue{NewInt64Interval(953, 954), 12}}, red},
 	}
 
-	levels = ivt.LevelOrder()
+	levels = ivt.levelOrder()
 
 	for i, curLevels := range levels {
 		if len(curLevels) != len(delTreeLevels[i]) {
