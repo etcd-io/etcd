@@ -514,7 +514,7 @@ func (n *node) ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState {
 func (n *node) Status() Status {
 	c := make(chan Status)
 	select {
-	case n.status <- c:
+	case c <- n.status:
 		return <-c
 	case <-n.done:
 		return Status{}
