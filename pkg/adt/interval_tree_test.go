@@ -257,6 +257,31 @@ func TestIntervalTreeDelete(t *testing.T) {
 	if deleted := tr.Delete(NewInt64Interval(11, 12)); !deleted {
 		t.Fatalf("range %v not deleted", range11)
 	}
+
+	expectedAfterDelete11 := []visitedInterval{
+		{root: NewInt64Interval(510, 511), color: black, left: NewInt64Interval(383, 384), right: NewInt64Interval(830, 831), depth: 0},
+
+		{root: NewInt64Interval(383, 384), color: black, left: NewInt64Interval(261, 262), right: NewInt64Interval(410, 411), depth: 1},
+		{root: NewInt64Interval(830, 831), color: black, left: NewInt64Interval(647, 648), right: NewInt64Interval(899, 900), depth: 1},
+
+		{root: NewInt64Interval(261, 262), color: red, left: NewInt64Interval(82, 83), right: NewInt64Interval(292, 293), depth: 2},
+		{root: NewInt64Interval(410, 411), color: black, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 2},
+		{root: NewInt64Interval(647, 648), color: black, left: newInt64EmptyInterval(), right: NewInt64Interval(815, 816), depth: 2},
+		{root: NewInt64Interval(899, 900), color: red, left: NewInt64Interval(888, 889), right: NewInt64Interval(972, 973), depth: 2},
+
+		{root: NewInt64Interval(82, 83), color: black, left: newInt64EmptyInterval(), right: NewInt64Interval(238, 239), depth: 3},
+		{root: NewInt64Interval(292, 293), color: black, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 3},
+		{root: NewInt64Interval(815, 816), color: red, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 3},
+		{root: NewInt64Interval(888, 889), color: black, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 3},
+		{root: NewInt64Interval(972, 973), color: black, left: NewInt64Interval(953, 954), right: newInt64EmptyInterval(), depth: 3},
+
+		{root: NewInt64Interval(238, 239), color: red, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 4},
+		{root: NewInt64Interval(953, 954), color: red, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 4},
+	}
+	visitsAfterDelete11 := tr.visitLevel()
+	if !reflect.DeepEqual(expectedAfterDelete11, visitsAfterDelete11) {
+		t.Fatalf("level order after deleting '11' expected %v, got %v", expectedAfterDelete11, visitsAfterDelete11)
+	}
 }
 
 func TestIntervalTreeIntersects(t *testing.T) {
