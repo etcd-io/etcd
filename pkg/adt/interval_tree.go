@@ -16,7 +16,9 @@ package adt
 
 import (
 	"bytes"
+	"fmt"
 	"math"
+	"strings"
 )
 
 // Comparable is an interface for trichotomic comparisons.
@@ -34,6 +36,17 @@ const (
 	black rbcolor = iota
 	red
 )
+
+func (c rbcolor) String() string {
+	switch c {
+	case black:
+		return "black"
+	case red:
+		return "black"
+	default:
+		panic(fmt.Errorf("unknown color %d", c))
+	}
+}
 
 // Interval implements a Comparable interval [begin, end)
 // TODO: support different sorts of intervals: (a,b), [a,b], (a, b]
@@ -160,22 +173,55 @@ func (x *intervalNode) visit(iv *Interval, nv nodeVisitor) bool {
 	return true
 }
 
+// IntervalValue represents a range tree node that contains a range and a value.
 type IntervalValue struct {
 	Ivl Interval
 	Val interface{}
 }
 
 // IntervalTree represents a (mostly) textbook implementation of the
-// "Introduction to Algorithms" (Cormen et al, 2nd ed.) chapter 13 red-black tree
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.) chapter 13 red-black tree
 // and chapter 14.3 interval tree with search supporting "stabbing queries".
-type IntervalTree struct {
+type IntervalTree interface {
+	// Insert adds a node with the given interval into the tree.
+	Insert(ivl Interval, val interface{})
+	// Delete removes the node with the given interval from the tree, returning
+	// true if a node is in fact removed.
+	Delete(ivl Interval) bool
+	// Len gives the number of elements in the tree.
+	Len() int
+	// Height is the number of levels in the tree; one node has height 1.
+	Height() int
+	// MaxHeight is the expected maximum tree height given the number of nodes.
+	MaxHeight() int
+	// Visit calls a visitor function on every tree node intersecting the given interval.
+	// It will visit each interval [x, y) in ascending order sorted on x.
+	Visit(ivl Interval, ivv IntervalVisitor)
+	// Find gets the IntervalValue for the node matching the given interval
+	Find(ivl Interval) *IntervalValue
+	// Intersects returns true if there is some tree node intersecting the given interval.
+	Intersects(iv Interval) bool
+	// Contains returns true if the interval tree's keys cover the entire given interval.
+	Contains(ivl Interval) bool
+	// Stab returns a slice with all elements in the tree intersecting the interval.
+	Stab(iv Interval) []*IntervalValue
+	// Union merges a given interval tree into the receiver.
+	Union(inIvt IntervalTree, ivl Interval)
+}
+
+// NewIntervalTree returns a new interval tree.
+func NewIntervalTree() IntervalTree {
+	return &intervalTree{}
+}
+
+type intervalTree struct {
 	root  *intervalNode
 	count int
 }
 
 // Delete removes the node with the given interval from the tree, returning
 // true if a node is in fact removed.
-func (ivt *IntervalTree) Delete(ivl Interval) bool {
+func (ivt *intervalTree) Delete(ivl Interval) bool {
 	z := ivt.find(ivl)
 	if z == nil {
 		return false
@@ -217,7 +263,7 @@ func (ivt *IntervalTree) Delete(ivl Interval) bool {
 	return true
 }
 
-func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
+func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 	for x != ivt.root && x.color() == black && x.parent != nil {
 		if x == x.parent.left {
 			w := x.parent.right
@@ -282,7 +328,7 @@ func (ivt *IntervalTree) deleteFixup(x *intervalNode) {
 }
 
 // Insert adds a node with the given interval into the tree.
-func (ivt *IntervalTree) Insert(ivl Interval, val interface{}) {
+func (ivt *intervalTree) Insert(ivl Interval, val interface{}) {
 	var y *intervalNode
 	z := &intervalNode{iv: IntervalValue{ivl, val}, max: ivl.End, c: red}
 	x := ivt.root
@@ -311,7 +357,7 @@ func (ivt *IntervalTree) Insert(ivl Interval, val interface{}) {
 	ivt.count++
 }
 
-func (ivt *IntervalTree) insertFixup(z *intervalNode) {
+func (ivt *intervalTree) insertFixup(z *intervalNode) {
 	for z.parent != nil && z.parent.parent != nil && z.parent.color() == red {
 		if z.parent == z.parent.parent.left {
 			y := z.parent.parent.right
@@ -352,7 +398,7 @@ func (ivt *IntervalTree) insertFixup(z *intervalNode) {
 }
 
 // rotateLeft moves x so it is left of its right child
-func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
+func (ivt *intervalTree) rotateLeft(x *intervalNode) {
 	y := x.right
 	x.right = y.left
 	if y.left != nil {
@@ -364,8 +410,8 @@ func (ivt *IntervalTree) rotateLeft(x *intervalNode) {
 	y.updateMax()
 }
 
-// rotateLeft moves x so it is right of its left child
-func (ivt *IntervalTree) rotateRight(x *intervalNode) {
+// rotateRight moves x so it is right of its left child
+func (ivt *intervalTree) rotateRight(x *intervalNode) {
 	if x == nil {
 		return
 	}
@@ -381,7 +427,7 @@ func (ivt *IntervalTree) rotateRight(x *intervalNode) {
 }
 
 // replaceParent replaces x's parent with y
-func (ivt *IntervalTree) replaceParent(x *intervalNode, y *intervalNode) {
+func (ivt *intervalTree) replaceParent(x *intervalNode, y *intervalNode) {
 	y.parent = x.parent
 	if x.parent == nil {
 		ivt.root = y
@@ -397,13 +443,13 @@ func (ivt *IntervalTree) replaceParent(x *intervalNode, y *intervalNode) {
 }
 
 // Len gives the number of elements in the tree
-func (ivt *IntervalTree) Len() int { return ivt.count }
+func (ivt *intervalTree) Len() int { return ivt.count }
 
 // Height is the number of levels in the tree; one node has height 1.
-func (ivt *IntervalTree) Height() int { return ivt.root.height() }
+func (ivt *intervalTree) Height() int { return ivt.root.height() }
 
 // MaxHeight is the expected maximum tree height given the number of nodes
-func (ivt *IntervalTree) MaxHeight() int {
+func (ivt *intervalTree) MaxHeight() int {
 	return int((2 * math.Log2(float64(ivt.Len()+1))) + 0.5)
 }
 
@@ -412,12 +458,12 @@ type IntervalVisitor func(n *IntervalValue) bool
 
 // Visit calls a visitor function on every tree node intersecting the given interval.
 // It will visit each interval [x, y) in ascending order sorted on x.
-func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
+func (ivt *intervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 	ivt.root.visit(&ivl, func(n *intervalNode) bool { return ivv(&n.iv) })
 }
 
 // find the exact node for a given interval
-func (ivt *IntervalTree) find(ivl Interval) (ret *intervalNode) {
+func (ivt *intervalTree) find(ivl Interval) (ret *intervalNode) {
 	f := func(n *intervalNode) bool {
 		if n.iv.Ivl != ivl {
 			return true
@@ -430,7 +476,7 @@ func (ivt *IntervalTree) find(ivl Interval) (ret *intervalNode) {
 }
 
 // Find gets the IntervalValue for the node matching the given interval
-func (ivt *IntervalTree) Find(ivl Interval) (ret *IntervalValue) {
+func (ivt *intervalTree) Find(ivl Interval) (ret *IntervalValue) {
 	n := ivt.find(ivl)
 	if n == nil {
 		return nil
@@ -439,7 +485,7 @@ func (ivt *IntervalTree) Find(ivl Interval) (ret *IntervalValue) {
 }
 
 // Intersects returns true if there is some tree node intersecting the given interval.
-func (ivt *IntervalTree) Intersects(iv Interval) bool {
+func (ivt *intervalTree) Intersects(iv Interval) bool {
 	x := ivt.root
 	for x != nil && iv.Compare(&x.iv.Ivl) != 0 {
 		if x.left != nil && x.left.max.Compare(iv.Begin) > 0 {
@@ -452,7 +498,7 @@ func (ivt *IntervalTree) Intersects(iv Interval) bool {
 }
 
 // Contains returns true if the interval tree's keys cover the entire given interval.
-func (ivt *IntervalTree) Contains(ivl Interval) bool {
+func (ivt *intervalTree) Contains(ivl Interval) bool {
 	var maxEnd, minBegin Comparable
 
 	isContiguous := true
@@ -476,7 +522,7 @@ func (ivt *IntervalTree) Contains(ivl Interval) bool {
 }
 
 // Stab returns a slice with all elements in the tree intersecting the interval.
-func (ivt *IntervalTree) Stab(iv Interval) (ivs []*IntervalValue) {
+func (ivt *intervalTree) Stab(iv Interval) (ivs []*IntervalValue) {
 	if ivt.count == 0 {
 		return nil
 	}
@@ -486,12 +532,70 @@ func (ivt *IntervalTree) Stab(iv Interval) (ivs []*IntervalValue) {
 }
 
 // Union merges a given interval tree into the receiver.
-func (ivt *IntervalTree) Union(inIvt IntervalTree, ivl Interval) {
+func (ivt *intervalTree) Union(inIvt IntervalTree, ivl Interval) {
 	f := func(n *IntervalValue) bool {
 		ivt.Insert(n.Ivl, n.Val)
 		return true
 	}
 	inIvt.Visit(ivl, f)
+}
+
+type visitedInterval struct {
+	root  Interval
+	left  Interval
+	right Interval
+	color rbcolor
+	depth int
+}
+
+func (vi visitedInterval) String() string {
+	bd := new(strings.Builder)
+	bd.WriteString(fmt.Sprintf("root [%v,%v,%v], left [%v,%v], right [%v,%v], depth %d",
+		vi.root.Begin, vi.root.End, vi.color,
+		vi.left.Begin, vi.left.End,
+		vi.right.Begin, vi.right.End,
+		vi.depth,
+	))
+	return bd.String()
+}
+
+// visitLevel traverses tree in level order.
+// used for testing
+func (ivt *intervalTree) visitLevel() []visitedInterval {
+	if ivt.root == nil {
+		return nil
+	}
+
+	rs := make([]visitedInterval, 0, ivt.Len())
+
+	type pair struct {
+		node  *intervalNode
+		depth int
+	}
+	queue := []pair{{ivt.root, 0}}
+	for len(queue) > 0 {
+		f := queue[0]
+		queue = queue[1:]
+
+		ivt := visitedInterval{
+			root:  f.node.iv.Ivl,
+			color: f.node.color(),
+			depth: f.depth,
+		}
+
+		if f.node.left != nil {
+			ivt.left = f.node.left.iv.Ivl
+			queue = append(queue, pair{f.node.left, f.depth + 1})
+		}
+		if f.node.right != nil {
+			ivt.right = f.node.right.iv.Ivl
+			queue = append(queue, pair{f.node.right, f.depth + 1})
+		}
+
+		rs = append(rs, ivt)
+	}
+
+	return rs
 }
 
 type StringComparable string
@@ -543,12 +647,17 @@ func (s StringAffineComparable) Compare(c Comparable) int {
 func NewStringAffineInterval(begin, end string) Interval {
 	return Interval{StringAffineComparable(begin), StringAffineComparable(end)}
 }
+
 func NewStringAffinePoint(s string) Interval {
 	return NewStringAffineInterval(s, s+"\x00")
 }
 
 func NewInt64Interval(a int64, b int64) Interval {
 	return Interval{Int64Comparable(a), Int64Comparable(b)}
+}
+
+func newInt64EmptyInterval() Interval {
+	return Interval{Begin: nil, End: nil}
 }
 
 func NewInt64Point(a int64) Interval {
@@ -591,6 +700,7 @@ func (b BytesAffineComparable) Compare(c Comparable) int {
 func NewBytesAffineInterval(begin, end []byte) Interval {
 	return Interval{BytesAffineComparable(begin), BytesAffineComparable(end)}
 }
+
 func NewBytesAffinePoint(b []byte) Interval {
 	be := make([]byte, len(b)+1)
 	copy(be, b)
