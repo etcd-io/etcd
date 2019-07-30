@@ -405,7 +405,7 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto/googleapis/rpc/status",
+		"project": "google.golang.org/genproto",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
