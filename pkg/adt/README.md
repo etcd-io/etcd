@@ -35,6 +35,14 @@ Deleting the node `514` should not trigger any rebalancing:
 
 ![red-black-tree-02-delete-514.png](img/red-black-tree-02-delete-514.png)
 
-Deleting the node `11` (TODO)
+Deleting the node `11` triggers multiple rotates for rebalancing:
+
+![red-black-tree-03-delete-11.png](img/red-black-tree-03-delete-11.png)
+![red-black-tree-04-delete-11.png](img/red-black-tree-04-delete-11.png)
+![red-black-tree-05-delete-11.png](img/red-black-tree-05-delete-11.png)
+![red-black-tree-06-delete-11.png](img/red-black-tree-06-delete-11.png)
+![red-black-tree-07-delete-11.png](img/red-black-tree-07-delete-11.png)
+![red-black-tree-08-delete-11.png](img/red-black-tree-08-delete-11.png)
+![red-black-tree-09-delete-11.png](img/red-black-tree-09-delete-11.png)
 
 Try yourself at https://www.cs.usfca.edu/~galles/visualization/RedBlack.html.
