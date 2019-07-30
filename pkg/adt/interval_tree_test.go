@@ -252,7 +252,11 @@ func TestIntervalTreeDelete(t *testing.T) {
 		t.Fatalf("level order after deleting '514' expected %v, got %v", expectedAfterDelete514, visitsAfterDelete514)
 	}
 
-	// TODO: validate deletion 11
+	// delete the node "11"
+	range11 := NewInt64Interval(11, 12)
+	if deleted := tr.Delete(NewInt64Interval(11, 12)); !deleted {
+		t.Fatalf("range %v not deleted", range11)
+	}
 }
 
 func TestIntervalTreeIntersects(t *testing.T) {
