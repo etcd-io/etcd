@@ -30,6 +30,9 @@ func TestFIFOSchedule(t *testing.T) {
 				t.Fatalf("job#%d: got %d, want %d", i, next, i)
 			}
 			next = i + 1
+			if next%2 == 0 { // prevent panic all jobs
+				panic("panic job")
+			}
 		}
 	}
 

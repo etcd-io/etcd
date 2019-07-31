@@ -16,9 +16,11 @@ package schedule
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
+// Job is a function type that can be scheduled by scheduler.
 type Job func(context.Context)
 
 // Scheduler can schedule jobs.
@@ -125,7 +127,6 @@ func (f *fifo) Stop() {
 }
 
 func (f *fifo) run() {
-	// TODO: recover from job panic?
 	defer func() {
 		close(f.donec)
 		close(f.resume)
@@ -149,12 +150,12 @@ func (f *fifo) run() {
 				f.mu.Unlock()
 				// clean up pending jobs
 				for _, todo := range pendings {
-					todo(f.ctx)
+					f.exec(todo)
 				}
 				return
 			}
 		} else {
-			todo(f.ctx)
+			f.exec(todo)
 			f.finishCond.L.Lock()
 			f.finished++
 			f.pendings = f.pendings[1:]
@@ -162,4 +163,19 @@ func (f *fifo) run() {
 			f.finishCond.L.Unlock()
 		}
 	}
+}
+
+func (f *fifo) exec(todo Job) error {
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("%v", r)
+				return
+			}
+			done <- nil
+		}()
+		todo(f.ctx)
+	}()
+	return <-done
 }
