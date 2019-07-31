@@ -112,9 +112,7 @@ func (c MajorityConfig) Slice() []uint64 {
 	return sl
 }
 
-type uint64Slice []uint64
-
-func insertionSort(sl uint64Slice) {
+func insertionSort(sl []uint64) {
 	a, b := 0, len(sl)
 	for i := a + 1; i < b; i++ {
 		for j := i; j > a && sl[j] < sl[j-1]; j-- {
@@ -141,7 +139,7 @@ func (c MajorityConfig) CommittedIndex(l AckedIndexer) Index {
 	// performance is a lesser concern (additionally the performance
 	// implications of an allocation here are far from drastic).
 	var stk [7]uint64
-	srt := uint64Slice(stk[:])
+	srt := []uint64(stk[:])
 
 	if cap(srt) < n {
 		srt = make([]uint64, n)
