@@ -246,8 +246,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 - Promote [`etcd_debugging_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) Prometheus metric to `etcd_mvcc_put_total`.
 - Promote [`etcd_debugging_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) Prometheus metric to `etcd_mvcc_delete_total`.
-- Promote `etcd_debugging_mvcc_get_total` Prometheus metric to `etcd_mvcc_get_total`.
-- Promote `etcd_debugging_mvcc_txn_total` Prometheus metric to `etcd_mvcc_txn_total`.
+- Promote [`etcd_debugging_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) Prometheus metric to `etcd_mvcc_range_total`.
+- Promote [`etcd_debugging_mvcc_txn_total`(https://github.com/etcd-io/etcd/pull/10968) Prometheus metric to `etcd_mvcc_txn_total`.
 
 ### Security, Authentication
 

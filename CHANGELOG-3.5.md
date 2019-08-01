@@ -44,7 +44,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Deprecated `etcd_debugging_mvcc_put_total` Prometheus metric. Instead, use `etcd_mvcc_put_total`.
 - Deprecated `etcd_debugging_mvcc_delete_total` Prometheus metric. Instead, use `etcd_mvcc_delete_total`.
 - Deprecated `etcd_debugging_mvcc_txn_total` Prometheus metric. Instead, use `etcd_mvcc_txn_total`.
-- Deprecated `etcd_debugging_mvcc_get_total` Prometheus metric. Instead, use `etcd_mvcc_get_total`.
+- Deprecated `etcd_debugging_mvcc_range_total` Prometheus metric. Instead, use `etcd_mvcc_range_total`.
 
 ### etcd server
 
