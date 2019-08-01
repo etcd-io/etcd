@@ -34,12 +34,17 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
   - `curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'` won't work.
   - Please use `etcd --logger=zap --log-outputs=stderr` instead.
 - Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric. Instead, use `etcd_mvcc_db_total_size_in_bytes`.
+- Master branch `/version` outputs `3.5.0-pre`, instead of `3.4.0+git`.
 
 ### Metrics, Monitoring
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric. Instead, use `etcd_mvcc_db_total_size_in_bytes`.
+- Deprecated `etcd_debugging_mvcc_put_total` Prometheus metric. Instead, use `etcd_mvcc_put_total`.
+- Deprecated `etcd_debugging_mvcc_delete_total` Prometheus metric. Instead, use `etcd_mvcc_delete_total`.
+- Deprecated `etcd_debugging_mvcc_txn_total` Prometheus metric. Instead, use `etcd_mvcc_txn_total`.
+- Deprecated `etcd_debugging_mvcc_get_total` Prometheus metric. Instead, use `etcd_mvcc_get_total`.
 
 ### etcd server
 
