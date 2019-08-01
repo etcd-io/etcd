@@ -59,7 +59,7 @@ func TestEtcd(t *testing.T) {
 
 		Logger:     "zap",
 		LogOutputs: []string{"/tmp/etcd-functional-1/etcd.log"},
-		Debug:      true,
+		LogLevel:   "info",
 	}
 
 	exps := []string{
@@ -85,7 +85,7 @@ func TestEtcd(t *testing.T) {
 		"--experimental-initial-corrupt-check=true",
 		"--logger=zap",
 		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
-		"--debug=true",
+		"--log-level=info",
 	}
 	fs := e.Flags()
 	if !reflect.DeepEqual(exps, fs) {
@@ -134,7 +134,7 @@ func TestEtcd(t *testing.T) {
 	expc.ExperimentalInitialCorruptCheck = true
 	expc.Logger = "zap"
 	expc.LogOutputs = []string{"/tmp/etcd-functional-1/etcd.log"}
-	expc.Debug = true
+	expc.LogLevel = "info"
 	cfg, err := e.EmbedConfig()
 	if err != nil {
 		t.Fatal(err)

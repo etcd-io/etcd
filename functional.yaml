@@ -35,7 +35,7 @@ agent-configs:
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-1/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -86,7 +86,7 @@ agent-configs:
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-2/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -137,7 +137,7 @@ agent-configs:
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-3/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""

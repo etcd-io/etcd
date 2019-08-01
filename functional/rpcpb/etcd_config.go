@@ -60,7 +60,7 @@ var etcdFields = []string{
 
 	"Logger",
 	"LogOutputs",
-	"Debug",
+	"LogLevel",
 }
 
 // Flags returns etcd flags in string slice.
@@ -168,7 +168,7 @@ func (e *Etcd) EmbedConfig() (cfg *embed.Config, err error) {
 
 	cfg.Logger = e.Logger
 	cfg.LogOutputs = e.LogOutputs
-	cfg.Debug = e.Debug
+	cfg.LogLevel = e.LogLevel
 
 	return cfg, nil
 }
