@@ -8,7 +8,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.0 (2019-08-30)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
 ### Documentation
 
@@ -24,6 +26,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+  - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956).
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/etcd-io/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/etcd-io/etcd/issues/9246).
 - Improve [read index wait timeout warning log](https://github.com/etcd-io/etcd/pull/10026), which indicates that local node might have slow network.
@@ -82,9 +85,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - **Remove `etcd --ca-file` flag**, instead [use `etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --ca-file` flag has been marked deprecated since v2.1).
 - **Remove `etcd --peer-ca-file` flag**, instead [use `etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
 - **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) (`CAFile` field has been marked deprecated since v2.1).
-- Deprecate `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
+- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
-- Deprecate [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
+- Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
   - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
@@ -102,7 +105,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/etcd-io/etcd/pull/9433).
-- Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819).
+- Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) instead.
+- Deprecating `etcd_debugging_mvcc_put_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_range_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
+- Deprecating `etcd_debugging_mvcc_txn_total`Prometheus metric  (to be removed in v3.5). Use [`etcd_mvcc_txn_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
 - Rename `etcdserver.ServerConfig.SnapCount` field to `etcdserver.ServerConfig.SnapshotCount`, to be consistent with the flag name `etcd --snapshot-count`.
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/etcd-io/etcd/pull/9490).
@@ -114,6 +121,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
   - Now that `etcd --log-outputs` accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type.
   - Previously, `etcd --config-file etcd.config.yaml` can have `log-outputs: default` field, now must be `log-outputs: [default]`.
+- Deprecating [`etcd --debug`](https://github.com/etcd-io/etcd/pull/10947) flag. Use `etcd --log-level=debug` flag instead.
+  - v3.5 will deprecate `etcd --debug` flag in favor of `etcd --log-level=debug`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/etcd-io/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/etcd-io/etcd/pull/9155).
@@ -213,8 +222,6 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
-- Add [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) Prometheus metric.
-  - Renamed from [`etcd_debugging_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819).
 - Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/etcd-io/etcd/pull/9256) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
@@ -244,10 +251,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Change [gRPC proxy to expose etcd server endpoint /metrics](https://github.com/etcd-io/etcd/pull/10618).
   - The metrics that were exposed via the proxy were not etcd server members but instead the proxy itself.
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
-- Promote [`etcd_debugging_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) Prometheus metric to `etcd_mvcc_put_total`.
-- Promote [`etcd_debugging_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) Prometheus metric to `etcd_mvcc_delete_total`.
-- Promote [`etcd_debugging_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) Prometheus metric to `etcd_mvcc_range_total`.
-- Promote [`etcd_debugging_mvcc_txn_total`(https://github.com/etcd-io/etcd/pull/10968) Prometheus metric to `etcd_mvcc_txn_total`.
+- Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) instead.
+- Deprecating `etcd_debugging_mvcc_put_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_range_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
+- Deprecating `etcd_debugging_mvcc_txn_total`Prometheus metric  (to be removed in v3.5). Use [`etcd_mvcc_txn_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
 
 ### Security, Authentication
 
@@ -310,7 +318,7 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
   - `etcd --logger=zap --log-outputs=default` is not supported when `etcd --logger=zap`.
-    - Instead, use `etcd --logger=zap --log-outputs=stderr`.
+    - Use `etcd --logger=zap --log-outputs=stderr` instead.
     - Or, use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
     - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
     - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/etcd-io/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
