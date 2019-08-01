@@ -211,13 +211,53 @@ type IntervalTree interface {
 
 // NewIntervalTree returns a new interval tree.
 func NewIntervalTree() IntervalTree {
-	return &intervalTree{}
+	return &intervalTree{
+		root:  nil,
+		count: 0,
+	}
 }
 
 type intervalTree struct {
 	root  *intervalNode
 	count int
+
+	// TODO: use 'sentinel' as a dummy object to simplify boundary conditions
+	// use the sentinel to treat a nil child of a node x as an ordinary node whose parent is x
+	// use one shared sentinel to represent all nil leaves and the root's parent
 }
+
+// TODO: make this consistent with textbook implementation
+//
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.4, p324
+//
+//	 0. RB-DELETE(T, z)
+//	 1.
+//	 2. y = z
+//	 3. y-original-color = y.color
+//	 4.
+//	 5. if z.left == T.nil
+//	 6. 	x = z.right
+//	 7. 	RB-TRANSPLANT(T, z, z.right)
+//	 8. else if z.right == T.nil
+//	 9. 	x = z.left
+//	10. 	RB-TRANSPLANT(T, z, z.left)
+//	11. else
+//	12. 	y = TREE-MINIMUM(z.right)
+//	13. 	y-original-color = y.color
+//	14. 	x = y.right
+//	15. 	if y.p == z
+//	16. 		x.p = y
+//	17. 	else
+//	18. 		RB-TRANSPLANT(T, y, y.right)
+//	19. 		y.right = z.right
+//	20. 		y.right.p = y
+//	21. 	RB-TRANSPLANT(T, z, y)
+//	22. 	y.left = z.left
+//	23. 	y.left.p = y
+//	24. 	y.color = z.color
+//	25.
+//	26. if y-original-color == BLACK
+//	27. 	RB-DELETE-FIXUP(T, x)
 
 // Delete removes the node with the given interval from the tree, returning
 // true if a node is in fact removed.
@@ -263,9 +303,53 @@ func (ivt *intervalTree) Delete(ivl Interval) bool {
 	return true
 }
 
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.4, p326
+//
+//	 0. RB-DELETE-FIXUP(T, z)
+//	 1.
+//	 2. while x ≠ T.root and x.color == BLACK
+//	 3. 	if x == x.p.left
+//	 4. 		w = x.p.right
+//	 5. 		if w.color == RED
+//	 6. 			w.color = BLACK
+//	 7. 			x.p.color = RED
+//	 8. 			LEFT-ROTATE(T, x, p)
+//	 9. 		if w.left.color == BLACK and w.right.color == BLACK
+//	10. 			w.color = RED
+//	11. 			x = x.p
+//	12. 		else if w.right.color == BLACK
+//	13. 				w.left.color = BLACK
+//	14. 				w.color = RED
+//	15. 				RIGHT-ROTATE(T, w)
+//	16. 				w = w.p.right
+//	17. 			w.color = x.p.color
+//	18. 			x.p.color = BLACK
+//	19. 			LEFT-ROTATE(T, w.p)
+//	20. 			x = T.root
+//	21. 	else
+//	22. 		w = x.p.left
+//	23. 		if w.color == RED
+//	24. 			w.color = BLACK
+//	25. 			x.p.color = RED
+//	26. 			RIGHT-ROTATE(T, x, p)
+//	27. 		if w.right.color == BLACK and w.left.color == BLACK
+//	28. 			w.color = RED
+//	29. 			x = x.p
+//	30. 		else if w.left.color == BLACK
+//	31. 				w.right.color = BLACK
+//	32. 				w.color = RED
+//	33. 				LEFT-ROTATE(T, w)
+//	34. 				w = w.p.left
+//	35. 			w.color = x.p.color
+//	36. 			x.p.color = BLACK
+//	37. 			RIGHT-ROTATE(T, w.p)
+//	38. 			x = T.root
+//	39.
+//	40. x.color = BLACK
+//
 func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 	for x != ivt.root && x.color() == black && x.parent != nil {
-		if x == x.parent.left {
+		if x == x.parent.left { // line 3-20
 			w := x.parent.right
 			if w.color() == red {
 				w.c = black
@@ -292,7 +376,9 @@ func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 				ivt.rotateLeft(x.parent)
 				x = ivt.root
 			}
-		} else {
+
+		} else { // line 22-38
+
 			// same as above but with left and right exchanged
 			w := x.parent.left
 			if w.color() == red {
@@ -322,15 +408,58 @@ func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 			}
 		}
 	}
+
 	if x != nil {
 		x.c = black
 	}
 }
 
+func (ivt *intervalTree) createIntervalNode(ivl Interval, val interface{}) *intervalNode {
+	return &intervalNode{
+		iv:     IntervalValue{ivl, val},
+		max:    ivl.End,
+		c:      red,
+		left:   nil,
+		right:  nil,
+		parent: nil,
+	}
+}
+
+// TODO: make this consistent with textbook implementation
+//
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.3, p315
+//
+//	 0. RB-INSERT(T, z)
+//	 1.
+//	 2. y = T.nil
+//	 3. x = T.root
+//	 4.
+//	 5. while x ≠ T.nil
+//	 6. 	y = x
+//	 7. 	if z.key < x.key
+//	 8. 		x = x.left
+//	 9. 	else
+//	10. 		x = x.right
+//	11.
+//	12. z.p = y
+//	13.
+//	14. if y == T.nil
+//	15. 	T.root = z
+//	16. else if z.key < y.key
+//	17. 	y.left = z
+//	18. else
+//	19. 	y.right = z
+//	20.
+//	21. z.left = T.nil
+//	22. z.right = T.nil
+//	23. z.color = RED
+//	24.
+//	25. RB-INSERT-FIXUP(T, z)
+
 // Insert adds a node with the given interval into the tree.
 func (ivt *intervalTree) Insert(ivl Interval, val interface{}) {
 	var y *intervalNode
-	z := &intervalNode{iv: IntervalValue{ivl, val}, max: ivl.End, c: red}
+	z := ivt.createIntervalNode(ivl, val)
 	x := ivt.root
 	for x != nil {
 		y = x
@@ -353,13 +482,48 @@ func (ivt *intervalTree) Insert(ivl Interval, val interface{}) {
 		y.updateMax()
 	}
 	z.c = red
+
 	ivt.insertFixup(z)
 	ivt.count++
 }
 
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.3, p316
+//
+//	 0. RB-INSERT-FIXUP(T, z)
+//	 1.
+//	 2. while z.p.color == RED
+//	 3. 	if z.p == z.p.p.left
+//	 4. 		y = z.p.p.right
+//	 5. 		if y.color == RED
+//	 6. 			z.p.color = BLACK
+//	 7. 			y.color = BLACK
+//	 8. 			z.p.p.color = RED
+//	 9. 			z = z.p.p
+//	10. 		else if z == z.p.right
+//	11. 				z = z.p
+//	12. 				LEFT-ROTATE(T, z)
+//	13. 			z.p.color = BLACK
+//	14. 			z.p.p.color = RED
+//	15. 			RIGHT-ROTATE(T, z.p.p)
+//	16. 	else
+//	17. 		y = z.p.p.left
+//	18. 		if y.color == RED
+//	19. 			z.p.color = BLACK
+//	20. 			y.color = BLACK
+//	21. 			z.p.p.color = RED
+//	22. 			z = z.p.p
+//	23. 		else if z == z.p.right
+//	24. 				z = z.p
+//	25. 				RIGHT-ROTATE(T, z)
+//	26. 			z.p.color = BLACK
+//	27. 			z.p.p.color = RED
+//	28. 			LEFT-ROTATE(T, z.p.p)
+//	29.
+//	30. T.root.color = BLACK
+//
 func (ivt *intervalTree) insertFixup(z *intervalNode) {
 	for z.parent != nil && z.parent.parent != nil && z.parent.color() == red {
-		if z.parent == z.parent.parent.left {
+		if z.parent == z.parent.parent.left { // line 3-15
 			y := z.parent.parent.right
 			if y.color() == red {
 				y.c = black
@@ -375,7 +539,7 @@ func (ivt *intervalTree) insertFixup(z *intervalNode) {
 				z.parent.parent.c = red
 				ivt.rotateRight(z.parent.parent)
 			}
-		} else {
+		} else { // line 16-28
 			// same as then with left/right exchanged
 			y := z.parent.parent.left
 			if y.color() == red {
@@ -394,34 +558,97 @@ func (ivt *intervalTree) insertFixup(z *intervalNode) {
 			}
 		}
 	}
+
+	// line 30
 	ivt.root.c = black
 }
 
 // rotateLeft moves x so it is left of its right child
+//
+// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.2, p313
+//
+//	 0. LEFT-ROTATE(T, x)
+//	 1.
+//	 2. y = x.right
+//	 3. x.right = y.left
+//	 4.
+//	 5. if y.left ≠ T.nil
+//	 6. 	y.left.p = x
+//	 7.
+//	 8. y.p = x.p
+//	 9.
+//	10. if x.p == T.nil
+//	11. 	T.root = y
+//	12. else if x == x.p.left
+//	13. 	x.p.left = y
+//	14. else
+//	15. 	x.p.right = y
+//	16.
+//	17. y.left = x
+//	18. x.p = y
+//
 func (ivt *intervalTree) rotateLeft(x *intervalNode) {
+	// line 2-3
 	y := x.right
 	x.right = y.left
+
+	// line 5-6
 	if y.left != nil {
 		y.left.parent = x
 	}
+
 	x.updateMax()
+
+	// line 10-15, 18
 	ivt.replaceParent(x, y)
+
+	// line 17
 	y.left = x
 	y.updateMax()
 }
 
 // rotateRight moves x so it is right of its left child
+//
+//	 0. RIGHT-ROTATE(T, x)
+//	 1.
+//	 2. y = x.left
+//	 3. x.left = y.right
+//	 4.
+//	 5. if y.right ≠ T.nil
+//	 6. 	y.right.p = x
+//	 7.
+//	 8. y.p = x.p
+//	 9.
+//	10. if x.p == T.nil
+//	11. 	T.root = y
+//	12. else if x == x.p.right
+//	13. 	x.p.right = y
+//	14. else
+//	15. 	x.p.left = y
+//	16.
+//	17. y.right = x
+//	18. x.p = y
+//
 func (ivt *intervalTree) rotateRight(x *intervalNode) {
 	if x == nil {
 		return
 	}
+
+	// line 2-3
 	y := x.left
 	x.left = y.right
+
+	// line 5-6
 	if y.right != nil {
 		y.right.parent = x
 	}
+
 	x.updateMax()
+
+	// line 10-15, 18
 	ivt.replaceParent(x, y)
+
+	// line 17
 	y.right = x
 	y.updateMax()
 }
