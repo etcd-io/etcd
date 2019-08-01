@@ -48,7 +48,7 @@ func TestRangePermission(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		readPerms := &adt.IntervalTree{}
+		readPerms := adt.NewIntervalTree()
 		for _, p := range tt.perms {
 			readPerms.Insert(p, struct{}{})
 		}
@@ -89,7 +89,7 @@ func TestKeyPermission(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		readPerms := &adt.IntervalTree{}
+		readPerms := adt.NewIntervalTree()
 		for _, p := range tt.perms {
 			readPerms.Insert(p, struct{}{})
 		}

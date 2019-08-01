@@ -28,8 +28,8 @@ func getMergedPerms(lg *zap.Logger, tx backend.BatchTx, userName string) *unifie
 		return nil
 	}
 
-	readPerms := &adt.IntervalTree{}
-	writePerms := &adt.IntervalTree{}
+	readPerms := adt.NewIntervalTree()
+	writePerms := adt.NewIntervalTree()
 
 	for _, roleName := range user.Roles {
 		role := getRole(tx, roleName)
@@ -148,6 +148,6 @@ func (as *authStore) invalidateCachedPerm(userName string) {
 }
 
 type unifiedRangePermissions struct {
-	readPerms  *adt.IntervalTree
-	writePerms *adt.IntervalTree
+	readPerms  adt.IntervalTree
+	writePerms adt.IntervalTree
 }
