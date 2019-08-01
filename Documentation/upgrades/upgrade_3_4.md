@@ -49,7 +49,7 @@ OK
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
-#### Promote `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
+#### Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
 
 v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to `etcd_mvcc_db_total_size_in_bytes`, in order to encourage etcd storage monitoring.
 
@@ -60,7 +60,59 @@ v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to
 +etcd_mvcc_db_total_size_in_bytes
 ```
 
-Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we will promote more metrics.
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_put_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_put_total` Prometheus metrics to `etcd_mvcc_put_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_put_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_put_total
++etcd_mvcc_put_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_delete_total` Prometheus metrics to `etcd_mvcc_delete_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_delete_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_delete_total
++etcd_mvcc_delete_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_txn_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_txn_total` Prometheus metrics to `etcd_mvcc_txn_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_txn_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_txn_total
++etcd_mvcc_txn_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_range_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_range_total` Prometheus metrics to `etcd_mvcc_range_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_range_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_range_total
++etcd_mvcc_range_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
 
 #### Deprecating `etcd --log-output` flag (now `--log-outputs`)
 
@@ -104,6 +156,20 @@ cfg := &embed.Config{Debug: false}
 #### v3.5 deprecates `capnslog`
 
 **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+
+```diff
+-etcd
++etcd --logger zap
+```
+
+#### Deprecating `etcd --debug` flag (now `--log-level=debug`)
+
+v3.4 deprecates [`etcd --debug`](https://github.com/etcd-io/etcd/pull/10947) flag. Instead, use `etcd --log-level=debug` flag.
+
+```diff
+-etcd --debug
++etcd --logger zap --log-level debug
+```
 
 #### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
@@ -169,6 +235,22 @@ import "github.com/coreos/etcd/wal"
 
 -wal.Create(dirpath, metadata)
 +wal.Create(lg, dirpath, metadata)
+```
+
+#### Changed `IntervalTree` type in package `pkg/adt`
+
+`pkg/adt.IntervalTree` is now defined as an `interface`.
+
+```diff
+import (
+    "fmt"
+
+    "go.etcd.io/etcd/pkg/adt"
+)
+
+func main() {
+-    ivt := &adt.IntervalTree{}
++    ivt := adt.NewIntervalTree()
 ```
 
 #### Deprecated `embed.Config.SetupLogging`
