@@ -31,6 +31,15 @@ var (
 
 	putCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "put_total",
+			Help:      "Total number of puts seen by this member.",
+		})
+
+	// TODO: remove in 3.5 release
+	putCounterDebug = prometheus.NewCounter(
+		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "put_total",
@@ -38,6 +47,15 @@ var (
 		})
 
 	deleteCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "delete_total",
+			Help:      "Total number of deletes seen by this member.",
+		})
+
+	// TODO: remove in 3.5 release
+	deleteCounterDebug = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
