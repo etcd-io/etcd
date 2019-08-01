@@ -50,8 +50,12 @@ func (tw *metricsTxnWrite) End() {
 	defer tw.TxnWrite.End()
 	if sum := tw.ranges + tw.puts + tw.deletes; sum > 1 {
 		txnCounter.Inc()
+		txnCounterDebug.Inc()
 	}
-	rangeCounter.Add(float64(tw.ranges))
+
+	ranges := float64(tw.ranges)
+	rangeCounter.Add(ranges)
+	rangeCounterDebug.Add(ranges)
 
 	puts := float64(tw.puts)
 	putCounter.Add(puts)

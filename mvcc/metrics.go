@@ -23,6 +23,13 @@ import (
 var (
 	rangeCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "range_total",
+			Help:      "Total number of ranges seen by this member.",
+		})
+	rangeCounterDebug = prometheus.NewCounter(
+		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "range_total",
@@ -62,6 +69,13 @@ var (
 		})
 
 	txnCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "txn_total",
+			Help:      "Total number of txns seen by this member.",
+		})
+	txnCounterDebug = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
@@ -254,11 +268,13 @@ var (
 
 func init() {
 	prometheus.MustRegister(rangeCounter)
+	prometheus.MustRegister(rangeCounterDebug)
 	prometheus.MustRegister(putCounter)
 	prometheus.MustRegister(putCounterDebug)
 	prometheus.MustRegister(deleteCounter)
 	prometheus.MustRegister(deleteCounterDebug)
 	prometheus.MustRegister(txnCounter)
+	prometheus.MustRegister(txnCounterDebug)
 	prometheus.MustRegister(keysGauge)
 	prometheus.MustRegister(watchStreamGauge)
 	prometheus.MustRegister(watcherGauge)
