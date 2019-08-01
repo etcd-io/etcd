@@ -52,10 +52,12 @@ func (tw *metricsTxnWrite) End() {
 		txnCounter.Inc()
 	}
 	rangeCounter.Add(float64(tw.ranges))
-	putCounter.Add(float64(tw.puts))
-	// TODO: remove in 3.5 release
-	putCounterDebug.Add(float64(tw.puts))
-	deleteCounter.Add(float64(tw.deletes))
-	// TODO: remove in 3.5 release
-	deleteCounterDebug.Add(float64(tw.deletes))
+
+	puts := float64(tw.puts)
+	putCounter.Add(puts)
+	putCounterDebug.Add(puts)
+
+	deletes := float64(tw.deletes)
+	deleteCounter.Add(deletes)
+	deleteCounterDebug.Add(deletes)
 }
