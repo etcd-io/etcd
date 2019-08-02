@@ -41,8 +41,8 @@ func metricsTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	ver := version.Version
-	if strings.HasSuffix(ver, "+git") {
-		ver = strings.Replace(ver, "+git", "", 1)
+	if strings.HasSuffix(ver, "-pre") {
+		ver = strings.Replace(ver, "-pre", "", 1)
 	}
 
 	i := 0
