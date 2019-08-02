@@ -30,25 +30,62 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
-	batchsize := int64(10000)
+	batchsize := int64(1000)
 	last := make([]byte, 8+1+8)
+
+	compactKeys := make([][]byte, 0, batchsize)
 	for {
 		var rev revision
 
 		start := time.Now()
-		tx := s.b.BatchTx()
-		tx.Lock()
+		rtx := s.b.ConcurrentReadTx()
+		rtx.RLock()
 
-		keys, _ := tx.UnsafeRange(keyBucketName, last, end, batchsize)
+		compactKeys = compactKeys[:0]
+		batchCompactions := 0
+		// Find keys to remove in read transaction to maximize concurrency.
+		keys, _ := rtx.UnsafeRange(keyBucketName, last, end, batchsize)
 		for _, key := range keys {
 			rev = bytesToRev(key)
 			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(keyBucketName, key)
-				keyCompactions++
+				ckey := make([]byte, len(key))
+				copy(ckey, key)
+				compactKeys = append(compactKeys, ckey)
+				batchCompactions++
+			}
+		}
+		keyCompactions += batchCompactions
+		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
+		rtx.RUnlock()
+
+		if len(compactKeys) > 0 {
+			batchStart := time.Now()
+			err := s.b.Compact(keyBucketName, compactKeys)
+			if err != nil {
+				if s.lg != nil {
+					s.lg.Error(
+						"compaction failed",
+						zap.Int64("compact-revision", compactMainRev),
+					)
+				} else {
+					plog.Errorf("compaction failed for %d: %v", compactMainRev, err)
+				}
+			}
+			if s.lg != nil {
+				s.lg.Info(
+					"finished scheduled compaction batch",
+					zap.Int64("compact-revision", compactMainRev),
+					zap.Int("key-count", batchCompactions),
+					zap.Duration("took", time.Since(totalStart)),
+				)
+			} else {
+				plog.Printf("finished scheduled compaction batch of %d keys at %d (took %v)", batchCompactions, compactMainRev, time.Since(batchStart))
 			}
 		}
 
 		if len(keys) < int(batchsize) {
+			tx := s.b.BatchTx()
+			tx.Lock()
 			rbytes := make([]byte, 8+1+8)
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
@@ -57,21 +94,19 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 				s.lg.Info(
 					"finished scheduled compaction",
 					zap.Int64("compact-revision", compactMainRev),
+					zap.Int("key-count", keyCompactions),
 					zap.Duration("took", time.Since(totalStart)),
 				)
 			} else {
-				plog.Printf("finished scheduled compaction at %d (took %v)", compactMainRev, time.Since(totalStart))
+				plog.Printf("finished scheduled compaction of %d keys at %d (took %v)", keyCompactions, compactMainRev, time.Since(totalStart))
 			}
 			return true
 		}
 
-		// update last
-		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
-		tx.Unlock()
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(10 * time.Millisecond):
 		case <-s.stopc:
 			return false
 		}

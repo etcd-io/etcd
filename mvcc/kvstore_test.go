@@ -909,6 +909,7 @@ func (b *fakeBackend) Snapshot() backend.Snapshot                               
 func (b *fakeBackend) ForceCommit()                                                {}
 func (b *fakeBackend) Defrag() error                                               { return nil }
 func (b *fakeBackend) Close() error                                                { return nil }
+func (b *fakeBackend) Compact(bucket []byte, keys [][]byte) error                  { return nil }
 
 type indexGetResp struct {
 	rev     revision

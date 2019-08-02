@@ -56,6 +56,10 @@ type Backend interface {
 	ConcurrentReadTx() ReadTx
 
 	Snapshot() Snapshot
+
+	// Compact deletes all the provided keys directly from boltdb.
+	Compact(bucket []byte, keys [][]byte) error
+
 	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
 	// Size returns the current size of the backend physically allocated.
 	// The backend can hold DB space that is not utilized at the moment,
@@ -273,6 +277,19 @@ func (b *backend) Snapshot() Snapshot {
 type IgnoreKey struct {
 	Bucket string
 	Key    string
+}
+
+func (b *backend) Compact(bucket []byte, keys [][]byte) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucket)
+		for _, key := range keys {
+			err := b.Delete(key)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
