@@ -63,7 +63,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		break
 	}
 	if err != nil {
-		t.Fatalf("cannot pull version (%v)", err)
+		t.Skipf("cannot pull version (%v)", err)
 	}
 
 	os.Setenv("ETCDCTL_API", "3")
@@ -103,6 +103,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		}
 	}
 
+	// TODO: update after release candidate
 	// expect upgraded cluster version
 	ver := version.Version
 	if strings.HasSuffix(ver, "-pre") {
