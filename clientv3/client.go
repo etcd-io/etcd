@@ -587,10 +587,13 @@ func isUnavailableErr(ctx context.Context, err error) bool {
 	if err == nil {
 		return false
 	}
-	ev, _ := status.FromError(err)
-	// Unavailable codes mean the system will be right back.
-	// (e.g., can't connect, lost leader)
-	return ev.Code() == codes.Unavailable
+	ev, ok := status.FromError(err)
+	if ok {
+		// Unavailable codes mean the system will be right back.
+		// (e.g., can't connect, lost leader)
+		return ev.Code() == codes.Unavailable
+	}
+	return false
 }
 
 func toErr(ctx context.Context, err error) error {
@@ -610,9 +613,6 @@ func toErr(ctx context.Context, err error) error {
 			if ctx.Err() != nil {
 				err = ctx.Err()
 			}
-		case codes.Unavailable:
-		case codes.FailedPrecondition:
-			err = grpc.ErrClientConnClosing
 		}
 	}
 	return err
@@ -632,16 +632,19 @@ func IsConnCanceled(err error) bool {
 	if err == nil {
 		return false
 	}
-	// >= gRPC v1.10.x
+
+	// >= gRPC v1.23.x
 	s, ok := status.FromError(err)
 	if ok {
 		// connection is canceled or server has already closed the connection
 		return s.Code() == codes.Canceled || s.Message() == "transport is closing"
 	}
+
 	// >= gRPC v1.10.x
 	if err == context.Canceled {
 		return true
 	}
+
 	// <= gRPC v1.7.x returns 'errors.New("grpc: the client connection is closing")'
 	return strings.Contains(err.Error(), "grpc: the client connection is closing")
 }
