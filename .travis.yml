@@ -7,7 +7,6 @@ services: docker
 
 go:
 - 1.12.7
-- tip
 
 notifications:
   on_success: never
@@ -23,8 +22,6 @@ env:
   - TARGET=linux-amd64-unit
   - TARGET=all-build
   - TARGET=linux-amd64-grpcproxy
-  - TARGET=linux-amd64-coverage
-  - TARGET=linux-amd64-fmt-unit-go-tip
   - TARGET=linux-386-unit
 
 matrix:
@@ -35,33 +32,6 @@ matrix:
   - go: 1.12.7
     env: TARGET=linux-amd64-grpcproxy
   - go: 1.12.7
-    env: TARGET=linux-amd64-coverage
-  - go: tip
-    env: TARGET=linux-amd64-fmt-unit-go-tip
-  - go: 1.12.7
-    env: TARGET=linux-386-unit
-  exclude:
-  - go: tip
-    env: TARGET=linux-amd64-fmt
-  - go: tip
-    env: TARGET=linux-amd64-integration-1-cpu
-  - go: tip
-    env: TARGET=linux-amd64-integration-2-cpu
-  - go: tip
-    env: TARGET=linux-amd64-integration-4-cpu
-  - go: tip
-    env: TARGET=linux-amd64-functional
-  - go: tip
-    env: TARGET=linux-amd64-unit
-  - go: tip
-    env: TARGET=all-build
-  - go: tip
-    env: TARGET=linux-amd64-grpcproxy
-  - go: tip
-    env: TARGET=linux-amd64-coverage
-  - go: 1.12.7
-    env: TARGET=linux-amd64-fmt-unit-go-tip
-  - go: tip
     env: TARGET=linux-386-unit
 
 before_install:
@@ -117,12 +87,6 @@ script:
         ;;
       linux-amd64-grpcproxy)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
-        ;;
-      linux-amd64-coverage)
-        sudo HOST_TMP_DIR=/tmp make docker-test-coverage
-        ;;
-      linux-amd64-fmt-unit-go-tip)
-        GOARCH=amd64 PASSES='fmt unit' ./test
         ;;
       linux-386-unit)
         docker run --rm \
