@@ -298,7 +298,7 @@ func TestIntervalTreeDelete(t *testing.T) {
 		//        /     \                                                              /
 		// [238,239]   [292,293]                                                [953,954]
 		//
-		t.Logf("level order after deleting '11' expected %v, got %v", expectedAfterDelete11, visitsAfterDelete11)
+		t.Fatalf("level order after deleting '11' expected %v, got %v", expectedAfterDelete11, visitsAfterDelete11)
 	}
 }
 
