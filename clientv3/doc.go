@@ -90,7 +90,7 @@
 //		// with etcd clientv3 <= v3.3
 //		if err == context.Canceled {
 //			// grpc balancer calls 'Get' with an inflight client.Close
-//		} else if err == grpc.ErrClientConnClosing {
+//		} else if err == grpc.ErrClientConnClosing { // <= gRCP v1.7.x
 //			// grpc balancer calls 'Get' after client.Close.
 //		}
 //		// with etcd clientv3 >= v3.4

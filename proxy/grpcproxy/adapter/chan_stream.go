@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // chanServerStream implements grpc.ServerStream with a chanStream
@@ -120,7 +122,7 @@ func (s *chanStream) RecvMsg(m interface{}) error {
 		select {
 		case msg, ok := <-s.recvc:
 			if !ok {
-				return grpc.ErrClientConnClosing
+				return status.Error(codes.Canceled, "the client connection is closing")
 			}
 			if err, ok := msg.(error); ok {
 				return err

@@ -49,6 +49,29 @@ OK
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
+#### Deprecated `grpc.ErrClientConnClosing` error
+
+`grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+
+```diff
+import (
++	"go.etcd.io/etcd/clientv3"
+
+	"google.golang.org/grpc"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
+)
+
+_, err := kvc.Get(ctx, "a")
+-if err == grpc.ErrClientConnClosing {
++if clientv3.IsConnCanceled(err) {
+
+// or
++s, ok := status.FromError(err)
++if ok {
++  if s.Code() == codes.Canceled
+```
+
 #### Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
 
 v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to `etcd_mvcc_db_total_size_in_bytes`, in order to encourage etcd storage monitoring.

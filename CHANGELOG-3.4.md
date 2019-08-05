@@ -125,6 +125,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - v3.5 will deprecate `etcd --debug` flag in favor of `etcd --log-level=debug`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/etcd-io/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
+- Deprecated [`grpc.ErrClientConnClosing`](https://github.com/etcd-io/etcd/pull/10981).
+  - `clientv3` and `proxy/grpcproxy` now does not return `grpc.ErrClientConnClosing`.
+  - `grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+  - Use `clientv3.IsConnCanceled(error)` or `google.golang.org/grpc/status.FromError(error)` instead.
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/etcd-io/etcd/pull/9155).
   - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/etcd-io/etcd/issues/4913).
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
@@ -449,6 +453,10 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - `PermitWithoutStream` is set to false by default.
 - Fix logic on [release lock key if cancelled](https://github.com/etcd-io/etcd/pull/10153) in `clientv3/concurrency` package.
 - Fix [`(*Client).Endpoints()` method race condition](https://github.com/etcd-io/etcd/pull/10595).
+- Deprecated [`grpc.ErrClientConnClosing`](https://github.com/etcd-io/etcd/pull/10981).
+  - `clientv3` and `proxy/grpcproxy` now does not return `grpc.ErrClientConnClosing`.
+  - `grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+  - Use `clientv3.IsConnCanceled(error)` or `google.golang.org/grpc/status.FromError(error)` instead.
 
 ### etcdctl v3
 
