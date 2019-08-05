@@ -363,7 +363,7 @@ func (e *Etcd) servePeers() (err error) {
 	for _, p := range e.Peers {
 		gs := v3rpc.Server(e.Server, peerTLScfg)
 		m := cmux.New(p.Listener)
-		go gs.Serve(m.Match(cmux.HTTP2()))
+		go gs.Serve(m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc")))
 		srv := &http.Server{
 			Handler:     grpcHandlerFunc(gs, ph),
 			ReadTimeout: 5 * time.Minute,

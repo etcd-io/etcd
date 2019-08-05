@@ -102,7 +102,7 @@ func (sctx *serveCtx) serve(
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}
-		grpcl := m.Match(cmux.HTTP2())
+		grpcl := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 		go func() { errHandler(gs.Serve(grpcl)) }()
 
 		var gwmux *gw.ServeMux
