@@ -32,11 +32,6 @@ main() {
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
   BRANCH="release-${MINOR_VERSION}"
 
-  if ! command -v acbuild >/dev/null; then
-    echo "cannot find acbuild"
-    exit 1
-  fi
-
   if ! command -v docker >/dev/null; then
     echo "cannot find docker"
     exit 1
@@ -88,7 +83,7 @@ main() {
       echo "Updating version from ${source_version} to ${VERSION} in version/version.go"
       sed -i "s/${source_version}/${VERSION}/g" version/version.go
     fi
-    
+
     echo "Building etcd and checking --version output"
     ./build
     local etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
