@@ -176,9 +176,6 @@ func (s *keyStresser) isRetryableError(err error) bool {
 	case context.Canceled.Error():
 		// from stresser.Cancel method:
 		return false
-	case grpc.ErrClientConnClosing.Error():
-		// from stresser.Cancel method:
-		return false
 	}
 
 	if status.Convert(err).Code() == codes.Unavailable {
