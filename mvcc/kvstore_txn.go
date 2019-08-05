@@ -119,7 +119,10 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	if rev <= 0 {
 		rev = curRev
 	}
-	if rev < tr.s.compactMainRev {
+	tr.s.revMu.RLock()
+	compactMainRev := tr.s.compactMainRev
+	tr.s.revMu.RUnlock()
+	if rev < compactMainRev {
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 
