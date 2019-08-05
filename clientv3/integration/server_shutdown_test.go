@@ -104,7 +104,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if err == context.DeadlineExceeded || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -364,4 +364,48 @@ func isServerCtxTimeout(err error) bool {
 	ev, _ := status.FromError(err)
 	code := ev.Code()
 	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
+}
+
+// In grpc v1.11.3+ dial timeouts can error out with transport.ErrConnClosing. Previously dial timeouts
+// would always error out with context.DeadlineExceeded.
+func isClientTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.DeadlineExceeded {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.DeadlineExceeded
+}
+
+func isServerUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Unavailable
+}
+
+func isCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == context.Canceled {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled
 }
