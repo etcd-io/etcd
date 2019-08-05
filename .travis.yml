@@ -31,8 +31,6 @@ matrix:
   fast_finish: true
   allow_failures:
   - go: 1.12.7
-    env: TARGET=linux-amd64-integration-4-cpu
-  - go: 1.12.7
     env: TARGET=linux-amd64-grpcproxy
   - go: 1.12.7
     env: TARGET=linux-amd64-coverage
