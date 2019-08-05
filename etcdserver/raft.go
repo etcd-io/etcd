@@ -58,13 +58,6 @@ var (
 )
 
 func init() {
-	lcfg := logutil.DefaultZapLoggerConfig
-	lg, err := logutil.NewRaftLogger(&lcfg)
-	if err != nil {
-		log.Fatalf("cannot create raft logger %v", err)
-	}
-	raft.SetLogger(lg)
-
 	expvar.Publish("raft.status", expvar.Func(func() interface{} {
 		raftStatusMu.Lock()
 		defer raftStatusMu.Unlock()
@@ -124,6 +117,18 @@ type raftNodeConfig struct {
 }
 
 func newRaftNode(cfg raftNodeConfig) *raftNode {
+	var lg raft.Logger
+	if cfg.lg != nil {
+		lg = logutil.NewRaftLoggerZap(cfg.lg)
+	} else {
+		lcfg := logutil.DefaultZapLoggerConfig
+		var err error
+		lg, err = logutil.NewRaftLogger(&lcfg)
+		if err != nil {
+			log.Fatalf("cannot create raft logger %v", err)
+		}
+	}
+	raft.SetLogger(lg)
 	r := &raftNode{
 		lg:             cfg.lg,
 		tickMu:         new(sync.Mutex),
@@ -479,7 +484,11 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 		}
 	}
 
-	n = raft.StartNode(c, peers)
+	if len(peers) == 0 {
+		n = raft.RestartNode(c)
+	} else {
+		n = raft.StartNode(c, peers)
+	}
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
@@ -643,7 +652,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Nodes {
+		for _, id := range snap.Metadata.ConfState.Voters {
 			ids[id] = true
 		}
 	}
@@ -682,27 +691,18 @@ func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
 func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	ents := make([]raftpb.Entry, 0)
-	next := index + 1
 	found := false
 	for _, id := range ids {
 		if id == self {
 			found = true
-			continue
 		}
-		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-		next++
 	}
+
+	var ents []raftpb.Entry
+	next := index + 1
+
+	// NB: always add self first, then remove other nodes. Raft will panic if the
+	// set of voters ever becomes empty.
 	if !found {
 		m := membership.Member{
 			ID:             types.ID(self),
@@ -728,6 +728,26 @@ func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			Index: next,
 		}
 		ents = append(ents, e)
+		next++
 	}
+
+	for _, id := range ids {
+		if id == self {
+			continue
+		}
+		cc := &raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: id,
+		}
+		e := raftpb.Entry{
+			Type:  raftpb.EntryConfChange,
+			Data:  pbutil.MustMarshal(cc),
+			Term:  term,
+			Index: next,
+		}
+		ents = append(ents, e)
+		next++
+	}
+
 	return ents
 }

@@ -1980,6 +1980,12 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
+//
+// Use v2 store to encode member attributes, and apply through Raft
+// but does not go through v2 API endpoint, which means even with v2
+// client handler disabled (e.g. --enable-v2=false), cluster can still
+// process publish requests through rafthttp
+// TODO: Deprecate v2 store
 func (s *EtcdServer) publish(timeout time.Duration) {
 	b, err := json.Marshal(s.attributes)
 	if err != nil {

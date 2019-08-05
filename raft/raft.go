@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/raft/confchange"
 	"go.etcd.io/etcd/raft/quorum"
 	pb "go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/raft/tracker"
@@ -328,14 +329,14 @@ func newRaft(c *Config) *raft {
 	}
 	peers := c.peers
 	learners := c.learners
-	if len(cs.Nodes) > 0 || len(cs.Learners) > 0 {
+	if len(cs.Voters) > 0 || len(cs.Learners) > 0 {
 		if len(peers) > 0 || len(learners) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
 			// tests; the argument should be removed and these tests should be
 			// updated to specify their nodes through a snapshot.
-			panic("cannot specify both newRaft(peers, learners) and ConfState.(Nodes, Learners)")
+			panic("cannot specify both newRaft(peers, learners) and ConfState.(Voters, Learners)")
 		}
-		peers = cs.Nodes
+		peers = cs.Voters
 		learners = cs.Learners
 	}
 	r := &raft{
@@ -356,15 +357,11 @@ func newRaft(c *Config) *raft {
 	}
 	for _, p := range peers {
 		// Add node to active config.
-		r.prs.InitProgress(p, 0 /* match */, 1 /* next */, false /* isLearner */)
+		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: p}.AsV2())
 	}
 	for _, p := range learners {
 		// Add learner to active config.
-		r.prs.InitProgress(p, 0 /* match */, 1 /* next */, true /* isLearner */)
-
-		if r.id == p {
-			r.isLearner = true
-		}
+		r.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddLearnerNode, NodeID: p}.AsV2())
 	}
 
 	if !isHardStateEqual(hs, emptyState) {
@@ -552,6 +549,46 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 		}
 		r.sendHeartbeat(id, ctx)
 	})
+}
+
+func (r *raft) advance(rd Ready) {
+	// If entries were applied (or a snapshot), update our cursor for
+	// the next Ready. Note that if the current HardState contains a
+	// new Commit index, this does not mean that we're also applying
+	// all of the new entries due to commit pagination by size.
+	if index := rd.appliedCursor(); index > 0 {
+		r.raftLog.appliedTo(index)
+		if r.prs.Config.AutoLeave && index >= r.pendingConfIndex && r.state == StateLeader {
+			// If the current (and most recent, at least for this leader's term)
+			// configuration should be auto-left, initiate that now.
+			ccdata, err := (&pb.ConfChangeV2{}).Marshal()
+			if err != nil {
+				panic(err)
+			}
+			ent := pb.Entry{
+				Type: pb.EntryConfChangeV2,
+				Data: ccdata,
+			}
+			if !r.appendEntry(ent) {
+				// If we could not append the entry, bump the pending conf index
+				// so that we'll try again later.
+				//
+				// TODO(tbg): test this case.
+				r.pendingConfIndex = r.raftLog.lastIndex()
+			} else {
+				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
+			}
+		}
+	}
+	r.reduceUncommittedSize(rd.CommittedEntries)
+
+	if len(rd.Entries) > 0 {
+		e := rd.Entries[len(rd.Entries)-1]
+		r.raftLog.stableTo(e.Index, e.Term)
+	}
+	if !IsEmptySnap(rd.Snapshot) {
+		r.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
+	}
 }
 
 // maybeCommit attempts to advance the commit index. Returns true if
@@ -976,10 +1013,10 @@ func stepLeader(r *raft, m pb.Message) error {
 
 		for i := range m.Entries {
 			e := &m.Entries[i]
-			if e.Type == pb.EntryConfChange {
+			if e.Type == pb.EntryConfChange || e.Type == pb.EntryConfChangeV2 {
 				if r.pendingConfIndex > r.raftLog.applied {
-					r.logger.Infof("propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
-						e, r.pendingConfIndex, r.raftLog.applied)
+					r.logger.Infof("%x propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
+						r.id, e, r.pendingConfIndex, r.raftLog.applied)
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				} else {
 					r.pendingConfIndex = r.raftLog.lastIndex() + uint64(i) + 1
@@ -1040,7 +1077,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		pr.RecentActive = true
 
 		if m.Reject {
-			r.logger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
+			r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
 			if pr.MaybeDecrTo(m.Index, m.RejectHint) {
 				r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
@@ -1056,6 +1093,9 @@ func stepLeader(r *raft, m pb.Message) error {
 				case pr.State == tracker.StateProbe:
 					pr.BecomeReplicate()
 				case pr.State == tracker.StateSnapshot && pr.Match >= pr.PendingSnapshot:
+					// TODO(tbg): we should also enter this branch if a snapshot is
+					// received that is below pr.PendingSnapshot but which makes it
+					// possible to use the log again.
 					r.logger.Debugf("%x recovered from needing snapshot, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					// Transition back to replicating state via probing state
 					// (which takes the snapshot into account). If we didn't
@@ -1137,8 +1177,8 @@ func stepLeader(r *raft, m pb.Message) error {
 			pr.BecomeProbe()
 			r.logger.Debugf("%x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		}
-		// If snapshot finish, wait for the msgAppResp from the remote node before sending
-		// out the next msgApp.
+		// If snapshot finish, wait for the MsgAppResp from the remote node before sending
+		// out the next MsgApp.
 		// If snapshot failure, wait for a heartbeat interval before next try
 		pr.ProbeSent = true
 	case pb.MsgUnreachable:
@@ -1297,7 +1337,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
-		r.logger.Debugf("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
+		r.logger.Debugf("%x [logterm: %d, index: %d] rejected MsgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
 	}
@@ -1347,7 +1387,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	found := false
 	cs := s.Metadata.ConfState
 	for _, set := range [][]uint64{
-		cs.Nodes,
+		cs.Voters,
 		cs.Learners,
 	} {
 		for _, id := range set {
@@ -1374,25 +1414,15 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		return false
 	}
 
-	// The normal peer can't become learner.
-	if !r.isLearner {
-		for _, id := range s.Metadata.ConfState.Learners {
-			if id == r.id {
-				r.logger.Errorf("%x can't become learner when restores snapshot [index: %d, term: %d]", r.id, s.Metadata.Index, s.Metadata.Term)
-				return false
-			}
-		}
-	}
-
 	r.raftLog.restore(s)
 
 	// Reset the configuration and add the (potentially updated) peers in anew.
 	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
-	for _, id := range s.Metadata.ConfState.Nodes {
-		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddNode})
+	for _, id := range s.Metadata.ConfState.Voters {
+		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddNode}.AsV2())
 	}
 	for _, id := range s.Metadata.ConfState.Learners {
-		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddLearnerNode})
+		r.applyConfChange(pb.ConfChange{NodeID: id, Type: pb.ConfChangeAddLearnerNode}.AsV2())
 	}
 
 	pr := r.prs.Progress[r.id]
@@ -1410,61 +1440,38 @@ func (r *raft) promotable() bool {
 	return pr != nil && !pr.IsLearner
 }
 
-func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
-	addNodeOrLearnerNode := func(id uint64, isLearner bool) {
-		// NB: this method is intentionally hidden from view. All mutations of
-		// the conf state must call applyConfChange directly.
-		pr := r.prs.Progress[id]
-		if pr == nil {
-			r.prs.InitProgress(id, 0, r.raftLog.lastIndex()+1, isLearner)
-		} else {
-			if isLearner && !pr.IsLearner {
-				// Can only change Learner to Voter.
-				//
-				// TODO(tbg): why?
-				r.logger.Infof("%x ignored addLearner: do not support changing %x from raft peer to learner.", r.id, id)
-				return
-			}
-
-			if isLearner == pr.IsLearner {
-				// Ignore any redundant addNode calls (which can happen because the
-				// initial bootstrapping entries are applied twice).
-				return
-			}
-
-			// Change Learner to Voter, use origin Learner progress.
-			r.prs.RemoveAny(id)
-			r.prs.InitProgress(id, 0 /* match */, 1 /* next */, false /* isLearner */)
-			pr.IsLearner = false
-			*r.prs.Progress[id] = *pr
+func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {
+	cfg, prs, err := func() (tracker.Config, tracker.ProgressMap, error) {
+		changer := confchange.Changer{
+			Tracker:   r.prs,
+			LastIndex: r.raftLog.lastIndex(),
 		}
+		if cc.LeaveJoint() {
+			return changer.LeaveJoint()
+		} else if autoLeave, ok := cc.EnterJoint(); ok {
+			return changer.EnterJoint(autoLeave, cc.Changes...)
+		}
+		return changer.Simple(cc.Changes...)
+	}()
 
-		// When a node is first added, we should mark it as recently active.
-		// Otherwise, CheckQuorum may cause us to step down if it is invoked
-		// before the added node has had a chance to communicate with us.
-		r.prs.Progress[id].RecentActive = true
+	if err != nil {
+		// TODO(tbg): return the error to the caller.
+		panic(err)
 	}
 
-	var removed int
-	if cc.NodeID != None {
-		switch cc.Type {
-		case pb.ConfChangeAddNode:
-			addNodeOrLearnerNode(cc.NodeID, false /* isLearner */)
-		case pb.ConfChangeAddLearnerNode:
-			addNodeOrLearnerNode(cc.NodeID, true /* isLearner */)
-		case pb.ConfChangeRemoveNode:
-			removed++
-			r.prs.RemoveAny(cc.NodeID)
-		case pb.ConfChangeUpdateNode:
-		default:
-			panic("unexpected conf type")
-		}
-	}
+	r.prs.Config = cfg
+	r.prs.Progress = prs
 
 	r.logger.Infof("%x switched to configuration %s", r.id, r.prs.Config)
 	// Now that the configuration is updated, handle any side effects.
 
-	cs := pb.ConfState{Nodes: r.prs.VoterNodes(), Learners: r.prs.LearnerNodes()}
+	cs := pb.ConfState{
+		Voters:         r.prs.Voters[0].Slice(),
+		VotersOutgoing: r.prs.Voters[1].Slice(),
+		Learners:       quorum.MajorityConfig(r.prs.Learners).Slice(),
+		LearnersNext:   quorum.MajorityConfig(r.prs.LearnersNext).Slice(),
+		AutoLeave:      r.prs.AutoLeave,
+	}
 	pr, ok := r.prs.Progress[r.id]
 
 	// Update whether the node itself is a learner, resetting to false when the
@@ -1486,15 +1493,13 @@ func (r *raft) applyConfChange(cc pb.ConfChange) pb.ConfState {
 
 	// The remaining steps only make sense if this node is the leader and there
 	// are other nodes.
-	if r.state != StateLeader || len(cs.Nodes) == 0 {
+	if r.state != StateLeader || len(cs.Voters) == 0 {
 		return cs
 	}
-	if removed > 0 {
+	if r.maybeCommit() {
 		// The quorum size may have been reduced (but not to zero), so see if
 		// any pending entries can be committed.
-		if r.maybeCommit() {
-			r.bcastAppend()
-		}
+		r.bcastAppend()
 	}
 	// If the the leadTransferee was removed, abort the leadership transfer.
 	if _, tOK := r.prs.Progress[r.leadTransferee]; !tOK && r.leadTransferee != 0 {

@@ -9,6 +9,26 @@
         name: 'etcd',
         rules: [
           {
+            alert: 'etcdMembersDown',
+            expr: |||
+              max by (job) (
+                sum by (job) (up{%(etcd_selector)s} == bool 0)
+              or
+                count by (job,endpoint) (
+                  sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[3m])) > 0.01
+                )
+              )
+              > 0
+            ||| % $._config,
+            'for': '3m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              message: 'etcd cluster "{{ $labels.job }}": members are down ({{ $value }}).',
+            },
+          },
+          {
             alert: 'etcdInsufficientMembers',
             expr: |||
               sum(up{%(etcd_selector)s} == bool 1) by (job) < ((count(up{%(etcd_selector)s}) by (job) + 1) / 2)

@@ -148,7 +148,7 @@ type watcherGroup struct {
 	// keyWatchers has the watchers that watch on a single key
 	keyWatchers watcherSetByKey
 	// ranges has the watchers that watch a range; it is sorted by interval
-	ranges *adt.IntervalTree
+	ranges adt.IntervalTree
 	// watchers is the set of all watchers
 	watchers watcherSet
 }

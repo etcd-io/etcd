@@ -50,8 +50,18 @@ func (tw *metricsTxnWrite) End() {
 	defer tw.TxnWrite.End()
 	if sum := tw.ranges + tw.puts + tw.deletes; sum > 1 {
 		txnCounter.Inc()
+		txnCounterDebug.Inc() // TODO: remove in 3.5 release
 	}
-	rangeCounter.Add(float64(tw.ranges))
-	putCounter.Add(float64(tw.puts))
-	deleteCounter.Add(float64(tw.deletes))
+
+	ranges := float64(tw.ranges)
+	rangeCounter.Add(ranges)
+	rangeCounterDebug.Add(ranges) // TODO: remove in 3.5 release
+
+	puts := float64(tw.puts)
+	putCounter.Add(puts)
+	putCounterDebug.Add(puts) // TODO: remove in 3.5 release
+
+	deletes := float64(tw.deletes)
+	deleteCounter.Add(deletes)
+	deleteCounterDebug.Add(deletes) // TODO: remove in 3.5 release
 }

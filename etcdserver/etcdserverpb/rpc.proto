@@ -264,7 +264,7 @@ service Auth {
     };
   }
 
-  // UserAdd adds a new user.
+  // UserAdd adds a new user. User name cannot be empty.
   rpc UserAdd(AuthUserAddRequest) returns (AuthUserAddResponse) {
       option (google.api.http) = {
         post: "/v3/auth/user/add"
@@ -320,7 +320,7 @@ service Auth {
     };
   }
 
-  // RoleAdd adds a new role.
+  // RoleAdd adds a new role. Role name cannot be empty.
   rpc RoleAdd(AuthRoleAddRequest) returns (AuthRoleAddResponse) {
       option (google.api.http) = {
         post: "/v3/auth/role/add"

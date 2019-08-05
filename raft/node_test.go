@@ -130,11 +130,14 @@ func TestNodePropose(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
-	n.Campaign(context.TODO())
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
+	if err := n.Campaign(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
 	for {
 		rd := <-n.Ready()
 		s.Append(rd.Entries)
@@ -170,12 +173,13 @@ func TestNodeReadIndex(t *testing.T) {
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
 	r.readStates = wrs
 
-	go n.run(r)
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -307,10 +311,11 @@ func TestNodeProposeConfig(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -345,10 +350,10 @@ func TestNodeProposeConfig(t *testing.T) {
 // TestNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
 // not affect the later propose to add new node.
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 	rdyEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
@@ -421,9 +426,9 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 // know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
-	n := newNode()
-	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n := newNode(rn)
+	go n.run()
 	defer n.Stop()
 
 	errc := make(chan error, 1)
@@ -461,10 +466,11 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -495,10 +501,11 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 // TestNodeTick ensures that node.Tick() will increase the
 // elapsed of the underlying raft state machine.
 func TestNodeTick(t *testing.T) {
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	elapsed := r.electionElapsed
 	n.Tick()
 
@@ -515,13 +522,12 @@ func TestNodeTick(t *testing.T) {
 // TestNodeStop ensures that node.Stop() blocks until the node has stopped
 // processing, and that it is idempotent
 func TestNodeStop(t *testing.T) {
-	n := newNode()
-	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n := newNode(rn)
 	donec := make(chan struct{})
 
 	go func() {
-		n.run(r)
+		n.run()
 		close(donec)
 	}()
 
@@ -618,7 +624,9 @@ func TestNodeStart(t *testing.T) {
 		n.Advance()
 	}
 
-	n.Campaign(ctx)
+	if err := n.Campaign(ctx); err != nil {
+		t.Fatal(err)
+	}
 	rd := <-n.Ready()
 	storage.Append(rd.Entries)
 	n.Advance()
@@ -646,10 +654,12 @@ func TestNodeRestart(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 1}
 
 	want := Ready{
-		HardState: st,
+		// No HardState is emitted because there was no change.
+		HardState: raftpb.HardState{},
 		// commit up to index commit index in st
 		CommittedEntries: entries[:st.Commit],
-		MustSync:         true,
+		// MustSync is false because no HardState or new entries are provided.
+		MustSync: false,
 	}
 
 	storage := NewMemoryStorage()
@@ -680,7 +690,7 @@ func TestNodeRestart(t *testing.T) {
 func TestNodeRestartFromSnapshot(t *testing.T) {
 	snap := raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{
-			ConfState: raftpb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: raftpb.ConfState{Voters: []uint64{1, 2}},
 			Index:     2,
 			Term:      1,
 		},
@@ -691,10 +701,14 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 3}
 
 	want := Ready{
-		HardState: st,
+		// No HardState is emitted because nothing changed relative to what is
+		// already persisted.
+		HardState: raftpb.HardState{},
 		// commit up to index commit index in st
 		CommittedEntries: entries,
-		MustSync:         true,
+		// MustSync is only true when there is a new HardState or new entries;
+		// neither is the case here.
+		MustSync: false,
 	}
 
 	s := NewMemoryStorage()
@@ -798,10 +812,10 @@ func TestIsHardStateEqual(t *testing.T) {
 func TestNodeProposeAddLearnerNode(t *testing.T) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 	stop := make(chan struct{})
 	done := make(chan struct{})
@@ -830,7 +844,7 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 						t.Errorf("apply conf change should return new added learner: %v", state.String())
 					}
 
-					if len(state.Nodes) != 1 {
+					if len(state.Voters) != 1 {
 						t.Errorf("add learner should not change the nodes: %v", state.String())
 					}
 					t.Logf("apply raft conf %v changed to: %v", cc, state.String())
@@ -895,9 +909,12 @@ func TestCommitPagination(t *testing.T) {
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
 	cfg.MaxCommittedSizePerReady = 2048
-	r := newRaft(cfg)
-	n := newNode()
-	go n.run(r)
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 
 	rd := readyWithTimeout(&n)
@@ -984,9 +1001,12 @@ func TestNodeCommitPaginationAfterRestart(t *testing.T) {
 	// this and *will* return it (which is how the Commit index ended up being 10 initially).
 	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
 
-	r := newRaft(cfg)
-	n := newNode()
-	go n.run(r)
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := newNode(rn)
+	go n.run()
 	defer n.Stop()
 
 	rd := readyWithTimeout(&n)
@@ -996,58 +1016,4 @@ func TestNodeCommitPaginationAfterRestart(t *testing.T) {
 			DescribeEntries(rd.CommittedEntries, func(data []byte) string { return fmt.Sprintf("%q", data) }),
 		)
 	}
-}
-
-// TestNodeBoundedLogGrowthWithPartition tests a scenario where a leader is
-// partitioned from a quorum of nodes. It verifies that the leader's log is
-// protected from unbounded growth even as new entries continue to be proposed.
-// This protection is provided by the MaxUncommittedEntriesSize configuration.
-func TestNodeBoundedLogGrowthWithPartition(t *testing.T) {
-	const maxEntries = 16
-	data := []byte("testdata")
-	testEntry := raftpb.Entry{Data: data}
-	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
-
-	s := NewMemoryStorage()
-	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
-	cfg.MaxUncommittedEntriesSize = maxEntrySize
-	r := newRaft(cfg)
-	n := newNode()
-	go n.run(r)
-	defer n.Stop()
-	n.Campaign(context.TODO())
-
-	rd := readyWithTimeout(&n)
-	if len(rd.CommittedEntries) != 1 {
-		t.Fatalf("expected 1 (empty) entry, got %d", len(rd.CommittedEntries))
-	}
-	s.Append(rd.Entries)
-	n.Advance()
-
-	// Simulate a network partition while we make our proposals by never
-	// committing anything. These proposals should not cause the leader's
-	// log to grow indefinitely.
-	for i := 0; i < 1024; i++ {
-		n.Propose(context.TODO(), data)
-	}
-
-	// Check the size of leader's uncommitted log tail. It should not exceed the
-	// MaxUncommittedEntriesSize limit.
-	checkUncommitted := func(exp uint64) {
-		t.Helper()
-		if a := r.uncommittedSize; exp != a {
-			t.Fatalf("expected %d uncommitted entry bytes, found %d", exp, a)
-		}
-	}
-	checkUncommitted(maxEntrySize)
-
-	// Recover from the partition. The uncommitted tail of the Raft log should
-	// disappear as entries are committed.
-	rd = readyWithTimeout(&n)
-	if len(rd.CommittedEntries) != maxEntries {
-		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
-	}
-	s.Append(rd.Entries)
-	n.Advance()
-	checkUncommitted(0)
 }

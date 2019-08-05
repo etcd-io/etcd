@@ -68,8 +68,10 @@ To learn more about the concepts and internals behind etcd, read the following p
  - [Understand data model][data_model]
  - [Understand APIs][understand_apis]
  - [Glossary][glossary]
- - Internals
-   - [Auth subsystem][auth_design]
+ - Design
+   - [Auth subsystem][design-auth-v3]
+   - [Client][design-client]
+   - [Learner][design-learner]
 
 [api_ref]: dev-guide/api_reference_v3.md
 [api_concurrency_ref]: dev-guide/api_concurrency_reference_v3.md
@@ -109,6 +111,8 @@ To learn more about the concepts and internals behind etcd, read the following p
 [aws_platform]: platforms/aws.md
 [experimental]: dev-guide/experimental_apis.md
 [authentication]: op-guide/authentication.md
-[auth_design]: learning/auth_design.md
+[design-auth-v3]: learning/design-auth-v3.md
+[design-client]: learning/design-client.md
+[design-learner]: learning/design-learner.md
 [tuning]: tuning.md
 [upgrading]: upgrades/upgrading-etcd.md

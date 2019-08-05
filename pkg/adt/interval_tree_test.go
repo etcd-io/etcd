@@ -52,7 +52,7 @@ func TestIntervalTreeInsert(t *testing.T) {
 		{root: NewInt64Interval(19, 20), color: red, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 3},
 	}
 
-	tr := ivt
+	tr := ivt.(*intervalTree)
 	visits := tr.visitLevel()
 	if !reflect.DeepEqual(expected, visits) {
 		t.Fatalf("level order expected %v, got %v", expected, visits)
@@ -105,7 +105,7 @@ func TestIntervalTreeSelfBalanced(t *testing.T) {
 		{root: NewInt64Interval(8, 9), color: red, left: newInt64EmptyInterval(), right: newInt64EmptyInterval(), depth: 3},
 	}
 
-	tr := ivt
+	tr := ivt.(*intervalTree)
 	visits := tr.visitLevel()
 	if !reflect.DeepEqual(expected, visits) {
 		t.Fatalf("level order expected %v, got %v", expected, visits)
@@ -191,7 +191,7 @@ func TestIntervalTreeDelete(t *testing.T) {
 	ivt.Insert(NewInt64Interval(292, 293), 0)
 	ivt.Insert(NewInt64Interval(953, 954), 0)
 
-	tr := ivt
+	tr := ivt.(*intervalTree)
 
 	expectedBeforeDelete := []visitedInterval{
 		{root: NewInt64Interval(510, 511), color: black, left: NewInt64Interval(82, 83), right: NewInt64Interval(830, 831), depth: 0},
@@ -342,7 +342,7 @@ func TestIntervalTreeStab(t *testing.T) {
 	ivt.Insert(NewStringInterval("6", "8"), 999)
 	ivt.Insert(NewStringInterval("0", "3"), 0)
 
-	tr := ivt
+	tr := ivt.(*intervalTree)
 	if tr.root.max.Compare(StringComparable("8")) != 0 {
 		t.Fatalf("wrong root max got %v, expected 8", tr.root.max)
 	}

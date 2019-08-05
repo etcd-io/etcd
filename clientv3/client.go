@@ -16,7 +16,6 @@ package clientv3
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -30,12 +29,13 @@ import (
 	"go.etcd.io/etcd/clientv3/balancer"
 	"go.etcd.io/etcd/clientv3/balancer/picker"
 	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
+	"go.etcd.io/etcd/clientv3/credentials"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
+	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -51,12 +51,17 @@ var (
 func init() {
 	lg := zap.NewNop()
 	if os.Getenv("ETCD_CLIENT_DEBUG") != "" {
+		lcfg := logutil.DefaultZapLoggerConfig
+		lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+
 		var err error
-		lg, err = zap.NewProductionConfig().Build() // info level logging
+		lg, err = lcfg.Build() // info level logging
 		if err != nil {
 			panic(err)
 		}
 	}
+
+	// TODO: support custom balancer
 	balancer.RegisterBuilder(balancer.Config{
 		Policy: picker.RoundrobinBalanced,
 		Name:   roundRobinBalancerName,
@@ -76,7 +81,7 @@ type Client struct {
 	conn *grpc.ClientConn
 
 	cfg           Config
-	creds         *credentials.TransportCredentials
+	creds         grpccredentials.TransportCredentials
 	resolverGroup *endpoint.ResolverGroup
 	mu            *sync.RWMutex
 
@@ -86,9 +91,8 @@ type Client struct {
 	// Username is a user name for authentication.
 	Username string
 	// Password is a password for authentication.
-	Password string
-	// tokenCred is an instance of WithPerRPCCredentials()'s argument
-	tokenCred *authTokenCredential
+	Password        string
+	authTokenBundle credentials.Bundle
 
 	callOpts []grpc.CallOption
 
@@ -193,24 +197,7 @@ func (c *Client) autoSync() {
 	}
 }
 
-type authTokenCredential struct {
-	token   string
-	tokenMu *sync.RWMutex
-}
-
-func (cred authTokenCredential) RequireTransportSecurity() bool {
-	return false
-}
-
-func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...string) (map[string]string, error) {
-	cred.tokenMu.RLock()
-	defer cred.tokenMu.RUnlock()
-	return map[string]string{
-		rpctypes.TokenFieldNameGRPC: cred.token,
-	}, nil
-}
-
-func (c *Client) processCreds(scheme string) (creds *credentials.TransportCredentials) {
+func (c *Client) processCreds(scheme string) (creds grpccredentials.TransportCredentials) {
 	creds = c.creds
 	switch scheme {
 	case "unix":
@@ -220,9 +207,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 		if creds != nil {
 			break
 		}
-		tlsconfig := &tls.Config{}
-		emptyCreds := credentials.NewTLS(tlsconfig)
-		creds = &emptyCreds
+		creds = credentials.NewBundle(credentials.Config{}).TransportCredentials()
 	default:
 		creds = nil
 	}
@@ -230,7 +215,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:                c.cfg.DialKeepAliveTime,
@@ -255,7 +240,7 @@ func (c *Client) dialSetupOpts(creds *credentials.TransportCredentials, dopts ..
 	opts = append(opts, grpc.WithDialer(f))
 
 	if creds != nil {
-		opts = append(opts, grpc.WithTransportCredentials(*creds))
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
@@ -318,10 +303,7 @@ func (c *Client) getToken(ctx context.Context) error {
 			continue
 		}
 
-		c.tokenCred.tokenMu.Lock()
-		c.tokenCred.token = resp.Token
-		c.tokenCred.tokenMu.Unlock()
-
+		c.authTokenBundle.UpdateAuthToken(resp.Token)
 		return nil
 	}
 
@@ -338,16 +320,14 @@ func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.Cl
 }
 
 // dial configures and dials any grpc balancer target.
-func (c *Client) dial(target string, creds *credentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (c *Client) dial(target string, creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts, err := c.dialSetupOpts(creds, dopts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure dialer: %v", err)
 	}
 
 	if c.Username != "" && c.Password != "" {
-		c.tokenCred = &authTokenCredential{
-			tokenMu: &sync.RWMutex{},
-		}
+		c.authTokenBundle = credentials.NewBundle(credentials.Config{})
 
 		ctx, cancel := c.ctx, func() {}
 		if c.cfg.DialTimeout > 0 {
@@ -364,7 +344,7 @@ func (c *Client) dial(target string, creds *credentials.TransportCredentials, do
 				return nil, err
 			}
 		} else {
-			opts = append(opts, grpc.WithPerRPCCredentials(c.tokenCred))
+			opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 		}
 		cancel()
 	}
@@ -385,26 +365,25 @@ func (c *Client) dial(target string, creds *credentials.TransportCredentials, do
 	return conn, nil
 }
 
-func (c *Client) directDialCreds(ep string) *credentials.TransportCredentials {
+func (c *Client) directDialCreds(ep string) grpccredentials.TransportCredentials {
 	_, hostPort, scheme := endpoint.ParseEndpoint(ep)
 	creds := c.creds
 	if len(scheme) != 0 {
 		creds = c.processCreds(scheme)
 		if creds != nil {
-			c := *creds
-			clone := c.Clone()
+			clone := creds.Clone()
 			// Set the server name must to the endpoint hostname without port since grpc
 			// otherwise attempts to check if x509 cert is valid for the full endpoint
 			// including the scheme and port, which fails.
 			host, _ := endpoint.ParseHostPort(hostPort)
 			clone.OverrideServerName(host)
-			creds = &clone
+			creds = clone
 		}
 	}
 	return creds
 }
 
-func (c *Client) dialWithBalancerCreds(ep string) *credentials.TransportCredentials {
+func (c *Client) dialWithBalancerCreds(ep string) grpccredentials.TransportCredentials {
 	_, _, scheme := endpoint.ParseEndpoint(ep)
 	creds := c.creds
 	if len(scheme) != 0 {
@@ -424,10 +403,9 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	var creds *credentials.TransportCredentials
+	var creds grpccredentials.TransportCredentials
 	if cfg.TLS != nil {
-		c := credentials.NewTLS(cfg.TLS)
-		creds = &c
+		creds = credentials.NewBundle(credentials.Config{TLSConfig: cfg.TLS}).TransportCredentials()
 	}
 
 	// use a temporary skeleton client to bootstrap first connection

@@ -6,17 +6,27 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 <hr>
 
 
-## v3.4.0 (TBD 2019)
+## v3.4.0 (2019-08-30)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes. **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+
+### Documentation
+
+- etcd now has a new website! Please visit https://etcd.io.
 
 ### Improved
 
-- Add Raft learner: [#10725](https://github.com/etcd-io/etcd/pull/10725), [#10727](https://github.com/etcd-io/etcd/pull/10727), [#10730](https://github.com/etcd-io/etcd/pull/10730).
+- Add Raft learner: [etcd#10725](https://github.com/etcd-io/etcd/pull/10725), [etcd#10727](https://github.com/etcd-io/etcd/pull/10727), [etcd#10730](https://github.com/etcd-io/etcd/pull/10730).
   - User guide: [runtime-configuration document](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member-as-learner).
   - API change: [API reference document](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md).
-  - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/docs/server-learner.rst) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
+  - More details on implementation: [learner design document](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-learner.md) and [implementation task list](https://github.com/etcd-io/etcd/issues/10537).
 - Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
+  - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
+  - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
+    - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+  - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956).
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/etcd-io/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/etcd-io/etcd/issues/9246).
 - Improve [read index wait timeout warning log](https://github.com/etcd-io/etcd/pull/10026), which indicates that local node might have slow network.
@@ -29,6 +39,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/etcd-io/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
   - Now, periodic commit operation does not block concurrent read transactions, thus improves long-running read transaction performance.
+  - Rebased [etcd#10523](https://github.com/etcd-io/etcd/pull/10523).
 - Improve [Raft Read Index timeout warning messages](https://github.com/etcd-io/etcd/pull/9897).
 - Adjust [election timeout on server restart](https://github.com/etcd-io/etcd/pull/9415) to reduce [disruptive rejoining servers](https://github.com/etcd-io/etcd/issues/9333).
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
@@ -59,10 +70,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
 - Improve [heartbeat send failure logging](https://github.com/etcd-io/etcd/pull/10663).
 - Support [users with no password](https://github.com/etcd-io/etcd/pull/9817) for reducing security risk introduced by leaked password. The users can only be authenticated with CommonName based auth.
+- Add flag `--experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/10524)
 
 ### Breaking Changes
 
-- Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
 - Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
 - Move [`"github.com/coreos/etcd"`](https://github.com/etcd-io/etcd/issues/9965) to [`"github.com/etcd-io/etcd"`](https://github.com/etcd-io/etcd/issues/9965).
   - Change import path to `"go.etcd.io/etcd"`.
@@ -73,9 +85,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - **Remove `etcd --ca-file` flag**, instead [use `etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --ca-file` flag has been marked deprecated since v2.1).
 - **Remove `etcd --peer-ca-file` flag**, instead [use `etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
 - **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) (`CAFile` field has been marked deprecated since v2.1).
-- Deprecate `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
+- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
-- Deprecate [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
+- Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
   - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
@@ -93,7 +105,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - e.g. exit with error on `ETCD_INITIAL_CLUSTER_TOKEN=abc etcd --initial-cluster-token=def`.
   - e.g. exit with error on `ETCDCTL_ENDPOINTS=abc.com ETCDCTL_API=3 etcdctl endpoint health --endpoints=def.com`.
 - Change [`etcdserverpb.AuthRoleRevokePermissionRequest/key,range_end` fields type from `string` to `bytes`](https://github.com/etcd-io/etcd/pull/9433).
-- Rename [`etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric to `etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819).
+- Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) instead.
+- Deprecating `etcd_debugging_mvcc_put_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_range_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
+- Deprecating `etcd_debugging_mvcc_txn_total`Prometheus metric  (to be removed in v3.5). Use [`etcd_mvcc_txn_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
 - Rename `etcdserver.ServerConfig.SnapCount` field to `etcdserver.ServerConfig.SnapshotCount`, to be consistent with the flag name `etcd --snapshot-count`.
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/etcd-io/etcd/pull/9490).
@@ -105,6 +121,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
   - Now that `etcd --log-outputs` accepts multiple writers, etcd configuration YAML file `log-outputs` field must be changed to `[]string` type.
   - Previously, `etcd --config-file etcd.config.yaml` can have `log-outputs: default` field, now must be `log-outputs: [default]`.
+- Deprecating [`etcd --debug`](https://github.com/etcd-io/etcd/pull/10947) flag. Use `etcd --log-level=debug` flag instead.
+  - v3.5 will deprecate `etcd --debug` flag in favor of `etcd --log-level=debug`.
 - Change v3 `etcdctl snapshot` exit codes with [`snapshot` package](https://github.com/etcd-io/etcd/pull/9118/commits/df689f4280e1cce4b9d61300be13ca604d41670a).
   - Exit on error with exit code 1 (no more exit code 5 or 6 on `snapshot save/restore` commands).
 - Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/etcd-io/etcd/pull/9155).
@@ -122,7 +140,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - Previously, `Repair(dirpath string) bool`, now `Repair(lg *zap.Logger, dirpath string) bool`.
   - Previously, `Create(dirpath string, metadata []byte) (*WAL, error)`, now `Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error)`.
 - Remove [`pkg/cors` package](https://github.com/etcd-io/etcd/pull/9490).
-- Change [`etcd --experimental-enable-v2v3`](TODO) flag to `etcd --enable-v2v3`; v2 storage emulation is now stable.
 - Move internal packages to `etcdserver`.
   - `"github.com/coreos/etcd/alarm"` to `"go.etcd.io/etcd/etcdserver/api/v3alarm"`.
   - `"github.com/coreos/etcd/compactor"` to `"go.etcd.io/etcd/etcdserver/api/v3compactor"`.
@@ -135,30 +152,35 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - `"github.com/coreos/etcd/snap"` to `"go.etcd.io/etcd/etcdserver/api/snap"`.
   - `"github.com/coreos/etcd/store"` to `"go.etcd.io/etcd/etcdserver/api/v2store"`.
 - Change [snapshot file permissions](https://github.com/etcd-io/etcd/pull/9977): On Linux, the snapshot file changes from readable by all (mode 0644) to readable by the user only (mode 0600).
+- Change [`pkg/adt.IntervalTree` from `struct` to `interface`](https://github.com/etcd-io/etcd/pull/10959).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+- Release branch `/version` defines version `3.4.x-pre`, instead of `3.4.y+git`.
+  - Use `3.4.5-pre`, instead of `3.4.4+git`.
 
 ### Dependency
 
 - Upgrade [`github.com/coreos/bbolt`](https://github.com/etcd-io/bbolt/releases) from [**`v1.3.1-coreos.6`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.1-coreos.6) to [`go.etcd.io/bbolt`](https://github.com/etcd-io/bbolt/releases) [**`v1.3.3`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3).
-- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.13.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.13.0).
-- Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.1.0`**](https://github.com/golang/protobuf/releases/tag/v1.1.0).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0).
 - Migrate [`github.com/ugorji/go/codec`](https://github.com/ugorji/go/releases) to [**`github.com/json-iterator/go`**](https://github.com/json-iterator/go), to [regenerate v2 `client`](https://github.com/etcd-io/etcd/pull/9494) (See [#10667](https://github.com/etcd-io/etcd/pull/10667) for more).
 - Migrate [`github.com/ghodss/yaml`](https://github.com/ghodss/yaml/releases) to [**`sigs.k8s.io/yaml`**](https://github.com/kubernetes-sigs/yaml) (See [#10687](https://github.com/etcd-io/etcd/pull/10687) for more).
-- Upgrade [`golang.org/x/crypto`](https://github.com/golang/crypto) from [**`crypto@9419663f5`**](https://github.com/golang/crypto/commit/9419663f5a44be8b34ca85f08abc5fe1be11f8a3) to [**`crypto@8ac0e0d97`**](https://github.com/golang/crypto/commit/8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9).
-- Upgrade [`golang.org/x/net`](https://github.com/golang/net) from [**`net@66aacef3d`**](https://github.com/golang/net/commit/66aacef3dd8a676686c7ae3716979581e8b03c47) to [**`net@db08ff08e`**](https://github.com/golang/net/commit/db08ff08e8622530d9ed3a0e8ac279f6d4c02196).
+- Upgrade [`golang.org/x/crypto`](https://github.com/golang/crypto) from [**`crypto@9419663f5`**](https://github.com/golang/crypto/commit/9419663f5a44be8b34ca85f08abc5fe1be11f8a3) to [**`crypto@0709b304e793`**](https://github.com/golang/crypto/commit/0709b304e793a5edb4a2c0145f281ecdc20838a4).
+- Upgrade [`golang.org/x/net`](https://github.com/golang/net) from [**`net@66aacef3d`**](https://github.com/golang/net/commit/66aacef3dd8a676686c7ae3716979581e8b03c47) to [**`net@adae6a3d119a`**](https://github.com/golang/net/commit/adae6a3d119ae4890b46832a2e88a95adc62b8e7).
 - Upgrade [`golang.org/x/sys`](https://github.com/golang/sys) from [**`sys@ebfc5b463`**](https://github.com/golang/sys/commit/ebfc5b4631820b793c9010c87fd8fef0f39eb082) to [**`sys@56ede360e`**](https://github.com/golang/sys/commit/56ede360ec1c541828fb88741b3f1049406d28f5).
-- Upgrade [`golang.org/x/text`](https://github.com/golang/text) from [**`text@b19bf474d`**](https://github.com/golang/text/commit/b19bf474d317b857955b12035d2c5acb57ce8b01) to [**`text@f21a4dfb5`**](https://github.com/golang/text/commit/f21a4dfb5e38f5895301dc265a8def02365cc3d0).
+- Upgrade [`golang.org/x/text`](https://github.com/golang/text) from [**`text@b19bf474d`**](https://github.com/golang/text/commit/b19bf474d317b857955b12035d2c5acb57ce8b01) to [**`v0.3.0`**](https://github.com/golang/text/releases/tag/v0.3.0).
 - Upgrade [`golang.org/x/time`](https://github.com/golang/time) from [**`time@c06e80d93`**](https://github.com/golang/time/commit/c06e80d9300e4443158a03817b8a8cb37d230320) to [**`time@fbb02b229`**](https://github.com/golang/time/commit/fbb02b2291d28baffd63558aa44b4b56f178d650).
-- Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.1.0`**](https://github.com/golang/protobuf/releases/tag/v1.1.0).
+- Upgrade [`github.com/golang/protobuf`](https://github.com/golang/protobuf/releases) from [**`golang/protobuf@1e59b77b5`**](https://github.com/golang/protobuf/commit/1e59b77b52bf8e4b449a57e6f79f21226d571845) to [**`v1.3.2`**](https://github.com/golang/protobuf/releases/tag/v1.3.2).
 - Upgrade [`gopkg.in/yaml.v2`](https://github.com/go-yaml/yaml/releases) from [**`yaml@cd8b52f82`**](https://github.com/go-yaml/yaml/commit/cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b) to [**`yaml@5420a8b67`**](https://github.com/go-yaml/yaml/commit/5420a8b6744d3b0345ab293f6fcba19c978f1183).
 - Upgrade [`github.com/dgrijalva/jwt-go`](https://github.com/dgrijalva/jwt-go/releases) from [**`v3.0.0`**](https://github.com/dgrijalva/jwt-go/releases/tag/v3.0.0) to [**`v3.2.0`**](https://github.com/dgrijalva/jwt-go/releases/tag/v3.2.0).
 - Upgrade [`github.com/soheilhy/cmux`](https://github.com/soheilhy/cmux/releases) from [**`v0.1.3`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.3) to [**`v0.1.4`**](https://github.com/soheilhy/cmux/releases/tag/v0.1.4).
-- Upgrade [`github.com/google/btree`](https://github.com/google/btree/releases) from [**`google/btree@925471ac9`**](https://github.com/google/btree/commit/925471ac9e2131377a91e1595defec898166fe49) to [**`google/btree@e89373fe6`**](https://github.com/google/btree/commit/e89373fe6b4a7413d7acd6da1725b83ef713e6e4).
+- Upgrade [`github.com/google/btree`](https://github.com/google/btree/releases) from [**`google/btree@925471ac9`**](https://github.com/google/btree/commit/925471ac9e2131377a91e1595defec898166fe49) to [**`v1.0.0`**](https://github.com/google/btree/releases/tag/v1.0.0).
 - Upgrade [`github.com/spf13/cobra`](https://github.com/spf13/cobra/releases) from [**`spf13/cobra@1c44ec8d3`**](https://github.com/spf13/cobra/commit/1c44ec8d3f1552cac48999f9306da23c4d8a288b) to [**`v0.0.3`**](https://github.com/spf13/cobra/releases/tag/v0.0.3).
 - Upgrade [`github.com/spf13/pflag`](https://github.com/spf13/pflag/releases) from [**`v1.0.0`**](https://github.com/spf13/pflag/releases/tag/v1.0.0) to [**`spf13/pflag@1ce0cc6db`**](https://github.com/spf13/pflag/commit/1ce0cc6db4029d97571db82f85092fccedb572ce).
 - Upgrade [`github.com/coreos/go-systemd`](https://github.com/coreos/go-systemd/releases) from [**`v15`**](https://github.com/coreos/go-systemd/releases/tag/v15) to [**`v17`**](https://github.com/coreos/go-systemd/releases/tag/v17).
-- Upgrade [`github.com/prometheus/client_golang`](https://github.com/prometheus/client_golang/releases) from [**``prometheus/client_golang@5cec1d042``**](https://github.com/prometheus/client_golang/commit/5cec1d0429b02e4323e042eb04dafdb079ddf568) to [**`v0.8.0`**](https://github.com/prometheus/client_golang/releases/tag/v0.8.0).
+- Upgrade [`github.com/prometheus/client_golang`](https://github.com/prometheus/client_golang/releases) from [**``prometheus/client_golang@5cec1d042``**](https://github.com/prometheus/client_golang/commit/5cec1d0429b02e4323e042eb04dafdb079ddf568) to [**`v1.0.0`**](https://github.com/prometheus/client_golang/releases/tag/v1.0.0).
 - Upgrade [`github.com/grpc-ecosystem/go-grpc-prometheus`](https://github.com/grpc-ecosystem/go-grpc-prometheus/releases) from [**``grpc-ecosystem/go-grpc-prometheus@0dafe0d49``**](https://github.com/grpc-ecosystem/go-grpc-prometheus/commit/0dafe0d496ea71181bf2dd039e7e3f44b6bd11a7) to [**`v1.2.0`**](https://github.com/grpc-ecosystem/go-grpc-prometheus/releases/tag/v1.2.0).
 - Upgrade [`github.com/grpc-ecosystem/grpc-gateway`](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [**`v1.3.1`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.3.1) to [**`v1.4.1`**](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.4.1).
+- Migrate [`github.com/kr/pty`](https://github.com/kr/pty/releases) to [**`github.com/creack/pty`**](https://github.com/creack/pty/releases/tag/v1.1.7), as the later has replaced the original module.
+- Upgrade [`github.com/gogo/protobuf`](https://github.com/gogo/protobuf/releases) from [**`v1.0.0`**](https://github.com/gogo/protobuf/releases/tag/v1.0.0) to [**`v1.2.1`**](https://github.com/gogo/protobuf/releases/tag/v1.2.1).
 
 ### Metrics, Monitoring
 
@@ -202,8 +224,6 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
-- Add [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) Prometheus metric.
-  - Renamed from [`etcd_debugging_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819).
 - Add [`etcd_mvcc_db_total_size_in_use_in_bytes`](https://github.com/etcd-io/etcd/pull/9256) Prometheus metric.
   - Use it with `etcd_mvcc_db_total_size_in_bytes` and `etcd_mvcc_db_total_size_in_use_in_bytes`.
   - `etcd_server_quota_backend_bytes 2.147483648e+09` means current quota size is 2 GB.
@@ -233,6 +253,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Change [gRPC proxy to expose etcd server endpoint /metrics](https://github.com/etcd-io/etcd/pull/10618).
   - The metrics that were exposed via the proxy were not etcd server members but instead the proxy itself.
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
+- Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_db_total_size_in_bytes`](https://github.com/etcd-io/etcd/pull/9819) instead.
+- Deprecating `etcd_debugging_mvcc_put_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_put_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_delete_total`](https://github.com/etcd-io/etcd/pull/10962) instead.
+- Deprecating `etcd_debugging_mvcc_range_total` Prometheus metric (to be removed in v3.5). Use [`etcd_mvcc_range_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
+- Deprecating `etcd_debugging_mvcc_txn_total`Prometheus metric  (to be removed in v3.5). Use [`etcd_mvcc_txn_total`](https://github.com/etcd-io/etcd/pull/10968) instead.
 
 ### Security, Authentication
 
@@ -278,19 +303,6 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `etcd --pre-vote=false` by default.
   - v3.5 will enable `etcd --pre-vote=true` by default.
-- [`etcd --initial-corrupt-check`](TODO) flag is now stable (`etcd --experimental-initial-corrupt-check`haisbeen  deprecated).
-  - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
-- [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time`haisbeen  deprecated).
-  - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- [`etcd --enable-v2v3`](TODO) flag is now stable.
-  - `etcd --experimental-enable-v2v3` has been deprecated.
-  - Added [more v2v3 integration tests](https://github.com/etcd-io/etcd/pull/9634).
-  - `etcd --enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
-  - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
-  - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
-  - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
-  - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
-  - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - Add [`etcd --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `etcd --discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.
@@ -308,7 +320,7 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - Main motivation is to promote automated etcd monitoring, rather than looking back server logs when it starts breaking. Future development will make etcd log as few as possible, and make etcd easier to monitor with metrics and alerts.
   - `etcd --logger=capnslog --log-outputs=default` is the default setting and same as previous etcd server logging format.
   - `etcd --logger=zap --log-outputs=default` is not supported when `etcd --logger=zap`.
-    - Instead, use `etcd --logger=zap --log-outputs=stderr`.
+    - Use `etcd --logger=zap --log-outputs=stderr` instead.
     - Or, use `etcd --logger=zap --log-outputs=systemd/journal` to send logs to the local systemd journal.
     - Previously, if etcd parent process ID (PPID) is 1 (e.g. run with systemd), `etcd --logger=capnslog --log-outputs=default` redirects server logs to local systemd journal. And if write to journald fails, it writes to `os.Stderr` as a fallback.
     - However, even with PPID 1, it can fail to dial systemd journal (e.g. run embedded etcd with Docker container). Then, [every single log write will fail](https://github.com/etcd-io/etcd/pull/9729) and fall back to `os.Stderr`, which is inefficient.
@@ -318,6 +330,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - `etcd --logger=zap --log-outputs=a.log` will log server operations in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig) and writes logs to the specified file `a.log`.
   - `etcd --logger=zap --log-outputs=a.log,b.log,c.log,stdout` [writes server logs to multiple files `a.log`, `b.log` and `c.log` at the same time](https://github.com/etcd-io/etcd/pull/9579) and outputs to `os.Stderr`, in [JSON-encoded format](https://godoc.org/go.uber.org/zap#NewProductionEncoderConfig).
   - `etcd --logger=zap --log-outputs=/dev/null` will discard all server logs.
+- Add [`etcd --log-level`](https://github.com/etcd-io/etcd/pull/10947) flag to support log level.
+  - v3.5 will deprecate `etcd --debug` flag in favor of `etcd --log-level=debug`.
 - Add [`etcd --backend-batch-limit`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Add [`etcd --backend-batch-interval`](https://github.com/etcd-io/etcd/pull/10283) flag.
 - Fix [`mvcc` "unsynced" watcher restore operation](https://github.com/etcd-io/etcd/pull/9281).
@@ -340,10 +354,17 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - Leases with too large `TTL` values exceeding `math.MaxInt64` [expire in unexpected ways](https://github.com/etcd-io/etcd/issues/9374).
   - Server now returns `rpctypes.ErrLeaseTTLTooLarge` to client, when the requested `TTL` is larger than *9,000,000,000 seconds* (which is >285 years).
   - Again, etcd `Lease` is meant for short-periodic keepalives or sessions, in the range of seconds or minutes. Not for hours or days!
+- Fix [expired lease revoke](https://github.com/etcd-io/etcd/pull/10693).
+  - Fix ["the key is not deleted when the bound lease expires"](https://github.com/etcd-io/etcd/issues/10686).
 - Enable etcd server [`raft.Config.CheckQuorum` when starting with `ForceNewCluster`](https://github.com/etcd-io/etcd/pull/9347).
 - Allow [non-WAL files in `etcd --wal-dir` directory](https://github.com/etcd-io/etcd/pull/9743).
   - Previously, existing files such as [`lost+found`](https://github.com/etcd-io/etcd/issues/7287) in WAL directory prevent etcd server boot.
   - Now, WAL directory that contains only `lost+found` or a file that's not suffixed with `.wal` is considered non-initialized.
+- Fix [`ETCD_CONFIG_FILE` env variable parsing in `etcd`](https://github.com/etcd-io/etcd/pull/10762).
+- Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
+- Fix [server crash from creating an empty role](https://github.com/etcd-io/etcd/pull/10907).
+  - Previously, creating a role with an empty name crashed etcd server with an error code `Unavailable`.
+  - Now, creating a role with an empty name is not allowed with an error code `InvalidArgument`.
 
 ### API
 
@@ -383,6 +404,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Remove [`embed.Config.SetupLogging`](https://github.com/etcd-io/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/etcd-io/etcd/pull/9572).
 - Add [`embed.Config.Logger`](https://github.com/etcd-io/etcd/pull/9518) to support [structured logger `zap`](https://github.com/uber-go/zap) in server-side.
+- Add [`embed.Config.LogLevel`](https://github.com/etcd-io/etcd/pull/10947).
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Rename [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
@@ -437,6 +459,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add ["errors" field to `endpoint status`](https://github.com/etcd-io/etcd/pull/9206).
 - Add [`etcdctl endpoint health --write-out` support](https://github.com/etcd-io/etcd/pull/9540).
   - Previously, [`etcdctl endpoint health --write-out json` did not work](https://github.com/etcd-io/etcd/issues/9532).
+- Add [missing newline in `etcdctl endpoint health`](https://github.com/etcd-io/etcd/pull/10793).
 - Fix [`etcdctl watch [key] [range_end] -- [exec-command…]`](https://github.com/etcd-io/etcd/pull/9688) parsing.
   - Previously,  `ETCDCTL_API=3 etcdctl watch foo -- echo watch event received` panicked.
 - Fix [`etcdctl move-leader` command for TLS-enabled endpoints](https://github.com/etcd-io/etcd/pull/9807).
@@ -445,8 +468,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Think of it as `WithProgressNotify` that can be triggered manually.
 - Add [timeout](https://github.com/etcd-io/etcd/pull/10301) to `etcdctl snapshot
   save`.
-  - User can specify timeout of `etcdctl snapshot save` command using flag
-    `--command-timeout`.
+  - User can specify timeout of `etcdctl snapshot save` command using flag `--command-timeout`.
   - Fix etcdctl to [strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443)
 
 ### gRPC proxy
@@ -493,10 +515,29 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Avoid [memory allocation in Raft entry `String` method](https://github.com/etcd-io/etcd/pull/10680).
 - Avoid [multiple memory allocations when merging stable and unstable log](https://github.com/etcd-io/etcd/pull/10684).
 - Extract [progress tracking into own component](https://github.com/etcd-io/etcd/pull/10683).
+  - Add [package `raft/tracker`](https://github.com/etcd-io/etcd/pull/10807).
+  - Optimize [string representation of `Progress`](https://github.com/etcd-io/etcd/pull/10882).
+- Make [relationship between `node` and `RawNode` explicit](https://github.com/etcd-io/etcd/pull/10803).
+- Prevent [learners from becoming leader](https://github.com/etcd-io/etcd/pull/10822).
+- Add [package `raft/quorum` to reason about committed indexes as well as vote outcomes for both majority and joint quorums](https://github.com/etcd-io/etcd/pull/10779).
+  - Bundle [Voters and Learner into `raft/tracker.Config` struct](https://github.com/etcd-io/etcd/pull/10865).
+- Use [membership sets in progress tracking](https://github.com/etcd-io/etcd/pull/10779).
+- Implement [joint quorum computation](https://github.com/etcd-io/etcd/pull/10779).
+- Refactor [`raft/node.go` to centralize configuration change application](https://github.com/etcd-io/etcd/pull/10865).
+- Allow [voter to become learner through snapshot](https://github.com/etcd-io/etcd/pull/10864).
+- Add [package `raft/confchange` to internally support joint consensus](https://github.com/etcd-io/etcd/pull/10779).
+- Use [`RawNode` for node's event loop](https://github.com/etcd-io/etcd/pull/10892).
+- Add [`RawNode.Bootstrap` method](https://github.com/etcd-io/etcd/pull/10892).
+- Add [`raftpb.ConfChangeV2` to use joint quorums](https://github.com/etcd-io/etcd/pull/10914).
+  - `raftpb.ConfChange` continues to work as today: it allows carrying out a single configuration change. A `pb.ConfChange` proposal gets added to the Raft log as such and is thus also observed by the app during Ready handling, and fed back to ApplyConfChange.
+  - `raftpb.ConfChangeV2` allows joint configuration changes but will continue to carry out configuration changes in "one phase" (i.e. without ever entering a joint config) when this is possible.
+  - `raftpb.ConfChangeV2` messages initiate configuration changes. They support both the simple "one at a time" membership change protocol and full Joint Consensus allowing for arbitrary changes in membership.
+- Change [`raftpb.ConfState.Nodes` to `raftpb.ConfState.Voters`](https://github.com/etcd-io/etcd/pull/10914).
 
 ### Package `wal`
 
 - Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
+- Fix [`wal` directory cleanup on creation failures](https://github.com/etcd-io/etcd/pull/10689).
 
 ### Tooling
 
@@ -505,9 +546,12 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 ### Go
 
-- Require [*Go 1.11+*](https://github.com/etcd-io/etcd/pull/10045).
-- Compile with [*Go 1.11*](https://golang.org/doc/devel/release.html#go1.11).
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+- Compile with [*Go 1.12*](https://golang.org/doc/devel/release.html#go1.12).
 
+### Dockerfile
+
+- [Rebase etcd image from Alpine to Debian](https://github.com/etcd-io/etcd/pull/10805) to improve security and maintenance effort for etcd release.
 
 <hr>
 

@@ -148,6 +148,6 @@ func (as *authStore) invalidateCachedPerm(userName string) {
 }
 
 type unifiedRangePermissions struct {
-	readPerms  *adt.IntervalTree
-	writePerms *adt.IntervalTree
+	readPerms  adt.IntervalTree
+	writePerms adt.IntervalTree
 }

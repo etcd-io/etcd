@@ -40,4 +40,9 @@ func TestRoleError(t *testing.T) {
 	if err != rpctypes.ErrRoleAlreadyExist {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleAlreadyExist, err)
 	}
+
+	_, err = authapi.RoleAdd(context.TODO(), "")
+	if err != rpctypes.ErrRoleEmpty {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleEmpty, err)
+	}
 }
