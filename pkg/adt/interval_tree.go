@@ -16,7 +16,9 @@ package adt
 
 import (
 	"bytes"
+	"fmt"
 	"math"
+	"strings"
 )
 
 // Comparable is an interface for trichotomic comparisons.
@@ -620,4 +622,66 @@ func NewBytesAffinePoint(b []byte) Interval {
 	copy(be, b)
 	be[len(b)] = 0
 	return NewBytesAffineInterval(b, be)
+}
+
+func newInt64EmptyInterval() Interval {
+	return Interval{Begin: nil, End: nil}
+}
+
+type visitedInterval struct {
+	root  Interval
+	left  Interval
+	right Interval
+	color rbcolor
+	depth int
+}
+
+func (vi visitedInterval) String() string {
+	bd := new(strings.Builder)
+	bd.WriteString(fmt.Sprintf("root [%v,%v,%v], left [%v,%v], right [%v,%v], depth %d",
+		vi.root.Begin, vi.root.End, vi.color,
+		vi.left.Begin, vi.left.End,
+		vi.right.Begin, vi.right.End,
+		vi.depth,
+	))
+	return bd.String()
+}
+
+// visitLevel traverses tree in level order.
+// used for testing
+func (ivt *IntervalTree) visitLevel() []visitedInterval {
+	if ivt.root == ivt.nilNode {
+		return nil
+	}
+
+	rs := make([]visitedInterval, 0, ivt.Len())
+
+	type pair struct {
+		node  *intervalNode
+		depth int
+	}
+	queue := []pair{{ivt.root, 0}}
+	for len(queue) > 0 {
+		f := queue[0]
+		queue = queue[1:]
+
+		ivt2 := visitedInterval{
+			root:  f.node.iv.Ivl,
+			color: f.node.color(ivt.nilNode),
+			depth: f.depth,
+		}
+
+		if f.node.left != ivt.nilNode {
+			ivt2.left = f.node.left.iv.Ivl
+			queue = append(queue, pair{f.node.left, f.depth + 1})
+		}
+		if f.node.right != ivt.nilNode {
+			ivt2.right = f.node.right.iv.Ivl
+			queue = append(queue, pair{f.node.right, f.depth + 1})
+		}
+
+		rs = append(rs, ivt2)
+	}
+
+	return rs
 }

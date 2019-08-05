@@ -17,6 +17,7 @@ package adt_test
 import (
 	"fmt"
 
+	//"github.com/xkeyideal/etcd/pkg/adt"
 	"go.etcd.io/etcd/pkg/adt"
 )
 
