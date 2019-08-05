@@ -411,6 +411,15 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Add [`embed.Config.BackendBatchLimit`](https://github.com/etcd-io/etcd/pull/10283) field.
 - Add [`embed.Config.BackendBatchInterval`](https://github.com/etcd-io/etcd/pull/10283) field.
 
+### Package `pkg/adt`
+
+- Change [`pkg/adt.IntervalTree` from `struct` to `interface`](https://github.com/etcd-io/etcd/pull/10959).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+- Improve [`pkg/adt.IntervalTree` test coverage](https://github.com/etcd-io/etcd/pull/10959).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+- Fix [Red-Black tree to maintain black-height property](https://github.com/etcd-io/etcd/pull/10978).
+  - Previously, delete operation violates [black-height property](https://github.com/etcd-io/etcd/issues/10965).
+
 ### Package `integration`
 
 - Add [`CLUSTER_DEBUG` to enable test cluster logging](https://github.com/etcd-io/etcd/pull/9678).
