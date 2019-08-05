@@ -748,7 +748,7 @@ func (m *member) Launch() error {
 		cm.SetReadTimeout(time.Second)
 
 		if m.grpcServer != nil {
-			grpcl := cm.Match(cmux.HTTP2())
+			grpcl := cm.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 			go m.grpcServerPeer.Serve(grpcl)
 		}
 

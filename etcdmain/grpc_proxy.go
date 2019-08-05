@@ -174,7 +174,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 	m := mustListenCMux(tlsinfo)
 
-	grpcl := m.Match(cmux.HTTP2())
+	grpcl := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 	defer func() {
 		grpcl.Close()
 		plog.Infof("stopping listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
