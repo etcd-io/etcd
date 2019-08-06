@@ -126,11 +126,12 @@ func (srv *Server) Stop() {
 }
 
 // Transport communicates with etcd tester.
-func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error) {
-	errc := make(chan error)
+func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (reterr error) {
+	errc := make(chan error, 1)
 	go func() {
 		for {
 			var req *rpcpb.Request
+			var err error
 			req, err = stream.Recv()
 			if err != nil {
 				errc <- err
@@ -161,9 +162,9 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error)
 	}()
 
 	select {
-	case err = <-errc:
+	case reterr = <-errc:
 	case <-stream.Context().Done():
-		err = stream.Context().Err()
+		reterr = stream.Context().Err()
 	}
-	return err
+	return reterr
 }
