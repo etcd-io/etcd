@@ -179,7 +179,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 				}
 			} else {
 				if sws.lg != nil {
-					sws.lg.Warn("failed to receive watch request from gRPC stream", zap.Error(err))
+					sws.lg.Warn("failed to receive watch request from gRPC stream", zap.Error(rerr))
 				} else {
 					plog.Warningf("failed to receive watch request from gRPC stream (%q)", rerr.Error())
 				}
