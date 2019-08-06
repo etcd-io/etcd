@@ -390,7 +390,7 @@ func TestStoreRestore(t *testing.T) {
 	s.restore()
 
 	if s.compactMainRev != 3 {
-		t.Errorf("compact rev = %d, want 5", s.compactMainRev)
+		t.Errorf("compact rev = %d, want 3", s.compactMainRev)
 	}
 	if s.currentRev != 5 {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
