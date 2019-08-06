@@ -38,5 +38,5 @@ docker run \
   --rm \
   --net=host \
   --name ${AGENT_NAME} \
-  gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
+  gcr.io/etcd-development/etcd-functional:go${GO_VERSION} \
   /bin/bash -c "./bin/etcd-agent ${AGENT_ADDR_FLAG}"

@@ -14,5 +14,5 @@ docker run \
   --rm \
   --net=host \
   --name tester \
-  gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
+  gcr.io/etcd-development/etcd-functional:go${GO_VERSION} \
   /bin/bash -c "./bin/etcd-tester --config ./functional.yaml"
