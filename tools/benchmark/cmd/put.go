@@ -55,6 +55,8 @@ var (
 	compactIndexDelta int64
 
 	checkHashkv bool
+
+	prefix string
 )
 
 func init() {
@@ -69,6 +71,7 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
+	putCmd.Flags().StringVar(&prefix, "prefix", "", "key prefix")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -112,7 +115,7 @@ func putFunc(cmd *cobra.Command, args []string) {
 			} else {
 				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
 			}
-			requests <- v3.OpPut(string(k), v)
+			requests <- v3.OpPut(prefix+string(k), v)
 		}
 		close(requests)
 	}()

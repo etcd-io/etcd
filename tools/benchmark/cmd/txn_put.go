@@ -42,6 +42,7 @@ var (
 	txnPutTotal     int
 	txnPutRate      int
 	txnPutOpsPerTxn int
+	txnPutPrefix    string
 )
 
 func init() {
@@ -50,9 +51,11 @@ func init() {
 	txnPutCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of txn put")
 	txnPutCmd.Flags().IntVar(&txnPutOpsPerTxn, "txn-ops", 1, "Number of puts per txn")
 	txnPutCmd.Flags().IntVar(&txnPutRate, "rate", 0, "Maximum txns per second (0 is no limit)")
+	txnPutCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 
 	txnPutCmd.Flags().IntVar(&txnPutTotal, "total", 10000, "Total number of txn requests")
 	txnPutCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	txnPutCmd.Flags().StringVar(&txnPutPrefix, "prefix", "", "key prefix")
 }
 
 func txnPutFunc(cmd *cobra.Command, args []string) {
@@ -92,8 +95,12 @@ func txnPutFunc(cmd *cobra.Command, args []string) {
 		for i := 0; i < txnPutTotal; i++ {
 			ops := make([]v3.Op, txnPutOpsPerTxn)
 			for j := 0; j < txnPutOpsPerTxn; j++ {
-				binary.PutVarint(k, int64(((i*txnPutOpsPerTxn)+j)%keySpaceSize))
-				ops[j] = v3.OpPut(string(k), v)
+				if seqKeys {
+					binary.PutVarint(k, int64(i%keySpaceSize))
+				} else {
+					binary.PutVarint(k, int64(((i*txnPutOpsPerTxn)+j)%keySpaceSize))
+				}
+				ops[j] = v3.OpPut(txnPutPrefix+string(k), v)
 			}
 			requests <- ops
 		}
