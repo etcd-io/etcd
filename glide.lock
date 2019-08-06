@@ -1,8 +1,8 @@
-hash: baf0b5bc86fa8dec57d67893eae3ebd897caf49cbfe9ea1ffbddcaaf0fc6cd58
-updated: 2019-07-29T17:23:40.158734345Z
+hash: d66960883367a0df406942147226ae66569cb5d64747f7a6de50ab6516360f52
+updated: 2019-08-06T00:16:45.822700187Z
 imports:
 - name: github.com/beorn7/perks
-  version: 4b2b341e8d7715fae06375aa633dbb6e91b3fb46
+  version: 37c8de3658fcb183f997c4e13e8337516ab753e6
   subpackages:
   - quantile
 - name: github.com/bgentry/speakeasy
@@ -37,7 +37,7 @@ imports:
   - proto
   - protoc-gen-gogo/descriptor
 - name: github.com/golang/groupcache
-  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  version: 869f871628b6baa9cfbc11732cdf6546b17c1298
   subpackages:
   - lru
 - name: github.com/golang/protobuf
@@ -58,7 +58,7 @@ imports:
 - name: github.com/google/btree
   version: 4030bb1f1f0c35b30ca7009e9ebd06849dd45306
 - name: github.com/gorilla/websocket
-  version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
+  version: ae1634f6a98965ded3b8789c626cb4e0bd78c3de
 - name: github.com/grpc-ecosystem/go-grpc-middleware
   version: c250d6563d4d4c20252cd865923440e829844f4e
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
@@ -75,10 +75,12 @@ imports:
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
 - name: github.com/json-iterator/go
   version: 27518f6661eba504be5a7a9a9f6d9460d892ade3
+- name: github.com/konsorten/go-windows-terminal-sequences
+  version: f55edac94c9bbba5d6182a4be46d86a2c9b5b50e
 - name: github.com/kr/pty
   version: 24b51915630e1d9d3c6adf15a3a96796bbc3cd43
 - name: github.com/mattn/go-runewidth
-  version: 9e777a8366cce605130a531d2cd6363d07ad7317
+  version: 703b5e6b11ae25aeb2af9ebb5d5fdf8fa2575211
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c182affec369e30f25d3eb8cd8a478dee585ae7d
   subpackages:
@@ -96,11 +98,11 @@ imports:
   - prometheus/internal
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
-  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+  version: fd36f4220a901265f90734c3183c5f0c91daa0b8
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: e3fb1a1acd7605367a2b378bc2e2f893c05174b7
+  version: 637d7c34db122e2d1a25d061423098663758d2d3
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
@@ -110,7 +112,7 @@ imports:
   subpackages:
   - internal/fs
 - name: github.com/sirupsen/logrus
-  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
+  version: 07a84ee7412e7a28663d92930a1d46f81b124ee1
 - name: github.com/soheilhy/cmux
   version: e09e9389d85d8492d313d73d1469c029e710623f
 - name: github.com/spf13/cobra
@@ -118,7 +120,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 298182f68c66c05229eb03ac171abe6e309ee79a
 - name: github.com/tmc/grpc-websocket-proxy
-  version: 89b8d40f7ca833297db804fcb3be53a76d01c238
+  version: 0ad062ec5ee553a48f6dbd280b7a1b5638e8a113
   subpackages:
   - wsproxy
 - name: github.com/urfave/cli
@@ -138,20 +140,19 @@ imports:
   - internal/exit
   - zapcore
 - name: golang.org/x/crypto
-  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
+  version: 4def268fd1a49955bfb3dda92fe3db4f924f2285
   subpackages:
   - bcrypt
   - blowfish
-  - ssh/terminal
 - name: golang.org/x/net
-  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
+  version: ca1201d0de80cfde86cb01aea620983605dfe99b
   subpackages:
   - context
+  - http/httpguts
   - http2
   - http2/hpack
   - idna
   - internal/timeseries
-  - lex/httplex
   - trace
 - name: golang.org/x/sys
   version: fc99dfbffb4e5ed5758a37e31dd861afe285406b
@@ -159,18 +160,18 @@ imports:
   - unix
   - windows
 - name: golang.org/x/text
-  version: b19bf474d317b857955b12035d2c5acb57ce8b01
+  version: 342b2e1fbaa52c93f31447ad2c6abc048c63e475
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: golang.org/x/time
-  version: c06e80d9300e4443158a03817b8a8cb37d230320
+  version: 9d24e82272b4f38b78bc8cff74fa936d31ccd8ef
   subpackages:
   - rate
 - name: google.golang.org/genproto
-  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
+  version: fa694d86fc64c7654a660f8908de4e879866748d
   subpackages:
   - googleapis/api/httpbody
   - googleapis/rpc/status
