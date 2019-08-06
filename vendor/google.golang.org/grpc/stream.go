@@ -457,8 +457,8 @@ func (cs *clientStream) shouldRetry(err error) error {
 	if cs.attempt.s != nil {
 		<-cs.attempt.s.Done()
 	}
-	if cs.firstAttempt && !cs.callInfo.failFast && (cs.attempt.s == nil || cs.attempt.s.Unprocessed()) {
-		// First attempt, wait-for-ready, stream unprocessed: transparently retry.
+	if cs.firstAttempt && (cs.attempt.s == nil || cs.attempt.s.Unprocessed()) {
+		// First attempt, stream unprocessed: transparently retry.
 		cs.firstAttempt = false
 		return nil
 	}

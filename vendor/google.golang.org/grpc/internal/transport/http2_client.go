@@ -493,6 +493,9 @@ func (t *http2Client) createAudience(callHdr *CallHdr) string {
 }
 
 func (t *http2Client) getTrAuthData(ctx context.Context, audience string) (map[string]string, error) {
+	if len(t.perRPCCreds) == 0 {
+		return nil, nil
+	}
 	authData := map[string]string{}
 	for _, c := range t.perRPCCreds {
 		data, err := c.GetRequestMetadata(ctx, audience)
@@ -513,7 +516,7 @@ func (t *http2Client) getTrAuthData(ctx context.Context, audience string) (map[s
 }
 
 func (t *http2Client) getCallAuthData(ctx context.Context, audience string, callHdr *CallHdr) (map[string]string, error) {
-	callAuthData := map[string]string{}
+	var callAuthData map[string]string
 	// Check if credentials.PerRPCCredentials were provided via call options.
 	// Note: if these credentials are provided both via dial options and call
 	// options, then both sets of credentials will be applied.
@@ -525,6 +528,7 @@ func (t *http2Client) getCallAuthData(ctx context.Context, audience string, call
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "transport: %v", err)
 		}
+		callAuthData = make(map[string]string, len(data))
 		for k, v := range data {
 			// Capital header names are illegal in HTTP/2
 			k = strings.ToLower(k)
@@ -556,7 +560,6 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		if atomic.CompareAndSwapUint32(&s.headerChanClosed, 0, 1) {
 			close(s.headerChan)
 		}
-
 	}
 	hdr := &headerFrame{
 		hf:        headerFields,
@@ -769,6 +772,9 @@ func (t *http2Client) Close() error {
 		t.mu.Unlock()
 		return nil
 	}
+	// Call t.onClose before setting the state to closing to prevent the client
+	// from attempting to create new streams ASAP.
+	t.onClose()
 	t.state = closing
 	streams := t.activeStreams
 	t.activeStreams = nil
@@ -789,7 +795,6 @@ func (t *http2Client) Close() error {
 		}
 		t.statsHandler.HandleConn(t.ctx, connEnd)
 	}
-	t.onClose()
 	return err
 }
 
@@ -978,9 +983,9 @@ func (t *http2Client) handleRSTStream(f *http2.RSTStreamFrame) {
 		statusCode = codes.Unknown
 	}
 	if statusCode == codes.Canceled {
-		// Our deadline was already exceeded, and that was likely the cause of
-		// this cancelation.  Alter the status code accordingly.
-		if d, ok := s.ctx.Deadline(); ok && d.After(time.Now()) {
+		if d, ok := s.ctx.Deadline(); ok && !d.After(time.Now()) {
+			// Our deadline was already exceeded, and that was likely the cause
+			// of this cancelation.  Alter the status code accordingly.
 			statusCode = codes.DeadlineExceeded
 		}
 	}
@@ -1085,11 +1090,12 @@ func (t *http2Client) handleGoAway(f *http2.GoAwayFrame) {
 	default:
 		t.setGoAwayReason(f)
 		close(t.goAway)
-		t.state = draining
 		t.controlBuf.put(&incomingGoAway{})
-
-		// This has to be a new goroutine because we're still using the current goroutine to read in the transport.
+		// Notify the clientconn about the GOAWAY before we set the state to
+		// draining, to allow the client to stop attempting to create streams
+		// before disallowing new streams on this connection.
 		t.onGoAway(t.goAwayReason)
+		t.state = draining
 	}
 	// All streams with IDs greater than the GoAwayId
 	// and smaller than the previous GoAway ID should be killed.
@@ -1326,6 +1332,7 @@ func (t *http2Client) keepalive() {
 					timer.Reset(t.kp.Time)
 					continue
 				}
+				infof("transport: closing client transport due to idleness.")
 				t.Close()
 				return
 			case <-t.ctx.Done():
