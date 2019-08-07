@@ -1496,6 +1496,9 @@ func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {
 	if r.state != StateLeader || len(cs.Voters) == 0 {
 		return cs
 	}
+	// TODO(tbg): bcastAppend needs to be called more aggressively. Even if
+	// nothing new is known committed to the leader, new followers may profit
+	// from getting the updated index proactively.
 	if r.maybeCommit() {
 		// The quorum size may have been reduced (but not to zero), so see if
 		// any pending entries can be committed.
