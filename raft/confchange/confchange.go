@@ -62,10 +62,7 @@ func (c Changer) EnterJoint(autoLeave bool, ccs ...pb.ConfChangeSingle) (tracker
 		return c.err(err)
 	}
 	// Clear the outgoing config.
-	{
-		*outgoingPtr(&cfg.Voters) = quorum.MajorityConfig{}
-
-	}
+	*outgoingPtr(&cfg.Voters) = quorum.MajorityConfig{}
 	// Copy incoming to outgoing.
 	for id := range incoming(cfg.Voters) {
 		outgoing(cfg.Voters)[id] = struct{}{}
