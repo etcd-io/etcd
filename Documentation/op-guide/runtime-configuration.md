@@ -126,7 +126,7 @@ If adding multiple members the best practice is to configure a single member at 
 #### Add a new member as learner
 
 Starting from v3.4, etcd supports adding a new member as learner / non-voting member.
-The motivation and design can be found in [design doc](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-learner.md). In order to make the process of adding a new member safer, and to reduce cluster downtime when the new member is added, it is recommended that the new member is added to cluster as a learner until it catches up. This can be described as a three step process:
+The motivation and design can be found in [design doc][design-learner]. In order to make the process of adding a new member safer, and to reduce cluster downtime when the new member is added, it is recommended that the new member is added to cluster as a learner until it catches up. This can be described as a three step process:
 
  * Add the new member as learner via [gRPC members API][member-api-grpc] or the `etcdctl member add --learner` command.
 
