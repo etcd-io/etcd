@@ -53,7 +53,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.12...v3.3.13) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.readthedocs.io/en/latest/operate.html#v3-3) for all metrics per release.
+See [List of metrics](https://etcd.io/docs/v3.3.12/metrics/) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
