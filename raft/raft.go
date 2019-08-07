@@ -920,12 +920,6 @@ func (r *raft) Step(m pb.Message) error {
 		}
 
 	case pb.MsgVote, pb.MsgPreVote:
-		if r.isLearner {
-			// TODO: learner may need to vote, in case of node down when confchange.
-			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored %s from %x [logterm: %d, index: %d] at term %d: learner can not vote",
-				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
-			return nil
-		}
 		// We can vote if this is a repeat of a vote we've already cast...
 		canVote := r.Vote == m.From ||
 			// ...we haven't voted and we don't think there's a leader yet in this term...
@@ -934,6 +928,24 @@ func (r *raft) Step(m pb.Message) error {
 			(m.Type == pb.MsgPreVote && m.Term > r.Term)
 		// ...and we believe the candidate is up to date.
 		if canVote && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+			// Note: it turns out that that learners must be allowed to cast votes.
+			// This seems counter- intuitive but is necessary in the situation in which
+			// a learner has been promoted (i.e. is now a voter) but has not learned
+			// about this yet.
+			// For example, consider a group in which id=1 is a learner and id=2 and
+			// id=3 are voters. A configuration change promoting 1 can be committed on
+			// the quorum `{2,3}` without the config change being appended to the
+			// learner's log. If the leader (say 2) fails, there are de facto two
+			// voters remaining. Only 3 can win an election (due to its log containing
+			// all committed entries), but to do so it will need 1 to vote. But 1
+			// considers itself a learner and will continue to do so until 3 has
+			// stepped up as leader, replicates the conf change to 1, and 1 applies it.
+			// Ultimately, by receiving a request to vote, the learner realizes that
+			// the candidate believes it to be a voter, and that it should act
+			// accordingly. The candidate's config may be stale, too; but in that case
+			// it won't win the election, at least in the absence of the bug discussed
+			// in:
+			// https://github.com/etcd-io/etcd/issues/7625#issuecomment-488798263.
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
 			// When responding to Msg{Pre,}Vote messages we include the term
