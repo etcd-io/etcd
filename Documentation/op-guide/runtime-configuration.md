@@ -240,3 +240,4 @@ It is enabled by default.
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
 [error cases when promoting a member]: #error-cases-when-promoting-a-learner-member
+[design-learner]: ../learning/design-learner.md
