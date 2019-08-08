@@ -81,6 +81,11 @@ func (s *snapshotSender) send(merged snap.Message) {
 		snapshotSendInflights.WithLabelValues(to).Dec()
 	}()
 
+	snapshotSendInflights.WithLabelValues(to).Inc()
+	defer func() {
+		snapshotSendInflights.WithLabelValues(to).Dec()
+	}()
+
 	err := s.post(req)
 	defer merged.CloseWithError(err)
 	if err != nil {
@@ -108,7 +113,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 	plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
 
 	sentBytes.WithLabelValues(to).Add(float64(merged.TotalSize))
-
 	snapshotSend.WithLabelValues(to).Inc()
 	snapshotSendSeconds.WithLabelValues(to).Observe(time.Since(start).Seconds())
 }
