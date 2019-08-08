@@ -866,9 +866,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	if raft.IsEmptySnap(apply.snapshot) {
 		return
 	}
-
+	applySnapshotInProgress.Inc()
 	plog.Infof("applying snapshot at index %d...", ep.snapi)
-	defer plog.Infof("finished applying incoming snapshot at index %d", ep.snapi)
+	defer func() {
+		plog.Infof("finished applying incoming snapshot at index %d", ep.snapi)
+		applySnapshotInProgress.Dec()
+	}()
 
 	if apply.snapshot.Metadata.Index <= ep.appliedi {
 		plog.Panicf("snapshot index [%d] should > appliedi[%d] + 1",
