@@ -19,6 +19,16 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) an
 
 - Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
 
+### Metrics, Monitoring
+
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
+- Add [`etcd_network_snapshot_send_inflights_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
+- Add [`etcd_network_snapshot_receive_inflights_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
+- Add [`etcd_server_snapshot_apply_in_progress_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
+
 ### client v3
 
 - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956) by upgrading [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.7.5`**](https://github.com/grpc/grpc-go/releases/tag/v1.7.5) to [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0).

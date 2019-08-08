@@ -247,6 +247,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_debugging_lease_revoked_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_renewed_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
 - Add [`etcd_debugging_lease_ttl_total`](https://github.com/etcd-io/etcd/pull/9778) Prometheus metric.
+- Add [`etcd_network_snapshot_send_inflights_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
+- Add [`etcd_network_snapshot_receive_inflights_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
+- Add [`etcd_server_snapshot_apply_in_progress_total`](https://github.com/etcd-io/etcd/pull/11009) Prometheus metric.
 - Add [`etcd_server_is_learner`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
 - Add [`etcd_server_learner_promote_failures`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
 - Add [`etcd_server_learner_promote_successes`](https://github.com/etcd-io/etcd/pull/10731) Prometheus metric.
