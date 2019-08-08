@@ -1113,6 +1113,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	if raft.IsEmptySnap(apply.snapshot) {
 		return
 	}
+	applySnapshotInProgress.Inc()
 
 	lg := s.getLogger()
 	if lg != nil {
@@ -1138,6 +1139,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		} else {
 			plog.Infof("finished applying incoming snapshot at index %d", ep.snapi)
 		}
+		applySnapshotInProgress.Dec()
 	}()
 
 	if apply.snapshot.Metadata.Index <= ep.appliedi {
