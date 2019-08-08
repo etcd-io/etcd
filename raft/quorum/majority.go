@@ -139,12 +139,12 @@ func (c MajorityConfig) CommittedIndex(l AckedIndexer) Index {
 	// performance is a lesser concern (additionally the performance
 	// implications of an allocation here are far from drastic).
 	var stk [7]uint64
-	srt := []uint64(stk[:])
-
-	if cap(srt) < n {
+	var srt []uint64
+	if len(stk) >= n {
+		srt = stk[:n]
+	} else {
 		srt = make([]uint64, n)
 	}
-	srt = srt[:n]
 
 	{
 		// Fill the slice with the indexes observed. Any unused slots will be
