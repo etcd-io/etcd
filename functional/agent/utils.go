@@ -15,6 +15,7 @@
 package agent
 
 import (
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -36,7 +37,8 @@ func archive(baseDir, etcdLogPath, dataDir string) error {
 		return err
 	}
 
-	if err := os.Rename(etcdLogPath, filepath.Join(dir, "etcd.log")); err != nil {
+	dst := filepath.Join(dir, "etcd.log")
+	if err := copyFile(etcdLogPath, dst); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
@@ -77,6 +79,25 @@ func getURLAndPort(addr string) (urlAddr *url.URL, port int, err error) {
 		return nil, -1, err
 	}
 	return urlAddr, port, err
+}
+
+func copyFile(src, dst string) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if _, err = io.Copy(w, f); err != nil {
+		return err
+	}
+	return w.Sync()
 }
 
 func cleanPageCache() error {
