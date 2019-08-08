@@ -188,6 +188,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 ### Metrics, Monitoring
 
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_snap_db_fsync_duration_seconds_count`](https://github.com/etcd-io/etcd/pull/9997) Prometheus metric.
@@ -550,6 +552,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - `raftpb.ConfChangeV2` allows joint configuration changes but will continue to carry out configuration changes in "one phase" (i.e. without ever entering a joint config) when this is possible.
   - `raftpb.ConfChangeV2` messages initiate configuration changes. They support both the simple "one at a time" membership change protocol and full Joint Consensus allowing for arbitrary changes in membership.
 - Change [`raftpb.ConfState.Nodes` to `raftpb.ConfState.Voters`](https://github.com/etcd-io/etcd/pull/10914).
+- Allow [learners to vote, but still learners do not count in quorum](https://github.com/etcd-io/etcd/pull/10998).
+  - necessary in the situation in which a learner has been promoted (i.e. is now a voter) but has not learned about this yet.
 
 ### Package `wal`
 

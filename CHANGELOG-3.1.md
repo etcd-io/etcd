@@ -21,6 +21,10 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 
 ### Metrics, Monitoring
 
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 
 <hr>
@@ -40,7 +44,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.19...v3.1.20) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -84,7 +88,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.18...v3.1.19) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -126,7 +130,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.17...v3.1.18) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -210,7 +214,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.13...v3.1.14) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -250,7 +254,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.1.12...v3.1.13) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://etcd.io/docs/v3.1.12/metrics/) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
