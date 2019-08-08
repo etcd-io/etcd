@@ -166,10 +166,35 @@ func (p *ProgressTracker) Committed() uint64 {
 	return uint64(p.Voters.CommittedIndex(matchAckIndexer(p.Progress)))
 }
 
-// Visit invokes the supplied closure for all tracked progresses.
+func insertionSort(sl []uint64) {
+	a, b := 0, len(sl)
+	for i := a + 1; i < b; i++ {
+		for j := i; j > a && sl[j] < sl[j-1]; j-- {
+			sl[j], sl[j-1] = sl[j-1], sl[j]
+		}
+	}
+}
+
+// Visit invokes the supplied closure for all tracked progresses in stable order.
 func (p *ProgressTracker) Visit(f func(id uint64, pr *Progress)) {
-	for id, pr := range p.Progress {
-		f(id, pr)
+	n := len(p.Progress)
+	// We need to sort the IDs and don't want to allocate since this is hot code.
+	// The optimization here mirrors that in `(MajorityConfig).CommittedIndex`,
+	// see there for details.
+	var sl [7]uint64
+	ids := sl[:]
+	if len(sl) >= n {
+		ids = sl[:n]
+	} else {
+		ids = make([]uint64, n)
+	}
+	for id := range p.Progress {
+		n--
+		ids[n] = id
+	}
+	insertionSort(ids)
+	for _, id := range ids {
+		f(id, p.Progress[id])
 	}
 }
 
