@@ -71,7 +71,25 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// trigger snapshot send from leader to this slow follower
 	// which then calls watchable store Restore
 	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
-	clus.WaitLeader(t)
+	lead := clus.WaitLeader(t)
+
+	sends, err := clus.Members[lead].Metric("etcd_network_snapshot_send_inflights_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sends != "0" && sends != "1" {
+		// 0 if already sent, 1 if sending
+		t.Fatalf("inflight snapshot sends expected 0 or 1, got %q", sends)
+	}
+	receives, err := clus.Members[(lead+1)%3].Metric("etcd_network_snapshot_receive_inflights_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receives != "0" && receives != "1" {
+		// 0 if already received, 1 if receiving
+		t.Fatalf("inflight snapshot receives expected 0 or 1, got %q", receives)
+	}
+
 	time.Sleep(2 * time.Second)
 
 	// slow follower now applies leader snapshot
