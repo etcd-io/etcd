@@ -207,7 +207,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		snapshotReceiveInflights.WithLabelValues(from).Dec()
 	}()
-	plog.Infof("receiving database snapshot [index:%d, from %s] ...", m.Snapshot.Metadata.Index, types.ID(m.From))
+    plog.Infof("receiving database snapshot [index:%d, from %s] ...", m.Snapshot.Metadata.Index, types.ID(m.From))
 	// save incoming database snapshot.
 	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
 	if err != nil {
