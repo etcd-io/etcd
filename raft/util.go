@@ -133,3 +133,11 @@ func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
 	}
 	return ents[:limit]
 }
+
+func assertConfStatesEquivalent(l Logger, cs1, cs2 pb.ConfState) {
+	err := cs1.Equivalent(cs2)
+	if err == nil {
+		return
+	}
+	l.Panic(err)
+}
