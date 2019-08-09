@@ -93,36 +93,45 @@ func runTestInternal(
 
 	r := newTestDataReader(t, sourceName, reader, rewrite)
 	for r.Next(t) {
-		d := &r.data
-		actual := func() string {
-			defer func() {
-				if r := recover(); r != nil {
-					fmt.Printf("\npanic during %s:\n%s\n", d.Pos, d.Input)
-					panic(r)
+		t.Run("", func(t *testing.T) {
+			d := &r.data
+			actual := func() string {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Printf("\npanic during %s:\n%s\n", d.Pos, d.Input)
+						panic(r)
+					}
+				}()
+				actual := f(d)
+				if !strings.HasSuffix(actual, "\n") {
+					actual += "\n"
 				}
+				return actual
 			}()
-			return f(d)
-		}()
 
-		if r.rewrite != nil {
-			r.emit("----")
-			if hasBlankLine(actual) {
+			if r.rewrite != nil {
 				r.emit("----")
-				r.rewrite.WriteString(actual)
-				r.emit("----")
-				r.emit("----")
-			} else {
-				r.emit(actual)
+				if hasBlankLine(actual) {
+					r.emit("----")
+					r.rewrite.WriteString(actual)
+					r.emit("----")
+					r.emit("----")
+				} else {
+					r.emit(actual)
+				}
+			} else if d.Expected != actual {
+				t.Fatalf("\n%s: %s\nexpected:\n%s\nfound:\n%s", d.Pos, d.Input, d.Expected, actual)
+			} else if testing.Verbose() {
+				input := d.Input
+				if input == "" {
+					input = "<no input to command>"
+				}
+				// TODO(tbg): it's awkward to reproduce the args, but it would be helpful.
+				fmt.Printf("\n%s:\n%s [%d args]\n%s\n----\n%s", d.Pos, d.Cmd, len(d.CmdArgs), input, actual)
 			}
-		} else if d.Expected != actual {
-			t.Fatalf("\n%s: %s\nexpected:\n%s\nfound:\n%s", d.Pos, d.Input, d.Expected, actual)
-		} else if testing.Verbose() {
-			input := d.Input
-			if input == "" {
-				input = "<no input to command>"
-			}
-			// TODO(tbg): it's awkward to reproduce the args, but it would be helpful.
-			fmt.Printf("\n%s:\n%s [%d args]\n%s\n----\n%s", d.Pos, d.Cmd, len(d.CmdArgs), input, actual)
+		})
+		if t.Failed() {
+			t.FailNow()
 		}
 	}
 
