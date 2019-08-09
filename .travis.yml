@@ -25,9 +25,6 @@ matrix:
   allow_failures:
   - go: 1.10.8
     env: TARGET=linux-386-unit
-  exclude:
-  - go: tip
-    env: TARGET=linux-386-unit
 
 before_install:
 - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
