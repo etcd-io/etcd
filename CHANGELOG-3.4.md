@@ -82,16 +82,16 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/etcd-io/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
-- **Remove `etcd --ca-file` flag**, instead [use `etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --ca-file` flag has been marked deprecated since v2.1).
-- **Remove `etcd --peer-ca-file` flag**, instead [use `etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
-- **Remove `pkg/transport.TLSInfo.CAFile` field**, instead [use `pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) (`CAFile` field has been marked deprecated since v2.1).
+- **Deprecated `etcd --ca-file` flag**. Use [`etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --ca-file` flag has been marked deprecated since v2.1).
+- **Deprecated `etcd --peer-ca-file` flag**. Use [`etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
+- **Deprecated `pkg/transport.TLSInfo.CAFile` field**. Use [`pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) instead (`CAFile` field has been marked deprecated since v2.1).
 - Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
 - Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
   - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
   - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
   - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
-- Drop [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
+- Deprecated [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
   - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
   - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
   - `*.aci` files are not available from `v3.4` release.
@@ -113,7 +113,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Rename `etcdserver.ServerConfig.SnapCount` field to `etcdserver.ServerConfig.SnapshotCount`, to be consistent with the flag name `etcd --snapshot-count`.
 - Rename `embed.Config.SnapCount` field to [`embed.Config.SnapshotCount`](https://github.com/etcd-io/etcd/pull/9745), to be consistent with the flag name `etcd --snapshot-count`.
 - Change [`embed.Config.CorsInfo` in `*cors.CORSInfo` type to `embed.Config.CORS` in `map[string]struct{}` type](https://github.com/etcd-io/etcd/pull/9490).
-- Remove [`embed.Config.SetupLogging`](https://github.com/etcd-io/etcd/pull/9572).
+- Deprecated [`embed.Config.SetupLogging`](https://github.com/etcd-io/etcd/pull/9572).
   - Now logger is set up automatically based on [`embed.Config.Logger`, `embed.Config.LogOutputs`, `embed.Config.Debug` fields](https://github.com/etcd-io/etcd/pull/9572).
 - Rename [`etcd --log-output` to `etcd --log-outputs`](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs.
   - **`etcd --log-output`** will be deprecated in v3.5.
@@ -134,7 +134,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
   - Remove recursive symlinks in `cmd` directory.
   - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
-- Replace [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3beta` with [`/v3`](https://github.com/etcd-io/etcd/pull/9298).
+- Deprecated [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3beta` with [`/v3`](https://github.com/etcd-io/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/etcd-io/etcd/pull/9298).
   - To deprecate [`/v3beta`](https://github.com/etcd-io/etcd/issues/9189) in v3.5.
   - In v3.4, `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` still works as a fallback to `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'`, but `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` won't work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
@@ -557,6 +557,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Change [`raftpb.ConfState.Nodes` to `raftpb.ConfState.Voters`](https://github.com/etcd-io/etcd/pull/10914).
 - Allow [learners to vote, but still learners do not count in quorum](https://github.com/etcd-io/etcd/pull/10998).
   - necessary in the situation in which a learner has been promoted (i.e. is now a voter) but has not learned about this yet.
+- Fix [restoring joint consensus](https://github.com/etcd-io/etcd/pull/11003).
+- Visit [`Progress` in stable order](https://github.com/etcd-io/etcd/pull/11004).
 
 ### Package `wal`
 
