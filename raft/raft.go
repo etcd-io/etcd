@@ -1396,7 +1396,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	}
 
 	// More defense-in-depth: throw away snapshot if recipient is not in the
-	// config. This shouuldn't ever happen (at the time of writing) but lots of
+	// config. This shouldn't ever happen (at the time of writing) but lots of
 	// code here and there assumes that r.id is in the progress tracker.
 	found := false
 	cs := s.Metadata.ConfState
