@@ -90,7 +90,7 @@ func main() {
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)
 		}
-		fmt.Println("Start dupmping log entries from snapshot.")
+		fmt.Println("Start dumping log entries from snapshot.")
 	}
 
 	w, err := wal.OpenForRead(zap.NewExample(), walDir(dataDir), walsnap)
