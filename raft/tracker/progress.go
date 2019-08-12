@@ -52,6 +52,8 @@ type Progress struct {
 	// RecentActive is true if the progress is recently active. Receiving any messages
 	// from the corresponding follower indicates the progress is active.
 	// RecentActive can be reset to false after an election timeout.
+	//
+	// TODO(tbg): the leader should always have this set to true.
 	RecentActive bool
 
 	// ProbeSent is used while this follower is in StateProbe. When ProbeSent is

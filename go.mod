@@ -2,7 +2,7 @@ module go.etcd.io/etcd
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
-	github.com/cockroachdb/datadriven v0.0.0-20190531201743-edce55837238
+	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
 	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
 	github.com/coreos/pkg v0.0.0-20160727233714-3ac0863d7acf
