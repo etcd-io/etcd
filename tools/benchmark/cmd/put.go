@@ -183,7 +183,7 @@ func hashKV(cmd *cobra.Command, clients []*v3.Client) {
 		panic(err)
 	}
 
-	rs := "HaskKV Summary:\n"
+	rs := "HashKV Summary:\n"
 	rs += fmt.Sprintf("\tHashKV: %d\n", rh.Hash)
 	rs += fmt.Sprintf("\tEndpoint: %s\n", host)
 	rs += fmt.Sprintf("\tTime taken to get hashkv: %v\n", time.Since(st))
