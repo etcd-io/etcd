@@ -63,7 +63,8 @@ main() {
   fi
 
   # Check go version.
-  local go_version="go$(yq -r ".go[0]" .travis.yml)"
+  # download "yq" from https://github.com/mikefarah/yq
+  local go_version="go$(yq read .travis.yml "go[0]")"
   local current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
     echo "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
