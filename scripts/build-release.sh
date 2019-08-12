@@ -11,11 +11,6 @@ if [ -z "${VERSION}" ]; then
 	exit 255
 fi
 
-if ! command -v acbuild >/dev/null; then
-    echo "cannot find acbuild"
-    exit 1
-fi
-
 if ! command -v docker >/dev/null; then
     echo "cannot find docker"
     exit 1
