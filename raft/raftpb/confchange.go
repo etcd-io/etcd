@@ -16,6 +16,8 @@ package raftpb
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gogo/protobuf/proto"
 )
@@ -102,4 +104,67 @@ func (c *ConfChangeV2) LeaveJoint() bool {
 	cpy := *c
 	cpy.Context = nil
 	return proto.Equal(&cpy, &ConfChangeV2{})
+}
+
+// ConfChangesFromString parses a Space-delimited sequence of operations into a
+// slice of ConfChangeSingle. The supported operations are:
+// - vn: make n a voter,
+// - ln: make n a learner,
+// - rn: remove n, and
+// - un: update n.
+func ConfChangesFromString(s string) ([]ConfChangeSingle, error) {
+	var ccs []ConfChangeSingle
+	toks := strings.Split(strings.TrimSpace(s), " ")
+	if toks[0] == "" {
+		toks = nil
+	}
+	for _, tok := range toks {
+		if len(tok) < 2 {
+			return nil, fmt.Errorf("unknown token %s", tok)
+		}
+		var cc ConfChangeSingle
+		switch tok[0] {
+		case 'v':
+			cc.Type = ConfChangeAddNode
+		case 'l':
+			cc.Type = ConfChangeAddLearnerNode
+		case 'r':
+			cc.Type = ConfChangeRemoveNode
+		case 'u':
+			cc.Type = ConfChangeUpdateNode
+		default:
+			return nil, fmt.Errorf("unknown input: %s", tok)
+		}
+		id, err := strconv.ParseUint(tok[1:], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		cc.NodeID = id
+		ccs = append(ccs, cc)
+	}
+	return ccs, nil
+}
+
+// ConfChangesToString is the inverse to ConfChangesFromString.
+func ConfChangesToString(ccs []ConfChangeSingle) string {
+	var buf strings.Builder
+	for i, cc := range ccs {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+		switch cc.Type {
+		case ConfChangeAddNode:
+			buf.WriteByte('v')
+		case ConfChangeAddLearnerNode:
+			buf.WriteByte('l')
+		case ConfChangeRemoveNode:
+			buf.WriteByte('r')
+		case ConfChangeUpdateNode:
+			buf.WriteByte('u')
+		default:
+			buf.WriteString("unknown")
+		}
+		fmt.Fprintf(&buf, "%d", cc.NodeID)
+	}
+	return buf.String()
 }

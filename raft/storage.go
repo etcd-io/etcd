@@ -44,6 +44,8 @@ var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unav
 // become inoperable and refuse to participate in elections; the
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
+	// TODO(tbg): split this into two interfaces, LogStorage and StateStorage.
+
 	// InitialState returns the saved HardState and ConfState information.
 	InitialState() (pb.HardState, pb.ConfState, error)
 	// Entries returns a slice of log entries in the range [lo,hi).
