@@ -24,6 +24,6 @@ pushd "${ETCD_ROOT}" >/dev/null
 
 	for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
 		echo Building ${TARGET_ARCH} docker image...
-		GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
+		GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
 	done
 popd >/dev/null
