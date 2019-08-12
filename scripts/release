@@ -147,11 +147,10 @@ main() {
     [[ "${confirm,,}" == "y" ]] || exit 1
     gsutil -m cp ./release/*.zip gs://etcd/${RELEASE_VERSION}/
     gsutil -m cp ./release/*.tar.gz gs://etcd/${RELEASE_VERSION}/
-    gsutil -m cp ./release/*.aci gs://etcd/${RELEASE_VERSION}/
     gsutil -m acl ch -u allUsers:R -r gs://etcd/${RELEASE_VERSION}/
   fi
 
-    # Push images.
+  # Push images.
   if [ "${NO_DOCKER_PUSH}" == 1 ]; then
     echo "Skipping docker push. --no-docker-push flat is set."
   else
