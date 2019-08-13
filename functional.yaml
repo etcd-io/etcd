@@ -153,7 +153,7 @@ agent-configs:
   snapshot-path: /tmp/etcd-functional-3.snapshot.db
 
 tester-config:
-  data-dir: /tmp/etcd-tester-data
+  data-dir: /tmp/etcd-functional
   network: tcp
   addr: 127.0.0.1:9028
 

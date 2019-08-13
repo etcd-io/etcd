@@ -505,8 +505,7 @@ func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Respons
 	// store TLS assets from agents/servers onto disk
 	if secure && (op == rpcpb.Operation_INITIAL_START_ETCD || op == rpcpb.Operation_RESTART_ETCD) {
 		dirClient := filepath.Join(
-			clus.Tester.DataDir,
-			clus.Members[idx].Etcd.Name,
+			clus.Members[idx].Etcd.DataDir,
 			"fixtures",
 			"client",
 		)
