@@ -242,6 +242,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd_mvcc_db_total_size_in_bytes 20480` means current physically allocated DB size is 20 KB.
   - `etcd_mvcc_db_total_size_in_use_in_bytes 16384` means future DB size if defragment operation is complete.
   - `etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes` is the number of bytes that can be saved on disk with defragment operation.
+- Add [`etcd_mvcc_db_open_read_transactions`](https://github.com/etcd-io/etcd/pull/10523/commits/ad80752715aaed449629369687c5fd30eb1bda76) Prometheus metric.
 - Add [`etcd_snap_fsync_duration_seconds`](https://github.com/etcd-io/etcd/pull/9762) Prometheus metric.
 - Add [`etcd_disk_backend_defrag_duration_seconds`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
 - Add [`etcd_mvcc_hash_duration_seconds`](https://github.com/etcd-io/etcd/pull/9761) Prometheus metric.
