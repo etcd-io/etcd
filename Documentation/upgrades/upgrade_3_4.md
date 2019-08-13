@@ -35,6 +35,21 @@ OK
 +etcdctl put foo bar
 ```
 
+#### Make `ETCDCTL_API=3 etcdctl` default
+
+[`etcd --enable-v2=false`](https://github.com/etcd-io/etcd/pull/10935) is now the default.
+
+This means, unless `etcd --enable-v2=true` is specified, etcd v3.4 server would not serve v2 API requests.
+
+If v2 API were used, make sure to enable v2 API in v3.4:
+
+```diff
+-etcd
++etcd --enable-v2=true
+```
+
+Other HTTP APIs will still work (e.g. `[CLIENT-URL]/metrics`, `[CLIENT-URL]/health`, v3 gRPC gateway).
+
 #### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
 
 `--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.

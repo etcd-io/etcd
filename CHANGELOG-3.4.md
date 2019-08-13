@@ -86,6 +86,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Make [`ETCDCTL_API=3 etcdctl` default](https://github.com/etcd-io/etcd/issues/9600).
   - Now, `etcdctl set foo bar` must be `ETCDCTL_API=2 etcdctl set foo bar`.
   - Now, `ETCDCTL_API=3 etcdctl put foo bar` could be just `etcdctl put foo bar`.
+- Make [`etcd --enable-v2=false` default](https://github.com/etcd-io/etcd/pull/10935).
+- Make [`embed.DefaultEnableV2` `false` default](https://github.com/etcd-io/etcd/pull/10935).
 - **Deprecated `etcd --ca-file` flag**. Use [`etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --ca-file` flag has been marked deprecated since v2.1).
 - **Deprecated `etcd --peer-ca-file` flag**. Use [`etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
 - **Deprecated `pkg/transport.TLSInfo.CAFile` field**. Use [`pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) instead (`CAFile` field has been marked deprecated since v2.1).
@@ -423,6 +425,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - Change [**`embed.Config.LogOutputs`** type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
 - Add [`embed.Config.BackendBatchLimit`](https://github.com/etcd-io/etcd/pull/10283) field.
 - Add [`embed.Config.BackendBatchInterval`](https://github.com/etcd-io/etcd/pull/10283) field.
+- Make [`embed.DefaultEnableV2` `false` default](https://github.com/etcd-io/etcd/pull/10935).
 
 ### Package `pkg/adt`
 
