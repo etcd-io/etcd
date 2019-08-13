@@ -36,7 +36,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Improve [long-running concurrent read transactions under light write workloads](https://github.com/etcd-io/etcd/pull/9296).
   - Previously, periodic commit on pending writes blocks incoming read transactions, even if there is no pending write.
   - Now, periodic commit operation does not block concurrent read transactions, thus improves long-running read transaction performance.
-  - Rebased [etcd#10523](https://github.com/etcd-io/etcd/pull/10523).
+- Make [backend read transactions fully concurrent](https://github.com/etcd-io/etcd/pull/10523).
+  - Previously, ongoing long-running read transactions block writes and future reads.
+  - With this change, write throughput is increased by 70% and P99 write latency is reduced by 90% in the presence of long-running reads.
 - Improve [Raft Read Index timeout warning messages](https://github.com/etcd-io/etcd/pull/9897).
 - Adjust [election timeout on server restart](https://github.com/etcd-io/etcd/pull/9415) to reduce [disruptive rejoining servers](https://github.com/etcd-io/etcd/issues/9333).
   - Previously, etcd fast-forwards election ticks on server start, with only one tick left for leader election. This is to speed up start phase, without having to wait until all election ticks elapse. Advancing election ticks is useful for cross datacenter deployments with larger election timeouts. However, it was affecting cluster availability if the last tick elapses before leader contacts the restarted node.
