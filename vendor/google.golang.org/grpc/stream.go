@@ -327,13 +327,23 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 	return cs, nil
 }
 
-func (cs *clientStream) newAttemptLocked(sh stats.Handler, trInfo *traceInfo) error {
+// newAttemptLocked creates a new attempt with a transport.
+// If it succeeds, then it replaces clientStream's attempt with this new attempt.
+func (cs *clientStream) newAttemptLocked(sh stats.Handler, trInfo *traceInfo) (retErr error) {
 	newAttempt := &csAttempt{
 		cs:           cs,
 		dc:           cs.cc.dopts.dc,
 		statsHandler: sh,
 		trInfo:       trInfo,
 	}
+	defer func() {
+		if retErr != nil {
+			// This attempt is not set in the clientStream, so it's finish won't
+			// be called. Call it here for stats and trace in case they are not
+			// nil.
+			newAttempt.finish(retErr)
+		}
+	}()
 
 	if err := cs.ctx.Err(); err != nil {
 		return toRPCErr(err)
