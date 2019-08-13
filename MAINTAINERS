@@ -16,3 +16,5 @@ Sam Batschelet <sbatsche@redhat.com> (@hexfusion) pkg:*
 Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft
+Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
+
