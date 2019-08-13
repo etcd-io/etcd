@@ -274,8 +274,8 @@ func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
 	var auth *authenticator
 
-	for i := 0; i < len(c.cfg.Endpoints); i++ {
-		ep := c.cfg.Endpoints[i]
+	eps := c.Endpoints()
+	for _, ep := range eps {
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
 		_, host, _ := endpoint.ParseEndpoint(ep)
@@ -519,13 +519,17 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 
 func (c *Client) checkVersion() (err error) {
 	var wg sync.WaitGroup
-	errc := make(chan error, len(c.cfg.Endpoints))
+
+	eps := c.Endpoints()
+	errc := make(chan error, len(eps))
 	ctx, cancel := context.WithCancel(c.ctx)
 	if c.cfg.DialTimeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
+		cancel()
+		ctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
 	}
-	wg.Add(len(c.cfg.Endpoints))
-	for _, ep := range c.cfg.Endpoints {
+
+	wg.Add(len(eps))
+	for _, ep := range eps {
 		// if cluster is current, any endpoint gives a recent version
 		go func(e string) {
 			defer wg.Done()
@@ -537,8 +541,15 @@ func (c *Client) checkVersion() (err error) {
 			vs := strings.Split(resp.Version, ".")
 			maj, min := 0, 0
 			if len(vs) >= 2 {
-				maj, _ = strconv.Atoi(vs[0])
-				min, rerr = strconv.Atoi(vs[1])
+				var serr error
+				if maj, serr = strconv.Atoi(vs[0]); serr != nil {
+					errc <- serr
+					return
+				}
+				if min, serr = strconv.Atoi(vs[1]); serr != nil {
+					errc <- serr
+					return
+				}
 			}
 			if maj < 3 || (maj == 3 && min < 2) {
 				rerr = ErrOldCluster
@@ -547,7 +558,7 @@ func (c *Client) checkVersion() (err error) {
 		}(ep)
 	}
 	// wait for success
-	for i := 0; i < len(c.cfg.Endpoints); i++ {
+	for range eps {
 		if err = <-errc; err == nil {
 			break
 		}
