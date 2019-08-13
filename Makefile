@@ -104,7 +104,7 @@ compile-with-docker-test:
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+	  /bin/bash -c "GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version"
 
 compile-setup-gopath-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -112,7 +112,7 @@ compile-setup-gopath-with-docker-test:
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version && rm -rf ./gopath"
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
