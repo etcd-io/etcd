@@ -184,6 +184,19 @@ func (r *recvBufferReader) readClient(p []byte) (n int, err error) {
 	// r.readAdditional acts on that message and returns the necessary error.
 	select {
 	case <-r.ctxDone:
+		// Note that this adds the ctx error to the end of recv buffer, and
+		// reads from the head. This will delay the error until recv buffer is
+		// empty, thus will delay ctx cancellation in Recv().
+		//
+		// It's done this way to fix a race between ctx cancel and trailer. The
+		// race was, stream.Recv() may return ctx error if ctxDone wins the
+		// race, but stream.Trailer() may return a non-nil md because the stream
+		// was not marked as done when trailer is received. This closeStream
+		// call will mark stream as done, thus fix the race.
+		//
+		// TODO: delaying ctx error seems like a unnecessary side effect. What
+		// we really want is to mark the stream as done, and return ctx error
+		// faster.
 		r.closeStream(ContextErr(r.ctx.Err()))
 		m := <-r.recv.get()
 		return r.readAdditional(m, p)
@@ -298,6 +311,14 @@ func (s *Stream) waitOnHeader() error {
 	}
 	select {
 	case <-s.ctx.Done():
+		// We prefer success over failure when reading messages because we delay
+		// context error in stream.Read(). To keep behavior consistent, we also
+		// prefer success here.
+		select {
+		case <-s.headerChan:
+			return nil
+		default:
+		}
 		return ContextErr(s.ctx.Err())
 	case <-s.headerChan:
 		return nil
