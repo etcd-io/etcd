@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -58,10 +59,11 @@ func TestDialTLSExpired(t *testing.T) {
 	_, err = clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: 3 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
-	if err != context.DeadlineExceeded {
-		t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
+	if !isClientTimeout(err) {
+		t.Fatalf("expected dial timeout error, got %v", err)
 	}
 }
 
@@ -72,12 +74,18 @@ func TestDialTLSNoConfig(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 	// expect "signed by unknown authority"
-	_, err := clientv3.New(clientv3.Config{
+	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
-	if err != context.DeadlineExceeded {
-		t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
+	defer func() {
+		if c != nil {
+			c.Close()
+		}
+	}()
+	if !isClientTimeout(err) {
+		t.Fatalf("expected dial timeout error, got %v", err)
 	}
 }
 
@@ -104,7 +112,11 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	}
 	toKill := rand.Intn(len(eps))
 
-	cfg := clientv3.Config{Endpoints: []string{eps[toKill]}, DialTimeout: 1 * time.Second}
+	cfg := clientv3.Config{
+		Endpoints:   []string{eps[toKill]},
+		DialTimeout: 1 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
 	cli, err := clientv3.New(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -121,6 +133,7 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	if !setBefore {
 		cli.SetEndpoints(eps[toKill%3], eps[(toKill+1)%3])
 	}
+	time.Sleep(time.Second * 2)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestWaitTimeout)
 	if _, err = cli.Get(ctx, "foo", clientv3.WithSerializable()); err != nil {
 		t.Fatal(err)
@@ -158,6 +171,7 @@ func TestRejectOldCluster(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:        []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()},
 		DialTimeout:      5 * time.Second,
+		DialOptions:      []grpc.DialOption{grpc.WithBlock()},
 		RejectOldCluster: true,
 	}
 	cli, err := clientv3.New(cfg)

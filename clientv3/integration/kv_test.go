@@ -884,7 +884,7 @@ func TestKVLargeRequests(t *testing.T) {
 		},
 
 		// without proper client-side receive size limit
-		// "code = ResourceExhausted desc = grpc: received message larger than max (5242929 vs. 4194304)"
+		// "code = ResourceExhausted desc = received message larger than max (5242929 vs. 4194304)"
 		{
 
 			maxRequestBytesServer:  7*1024*1024 + 512*1024,
@@ -906,7 +906,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10 * 1024 * 1024,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 		{
 			maxRequestBytesServer:  10 * 1024 * 1024,
@@ -920,7 +920,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10*1024*1024 + 5,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 	}
 	for i, test := range tests {
@@ -940,7 +940,7 @@ func TestKVLargeRequests(t *testing.T) {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}
 		} else if err != nil && !strings.HasPrefix(err.Error(), test.expectError.Error()) {
-			t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
+			t.Errorf("#%d: expected error starting with '%s', got '%s'", i, test.expectError.Error(), err.Error())
 		}
 
 		// put request went through, now expects large response back

@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package picker
 
 import (
-	"io/ioutil"
+	"context"
 
-	"github.com/coreos/etcd/clientv3"
-
-	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/balancer"
 )
 
-func init() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+// NewErr returns a picker that always returns err on "Pick".
+func NewErr(err error) Picker {
+	return &errPicker{p: Error, err: err}
+}
+
+type errPicker struct {
+	p   Policy
+	err error
+}
+
+func (ep *errPicker) String() string {
+	return ep.p.String()
+}
+
+func (ep *errPicker) Pick(context.Context, balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
+	return nil, nil, ep.err
 }

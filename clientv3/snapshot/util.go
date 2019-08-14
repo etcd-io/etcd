@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package snapshot
 
-import (
-	"io/ioutil"
+import "encoding/binary"
 
-	"github.com/coreos/etcd/clientv3"
-
-	"google.golang.org/grpc/grpclog"
-)
-
-func init() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+type revision struct {
+	main int64
+	sub  int64
 }
+
+func bytesToRev(bytes []byte) revision {
+	return revision{
+		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
+		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
+	}
+}
+
+// initIndex implements ConsistentIndexGetter so the snapshot won't block
+// the new raft instance by waiting for a future raft index.
+type initIndex int
+
+func (i *initIndex) ConsistentIndex() uint64 { return uint64(*i) }

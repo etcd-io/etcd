@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2018 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package balancer
 
 import (
-	"io/ioutil"
+	"reflect"
+	"testing"
 
-	"github.com/coreos/etcd/clientv3"
-
-	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/resolver"
 )
 
-func init() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+func Test_epsToAddrs(t *testing.T) {
+	eps := []string{"https://example.com:2379", "127.0.0.1:2379"}
+	exp := []resolver.Address{
+		{Addr: "example.com:2379", Type: resolver.Backend},
+		{Addr: "127.0.0.1:2379", Type: resolver.Backend},
+	}
+	rs := epsToAddrs(eps...)
+	if !reflect.DeepEqual(rs, exp) {
+		t.Fatalf("expected %v, got %v", exp, rs)
+	}
 }
