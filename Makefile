@@ -50,7 +50,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.10.3
+GO_VERSION ?= 1.12.8
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -64,11 +64,11 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.8.7 make build-docker-test
+#   GO_VERSION=1.12.8 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.8.7 make push-docker-test
+#   GO_VERSION=1.12.8 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -78,17 +78,17 @@ build-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile
 	docker build \
-	  --tag gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
+	  --tag gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3 \
 	  --file ./tests/Dockerfile .
 	@mv ./tests/Dockerfile.bak ./tests/Dockerfile
 
 push-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-test:go$(GO_VERSION)
+	gcloud docker -- push gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3
 
 pull-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	docker pull gcr.io/etcd-development/etcd-test:go$(GO_VERSION)
+	docker pull gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3
 
 
 
@@ -102,16 +102,16 @@ compile-with-docker-test:
 	docker run \
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
-	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3 \
+	  /bin/bash -c "GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version"
 
 compile-setup-gopath-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker run \
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
-	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version && rm -rf ./gopath"
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3 \
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
@@ -145,7 +145,7 @@ test:
 	$(info TEST_OPTS: $(TEST_OPTS))
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -158,9 +158,9 @@ docker-test:
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
 	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
-	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3 \
 	  /bin/bash -c "$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test-coverage:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -172,9 +172,9 @@ docker-test-coverage:
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
 	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
-	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
+	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION)-release-3.3 \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
-	! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
+	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
 
 
 
