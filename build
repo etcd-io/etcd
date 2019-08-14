@@ -67,11 +67,7 @@ etcd_build() {
 tools_build() {
 	out="bin"
 	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
-	tools_path="tools/benchmark
-	tools/etcd-dump-db
-	tools/etcd-dump-logs
-	tools/local-tester/bridge
-	functional/cmd/etcd-agent
+	tools_path="functional/cmd/etcd-agent
 	functional/cmd/etcd-proxy
 	functional/cmd/etcd-runner
 	functional/cmd/etcd-tester"
