@@ -19,7 +19,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) an
 
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
   - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
-- Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
+- Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
+  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/etcd-io/etcd/issues/4913).
+  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
+  - Remove recursive symlinks in `cmd` directory.
+  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
 - Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
@@ -34,6 +38,21 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) an
 ### etcd server
 
 - Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
+
+### API
+
+- Add [`watch_id` field to `etcdserverpb.WatchCreateRequest`](https://github.com/etcd-io/etcd/pull/9065) to allow user-provided watch ID to `mvcc`.
+  - Corresponding `watch_id` is returned via `etcdserverpb.WatchResponse`, if any.
+- Add [`fragment` field to `etcdserverpb.WatchCreateRequest`](https://github.com/etcd-io/etcd/pull/9291) to request etcd server to [split watch events](https://github.com/etcd-io/etcd/issues/9294) when the total size of events exceeds `etcd --max-request-bytes` flag value plus gRPC-overhead 512 bytes.
+  - The default server-side request bytes limit is `embed.DefaultMaxRequestBytes` which is 1.5 MiB plus gRPC-overhead 512 bytes.
+  - If watch response events exceed this server-side request limit and watch request is created with `fragment` field `true`, the server will split watch events into a set of chunks, each of which is a subset of watch events below server-side request limit.
+  - Useful when client-side has limited bandwidths.
+  - For example, watch response contains 10 events, where each event is 1 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB. Then, server will send 10 separate fragmented events to the client.
+  - For example, watch response contains 5 events, where each event is 2 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB and `clientv3.Config.MaxCallRecvMsgSize` is 1 MiB. Then, server will try to send 5 separate fragmented events to the client, and the client will error with `"code = ResourceExhausted desc = grpc: received message larger than max (...)"`.
+  - Client must implement fragmented watch event merge (which `clientv3` does in etcd v3.4).
+- Add [`WatchRequest.WatchProgressRequest`](https://github.com/etcd-io/etcd/pull/9869).
+  - To manually trigger broadcasting watch progress event (empty watch response with latest header) to all associated watch streams.
+  - Think of it as `WithProgressNotify` that can be triggered manually.
 
 ### Metrics, Monitoring
 

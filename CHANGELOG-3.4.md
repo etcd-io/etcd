@@ -80,7 +80,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
   - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
-- Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
+- Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
+  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/etcd-io/etcd/issues/4913).
+  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
+  - Remove recursive symlinks in `cmd` directory.
+  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
   - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
 - Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
@@ -136,11 +140,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - `clientv3` and `proxy/grpcproxy` now does not return `grpc.ErrClientConnClosing`.
   - `grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
   - Use `clientv3.IsConnCanceled(error)` or `google.golang.org/grpc/status.FromError(error)` instead.
-- Migrate dependency management tool from `glide` to [`golang/dep`](https://github.com/etcd-io/etcd/pull/9155).
-  - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/etcd-io/etcd/issues/4913).
-  - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
-  - Remove recursive symlinks in `cmd` directory.
-  - Now `go get/install/build` on `etcd` packages (e.g. `clientv3`, `tools/benchmark`) enforce builds with etcd `vendor` directory.
 - Deprecated [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) endpoint `/v3beta` with [`/v3`](https://github.com/etcd-io/etcd/pull/9298).
   - Deprecated [`/v3alpha`](https://github.com/etcd-io/etcd/pull/9298).
   - To deprecate [`/v3beta`](https://github.com/etcd-io/etcd/issues/9189) in v3.5.
