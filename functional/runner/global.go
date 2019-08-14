@@ -47,7 +47,7 @@ type roundClient struct {
 func newClient(eps []string, timeout time.Duration) *clientv3.Client {
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   eps,
-		DialTimeout: time.Duration(timeout) * time.Second,
+		DialTimeout: timeout * time.Second,
 	})
 	if err != nil {
 		log.Fatal(err)

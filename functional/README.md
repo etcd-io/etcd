@@ -4,7 +4,7 @@
 
 See [`rpcpb.Case`](https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case) for all failure cases.
 
-See [functional.yaml](https://github.com/coreos/etcd/blob/master/functional.yaml) for an example configuration.
+See [functional.yaml](https://github.com/etcd-io/etcd/blob/master/functional.yaml) for an example configuration.
 
 ### Run locally
 
@@ -16,7 +16,7 @@ PASSES=functional ./test
 
 ```bash
 pushd ..
-make build-docker-functional
+make build-docker-functional push-docker-functional pull-docker-functional
 popd
 ```
 
@@ -24,12 +24,12 @@ And run [example scripts](./scripts).
 
 ```bash
 # run 3 agents for 3-node local etcd cluster
-./scripts/docker-local-agent.sh 1
-./scripts/docker-local-agent.sh 2
-./scripts/docker-local-agent.sh 3
+./functional/scripts/docker-local-agent.sh 1
+./functional/scripts/docker-local-agent.sh 2
+./functional/scripts/docker-local-agent.sh 3
 
 # to run only 1 tester round
-./scripts/docker-local-tester.sh
+./functional/scripts/docker-local-tester.sh
 ```
 
 ## etcd Proxy

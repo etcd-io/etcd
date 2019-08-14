@@ -5,7 +5,7 @@ if ! [[ "$0" =~ "functional/build" ]]; then
   exit 255
 fi
 
-CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-agent ./cmd/functional/cmd/etcd-agent
-CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-proxy ./cmd/functional/cmd/etcd-proxy
-CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-runner ./cmd/functional/cmd/etcd-runner
-CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-tester ./cmd/functional/cmd/etcd-tester
+CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-agent ./functional/cmd/etcd-agent
+CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-proxy ./functional/cmd/etcd-proxy
+CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-runner ./functional/cmd/etcd-runner
+CGO_ENABLED=0 go build -v -installsuffix cgo -ldflags "-s" -o ./bin/etcd-tester ./functional/cmd/etcd-tester

@@ -19,11 +19,11 @@ import (
 	"testing"
 )
 
-func TestEtcdFlags(t *testing.T) {
-	cfg := &Etcd{
+func TestEtcd(t *testing.T) {
+	e := &Etcd{
 		Name:    "s1",
-		DataDir: "/tmp/etcd-agent-data-1/etcd.data",
-		WALDir:  "/tmp/etcd-agent-data-1/etcd.data/member/wal",
+		DataDir: "/tmp/etcd-functionl-1/etcd.data",
+		WALDir:  "/tmp/etcd-functionl-1/etcd.data/member/wal",
 
 		HeartbeatIntervalMs: 100,
 		ElectionTimeoutMs:   1000,
@@ -53,12 +53,16 @@ func TestEtcdFlags(t *testing.T) {
 
 		PreVote:             true,
 		InitialCorruptCheck: true,
+
+		Logger:     "zap",
+		LogOutputs: []string{"/tmp/etcd-functional-1/etcd.log"},
+		LogLevel:   "info",
 	}
 
-	exp := []string{
+	exps := []string{
 		"--name=s1",
-		"--data-dir=/tmp/etcd-agent-data-1/etcd.data",
-		"--wal-dir=/tmp/etcd-agent-data-1/etcd.data/member/wal",
+		"--data-dir=/tmp/etcd-functionl-1/etcd.data",
+		"--wal-dir=/tmp/etcd-functionl-1/etcd.data/member/wal",
 		"--heartbeat-interval=100",
 		"--election-timeout=1000",
 		"--listen-client-urls=https://127.0.0.1:1379",
@@ -76,9 +80,12 @@ func TestEtcdFlags(t *testing.T) {
 		"--quota-backend-bytes=10740000000",
 		"--pre-vote=true",
 		"--experimental-initial-corrupt-check=true",
+		"--logger=zap",
+		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
+		"--log-level=info",
 	}
-	fs := cfg.Flags()
-	if !reflect.DeepEqual(exp, fs) {
-		t.Fatalf("expected %q, got %q", exp, fs)
+	fs := e.Flags()
+	if !reflect.DeepEqual(exps, fs) {
+		t.Fatalf("expected %q, got %q", exps, fs)
 	}
 }

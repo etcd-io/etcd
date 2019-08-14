@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -106,8 +107,9 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		}
 	}
 	clus.testerHTTPServer = &http.Server{
-		Addr:    clus.Tester.Addr,
-		Handler: mux,
+		Addr:     clus.Tester.Addr,
+		Handler:  mux,
+		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
 	}
 	go clus.serveTesterServer()
 
@@ -491,9 +493,9 @@ func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Respons
 
 	m, secure := clus.Members[idx], false
 	for _, cu := range m.Etcd.AdvertiseClientURLs {
-		u, err := url.Parse(cu)
-		if err != nil {
-			return nil, err
+		u, perr := url.Parse(cu)
+		if perr != nil {
+			return nil, perr
 		}
 		if u.Scheme == "https" { // TODO: handle unix
 			secure = true
@@ -591,7 +593,7 @@ func (clus *Cluster) WaitHealth() error {
 	// wait 60s to check cluster health.
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
-	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
+	// reasonable workload (https://github.com/etcd-io/etcd/issues/2698)
 	for i := 0; i < 60; i++ {
 		for _, m := range clus.Members {
 			if err = m.WriteHealthKey(); err != nil {

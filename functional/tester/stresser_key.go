@@ -31,14 +31,22 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/transport"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type keyStresser struct {
-	stype rpcpb.Stresser
-	lg    *zap.Logger
+	lg *zap.Logger
 
 	m *rpcpb.Member
+
+	weightKVWriteSmall     float64
+	weightKVWriteLarge     float64
+	weightKVReadOneKey     float64
+	weightKVReadRange      float64
+	weightKVDeleteOneKey   float64
+	weightKVDeleteRange    float64
+	weightKVTxnWriteDelete float64
 
 	keySize           int
 	keyLargeSize      int
@@ -74,26 +82,16 @@ func (s *keyStresser) Stress() error {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.wg.Add(s.clientsN)
-	var stressEntries = []stressEntry{
-		{weight: 0.7, f: newStressPut(s.cli, s.keySuffixRange, s.keySize)},
-		{
-			weight: 0.7 * float32(s.keySize) / float32(s.keyLargeSize),
-			f:      newStressPut(s.cli, s.keySuffixRange, s.keyLargeSize),
-		},
-		{weight: 0.07, f: newStressRange(s.cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressRangeInterval(s.cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressDelete(s.cli, s.keySuffixRange)},
-		{weight: 0.07, f: newStressDeleteInterval(s.cli, s.keySuffixRange)},
-	}
-	if s.keyTxnSuffixRange > 0 {
-		// adjust to make up ±70% of workloads with writes
-		stressEntries[0].weight = 0.35
-		stressEntries = append(stressEntries, stressEntry{
-			weight: 0.35,
-			f:      newStressTxn(s.cli, s.keyTxnSuffixRange, s.keyTxnOps),
-		})
-	}
-	s.stressTable = createStressTable(stressEntries)
+
+	s.stressTable = createStressTable([]stressEntry{
+		{weight: s.weightKVWriteSmall, f: newStressPut(s.cli, s.keySuffixRange, s.keySize)},
+		{weight: s.weightKVWriteLarge, f: newStressPut(s.cli, s.keySuffixRange, s.keyLargeSize)},
+		{weight: s.weightKVReadOneKey, f: newStressRange(s.cli, s.keySuffixRange)},
+		{weight: s.weightKVReadRange, f: newStressRangeInterval(s.cli, s.keySuffixRange)},
+		{weight: s.weightKVDeleteOneKey, f: newStressDelete(s.cli, s.keySuffixRange)},
+		{weight: s.weightKVDeleteRange, f: newStressDeleteInterval(s.cli, s.keySuffixRange)},
+		{weight: s.weightKVTxnWriteDelete, f: newStressTxn(s.cli, s.keyTxnSuffixRange, s.keyTxnOps)},
+	})
 
 	s.emu.Lock()
 	s.paused = false
@@ -105,7 +103,7 @@ func (s *keyStresser) Stress() error {
 
 	s.lg.Info(
 		"stress START",
-		zap.String("stress-type", s.stype.String()),
+		zap.String("stress-type", "KV"),
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return nil
@@ -130,41 +128,7 @@ func (s *keyStresser) run() {
 			continue
 		}
 
-		switch rpctypes.ErrorDesc(err) {
-		case context.DeadlineExceeded.Error():
-			// This retries when request is triggered at the same time as
-			// leader failure. When we terminate the leader, the request to
-			// that leader cannot be processed, and times out. Also requests
-			// to followers cannot be forwarded to the old leader, so timing out
-			// as well. We want to keep stressing until the cluster elects a
-			// new leader and start processing requests again.
-		case etcdserver.ErrTimeoutDueToLeaderFail.Error(), etcdserver.ErrTimeout.Error():
-			// This retries when request is triggered at the same time as
-			// leader failure and follower nodes receive time out errors
-			// from losing their leader. Followers should retry to connect
-			// to the new leader.
-		case etcdserver.ErrStopped.Error():
-			// one of the etcd nodes stopped from failure injection
-		case transport.ErrConnClosing.Desc:
-			// server closed the transport (failure injected node)
-		case rpctypes.ErrNotCapable.Error():
-			// capability check has not been done (in the beginning)
-		case rpctypes.ErrTooManyRequests.Error():
-			// hitting the recovering member.
-		case context.Canceled.Error():
-			// from stresser.Cancel method:
-			return
-		case grpc.ErrClientConnClosing.Error():
-			// from stresser.Cancel method:
-			return
-		default:
-			s.lg.Warn(
-				"stress run exiting",
-				zap.String("stress-type", s.stype.String()),
-				zap.String("endpoint", s.m.EtcdClientEndpoint),
-				zap.String("error-type", reflect.TypeOf(err).String()),
-				zap.Error(err),
-			)
+		if !s.isRetryableError(err) {
 			return
 		}
 
@@ -175,6 +139,58 @@ func (s *keyStresser) run() {
 		}
 		s.emu.Unlock()
 	}
+}
+
+func (s *keyStresser) isRetryableError(err error) bool {
+	switch rpctypes.ErrorDesc(err) {
+	// retryable
+	case context.DeadlineExceeded.Error():
+		// This retries when request is triggered at the same time as
+		// leader failure. When we terminate the leader, the request to
+		// that leader cannot be processed, and times out. Also requests
+		// to followers cannot be forwarded to the old leader, so timing out
+		// as well. We want to keep stressing until the cluster elects a
+		// new leader and start processing requests again.
+		return true
+	case etcdserver.ErrTimeoutDueToLeaderFail.Error(), etcdserver.ErrTimeout.Error():
+		// This retries when request is triggered at the same time as
+		// leader failure and follower nodes receive time out errors
+		// from losing their leader. Followers should retry to connect
+		// to the new leader.
+		return true
+	case etcdserver.ErrStopped.Error():
+		// one of the etcd nodes stopped from failure injection
+		return true
+	case rpctypes.ErrNotCapable.Error():
+		// capability check has not been done (in the beginning)
+		return true
+	case rpctypes.ErrTooManyRequests.Error():
+		// hitting the recovering member.
+		return true
+	// case raft.ErrProposalDropped.Error():
+	// 	// removed member, or leadership has changed (old leader got raftpb.MsgProp)
+	// 	return true
+
+	// not retryable.
+	case context.Canceled.Error():
+		// from stresser.Cancel method:
+		return false
+	}
+
+	if status.Convert(err).Code() == codes.Unavailable {
+		// gRPC connection errors are translated to status.Unavailable
+		return true
+	}
+
+	s.lg.Warn(
+		"stress run exiting",
+		zap.String("stress-type", "KV"),
+		zap.String("endpoint", s.m.EtcdClientEndpoint),
+		zap.String("error-type", reflect.TypeOf(err).String()),
+		zap.String("error-desc", rpctypes.ErrorDesc(err)),
+		zap.Error(err),
+	)
+	return false
 }
 
 func (s *keyStresser) Pause() map[string]int {
@@ -194,7 +210,7 @@ func (s *keyStresser) Close() map[string]int {
 
 	s.lg.Info(
 		"stress STOP",
-		zap.String("stress-type", s.stype.String()),
+		zap.String("stress-type", "KV"),
 		zap.String("endpoint", s.m.EtcdClientEndpoint),
 	)
 	return ess
@@ -207,13 +223,13 @@ func (s *keyStresser) ModifiedKeys() int64 {
 type stressFunc func(ctx context.Context) (err error, modifiedKeys int64)
 
 type stressEntry struct {
-	weight float32
+	weight float64
 	f      stressFunc
 }
 
 type stressTable struct {
 	entries    []stressEntry
-	sumWeights float32
+	sumWeights float64
 }
 
 func createStressTable(entries []stressEntry) *stressTable {
@@ -225,8 +241,8 @@ func createStressTable(entries []stressEntry) *stressTable {
 }
 
 func (st *stressTable) choose() stressFunc {
-	v := rand.Float32() * st.sumWeights
-	var sum float32
+	v := rand.Float64() * st.sumWeights
+	var sum float64
 	var idx int
 	for i := range st.entries {
 		sum += st.entries[i].weight

@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/functional/rpcpb"
 	"github.com/coreos/etcd/pkg/proxy"
 
@@ -33,8 +34,9 @@ import (
 // no need to lock fields since request operations are
 // serialized in tester-side
 type Server struct {
+	lg *zap.Logger
+
 	grpcServer *grpc.Server
-	lg         *zap.Logger
 
 	network string
 	address string
@@ -46,6 +48,7 @@ type Server struct {
 	*rpcpb.Member
 	*rpcpb.Tester
 
+	etcdServer  *embed.Etcd
 	etcdCmd     *exec.Cmd
 	etcdLogFile *os.File
 
@@ -61,10 +64,10 @@ func NewServer(
 	address string,
 ) *Server {
 	return &Server{
-		lg:      lg,
-		network: network,
-		address: address,
-		last:    rpcpb.Operation_NOT_STARTED,
+		lg:                         lg,
+		network:                    network,
+		address:                    address,
+		last:                       rpcpb.Operation_NOT_STARTED,
 		advertiseClientPortToProxy: make(map[int]proxy.Server),
 		advertisePeerPortToProxy:   make(map[int]proxy.Server),
 	}
@@ -123,11 +126,12 @@ func (srv *Server) Stop() {
 }
 
 // Transport communicates with etcd tester.
-func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error) {
-	errc := make(chan error)
+func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (reterr error) {
+	errc := make(chan error, 1)
 	go func() {
 		for {
 			var req *rpcpb.Request
+			var err error
 			req, err = stream.Recv()
 			if err != nil {
 				errc <- err
@@ -158,9 +162,9 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error)
 	}()
 
 	select {
-	case err = <-errc:
+	case reterr = <-errc:
 	case <-stream.Context().Done():
-		err = stream.Context().Err()
+		reterr = stream.Context().Err()
 	}
-	return err
+	return reterr
 }

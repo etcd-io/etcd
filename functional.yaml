@@ -1,9 +1,8 @@
 agent-configs:
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:19027
   failpoint-http-addr: http://127.0.0.1:7381
   base-dir: /tmp/etcd-functional-1
-  etcd-log-path: /tmp/etcd-functional-1/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:1379
@@ -30,7 +29,7 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
@@ -48,11 +47,10 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-1.snapshot.db
 
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:29027
   failpoint-http-addr: http://127.0.0.1:7382
   base-dir: /tmp/etcd-functional-2
-  etcd-log-path: /tmp/etcd-functional-2/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:2379
@@ -79,7 +77,7 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
@@ -97,11 +95,10 @@ agent-configs:
   peer-trusted-ca-path: ""
   snapshot-path: /tmp/etcd-functional-2.snapshot.db
 
-- etcd-exec-path: ./bin/etcd
+- etcd-exec: ./bin/etcd
   agent-addr: 127.0.0.1:39027
   failpoint-http-addr: http://127.0.0.1:7383
   base-dir: /tmp/etcd-functional-3
-  etcd-log-path: /tmp/etcd-functional-3/etcd.log
   etcd-client-proxy: false
   etcd-peer-proxy: true
   etcd-client-endpoint: 127.0.0.1:3379
@@ -128,7 +125,7 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
@@ -163,7 +160,7 @@ tester-config:
   case-shuffle: true
 
   # For full descriptions,
-  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case
+  # https://godoc.org/github.com/etcd-io/etcd/functional/rpcpb#Case
   cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
@@ -173,24 +170,62 @@ tester-config:
   - SIGTERM_ALL
   - SIGQUIT_AND_REMOVE_ONE_FOLLOWER
   - SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
-  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
-  - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER
   - BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
   - BLACKHOLE_PEER_PORT_TX_RX_QUORUM
-  - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  - BLACKHOLE_PEER_PORT_TX_RX_ALL
   - DELAY_PEER_PORT_TX_RX_LEADER
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER
+  - DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
   - DELAY_PEER_PORT_TX_RX_QUORUM
+  - RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM
+  - DELAY_PEER_PORT_TX_RX_ALL
+  - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
+  - NO_FAIL_WITH_STRESS
+  - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
+
+  # TODO: use iptables for discarding outbound rafthttp traffic to peer port
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - SIGQUIT_AND_REMOVE_LEADER
+  # - SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  # - SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH
 
   failpoint-commands:
   - panic("etcd-tester")
+  # - panic("etcd-tester"),1*sleep(1000)
 
   runner-exec-path: ./bin/etcd-runner
   external-exec-path: ""
 
+  # make up ±70% of workloads with writes
   stressers:
-  - KV
-  - LEASE
+  - type: KV_WRITE_SMALL
+    weight: 0.35
+  - type: KV_WRITE_LARGE
+    weight: 0.002
+  - type: KV_READ_ONE_KEY
+    weight: 0.07
+  - type: KV_READ_RANGE
+    weight: 0.07
+  - type: KV_DELETE_ONE_KEY
+    weight: 0.07
+  - type: KV_DELETE_RANGE
+    weight: 0.07
+  - type: KV_TXN_WRITE_DELETE
+    weight: 0.35
+  - type: LEASE
+    weight: 0.0
+
+  # - ELECTION_RUNNER
+  # - WATCH_RUNNER
+  # - LOCK_RACER_RUNNER
+  # - LEASE_RUNNER
 
   checkers:
   - KV_HASH

@@ -15,6 +15,7 @@
 package agent
 
 import (
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -36,7 +37,8 @@ func archive(baseDir, etcdLogPath, dataDir string) error {
 		return err
 	}
 
-	if err := os.Rename(etcdLogPath, filepath.Join(dir, "etcd.log")); err != nil {
+	dst := filepath.Join(dir, "etcd.log")
+	if err := copyFile(etcdLogPath, dst); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
@@ -79,27 +81,23 @@ func getURLAndPort(addr string) (urlAddr *url.URL, port int, err error) {
 	return urlAddr, port, err
 }
 
-func stopWithSig(cmd *exec.Cmd, sig os.Signal) error {
-	err := cmd.Process.Signal(sig)
+func copyFile(src, dst string) error {
+	f, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	errc := make(chan error)
-	go func() {
-		_, ew := cmd.Process.Wait()
-		errc <- ew
-		close(errc)
-	}()
-
-	select {
-	case <-time.After(5 * time.Second):
-		cmd.Process.Kill()
-	case e := <-errc:
-		return e
+	w, err := os.Create(dst)
+	if err != nil {
+		return err
 	}
-	err = <-errc
-	return err
+	defer w.Close()
+
+	if _, err = io.Copy(w, f); err != nil {
+		return err
+	}
+	return w.Sync()
 }
 
 func cleanPageCache() error {
