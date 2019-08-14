@@ -169,46 +169,16 @@ main() {
     echo "Pushing container images to gcr.io" ${RELEASE_VERSION}
     gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}
 
-    if [ "${MINOR_VERSION}" != "3.1" ]; then
-      for TARGET_ARCH in "-arm64" "-ppc64le"; do
-        echo "Pushing container images to quay.io" ${RELEASE_VERSION}${TARGET_ARCH}
-        docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+    for TARGET_ARCH in "-arm64" "-ppc64le"; do
+      echo "Pushing container images to quay.io" ${RELEASE_VERSION}${TARGET_ARCH}
+      docker push quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}
 
-        echo "Pushing container images to gcr.io" ${RELEASE_VERSION}${TARGET_ARCH}
-        gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
-      done
-    fi
+      echo "Pushing container images to gcr.io" ${RELEASE_VERSION}${TARGET_ARCH}
+      gcloud docker -- push gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}
+    done
 
     echo "Setting permissions using gsutil..."
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
-
-    # TODO: upload minor versions: v3.1, v3.2, v3.3, etc.
-    # docker tag quay.io/coreos/etcd:${RELEASE_VERSION} quay.io/coreos/etcd:v${MINOR_VERSION}
-    # docker push quay.io/coreos/etcd:v${MINOR_VERSION}
-    # gcloud docker -- tag gcr.io/etcd-development/etcd:${RELEASE_VERSION} gcr.io/etcd-development/etcd:v${MINOR_VERSION}
-    # gcloud docker -- push gcr.io/etcd-development/etcd:v${MINOR_VERSION}
-  fi
-
-  # TODO: test
-  # docker run --rm --name etcd-gcr-${RELEASE_VERSION} gcr.io/etcd-development/etcd:${RELEASE_VERSION};
-  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "/usr/local/bin/etcd --version"
-  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "/usr/local/bin/etcdctl version"
-  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "/usr/local/bin/etcdctl put foo bar"
-  # docker exec etcd-gcr-${RELEASE_VERSION} /bin/sh -c "/usr/local/bin/etcdctl get foo"
-
-  # Bump version to next development version.
-  git checkout -q "${BRANCH}" # Since we might be on a checkout of the remote version tag.
-  local source_version=$(egrep "\s+Version\s*=" version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
-  if [[ "${source_version}" != "${VERSION}+git" ]]; then
-    echo "Updating version from ${source_version} to ${VERSION}+git in version/version.go"
-    sed -i "s/${source_version}/${VERSION}+git/g" version/version.go
-    echo "Building etcd with ${VERSION}+git in version/version.go"
-    git add version/version.go
-    git commit -m "version: bump up to ${VERSION}+git"
-    git diff --staged
-    read -p "Push version bump up to ${VERSION}+git to github.com/etcd-io/etcd [y/N]? " confirm
-    [[ "${confirm,,}" == "y" ]] || exit 1
-    git push
   fi
 
   # TODO: signing process
