@@ -56,7 +56,6 @@ script:
       all-build)
         GOARCH=386 PASSES='build' ./test \
           && GO_BUILD_FLAGS='-v' GOOS=darwin GOARCH=amd64 ./build \
-          && GO_BUILD_FLAGS='-v' GOOS=windows GOARCH=amd64 ./build \
           && GO_BUILD_FLAGS='-v' GOARCH=arm ./build \
           && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
           && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build
