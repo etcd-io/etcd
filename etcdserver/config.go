@@ -112,6 +112,7 @@ type ServerConfig struct {
 
 	AutoCompactionRetention time.Duration
 	AutoCompactionMode      string
+	CompactionBatchLimit    int
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 

@@ -383,7 +383,7 @@ func (s *v3Manager) saveDB() error {
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
 
-	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit))
+	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit), mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	txn := mvs.Write()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {

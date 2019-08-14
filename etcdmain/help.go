@@ -204,6 +204,8 @@ Experimental feature:
     ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
   --experimental-enable-lease-checkpoint
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+  --experimental-compaction-batch-limit
+    ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
 
 Unsafe feature:
   --force-new-cluster 'false'

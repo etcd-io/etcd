@@ -60,6 +60,7 @@ const (
 )
 
 var restoreChunkKeys = 10000 // non-const for testing
+var defaultCompactBatchLimit = 1000
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
 // Consistent index is the offset of an entry in a consistent replicated log.
@@ -68,9 +69,15 @@ type ConsistentIndexGetter interface {
 	ConsistentIndex() uint64
 }
 
+type StoreConfig struct {
+	CompactionBatchLimit int
+}
+
 type store struct {
 	ReadView
 	WriteView
+
+	cfg StoreConfig
 
 	// consistentIndex caches the "consistent_index" key's value. Accessed
 	// through atomics so must be 64-bit aligned.
@@ -108,8 +115,12 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *store {
+	if cfg.CompactionBatchLimit == 0 {
+		cfg.CompactionBatchLimit = defaultCompactBatchLimit
+	}
 	s := &store{
+		cfg:     cfg,
 		b:       b,
 		ig:      ig,
 		kvindex: newTreeIndex(lg),

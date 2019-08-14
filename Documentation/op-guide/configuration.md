@@ -446,6 +446,11 @@ Follow the instructions when using these flags.
 + default: 0s
 + env variable: ETCD_EXPERIMENTAL_CORRUPT_CHECK_TIME
 
+### --experimental-compaction-batch-limit
++ Sets the maximum revisions deleted in each compaction batch.
++ default: 1000
++ env variable: ETCD_EXPERIMENTAL_COMPACTION_BATCH_LIMIT
+
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
