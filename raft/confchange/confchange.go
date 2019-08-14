@@ -257,11 +257,15 @@ func (c Changer) initProgress(cfg *tracker.Config, prs tracker.ProgressMap, id u
 		nilAwareAdd(&cfg.Learners, id)
 	}
 	prs[id] = &tracker.Progress{
-		// We initialize Progress.Next with lastIndex+1 so that the peer will be
-		// probed without an index first.
+		// Initializing the Progress with the last index means that the follower
+		// can be probed (with the last index).
 		//
-		// TODO(tbg): verify that, this is just my best guess.
-		Next:      c.LastIndex + 1,
+		// TODO(tbg): seems awfully optimistic. Using the first index would be
+		// better. The general expectation here is that the follower has no log
+		// at all (and will thus likely need a snapshot), though the app may
+		// have applied a snapshot out of band before adding the replica (thus
+		// making the first index the better choice).
+		Next:      c.LastIndex,
 		Match:     0,
 		Inflights: tracker.NewInflights(c.Tracker.MaxInflight),
 		IsLearner: isLearner,
