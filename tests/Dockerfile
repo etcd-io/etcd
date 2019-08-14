@@ -32,7 +32,7 @@ RUN apt-get -y update \
 ENV GOROOT /usr/local/go
 ENV GOPATH /go
 ENV PATH ${GOPATH}/bin:${GOROOT}/bin:${PATH}
-ENV GO_VERSION 1.10.3
+ENV GO_VERSION 1.12.8
 ENV GO_DOWNLOAD_URL https://storage.googleapis.com/golang
 RUN rm -rf ${GOROOT} \
   && curl -s ${GO_DOWNLOAD_URL}/go${GO_VERSION}.linux-amd64.tar.gz | tar -v -C /usr/local/ -xz \
@@ -41,21 +41,3 @@ RUN rm -rf ${GOROOT} \
 
 RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
 WORKDIR ${GOPATH}/src/github.com/coreos/etcd
-
-ADD ./scripts/install-marker.sh /tmp/install-marker.sh
-
-RUN go get -v -u -tags spell github.com/chzchzchz/goword \
-  && go get -v -u github.com/coreos/license-bill-of-materials \
-  && go get -v -u github.com/mgechev/revive \
-  && go get -v -u github.com/mdempsky/unconvert \
-  && go get -v -u mvdan.cc/unparam \
-  && go get -v -u honnef.co/go/tools/cmd/gosimple \
-  && go get -v -u honnef.co/go/tools/cmd/unused \
-  && go get -v -u honnef.co/go/tools/cmd/staticcheck \
-  && go get -v -u github.com/gyuho/gocovmerge \
-  && go get -v -u github.com/gordonklaus/ineffassign \
-  && go get -v -u github.com/alexkohler/nakedret \
-  && /tmp/install-marker.sh amd64 \
-  && rm -f /tmp/install-marker.sh \
-  && curl -s https://codecov.io/bash >/codecov \
-  && chmod 700 /codecov
