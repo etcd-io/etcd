@@ -16,7 +16,9 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -38,7 +40,7 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	copiedCfg := configNoTLS
 	copiedCfg.execPath = lastReleaseBinary
-	copiedCfg.snapCount = 3
+	copiedCfg.snapshotCount = 3
 	copiedCfg.baseScheme = "unix" // to avoid port conflict
 
 	epc, err := newEtcdProcessCluster(&copiedCfg)
@@ -113,7 +115,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 
 	copiedCfg := configNoTLS
 	copiedCfg.execPath = lastReleaseBinary
-	copiedCfg.snapCount = 10
+	copiedCfg.snapshotCount = 10
 	copiedCfg.baseScheme = "unix"
 
 	epc, err := newEtcdProcessCluster(&copiedCfg)
@@ -168,4 +170,89 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	if err := ctlV3Get(cx, []string{kvs[0].key}, []kv{kvs[0]}...); err != nil {
 		t.Fatal(err)
 	}
+}
+
+type cURLReq struct {
+	username string
+	password string
+
+	isTLS   bool
+	timeout int
+
+	endpoint string
+
+	value    string
+	expected string
+	header   string
+
+	metricsURLScheme string
+
+	ciphers string
+}
+
+// cURLPrefixArgs builds the beginning of a curl command for a given key
+// addressed to a random URL in the given cluster.
+func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []string {
+	var (
+		cmdArgs = []string{"curl"}
+		acurl   = clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl
+	)
+	if req.metricsURLScheme != "https" {
+		if req.isTLS {
+			if clus.cfg.clientTLS != clientTLSAndNonTLS {
+				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
+			}
+			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+			acurl = toTLS(clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl)
+		} else if clus.cfg.clientTLS == clientTLS {
+			if !clus.cfg.noCN {
+				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+			} else {
+				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath3, "--key", privateKeyPath3)
+			}
+		}
+	}
+	if req.metricsURLScheme != "" {
+		acurl = clus.procs[rand.Intn(clus.cfg.clusterSize)].EndpointsMetrics()[0]
+	}
+	ep := acurl + req.endpoint
+
+	if req.username != "" || req.password != "" {
+		cmdArgs = append(cmdArgs, "-L", "-u", fmt.Sprintf("%s:%s", req.username, req.password), ep)
+	} else {
+		cmdArgs = append(cmdArgs, "-L", ep)
+	}
+	if req.timeout != 0 {
+		cmdArgs = append(cmdArgs, "-m", fmt.Sprintf("%d", req.timeout))
+	}
+
+	if req.header != "" {
+		cmdArgs = append(cmdArgs, "-H", req.header)
+	}
+
+	if req.ciphers != "" {
+		cmdArgs = append(cmdArgs, "--ciphers", req.ciphers)
+	}
+
+	switch method {
+	case "POST", "PUT":
+		dt := req.value
+		if !strings.HasPrefix(dt, "{") { // for non-JSON value
+			dt = "value=" + dt
+		}
+		cmdArgs = append(cmdArgs, "-X", method, "-d", dt)
+	}
+	return cmdArgs
+}
+
+func cURLPost(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "POST", req), req.expected)
+}
+
+func cURLPut(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "PUT", req), req.expected)
+}
+
+func cURLGet(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "GET", req), req.expected)
 }
