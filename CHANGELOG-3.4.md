@@ -79,7 +79,18 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 ### Breaking Changes
 
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+  - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
 - Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
+- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
+  - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
+- Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
+  - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
+  - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
+  - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
+- Deprecated [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
+  - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
+  - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
+  - `*.aci` files are not available from `v3.4` release.
 - Move [`"github.com/coreos/etcd"`](https://github.com/etcd-io/etcd/issues/9965) to [`"github.com/etcd-io/etcd"`](https://github.com/etcd-io/etcd/issues/9965).
   - Change import path to `"go.etcd.io/etcd"`.
   - e.g. `import "go.etcd.io/etcd/raft"`.
@@ -91,16 +102,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - **Deprecated `etcd --ca-file` flag**. Use [`etcd --trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --ca-file` flag has been marked deprecated since v2.1).
 - **Deprecated `etcd --peer-ca-file` flag**. Use [`etcd --peer-trusted-ca-file`](https://github.com/etcd-io/etcd/pull/9470) instead (`etcd --peer-ca-file` flag has been marked deprecated since v2.1).
 - **Deprecated `pkg/transport.TLSInfo.CAFile` field**. Use [`pkg/transport.TLSInfo.TrustedCAFile`](https://github.com/etcd-io/etcd/pull/9470) instead (`CAFile` field has been marked deprecated since v2.1).
-- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
-  - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
-- Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
-  - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work.
-  - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
-  - Use **`docker pull gcr.io/etcd-development/etcd:v3.4.x`** instead, with the exact patch version.
-- Deprecated [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
-  - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
-  - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
-  - `*.aci` files are not available from `v3.4` release.
 - Exit on [empty hosts in advertise URLs](https://github.com/etcd-io/etcd/pull/8786).
   - Address [advertise client URLs accepts empty hosts](https://github.com/etcd-io/etcd/issues/8379).
   - e.g. exit with error on `--advertise-client-urls=http://:2379`.
@@ -581,7 +582,8 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### Go
 
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
-- Compile with [*Go 1.12*](https://golang.org/doc/devel/release.html#go1.12).
+- Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
+  - See [*Go 1.12 release page*](https://golang.org/doc/devel/release.html#go1.12) for more.
 
 ### Dockerfile
 

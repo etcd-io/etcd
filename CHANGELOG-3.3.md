@@ -15,6 +15,22 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) an
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
+### Breaking Changes
+
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+  - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
+- Use [Go module](https://github.com/etcd-io/etcd/pull/10063) for dependency management.
+- Deprecated `latest` [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tag.
+  - **`docker pull gcr.io/etcd-development/etcd:latest` would not be up-to-date**.
+- Deprecated [minor](https://semver.org/) version [release container](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd) tags.
+  - `docker pull gcr.io/etcd-development/etcd:v3.3` would still work but may be stale.
+  - **`docker pull gcr.io/etcd-development/etcd:v3.4` would not work**.
+  - Use **`docker pull gcr.io/etcd-development/etcd:v3.3.14`** instead, with the exact patch version.
+- Deprecated [ACIs from official release](https://github.com/etcd-io/etcd/pull/9059).
+  - [AppC was officially suspended](https://github.com/appc/spec#-disclaimer-), as of late 2016.
+  - [`acbuild`](https://github.com/containers/build#this-project-is-currently-unmaintained) is not maintained anymore.
+  - `*.aci` files are not available from `v3.4` release.
+
 ### etcd server
 
 - Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
@@ -55,6 +71,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [Red-Black tree to maintain black-height property](https://github.com/etcd-io/etcd/pull/10978).
   - Previously, delete operation violates [black-height property](https://github.com/etcd-io/etcd/issues/10965).
 
+### Go
+
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+- Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
+  - See [*Go 1.12 release page*](https://golang.org/doc/devel/release.html#go1.12) for more.
 
 <hr>
 
