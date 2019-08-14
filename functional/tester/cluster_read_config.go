@@ -44,56 +44,14 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 		return nil, fmt.Errorf("len(clus.Members) expects at least 3, got %d", len(clus.Members))
 	}
 
-	failpointsEnabled := false
-	for _, c := range clus.Tester.Cases {
-		if c == rpcpb.Case_FAILPOINTS.String() {
-			failpointsEnabled = true
-			break
-		}
-	}
-
-	if len(clus.Tester.Cases) == 0 {
-		return nil, errors.New("cases not found")
-	}
-	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
-		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
-	}
-	if clus.Tester.UpdatedDelayLatencyMs == 0 {
-		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
-	}
-
-	for _, v := range clus.Tester.Cases {
-		if _, ok := rpcpb.Case_value[v]; !ok {
-			return nil, fmt.Errorf("%q is not defined in 'rpcpb.Case_value'", v)
-		}
-	}
-
-	for _, s := range clus.Tester.Stressers {
-		if _, ok := rpcpb.StresserType_value[s.Type]; !ok {
-			return nil, fmt.Errorf("unknown 'StresserType' %+v", s)
-		}
-	}
-
-	for _, v := range clus.Tester.Checkers {
-		if _, ok := rpcpb.Checker_value[v]; !ok {
-			return nil, fmt.Errorf("Checker is unknown; got %q", v)
-		}
-	}
-
-	if clus.Tester.StressKeySuffixRangeTxn > 100 {
-		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
-	}
-	if clus.Tester.StressKeyTxnOps > 64 {
-		return nil, fmt.Errorf("StressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
-	}
-
 	for i, mem := range clus.Members {
-		if mem.EtcdExec == "embed" && failpointsEnabled {
-			return nil, errors.New("EtcdExec 'embed' cannot be run with failpoints enabled")
-		}
 		if mem.BaseDir == "" {
 			return nil, fmt.Errorf("BaseDir cannot be empty (got %q)", mem.BaseDir)
 		}
+		if mem.EtcdLogPath == "" {
+			return nil, fmt.Errorf("EtcdLogPath cannot be empty (got %q)", mem.EtcdLogPath)
+		}
+
 		if mem.Etcd.Name == "" {
 			return nil, fmt.Errorf("'--name' cannot be empty (got %+v)", mem)
 		}
@@ -174,6 +132,9 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			}
 		}
 
+		if !strings.HasPrefix(mem.EtcdLogPath, mem.BaseDir) {
+			return nil, fmt.Errorf("EtcdLogPath must be prefixed with BaseDir (got %q)", mem.EtcdLogPath)
+		}
 		if !strings.HasPrefix(mem.Etcd.DataDir, mem.BaseDir) {
 			return nil, fmt.Errorf("Etcd.DataDir must be prefixed with BaseDir (got %q)", mem.Etcd.DataDir)
 		}
@@ -227,7 +188,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, fmt.Errorf("Etcd.PeerClientCertAuth and Etcd.PeerAutoTLS cannot be both 'true'")
 		}
 		if (mem.Etcd.PeerCertFile == "") != (mem.Etcd.PeerKeyFile == "") {
-			return nil, fmt.Errorf("both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
+			return nil, fmt.Errorf("Both Etcd.PeerCertFile %q and Etcd.PeerKeyFile %q must be either empty or non-empty", mem.Etcd.PeerCertFile, mem.Etcd.PeerKeyFile)
 		}
 		if mem.Etcd.ClientCertAuth && mem.Etcd.ClientAutoTLS {
 			return nil, fmt.Errorf("Etcd.ClientCertAuth and Etcd.ClientAutoTLS cannot be both 'true'")
@@ -251,7 +212,7 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 			return nil, fmt.Errorf("Etcd.ClientCertAuth 'false', but Etcd.ClientTrustedCAFile is %q", mem.Etcd.PeerCertFile)
 		}
 		if (mem.Etcd.ClientCertFile == "") != (mem.Etcd.ClientKeyFile == "") {
-			return nil, fmt.Errorf("both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
+			return nil, fmt.Errorf("Both Etcd.ClientCertFile %q and Etcd.ClientKeyFile %q must be either empty or non-empty", mem.Etcd.ClientCertFile, mem.Etcd.ClientKeyFile)
 		}
 
 		peerTLS := mem.Etcd.PeerAutoTLS ||
@@ -356,20 +317,41 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 				}
 				clus.Members[i].ClientCertData = string(data)
 			}
-
-			if len(mem.Etcd.LogOutputs) == 0 {
-				return nil, fmt.Errorf("mem.Etcd.LogOutputs cannot be empty")
-			}
-			for _, v := range mem.Etcd.LogOutputs {
-				switch v {
-				case "stderr", "stdout", "/dev/null", "default":
-				default:
-					if !strings.HasPrefix(v, mem.BaseDir) {
-						return nil, fmt.Errorf("LogOutput %q must be prefixed with BaseDir %q", v, mem.BaseDir)
-					}
-				}
-			}
 		}
+	}
+
+	if len(clus.Tester.Cases) == 0 {
+		return nil, errors.New("Cases not found")
+	}
+	if clus.Tester.DelayLatencyMs <= clus.Tester.DelayLatencyMsRv*5 {
+		return nil, fmt.Errorf("delay latency %d ms must be greater than 5x of delay latency random variable %d ms", clus.Tester.DelayLatencyMs, clus.Tester.DelayLatencyMsRv)
+	}
+	if clus.Tester.UpdatedDelayLatencyMs == 0 {
+		clus.Tester.UpdatedDelayLatencyMs = clus.Tester.DelayLatencyMs
+	}
+
+	for _, v := range clus.Tester.Cases {
+		if _, ok := rpcpb.Case_value[v]; !ok {
+			return nil, fmt.Errorf("%q is not defined in 'rpcpb.Case_value'", v)
+		}
+	}
+
+	for _, v := range clus.Tester.Stressers {
+		if _, ok := rpcpb.Stresser_value[v]; !ok {
+			return nil, fmt.Errorf("Stresser is unknown; got %q", v)
+		}
+	}
+	for _, v := range clus.Tester.Checkers {
+		if _, ok := rpcpb.Checker_value[v]; !ok {
+			return nil, fmt.Errorf("Checker is unknown; got %q", v)
+		}
+	}
+
+	if clus.Tester.StressKeySuffixRangeTxn > 100 {
+		return nil, fmt.Errorf("StressKeySuffixRangeTxn maximum value is 100, got %v", clus.Tester.StressKeySuffixRangeTxn)
+	}
+	if clus.Tester.StressKeyTxnOps > 64 {
+		return nil, fmt.Errorf("StressKeyTxnOps maximum value is 64, got %v", clus.Tester.StressKeyTxnOps)
 	}
 
 	return clus, err

@@ -38,7 +38,7 @@ const (
 )
 
 type leaseStresser struct {
-	stype rpcpb.StresserType
+	stype rpcpb.Stresser
 	lg    *zap.Logger
 
 	m      *rpcpb.Member

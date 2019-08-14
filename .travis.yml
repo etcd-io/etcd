@@ -19,6 +19,7 @@ env:
   matrix:
   - TARGET=linux-amd64-integration-1-cpu
   - TARGET=linux-amd64-integration-4-cpu
+  - TARGET=linux-amd64-functional
   - TARGET=linux-amd64-unit
   - TARGET=linux-amd64-e2e
   - TARGET=all-build
@@ -42,6 +43,9 @@ script:
         ;;
       linux-amd64-integration-4-cpu)
         GOARCH=amd64 CPU=4 PASSES='integration' ./test
+        ;;
+      linux-amd64-functional)
+        GOARCH=amd64 PASSES='functional' ./test
         ;;
       linux-amd64-unit)
         GOARCH=amd64 PASSES='unit' ./test
