@@ -32,8 +32,7 @@ matrix:
     env: TARGET=linux-386-unit
 
 install:
-- ./travis/install.sh
-- if [[ "$GO111MODULE" ==  "on" ]]; then go mod download; fi
+- go get -t -v -d ./...
 
 script:
  - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"

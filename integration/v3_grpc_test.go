@@ -166,7 +166,7 @@ func TestV3HashKV(t *testing.T) {
 		}
 
 		rev := resp.Header.Revision
-		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestV3HashKV(t *testing.T) {
 		prevHash := hresp.Hash
 		prevCompactRev := hresp.CompactRevision
 		for i := 0; i < 10; i++ {
-			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{})
 			if err != nil {
 				t.Fatal(err)
 			}
