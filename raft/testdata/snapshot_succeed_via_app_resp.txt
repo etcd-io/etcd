@@ -136,6 +136,21 @@ status 1
 2: StateReplicate match=11 next=12
 3: StateReplicate match=11 next=12
 
+# Let things settle.
 stabilize
 ----
-ok
+> delivering messages
+  1->2 MsgHeartbeat Term:1 Log:0/0 Commit:11
+> delivering messages
+  1->3 MsgApp Term:1 Log:1/11 Commit:11
+> 2 handling Ready
+  Ready MustSync=false:
+  Messages:
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+> 3 handling Ready
+  Ready MustSync=false:
+  Messages:
+  3->1 MsgAppResp Term:1 Log:0/11
+> delivering messages
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+  3->1 MsgAppResp Term:1 Log:0/11
