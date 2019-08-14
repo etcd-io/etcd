@@ -21,6 +21,11 @@ NOTE: This patch release had to include some new features from 3.4, while trying
 
 ### Breaking Changes
 
+- Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
+  - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
+  - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
+    - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
   - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
 - Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
@@ -77,6 +82,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 
 ### etcdctl v3
 

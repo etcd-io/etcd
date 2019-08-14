@@ -29,6 +29,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
   - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956).
+  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 - Add [backoff on watch retries on transient errors](https://github.com/etcd-io/etcd/pull/9840).
 - Add [jitter to watch progress notify](https://github.com/etcd-io/etcd/pull/9278) to prevent [spikes in `etcd_network_client_grpc_sent_bytes_total`](https://github.com/etcd-io/etcd/issues/9246).
 - Improve [read index wait timeout warning log](https://github.com/etcd-io/etcd/pull/10026), which indicates that local node might have slow network.
@@ -78,6 +79,12 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 
 ### Breaking Changes
 
+- Rewrite [client balancer](https://github.com/etcd-io/etcd/pull/9860) with [new gRPC balancer interface](https://github.com/etcd-io/etcd/issues/9106).
+  - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
+  - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
+    - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+  - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956).
+  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
   - Compile with [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ).
 - Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
