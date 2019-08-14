@@ -25,6 +25,8 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3MaintenanceDefragmentInflightRange ensures inflight range requests
@@ -58,7 +60,7 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 // TestV3KVInflightRangeRequests ensures that inflight requests
 // (sent before server shutdown) are gracefully handled by server-side.
 // They are either finished or canceled, but never crash the backend.
-// See https://github.com/coreos/etcd/issues/7322 for more detail.
+// See https://github.com/etcd-io/etcd/issues/7322 for more detail.
 func TestV3KVInflightRangeRequests(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
@@ -81,8 +83,10 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 			defer wg.Done()
 			_, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo"), Serializable: true}, grpc.FailFast(false))
 			if err != nil {
-				if err != nil && rpctypes.ErrorDesc(err) != context.Canceled.Error() {
-					t.Fatalf("inflight request should be canceld with %v, got %v", context.Canceled, err)
+				errCode := status.Convert(err).Code()
+				errDesc := rpctypes.ErrorDesc(err)
+				if err != nil && !(errDesc == context.Canceled.Error() || errCode == codes.Canceled || errCode == codes.Unavailable) {
+					t.Errorf("inflight request should be canceled with '%v' or code Canceled or Unavailable, got '%v' with code '%s'", context.Canceled.Error(), errDesc, errCode)
 				}
 			}
 		}()

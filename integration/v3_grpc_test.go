@@ -32,7 +32,9 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
@@ -1714,6 +1716,7 @@ func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc
 			cli, cerr := clientv3.New(clientv3.Config{
 				Endpoints:   []string{clus.Members[0].GRPCAddr()},
 				DialTimeout: time.Second,
+				DialOptions: []grpc.DialOption{grpc.WithBlock()},
 				TLS:         cc,
 			})
 			if cerr != nil {
@@ -1748,6 +1751,7 @@ func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc
 	cl, cerr := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
 	if cerr != nil {
@@ -1892,7 +1896,18 @@ func eqErrGRPC(err1 error, err2 error) bool {
 // FailFast=false works with Put.
 func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
-	if _, err := kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
-		t.Fatal(err)
+	// TODO: Remove retry loop once the new grpc load balancer provides retry.
+	var err error
+	for i := 0; i < 10; i++ {
+		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for restart: %v", err)
 	}
 }

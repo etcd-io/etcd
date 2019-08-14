@@ -228,7 +228,10 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	}
 
 	// pin eps[target]
-	watchCli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[target]}})
+	watchCli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{eps[target]},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -92,7 +93,10 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	clus.Members[lead].Terminate(t)
 
 	// writes to eps[lead+1]
-	putCli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[(lead+1)%3]}})
+	putCli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{eps[(lead+1)%3]},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +160,10 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
 
 	// pin eps[0]
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[0]}})
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{eps[0]},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
