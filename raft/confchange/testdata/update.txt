@@ -6,18 +6,18 @@ simple
 v1
 ----
 voters=(1)
-1: StateProbe match=0 next=1
+1: StateProbe match=0 next=0
 
 simple
 v2 u1
 ----
 voters=(1 2)
-1: StateProbe match=0 next=1
-2: StateProbe match=0 next=2
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
 
 simple
 u1 u2 u3 u1 u2 u3
 ----
 voters=(1 2)
-1: StateProbe match=0 next=1
-2: StateProbe match=0 next=2
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
