@@ -73,9 +73,9 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 				withIndent(func() { env.DeliverMsgs(msgs) })
 				done = false
 			}
-			if done {
-				return nil
-			}
+		}
+		if done {
+			return nil
 		}
 	}
 }
