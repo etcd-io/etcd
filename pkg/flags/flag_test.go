@@ -87,7 +87,7 @@ func TestSetFlagsFromEnvParsingError(t *testing.T) {
 	}
 	defer os.Unsetenv("ETCD_HEARTBEAT_INTERVAL")
 
-	if serr := SetFlagsFromEnv("ETCD", fs); serr.Error() != `invalid value "100 # ms" for ETCD_HEARTBEAT_INTERVAL: strconv.ParseUint: parsing "100 # ms": invalid syntax` {
+	if serr := SetFlagsFromEnv("ETCD", fs); serr.Error() != `invalid value "100 # ms" for ETCD_HEARTBEAT_INTERVAL: parse error` {
 		t.Fatalf("expected parsing error, got %v", serr)
 	}
 }
