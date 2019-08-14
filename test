@@ -148,7 +148,7 @@ function unit_pass {
 	# expectation could be different
 	USERTIMEOUT=""
 	if [ -z "${TIMEOUT}" ]; then
-		USERTIMEOUT="3m"
+		USERTIMEOUT="30m"
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
