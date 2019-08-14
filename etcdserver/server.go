@@ -198,7 +198,9 @@ type EtcdServer struct {
 	// stopping is closed by run goroutine on shutdown.
 	stopping chan struct{}
 	// done is closed when all goroutines from start() complete.
-	done chan struct{}
+	done            chan struct{}
+	leaderChanged   chan struct{}
+	leaderChangedMu sync.RWMutex
 
 	errorc     chan error
 	id         types.ID
@@ -597,6 +599,7 @@ func (s *EtcdServer) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
+	s.leaderChanged = make(chan struct{})
 	if s.ClusterVersion() != nil {
 		plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, version.Cluster(s.ClusterVersion().String()))
 	} else {
@@ -733,6 +736,17 @@ func (s *EtcdServer) run() {
 					s.compactor.Resume()
 				}
 			}
+			if newLeader {
+				select {
+				case s.leaderChanged <- struct{}{}:
+				default:
+				}
+				s.leaderChangedMu.Lock()
+				lc := s.leaderChanged
+				s.leaderChanged = make(chan struct{})
+				s.leaderChangedMu.Unlock()
+				close(lc)
+			}
 
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
@@ -839,6 +853,12 @@ func (s *EtcdServer) run() {
 			return
 		}
 	}
+}
+
+func (s *EtcdServer) leaderChangedNotify() <-chan struct{} {
+	s.leaderChangedMu.RLock()
+	defer s.leaderChangedMu.RUnlock()
+	return s.leaderChanged
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
