@@ -37,6 +37,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) an
 
 ### etcd server
 
+- Add [`rpctypes.ErrLeaderChanged`](https://github.com/etcd-io/etcd/pull/10094).
+  - Now linearizable requests with read index would fail fast when there is a leadership change, instead of waiting until context timeout.
 - Fix [race condition in `rafthttp` transport pause/resume](https://github.com/etcd-io/etcd/pull/10826).
 
 ### API
