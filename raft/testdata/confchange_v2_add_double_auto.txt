@@ -1,5 +1,6 @@
 # Run a V2 membership change that adds two voters at once and auto-leaves the
-# joint configuration.
+# joint configuration. (This is the same as specifying an explicit transition
+# since more than one change is being made atomically).
 
 # Bootstrap n1.
 add-nodes 1 voters=(1) index=2
