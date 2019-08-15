@@ -51,7 +51,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.12.8
+GO_VERSION ?= 1.12.9
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -65,11 +65,11 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.12.8 make build-docker-test
+#   GO_VERSION=1.12.9 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.12.8 make push-docker-test
+#   GO_VERSION=1.12.9 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com

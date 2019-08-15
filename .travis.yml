@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.12.8
+- 1.12.9
 
 notifications:
   on_success: never
@@ -27,9 +27,9 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.12.8
+  - go: 1.12.9
     env: TARGET=linux-amd64-grpcproxy
-  - go: 1.12.8
+  - go: 1.12.9
     env: TARGET=linux-386-unit
 
 before_install:
