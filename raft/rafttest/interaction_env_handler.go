@@ -104,6 +104,13 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		//
 		// tick-heartbeat 3
 		err = env.handleTickHeartbeat(t, d)
+	case "propose":
+		// Propose an entry.
+		//
+		// Example:
+		//
+		// propose 1 foo
+		err = env.handlePropose(t, d)
 	case "propose-conf-change":
 		// Propose a configuration change.
 		//
