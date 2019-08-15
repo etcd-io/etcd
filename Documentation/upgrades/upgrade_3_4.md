@@ -35,7 +35,7 @@ OK
 +etcdctl put foo bar
 ```
 
-#### Make `ETCDCTL_API=3 etcdctl` default
+#### Make `etcd --enable-v2=false` default
 
 [`etcd --enable-v2=false`](https://github.com/etcd-io/etcd/pull/10935) is now the default.
 
@@ -85,6 +85,29 @@ _, err := kvc.Get(ctx, "a")
 +s, ok := status.FromError(err)
 +if ok {
 +  if s.Code() == codes.Canceled
+```
+
+#### Require `grpc.WithBlock` for client dial
+
+[The new client balancer][client-design] uses an asynchronous resolver to pass endpoints to the gRPC dial function.
+
+In order to create a client object synchronously with gRPC connection, pass `grpc.WithBlock` to dial options:
+
+```diff
+import (
+	"time"
+	"go.etcd.io/etcd/clientv3"
++	"google.golang.org/grpc"
+)
+
++// "grpc.WithBlock()" to block until the underlying connection is up
+ccfg := clientv3.Config{
+  Endpoints:            []string{"localhost:2379"},
+  DialTimeout:          time.Second,
++ DialOptions:          []grpc.DialOption{grpc.WithBlock()},
+  DialKeepAliveTime:    time.Second,
+  DialKeepAliveTimeout: 500 * time.Millisecond,
+}
 ```
 
 #### Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
@@ -580,3 +603,4 @@ COMMENT
 ```
 
 [etcd-contact]: https://groups.google.com/forum/#!forum/etcd-dev
+[client-design]: https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md
