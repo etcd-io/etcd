@@ -19,7 +19,6 @@ import (
 
 	"github.com/cockroachdb/datadriven"
 	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/quorum"
 	"go.etcd.io/etcd/raft/raftpb"
 )
 
@@ -50,6 +49,7 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 	}
 	for _, ent := range rd.CommittedEntries {
 		var update []byte
+		var cs *raftpb.ConfState
 		switch ent.Type {
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -57,13 +57,13 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 				return err
 			}
 			update = cc.Context
-			rn.ApplyConfChange(cc)
+			cs = rn.ApplyConfChange(cc)
 		case raftpb.EntryConfChangeV2:
 			var cc raftpb.ConfChangeV2
 			if err := cc.Unmarshal(ent.Data); err != nil {
 				return err
 			}
-			rn.ApplyConfChange(cc)
+			cs = rn.ApplyConfChange(cc)
 			update = cc.Context
 		default:
 			update = ent.Data
@@ -78,13 +78,11 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 		snap.Data = append(snap.Data, update...)
 		snap.Metadata.Index = ent.Index
 		snap.Metadata.Term = ent.Term
-		cfg := rn.Status().Config
-		snap.Metadata.ConfState = raftpb.ConfState{
-			Voters:         cfg.Voters[0].Slice(),
-			VotersOutgoing: cfg.Voters[1].Slice(),
-			Learners:       quorum.MajorityConfig(cfg.Learners).Slice(),
-			LearnersNext:   quorum.MajorityConfig(cfg.LearnersNext).Slice(),
+		if cs == nil {
+			sl := env.Nodes[idx].History
+			cs = &sl[len(sl)-1].Metadata.ConfState
 		}
+		snap.Metadata.ConfState = *cs
 		env.Nodes[idx].History = append(env.Nodes[idx].History, snap)
 	}
 	for _, msg := range rd.Messages {

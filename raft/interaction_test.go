@@ -22,6 +22,9 @@ import (
 )
 
 func TestInteraction(t *testing.T) {
+	// NB: if this test fails, run `go test ./raft -rewrite` and inspect the
+	// diff. Only commit the changes if you understand what caused them and if
+	// they are desired.
 	datadriven.Walk(t, "testdata", func(t *testing.T, path string) {
 		env := rafttest.NewInteractionEnv(nil)
 		datadriven.RunTest(t, path, func(d *datadriven.TestData) string {

@@ -30,7 +30,7 @@ compact 1 11
 ok (quiet)
 
 # Drop inflight messages to n3.
-deliver-msgs 3
+deliver-msgs drop=(3)
 ----
 ok (quiet)
 
@@ -70,7 +70,7 @@ Messages:
 # and responds.
 stabilize 3
 ----
-> delivering messages
+> 3 receiving messages
   1->3 MsgHeartbeat Term:1 Log:0/0
   INFO 3 [term: 0] received a MsgHeartbeat message with higher term from 1 [term: 1]
   INFO 3 became follower at term 1
@@ -84,14 +84,14 @@ stabilize 3
 # The leader in turn will realize that n3 needs a snapshot, which it initiates.
 stabilize 1
 ----
-> delivering messages
+> 1 receiving messages
   3->1 MsgHeartbeatResp Term:1 Log:0/0
   DEBUG 1 [firstindex: 12, commit: 11] sent snapshot[index: 11, term: 1] to 3 [StateProbe match=0 next=11]
   DEBUG 1 paused sending replication messages to 3 [StateSnapshot match=0 next=11 paused pendingSnap=11]
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
-  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[]
+  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
 
 status 1
 ----
@@ -105,8 +105,8 @@ status 1
 # was now fully caught up.
 stabilize 3
 ----
-> delivering messages
-  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[]
+> 3 receiving messages
+  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
   INFO log [committed=0, applied=0, unstable.offset=1, len(unstable.Entries)=0] starts to restore snapshot [index: 11, term: 1]
   INFO 3 switched to configuration voters=(1 2 3)
   INFO 3 [commit: 11, lastindex: 11, lastterm: 1] restored snapshot [index: 11, term: 1]
@@ -114,7 +114,7 @@ stabilize 3
 > 3 handling Ready
   Ready MustSync=false:
   HardState Term:1 Commit:11
-  Snapshot Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[]
+  Snapshot Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
   Messages:
   3->1 MsgAppResp Term:1 Log:0/11
 
@@ -122,7 +122,7 @@ stabilize 3
 # Leader sends another MsgAppResp, to communicate the updated commit index.
 stabilize 1
 ----
-> delivering messages
+> 1 receiving messages
   3->1 MsgAppResp Term:1 Log:0/11
   DEBUG 1 recovered from needing snapshot, resumed sending replication messages to 3 [StateSnapshot match=11 next=12 paused pendingSnap=11]
 > 1 handling Ready
@@ -139,9 +139,9 @@ status 1
 # Let things settle.
 stabilize
 ----
-> delivering messages
+> 2 receiving messages
   1->2 MsgHeartbeat Term:1 Log:0/0 Commit:11
-> delivering messages
+> 3 receiving messages
   1->3 MsgApp Term:1 Log:1/11 Commit:11
 > 2 handling Ready
   Ready MustSync=false:
@@ -151,6 +151,6 @@ stabilize
   Ready MustSync=false:
   Messages:
   3->1 MsgAppResp Term:1 Log:0/11
-> delivering messages
+> 1 receiving messages
   2->1 MsgHeartbeatResp Term:1 Log:0/0
   3->1 MsgAppResp Term:1 Log:0/11
