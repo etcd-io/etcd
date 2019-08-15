@@ -10,9 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
-
+- [v3.4.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.4.0-rc.1) (2019-08-15), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0-rc.0...v3.4.0-rc.1).
 - [v3.4.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.4.0-rc.0) (2019-08-12), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0-rc.0).
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
 
 ### Documentation
 
@@ -75,9 +76,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Add [`Verify` function to perform corruption check on WAL contents](https://github.com/etcd-io/etcd/pull/10603).
 - Improve [heartbeat send failure logging](https://github.com/etcd-io/etcd/pull/10663).
 - Support [users with no password](https://github.com/etcd-io/etcd/pull/9817) for reducing security risk introduced by leaked password. The users can only be authenticated with CommonName based auth.
-- Add flag `--experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/10524)
-- Reduced default compaction batch size from 10k revisions to 1k revisions to improve p99 latency during compactions and reduced wait between compactions from 100ms to 10ms
-- Add flag `--experimental-compaction-batch-limit` to [sets the maximum revisions deleted in each compaction batch](https://github.com/etcd-io/etcd/pull/11034)
+- Add `etcd --experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/10524).
+- Add `etcd --experimental-compaction-batch-limit` to [sets the maximum revisions deleted in each compaction batch](https://github.com/etcd-io/etcd/pull/11034).
+- Reduced default compaction batch size from 10k revisions to 1k revisions to improve p99 latency during compactions and reduced wait between compactions from 100ms to 10ms.
 
 ### Breaking Changes
 
@@ -328,6 +329,8 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
   - For instance, a flaky(or rejoining) member may drop in and out, and start campaign. This member will end up with a higher term, and ignore all incoming messages with lower term. In this case, a new leader eventually need to get elected, thus disruptive to cluster availability. Raft implements Pre-Vote phase to prevent this kind of disruptions. If enabled, Raft runs an additional phase of election to check if pre-candidate can get enough votes to win an election.
   - `etcd --pre-vote=false` by default.
   - v3.5 will enable `etcd --pre-vote=true` by default.
+- Add `etcd --experimental-compaction-batch-limit` to [sets the maximum revisions deleted in each compaction batch](https://github.com/etcd-io/etcd/pull/11034).
+- Reduced default compaction batch size from 10k revisions to 1k revisions to improve p99 latency during compactions and reduced wait between compactions from 100ms to 10ms.
 - Add [`etcd --discovery-srv-name`](https://github.com/etcd-io/etcd/pull/8690) flag to support custom DNS SRV name with discovery.
   - If not given, etcd queries `_etcd-server-ssl._tcp.[YOUR_HOST]` and `_etcd-server._tcp.[YOUR_HOST]`.
   - If `etcd --discovery-srv-name="foo"`, then query `_etcd-server-ssl-foo._tcp.[YOUR_HOST]` and `_etcd-server-foo._tcp.[YOUR_HOST]`.

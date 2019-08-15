@@ -13,9 +13,9 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
-
 - [v3.3.14-beta.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.14-beta.0) (2019-08-14), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14-beta.0).
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
 NOTE: This patch release had to include some new features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
 
