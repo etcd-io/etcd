@@ -71,7 +71,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 		case <-s.stopc:
 			return false
 		}
