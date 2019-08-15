@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -35,16 +36,20 @@ func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
+	fmt.Println("testCtlV2Set starting 1")
 	cfg.enableV2 = true
 	epc := setupEtcdctlTest(t, cfg, quorum)
+	fmt.Println("testCtlV2Set starting 2")
 	defer func() {
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
 	}()
 
+	fmt.Println("testCtlV2Set starting 3")
 	key, value := "foo", "bar"
 
+	fmt.Println("testCtlV2Set starting 4")
 	if err := etcdctlSet(epc, key, value); err != nil {
 		t.Fatalf("failed set (%v)", err)
 	}

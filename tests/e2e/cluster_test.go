@@ -150,12 +150,14 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 		proc, err := newEtcdProcess(etcdCfgs[i])
 		if err != nil {
 			epc.Close()
+			fmt.Println("error newEtcdProcess:", err)
 			return nil, err
 		}
 		epc.procs[i] = proc
 	}
 
 	if err := epc.Start(); err != nil {
+		fmt.Println("error Start:", err)
 		return nil, err
 	}
 	return epc, nil

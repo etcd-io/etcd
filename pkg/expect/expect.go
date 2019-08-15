@@ -79,7 +79,7 @@ func (ep *ExpectProcess) read() {
 		ep.mu.Lock()
 		ep.err = rerr
 		if l != "" {
-			if printDebugLines {
+			if printDebugLines || true {
 				fmt.Printf("%s-%d: %s", ep.cmd.Path, ep.cmd.Process.Pid, l)
 			}
 			ep.lines = append(ep.lines, l)
