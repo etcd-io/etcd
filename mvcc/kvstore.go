@@ -77,11 +77,11 @@ type store struct {
 	ReadView
 	WriteView
 
-	cfg StoreConfig
-
 	// consistentIndex caches the "consistent_index" key's value. Accessed
 	// through atomics so must be 64-bit aligned.
 	consistentIndex uint64
+
+	cfg StoreConfig
 
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
