@@ -2,7 +2,6 @@
 /coverage
 /covdir
 /docs
-/vendor
 /gopath
 /gopath.proto
 /go-bindata
