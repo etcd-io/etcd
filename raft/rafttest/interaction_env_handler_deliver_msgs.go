@@ -15,8 +15,8 @@
 package rafttest
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
@@ -25,34 +25,70 @@ import (
 )
 
 func (env *InteractionEnv) handleDeliverMsgs(t *testing.T, d datadriven.TestData) error {
-	if len(env.Messages) == 0 {
-		return errors.New("no messages to deliver")
+	var rs []Recipient
+	for _, arg := range d.CmdArgs {
+		if len(arg.Vals) == 0 {
+			id, err := strconv.ParseUint(arg.Key, 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rs = append(rs, Recipient{ID: id})
+		}
+		for i := range arg.Vals {
+			switch arg.Key {
+			case "drop":
+				var id uint64
+				arg.Scan(t, i, &id)
+				var found bool
+				for _, r := range rs {
+					if r.ID == id {
+						found = true
+					}
+				}
+				if found {
+					t.Fatalf("can't both deliver and drop msgs to %d", id)
+				}
+				rs = append(rs, Recipient{ID: id, Drop: true})
+			}
+		}
 	}
 
-	msgs := env.Messages
-	env.Messages = nil
-
-	return env.DeliverMsgs(msgs)
-}
-
-// DeliverMsgs delivers the supplied messages typically taken from env.Messages.
-func (env *InteractionEnv) DeliverMsgs(msgs []raftpb.Message) error {
-	for _, msg := range msgs {
-		toIdx := int(msg.To - 1)
-		var drop bool
-		if toIdx >= len(env.Nodes) {
-			// Drop messages for peers that don't exist yet.
-			drop = true
-			env.Output.WriteString("dropped: ")
-		}
-		fmt.Fprintln(env.Output, raft.DescribeMessage(msg, defaultEntryFormatter))
-		if drop {
-			continue
-		}
-		if err := env.Nodes[toIdx].Step(msg); err != nil {
-			env.Output.WriteString(err.Error())
-			continue
-		}
+	if n := env.DeliverMsgs(rs...); n == 0 {
+		env.Output.WriteString("no messages\n")
 	}
 	return nil
+}
+
+type Recipient struct {
+	ID   uint64
+	Drop bool
+}
+
+// DeliverMsgs goes through env.Messages and, depending on the Drop flag,
+// delivers or drops messages to the specified Recipients. Returns the
+// number of messages handled (i.e. delivered or dropped). A handled message
+// is removed from env.Messages.
+func (env *InteractionEnv) DeliverMsgs(rs ...Recipient) int {
+	var n int
+	for _, r := range rs {
+		var msgs []raftpb.Message
+		msgs, env.Messages = splitMsgs(env.Messages, r.ID)
+		n += len(msgs)
+		for _, msg := range msgs {
+			if r.Drop {
+				fmt.Fprint(env.Output, "dropped: ")
+			}
+			fmt.Fprintln(env.Output, raft.DescribeMessage(msg, defaultEntryFormatter))
+			if r.Drop {
+				// NB: it's allowed to drop messages to nodes that haven't been instantiated yet,
+				// we haven't used msg.To yet.
+				continue
+			}
+			toIdx := int(msg.To - 1)
+			if err := env.Nodes[toIdx].Step(msg); err != nil {
+				env.Output.WriteString(err.Error())
+			}
+		}
+	}
+	return n
 }

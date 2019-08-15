@@ -1036,10 +1036,36 @@ func stepLeader(r *raft, m pb.Message) error {
 
 		for i := range m.Entries {
 			e := &m.Entries[i]
-			if e.Type == pb.EntryConfChange || e.Type == pb.EntryConfChangeV2 {
-				if r.pendingConfIndex > r.raftLog.applied {
-					r.logger.Infof("%x propose conf %s ignored since pending unapplied configuration [index %d, applied %d]",
-						r.id, e, r.pendingConfIndex, r.raftLog.applied)
+			var cc pb.ConfChangeI
+			if e.Type == pb.EntryConfChange {
+				var ccc pb.ConfChange
+				if err := ccc.Unmarshal(e.Data); err != nil {
+					panic(err)
+				}
+				cc = ccc
+			} else if e.Type == pb.EntryConfChangeV2 {
+				var ccc pb.ConfChangeV2
+				if err := ccc.Unmarshal(e.Data); err != nil {
+					panic(err)
+				}
+				cc = ccc
+			}
+			if cc != nil {
+				alreadyPending := r.pendingConfIndex > r.raftLog.applied
+				alreadyJoint := len(r.prs.Config.Voters[1]) > 0
+				wantsLeaveJoint := len(cc.AsV2().Changes) == 0
+
+				var refused string
+				if alreadyPending {
+					refused = fmt.Sprintf("possible unapplied conf change at index %d (applied to %d)", r.pendingConfIndex, r.raftLog.applied)
+				} else if alreadyJoint && !wantsLeaveJoint {
+					refused = "must transition out of joint config first"
+				} else if !alreadyJoint && wantsLeaveJoint {
+					refused = "not in joint state; refusing empty conf change"
+				}
+
+				if refused != "" {
+					r.logger.Infof("%x ignoring conf change %v at config %s: %s", r.id, cc, r.prs.Config, refused)
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				} else {
 					r.pendingConfIndex = r.raftLog.lastIndex() + uint64(i) + 1

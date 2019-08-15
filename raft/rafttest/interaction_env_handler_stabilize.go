@@ -65,12 +65,13 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 				withIndent(func() { env.ProcessReady(idx) })
 			}
 		}
-		var msgs []raftpb.Message
 		for _, rn := range nodes {
-			msgs, env.Messages = splitMsgs(env.Messages, rn.Status().ID)
-			if len(msgs) > 0 {
-				fmt.Fprintf(env.Output, "> delivering messages\n")
-				withIndent(func() { env.DeliverMsgs(msgs) })
+			id := rn.Status().ID
+			// NB: we grab the messages just to see whether to print the header.
+			// DeliverMsgs will do it again.
+			if msgs, _ := splitMsgs(env.Messages, id); len(msgs) > 0 {
+				fmt.Fprintf(env.Output, "> %d receiving messages\n", id)
+				withIndent(func() { env.DeliverMsgs(Recipient{ID: id}) })
 				done = false
 			}
 		}
@@ -81,6 +82,7 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 }
 
 func splitMsgs(msgs []raftpb.Message, to uint64) (toMsgs []raftpb.Message, rmdr []raftpb.Message) {
+	// NB: this method does not reorder messages.
 	for _, msg := range msgs {
 		if msg.To == to {
 			toMsgs = append(toMsgs, msg)
