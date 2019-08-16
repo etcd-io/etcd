@@ -36,8 +36,6 @@ INFO newRaft 2 [peers: [], term: 0, commit: 0, applied: 0, lastindex: 0, lastter
 stabilize 1 2
 ----
 > 1 handling Ready
-  INFO 1 switched to configuration voters=(1 2)&&(1) autoleave
-  INFO initiating automatic transition out of joint configuration voters=(1 2)&&(1) autoleave
   Ready MustSync=true:
   Lead:1 State:StateLeader
   HardState Term:1 Vote:1 Commit:4
@@ -47,6 +45,8 @@ stabilize 1 2
   CommittedEntries:
   1/3 EntryNormal ""
   1/4 EntryConfChangeV2 v2
+  INFO 1 switched to configuration voters=(1 2)&&(1) autoleave
+  INFO initiating automatic transition out of joint configuration voters=(1 2)&&(1) autoleave
 > 1 handling Ready
   Ready MustSync=true:
   Entries:
@@ -104,22 +104,22 @@ stabilize 1 2
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/5
 > 1 handling Ready
-  INFO 1 switched to configuration voters=(1 2)
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:5
   CommittedEntries:
   1/5 EntryConfChangeV2
   Messages:
   1->2 MsgApp Term:1 Log:1/5 Commit:5
+  INFO 1 switched to configuration voters=(1 2)
 > 2 receiving messages
   1->2 MsgApp Term:1 Log:1/5 Commit:5
 > 2 handling Ready
-  INFO 2 switched to configuration voters=(1 2)
   Ready MustSync=false:
   HardState Term:1 Commit:5
   CommittedEntries:
   1/5 EntryConfChangeV2
   Messages:
   2->1 MsgAppResp Term:1 Log:0/5
+  INFO 2 switched to configuration voters=(1 2)
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/5
