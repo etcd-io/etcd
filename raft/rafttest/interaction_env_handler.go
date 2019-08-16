@@ -30,6 +30,16 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 	env.Output.Reset()
 	var err error
 	switch d.Cmd {
+	case "_breakpoint":
+		// This is a helper case to attach a debugger to when a problem needs
+		// to be investigated in a longer test file. In such a case, add the
+		// following stanza immediately before the interesting behavior starts:
+		//
+		// _breakpoint:
+		// ----
+		// ok
+		//
+		// and set a breakpoint on the `case` above.
 	case "add-nodes":
 		// Example:
 		//
@@ -94,6 +104,13 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		//
 		// tick-heartbeat 3
 		err = env.handleTickHeartbeat(t, d)
+	case "propose":
+		// Propose an entry.
+		//
+		// Example:
+		//
+		// propose 1 foo
+		err = env.handlePropose(t, d)
 	case "propose-conf-change":
 		// Propose a configuration change.
 		//

@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raft_test
+package rafttest
 
 import (
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
-	"go.etcd.io/etcd/raft/rafttest"
 )
 
-func TestInteraction(t *testing.T) {
-	// NB: if this test fails, run `go test ./raft -rewrite` and inspect the
-	// diff. Only commit the changes if you understand what caused them and if
-	// they are desired.
-	datadriven.Walk(t, "testdata", func(t *testing.T, path string) {
-		env := rafttest.NewInteractionEnv(nil)
-		datadriven.RunTest(t, path, func(d *datadriven.TestData) string {
-			return env.Handle(t, *d)
-		})
-	})
+func (env *InteractionEnv) handlePropose(t *testing.T, d datadriven.TestData) error {
+	idx := firstAsNodeIdx(t, d)
+	if len(d.CmdArgs) != 2 || len(d.CmdArgs[1].Vals) > 0 {
+		t.Fatalf("expected exactly one key with no vals: %+v", d.CmdArgs[1:])
+	}
+	return env.Propose(idx, []byte(d.CmdArgs[1].Key))
+}
+
+// Propose a regular entry.
+func (env *InteractionEnv) Propose(idx int, data []byte) error {
+	return env.Nodes[idx].Propose(data)
 }
