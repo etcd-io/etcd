@@ -369,6 +369,52 @@ After
 docker pull gcr.io/etcd-development/etcd:v3.3.0
 ```
 
+### Upgrades to >= v3.3.14
+
+[v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) had to include some features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+
+`grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+
+```diff
+import (
++	"go.etcd.io/etcd/clientv3"
+
+	"google.golang.org/grpc"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
+)
+
+_, err := kvc.Get(ctx, "a")
+-if err == grpc.ErrClientConnClosing {
++if clientv3.IsConnCanceled(err) {
+
+// or
++s, ok := status.FromError(err)
++if ok {
++  if s.Code() == codes.Canceled
+```
+
+[The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. As a result, [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) or later requires `grpc.WithBlock` dial option to wait until the underlying connection is up.
+
+```diff
+import (
+	"time"
+	"go.etcd.io/etcd/clientv3"
++	"google.golang.org/grpc"
+)
+
++// "grpc.WithBlock()" to block until the underlying connection is up
+ccfg := clientv3.Config{
+  Endpoints:            []string{"localhost:2379"},
+  DialTimeout:          time.Second,
++ DialOptions:          []grpc.DialOption{grpc.WithBlock()},
+  DialKeepAliveTime:    time.Second,
+  DialKeepAliveTimeout: 500 * time.Millisecond,
+}
+```
+
+Please see [CHANGELOG](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md) for a full list of changes.
+
 ### Server upgrade checklists
 
 #### Upgrade requirements
