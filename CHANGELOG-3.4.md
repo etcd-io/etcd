@@ -579,6 +579,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - necessary in the situation in which a learner has been promoted (i.e. is now a voter) but has not learned about this yet.
 - Fix [restoring joint consensus](https://github.com/etcd-io/etcd/pull/11003).
 - Visit [`Progress` in stable order](https://github.com/etcd-io/etcd/pull/11004).
+- Proactively [probe newly added followers](https://github.com/etcd-io/etcd/pull/11037).
+  - The general expectation in `tracker.Progress.Next == c.LastIndex` is that the follower has no log at all (and will thus likely need a snapshot), though the app may have applied a snapshot out of band before adding the replica (thus making the first index the better choice).
+  - Previously, when the leader applied a new configuration that added voters, it would not immediately probe these voters, delaying when they would be caught up.
 
 ### Package `wal`
 
