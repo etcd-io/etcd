@@ -32,6 +32,7 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 	// TODO(tbg): Allow simulating crashes here.
 	rn, s := env.Nodes[idx].RawNode, env.Nodes[idx].Storage
 	rd := rn.Ready()
+	env.Output.WriteString(raft.DescribeReady(rd, defaultEntryFormatter))
 	// TODO(tbg): the order of operations here is not necessarily safe. See:
 	// https://github.com/etcd-io/etcd/pull/10861
 	if !raft.IsEmptyHardState(rd.HardState) {
@@ -89,6 +90,5 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 		env.Messages = append(env.Messages, msg)
 	}
 	rn.Advance(rd)
-	env.Output.WriteString(raft.DescribeReady(rd, defaultEntryFormatter))
 	return nil
 }

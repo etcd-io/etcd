@@ -83,7 +83,6 @@ stabilize 1
   2->1 MsgAppResp Term:1 Log:0/4
   2->1 MsgAppResp Term:1 Log:0/5
 > 1 handling Ready
-  INFO 1 switched to configuration voters=(2 3)
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:5
   CommittedEntries:
@@ -94,6 +93,7 @@ stabilize 1
   1->3 MsgApp Term:1 Log:1/6 Commit:4
   1->2 MsgApp Term:1 Log:1/6 Commit:5
   1->3 MsgApp Term:1 Log:1/6 Commit:5
+  INFO 1 switched to configuration voters=(2 3)
 
 # n2 responds, n3 doesn't yet. Quorum for 'bar' should not be reached...
 stabilize 2
@@ -103,7 +103,6 @@ stabilize 2
   1->2 MsgApp Term:1 Log:1/6 Commit:4
   1->2 MsgApp Term:1 Log:1/6 Commit:5
 > 2 handling Ready
-  INFO 2 switched to configuration voters=(2 3)
   Ready MustSync=true:
   HardState Term:1 Vote:1 Commit:5
   Entries:
@@ -115,6 +114,7 @@ stabilize 2
   2->1 MsgAppResp Term:1 Log:0/6
   2->1 MsgAppResp Term:1 Log:0/6
   2->1 MsgAppResp Term:1 Log:0/6
+  INFO 2 switched to configuration voters=(2 3)
 
 # ... which thankfully is what we see on the leader.
 stabilize 1
@@ -134,7 +134,6 @@ stabilize
   1->3 MsgApp Term:1 Log:1/6 Commit:4
   1->3 MsgApp Term:1 Log:1/6 Commit:5
 > 3 handling Ready
-  INFO 3 switched to configuration voters=(2 3)
   Ready MustSync=true:
   HardState Term:1 Vote:1 Commit:5
   Entries:
@@ -150,6 +149,7 @@ stabilize
   3->1 MsgAppResp Term:1 Log:0/6
   3->1 MsgAppResp Term:1 Log:0/6
   3->1 MsgAppResp Term:1 Log:0/6
+  INFO 3 switched to configuration voters=(2 3)
 > 1 receiving messages
   3->1 MsgAppResp Term:1 Log:0/4
   3->1 MsgAppResp Term:1 Log:0/5

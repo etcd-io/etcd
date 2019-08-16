@@ -120,7 +120,6 @@ stabilize 2 3
 > 3 receiving messages
   2->3 MsgApp Term:2 Log:1/3 Commit:4 Entries:[1/4 EntryConfChangeV2 v3, 2/5 EntryNormal ""]
 > 3 handling Ready
-  INFO 3 switched to configuration voters=(1 2 3)
   Ready MustSync=true:
   HardState Term:2 Vote:2 Commit:4
   Entries:
@@ -130,6 +129,7 @@ stabilize 2 3
   1/4 EntryConfChangeV2 v3
   Messages:
   3->2 MsgAppResp Term:2 Log:0/5
+  INFO 3 switched to configuration voters=(1 2 3)
 > 2 receiving messages
   3->2 MsgAppResp Term:2 Log:0/5
 > 2 handling Ready
