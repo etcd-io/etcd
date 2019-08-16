@@ -9,7 +9,7 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 <hr>
 
 
-## [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) (2019-08-TBD)
+## [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) (2019-08-16)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
