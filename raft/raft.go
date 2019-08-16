@@ -554,35 +554,34 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 }
 
 func (r *raft) advance(rd Ready) {
+	r.reduceUncommittedSize(rd.CommittedEntries)
+
 	// If entries were applied (or a snapshot), update our cursor for
 	// the next Ready. Note that if the current HardState contains a
 	// new Commit index, this does not mean that we're also applying
 	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		r.raftLog.appliedTo(index)
-		if r.prs.Config.AutoLeave && index >= r.pendingConfIndex && r.state == StateLeader {
+	if newApplied := rd.appliedCursor(); newApplied > 0 {
+		oldApplied := r.raftLog.applied
+		r.raftLog.appliedTo(newApplied)
+
+		if r.prs.Config.AutoLeave && oldApplied < r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 			// If the current (and most recent, at least for this leader's term)
-			// configuration should be auto-left, initiate that now.
-			ccdata, err := (&pb.ConfChangeV2{}).Marshal()
-			if err != nil {
-				panic(err)
-			}
+			// configuration should be auto-left, initiate that now. We use a
+			// nil Data which unmarshals into an empty ConfChangeV2 and has the
+			// benefit that appendEntry can never refuse it based on its size
+			// (which registers as zero).
 			ent := pb.Entry{
 				Type: pb.EntryConfChangeV2,
-				Data: ccdata,
+				Data: nil,
 			}
+			// There's no way in which this proposal should be able to be rejected.
 			if !r.appendEntry(ent) {
-				// If we could not append the entry, bump the pending conf index
-				// so that we'll try again later.
-				//
-				// TODO(tbg): test this case.
-				r.pendingConfIndex = r.raftLog.lastIndex()
-			} else {
-				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
+				panic("refused un-refusable auto-leaving ConfChangeV2")
 			}
+			r.pendingConfIndex = r.raftLog.lastIndex()
+			r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 		}
 	}
-	r.reduceUncommittedSize(rd.CommittedEntries)
 
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
@@ -1607,16 +1606,21 @@ func (r *raft) abortLeaderTransfer() {
 // If the new entries would exceed the limit, the method returns false. If not,
 // the increase in uncommitted entry size is recorded and the method returns
 // true.
+// Configuration changes are never refused.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
 	var s uint64
 	for _, e := range ents {
 		s += uint64(PayloadSize(e))
 	}
 
-	if r.uncommittedSize > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
+	if r.uncommittedSize > 0 && s > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
 		// If the uncommitted tail of the Raft log is empty, allow any size
 		// proposal. Otherwise, limit the size of the uncommitted tail of the
 		// log and drop any proposal that would push the size over the limit.
+		// Note the added requirement s>0 which is used to make sure that
+		// appending single empty entries to the log always succeeds, used both
+		// for replicating a new leader's initial empty entry, and for
+		// auto-leaving joint configurations.
 		return false
 	}
 	r.uncommittedSize += s
