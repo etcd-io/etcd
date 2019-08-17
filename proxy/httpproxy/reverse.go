@@ -134,22 +134,27 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	var res *http.Response
-
 	for _, ep := range endpoints {
 		redirectRequest(proxyreq, ep.URL)
 
-		res, err = p.transport.RoundTrip(proxyreq)
 		if atomic.LoadInt32(&requestClosed) == 1 {
 			return
 		}
+
+		res, err = p.transport.RoundTrip(proxyreq)
 		if err != nil {
 			reportRequestDropped(clientreq, failedSendingRequest)
 			plog.Printf("failed to direct request to %s: %v", ep.URL.String(), err)
 			ep.Failed()
+			res = nil
 			continue
 		}
 
 		break
+	}
+
+	if atomic.LoadInt32(&requestClosed) == 1 {
+		return
 	}
 
 	if res == nil {
@@ -169,8 +174,14 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	removeSingleHopHeaders(&res.Header)
 	copyHeader(rw.Header(), res.Header)
 
+	if atomic.LoadInt32(&requestClosed) == 1 {
+		return
+	}
 	rw.WriteHeader(res.StatusCode)
-	io.Copy(rw, res.Body)
+	_, err = io.Copy(rw, res.Body)
+	if err != nil {
+		plog.Debugf("error writing HTTPError (%v) to %s", err, clientreq.RemoteAddr)
+	}
 }
 
 func copyHeader(dst, src http.Header) {
