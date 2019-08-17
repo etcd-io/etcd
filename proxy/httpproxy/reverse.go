@@ -129,12 +129,13 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		}()
 	}
 
+	if proxybody != nil {
+		proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
+	}
+
 	var res *http.Response
 
 	for _, ep := range endpoints {
-		if proxybody != nil {
-			proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
-		}
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
