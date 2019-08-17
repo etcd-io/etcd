@@ -107,7 +107,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	var requestClosed int32
-	completeCh := make(chan bool, 1)
+	completeCh := make(chan struct{})
 	closeNotifier, ok := rw.(http.CloseNotifier)
 	ctx, cancel := context.WithCancel(context.Background())
 	proxyreq = proxyreq.WithContext(ctx)
@@ -125,7 +125,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		}()
 
 		defer func() {
-			completeCh <- true
+			close(completeCh)
 		}()
 	}
 
