@@ -9,6 +9,30 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 <hr>
 
 
+## [v3.3.15](https://github.com/etcd-io/etcd/releases/tag/v3.3.15) (2019-08-19)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.14...v3.3.15) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+NOTE: This patch release had to include some new features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+
+### Breaking Changes
+
+- Revert "Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063)".
+  - Now, etcd >= v3.3.15 uses `glide` for dependency management.
+  - See [kubernetes#81434](https://github.com/kubernetes/kubernetes/pull/81434) for more contexts.
+
+### Go
+
+- Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
+- Compile with Go 1.12.9 including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+  - See [*Go 1.12 release page*](https://golang.org/doc/devel/release.html#go1.12) for more.
+
+
+<hr>
+
+
 ## [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) (2019-08-16)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
