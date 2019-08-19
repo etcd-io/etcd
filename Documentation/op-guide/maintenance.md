@@ -85,9 +85,9 @@ Finished defragmenting etcd member[127.0.0.1:2379]
 
 **Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states**.
 
-**Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag or `--cluster` flag to automatically find all cluster members.**
+**Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag to automatically find all cluster members.**
 
-Run defragment operations for all endpoints in the cluster associated with the default endpoint:
+In [v3.4.0](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.4.md), run defragment operations with `--cluster` flag for all endpoints in the cluster associated with the default endpoint:
 
 ```bash
 $ etcdctl defrag --cluster
