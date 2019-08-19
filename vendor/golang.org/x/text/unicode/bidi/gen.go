@@ -59,7 +59,7 @@ func genTables() {
 		log.Fatalf("Too many Class constants (%#x > 0x0F).", numClass)
 	}
 	w := gen.NewCodeWriter()
-	defer w.WriteVersionedGoFile(*outputFile, "bidi")
+	defer w.WriteGoFile(*outputFile, "bidi")
 
 	gen.WriteUnicodeVersion(w)
 
