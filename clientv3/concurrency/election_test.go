@@ -17,9 +17,9 @@ package concurrency_test
 import (
 	"context"
 	"log"
+	"strings"
 	"testing"
 	"time"
-	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
