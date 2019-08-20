@@ -382,7 +382,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
 
 		srv.lg.Info(
-			"loading client auto TLS assets",
+			"loading peer auto TLS assets",
 			zap.String("dir", fdir),
 			zap.String("endpoint", srv.EtcdClientEndpoint),
 		)
@@ -450,10 +450,10 @@ func (srv *Server) loadAutoTLSAssets() error {
 
 		srv.lg.Info(
 			"loaded client TLS assets",
-			zap.String("peer-cert-path", certPath),
-			zap.Int("peer-cert-length", len(certData)),
-			zap.String("peer-key-path", keyPath),
-			zap.Int("peer-key-length", len(keyData)),
+			zap.String("client-cert-path", certPath),
+			zap.Int("client-cert-length", len(certData)),
+			zap.String("client-key-path", keyPath),
+			zap.Int("client-key-length", len(keyData)),
 		)
 	}
 
