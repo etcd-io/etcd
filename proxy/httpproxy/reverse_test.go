@@ -175,10 +175,10 @@ func TestRemoveSingleHopHeaders(t *testing.T) {
 		"Keep-Alive":          {"foo"},
 		"Proxy-Authenticate":  {"Basic realm=example.com"},
 		"Proxy-Authorization": {"foo"},
-		"Te":                {"deflate,gzip"},
-		"Trailers":          {"ETag"},
-		"Transfer-Encoding": {"chunked"},
-		"Upgrade":           {"WebSocket"},
+		"Te":                  {"deflate,gzip"},
+		"Trailers":            {"ETag"},
+		"Transfer-Encoding":   {"chunked"},
+		"Upgrade":             {"WebSocket"},
 
 		// headers that should persist
 		"Accept": {"application/json"},

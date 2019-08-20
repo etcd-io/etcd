@@ -103,7 +103,7 @@
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9090909090909091
+				"confidence": 0.9163346613545816
 			}
 		]
 	},
@@ -121,7 +121,7 @@
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.92
+				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -135,11 +135,29 @@
 		]
 	},
 	{
+		"project": "github.com/google/uuid",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "github.com/gorilla/websocket",
 		"licenses": [
 			{
 				"type": "BSD 2-clause \"Simplified\" License",
 				"confidence": 0.9852216748768473
+			}
+		]
+	},
+	{
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -164,10 +182,6 @@
 	{
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
-			{
-				"type": "MIT License and BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 1
-			},
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
@@ -418,7 +432,7 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto/googleapis/rpc/status",
+		"project": "google.golang.org/genproto/googleapis",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -448,8 +462,8 @@
 		"project": "gopkg.in/yaml.v2",
 		"licenses": [
 			{
-				"type": "The Unlicense",
-				"confidence": 0.35294117647058826
+				"type": "Apache License 2.0",
+				"confidence": 1
 			},
 			{
 				"type": "MIT License",
@@ -460,6 +474,10 @@
 	{
 		"project": "sigs.k8s.io/yaml",
 		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			},
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1

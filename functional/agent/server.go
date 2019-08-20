@@ -61,10 +61,10 @@ func NewServer(
 	address string,
 ) *Server {
 	return &Server{
-		lg:      lg,
-		network: network,
-		address: address,
-		last:    rpcpb.Operation_NOT_STARTED,
+		lg:                         lg,
+		network:                    network,
+		address:                    address,
+		last:                       rpcpb.Operation_NOT_STARTED,
 		advertiseClientPortToProxy: make(map[int]proxy.Server),
 		advertisePeerPortToProxy:   make(map[int]proxy.Server),
 	}
