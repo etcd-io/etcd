@@ -129,8 +129,12 @@ func NewFromURLs(urls []string) (*Client, error) {
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
 	c.cancel()
-	c.Watcher.Close()
-	c.Lease.Close()
+	if c.Watcher != nil {
+		c.Watcher.Close()
+	}
+	if c.Lease != nil {
+		c.Lease.Close()
+	}
 	if c.resolverGroup != nil {
 		c.resolverGroup.Close()
 	}

@@ -156,3 +156,13 @@ func TestIsHaltErr(t *testing.T) {
 		t.Errorf("cancel on context should be Halted")
 	}
 }
+
+func TestCloseCtxClient(t *testing.T) {
+	ctx := context.Background()
+	c := NewCtxClient(ctx)
+	err := c.Close()
+	// Close returns ctx.toErr, a nil error means an open Done channel
+	if err == nil {
+		t.Errorf("failed to Close the client. %v", err)
+	}
+}
