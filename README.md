@@ -35,33 +35,34 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Community meetings
 
-*Community meeting will resume at 11:00 am on Thursday, January 10th, 2019.*
-
 etcd contributors and maintainers have monthly (every four weeks) meetings at 11:00 AM (USA Pacific) on Thursday.
 
 An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
 
-Please download and import the following iCalendar (.ics) files to calendar system.
 
-Weekly: https://zoom.us/meeting/916003437/ics?icsToken=e4a085b6837f5802d9aef0d2ded4777d0faf1a71e39279c4a6d8b577993d879c
+Time:
+- [Jan 10th, 2019 11:00 AM video](https://www.youtube.com/watch?v=0Cphtbd1OSc&feature=youtu.be)
+- [Feb 7th, 2019 11:00 AM video](https://youtu.be/U80b--oAlYM)
+- [Mar 7th, 2019 11:00 AM video](https://youtu.be/w9TI5B7D1zg)
+- [Apr 4th, 2019 11:00 AM video](https://youtu.be/oqQR2XH1L_A)
+- [May 2nd, 2019 11:00 AM video](https://youtu.be/wFwQePuDWVw)
+- [May 30th, 2019 11:00 AM video](https://youtu.be/2t1R5NATYG4)
+- [Jul 11th, 2019 11:00 AM video](https://youtu.be/k_FZEipWD6Y)
+- [Jul 25, 2019 11:00 AM video](https://youtu.be/VSUJTACO93I)
+- Aug 22, 2019 11:00 AM
+- Sep 19, 2019 11:00 AM
+- Nov 14, 2019 11:00 AM
+- Dec 12, 2019 11:00 AM
 
-Join Zoom Meeting https://zoom.us/j/916003437
+Join Hangouts Meet
+meet.google.com/umg-nrxn-qvs
 
-```
-One tap mobile
-+14086380986,,916003437# US (San Jose)
-+16465588665,,916003437# US (New York)
+Join by phone
+‪+1 405-792-0633‬ PIN: ‪299 906‬#
+More phone numbers
 
-Dial by location
-        +1 408 638 0986 US (San Jose)
-        +1 646 558 8665 US (New York)
-
-Meeting ID: 916 003 437
-```
-
-To Find local number: https://zoom.us/u/actX55uPfS
 
 ## Getting started
 
