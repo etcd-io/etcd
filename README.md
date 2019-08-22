@@ -51,7 +51,7 @@ Time:
 - [May 30th, 2019 11:00 AM video](https://youtu.be/2t1R5NATYG4)
 - [Jul 11th, 2019 11:00 AM video](https://youtu.be/k_FZEipWD6Y)
 - [Jul 25, 2019 11:00 AM video](https://youtu.be/VSUJTACO93I)
-- Aug 22, 2019 11:00 AM
+- [Aug 22, 2019 11:00 AM video](https://youtu.be/6IBQ-VxQmuM) 
 - Sep 19, 2019 11:00 AM
 - Nov 14, 2019 11:00 AM
 - Dec 12, 2019 11:00 AM
