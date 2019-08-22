@@ -37,6 +37,7 @@ type quotaAlarmer struct {
 // check whether request satisfies the quota. If there is not enough space,
 // ignore request and raise the free space alarm.
 func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
+	plog.Infof("[DEBUG] checking quota, cost = %d, remaining = %d", qa.q.Cost(r), qa.q.Remaining())
 	if qa.q.Available(r) {
 		return nil
 	}
