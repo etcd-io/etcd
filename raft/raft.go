@@ -367,7 +367,7 @@ func newRaft(c *Config) *raft {
 	}
 	assertConfStatesEquivalent(r.logger, cs, r.switchToConfig(cfg, prs))
 
-	if !isHardStateEqual(hs, emptyState) {
+	if !IsEmptyHardState(hs) {
 		r.loadState(hs)
 	}
 	if c.Applied > 0 {
@@ -1099,7 +1099,7 @@ func stepLeader(r *raft, m pb.Message) error {
 			case ReadOnlyLeaseBased:
 				ri := r.raftLog.committed
 				if m.From == None || m.From == r.id { // from local member
-					r.readStates = append(r.readStates, ReadState{Index: r.raftLog.committed, RequestCtx: m.Entries[0].Data})
+					r.readStates = append(r.readStates, ReadState{Index: ri, RequestCtx: m.Entries[0].Data})
 				} else {
 					r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
 				}

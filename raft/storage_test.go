@@ -106,7 +106,7 @@ func TestStorageLastIndex(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if last != 5 {
-		t.Errorf("term = %d, want %d", last, 5)
+		t.Errorf("last = %d, want %d", last, 5)
 	}
 
 	s.Append([]pb.Entry{{Index: 6, Term: 5}})
@@ -115,7 +115,7 @@ func TestStorageLastIndex(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if last != 6 {
-		t.Errorf("last = %d, want %d", last, 5)
+		t.Errorf("last = %d, want %d", last, 6)
 	}
 }
 
