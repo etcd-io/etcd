@@ -388,7 +388,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	var hashed []byte
 	var err error
 
-	if !r.Options.NoPassword {
+	if r.Options != nil && !r.Options.NoPassword {
 		hashed, err = bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
 		if err != nil {
 			if as.lg != nil {
