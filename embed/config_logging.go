@@ -170,7 +170,10 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		if !isJournal {
-			copied := logutil.AddOutputPaths(logutil.DefaultZapLoggerConfig, outputPaths, errOutputPaths)
+			copied := logutil.DefaultZapLoggerConfig
+			copied.OutputPaths = outputPaths
+			copied.ErrorOutputPaths = errOutputPaths
+			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 			if cfg.Debug || cfg.LogLevel == "debug" {
 				// enable tracing even when "--debug --log-level info"
