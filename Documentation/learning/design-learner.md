@@ -13,26 +13,34 @@ Background
 
 Membership reconfiguration has been one of the biggest operational challenges. Let’s review common challenges.
 
+### 1. New Cluster member overloads Leader
 A newly joined etcd member starts with no data, thus demanding more updates from leader until it catches up with leader’s logs. Then leader’s network is more likely to be overloaded, blocking or dropping leader heartbeats to followers. In such case, a follower may election-timeout to start a new leader election. That is, a cluster with a new member is more vulnerable to leader election. Both leader election and the subsequent update propagation to the new member are prone to causing periods of cluster unavailability (see *Figure 1*).
 
 ![server-learner-figure-01](img/server-learner-figure-01.png)
 
+### 2. Network Partitions scenarios
 What if network partition happens? It depends on leader partition. If the leader still maintains the active quorum, the cluster would continue to operate (see *Figure 2*).
 
 ![server-learner-figure-02](img/server-learner-figure-02.png)
 
+#### 2.1 Leader isolation
 What if the leader becomes isolated from the rest of the cluster? Leader monitors progress of each follower. When leader loses connectivity from the quorum, it reverts back to follower which will affect the cluster availability (see *Figure 3*).
 
 ![server-learner-figure-03](img/server-learner-figure-03.png)
 
-When a new node is added to 3 node cluster, the cluster size becomes 4 and the quorum size becomes 3. What if a new node had joined the cluster, and then network partition happens? It depends on which partition the new member gets located after partition. If the new node happens to be located in the same partition as leader’s, the leader still maintains the active quorum of 3. No leadership election happens, and no cluster availability gets affected (see *Figure 4*).
+When a new node is added to 3 node cluster, the cluster size becomes 4 and the quorum size becomes 3. What if a new node had joined the cluster, and then network partition happens? It depends on which partition the new member gets located after partition. 
+
+#### 2.2 Cluster Split 3+1
+If the new node happens to be located in the same partition as leader’s, the leader still maintains the active quorum of 3. No leadership election happens, and no cluster availability gets affected (see *Figure 4*).
 
 ![server-learner-figure-04](img/server-learner-figure-04.png)
 
+#### 2.3 Cluster Split 2+2
 If the cluster is 2-and-2 partitioned, then neither of partition maintains the quorum of 3. In this case, leadership election happens (see *Figure 5*).
 
 ![server-learner-figure-05](img/server-learner-figure-05.png)
 
+#### 2.4 Quorum Lost
 What if network partition happens first, and then a new member gets added? A partitioned 3-node cluster already has one disconnected follower. When a new member is added, the quorum changes from 2 to 3. Now, this cluster has only 2 active nodes out 4, thus losing quorum and starting a new leadership election (see *Figure 6*).
 
 ![server-learner-figure-06](img/server-learner-figure-06.png)
@@ -43,6 +51,7 @@ Adding a new member to a 1-node cluster changes the quorum size to 2, immediatel
 
 ![server-learner-figure-07](img/server-learner-figure-07.png)
 
+### 3. Cluster Misconfigurations
 An even worse case is when an added member is misconfigured. Membership reconfiguration is a two-step process: “etcdctl member add” and starting an etcd server process with the given peer URL. That is, “member add” command is applied regardless of URL, even when the URL value is invalid. If the first step is applied with invalid URLs, the second step cannot even start the new etcd. Once the cluster loses quorum, there is no way to revert the membership change (see *Figure 8*).
 
 ![server-learner-figure-08](img/server-learner-figure-08.png)
