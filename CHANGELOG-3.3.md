@@ -572,13 +572,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.3.1) and 
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
-
+- [v3.3.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0) (2018-02-01), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.4...v3.3.0).
 - [v3.3.0-rc.4](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.4) (2018-01-22), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.3...v3.3.0-rc.4).
 - [v3.3.0-rc.3](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.3) (2018-01-17), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.2...v3.3.0-rc.3).
 - [v3.3.0-rc.2](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.2) (2018-01-11), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.1...v3.3.0-rc.2).
 - [v3.3.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.1) (2018-01-02), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.0...v3.3.0-rc.1).
 - [v3.3.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20), see [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0-rc.0).
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
 ### Improved
 

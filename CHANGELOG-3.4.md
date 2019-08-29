@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
+- [v3.4.0](https://github.com/etcd-io/etcd/releases/tag/v3.4.0) (2019-08-30), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0-rc.4...v3.4.0).
 - [v3.4.0-rc.4](https://github.com/etcd-io/etcd/releases/tag/v3.4.0-rc.4) (2019-08-29), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0-rc.3...v3.4.0-rc.4).
 - [v3.4.0-rc.3](https://github.com/etcd-io/etcd/releases/tag/v3.4.0-rc.3) (2019-08-27), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0-rc.2...v3.4.0-rc.3).
 - [v3.4.0-rc.2](https://github.com/etcd-io/etcd/releases/tag/v3.4.0-rc.2) (2019-08-23), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0-rc.1...v3.4.0-rc.2).
