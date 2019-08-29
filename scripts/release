@@ -142,7 +142,9 @@ main() {
 
   # Generate SHA256SUM
   echo -e "Generating sha256sum of release artifacts.\n"
-  ls ./release | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256; > ./release/SHA256SUM
+  pushd ./release
+  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUM
+  popd
   if [ -s ./release/SHA256SUM ]; then
     cat ./release/SHA256SUM
   else
