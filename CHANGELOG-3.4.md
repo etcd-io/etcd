@@ -596,7 +596,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 
 - Add [`etcd-dump-logs --entry-type`](https://github.com/etcd-io/etcd/pull/9628) flag to support WAL log filtering by entry type.
 - Add [`etcd-dump-logs --stream-decoder`](https://github.com/etcd-io/etcd/pull/9790) flag to support custom decoder.
-- Add [`SHA256SUM`](https://github.com/etcd-io/etcd/pull/11087) file to release assets.
+- Add [`SHA256SUMS`](https://github.com/etcd-io/etcd/pull/11087) file to release assets.
   - etcd maintainers are a distributed team, this change allows for releases to be cut and validation provided without requiring a signing key.
 
 ### Go

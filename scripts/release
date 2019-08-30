@@ -140,15 +140,15 @@ main() {
   ./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd --version | grep -q "etcd Version: ${VERSION}" || true
   ./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl version | grep -q "etcdctl version: ${VERSION}" || true
 
-  # Generate SHA256SUM
-  echo -e "Generating sha256sum of release artifacts.\n"
+  # Generate SHA256SUMS
+  echo -e "Generating sha256sums of release artifacts.\n"
   pushd ./release
-  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUM
+  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
-  if [ -s ./release/SHA256SUM ]; then
-    cat ./release/SHA256SUM
+  if [ -s ./release/SHA256SUMS ]; then
+    cat ./release/SHA256SUMS
   else
-    echo "sha256sum is not valid. Aborting."
+    echo "sha256sums is not valid. Aborting."
     exit 1
   fi
 
@@ -158,7 +158,7 @@ main() {
   else
     read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
-    gsutil -m cp ./release/SHA256SUM gs://etcd/${RELEASE_VERSION}/
+    gsutil -m cp ./release/SHA256SUMS gs://etcd/${RELEASE_VERSION}/
     gsutil -m cp ./release/*.zip gs://etcd/${RELEASE_VERSION}/
     gsutil -m cp ./release/*.tar.gz gs://etcd/${RELEASE_VERSION}/
     gsutil -m acl ch -u allUsers:R -r gs://etcd/${RELEASE_VERSION}/
