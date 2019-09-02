@@ -15,9 +15,9 @@
 package mvcc
 
 import (
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.uber.org/zap"
 )
 
@@ -31,9 +31,11 @@ type storeTxnRead struct {
 
 func (s *store) Read() TxnRead {
 	s.mu.RLock()
-	tx := s.b.ReadTx()
 	s.revMu.RLock()
-	tx.Lock()
+	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
+	// ConcurrentReadTx is created, it will not block write transaction.
+	tx := s.b.ConcurrentReadTx()
+	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
 	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
@@ -47,7 +49,7 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 }
 
 func (tr *storeTxnRead) End() {
-	tr.tx.Unlock()
+	tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
 	tr.s.mu.RUnlock()
 }
 
@@ -237,7 +239,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	rrev := tw.beginRev
 	if len(tw.changes) > 0 {
-		rrev += 1
+		rrev++
 	}
 	keys, _ := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {

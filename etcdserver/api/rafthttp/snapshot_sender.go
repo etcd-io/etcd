@@ -22,11 +22,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	"github.com/coreos/etcd/pkg/httputil"
-	pioutil "github.com/coreos/etcd/pkg/ioutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/httputil"
+	pioutil "go.etcd.io/etcd/pkg/ioutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -67,7 +67,10 @@ func newSnapshotSender(tr *Transport, picker *urlPicker, to types.ID, status *pe
 func (s *snapshotSender) stop() { close(s.stopc) }
 
 func (s *snapshotSender) send(merged snap.Message) {
+	start := time.Now()
+
 	m := merged.Message
+	to := types.ID(m.To).String()
 
 	body := createSnapBody(s.tr.Logger, merged)
 	defer body.Close()
@@ -79,13 +82,18 @@ func (s *snapshotSender) send(merged snap.Message) {
 		s.tr.Logger.Info(
 			"sending database snapshot",
 			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
-			zap.String("remote-peer-id", types.ID(m.To).String()),
+			zap.String("remote-peer-id", to),
 			zap.Int64("bytes", merged.TotalSize),
 			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 		)
 	} else {
 		plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
 	}
+
+	snapshotSendInflights.WithLabelValues(to).Inc()
+	defer func() {
+		snapshotSendInflights.WithLabelValues(to).Dec()
+	}()
 
 	err := s.post(req)
 	defer merged.CloseWithError(err)
@@ -94,7 +102,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 			s.tr.Logger.Warn(
 				"failed to send database snapshot",
 				zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
-				zap.String("remote-peer-id", types.ID(m.To).String()),
+				zap.String("remote-peer-id", to),
 				zap.Int64("bytes", merged.TotalSize),
 				zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 				zap.Error(err),
@@ -116,7 +124,8 @@ func (s *snapshotSender) send(merged snap.Message) {
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
-		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
+		sentFailures.WithLabelValues(to).Inc()
+		snapshotSendFailures.WithLabelValues(to).Inc()
 		return
 	}
 	s.status.activate()
@@ -126,7 +135,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 		s.tr.Logger.Info(
 			"sent database snapshot",
 			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
-			zap.String("remote-peer-id", types.ID(m.To).String()),
+			zap.String("remote-peer-id", to),
 			zap.Int64("bytes", merged.TotalSize),
 			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 		)
@@ -134,7 +143,9 @@ func (s *snapshotSender) send(merged snap.Message) {
 		plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
 	}
 
-	sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(merged.TotalSize))
+	sentBytes.WithLabelValues(to).Add(float64(merged.TotalSize))
+	snapshotSend.WithLabelValues(to).Inc()
+	snapshotSendSeconds.WithLabelValues(to).Observe(time.Since(start).Seconds())
 }
 
 // post posts the given request.

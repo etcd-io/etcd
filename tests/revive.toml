@@ -1,0 +1,38 @@
+ignoreGeneratedHeader = false
+severity = "warning"
+confidence = 0.8
+errorCode = 0
+warningCode = 0
+
+[rule.blank-imports]
+[rule.context-as-argument]
+[rule.dot-imports]
+[rule.error-return]
+[rule.error-naming]
+[rule.if-return]
+[rule.increment-decrement]
+[rule.var-declaration]
+[rule.package-comments]
+[rule.range]
+[rule.receiver-naming]
+[rule.time-naming]
+[rule.indent-error-flow]
+[rule.errorf]
+
+
+# TODO: enable following
+
+# grpcproxy context.WithValue(ctx, rpctypes.TokenFieldNameGRPC, token)
+# [rule.context-keys-type]
+
+# punctuation in error value
+# [rule.error-strings]
+
+# underscore variables
+# [rule.var-naming]
+
+# godoc
+# [rule.exported]
+
+# return unexported type
+# [rule.unexported-return]

@@ -20,10 +20,10 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/tlsutil"
 )
 
 type yamlConfig struct {

@@ -1,4 +1,6 @@
-# Frequently Asked Questions (FAQ)
+---
+title: Frequently Asked Questions (FAQ)
+---
 
 ## etcd, general
 
@@ -22,7 +24,7 @@ A member's advertised peer URLs come from `--initial-advertise-peer-urls` on ini
 
 ### System requirements
 
-Since etcd writes data to disk, SSD is highly recommended. To prevent performance degradation or unintentionally overloading the key-value store, etcd enforces a configurable storage size quota set to 2GB by default. To avoid swapping or running out of memory, the machine should have at least as much RAM to cover the quota. 8GB is a suggested maximum size for normal environments and etcd warns at startup if the configured value exceeds it. At CoreOS, an etcd cluster is usually deployed on dedicated CoreOS Container Linux machines with dual-core processors, 2GB of RAM, and 80GB of SSD *at the very least*. **Note that performance is intrinsically workload dependent; please test before production deployment**. See [hardware][hardware-setup] for more recommendations.
+Since etcd writes data to disk, its performance strongly depends on disk performance. For this reason, SSD is highly recommended. To assess whether a disk is fast enough for etcd, one possibility is using a disk benchmarking tool such as [fio][fio]. For an example on how to do that, read [here][fio-blog-post]. To prevent performance degradation or unintentionally overloading the key-value store, etcd enforces a configurable storage size quota set to 2GB by default. To avoid swapping or running out of memory, the machine should have at least as much RAM to cover the quota. 8GB is a suggested maximum size for normal environments and etcd warns at startup if the configured value exceeds it. At CoreOS, an etcd cluster is usually deployed on dedicated CoreOS Container Linux machines with dual-core processors, 2GB of RAM, and 80GB of SSD *at the very least*. **Note that performance is intrinsically workload dependent; please test before production deployment**. See [hardware][hardware-setup] for more recommendations.
 
 Most stable production environment is Linux operating system with amd64 architecture; see [supported platform][supported-platform] for more.
 
@@ -70,7 +72,7 @@ etcdctl provides a `snapshot` command to create backups. See [backup][backup] fo
 
 When replacing an etcd node, it's important  to remove the member first and then add its replacement.
 
-etcd employs distributed consensus based on a quorum model; (n+1)/2 members, a majority, must agree on a proposal before it can be committed to the cluster. These proposals include key-value updates and membership changes. This model totally avoids any possibility of split brain inconsistency. The downside is permanent quorum loss is catastrophic.
+etcd employs distributed consensus based on a quorum model; (n/2)+1 members, a majority, must agree on a proposal before it can be committed to the cluster. These proposals include key-value updates and membership changes. This model totally avoids any possibility of split brain inconsistency. The downside is permanent quorum loss is catastrophic.
 
 How this applies to membership: If a 3-member cluster has 1 downed member, it can still make forward progress because the quorum is 2 and 2 members are still live. However, adding a new member to a 3-member cluster will increase the quorum to 3 because 3 votes are required for a majority of 4 members. Since the quorum increased, this extra member buys nothing in terms of fault tolerance; the cluster is still one node failure away from being unrecoverable.
 
@@ -106,7 +108,7 @@ To recover from the low space quota alarm:
 
 This is gRPC-side warning when a server receives a TCP RST flag with client-side streams being prematurely closed. For example, a client closes its connection, while gRPC server has not yet processed all HTTP/2 frames in the TCP queue. Some data may have been lost in server side, but it is ok so long as client connection has already been closed.
 
-Only [old versions of gRPC](https://github.com/grpc/grpc-go/issues/1362) log this. etcd [>=v3.2.13 by default log this with DEBUG level](https://github.com/coreos/etcd/pull/9080), thus only visible with `--debug` flag enabled.
+Only [old versions of gRPC](https://github.com/grpc/grpc-go/issues/1362) log this. etcd [>=v3.2.13 by default log this with DEBUG level](https://github.com/etcd-io/etcd/pull/9080), thus only visible with `--debug` flag enabled.
 
 ## Performance
 
@@ -130,7 +132,7 @@ If none of the above suggestions clear the warnings, please [open an issue][new_
 
 etcd uses a leader-based consensus protocol for consistent data replication and log execution. Cluster members elect a single leader, all other members become followers. The elected leader must periodically send heartbeats to its followers to maintain its leadership. Followers infer leader failure if no heartbeats are received within an election interval and trigger an election. If a leader doesn’t send its heartbeats in time but is still running, the election is spurious and likely caused by insufficient resources. To catch these soft failures, if the leader skips two heartbeat intervals, etcd will warn it failed to send a heartbeat on time.
 
-Usually this issue is caused by a slow disk. Before the leader sends heartbeats attached with metadata, it may need to persist the metadata to disk. The disk could be experiencing contention among etcd and other applications, or the disk is too simply slow (e.g., a shared virtualized disk). To rule out a slow disk from causing this warning, monitor  [wal_fsync_duration_seconds][wal_fsync_duration_seconds] (p99 duration should be less than 10ms) to confirm the disk is reasonably fast. If the disk is too slow, assigning a dedicated disk to etcd or using faster disk will typically solve the problem.
+Usually this issue is caused by a slow disk. Before the leader sends heartbeats attached with metadata, it may need to persist the metadata to disk. The disk could be experiencing contention among etcd and other applications, or the disk is too simply slow (e.g., a shared virtualized disk). To rule out a slow disk from causing this warning, monitor  [wal_fsync_duration_seconds][wal_fsync_duration_seconds] (p99 duration should be less than 10ms) to confirm the disk is reasonably fast. If the disk is too slow, assigning a dedicated disk to etcd or using faster disk will typically solve the problem. To tell whether a disk is fast enough for etcd, a benchmarking tool such as [fio][fio] can be used. Read [here][fio-blog-post] for an example.
 
 The second most common cause is CPU starvation. If monitoring of the machine’s CPU usage shows heavy utilization, there may not be enough compute capacity for etcd. Moving etcd to dedicated machine, increasing process resource isolation  with cgroups, or renicing the etcd server process into a higher priority can usually solve the problem.
 
@@ -147,15 +149,17 @@ etcd sends a snapshot of its complete key-value store to refresh slow followers 
 [supported-platform]: ./op-guide/supported-platform.md
 [wal_fsync_duration_seconds]: ./metrics.md#disk
 [tuning]: ./tuning.md
-[new_issue]: https://github.com/coreos/etcd/issues/new
+[new_issue]: https://github.com/etcd-io/etcd/issues/new
 [backend_commit_metrics]: ./metrics.md#disk
 [raft]: https://raft.github.io/raft.pdf
-[backup]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
+[backup]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
 [chubby]: http://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf
-[runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
+[runtime reconfiguration]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
 [benchmark]: https://github.com/coreos/etcd/tree/master/tools/benchmark
-[benchmark-result]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/performance.md
+[benchmark-result]: https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/performance.md
 [api-mvcc]: learning/api.md#revisions
 [maintenance-compact]:  op-guide/maintenance.md#history-compaction
 [maintenance-defragment]: op-guide/maintenance.md#defragmentation
 [maintenance-disarm]: ../etcdctl/README.md#alarm-disarm
+[fio]: https://github.com/axboe/fio
+[fio-blog-post]: https://www.ibm.com/blogs/bluemix/2019/04/using-fio-to-tell-whether-your-storage-is-fast-enough-for-etcd/

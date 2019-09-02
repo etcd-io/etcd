@@ -3,7 +3,7 @@
 Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
 For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
-(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+(https://raft.github.io/raft.pdf) by Diego Ongaro and John Ousterhout.
 
 This Raft library is stable and feature complete. As of 2016, it is **the most widely used** Raft library in production, serving tens of thousands clusters each day. It powers distributed systems such as etcd, Kubernetes, Docker Swarm, Cloud Foundry Diego, CockroachDB, TiDB, Project Calico, Flannel, and more.
 
@@ -13,7 +13,7 @@ To keep the codebase small as well as provide flexibility, the library only impl
 
 In order to easily test the Raft library, its behavior should be deterministic. To achieve this determinism, the library models Raft as a state machine.  The state machine takes a `Message` as input. A message can either be a local timer update or a network message sent from a remote peer. The state machine's output is a 3-tuple `{[]Messages, []LogEntries, NextState}` consisting of an array of `Messages`, `log entries`, and `Raft state changes`. For state machines with the same state, the same state machine input should always generate the same state machine output.
 
-A simple example application, _raftexample_, is also available to help illustrate how to use this package in practice: https://github.com/coreos/etcd/tree/master/contrib/raftexample
+A simple example application, _raftexample_, is also available to help illustrate how to use this package in practice: https://github.com/etcd-io/etcd/tree/master/contrib/raftexample
 
 # Features
 
@@ -21,7 +21,7 @@ This raft implementation is a full feature implementation of Raft protocol. Feat
 
 - Leader election
 - Log replication
-- Log compaction 
+- Log compaction
 - Membership changes
 - Leadership transfer extension
 - Efficient linearizable read-only queries served by both the leader and followers
@@ -40,13 +40,14 @@ This raft implementation also includes a few optional enhancements:
 - Batching log entries to reduce disk synchronized I/O
 - Writing to leader's disk in parallel
 - Internal proposal redirection from followers to leader
-- Automatic stepping down when the leader loses quorum 
+- Automatic stepping down when the leader loses quorum
+- Protection against unbounded log growth when quorum is lost
 
 ## Notable Users
 
 - [cockroachdb](https://github.com/cockroachdb/cockroach) A Scalable, Survivable, Strongly-Consistent SQL Database
 - [dgraph](https://github.com/dgraph-io/dgraph) A Scalable, Distributed, Low Latency, High Throughput Graph Database
-- [etcd](https://github.com/coreos/etcd) A distributed reliable key-value store
+- [etcd](https://github.com/etcd-io/etcd) A distributed reliable key-value store
 - [tikv](https://github.com/pingcap/tikv) A Distributed transactional key value database powered by Rust and Raft
 - [swarmkit](https://github.com/docker/swarmkit) A toolkit for orchestrating distributed systems at any scale.
 - [chain core](https://github.com/chain/chain) Software for operating permissioned, multi-asset blockchain networks
@@ -166,7 +167,7 @@ To propose changes to the state machine from the node to take application data, 
 	n.Propose(ctx, data)
 ```
 
-If the proposal is committed, data will appear in committed entries with type raftpb.EntryNormal. There is no guarantee that a proposed command will be committed; the command may have to be reproposed after a timeout. 
+If the proposal is committed, data will appear in committed entries with type raftpb.EntryNormal. There is no guarantee that a proposed command will be committed; the command may have to be reproposed after a timeout.
 
 To add or remove node in a cluster, build ConfChange struct 'cc' and call:
 
@@ -189,7 +190,7 @@ may be reused. Node IDs must be non-zero.
 
 ## Implementation notes
 
-This implementation is up to date with the final Raft thesis (https://ramcloud.stanford.edu/~ongaro/thesis.pdf), although this implementation of the membership change protocol differs somewhat from that described in chapter 4. The key invariant that membership changes happen one node at a time is preserved, but in our implementation the membership change takes effect when its entry is applied, not when it is added to the log (so the entry is committed under the old membership instead of the new). This is equivalent in terms of safety, since the old and new configurations are guaranteed to overlap.
+This implementation is up to date with the final Raft thesis (https://github.com/ongardie/dissertation/blob/master/stanford.pdf), although this implementation of the membership change protocol differs somewhat from that described in chapter 4. The key invariant that membership changes happen one node at a time is preserved, but in our implementation the membership change takes effect when its entry is applied, not when it is added to the log (so the entry is committed under the old membership instead of the new). This is equivalent in terms of safety, since the old and new configurations are guaranteed to overlap.
 
 To ensure there is no attempt to commit two membership changes at once by matching log positions (which would be unsafe since they should have different quorum requirements), any proposed membership change is simply disallowed while any uncommitted change appears in the leader's log.
 

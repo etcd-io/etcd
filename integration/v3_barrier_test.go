@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/contrib/recipes"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/contrib/recipes"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestBarrierSingleNode(t *testing.T) {
@@ -51,7 +51,7 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 		go func() {
 			br := recipe.NewBarrier(chooseClient(), "test-barrier")
 			if err := br.Wait(); err != nil {
-				t.Fatalf("could not wait on barrier (%v)", err)
+				t.Errorf("could not wait on barrier (%v)", err)
 			}
 			donec <- struct{}{}
 		}()

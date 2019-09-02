@@ -57,7 +57,7 @@ func TestPurgeFile(t *testing.T) {
 		go func(n int) {
 			f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", n)))
 			if ferr != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			f.Close()
 		}(i)

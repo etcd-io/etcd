@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	pb "github.com/coreos/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 func TestFindConflict(t *testing.T) {
@@ -265,7 +265,7 @@ func TestLogMaybeAppend(t *testing.T) {
 					t.Fatalf("unexpected error %v", err)
 				}
 				if !reflect.DeepEqual(tt.ents, gents) {
-					t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
+					t.Errorf("#%d: appended entries = %v, want %v", i, gents, tt.ents)
 				}
 			}
 		}()
@@ -282,11 +282,11 @@ func TestCompactionSideEffects(t *testing.T) {
 	lastTerm := lastIndex
 	storage := NewMemoryStorage()
 	for i = 1; i <= unstableIndex; i++ {
-		storage.Append([]pb.Entry{{Term: uint64(i), Index: uint64(i)}})
+		storage.Append([]pb.Entry{{Term: i, Index: i}})
 	}
 	raftLog := newLog(storage, raftLogger)
 	for i = unstableIndex; i < lastIndex; i++ {
-		raftLog.append(pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
+		raftLog.append(pb.Entry{Term: i + 1, Index: i + 1})
 	}
 
 	ok := raftLog.maybeCommit(lastIndex, lastTerm)
@@ -426,7 +426,7 @@ func TestUnstableEnts(t *testing.T) {
 
 		ents := raftLog.unstableEntries()
 		if l := len(ents); l > 0 {
-			raftLog.stableTo(ents[l-1].Index, ents[l-i].Term)
+			raftLog.stableTo(ents[l-1].Index, ents[l-1].Term)
 		}
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
@@ -671,13 +671,13 @@ func TestIsOutOfBounds(t *testing.T) {
 			}()
 			err := l.mustCheckOutOfBounds(tt.lo, tt.hi)
 			if tt.wpanic {
-				t.Errorf("%d: panic = %v, want %v", i, false, true)
+				t.Errorf("#%d: panic = %v, want %v", i, false, true)
 			}
 			if tt.wErrCompacted && err != ErrCompacted {
-				t.Errorf("%d: err = %v, want %v", i, err, ErrCompacted)
+				t.Errorf("#%d: err = %v, want %v", i, err, ErrCompacted)
 			}
 			if !tt.wErrCompacted && err != nil {
-				t.Errorf("%d: unexpected err %v", i, err)
+				t.Errorf("#%d: unexpected err %v", i, err)
 			}
 		}()
 	}

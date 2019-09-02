@@ -1,0 +1,125 @@
+# Run a V2 membership change that adds a single voter but explicitly asks for the
+# use of joint consensus (with auto-leaving).
+
+# TODO(tbg): also verify that if the leader changes while in the joint state, the
+# new leader will auto-transition out of the joint state just the same.
+
+# Bootstrap n1.
+add-nodes 1 voters=(1) index=2
+----
+INFO 1 switched to configuration voters=(1)
+INFO 1 became follower at term 0
+INFO newRaft 1 [peers: [1], term: 0, commit: 2, applied: 2, lastindex: 2, lastterm: 1]
+
+campaign 1
+----
+INFO 1 is starting a new election at term 0
+INFO 1 became candidate at term 1
+INFO 1 received MsgVoteResp from 1 at term 1
+INFO 1 became leader at term 1
+
+propose-conf-change 1 transition=implicit
+v2
+----
+ok
+
+# Add n2.
+add-nodes 1
+----
+INFO 2 switched to configuration voters=()
+INFO 2 became follower at term 0
+INFO newRaft 2 [peers: [], term: 0, commit: 0, applied: 0, lastindex: 0, lastterm: 0]
+
+# n1 commits the conf change using itself as commit quorum, then starts catching up n2.
+# When that's done, it starts auto-transitioning out. Note that the snapshots propagating
+# the joint config have the AutoLeave flag set in their config.
+stabilize 1 2
+----
+> 1 handling Ready
+  Ready MustSync=true:
+  Lead:1 State:StateLeader
+  HardState Term:1 Vote:1 Commit:4
+  Entries:
+  1/3 EntryNormal ""
+  1/4 EntryConfChangeV2 v2
+  CommittedEntries:
+  1/3 EntryNormal ""
+  1/4 EntryConfChangeV2 v2
+  INFO 1 switched to configuration voters=(1 2)&&(1) autoleave
+  INFO initiating automatic transition out of joint configuration voters=(1 2)&&(1) autoleave
+> 1 handling Ready
+  Ready MustSync=true:
+  Entries:
+  1/5 EntryConfChangeV2
+  Messages:
+  1->2 MsgApp Term:1 Log:1/3 Commit:4 Entries:[1/4 EntryConfChangeV2 v2]
+> 2 receiving messages
+  1->2 MsgApp Term:1 Log:1/3 Commit:4 Entries:[1/4 EntryConfChangeV2 v2]
+  INFO 2 [term: 0] received a MsgApp message with higher term from 1 [term: 1]
+  INFO 2 became follower at term 1
+  DEBUG 2 [logterm: 0, index: 3] rejected MsgApp [logterm: 1, index: 3] from 1
+> 2 handling Ready
+  Ready MustSync=true:
+  Lead:1 State:StateFollower
+  HardState Term:1 Commit:0
+  Messages:
+  2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
+> 1 receiving messages
+  2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
+  DEBUG 1 received MsgAppResp(MsgApp was rejected, lastindex: 0) from 2 for index 3
+  DEBUG 1 decreased progress of 2 to [StateProbe match=0 next=1]
+  DEBUG 1 [firstindex: 3, commit: 4] sent snapshot[index: 4, term: 1] to 2 [StateProbe match=0 next=1]
+  DEBUG 1 paused sending replication messages to 2 [StateSnapshot match=0 next=1 paused pendingSnap=4]
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->2 MsgSnap Term:1 Log:0/0 Snapshot: Index:4 Term:1 ConfState:Voters:[1 2] VotersOutgoing:[1] Learners:[] LearnersNext:[] AutoLeave:true
+> 2 receiving messages
+  1->2 MsgSnap Term:1 Log:0/0 Snapshot: Index:4 Term:1 ConfState:Voters:[1 2] VotersOutgoing:[1] Learners:[] LearnersNext:[] AutoLeave:true
+  INFO log [committed=0, applied=0, unstable.offset=1, len(unstable.Entries)=0] starts to restore snapshot [index: 4, term: 1]
+  INFO 2 switched to configuration voters=(1 2)&&(1) autoleave
+  INFO 2 [commit: 4, lastindex: 4, lastterm: 1] restored snapshot [index: 4, term: 1]
+  INFO 2 [commit: 4] restored snapshot [index: 4, term: 1]
+> 2 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Commit:4
+  Snapshot Index:4 Term:1 ConfState:Voters:[1 2] VotersOutgoing:[1] Learners:[] LearnersNext:[] AutoLeave:true
+  Messages:
+  2->1 MsgAppResp Term:1 Log:0/4
+> 1 receiving messages
+  2->1 MsgAppResp Term:1 Log:0/4
+  DEBUG 1 recovered from needing snapshot, resumed sending replication messages to 2 [StateSnapshot match=4 next=5 paused pendingSnap=4]
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->2 MsgApp Term:1 Log:1/4 Commit:4 Entries:[1/5 EntryConfChangeV2]
+> 2 receiving messages
+  1->2 MsgApp Term:1 Log:1/4 Commit:4 Entries:[1/5 EntryConfChangeV2]
+> 2 handling Ready
+  Ready MustSync=true:
+  Entries:
+  1/5 EntryConfChangeV2
+  Messages:
+  2->1 MsgAppResp Term:1 Log:0/5
+> 1 receiving messages
+  2->1 MsgAppResp Term:1 Log:0/5
+> 1 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Vote:1 Commit:5
+  CommittedEntries:
+  1/5 EntryConfChangeV2
+  Messages:
+  1->2 MsgApp Term:1 Log:1/5 Commit:5
+  INFO 1 switched to configuration voters=(1 2)
+> 2 receiving messages
+  1->2 MsgApp Term:1 Log:1/5 Commit:5
+> 2 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Commit:5
+  CommittedEntries:
+  1/5 EntryConfChangeV2
+  Messages:
+  2->1 MsgAppResp Term:1 Log:0/5
+  INFO 2 switched to configuration voters=(1 2)
+> 1 receiving messages
+  2->1 MsgAppResp Term:1 Log:0/5

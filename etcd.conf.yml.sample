@@ -117,7 +117,7 @@ peer-transport-security:
   key-file:
 
   # Enable peer client cert authentication.
-  peer-client-cert-auth: false
+  client-cert-auth: false
 
   # Path to the peer server TLS trusted CA cert file.
   trusted-ca-file:

@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
+	v3 "go.etcd.io/etcd/clientv3"
 )
 
 const defaultSessionTTL = 60
@@ -47,7 +47,7 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		id = v3.LeaseID(resp.ID)
+		id = resp.ID
 	}
 
 	ctx, cancel := context.WithCancel(ops.ctx)

@@ -29,13 +29,13 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-1/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -80,13 +80,13 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-2/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -131,13 +131,13 @@ agent-configs:
     initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
     initial-cluster-state: new
     initial-cluster-token: tkn
-    snapshot-count: 10000
+    snapshot-count: 2000
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
     logger: zap
     log-outputs: [/tmp/etcd-functional-3/etcd.log]
-    debug: true
+    log-level: info
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -169,7 +169,7 @@ tester-config:
   case-shuffle: true
 
   # For full descriptions,
-  # https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case
+  # https://godoc.org/github.com/etcd-io/etcd/functional/rpcpb#Case
   cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT

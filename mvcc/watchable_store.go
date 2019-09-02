@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.uber.org/zap"
 )
 
@@ -68,13 +68,13 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, ig)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, ig, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ig),
+		store:    NewStore(lg, b, le, ig, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -193,6 +193,7 @@ func (s *watchableStore) Restore(b backend.Backend) error {
 	}
 
 	for wa := range s.synced.watchers {
+		wa.restore = true
 		s.unsynced.add(wa)
 	}
 	s.synced = newWatcherGroup()
@@ -345,7 +346,7 @@ func (s *watchableStore) syncWatchers() int {
 	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
 	// values are actual key-value pairs in backend.
 	tx := s.store.b.ReadTx()
-	tx.Lock()
+	tx.RLock()
 	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
 	var evs []mvccpb.Event
 	if s.store != nil && s.store.lg != nil {
@@ -354,7 +355,7 @@ func (s *watchableStore) syncWatchers() int {
 		// TODO: remove this in v3.5
 		evs = kvsToEvents(nil, wg, revs, vs)
 	}
-	tx.Unlock()
+	tx.RUnlock()
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)
@@ -499,6 +500,14 @@ type watcher struct {
 
 	// compacted is set when the watcher is removed because of compaction
 	compacted bool
+
+	// restore is true when the watcher is being restored from leader snapshot
+	// which means that this watcher has just been moved from "synced" to "unsynced"
+	// watcher group, possibly with a future revision when it was first added
+	// to the synced watcher
+	// "unsynced" watcher revision must always be <= current revision,
+	// except when the watcher were to be moved from "synced" watcher group
+	restore bool
 
 	// minRev is the minimum revision update the watcher will accept
 	minRev int64

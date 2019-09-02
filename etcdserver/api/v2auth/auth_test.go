@@ -20,17 +20,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"go.uber.org/zap"
 )
 
 type fakeDoer struct{}
 
-func (_ fakeDoer) Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error) {
+func (fakeDoer) Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error) {
 	return etcdserver.Response{}, nil
 }
 
@@ -372,11 +372,11 @@ func TestEnsure(t *testing.T) {
 type fastPasswordStore struct {
 }
 
-func (_ fastPasswordStore) CheckPassword(user User, password string) bool {
+func (fastPasswordStore) CheckPassword(user User, password string) bool {
 	return user.Password == password
 }
 
-func (_ fastPasswordStore) HashPassword(password string) (string, error) { return password, nil }
+func (fastPasswordStore) HashPassword(password string) (string, error) { return password, nil }
 
 func TestCreateAndUpdateUser(t *testing.T) {
 	olduser := `{"user": "cat", "roles" : ["animal"]}`

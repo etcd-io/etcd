@@ -6,6 +6,16 @@ raftexample is an example usage of etcd's [raft library](../../raft). It provide
 
 ## Getting Started
 
+### Building raftexample
+
+Clone `etcd` to `<directory>/src/go.etcd.io/etcd`
+
+```sh
+export GOPATH=<directory>
+cd <directory>/src/go.etcd.io/etcd/contrib/raftexample
+go build -o raftexample
+```
+
 ### Running single node raftexample
 
 First start a single-member cluster of raftexample:

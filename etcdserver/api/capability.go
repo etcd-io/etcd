@@ -17,7 +17,7 @@ package api
 import (
 	"sync"
 
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/version"
 	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
@@ -32,7 +32,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/api")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/api")
 
 	// capabilityMaps is a static map of version to capability map.
 	capabilityMaps = map[string]map[Capability]bool{
@@ -40,6 +40,8 @@ var (
 		"3.1.0": {AuthCapability: true, V3rpcCapability: true},
 		"3.2.0": {AuthCapability: true, V3rpcCapability: true},
 		"3.3.0": {AuthCapability: true, V3rpcCapability: true},
+		"3.4.0": {AuthCapability: true, V3rpcCapability: true},
+		"3.5.0": {AuthCapability: true, V3rpcCapability: true},
 	}
 
 	enableMapMu sync.RWMutex

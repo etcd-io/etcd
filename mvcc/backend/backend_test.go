@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 func TestBackendClose(t *testing.T) {
@@ -74,7 +74,7 @@ func TestBackendSnapshot(t *testing.T) {
 	nb := New(bcfg)
 	defer cleanup(nb, f.Name())
 
-	newTx := b.BatchTx()
+	newTx := nb.BatchTx()
 	newTx.Lock()
 	ks, _ := newTx.UnsafeRange([]byte("test"), []byte("foo"), []byte("goo"), 0)
 	if len(ks) != 1 {
@@ -241,12 +241,41 @@ func TestBackendWriteback(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	for i, tt := range keys {
-		rtx.Lock()
+		rtx.RLock()
 		k, v := rtx.UnsafeRange([]byte("key"), tt.key, tt.end, tt.limit)
-		rtx.Unlock()
+		rtx.RUnlock()
 		if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
 			t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
 		}
+	}
+}
+
+// TestConcurrentReadTx ensures that current read transaction can see all prior writes stored in read buffer
+func TestConcurrentReadTx(t *testing.T) {
+	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	defer cleanup(b, tmpPath)
+
+	wtx1 := b.BatchTx()
+	wtx1.Lock()
+	wtx1.UnsafeCreateBucket([]byte("key"))
+	wtx1.UnsafePut([]byte("key"), []byte("abc"), []byte("ABC"))
+	wtx1.UnsafePut([]byte("key"), []byte("overwrite"), []byte("1"))
+	wtx1.Unlock()
+
+	wtx2 := b.BatchTx()
+	wtx2.Lock()
+	wtx2.UnsafePut([]byte("key"), []byte("def"), []byte("DEF"))
+	wtx2.UnsafePut([]byte("key"), []byte("overwrite"), []byte("2"))
+	wtx2.Unlock()
+
+	rtx := b.ConcurrentReadTx()
+	rtx.RLock() // no-op
+	k, v := rtx.UnsafeRange([]byte("key"), []byte("abc"), []byte("\xff"), 0)
+	rtx.RUnlock()
+	wKey := [][]byte{[]byte("abc"), []byte("def"), []byte("overwrite")}
+	wVal := [][]byte{[]byte("ABC"), []byte("DEF"), []byte("2")}
+	if !reflect.DeepEqual(wKey, k) || !reflect.DeepEqual(wVal, v) {
+		t.Errorf("want k=%+v, v=%+v; got k=%+v, v=%+v", wKey, wVal, k, v)
 	}
 }
 
@@ -282,9 +311,9 @@ func TestBackendWritebackForEach(t *testing.T) {
 		return nil
 	}
 	rtx := b.ReadTx()
-	rtx.Lock()
+	rtx.RLock()
 	rtx.UnsafeForEach([]byte("key"), getSeq)
-	rtx.Unlock()
+	rtx.RUnlock()
 
 	partialSeq := seq
 

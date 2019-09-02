@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestRoleError(t *testing.T) {
@@ -39,5 +39,10 @@ func TestRoleError(t *testing.T) {
 	_, err = authapi.RoleAdd(context.TODO(), "test-role")
 	if err != rpctypes.ErrRoleAlreadyExist {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleAlreadyExist, err)
+	}
+
+	_, err = authapi.RoleAdd(context.TODO(), "")
+	if err != rpctypes.ErrRoleEmpty {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleEmpty, err)
 	}
 }

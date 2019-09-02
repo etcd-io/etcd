@@ -98,6 +98,15 @@ func (b *Buffer) Write(bs []byte) (int, error) {
 	return len(bs), nil
 }
 
+// TrimNewline trims any final "\n" byte from the end of the buffer.
+func (b *Buffer) TrimNewline() {
+	if i := len(b.bs) - 1; i >= 0 {
+		if b.bs[i] == '\n' {
+			b.bs = b.bs[:i]
+		}
+	}
+}
+
 // Free returns the Buffer to its Pool.
 //
 // Callers must not retain references to the Buffer after calling Free.

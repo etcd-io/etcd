@@ -20,13 +20,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
-	"github.com/coreos/etcd/pkg/logutil"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/xiang90/probing"
@@ -34,7 +34,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var plog = logutil.NewMergeLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "rafthttp"))
+var plog = logutil.NewMergeLogger(capnslog.NewPackageLogger("go.etcd.io/etcd", "rafthttp"))
 
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error
@@ -130,7 +130,8 @@ type Transport struct {
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
 
-	prober probing.Prober
+	pipelineProber probing.Prober
+	streamProber   probing.Prober
 }
 
 func (t *Transport) Start() error {
@@ -145,7 +146,8 @@ func (t *Transport) Start() error {
 	}
 	t.remotes = make(map[types.ID]*remote)
 	t.peers = make(map[types.ID]Peer)
-	t.prober = probing.NewProber(t.pipelineRt)
+	t.pipelineProber = probing.NewProber(t.pipelineRt)
+	t.streamProber = probing.NewProber(t.streamRt)
 
 	// If client didn't provide dial retry frequency, use the default
 	// (100ms backoff between attempts to create a new stream),
@@ -221,7 +223,8 @@ func (t *Transport) Stop() {
 	for _, p := range t.peers {
 		p.stop()
 	}
-	t.prober.RemoveAll()
+	t.pipelineProber.RemoveAll()
+	t.streamProber.RemoveAll()
 	if tr, ok := t.streamRt.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}
@@ -317,7 +320,8 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 	}
 	fs := t.LeaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t, urls, id, fs)
-	addPeerToProber(t.Logger, t.prober, id.String(), us)
+	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us, RoundTripperNameSnapshot, rttSec)
+	addPeerToProber(t.Logger, t.streamProber, id.String(), us, RoundTripperNameRaftMessage, rttSec)
 
 	if t.Logger != nil {
 		t.Logger.Info(
@@ -358,7 +362,8 @@ func (t *Transport) removePeer(id types.ID) {
 	}
 	delete(t.peers, id)
 	delete(t.LeaderStats.Followers, id.String())
-	t.prober.Remove(id.String())
+	t.pipelineProber.Remove(id.String())
+	t.streamProber.Remove(id.String())
 
 	if t.Logger != nil {
 		t.Logger.Info(
@@ -388,8 +393,10 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 	}
 	t.peers[id].update(urls)
 
-	t.prober.Remove(id.String())
-	addPeerToProber(t.Logger, t.prober, id.String(), us)
+	t.pipelineProber.Remove(id.String())
+	addPeerToProber(t.Logger, t.pipelineProber, id.String(), us, RoundTripperNameSnapshot, rttSec)
+	t.streamProber.Remove(id.String())
+	addPeerToProber(t.Logger, t.streamProber, id.String(), us, RoundTripperNameRaftMessage, rttSec)
 
 	if t.Logger != nil {
 		t.Logger.Info(
@@ -430,12 +437,16 @@ type Pausable interface {
 }
 
 func (t *Transport) Pause() {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	for _, p := range t.peers {
 		p.(Pausable).Pause()
 	}
 }
 
 func (t *Transport) Resume() {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	for _, p := range t.peers {
 		p.(Pausable).Resume()
 	}

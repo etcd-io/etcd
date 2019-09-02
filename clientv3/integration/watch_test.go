@@ -23,14 +23,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -81,13 +80,13 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		go func(key string) {
 			ch := wctx.w.Watch(context.TODO(), key)
 			if ch == nil {
-				t.Fatalf("expected watcher channel, got nil")
+				t.Errorf("expected watcher channel, got nil")
 			}
 			readyc <- struct{}{}
 			for i := 0; i < numKeyUpdates; i++ {
 				resp, ok := <-ch
 				if !ok {
-					t.Fatalf("watcher unexpectedly closed")
+					t.Errorf("watcher unexpectedly closed")
 				}
 				v := fmt.Sprintf("%s-%d", key, i)
 				gotv := string(resp.Events[0].Kv.Value)
@@ -102,14 +101,14 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	go func() {
 		prefixc := wctx.w.Watch(context.TODO(), "b", clientv3.WithPrefix())
 		if prefixc == nil {
-			t.Fatalf("expected watcher channel, got nil")
+			t.Errorf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
 		evs := []*clientv3.Event{}
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
-				t.Fatalf("watcher unexpectedly closed")
+				t.Errorf("watcher unexpectedly closed")
 			}
 			evs = append(evs, resp.Events...)
 		}
@@ -135,9 +134,9 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		select {
 		case resp, ok := <-prefixc:
 			if !ok {
-				t.Fatalf("watcher unexpectedly closed")
+				t.Errorf("watcher unexpectedly closed")
 			}
-			t.Fatalf("unexpected event %+v", resp)
+			t.Errorf("unexpected event %+v", resp)
 		case <-time.After(time.Second):
 		}
 		donec <- struct{}{}
@@ -583,6 +582,78 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	}
 }
 
+func TestWatchRequestProgress(t *testing.T) {
+	testCases := []struct {
+		name     string
+		watchers []string
+	}{
+		{"0-watcher", []string{}},
+		{"1-watcher", []string{"/"}},
+		{"2-watcher", []string{"/", "/"}},
+	}
+
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			defer testutil.AfterTest(t)
+
+			watchTimeout := 3 * time.Second
+
+			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
+
+			wc := clus.RandClient()
+
+			var watchChans []clientv3.WatchChan
+
+			for _, prefix := range c.watchers {
+				watchChans = append(watchChans, wc.Watch(context.Background(), prefix, clientv3.WithPrefix()))
+			}
+
+			_, err := wc.Put(context.Background(), "/a", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, rch := range watchChans {
+				select {
+				case resp := <-rch: // wait for notification
+					if len(resp.Events) != 1 {
+						t.Fatalf("resp.Events expected 1, got %d", len(resp.Events))
+					}
+				case <-time.After(watchTimeout):
+					t.Fatalf("watch response expected in %v, but timed out", watchTimeout)
+				}
+			}
+
+			// put a value not being watched to increment revision
+			_, err = wc.Put(context.Background(), "x", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = wc.RequestProgress(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// verify all watch channels receive a progress notify
+			for _, rch := range watchChans {
+				select {
+				case resp := <-rch:
+					if !resp.IsProgressNotify() {
+						t.Fatalf("expected resp.IsProgressNotify() == true")
+					}
+					if resp.Header.Revision != 3 {
+						t.Fatalf("resp.Header.Revision expected 3, got %d", resp.Header.Revision)
+					}
+				case <-time.After(watchTimeout):
+					t.Fatalf("progress response expected in %v, but timed out", watchTimeout)
+				}
+			}
+		})
+	}
+}
+
 func TestWatchEventType(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
@@ -667,8 +738,9 @@ func TestWatchErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		ch := cli.Watch(context.TODO(), "foo")
-		if wr := <-ch; grpc.ErrorDesc(wr.Err()) != grpc.ErrClientConnClosing.Error() {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, grpc.ErrorDesc(wr.Err()))
+
+		if wr := <-ch; !isCanceled(wr.Err()) {
+			t.Errorf("expected context canceled, got %v", wr.Err())
 		}
 	}()
 
@@ -699,8 +771,8 @@ func TestWatchAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		cli.Watch(context.TODO(), "foo")
-		if err := cli.Close(); err != nil && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		if err := cli.Close(); err != nil && err != context.Canceled {
+			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()
@@ -964,7 +1036,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 			select {
 			case _, ok := <-wch:
 				if !ok {
-					t.Fatalf("unexpected closed channel %p", wch)
+					t.Errorf("unexpected closed channel %p", wch)
 				}
 			// may take a second or two to reestablish a watcher because of
 			// grpc back off policies for disconnects
@@ -1006,10 +1078,10 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 		select {
 		case wr, ok := <-wch:
 			if ok {
-				t.Fatalf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
+				t.Errorf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
 			}
 		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for closed channel")
+			t.Error("timed out waiting for closed channel")
 		}
 	}()
 	cancel()
@@ -1059,5 +1131,26 @@ func TestWatchCancelDisconnected(t *testing.T) {
 	case <-wch:
 	case <-time.After(time.Second):
 		t.Fatal("took too long to cancel disconnected watcher")
+	}
+}
+
+// TestWatchClose ensures that close does not return error
+func TestWatchClose(t *testing.T) {
+	runWatchTest(t, testWatchClose)
+}
+
+func testWatchClose(t *testing.T, wctx *watchctx) {
+	ctx, cancel := context.WithCancel(context.Background())
+	wch := wctx.w.Watch(ctx, "a")
+	cancel()
+	if wch == nil {
+		t.Fatalf("expected watcher channel, got nil")
+	}
+	if wctx.w.Close() != nil {
+		t.Fatalf("watch did not close successfully")
+	}
+	wresp, ok := <-wch
+	if ok {
+		t.Fatalf("read wch got %v; expected closed channel", wresp)
 	}
 }

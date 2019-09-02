@@ -1,9 +1,10 @@
+---
+title: Design of Runtime Reconfiguration
+---
+
 **This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
 
 [v3-docs]: ../docs.md#documentation
-
-
-# Design of Runtime Reconfiguration
 
 Runtime reconfiguration is one of the hardest and most error prone features in a distributed system, especially in a consensus based system like etcd.
 

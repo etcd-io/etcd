@@ -69,7 +69,7 @@ func userAddTest(cx ctlCtx) {
 		// Tries to add a user with empty username.
 		{
 			args:        []string{"add", ":password"},
-			expectedStr: "empty user name is not allowed.",
+			expectedStr: "empty user name is not allowed",
 			stdIn:       []string{},
 		},
 		// Tries to add a user name that already exists.
@@ -77,6 +77,12 @@ func userAddTest(cx ctlCtx) {
 			args:        []string{"add", "username", "--interactive=false"},
 			expectedStr: "user name already exists",
 			stdIn:       []string{"password"},
+		},
+		// Adds a user without password.
+		{
+			args:        []string{"add", "userwopasswd", "--no-password"},
+			expectedStr: "User userwopasswd created",
+			stdIn:       []string{},
 		},
 	}
 

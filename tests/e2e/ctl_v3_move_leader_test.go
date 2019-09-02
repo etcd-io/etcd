@@ -16,25 +16,49 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
 )
 
-func TestCtlV3MoveLeader(t *testing.T) {
+func TestCtlV3MoveLeaderSecure(t *testing.T) {
+	testCtlV3MoveLeader(t, configTLS)
+}
+
+func TestCtlV3MoveLeaderInsecure(t *testing.T) {
+	testCtlV3MoveLeader(t, configNoTLS)
+}
+
+func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, &configNoTLS, true)
+	epc := setupEtcdctlTest(t, &cfg, true)
 	defer func() {
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
 	}()
+
+	var tcfg *tls.Config
+	if cfg.clientTLS == clientTLS {
+		tinfo := transport.TLSInfo{
+			CertFile:      certPath,
+			KeyFile:       privateKeyPath,
+			TrustedCAFile: caPath,
+		}
+		var err error
+		tcfg, err = tinfo.ClientConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	var leadIdx int
 	var leaderID uint64
@@ -43,14 +67,17 @@ func TestCtlV3MoveLeader(t *testing.T) {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: 3 * time.Second,
+			TLS:         tcfg,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err := cli.Status(context.Background(), ep)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		resp, err := cli.Status(ctx, ep)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("failed to get status from endpoint %s: %v", ep, err)
 		}
+		cancel()
 		cli.Close()
 
 		if resp.Header.GetMemberId() == resp.Leader {

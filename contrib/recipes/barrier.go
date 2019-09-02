@@ -17,8 +17,8 @@ package recipe
 import (
 	"context"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 // Barrier creates a key in etcd to block processes, then deletes the key to
@@ -36,7 +36,7 @@ func NewBarrier(client *v3.Client, key string) *Barrier {
 
 // Hold creates the barrier key causing processes to block on Wait.
 func (b *Barrier) Hold() error {
-	_, err := newKey(b.client, b.key, 0)
+	_, err := newKey(b.client, b.key, v3.NoLease)
 	return err
 }
 

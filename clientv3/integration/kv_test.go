@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -37,8 +37,8 @@ func TestKVPutError(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	var (
-		maxReqBytes = 1.5 * 1024 * 1024 // hard coded max in v3_server.go
-		quota       = int64(int(maxReqBytes) + 8*os.Getpagesize())
+		maxReqBytes = 1.5 * 1024 * 1024                                // hard coded max in v3_server.go
+		quota       = int64(int(maxReqBytes*1.2) + 8*os.Getpagesize()) // make sure we have enough overhead in backend quota. See discussion in #6486.
 	)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
 	defer clus.Terminate(t)
@@ -412,6 +412,21 @@ func TestKVRange(t *testing.T) {
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
 			},
 		},
+		// fetch keyspace with empty key using WithFromKey
+		{
+			"", "",
+			0,
+			[]clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
+
+			[]*mvccpb.KeyValue{
+				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
+				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
+				{Key: []byte("c"), Value: nil, CreateRevision: 4, ModRevision: 6, Version: 3},
+				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
+				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
+				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -439,18 +454,18 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	cli := clus.Client(0)
 
 	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		_, err := cli.Get(context.TODO(), "foo")
-		if err != nil && err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
-		}
-	}()
-
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
 	}
 	clus.TakeClient(0)
+
+	go func() {
+		defer close(donec)
+		_, err := cli.Get(context.TODO(), "foo")
+		if !clientv3.IsConnCanceled(err) {
+			t.Errorf("expected %v, got %v", context.Canceled, err)
+		}
+	}()
 
 	select {
 	case <-time.After(integration.RequestWaitTimeout):
@@ -474,8 +489,8 @@ func TestKVNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		_, err := cli.Get(context.TODO(), "foo")
-		if err != context.Canceled && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v or %v, got %v", context.Canceled, grpc.ErrClientConnClosing, err)
+		if !clientv3.IsConnCanceled(err) {
+			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()
@@ -689,7 +704,7 @@ func TestKVGetRetry(t *testing.T) {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
-			t.Fatal(gerr)
+			t.Error(gerr)
 		}
 		wkvs := []*mvccpb.KeyValue{
 			{
@@ -701,16 +716,17 @@ func TestKVGetRetry(t *testing.T) {
 			},
 		}
 		if !reflect.DeepEqual(gresp.Kvs, wkvs) {
-			t.Fatalf("bad get: got %v, want %v", gresp.Kvs, wkvs)
+			t.Errorf("bad get: got %v, want %v", gresp.Kvs, wkvs)
 		}
 		donec <- struct{}{}
 	}()
 
 	time.Sleep(100 * time.Millisecond)
 	clus.Members[fIdx].Restart(t)
+	clus.Members[fIdx].WaitOK(t)
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fatalf("timed out waiting for get")
 	case <-donec:
 	}
@@ -738,10 +754,10 @@ func TestKVPutFailGetRetry(t *testing.T) {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
-			t.Fatal(gerr)
+			t.Error(gerr)
 		}
 		if len(gresp.Kvs) != 0 {
-			t.Fatalf("bad get kvs: got %+v, want empty", gresp.Kvs)
+			t.Errorf("bad get kvs: got %+v, want empty", gresp.Kvs)
 		}
 		donec <- struct{}{}
 	}()
@@ -750,7 +766,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	clus.Members[0].Restart(t)
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fatalf("timed out waiting for get")
 	case <-donec:
 	}
@@ -792,7 +808,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 }
@@ -814,14 +830,15 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// grpc finds out the original connection is down due to the member shutdown.
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
 		t.Fatal(err)
 	}
 
+	ctx, cancel = context.WithTimeout(context.TODO(), time.Second)
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
-	if err != nil && err != context.DeadlineExceeded {
+	if err != nil && !(isCanceled(err) || isClientTimeout(err) || isUnavailable(err)) {
 		t.Fatal(err)
 	}
 }
@@ -906,7 +923,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10 * 1024 * 1024,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 		{
 			maxRequestBytesServer:  10 * 1024 * 1024,
@@ -920,7 +937,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10*1024*1024 + 5,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "grpc: trying to send message larger than max "),
+			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 	}
 	for i, test := range tests {
@@ -940,7 +957,7 @@ func TestKVLargeRequests(t *testing.T) {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}
 		} else if err != nil && !strings.HasPrefix(err.Error(), test.expectError.Error()) {
-			t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
+			t.Errorf("#%d: expected error starting with '%s', got '%s'", i, test.expectError.Error(), err.Error())
 		}
 
 		// put request went through, now expects large response back
@@ -952,5 +969,130 @@ func TestKVLargeRequests(t *testing.T) {
 		}
 
 		clus.Terminate(t)
+	}
+}
+
+// TestKVForLearner ensures learner member only accepts serializable read request.
+func TestKVForLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// we have to add and launch learner member after initial cluster was created, because
+	// bootstrapping a cluster with learner member is not supported.
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	if len(clus.Members) != 4 {
+		t.Fatalf("expecting 4 members in cluster after adding the learner member, got %d", len(clus.Members))
+	}
+	// note:
+	// 1. clus.Members[3] is the newly added learner member, which was appended to clus.Members
+	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for clientv3.Config,
+	// because the implementation of integration test has diverged from embed/etcd.go.
+	learnerEp := clus.Members[3].GRPCAddr()
+	cfg := clientv3.Config{
+		Endpoints:   []string{learnerEp},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	// this client only has endpoint of the learner member
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create clientv3: %v", err)
+	}
+	defer cli.Close()
+
+	// wait until learner member is ready
+	<-clus.Members[3].ReadyNotify()
+
+	tests := []struct {
+		op   clientv3.Op
+		wErr bool
+	}{
+		{
+			op:   clientv3.OpGet("foo", clientv3.WithSerializable()),
+			wErr: false,
+		},
+		{
+			op:   clientv3.OpGet("foo"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpPut("foo", "bar"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpDelete("foo"),
+			wErr: true,
+		},
+		{
+			op:   clientv3.OpTxn([]clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision("foo"), "=", 0)}, nil, nil),
+			wErr: true,
+		},
+	}
+
+	for idx, test := range tests {
+		_, err := cli.Do(context.TODO(), test.op)
+		if err != nil && !test.wErr {
+			t.Errorf("%d: expect no error, got %v", idx, err)
+		}
+		if err == nil && test.wErr {
+			t.Errorf("%d: expect error, got nil", idx)
+		}
+	}
+}
+
+// TestBalancerSupportLearner verifies that balancer's retry and failover mechanism supports cluster with learner member
+func TestBalancerSupportLearner(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// we have to add and launch learner member after initial cluster was created, because
+	// bootstrapping a cluster with learner member is not supported.
+	clus.AddAndLaunchLearnerMember(t)
+
+	learners, err := clus.GetLearnerMembers()
+	if err != nil {
+		t.Fatalf("failed to get the learner members in cluster: %v", err)
+	}
+	if len(learners) != 1 {
+		t.Fatalf("added 1 learner to cluster, got %d", len(learners))
+	}
+
+	// clus.Members[3] is the newly added learner member, which was appended to clus.Members
+	learnerEp := clus.Members[3].GRPCAddr()
+	cfg := clientv3.Config{
+		Endpoints:   []string{learnerEp},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create clientv3: %v", err)
+	}
+	defer cli.Close()
+
+	// wait until learner member is ready
+	<-clus.Members[3].ReadyNotify()
+
+	if _, err := cli.Get(context.Background(), "foo"); err == nil {
+		t.Fatalf("expect Get request to learner to fail, got no error")
+	}
+
+	eps := []string{learnerEp, clus.Members[0].GRPCAddr()}
+	cli.SetEndpoints(eps...)
+	if _, err := cli.Get(context.Background(), "foo"); err != nil {
+		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)
 	}
 }

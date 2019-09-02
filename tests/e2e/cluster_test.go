@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver"
 )
 
 const etcdProcessBasePort = 20000
@@ -78,6 +78,13 @@ var (
 		initialToken:          "new",
 		clientCertAuthEnabled: true,
 	}
+	configClientTLSCertAuthWithNoCN = etcdProcessClusterConfig{
+		clusterSize:           1,
+		clientTLS:             clientTLS,
+		initialToken:          "new",
+		clientCertAuthEnabled: true,
+		noCN:                  true,
+	}
 	configJWT = etcdProcessClusterConfig{
 		clusterSize:   1,
 		initialToken:  "new",
@@ -116,11 +123,15 @@ type etcdProcessClusterConfig struct {
 	isPeerAutoTLS         bool
 	isClientAutoTLS       bool
 	isClientCRL           bool
+	noCN                  bool
+
+	cipherSuites []string
 
 	forceNewCluster     bool
 	initialToken        string
 	quotaBackendBytes   int64
 	noStrictReconfig    bool
+	enableV2            bool
 	initialCorruptCheck bool
 	authTokenOpts       string
 }
@@ -231,6 +242,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		if cfg.noStrictReconfig {
 			args = append(args, "--strict-reconfig-check=false")
 		}
+		if cfg.enableV2 {
+			args = append(args, "--enable-v2")
+		}
 		if cfg.initialCorruptCheck {
 			args = append(args, "--experimental-initial-corrupt-check")
 		}
@@ -305,6 +319,10 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 
 	if cfg.isClientCRL {
 		args = append(args, "--client-crl-file", crlPath, "--client-cert-auth")
+	}
+
+	if len(cfg.cipherSuites) > 0 {
+		args = append(args, "--cipher-suites", strings.Join(cfg.cipherSuites, ","))
 	}
 
 	return args

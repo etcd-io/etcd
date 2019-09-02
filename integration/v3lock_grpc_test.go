@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	lockpb "github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	lockpb "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // TestV3LockLockWaiter tests that a client will wait for a lock, then acquire it
@@ -50,10 +50,10 @@ func TestV3LockLockWaiter(t *testing.T) {
 	go func() {
 		l2, lerr2 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease2.ID})
 		if lerr2 != nil {
-			t.Fatal(lerr2)
+			t.Error(lerr2)
 		}
 		if l1.Header.Revision >= l2.Header.Revision {
-			t.Fatalf("expected l1 revision < l2 revision, got %d >= %d", l1.Header.Revision, l2.Header.Revision)
+			t.Errorf("expected l1 revision < l2 revision, got %d >= %d", l1.Header.Revision, l2.Header.Revision)
 		}
 		close(lockc)
 	}()

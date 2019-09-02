@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // a network interface
@@ -44,6 +44,7 @@ type network interface {
 }
 
 type raftNetwork struct {
+	rand         *rand.Rand
 	mu           sync.Mutex
 	disconnected map[uint64]bool
 	dropmap      map[conn]float64
@@ -62,6 +63,7 @@ type delay struct {
 
 func newRaftNetwork(nodes ...uint64) *raftNetwork {
 	pn := &raftNetwork{
+		rand:         rand.New(rand.NewSource(1)),
 		recvQueues:   make(map[uint64]chan raftpb.Message),
 		dropmap:      make(map[conn]float64),
 		delaymap:     make(map[conn]delay),
@@ -91,12 +93,12 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 	if to == nil {
 		return
 	}
-	if drop != 0 && rand.Float64() < drop {
+	if drop != 0 && rn.rand.Float64() < drop {
 		return
 	}
 	// TODO: shall we dl without blocking the send call?
-	if dl.d != 0 && rand.Float64() < dl.rate {
-		rd := rand.Int63n(int64(dl.d))
+	if dl.d != 0 && rn.rand.Float64() < dl.rate {
+		rd := rn.rand.Int63n(int64(dl.d))
 		time.Sleep(time.Duration(rd))
 	}
 

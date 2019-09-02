@@ -19,8 +19,8 @@ package v2store_test
 import (
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 type v2TestStore struct {

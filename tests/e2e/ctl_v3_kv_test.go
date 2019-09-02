@@ -329,6 +329,16 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	return spawnWithExpects(cmdArgs, lines...)
 }
 
+// ctlV3GetWithErr runs "get" command expecting no output but error
+func ctlV3GetWithErr(cx ctlCtx, args []string, errs []string) error {
+	cmdArgs := append(cx.PrefixArgs(), "get")
+	cmdArgs = append(cmdArgs, args...)
+	if !cx.quorum {
+		cmdArgs = append(cmdArgs, "--consistency", "s")
+	}
+	return spawnWithExpects(cmdArgs, errs...)
+}
+
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)

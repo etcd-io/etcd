@@ -16,7 +16,7 @@
 package clientv3util
 
 import (
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 )
 
 // KeyExists returns a comparison operation that evaluates to true iff the given

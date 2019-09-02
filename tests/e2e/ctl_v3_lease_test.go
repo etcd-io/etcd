@@ -148,10 +148,7 @@ func leaseTestGrantLeasesList(cx ctlCtx) error {
 	if err != nil {
 		return fmt.Errorf("lease id not in returned list (%v)", err)
 	}
-	if err = proc.Close(); err != nil {
-		return err
-	}
-	return nil
+	return proc.Close()
 }
 
 func leaseTestTimeToLiveExpired(cx ctlCtx) {

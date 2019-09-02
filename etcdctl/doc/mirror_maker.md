@@ -4,7 +4,7 @@ Mirror maker mirrors a prefix in the key-value space of an etcd cluster into ano
 
 If the mirror maker fails to connect to one of the clusters, the mirroring will pause. Mirroring can  be resumed automatically once connectivity is reestablished.
 
-The mirroring mechanism is unidirectional. Data under the destination cluster’s mirroring prefix should be treated as read only. The mirror maker only mirrors key-value pairs; metadata, such as version number or modification revision, is discarded. However, mirror maker still attempts to preserve update ordering during normal operation, but there is no ordering guarantee during initial sync nor during failure recovery following network interruption. As a rule of thumb, the ordering of the updates on the mirror should not be considered reliable.
+The mirroring mechanism is unidirectional. Changing the value on the mirrored cluster won't reflect the value back to the origin cluster. The mirror maker only mirrors key-value pairs; metadata, such as version number or modification revision, is discarded. However, mirror maker still attempts to preserve update ordering during normal operation, but there is no ordering guarantee during initial sync nor during failure recovery following network interruption. As a rule of thumb, the ordering of the updates on the mirror should not be considered reliable.
 
 ```
 +-------------+

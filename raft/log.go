@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	pb "github.com/coreos/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 type raftLog struct {
@@ -38,17 +38,29 @@ type raftLog struct {
 	applied uint64
 
 	logger Logger
+
+	// maxNextEntsSize is the maximum number aggregate byte size of the messages
+	// returned from calls to nextEnts.
+	maxNextEntsSize uint64
 }
 
-// newLog returns log using the given storage. It recovers the log to the state
-// that it just commits and applies the latest snapshot.
+// newLog returns log using the given storage and default options. It
+// recovers the log to the state that it just commits and applies the
+// latest snapshot.
 func newLog(storage Storage, logger Logger) *raftLog {
+	return newLogWithSize(storage, logger, noLimit)
+}
+
+// newLogWithSize returns a log using the given storage and max
+// message size.
+func newLogWithSize(storage Storage, logger Logger, maxNextEntsSize uint64) *raftLog {
 	if storage == nil {
 		log.Panic("storage must not be nil")
 	}
 	log := &raftLog{
-		storage: storage,
-		logger:  logger,
+		storage:         storage,
+		logger:          logger,
+		maxNextEntsSize: maxNextEntsSize,
 	}
 	firstIndex, err := storage.FirstIndex()
 	if err != nil {
@@ -139,7 +151,7 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	off := max(l.applied+1, l.firstIndex())
 	if l.committed+1 > off {
-		ents, err := l.slice(off, l.committed+1, noLimit)
+		ents, err := l.slice(off, l.committed+1, l.maxNextEntsSize)
 		if err != nil {
 			l.logger.Panicf("unexpected error when getting unapplied entries (%v)", err)
 		}
@@ -320,8 +332,10 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	if hi > l.unstable.offset {
 		unstable := l.unstable.slice(max(lo, l.unstable.offset), hi)
 		if len(ents) > 0 {
-			ents = append([]pb.Entry{}, ents...)
-			ents = append(ents, unstable...)
+			combined := make([]pb.Entry, len(ents)+len(unstable))
+			n := copy(combined, ents)
+			copy(combined[n:], unstable)
+			ents = combined
 		} else {
 			ents = unstable
 		}

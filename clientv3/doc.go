@@ -19,7 +19,7 @@
 //	// expect dial time-out on ipv4 blackhole
 //	_, err := clientv3.New(clientv3.Config{
 //		Endpoints:   []string{"http://254.0.0.1:12345"},
-//		DialTimeout: 2 * time.Second
+//		DialTimeout: 2 * time.Second,
 //	})
 //
 //	// etcd clientv3 >= v3.2.10, grpc/grpc-go >= v1.7.3
@@ -61,7 +61,7 @@
 //
 //  1. context error: canceled or deadline exceeded.
 //  2. gRPC status error: e.g. when clock drifts in server-side before client's context deadline exceeded.
-//  3. gRPC error: see https://github.com/coreos/etcd/blob/master/etcdserver/api/v3rpc/rpctypes/error.go
+//  3. gRPC error: see https://github.com/etcd-io/etcd/blob/master/etcdserver/api/v3rpc/rpctypes/error.go
 //
 // Here is the example code to handle client errors:
 //
@@ -71,14 +71,14 @@
 //			// ctx is canceled by another routine
 //		} else if err == context.DeadlineExceeded {
 //			// ctx is attached with a deadline and it exceeded
+//		} else if err == rpctypes.ErrEmptyKey {
+//			// client-side error: key is not provided
 //		} else if ev, ok := status.FromError(err); ok {
 //			code := ev.Code()
 //			if code == codes.DeadlineExceeded {
 //				// server-side context might have timed-out first (due to clock skew)
 //				// while original client-side context is not timed-out yet
 //			}
-//		} else if verr, ok := err.(*v3rpc.ErrEmptyKey); ok {
-//			// process (verr.Errors)
 //		} else {
 //			// bad cluster endpoints, which are not etcd servers
 //		}
@@ -87,11 +87,20 @@
 //	go func() { cli.Close() }()
 //	_, err := kvc.Get(ctx, "a")
 //	if err != nil {
+//		// with etcd clientv3 <= v3.3
 //		if err == context.Canceled {
 //			// grpc balancer calls 'Get' with an inflight client.Close
-//		} else if err == grpc.ErrClientConnClosing {
+//		} else if err == grpc.ErrClientConnClosing { // <= gRCP v1.7.x
 //			// grpc balancer calls 'Get' after client.Close.
 //		}
+//		// with etcd clientv3 >= v3.4
+//		if clientv3.IsConnCanceled(err) {
+//			// gRPC client connection is closed
+//		}
 //	}
+//
+// The grpc load balancer is registered statically and is shared across etcd clients.
+// To enable detailed load balancer logging, set the ETCD_CLIENT_DEBUG environment
+// variable.  E.g. "ETCD_CLIENT_DEBUG=1".
 //
 package clientv3

@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/backend"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -114,13 +114,13 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
-	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar"}
+	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tearDown := func(t *testing.T) {
+	tearDown := func(_ *testing.T) {
 		b.Close()
 		os.Remove(tPath)
 		as.Close()
@@ -129,7 +129,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
-	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root"})
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root", Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func TestUserAdd(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "foo"}
+	ua := &pb.AuthUserAddRequest{Name: "foo", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add an existing user
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
@@ -160,10 +160,22 @@ func TestUserAdd(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
 
-	ua = &pb.AuthUserAddRequest{Name: ""}
+	ua = &pb.AuthUserAddRequest{Name: "", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a user with empty name
 	if err != ErrUserEmpty {
 		t.Fatal(err)
+	}
+}
+
+func TestRecover(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	as.enabled = false
+	as.Recover(as.be)
+
+	if !as.IsAuthEnabled() {
+		t.Fatalf("expected auth enabled got disabled")
 	}
 }
 
@@ -257,6 +269,12 @@ func TestRoleAdd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// add a role with empty name
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: ""})
+	if err != ErrRoleEmpty {
+		t.Fatal(err)
+	}
 }
 
 func TestUserGrant(t *testing.T) {
@@ -276,6 +294,73 @@ func TestUserGrant(t *testing.T) {
 	}
 	if err != ErrUserNotFound {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
+	}
+}
+
+func TestHasRole(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// grants a role to the user
+	_, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// checks role reflects correctly
+	hr := as.HasRole("foo", "role-test")
+	if !hr {
+		t.Fatal("expected role granted, got false")
+	}
+
+	// checks non existent role
+	hr = as.HasRole("foo", "non-existent-role")
+	if hr {
+		t.Fatal("expected role not found, got true")
+	}
+
+	// checks non existent user
+	hr = as.HasRole("nouser", "role-test")
+	if hr {
+		t.Fatal("expected user not found got true")
+	}
+}
+
+func TestIsOpPermitted(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// add new role
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// grants a role to the user
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check permission reflected to user
+
+	err = as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -299,13 +384,19 @@ func TestGetUser(t *testing.T) {
 	if !reflect.DeepEqual(expected, u.Roles) {
 		t.Errorf("expected %v, got %v", expected, u.Roles)
 	}
+
+	// check non existent user
+	_, err = as.UserGet(&pb.AuthUserGetRequest{Name: "nouser"})
+	if err == nil {
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
+	}
 }
 
 func TestListUsers(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "user1", Password: "pwd1"}
+	ua := &pb.AuthUserAddRequest{Name: "user1", Password: "pwd1", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
@@ -548,7 +639,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "test"}))
 		as.AuthInfoFromCtx(ctx)
 	}()
-	as.UserAdd(&pb.AuthUserAddRequest{Name: "test"})
+	as.UserAdd(&pb.AuthUserAddRequest{Name: "test", Options: &authpb.UserAddOptions{NoPassword: false}})
 	<-donec
 }
 
@@ -584,7 +675,7 @@ func TestIsAdminPermitted(t *testing.T) {
 func TestRecoverFromSnapshot(t *testing.T) {
 	as, _ := setupAuthStore(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "foo"}
+	ua := &pb.AuthUserAddRequest{Name: "foo", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add an existing user
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
@@ -593,7 +684,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
 
-	ua = &pb.AuthUserAddRequest{Name: ""}
+	ua = &pb.AuthUserAddRequest{Name: "", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a user with empty name
 	if err != ErrUserEmpty {
 		t.Fatal(err)
@@ -649,7 +740,7 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 	// create lots of users
 	for i := 0; i < 50; i++ {
 		u := fmt.Sprintf("user-%d", i)
-		ua := &pb.AuthUserAddRequest{Name: u, Password: "123"}
+		ua := &pb.AuthUserAddRequest{Name: u, Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}}
 		if _, err := as.UserAdd(ua); err != nil {
 			t.Fatal(err)
 		}
@@ -666,10 +757,10 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 				token := fmt.Sprintf("%s(%d)", user, i)
 				ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, token)
 				if _, err := as.Authenticate(ctx, user, "123"); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 				if _, err := as.AuthInfoFromCtx(ctx); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 			}(u)
 		}
@@ -694,7 +785,7 @@ func TestRolesOrder(t *testing.T) {
 	}
 
 	username := "user"
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, Password: "pass"})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, Password: "pass", Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -761,5 +852,23 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	}
 	if ai.Username != "root" {
 		t.Errorf("expected user name 'root', got %+v", ai)
+	}
+}
+
+func TestUserNoPasswordAdd(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	username := "usernopass"
+	ua := &pb.AuthUserAddRequest{Name: username, Options: &authpb.UserAddOptions{NoPassword: true}}
+	_, err := as.UserAdd(ua)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err = as.Authenticate(ctx, username, "")
+	if err != ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 }

@@ -21,12 +21,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	"go.uber.org/zap"
 )
@@ -141,6 +143,50 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 	}
 }
 
+// TestSnapshotFilePermissions ensures that the snapshot is saved with
+// the correct file permissions.
+func TestSnapshotFilePermissions(t *testing.T) {
+	expectedFileMode := os.FileMode(fileutil.PrivateFileMode)
+	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
+	dbPath := createSnapshotFile(t, kvs)
+	defer os.RemoveAll(dbPath)
+
+	dbInfo, err := os.Stat(dbPath)
+	if err != nil {
+		t.Fatalf("failed to get test snapshot file status: %v", err)
+	}
+	actualFileMode := dbInfo.Mode()
+
+	if expectedFileMode != actualFileMode {
+		t.Fatalf("expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
+	}
+}
+
+// TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
+func TestCorruptedBackupFileCheck(t *testing.T) {
+	dbPath := "testdata/corrupted_backup.db"
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
+	}
+
+	sp := NewV3(zap.NewExample())
+	_, err := sp.Status(dbPath)
+	expectedErrKeywords := "snapshot file integrity check failed"
+	/* example error message:
+	snapshot file integrity check failed. 2 errors found.
+	page 3: already freed
+	page 4: unreachable unfreed
+	*/
+	if err == nil {
+		t.Error("expected error due to corrupted snapshot file, got no error")
+	}
+	if !strings.Contains(err.Error(), expectedErrKeywords) {
+		t.Errorf("expected error message to contain the following keywords:\n%s\n"+
+			"actual error message:\n%s",
+			expectedErrKeywords, err.Error())
+	}
+}
+
 type kv struct {
 	k, v string
 }
@@ -249,7 +295,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		go func(idx int) {
 			srv, err := embed.StartEtcd(cfgs[idx])
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 
 			<-srv.Server.ReadyNotify()

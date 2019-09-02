@@ -23,80 +23,182 @@ import (
 )
 
 const (
-	jwtPubKey  = "../integration/fixtures/server.crt"
-	jwtPrivKey = "../integration/fixtures/server.key.insecure"
+	jwtRSAPubKey  = "../integration/fixtures/server.crt"
+	jwtRSAPrivKey = "../integration/fixtures/server.key.insecure"
+
+	jwtECPubKey  = "../integration/fixtures/server-ecdsa.crt"
+	jwtECPrivKey = "../integration/fixtures/server-ecdsa.key.insecure"
 )
 
 func TestJWTInfo(t *testing.T) {
-	opts := map[string]string{
-		"pub-key":     jwtPubKey,
-		"priv-key":    jwtPrivKey,
-		"sign-method": "RS256",
+	optsMap := map[string]map[string]string{
+		"RSA-priv": {
+			"priv-key":    jwtRSAPrivKey,
+			"sign-method": "RS256",
+			"ttl":         "1h",
+		},
+		"RSA": {
+			"pub-key":     jwtRSAPubKey,
+			"priv-key":    jwtRSAPrivKey,
+			"sign-method": "RS256",
+		},
+		"RSAPSS-priv": {
+			"priv-key":    jwtRSAPrivKey,
+			"sign-method": "PS256",
+		},
+		"RSAPSS": {
+			"pub-key":     jwtRSAPubKey,
+			"priv-key":    jwtRSAPrivKey,
+			"sign-method": "PS256",
+		},
+		"ECDSA-priv": {
+			"priv-key":    jwtECPrivKey,
+			"sign-method": "ES256",
+		},
+		"ECDSA": {
+			"pub-key":     jwtECPubKey,
+			"priv-key":    jwtECPrivKey,
+			"sign-method": "ES256",
+		},
+		"HMAC": {
+			"priv-key":    jwtECPrivKey, // any file, raw bytes used as shared secret
+			"sign-method": "HS256",
+		},
 	}
-	jwt, err := newTokenProviderJWT(zap.NewExample(), opts)
+
+	for k, opts := range optsMap {
+		t.Run(k, func(tt *testing.T) {
+			testJWTInfo(tt, opts)
+		})
+	}
+}
+
+func testJWTInfo(t *testing.T, opts map[string]string) {
+	lg := zap.NewNop()
+	jwt, err := newTokenProviderJWT(lg, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, aerr := jwt.assign(context.TODO(), "abc", 123)
+
+	ctx := context.TODO()
+
+	token, aerr := jwt.assign(ctx, "abc", 123)
 	if aerr != nil {
-		t.Fatal(err)
+		t.Fatalf("%#v", aerr)
 	}
-	ai, ok := jwt.info(context.TODO(), token, 123)
+	ai, ok := jwt.info(ctx, token, 123)
 	if !ok {
 		t.Fatalf("failed to authenticate with token %s", token)
 	}
 	if ai.Revision != 123 {
 		t.Fatalf("expected revision 123, got %d", ai.Revision)
 	}
-	ai, ok = jwt.info(context.TODO(), "aaa", 120)
+	ai, ok = jwt.info(ctx, "aaa", 120)
 	if ok || ai != nil {
 		t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
+	}
+
+	// test verify-only provider
+	if opts["pub-key"] != "" && opts["priv-key"] != "" {
+		t.Run("verify-only", func(t *testing.T) {
+			newOpts := make(map[string]string, len(opts))
+			for k, v := range opts {
+				newOpts[k] = v
+			}
+			delete(newOpts, "priv-key")
+			verify, err := newTokenProviderJWT(lg, newOpts)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ai, ok := verify.info(ctx, token, 123)
+			if !ok {
+				t.Fatalf("failed to authenticate with token %s", token)
+			}
+			if ai.Revision != 123 {
+				t.Fatalf("expected revision 123, got %d", ai.Revision)
+			}
+			ai, ok = verify.info(ctx, "aaa", 120)
+			if ok || ai != nil {
+				t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
+			}
+
+			_, aerr := verify.assign(ctx, "abc", 123)
+			if aerr != ErrVerifyOnly {
+				t.Fatalf("unexpected error when attempting to sign with public key: %v", aerr)
+			}
+
+		})
 	}
 }
 
 func TestJWTBad(t *testing.T) {
-	opts := map[string]string{
-		"pub-key":     jwtPubKey,
-		"priv-key":    jwtPrivKey,
-		"sign-method": "RS256",
-	}
-	// private key instead of public key
-	opts["pub-key"] = jwtPrivKey
-	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
-		t.Fatalf("expected failure on missing public key")
-	}
-	opts["pub-key"] = jwtPubKey
 
-	// public key instead of private key
-	opts["priv-key"] = jwtPubKey
-	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
-		t.Fatalf("expected failure on missing public key")
+	var badCases = map[string]map[string]string{
+		"no options": {},
+		"invalid method": {
+			"sign-method": "invalid",
+		},
+		"rsa no key": {
+			"sign-method": "RS256",
+		},
+		"invalid ttl": {
+			"sign-method": "RS256",
+			"ttl":         "forever",
+		},
+		"rsa invalid public key": {
+			"sign-method": "RS256",
+			"pub-key":     jwtRSAPrivKey,
+			"priv-key":    jwtRSAPrivKey,
+		},
+		"rsa invalid private key": {
+			"sign-method": "RS256",
+			"pub-key":     jwtRSAPubKey,
+			"priv-key":    jwtRSAPubKey,
+		},
+		"hmac no key": {
+			"sign-method": "HS256",
+		},
+		"hmac pub key": {
+			"sign-method": "HS256",
+			"pub-key":     jwtRSAPubKey,
+		},
+		"missing public key file": {
+			"sign-method": "HS256",
+			"pub-key":     "missing-file",
+		},
+		"missing private key file": {
+			"sign-method": "HS256",
+			"priv-key":    "missing-file",
+		},
+		"ecdsa no key": {
+			"sign-method": "ES256",
+		},
+		"ecdsa invalid public key": {
+			"sign-method": "ES256",
+			"pub-key":     jwtECPrivKey,
+			"priv-key":    jwtECPrivKey,
+		},
+		"ecdsa invalid private key": {
+			"sign-method": "ES256",
+			"pub-key":     jwtECPubKey,
+			"priv-key":    jwtECPubKey,
+		},
 	}
-	opts["priv-key"] = jwtPrivKey
 
-	// missing signing option
-	delete(opts, "sign-method")
-	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
-		t.Fatal("expected error on missing option")
-	}
-	opts["sign-method"] = "RS256"
+	lg := zap.NewNop()
 
-	// bad file for pubkey
-	opts["pub-key"] = "whatever"
-	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
-		t.Fatalf("expected failure on missing public key")
+	for k, v := range badCases {
+		t.Run(k, func(t *testing.T) {
+			_, err := newTokenProviderJWT(lg, v)
+			if err == nil {
+				t.Errorf("expected error for options %v", v)
+			}
+		})
 	}
-	opts["pub-key"] = jwtPubKey
-
-	// bad file for private key
-	opts["priv-key"] = "whatever"
-	if _, err := newTokenProviderJWT(zap.NewExample(), opts); err == nil {
-		t.Fatalf("expeceted failure on missing private key")
-	}
-	opts["priv-key"] = jwtPrivKey
 }
 
 // testJWTOpts is useful for passing to NewTokenProvider which requires a string.
 func testJWTOpts() string {
-	return fmt.Sprintf("%s,pub-key=%s,priv-key=%s,sign-method=RS256", tokenTypeJWT, jwtPubKey, jwtPrivKey)
+	return fmt.Sprintf("%s,pub-key=%s,priv-key=%s,sign-method=RS256", tokenTypeJWT, jwtRSAPubKey, jwtRSAPrivKey)
 }

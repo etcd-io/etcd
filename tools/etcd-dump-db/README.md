@@ -66,7 +66,7 @@ Hash: 3700260467
 Lists key-value pairs in reverse order.
 
 ```
-$ etcd-dump-db iterate-bucket agent03/agent.etcd --bucket=key --limit 3
+$ etcd-dump-db iterate-bucket agent03/agent.etcd key --limit 3
 
 key="\x00\x00\x00\x00\x005@x_\x00\x00\x00\x00\x00\x00\x00\tt", value="\n\x153640412599896088633_9"
 key="\x00\x00\x00\x00\x005@x_\x00\x00\x00\x00\x00\x00\x00\bt", value="\n\x153640412599896088633_8"

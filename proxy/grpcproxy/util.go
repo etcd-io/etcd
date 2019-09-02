@@ -17,7 +17,7 @@ package grpcproxy
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -34,7 +34,7 @@ func getAuthTokenFromClient(ctx context.Context) string {
 	return ""
 }
 
-func withClientAuthToken(ctx context.Context, ctxWithToken context.Context) context.Context {
+func withClientAuthToken(ctx, ctxWithToken context.Context) context.Context {
 	token := getAuthTokenFromClient(ctxWithToken)
 	if token != "" {
 		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPC, token)

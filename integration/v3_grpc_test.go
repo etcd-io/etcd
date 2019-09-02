@@ -25,14 +25,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
@@ -1570,6 +1572,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &testTLSInfo
+	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
 		t.Fatalf("expected no client")
@@ -1752,6 +1755,7 @@ func testTLSReload(
 				continue
 			}
 			cli, cerr := clientv3.New(clientv3.Config{
+				DialOptions: []grpc.DialOption{grpc.WithBlock()},
 				Endpoints:   []string{clus.Members[0].GRPCAddr()},
 				DialTimeout: time.Second,
 				TLS:         cc,
@@ -1932,7 +1936,18 @@ func eqErrGRPC(err1 error, err2 error) bool {
 // FailFast=false works with Put.
 func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
-	if _, err := kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
-		t.Fatal(err)
+	// TODO: Remove retry loop once the new grpc load balancer provides retry.
+	var err error
+	for i := 0; i < 10; i++ {
+		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for restart: %v", err)
 	}
 }

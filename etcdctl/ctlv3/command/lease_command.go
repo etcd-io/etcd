@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	v3 "github.com/coreos/etcd/clientv3"
+	v3 "go.etcd.io/etcd/clientv3"
 
 	"github.com/spf13/cobra"
 )
@@ -55,7 +55,7 @@ func NewLeaseGrantCommand() *cobra.Command {
 // leaseGrantCommandFunc executes the "lease grant" command.
 func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("lease grant command needs TTL argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("lease grant command needs TTL argument"))
 	}
 
 	ttl, err := strconv.ParseInt(args[0], 10, 64)
@@ -67,7 +67,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 	resp, err := mustClientFromCmd(cmd).Grant(ctx, ttl)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, fmt.Errorf("failed to grant lease (%v)\n", err))
+		ExitWithError(ExitError, fmt.Errorf("failed to grant lease (%v)", err))
 	}
 	display.Grant(*resp)
 }
@@ -95,7 +95,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 	resp, err := mustClientFromCmd(cmd).Revoke(ctx, id)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, fmt.Errorf("failed to revoke lease (%v)\n", err))
+		ExitWithError(ExitError, fmt.Errorf("failed to revoke lease (%v)", err))
 	}
 	display.Revoke(id, *resp)
 }

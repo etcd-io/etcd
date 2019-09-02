@@ -11,14 +11,14 @@ This is a generated documentation. Please read the proto files for more.
 | AuthEnable | AuthEnableRequest | AuthEnableResponse | AuthEnable enables authentication. |
 | AuthDisable | AuthDisableRequest | AuthDisableResponse | AuthDisable disables authentication. |
 | Authenticate | AuthenticateRequest | AuthenticateResponse | Authenticate processes an authenticate request. |
-| UserAdd | AuthUserAddRequest | AuthUserAddResponse | UserAdd adds a new user. |
+| UserAdd | AuthUserAddRequest | AuthUserAddResponse | UserAdd adds a new user. User name cannot be empty. |
 | UserGet | AuthUserGetRequest | AuthUserGetResponse | UserGet gets detailed user information. |
 | UserList | AuthUserListRequest | AuthUserListResponse | UserList gets a list of all users. |
 | UserDelete | AuthUserDeleteRequest | AuthUserDeleteResponse | UserDelete deletes a specified user. |
 | UserChangePassword | AuthUserChangePasswordRequest | AuthUserChangePasswordResponse | UserChangePassword changes the password of a specified user. |
 | UserGrantRole | AuthUserGrantRoleRequest | AuthUserGrantRoleResponse | UserGrant grants a role to a specified user. |
 | UserRevokeRole | AuthUserRevokeRoleRequest | AuthUserRevokeRoleResponse | UserRevokeRole revokes a role of specified user. |
-| RoleAdd | AuthRoleAddRequest | AuthRoleAddResponse | RoleAdd adds a new role. |
+| RoleAdd | AuthRoleAddRequest | AuthRoleAddResponse | RoleAdd adds a new role. Role name cannot be empty. |
 | RoleGet | AuthRoleGetRequest | AuthRoleGetResponse | RoleGet gets detailed role information. |
 | RoleList | AuthRoleListRequest | AuthRoleListResponse | RoleList gets lists of all roles. |
 | RoleDelete | AuthRoleDeleteRequest | AuthRoleDeleteResponse | RoleDelete deletes a specified role. |
@@ -35,6 +35,7 @@ This is a generated documentation. Please read the proto files for more.
 | MemberRemove | MemberRemoveRequest | MemberRemoveResponse | MemberRemove removes an existing member from the cluster. |
 | MemberUpdate | MemberUpdateRequest | MemberUpdateResponse | MemberUpdate updates the member configuration. |
 | MemberList | MemberListRequest | MemberListResponse | MemberList lists all the members in the cluster. |
+| MemberPromote | MemberPromoteRequest | MemberPromoteResponse | MemberPromote promotes a member from raft learner (non-voting) to raft voting member. |
 
 
 
@@ -245,6 +246,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | name |  | string |
 | password |  | string |
+| options |  | authpb.UserAddOptions |
 
 
 
@@ -476,6 +478,31 @@ Empty field.
 
 
 
+##### message `LeaseCheckpoint` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the lease ID to checkpoint. | int64 |
+| remaining_TTL | Remaining_TTL is the remaining time until expiry of the lease. | int64 |
+
+
+
+##### message `LeaseCheckpointRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| checkpoints |  | (slice of) LeaseCheckpoint |
+
+
+
+##### message `LeaseCheckpointResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
 ##### message `LeaseGrantRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
@@ -582,6 +609,7 @@ Empty field.
 | name | name is the human-readable name of the member. If the member is not started, the name will be an empty string. | string |
 | peerURLs | peerURLs is the list of URLs the member exposes to the cluster for communication. | (slice of) string |
 | clientURLs | clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty. | (slice of) string |
+| isLearner | isLearner indicates if the member is raft learner. | bool |
 
 
 
@@ -590,6 +618,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | peerURLs | peerURLs is the list of URLs the added member will use to communicate with the cluster. | (slice of) string |
+| isLearner | isLearner indicates if the added member is raft learner. | bool |
 
 
 
@@ -615,6 +644,23 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | members | members is a list of all members associated with the cluster. | (slice of) Member |
+
+
+
+##### message `MemberPromoteRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the member ID of the member to promote. | uint64 |
+
+
+
+##### message `MemberPromoteResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| members | members is a list of all members after promoting the member. | (slice of) Member |
 
 
 
@@ -740,7 +786,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | cluster_id | cluster_id is the ID of the cluster which sent the response. | uint64 |
 | member_id | member_id is the ID of the member which sent the response. | uint64 |
-| revision | revision is the key-value store revision when the request was applied. | int64 |
+| revision | revision is the key-value store revision when the request was applied. For watch progress responses, the header.revision indicates progress. All future events recieved in this stream are guaranteed to have a higher revision number than the header.revision number. | int64 |
 | raft_term | raft_term is the raft term when the request was applied. | uint64 |
 
 
@@ -792,6 +838,7 @@ Empty field.
 | raftAppliedIndex | raftAppliedIndex is the current raft applied index of the responding member. | uint64 |
 | errors | errors contains alarm/health information and status. | (slice of) string |
 | dbSizeInUse | dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member. | int64 |
+| isLearner | isLearner indicates if the member is raft learner. | bool |
 
 
 
@@ -840,6 +887,14 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
+##### message `WatchProgressRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Requests the a watch stream progress status be sent in the watch response stream as soon as possible.
+
+Empty field.
+
+
+
 ##### message `WatchRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
@@ -847,6 +902,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | request_union | request_union is a request to either create a new watcher or cancel an existing watcher. | oneof |
 | create_request |  | WatchCreateRequest |
 | cancel_request |  | WatchCancelRequest |
+| progress_request |  | WatchProgressRequest |
 
 
 
@@ -894,6 +950,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | ----- | ----------- | ---- |
 | ID |  | int64 |
 | TTL |  | int64 |
+| RemainingTTL |  | int64 |
 
 
 
@@ -945,6 +1002,15 @@ User is a single entry in the bucket authUsers
 | name |  | bytes |
 | password |  | bytes |
 | roles |  | (slice of) string |
+| options |  | UserAddOptions |
+
+
+
+##### message `UserAddOptions` (auth/authpb/auth.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| no_password |  | bool |
 
 
 

@@ -154,5 +154,5 @@ If an error occurs, check the [add member troubleshooting doc][runtime-configura
 
 [discovery-service]: clustering.md#discovery
 [goreman]: https://github.com/mattn/goreman
-[procfile]: https://github.com/coreos/etcd/blob/master/Procfile.v2
+[procfile]: https://github.com/etcd-io/etcd/blob/master/Procfile.v2
 [runtime-configuration]: runtime-configuration.md#error-cases-when-adding-members

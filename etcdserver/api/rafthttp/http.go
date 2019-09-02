@@ -22,12 +22,13 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	pioutil "github.com/coreos/etcd/pkg/ioutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	pioutil "go.etcd.io/etcd/pkg/ioutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/version"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -130,7 +131,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			plog.Errorf("failed to unmarshal raft message (%v)", err)
 		}
-		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
+		http.Error(w, "error unmarshalling raft message", http.StatusBadRequest)
 		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
 		return
 	}
@@ -185,6 +186,8 @@ func newSnapshotHandler(t *Transport, r Raft, snapshotter *snap.Snapshotter, cid
 	}
 }
 
+const unknownSnapshotSender = "UNKNOWN_SNAPSHOT_SENDER"
+
 // ServeHTTP serves HTTP request to receive and process snapshot message.
 //
 // If request sender dies without closing underlying TCP connection,
@@ -195,9 +198,12 @@ func newSnapshotHandler(t *Transport, r Raft, snapshotter *snap.Snapshotter, cid
 // received and processed.
 // 2. this case should happen rarely, so no further optimization is done.
 func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
 	if r.Method != "POST" {
 		w.Header().Set("Allow", "POST")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		snapshotReceiveFailures.WithLabelValues(unknownSnapshotSender).Inc()
 		return
 	}
 
@@ -205,6 +211,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := checkClusterCompatibilityFromHeader(h.lg, h.localID, r.Header, h.cid); err != nil {
 		http.Error(w, err.Error(), http.StatusPreconditionFailed)
+		snapshotReceiveFailures.WithLabelValues(unknownSnapshotSender).Inc()
 		return
 	}
 
@@ -213,13 +220,14 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dec := &messageDecoder{r: r.Body}
 	// let snapshots be very large since they can exceed 512MB for large installations
 	m, err := dec.decodeLimit(uint64(1 << 63))
+	from := types.ID(m.From).String()
 	if err != nil {
 		msg := fmt.Sprintf("failed to decode raft message (%v)", err)
 		if h.lg != nil {
 			h.lg.Warn(
 				"failed to decode Raft message",
 				zap.String("local-member-id", h.localID.String()),
-				zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+				zap.String("remote-snapshot-sender-id", from),
 				zap.Error(err),
 			)
 		} else {
@@ -227,32 +235,39 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, msg, http.StatusBadRequest)
 		recvFailures.WithLabelValues(r.RemoteAddr).Inc()
+		snapshotReceiveFailures.WithLabelValues(from).Inc()
 		return
 	}
 
 	msgSize := m.Size()
-	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(msgSize))
+	receivedBytes.WithLabelValues(from).Add(float64(msgSize))
 
 	if m.Type != raftpb.MsgSnap {
 		if h.lg != nil {
 			h.lg.Warn(
 				"unexpected Raft message type",
 				zap.String("local-member-id", h.localID.String()),
-				zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+				zap.String("remote-snapshot-sender-id", from),
 				zap.String("message-type", m.Type.String()),
 			)
 		} else {
 			plog.Errorf("unexpected raft message type %s on snapshot path", m.Type)
 		}
 		http.Error(w, "wrong raft message type", http.StatusBadRequest)
+		snapshotReceiveFailures.WithLabelValues(from).Inc()
 		return
 	}
+
+	snapshotReceiveInflights.WithLabelValues(from).Inc()
+	defer func() {
+		snapshotReceiveInflights.WithLabelValues(from).Dec()
+	}()
 
 	if h.lg != nil {
 		h.lg.Info(
 			"receiving database snapshot",
 			zap.String("local-member-id", h.localID.String()),
-			zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+			zap.String("remote-snapshot-sender-id", from),
 			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 			zap.Int("incoming-snapshot-message-size-bytes", msgSize),
 			zap.String("incoming-snapshot-message-size", humanize.Bytes(uint64(msgSize))),
@@ -269,7 +284,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.lg.Warn(
 				"failed to save incoming database snapshot",
 				zap.String("local-member-id", h.localID.String()),
-				zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+				zap.String("remote-snapshot-sender-id", from),
 				zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 				zap.Error(err),
 			)
@@ -277,16 +292,17 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			plog.Error(msg)
 		}
 		http.Error(w, msg, http.StatusInternalServerError)
+		snapshotReceiveFailures.WithLabelValues(from).Inc()
 		return
 	}
 
-	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(n))
+	receivedBytes.WithLabelValues(from).Add(float64(n))
 
 	if h.lg != nil {
 		h.lg.Info(
 			"received and saved database snapshot",
 			zap.String("local-member-id", h.localID.String()),
-			zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+			zap.String("remote-snapshot-sender-id", from),
 			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 			zap.Int64("incoming-snapshot-size-bytes", n),
 			zap.String("incoming-snapshot-size", humanize.Bytes(uint64(n))),
@@ -307,13 +323,14 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				h.lg.Warn(
 					"failed to process Raft message",
 					zap.String("local-member-id", h.localID.String()),
-					zap.String("remote-snapshot-sender-id", types.ID(m.From).String()),
+					zap.String("remote-snapshot-sender-id", from),
 					zap.Error(err),
 				)
 			} else {
 				plog.Error(msg)
 			}
 			http.Error(w, msg, http.StatusInternalServerError)
+			snapshotReceiveFailures.WithLabelValues(from).Inc()
 		}
 		return
 	}
@@ -321,6 +338,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Write StatusNoContent header after the message has been processed by
 	// raft, which facilitates the client to report MsgSnap status.
 	w.WriteHeader(http.StatusNoContent)
+
+	snapshotReceive.WithLabelValues(from).Inc()
+	snapshotReceiveSeconds.WithLabelValues(from).Observe(time.Since(start).Seconds())
 }
 
 type streamHandler struct {

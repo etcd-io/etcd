@@ -23,32 +23,34 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"runtime"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/api/rafthttp"
-	"github.com/coreos/etcd/etcdserver/api/v2http"
-	"github.com/coreos/etcd/etcdserver/api/v2v3"
-	"github.com/coreos/etcd/etcdserver/api/v3client"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/pkg/debugutil"
-	runtimeutil "github.com/coreos/etcd/pkg/runtime"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/etcdserver/api/v2http"
+	"go.etcd.io/etcd/etcdserver/api/v2v3"
+	"go.etcd.io/etcd/etcdserver/api/v3client"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/pkg/debugutil"
+	runtimeutil "go.etcd.io/etcd/pkg/runtime"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "embed")
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "embed")
 
 const (
 	// internal fd usage includes disk usage and transport usage.
@@ -157,6 +159,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	backendFreelistType := parseBackendFreelistType(cfg.ExperimentalBackendFreelistType)
+
 	srvcfg := etcdserver.ServerConfig{
 		Name:                       cfg.Name,
 		ClientURLs:                 cfg.ACUrls,
@@ -164,6 +168,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DataDir:                    cfg.Dir,
 		DedicatedWALDir:            cfg.WalDir,
 		SnapshotCount:              cfg.SnapshotCount,
+		SnapshotCatchUpEntries:     cfg.SnapshotCatchUpEntries,
 		MaxSnapFiles:               cfg.MaxSnapFiles,
 		MaxWALFiles:                cfg.MaxWalFiles,
 		InitialPeerURLsMap:         urlsmap,
@@ -178,6 +183,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionRetention:    autoCompactionRetention,
 		AutoCompactionMode:         cfg.AutoCompactionMode,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
+		BackendBatchLimit:          cfg.BackendBatchLimit,
+		BackendFreelistType:        backendFreelistType,
+		BackendBatchInterval:       cfg.BackendBatchInterval,
 		MaxTxnOps:                  cfg.MaxTxnOps,
 		MaxRequestBytes:            cfg.MaxRequestBytes,
 		StrictReconfigCheck:        cfg.StrictReconfigCheck,
@@ -195,34 +203,13 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LoggerWriteSyncer:          cfg.loggerWriteSyncer,
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
+		EnableGRPCGateway:          cfg.EnableGRPCGateway,
+		EnableLeaseCheckpoint:      cfg.ExperimentalEnableLeaseCheckpoint,
+		CompactionBatchLimit:       cfg.ExperimentalCompactionBatchLimit,
 	}
+	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
-	}
-
-	if len(e.cfg.CORS) > 0 {
-		ss := make([]string, 0, len(e.cfg.CORS))
-		for v := range e.cfg.CORS {
-			ss = append(ss, v)
-		}
-		sort.Strings(ss)
-		if e.cfg.logger != nil {
-			e.cfg.logger.Info("configured CORS", zap.Strings("cors", ss))
-		} else {
-			plog.Infof("%s starting with cors %q", e.Server.ID(), ss)
-		}
-	}
-	if len(e.cfg.HostWhitelist) > 0 {
-		ss := make([]string, 0, len(e.cfg.HostWhitelist))
-		for v := range e.cfg.HostWhitelist {
-			ss = append(ss, v)
-		}
-		sort.Strings(ss)
-		if e.cfg.logger != nil {
-			e.cfg.logger.Info("configured host whitelist", zap.Strings("hosts", ss))
-		} else {
-			plog.Infof("%s starting with host whitelist %q", e.Server.ID(), ss)
-		}
 	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
@@ -263,6 +250,94 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	serving = true
 	return e, nil
+}
+
+func print(lg *zap.Logger, ec Config, sc etcdserver.ServerConfig, memberInitialized bool) {
+	// TODO: remove this after dropping "capnslog"
+	if lg == nil {
+		plog.Infof("name = %s", ec.Name)
+		if sc.ForceNewCluster {
+			plog.Infof("force new cluster")
+		}
+		plog.Infof("data dir = %s", sc.DataDir)
+		plog.Infof("member dir = %s", sc.MemberDir())
+		if sc.DedicatedWALDir != "" {
+			plog.Infof("dedicated WAL dir = %s", sc.DedicatedWALDir)
+		}
+		plog.Infof("heartbeat = %dms", sc.TickMs)
+		plog.Infof("election = %dms", sc.ElectionTicks*int(sc.TickMs))
+		plog.Infof("snapshot count = %d", sc.SnapshotCount)
+		if len(sc.DiscoveryURL) != 0 {
+			plog.Infof("discovery URL= %s", sc.DiscoveryURL)
+			if len(sc.DiscoveryProxy) != 0 {
+				plog.Infof("discovery proxy = %s", sc.DiscoveryProxy)
+			}
+		}
+		plog.Infof("advertise client URLs = %s", sc.ClientURLs)
+		if memberInitialized {
+			plog.Infof("initial advertise peer URLs = %s", sc.PeerURLs)
+			plog.Infof("initial cluster = %s", sc.InitialPeerURLsMap)
+		}
+	} else {
+		cors := make([]string, 0, len(ec.CORS))
+		for v := range ec.CORS {
+			cors = append(cors, v)
+		}
+		sort.Strings(cors)
+
+		hss := make([]string, 0, len(ec.HostWhitelist))
+		for v := range ec.HostWhitelist {
+			hss = append(hss, v)
+		}
+		sort.Strings(hss)
+
+		quota := ec.QuotaBackendBytes
+		if quota == 0 {
+			quota = etcdserver.DefaultQuotaBytes
+		}
+
+		lg.Info(
+			"starting an etcd server",
+			zap.String("etcd-version", version.Version),
+			zap.String("git-sha", version.GitSHA),
+			zap.String("go-version", runtime.Version()),
+			zap.String("go-os", runtime.GOOS),
+			zap.String("go-arch", runtime.GOARCH),
+			zap.Int("max-cpu-set", runtime.GOMAXPROCS(0)),
+			zap.Int("max-cpu-available", runtime.NumCPU()),
+			zap.Bool("member-initialized", memberInitialized),
+			zap.String("name", sc.Name),
+			zap.String("data-dir", sc.DataDir),
+			zap.String("wal-dir", ec.WalDir),
+			zap.String("wal-dir-dedicated", sc.DedicatedWALDir),
+			zap.String("member-dir", sc.MemberDir()),
+			zap.Bool("force-new-cluster", sc.ForceNewCluster),
+			zap.String("heartbeat-interval", fmt.Sprintf("%v", time.Duration(sc.TickMs)*time.Millisecond)),
+			zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(sc.ElectionTicks*int(sc.TickMs))*time.Millisecond)),
+			zap.Bool("initial-election-tick-advance", sc.InitialElectionTickAdvance),
+			zap.Uint64("snapshot-count", sc.SnapshotCount),
+			zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
+			zap.Strings("initial-advertise-peer-urls", ec.getAPURLs()),
+			zap.Strings("listen-peer-urls", ec.getLPURLs()),
+			zap.Strings("advertise-client-urls", ec.getACURLs()),
+			zap.Strings("listen-client-urls", ec.getLCURLs()),
+			zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
+			zap.Strings("cors", cors),
+			zap.Strings("host-whitelist", hss),
+			zap.String("initial-cluster", sc.InitialPeerURLsMap.String()),
+			zap.String("initial-cluster-state", ec.ClusterState),
+			zap.String("initial-cluster-token", sc.InitialClusterToken),
+			zap.Int64("quota-size-bytes", quota),
+			zap.Bool("pre-vote", sc.PreVote),
+			zap.Bool("initial-corrupt-check", sc.InitialCorruptCheck),
+			zap.String("corrupt-check-time-interval", sc.CorruptCheckTime.String()),
+			zap.String("auto-compaction-mode", sc.AutoCompactionMode),
+			zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
+			zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
+			zap.String("discovery-url", sc.DiscoveryURL),
+			zap.String("discovery-proxy", sc.DiscoveryProxy),
+		)
+	}
 }
 
 // Config returns the current configuration.
@@ -345,7 +420,7 @@ func stopServers(ctx context.Context, ss *servers) {
 
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
-	// and https://github.com/coreos/etcd/issues/8916
+	// and https://github.com/etcd-io/etcd/issues/8916
 	if ss.secure {
 		shutdownNow()
 		return
@@ -375,6 +450,9 @@ func stopServers(ctx context.Context, ss *servers) {
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
+	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.PeerSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
@@ -384,7 +462,11 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	}
 	if !cfg.PeerTLSInfo.Empty() {
 		if cfg.logger != nil {
-			cfg.logger.Info("starting with peer TLS", zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)))
+			cfg.logger.Info(
+				"starting with peer TLS",
+				zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)),
+				zap.Strings("cipher-suites", cfg.CipherSuites),
+			)
 		} else {
 			plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
 		}
@@ -505,6 +587,9 @@ func (e *Etcd) servePeers() (err error) {
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
+	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
+		return nil, err
+	}
 	if err = cfg.ClientSelfCert(); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
@@ -540,7 +625,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			}
 		}
 		if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
-			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPs scheme", u.String())
+			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
 		}
 
 		network := "tcp"
@@ -623,6 +708,7 @@ func (e *Etcd) serveClients() (err error) {
 			e.cfg.logger.Info(
 				"starting with client TLS",
 				zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)),
+				zap.Strings("cipher-suites", e.cfg.CipherSuites),
 			)
 		} else {
 			plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
@@ -659,7 +745,7 @@ func (e *Etcd) serveClients() (err error) {
 		}))
 	}
 
-	// start client servers in a goroutine
+	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, gopts...))

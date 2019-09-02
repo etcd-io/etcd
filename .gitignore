@@ -13,6 +13,8 @@
 *.test
 hack/tls-setup/certs
 .idea
+/contrib/raftexample/raftexample
+/contrib/raftexample/raftexample-*
 
 # TODO: use dep prune
 # https://github.com/golang/dep/issues/120#issuecomment-306518546

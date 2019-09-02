@@ -20,19 +20,21 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
@@ -131,8 +133,8 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && err != context.DeadlineExceeded {
-		t.Errorf("expected %v, got %v", context.DeadlineExceeded, err)
+	if err != nil && !isClientTimeout(err) {
+		t.Errorf("expected client timeout, got %v", err)
 	}
 }
 
@@ -148,7 +150,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	b := backend.NewDefaultBackend(dpath)
-	s := mvcc.NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := mvcc.NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	rev := 100000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte(fmt.Sprintf("%10d", i)), bytes.Repeat([]byte("a"), 1024), lease.NoLease)
@@ -157,9 +159,10 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	b.Close()
 	clus.Members[0].Restart(t)
 
+	cli := clus.RandClient()
 	// reading snapshot with canceled context should error out
 	ctx, cancel := context.WithCancel(context.Background())
-	rc1, err := clus.RandClient().Snapshot(ctx)
+	rc1, err := cli.Snapshot(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +192,51 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	// 300ms left and expect timeout while snapshot reading is in progress
 	time.Sleep(700 * time.Millisecond)
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && !strings.Contains(err.Error(), context.DeadlineExceeded.Error()) {
-		t.Errorf("expected %v from gRPC, got %v", context.DeadlineExceeded, err)
+	if err != nil && !isClientTimeout(err) {
+		t.Errorf("expected client timeout, got %v", err)
+	}
+}
+
+func TestMaintenanceStatus(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.WaitLeader(t)
+
+	eps := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		eps[i] = clus.Members[i].GRPCAddr()
+	}
+
+	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	prevID, leaderFound := uint64(0), false
+	for i := 0; i < 3; i++ {
+		resp, err := cli.Status(context.TODO(), eps[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if prevID == 0 {
+			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
+			continue
+		}
+		if prevID == resp.Header.MemberId {
+			t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
+		}
+		if leaderFound && resp.Header.MemberId == resp.Leader {
+			t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
+		}
+		if !leaderFound {
+			leaderFound = resp.Header.MemberId == resp.Leader
+		}
+	}
+	if !leaderFound {
+		t.Fatal("no leader found")
 	}
 }

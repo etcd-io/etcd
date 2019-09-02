@@ -43,7 +43,7 @@ const (
 // (1970-01-01 00:00 UTC) excluding leap seconds.
 type Time int64
 
-// Interval describes and interval between two timestamps.
+// Interval describes an interval between two timestamps.
 type Interval struct {
 	Start, End Time
 }
@@ -150,7 +150,13 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 			return err
 		}
 
-		*t = Time(v + va)
+		// If the value was something like -0.1 the negative is lost in the
+		// parsing because of the leading zero, this ensures that we capture it.
+		if len(p[0]) > 0 && p[0][0] == '-' && v+va > 0 {
+			*t = Time(v+va) * -1
+		} else {
+			*t = Time(v + va)
+		}
 
 	default:
 		return fmt.Errorf("invalid time %q", string(b))
@@ -214,6 +220,9 @@ func (d Duration) String() string {
 		ms   = int64(time.Duration(d) / time.Millisecond)
 		unit = "ms"
 	)
+	if ms == 0 {
+		return "0s"
+	}
 	factors := map[string]int64{
 		"y":  1000 * 60 * 60 * 24 * 365,
 		"w":  1000 * 60 * 60 * 24 * 7,

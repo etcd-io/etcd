@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 func TestV2Set(t *testing.T) {
@@ -891,7 +891,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 	go func() {
 		resp, err := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=5"))
 		if err != nil {
-			t.Fatalf("watch err = %v, want nil", err)
+			t.Errorf("watch err = %v, want nil", err)
 		}
 		body = tc.ReadBodyJSON(resp)
 		c <- true
@@ -979,7 +979,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 		// Expect a notification when watching the node
 		resp, err := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir/bar?wait=true"))
 		if err != nil {
-			t.Fatalf("watch err = %v, want nil", err)
+			t.Errorf("watch err = %v, want nil", err)
 		}
 		body = tc.ReadBodyJSON(resp)
 		c <- true

@@ -18,7 +18,7 @@ package main
 import (
 	"flag"
 
-	"github.com/coreos/etcd/functional/tester"
+	"go.etcd.io/etcd/functional/tester"
 
 	"go.uber.org/zap"
 )

@@ -16,8 +16,8 @@
 
 package backend
 
-import bolt "github.com/coreos/bbolt"
+import bolt "go.etcd.io/bbolt"
 
-var boltOpenOptions *bolt.Options = nil
+var boltOpenOptions *bolt.Options
 
 func (bcfg *BackendConfig) mmapSize() int { return int(bcfg.MmapSize) }

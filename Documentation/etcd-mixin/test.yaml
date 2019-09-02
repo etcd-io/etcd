@@ -1,0 +1,85 @@
+rule_files:
+  - mixin.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.2"}'
+        values: '1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: etcdInsufficientMembers
+      - eval_time: 5m
+        alertname: etcdInsufficientMembers
+      - eval_time: 5m
+        alertname: etcdMembersDown
+      - eval_time: 7m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              message: 'etcd cluster "etcd": members are down (1).'
+      - eval_time: 7m
+        alertname: etcdInsufficientMembers
+      - eval_time: 11m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              message: 'etcd cluster "etcd": insufficient members (1).'
+      - eval_time: 15m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              message: 'etcd cluster "etcd": insufficient members (0).'
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.2"}'
+        values: '1 1 1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              message: 'etcd cluster "etcd": members are down (2).'
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'etcd_network_peer_sent_failures_total{To="member-1",job="etcd",endpoint="test"}'
+        values: '0 0 1 2 3 4 5 6 7 8 9 10'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: etcdMembersDown
+      - eval_time: 6m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              message: 'etcd cluster "etcd": members are down (1).'

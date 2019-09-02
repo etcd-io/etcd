@@ -5,17 +5,13 @@ if ! [[ "$0" =~ "tests/semaphore.test.bash" ]]; then
   exit 255
 fi
 
-TEST_SUFFIX=$(date +%s | base64 | head -c 15)
+<<COMMENT
+# amd64-e2e
+tests/semaphore.test.bash
+sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.13" make docker-test
 
-TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.3"
-if [ "$TEST_ARCH" == "386" ]; then
-  TEST_OPTS="GOARCH=386 PASSES='build e2e'"
-fi
+# 386-e2e
+sudo HOST_TMP_DIR=/tmp TEST_OPTS="GOARCH=386 PASSES='build e2e'" make docker-test
+COMMENT
 
-docker run \
-  --rm \
-  --volume=`pwd`:/go/src/github.com/coreos/etcd \
-  gcr.io/etcd-development/etcd-test:go1.10.2 \
-  /bin/bash -c "${TEST_OPTS} ./test 2>&1 | tee test-${TEST_SUFFIX}.log"
-
-! egrep "(--- FAIL:|panic: test timed out|appears to have leaked)" -B50 -A10 test-${TEST_SUFFIX}.log
+sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build release e2e' MANUAL_VER=v3.3.13" make docker-test

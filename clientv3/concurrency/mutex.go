@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sync"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
 // Mutex implements the sync Locker interface with etcd
@@ -68,11 +68,10 @@ func (m *Mutex) Lock(ctx context.Context) error {
 
 	// wait for deletion revisions prior to myKey
 	hdr, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
-	// release lock key if cancelled
-	select {
-	case <-ctx.Done():
+	// release lock key if wait failed
+	if werr != nil {
 		m.Unlock(client.Ctx())
-	default:
+	} else {
 		m.hdr = hdr
 	}
 	return werr

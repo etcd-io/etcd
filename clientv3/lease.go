@@ -19,9 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -77,14 +78,17 @@ const (
 	// defaultTTL is the assumed lease TTL used for the first keepalive
 	// deadline before the actual TTL is known to the client.
 	defaultTTL = 5 * time.Second
-	// a small buffer to store unsent lease responses.
-	leaseResponseChSize = 16
 	// NoLease is a lease ID for the absence of a lease.
 	NoLease LeaseID = 0
 
 	// retryConnWait is how long to wait before retrying request due to an error
 	retryConnWait = 500 * time.Millisecond
 )
+
+// LeaseResponseChSize is the size of buffer to store unsent lease responses.
+// WARNING: DO NOT UPDATE.
+// Only for testing purposes.
+var LeaseResponseChSize = 16
 
 // ErrKeepAliveHalted is returned if client keep alive loop halts with an unexpected error.
 //
@@ -114,22 +118,21 @@ type Lease interface {
 	// Leases retrieves all leases.
 	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
 
-	// KeepAlive keeps the given lease alive forever. If the keepalive response
-	// posted to the channel is not consumed immediately, the lease client will
-	// continue sending keep alive requests to the etcd server at least every
-	// second until latest response is consumed.
+	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
+	// to the channel are not consumed promptly the channel may become full. When full, the lease
+	// client will continue sending keep alive requests to the etcd server, but will drop responses
+	// until there is capacity on the channel to send more responses.
+	//
+	// If client keep alive loop halts with an unexpected error (e.g. "etcdserver: no leader") or
+	// canceled by the caller (e.g. context.Canceled), KeepAlive returns a ErrKeepAliveHalted error
+	// containing the error reason.
 	//
 	// The returned "LeaseKeepAliveResponse" channel closes if underlying keep
 	// alive stream is interrupted in some way the client cannot handle itself;
-	// given context "ctx" is canceled or timed out. "LeaseKeepAliveResponse"
-	// from this closed channel is nil.
-	//
-	// If client keep alive loop halts with an unexpected error (e.g. "etcdserver:
-	// no leader") or canceled by the caller (e.g. context.Canceled), the error
-	// is returned. Otherwise, it retries.
+	// given context "ctx" is canceled or timed out.
 	//
 	// TODO(v4.0): post errors to last keep alive message before closing
-	// (see https://github.com/coreos/etcd/pull/7866)
+	// (see https://github.com/etcd-io/etcd/pull/7866)
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
 	// KeepAliveOnce renews the lease once. The response corresponds to the
@@ -169,6 +172,8 @@ type lessor struct {
 	firstKeepAliveOnce sync.Once
 
 	callOpts []grpc.CallOption
+
+	lg *zap.Logger
 }
 
 // keepAlive multiplexes a keepalive for a lease over multiple channels
@@ -193,6 +198,7 @@ func NewLeaseFromLeaseClient(remote pb.LeaseClient, c *Client, keepAliveTimeout 
 		keepAlives:            make(map[LeaseID]*keepAlive),
 		remote:                remote,
 		firstKeepAliveTimeout: keepAliveTimeout,
+		lg:                    c.lg,
 	}
 	if l.firstKeepAliveTimeout == time.Second {
 		l.firstKeepAliveTimeout = defaultTTL
@@ -258,7 +264,7 @@ func (l *lessor) Leases(ctx context.Context) (*LeaseLeasesResponse, error) {
 }
 
 func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error) {
-	ch := make(chan *LeaseKeepAliveResponse, leaseResponseChSize)
+	ch := make(chan *LeaseKeepAliveResponse, LeaseResponseChSize)
 
 	l.mu.Lock()
 	// ensure that recvKeepAliveLoop is still running
@@ -288,7 +294,7 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	}
 	l.mu.Unlock()
 
-	go l.keepAliveCtxCloser(id, ctx, ka.donec)
+	go l.keepAliveCtxCloser(ctx, id, ka.donec)
 	l.firstKeepAliveOnce.Do(func() {
 		go l.recvKeepAliveLoop()
 		go l.deadlineLoop()
@@ -320,7 +326,7 @@ func (l *lessor) Close() error {
 	return nil
 }
 
-func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-chan struct{}) {
+func (l *lessor) keepAliveCtxCloser(ctx context.Context, id LeaseID, donec <-chan struct{}) {
 	select {
 	case <-donec:
 		return
@@ -456,7 +462,6 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 
 		select {
 		case <-time.After(retryConnWait):
-			continue
 		case <-l.stopCtx.Done():
 			return l.stopCtx.Err()
 		}
@@ -466,7 +471,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 // resetRecv opens a new lease stream and starts sending keep alive requests.
 func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
 	sctx, cancel := context.WithCancel(l.stopCtx)
-	stream, err := l.remote.LeaseKeepAlive(sctx, l.callOpts...)
+	stream, err := l.remote.LeaseKeepAlive(sctx, append(l.callOpts, withMax(0))...)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -514,9 +519,16 @@ func (l *lessor) recvKeepAlive(resp *pb.LeaseKeepAliveResponse) {
 	for _, ch := range ka.chs {
 		select {
 		case ch <- karesp:
-			ka.nextKeepAlive = nextKeepAlive
 		default:
+			if l.lg != nil {
+				l.lg.Warn("lease keepalive response queue is full; dropping response send",
+					zap.Int("queue-size", len(ch)),
+					zap.Int("queue-capacity", cap(ch)),
+				)
+			}
 		}
+		// still advance in order to rate-limit keep-alive sends
+		ka.nextKeepAlive = nextKeepAlive
 	}
 }
 
@@ -565,7 +577,7 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 		}
 
 		select {
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(retryConnWait):
 		case <-stream.Context().Done():
 			return
 		case <-l.donec:

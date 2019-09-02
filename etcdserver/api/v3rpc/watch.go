@@ -21,12 +21,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/auth"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 
 	"go.uber.org/zap"
 )
@@ -179,7 +179,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 				}
 			} else {
 				if sws.lg != nil {
-					sws.lg.Warn("failed to receive watch request from gRPC stream", zap.Error(err))
+					sws.lg.Warn("failed to receive watch request from gRPC stream", zap.Error(rerr))
 				} else {
 					plog.Warningf("failed to receive watch request from gRPC stream (%q)", rerr.Error())
 				}
@@ -317,7 +317,13 @@ func (sws *serverWatchStream) recvLoop() error {
 					sws.mu.Unlock()
 				}
 			}
-
+		case *pb.WatchRequest_ProgressRequest:
+			if uv.ProgressRequest != nil {
+				sws.ctrlStream <- &pb.WatchResponse{
+					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId: -1, // response is not associated with any WatchId and will be broadcast to all watch channels
+				}
+			}
 		default:
 			// we probably should not shutdown the entire stream when
 			// receive an valid command.

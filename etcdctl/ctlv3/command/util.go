@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	pb "go.etcd.io/etcd/mvcc/mvccpb"
 
 	"github.com/spf13/cobra"
 )
@@ -80,6 +80,14 @@ func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
 		ExitWithError(ExitError, err)
 	}
 	return context.WithTimeout(context.Background(), timeOut)
+}
+
+func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
+	commandTimeoutFlag := cmd.Flags().Lookup("command-timeout")
+	if commandTimeoutFlag == nil {
+		panic("expect command-timeout flag to exist")
+	}
+	return commandTimeoutFlag.Changed
 }
 
 // get the process_resident_memory_bytes from <server:2379>/metrics

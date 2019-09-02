@@ -19,10 +19,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/pkg/pbutil"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -38,7 +38,7 @@ type ApplierV2 interface {
 }
 
 func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
-	return &applierV2store{store: s, cluster: c}
+	return &applierV2store{lg: lg, store: s, cluster: c}
 }
 
 type applierV2store struct {
@@ -114,7 +114,7 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
-	defer warnOfExpensiveRequest(s.getLogger(), time.Now(), r)
+	defer warnOfExpensiveRequest(s.getLogger(), time.Now(), r, nil, nil)
 
 	switch r.Method {
 	case "POST":

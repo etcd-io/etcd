@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/etcdctl/ctlv2"
-	"github.com/coreos/etcd/etcdctl/ctlv3"
+	"go.etcd.io/etcd/etcdctl/ctlv2"
+	"go.etcd.io/etcd/etcdctl/ctlv3"
 )
 
 const (
@@ -32,7 +32,7 @@ func main() {
 	// unset apiEnv to avoid side-effect for future env and flag parsing.
 	os.Unsetenv(apiEnv)
 	if len(apiv) == 0 || apiv == "3" {
-		ctlv3.Start(apiv)
+		ctlv3.Start()
 		return
 	}
 

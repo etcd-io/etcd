@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !cluster_proxy
+
+// TODO: fix race conditions with setupLogging
+
 package integration
 
 import (
@@ -24,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/embed"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/embed"
 )
 
 func TestEmbedEtcd(t *testing.T) {

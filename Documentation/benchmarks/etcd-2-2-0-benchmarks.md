@@ -1,4 +1,6 @@
-# Benchmarking etcd v2.2.0
+---
+title: Benchmarking etcd v2.2.0
+---
 
 ## Physical Machines
 

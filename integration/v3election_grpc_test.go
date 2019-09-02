@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // TestV3ElectionCampaign checks that Campaign will not give
@@ -54,10 +54,10 @@ func TestV3ElectionCampaign(t *testing.T) {
 		req2 := &epb.CampaignRequest{Name: []byte("foo"), Lease: lease2.ID, Value: []byte("def")}
 		l2, lerr2 := lc.Campaign(context.TODO(), req2)
 		if lerr2 != nil {
-			t.Fatal(lerr2)
+			t.Error(lerr2)
 		}
 		if l1.Header.Revision >= l2.Header.Revision {
-			t.Fatalf("expected l1 revision < l2 revision, got %d >= %d", l1.Header.Revision, l2.Header.Revision)
+			t.Errorf("expected l1 revision < l2 revision, got %d >= %d", l1.Header.Revision, l2.Header.Revision)
 		}
 	}()
 
@@ -103,18 +103,18 @@ func TestV3ElectionObserve(t *testing.T) {
 		s, err := lc.Observe(context.Background(), &epb.LeaderRequest{Name: []byte("foo")})
 		observec <- struct{}{}
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		for i := 0; i < 10; i++ {
 			resp, rerr := s.Recv()
 			if rerr != nil {
-				t.Fatal(rerr)
+				t.Error(rerr)
 			}
 			respV := 0
 			fmt.Sscanf(string(resp.Kv.Value), "%d", &respV)
 			// leader transitions should not go backwards
 			if respV < i {
-				t.Fatalf(`got observe value %q, expected >= "%d"`, string(resp.Kv.Value), i)
+				t.Errorf(`got observe value %q, expected >= "%d"`, string(resp.Kv.Value), i)
 			}
 			i = respV
 		}
@@ -142,17 +142,17 @@ func TestV3ElectionObserve(t *testing.T) {
 
 		lease2, err2 := toGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
 		if err2 != nil {
-			t.Fatal(err2)
+			t.Error(err2)
 		}
 		c2, cerr2 := lc.Campaign(context.TODO(), &epb.CampaignRequest{Name: []byte("foo"), Lease: lease2.ID, Value: []byte("5")})
 		if cerr2 != nil {
-			t.Fatal(cerr2)
+			t.Error(cerr2)
 		}
 		for i := 6; i < 10; i++ {
 			v := []byte(fmt.Sprintf("%d", i))
 			req := &epb.ProclaimRequest{Leader: c2.Leader, Value: v}
 			if _, err := lc.Proclaim(context.TODO(), req); err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 		}
 	}()

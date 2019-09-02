@@ -31,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/pkg/tlsutil"
 
 	"go.uber.org/zap"
 )
@@ -56,16 +56,20 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 	if scheme != "https" && scheme != "unixs" {
 		return l, nil
 	}
+	if tlsinfo != nil && tlsinfo.SkipClientSANVerify {
+		return NewTLSListener(l, tlsinfo)
+	}
 	return newTLSListener(l, tlsinfo, checkSAN)
 }
 
 type TLSInfo struct {
-	CertFile           string
-	KeyFile            string
-	TrustedCAFile      string
-	ClientCertAuth     bool
-	CRLFile            string
-	InsecureSkipVerify bool
+	CertFile            string
+	KeyFile             string
+	TrustedCAFile       string
+	ClientCertAuth      bool
+	CRLFile             string
+	InsecureSkipVerify  bool
+	SkipClientSANVerify bool
 
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
@@ -73,6 +77,11 @@ type TLSInfo struct {
 	// HandshakeFailure is optionally called when a connection fails to handshake. The
 	// connection will be closed immediately afterwards.
 	HandshakeFailure func(*tls.Conn, error)
+
+	// CipherSuites is a list of supported cipher suites.
+	// If empty, Go auto-populates it by default.
+	// Note that cipher suites are prioritized in the given order.
+	CipherSuites []uint16
 
 	selfCert bool
 
@@ -83,9 +92,17 @@ type TLSInfo struct {
 	// AllowedCN is a CN which must be provided by a client.
 	AllowedCN string
 
+	// AllowedHostname is an IP address or hostname that must match the TLS
+	// certificate provided by a client.
+	AllowedHostname string
+
 	// Logger logs TLS errors.
 	// If nil, all logs are discarded.
 	Logger *zap.Logger
+
+	// EmptyCN indicates that the cert must have empty CN.
+	// If true, ClientConfig() will return an error for a cert with non empty CN.
+	EmptyCN bool
 }
 
 func (info TLSInfo) String() string {
@@ -96,7 +113,7 @@ func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }
 
-func SelfCert(lg *zap.Logger, dirpath string, hosts []string) (info TLSInfo, err error) {
+func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
 	if err = os.MkdirAll(dirpath, 0700); err != nil {
 		return
 	}
@@ -132,7 +149,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string) (info TLSInfo, err
 		NotAfter:     time.Now().Add(365 * (24 * time.Hour)),
 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:           append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, additionalUsages...),
 		BasicConstraintsValid: true,
 	}
 
@@ -243,16 +260,36 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		ServerName: info.ServerName,
 	}
 
+	if len(info.CipherSuites) > 0 {
+		cfg.CipherSuites = info.CipherSuites
+	}
+
+	// Client certificates may be verified by either an exact match on the CN,
+	// or a more general check of the CN and SANs.
+	var verifyCertificate func(*x509.Certificate) bool
 	if info.AllowedCN != "" {
+		if info.AllowedHostname != "" {
+			return nil, fmt.Errorf("AllowedCN and AllowedHostname are mutually exclusive (cn=%q, hostname=%q)", info.AllowedCN, info.AllowedHostname)
+		}
+		verifyCertificate = func(cert *x509.Certificate) bool {
+			return info.AllowedCN == cert.Subject.CommonName
+		}
+	}
+	if info.AllowedHostname != "" {
+		verifyCertificate = func(cert *x509.Certificate) bool {
+			return cert.VerifyHostname(info.AllowedHostname) == nil
+		}
+	}
+	if verifyCertificate != nil {
 		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			for _, chains := range verifiedChains {
 				if len(chains) != 0 {
-					if info.AllowedCN == chains[0].Subject.CommonName {
+					if verifyCertificate(chains[0]) {
 						return nil
 					}
 				}
 			}
-			return errors.New("CommonName authentication failed")
+			return errors.New("client certificate authentication failed")
 		}
 	}
 
@@ -369,6 +406,28 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	if info.selfCert {
 		cfg.InsecureSkipVerify = true
 	}
+
+	if info.EmptyCN {
+		hasNonEmptyCN := false
+		cn := ""
+		tlsutil.NewCert(info.CertFile, info.KeyFile, func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error) {
+			var block *pem.Block
+			block, _ = pem.Decode(certPEMBlock)
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return tls.Certificate{}, err
+			}
+			if len(cert.Subject.CommonName) != 0 {
+				hasNonEmptyCN = true
+				cn = cert.Subject.CommonName
+			}
+			return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		})
+		if hasNonEmptyCN {
+			return nil, fmt.Errorf("cert has non empty Common Name (%s)", cn)
+		}
+	}
+
 	return cfg, nil
 }
 

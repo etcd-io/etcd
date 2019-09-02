@@ -28,8 +28,6 @@ func (t *roundTripperBlocker) RoundTrip(req *http.Request) (*http.Response, erro
 	select {
 	case <-t.unblockc:
 		return &http.Response{StatusCode: http.StatusNoContent, Body: &nopReadCloser{}}, nil
-	case <-req.Cancel:
-		return nil, errors.New("request canceled")
 	case <-ctx.Done():
 		return nil, errors.New("request canceled")
 	case <-c:

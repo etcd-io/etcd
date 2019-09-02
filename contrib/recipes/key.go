@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 // RemoteKV is a key/revision pair created by the client and stored on etcd
@@ -47,7 +47,7 @@ func newKV(kv v3.KV, key, val string, leaseID v3.LeaseID) (*RemoteKV, error) {
 func newUniqueKV(kv v3.KV, prefix string, val string) (*RemoteKV, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
-		rev, err := putNewKV(kv, newKey, val, 0)
+		rev, err := putNewKV(kv, newKey, val, v3.NoLease)
 		if err == nil {
 			return &RemoteKV{kv, newKey, rev, val}, nil
 		}

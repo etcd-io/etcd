@@ -24,12 +24,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +44,9 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	if !fileutil.Exist(dumpLogsBinary) {
 		t.Skipf("%q does not exist", dumpLogsBinary)
 	}
+
+	decoder_correctoutputformat := filepath.Join(binDir, "/testdecoder/decoder_correctoutputformat.sh")
+	decoder_wrongoutputformat := filepath.Join(binDir, "/testdecoder/decoder_wrongoutputformat.sh")
 
 	p, err := ioutil.TempDir(os.TempDir(), "etcddumplogstest")
 	if err != nil {
@@ -102,6 +105,8 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		{"lease grant entry-type", []string{"-entry-type", "IRRLeaseGrant", p}, "expectedoutput/listIRRLeaseGrant.output"},
 		{"lease revoke entry-type", []string{"-entry-type", "IRRLeaseRevoke", p}, "expectedoutput/listIRRLeaseRevoke.output"},
 		{"confchange and txn entry-type", []string{"-entry-type", "ConfigChange,IRRCompaction", p}, "expectedoutput/listConfigChangeIRRCompaction.output"},
+		{"decoder_correctoutputformat", []string{"-stream-decoder", decoder_correctoutputformat, p}, "expectedoutput/decoder_correctoutputformat.output"},
+		{"decoder_wrongoutputformat", []string{"-stream-decoder", decoder_wrongoutputformat, p}, "expectedoutput/decoder_wrongoutputformat.output"},
 	}
 
 	for _, argtest := range argtests {
@@ -198,7 +203,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrauthenticate := &etcdserverpb.InternalAuthenticateRequest{Name: "myname", Password: "password", SimpleToken: "token"}
 
-	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1"}
+	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1", Options: &authpb.UserAddOptions{NoPassword: false}}
 
 	irrauthuserdelete := &etcdserverpb.AuthUserDeleteRequest{Name: "name1"}
 

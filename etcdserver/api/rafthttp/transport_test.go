@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
+	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft/raftpb"
 
 	"github.com/xiang90/probing"
 )
@@ -97,10 +97,11 @@ func TestTransportCutMend(t *testing.T) {
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
 	tr := &Transport{
-		LeaderStats: ls,
-		streamRt:    &roundTripperRecorder{},
-		peers:       make(map[types.ID]Peer),
-		prober:      probing.NewProber(nil),
+		LeaderStats:    ls,
+		streamRt:       &roundTripperRecorder{},
+		peers:          make(map[types.ID]Peer),
+		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 
@@ -125,10 +126,11 @@ func TestTransportAdd(t *testing.T) {
 
 func TestTransportRemove(t *testing.T) {
 	tr := &Transport{
-		LeaderStats: stats.NewLeaderStats(""),
-		streamRt:    &roundTripperRecorder{},
-		peers:       make(map[types.ID]Peer),
-		prober:      probing.NewProber(nil),
+		LeaderStats:    stats.NewLeaderStats(""),
+		streamRt:       &roundTripperRecorder{},
+		peers:          make(map[types.ID]Peer),
+		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 	tr.RemovePeer(types.ID(1))
@@ -142,8 +144,9 @@ func TestTransportRemove(t *testing.T) {
 func TestTransportUpdate(t *testing.T) {
 	peer := newFakePeer()
 	tr := &Transport{
-		peers:  map[types.ID]Peer{types.ID(1): peer},
-		prober: probing.NewProber(nil),
+		peers:          map[types.ID]Peer{types.ID(1): peer},
+		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	u := "http://localhost:2380"
 	tr.UpdatePeer(types.ID(1), []string{u})
@@ -156,13 +159,14 @@ func TestTransportUpdate(t *testing.T) {
 func TestTransportErrorc(t *testing.T) {
 	errorc := make(chan error, 1)
 	tr := &Transport{
-		Raft:        &fakeRaft{},
-		LeaderStats: stats.NewLeaderStats(""),
-		ErrorC:      errorc,
-		streamRt:    newRespRoundTripper(http.StatusForbidden, nil),
-		pipelineRt:  newRespRoundTripper(http.StatusForbidden, nil),
-		peers:       make(map[types.ID]Peer),
-		prober:      probing.NewProber(nil),
+		Raft:           &fakeRaft{},
+		LeaderStats:    stats.NewLeaderStats(""),
+		ErrorC:         errorc,
+		streamRt:       newRespRoundTripper(http.StatusForbidden, nil),
+		pipelineRt:     newRespRoundTripper(http.StatusForbidden, nil),
+		peers:          make(map[types.ID]Peer),
+		pipelineProber: probing.NewProber(nil),
+		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 	defer tr.Stop()

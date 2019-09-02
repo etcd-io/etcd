@@ -27,8 +27,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "proxy/httpproxy")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "proxy/httpproxy")
 
 	// Hop-by-hop headers. These are removed when sent to the backend.
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html

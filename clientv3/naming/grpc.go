@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	etcd "github.com/coreos/etcd/clientv3"
+	etcd "go.etcd.io/etcd/clientv3"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/naming"
@@ -98,6 +98,8 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 		case etcd.EventTypeDelete:
 			err = json.Unmarshal(e.PrevKv.Value, &jupdate)
 			jupdate.Op = naming.Delete
+		default:
+			continue
 		}
 		if err == nil {
 			updates = append(updates, &jupdate)

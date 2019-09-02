@@ -1,4 +1,6 @@
-# KV API guarantees
+---
+title: KV API guarantees
+---
 
 etcd is a consistent and durable key value store with [mini-transaction][txn] support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
 

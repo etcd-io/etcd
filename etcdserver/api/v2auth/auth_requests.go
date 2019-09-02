@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"path"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"go.uber.org/zap"
 )
@@ -32,7 +32,6 @@ func (s *store) ensureAuthDirectories() error {
 	}
 	for _, res := range []string{StorePermsPrefix, StorePermsPrefix + "/users/", StorePermsPrefix + "/roles/"} {
 		ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
-		defer cancel()
 		pe := false
 		rr := etcdserverpb.Request{
 			Method:    "PUT",
@@ -41,6 +40,7 @@ func (s *store) ensureAuthDirectories() error {
 			PrevExist: &pe,
 		}
 		_, err := s.server.Do(ctx, rr)
+		cancel()
 		if err != nil {
 			if e, ok := err.(*v2error.Error); ok {
 				if e.ErrorCode == v2error.EcodeNodeExist {

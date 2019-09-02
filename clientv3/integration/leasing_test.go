@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/clientv3/leasing"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3/leasing"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -114,7 +114,7 @@ func TestLeasingInterval(t *testing.T) {
 	}
 
 	// load into cache
-	if resp, err = lkv.Get(context.TODO(), "abc/a"); err != nil {
+	if _, err = lkv.Get(context.TODO(), "abc/a"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -310,7 +310,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "abc" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 	// check current revision
 	getResp, gerr = lkv.Get(context.TODO(), "k")
@@ -318,7 +318,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "def" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 }
 
@@ -389,7 +389,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 		go func() {
 			resp, perr := lkv.Put(context.TODO(), "k", "abc")
 			if perr != nil {
-				t.Fatal(perr)
+				t.Error(perr)
 			}
 			putc <- resp
 		}()
@@ -559,7 +559,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
 		t.Fatal(err)
 	}
-	gresp, gerr := lkv.Get(context.TODO(), "k")
+	_, gerr := lkv.Get(context.TODO(), "k")
 	if gerr != nil {
 		t.Fatal(gerr)
 	}
@@ -573,7 +573,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 
 	clus.Members[0].Stop(t)
 
-	gresp, gerr = lkv.Get(context.TODO(), "k")
+	gresp, gerr := lkv.Get(context.TODO(), "k")
 	if gerr != nil {
 		t.Fatal(gerr)
 	}
@@ -992,7 +992,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 		for i := 0; i < keyCount/2; i++ {
 			k := fmt.Sprintf("k-%d", rand.Intn(keyCount))
 			if _, err := kv.Get(context.TODO(), k); err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			getc <- struct{}{}
 		}
@@ -1399,10 +1399,10 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 		// blocks until lkv1 connection comes back
 		resp, err := lkv1.Get(cctx, "k")
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		if string(resp.Kvs[0].Value) != "v" {
-			t.Fatalf(`expected "v" value, got %+v`, resp)
+			t.Errorf(`expected "v" value, got %+v`, resp)
 		}
 	}()
 	select {
@@ -1440,11 +1440,11 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	clus.WaitLeader(t)
 
 	// put some more revisions for compaction
-	presp, err := clus.Client(1).Put(context.TODO(), "a", "123")
+	_, err := clus.Client(1).Put(context.TODO(), "a", "123")
 	if err != nil {
 		t.Fatal(err)
 	}
-	presp, err = clus.Client(1).Put(context.TODO(), "a", "123")
+	presp, err := clus.Client(1).Put(context.TODO(), "a", "123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1595,7 +1595,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 			}
 			tresp, err := lkv.Txn(context.TODO()).Then(gets...).Commit()
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			revs := make([]int64, len(gets))
 			for i, resp := range tresp.Responses {
@@ -1604,7 +1604,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 			}
 			for i := 1; i < len(revs); i++ {
 				if revs[i] != revs[i-1] {
-					t.Fatalf("expected matching revisions, got %+v", revs)
+					t.Errorf("expected matching revisions, got %+v", revs)
 				}
 			}
 		}
@@ -1644,6 +1644,7 @@ func TestLeasingReconnectTxn(t *testing.T) {
 			clus.Members[0].DropConnections()
 			time.Sleep(time.Millisecond)
 		}
+		time.Sleep(10 * time.Millisecond)
 	}()
 
 	_, lerr := lkv.Txn(context.TODO()).
@@ -1905,7 +1906,7 @@ func TestLeasingSessionExpire(t *testing.T) {
 	}
 	waitForExpireAck(t, lkv)
 	clus.Members[0].Restart(t)
-
+	integration.WaitClientV3(t, lkv2)
 	if _, err = lkv2.Put(context.TODO(), "abc", "def"); err != nil {
 		t.Fatal(err)
 	}
@@ -1920,10 +1921,6 @@ func TestLeasingSessionExpire(t *testing.T) {
 }
 
 func TestLeasingSessionExpireCancel(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
 	tests := []func(context.Context, clientv3.KV) error{
 		func(ctx context.Context, kv clientv3.KV) error {
 			_, err := kv.Get(ctx, "abc")
@@ -1960,37 +1957,43 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 		},
 	}
 	for i := range tests {
-		lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
-		testutil.AssertNil(t, err)
-		defer closeLKV()
+		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
+			defer testutil.AfterTest(t)
+			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
 
-		if _, err = lkv.Get(context.TODO(), "abc"); err != nil {
-			t.Fatal(err)
-		}
+			lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
+			testutil.AssertNil(t, err)
+			defer closeLKV()
 
-		// down endpoint lkv uses for keepalives
-		clus.Members[0].Stop(t)
-		if err := waitForLeasingExpire(clus.Client(1), "foo/abc"); err != nil {
-			t.Fatal(err)
-		}
-		waitForExpireAck(t, lkv)
-
-		ctx, cancel := context.WithCancel(context.TODO())
-		errc := make(chan error, 1)
-		go func() { errc <- tests[i](ctx, lkv) }()
-		// some delay to get past for ctx.Err() != nil {} loops
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-
-		select {
-		case err := <-errc:
-			if err != ctx.Err() {
-				t.Errorf("#%d: expected %v, got %v", i, ctx.Err(), err)
+			if _, err = lkv.Get(context.TODO(), "abc"); err != nil {
+				t.Fatal(err)
 			}
-		case <-time.After(5 * time.Second):
-			t.Errorf("#%d: timed out waiting for cancel", i)
-		}
-		clus.Members[0].Restart(t)
+
+			// down endpoint lkv uses for keepalives
+			clus.Members[0].Stop(t)
+			if err := waitForLeasingExpire(clus.Client(1), "foo/abc"); err != nil {
+				t.Fatal(err)
+			}
+			waitForExpireAck(t, lkv)
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			errc := make(chan error, 1)
+			go func() { errc <- tests[i](ctx, lkv) }()
+			// some delay to get past for ctx.Err() != nil {} loops
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+
+			select {
+			case err := <-errc:
+				if err != ctx.Err() {
+					t.Errorf("#%d: expected %v of server unavailable, got %v", i, ctx.Err(), err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Errorf("#%d: timed out waiting for cancel", i)
+			}
+			clus.Members[0].Restart(t)
+		})
 	}
 }
 
@@ -2016,6 +2019,8 @@ func waitForExpireAck(t *testing.T, kv clientv3.KV) {
 		cancel()
 		if err == ctx.Err() {
 			return
+		} else if err != nil {
+			t.Logf("current error: %v", err)
 		}
 		time.Sleep(time.Second)
 	}

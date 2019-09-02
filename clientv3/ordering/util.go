@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 )
 
 type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error
@@ -43,6 +43,8 @@ func NewOrderViolationSwitchEndpointClosure(c clientv3.Client) OrderViolationFun
 		// set available endpoints back to all endpoints in to ensure
 		// the client has access to all the endpoints.
 		c.SetEndpoints(eps...)
+		// give enough time for operation
+		time.Sleep(1 * time.Second)
 		violationCount++
 		return nil
 	}

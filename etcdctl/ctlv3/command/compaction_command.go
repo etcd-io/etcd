@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/clientv3"
 )
 
 var compactPhysical bool
@@ -38,7 +38,7 @@ func NewCompactionCommand() *cobra.Command {
 // compactionCommandFunc executes the "compaction" command.
 func compactionCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("compaction command needs 1 argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("compaction command needs 1 argument"))
 	}
 
 	rev, err := strconv.ParseInt(args[0], 10, 64)

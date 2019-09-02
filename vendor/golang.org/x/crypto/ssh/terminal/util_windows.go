@@ -17,6 +17,8 @@
 package terminal
 
 import (
+	"os"
+
 	"golang.org/x/sys/windows"
 )
 
@@ -24,7 +26,7 @@ type State struct {
 	mode uint32
 }
 
-// IsTerminal returns true if the given file descriptor is a terminal.
+// IsTerminal returns whether the given file descriptor is a terminal.
 func IsTerminal(fd int) bool {
 	var st uint32
 	err := windows.GetConsoleMode(windows.Handle(fd), &st)
@@ -62,20 +64,15 @@ func Restore(fd int, state *State) error {
 	return windows.SetConsoleMode(windows.Handle(fd), state.mode)
 }
 
-// GetSize returns the dimensions of the given terminal.
+// GetSize returns the visible dimensions of the given terminal.
+//
+// These dimensions don't include any scrollback buffer height.
 func GetSize(fd int) (width, height int, err error) {
 	var info windows.ConsoleScreenBufferInfo
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(fd), &info); err != nil {
 		return 0, 0, err
 	}
-	return int(info.Size.X), int(info.Size.Y), nil
-}
-
-// passwordReader is an io.Reader that reads from a specific Windows HANDLE.
-type passwordReader int
-
-func (r passwordReader) Read(buf []byte) (int, error) {
-	return windows.Read(windows.Handle(r), buf)
+	return int(info.Window.Right - info.Window.Left + 1), int(info.Window.Bottom - info.Window.Top + 1), nil
 }
 
 // ReadPassword reads a line of input from a terminal without local echo.  This
@@ -94,9 +91,15 @@ func ReadPassword(fd int) ([]byte, error) {
 		return nil, err
 	}
 
-	defer func() {
-		windows.SetConsoleMode(windows.Handle(fd), old)
-	}()
+	defer windows.SetConsoleMode(windows.Handle(fd), old)
 
-	return readPasswordLine(passwordReader(fd))
+	var h windows.Handle
+	p, _ := windows.GetCurrentProcess()
+	if err := windows.DuplicateHandle(p, windows.Handle(fd), p, &h, 0, false, windows.DUPLICATE_SAME_ACCESS); err != nil {
+		return nil, err
+	}
+
+	f := os.NewFile(uintptr(h), "stdin")
+	defer f.Close()
+	return readPasswordLine(f)
 }

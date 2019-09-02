@@ -16,6 +16,9 @@
     "m1.etcd.local",
     "m2.etcd.local",
     "m3.etcd.local",
+    "m4.etcd.local",
+    "m5.etcd.local",
+    "m6.etcd.local",
     "etcd.local",
     "127.0.0.1",
     "localhost"

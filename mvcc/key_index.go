@@ -324,22 +324,22 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 	return nil
 }
 
-func (a *keyIndex) Less(b btree.Item) bool {
-	return bytes.Compare(a.key, b.(*keyIndex).key) == -1
+func (ki *keyIndex) Less(b btree.Item) bool {
+	return bytes.Compare(ki.key, b.(*keyIndex).key) == -1
 }
 
-func (a *keyIndex) equal(b *keyIndex) bool {
-	if !bytes.Equal(a.key, b.key) {
+func (ki *keyIndex) equal(b *keyIndex) bool {
+	if !bytes.Equal(ki.key, b.key) {
 		return false
 	}
-	if a.modified != b.modified {
+	if ki.modified != b.modified {
 		return false
 	}
-	if len(a.generations) != len(b.generations) {
+	if len(ki.generations) != len(b.generations) {
 		return false
 	}
-	for i := range a.generations {
-		ag, bg := a.generations[i], b.generations[i]
+	for i := range ki.generations {
+		ag, bg := ki.generations[i], b.generations[i]
 		if !ag.equal(bg) {
 			return false
 		}
@@ -384,16 +384,16 @@ func (g *generation) String() string {
 	return fmt.Sprintf("g: created[%d] ver[%d], revs %#v\n", g.created, g.ver, g.revs)
 }
 
-func (a generation) equal(b generation) bool {
-	if a.ver != b.ver {
+func (g generation) equal(b generation) bool {
+	if g.ver != b.ver {
 		return false
 	}
-	if len(a.revs) != len(b.revs) {
+	if len(g.revs) != len(b.revs) {
 		return false
 	}
 
-	for i := range a.revs {
-		ar, br := a.revs[i], b.revs[i]
+	for i := range g.revs {
+		ar, br := g.revs[i], b.revs[i]
 		if ar != br {
 			return false
 		}

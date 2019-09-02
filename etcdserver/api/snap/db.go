@@ -21,8 +21,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/fileutil"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -33,6 +34,8 @@ var ErrNoDBSnapshot = errors.New("snap: snapshot file doesn't exist")
 // SaveDBFrom saves snapshot of the database from the given reader. It
 // guarantees the save operation is atomic.
 func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
+	start := time.Now()
+
 	f, err := ioutil.TempFile(s.dir, "tmp")
 	if err != nil {
 		return 0, err
@@ -40,7 +43,9 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	var n int64
 	n, err = io.Copy(f, r)
 	if err == nil {
+		fsyncStart := time.Now()
 		err = fileutil.Fsync(f)
+		snapDBFsyncSec.Observe(time.Since(fsyncStart).Seconds())
 	}
 	f.Close()
 	if err != nil {
@@ -69,6 +74,7 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 		plog.Infof("saved database snapshot to disk [total bytes: %d]", n)
 	}
 
+	snapDBSaveSec.Observe(time.Since(start).Seconds())
 	return n, nil
 }
 

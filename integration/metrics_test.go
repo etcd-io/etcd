@@ -16,12 +16,16 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
@@ -40,8 +44,16 @@ func TestMetricDbSizeBoot(t *testing.T) {
 	}
 }
 
-// TestMetricDbSizeDefrag checks that the db size metric is set after defrag.
 func TestMetricDbSizeDefrag(t *testing.T) {
+	testMetricDbSizeDefrag(t, "etcd")
+}
+
+func TestMetricDbSizeDefragDebugging(t *testing.T) {
+	testMetricDbSizeDefrag(t, "etcd_debugging")
+}
+
+// testMetricDbSizeDefrag checks that the db size metric is set after defrag.
+func testMetricDbSizeDefrag(t *testing.T, name string) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -63,7 +75,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	expected := numPuts * len(putreq.Value)
-	beforeDefrag, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
+	beforeDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +86,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	if bv < expected {
 		t.Fatalf("expected db size greater than %d, got %d", expected, bv)
 	}
-	beforeDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	beforeDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,28 +104,45 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 		t.Fatal(kerr)
 	}
 
-	// Put to move PendingPages to FreePages
-	if _, err = kvc.Put(context.TODO(), putreq); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(500 * time.Millisecond)
+	validateAfterCompactionInUse := func() error {
+		// Put to move PendingPages to FreePages
+		if _, err = kvc.Put(context.TODO(), putreq); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(500 * time.Millisecond)
 
-	afterCompactionInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
-	if err != nil {
-		t.Fatal(err)
+		afterCompactionInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
+		if err != nil {
+			t.Fatal(err)
+		}
+		aciu, err := strconv.Atoi(afterCompactionInUse)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if biu <= aciu {
+			return fmt.Errorf("expected less than %d, got %d after compaction", biu, aciu)
+		}
+		return nil
 	}
-	aciu, err := strconv.Atoi(afterCompactionInUse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if biu <= aciu {
-		t.Fatalf("expected less than %d, got %d after compaction", biu, aciu)
+
+	// backend rollbacks read transaction asynchronously (PR #10523),
+	// which causes the result to be flaky. Retry 3 times.
+	maxRetry, retry := 3, 0
+	for {
+		err := validateAfterCompactionInUse()
+		if err == nil {
+			break
+		}
+		retry++
+		if retry >= maxRetry {
+			t.Fatalf(err.Error())
+		}
 	}
 
 	// defrag should give freed space back to fs
 	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
 
-	afterDefrag, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
+	afterDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +154,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 		t.Fatalf("expected less than %d, got %d after defrag", bv, av)
 	}
 
-	afterDefragInUse, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_use_in_bytes")
+	afterDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,5 +164,53 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	}
 	if adiu > av {
 		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
+	}
+}
+
+func TestMetricQuotaBackendBytes(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	qs, err := clus.Members[0].Metric("etcd_server_quota_backend_bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qv, err := strconv.ParseFloat(qs, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(qv) != etcdserver.DefaultQuotaBytes {
+		t.Fatalf("expected %d, got %f", etcdserver.DefaultQuotaBytes, qv)
+	}
+}
+
+func TestMetricsHealth(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := clus.Members[0].ClientURLs[0]
+	u.Path = "/health"
+	resp, err := tr.RoundTrip(&http.Request{
+		Header: make(http.Header),
+		Method: http.MethodGet,
+		URL:    &u,
+	})
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hv, err := clus.Members[0].Metric("etcd_server_health_failures")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hv != "0" {
+		t.Fatalf("expected '0' from etcd_server_health_failures, got %q", hv)
 	}
 }

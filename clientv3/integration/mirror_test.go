@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3/mirror"
-	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/clientv3/mirror"
+	"go.etcd.io/etcd/integration"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestMirrorSync(t *testing.T) {
@@ -90,7 +90,7 @@ func TestMirrorSyncBase(t *testing.T) {
 
 			for key := range keyCh {
 				if _, err := cli.Put(ctx, key, "test"); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 			}
 		}()

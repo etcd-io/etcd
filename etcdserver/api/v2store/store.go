@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -216,9 +216,8 @@ func (s *store) Set(nodePath string, dir bool, value string, expireOpts TTLOptio
 		if getErr != nil {
 			err = getErr
 			return nil, err
-		} else {
-			value = n.Value
 		}
+		value = n.Value
 	}
 
 	// Set new value

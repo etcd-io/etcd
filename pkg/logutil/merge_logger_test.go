@@ -28,7 +28,7 @@ func TestMergeLogger(t *testing.T) {
 		txt      = "hello"
 		repeatN  = 6
 		duration = 2049843762 * time.Nanosecond
-		mg       = NewMergeLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/logutil"))
+		mg       = NewMergeLogger(capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/logutil"))
 	)
 	// overwrite this for testing
 	defaultMergePeriod = time.Minute
