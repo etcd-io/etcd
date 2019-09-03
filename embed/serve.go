@@ -189,7 +189,7 @@ func (sctx *serveCtx) serve(
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		if sctx.lg != nil {
 			sctx.lg.Info(
-				"serving client traffic insecurely",
+				"serving client traffic securely",
 				zap.String("address", sctx.l.Addr().String()),
 			)
 		} else {
