@@ -554,6 +554,11 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closer != nil {
+			closer()
+		}
+	}()
 
 	// create a new decoder from the readers on the WAL files
 	decoder := newDecoder(rs...)
@@ -589,10 +594,6 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
 		default:
 			return fmt.Errorf("unexpected block type %d", rec.Type)
 		}
-	}
-
-	if closer != nil {
-		closer()
 	}
 
 	// We do not have to read out all the WAL entries
