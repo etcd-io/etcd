@@ -135,6 +135,12 @@ This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and etcd `grpc
 
 Every cluster member and proxy accepts key value reads and key value writes.
 
+Follow the steps in [Procfile.learner](./Procfile.learner) to add a learner node to the cluster. Start the learner node with:
+
+```bash
+goreman -f ./Procfile.learner start
+```
+
 ### Next steps
 
 Now it's time to dig into the full etcd API and other guides.
