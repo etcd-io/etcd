@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM k8s.gcr.io/debian-base:v1.0.0
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/

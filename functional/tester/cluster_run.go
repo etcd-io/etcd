@@ -212,8 +212,8 @@ func (clus *Cluster) doRound() error {
 				)
 
 				// with network delay, some ongoing requests may fail
-				// only return error, if more than 10% of QPS requests fail
-				if cnt > int(clus.Tester.StressQPS)/10 {
+				// only return error, if more than 30% of QPS requests fail
+				if cnt > int(float64(clus.Tester.StressQPS)*0.3) {
 					return fmt.Errorf("expected no error in %q, got %q", fcase.String(), ess)
 				}
 			}

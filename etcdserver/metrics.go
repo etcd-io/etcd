@@ -76,6 +76,12 @@ var (
 		Name:      "slow_apply_total",
 		Help:      "The total number of slow apply requests (likely overloaded from slow disk).",
 	})
+	applySnapshotInProgress = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "snapshot_apply_in_progress_total",
+		Help:      "1 if the server is applying the incoming snapshot. 0 if none.",
+	})
 	proposalsCommitted = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -153,6 +159,7 @@ func init() {
 	prometheus.MustRegister(leaderChanges)
 	prometheus.MustRegister(heartbeatSendFailures)
 	prometheus.MustRegister(slowApplies)
+	prometheus.MustRegister(applySnapshotInProgress)
 	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
@@ -200,7 +207,7 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 		}
 		if used >= limit/5*4 {
 			if lg != nil {
-				lg.Warn("80%% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
+				lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
 			} else {
 				plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
 			}

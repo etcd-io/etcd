@@ -324,7 +324,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	txn := le.rd()
 
 	// sort keys so deletes are in same order among all members,
-	// otherwise the backened hashes will be different
+	// otherwise the backend hashes will be different
 	keys := l.Keys()
 	sort.StringSlice(keys).Sort()
 	for _, key := range keys {
@@ -595,7 +595,7 @@ func (le *lessor) runLoop() {
 	}
 }
 
-// revokeExpiredLeases finds all leases past their expiry and sends them to epxired channel for
+// revokeExpiredLeases finds all leases past their expiry and sends them to expired channel for
 // to be revoked.
 func (le *lessor) revokeExpiredLeases() {
 	var ls []*Lease

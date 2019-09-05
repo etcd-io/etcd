@@ -23,6 +23,13 @@ import (
 var (
 	rangeCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "range_total",
+			Help:      "Total number of ranges seen by this member.",
+		})
+	rangeCounterDebug = prometheus.NewCounter(
+		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "range_total",
@@ -30,6 +37,14 @@ var (
 		})
 
 	putCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "put_total",
+			Help:      "Total number of puts seen by this member.",
+		})
+	// TODO: remove in 3.5 release
+	putCounterDebug = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
@@ -39,6 +54,14 @@ var (
 
 	deleteCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "delete_total",
+			Help:      "Total number of deletes seen by this member.",
+		})
+	// TODO: remove in 3.5 release
+	deleteCounterDebug = prometheus.NewCounter(
+		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "delete_total",
@@ -46,6 +69,13 @@ var (
 		})
 
 	txnCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "txn_total",
+			Help:      "Total number of txns seen by this member.",
+		})
+	txnCounterDebug = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
@@ -162,21 +192,21 @@ var (
 	reportDbTotalSizeInBytes   = func() float64 { return 0 }
 
 	// TODO: remove this in v3.5
-	dbTotalSizeDebugging = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	dbTotalSizeDebug = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
 		Help:      "Total size of the underlying database physically allocated in bytes.",
 	},
 		func() float64 {
-			reportDbTotalSizeInBytesDebuggingMu.RLock()
-			defer reportDbTotalSizeInBytesDebuggingMu.RUnlock()
-			return reportDbTotalSizeInBytesDebugging()
+			reportDbTotalSizeInBytesDebugMu.RLock()
+			defer reportDbTotalSizeInBytesDebugMu.RUnlock()
+			return reportDbTotalSizeInBytesDebug()
 		},
 	)
 	// overridden by mvcc initialization
-	reportDbTotalSizeInBytesDebuggingMu sync.RWMutex
-	reportDbTotalSizeInBytesDebugging   = func() float64 { return 0 }
+	reportDbTotalSizeInBytesDebugMu sync.RWMutex
+	reportDbTotalSizeInBytesDebug   = func() float64 { return 0 }
 
 	dbTotalSizeInUse = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Namespace: "etcd",
@@ -238,9 +268,13 @@ var (
 
 func init() {
 	prometheus.MustRegister(rangeCounter)
+	prometheus.MustRegister(rangeCounterDebug)
 	prometheus.MustRegister(putCounter)
+	prometheus.MustRegister(putCounterDebug)
 	prometheus.MustRegister(deleteCounter)
+	prometheus.MustRegister(deleteCounterDebug)
 	prometheus.MustRegister(txnCounter)
+	prometheus.MustRegister(txnCounterDebug)
 	prometheus.MustRegister(keysGauge)
 	prometheus.MustRegister(watchStreamGauge)
 	prometheus.MustRegister(watcherGauge)
@@ -252,7 +286,7 @@ func init() {
 	prometheus.MustRegister(dbCompactionTotalMs)
 	prometheus.MustRegister(dbCompactionKeysCounter)
 	prometheus.MustRegister(dbTotalSize)
-	prometheus.MustRegister(dbTotalSizeDebugging)
+	prometheus.MustRegister(dbTotalSizeDebug)
 	prometheus.MustRegister(dbTotalSizeInUse)
 	prometheus.MustRegister(dbOpenReadTxN)
 	prometheus.MustRegister(hashSec)

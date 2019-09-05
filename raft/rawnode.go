@@ -37,82 +37,20 @@ type RawNode struct {
 	prevHardSt pb.HardState
 }
 
-func (rn *RawNode) newReady() Ready {
-	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
-}
-
-func (rn *RawNode) commitReady(rd Ready) {
-	if rd.SoftState != nil {
-		rn.prevSoftSt = rd.SoftState
-	}
-	if !IsEmptyHardState(rd.HardState) {
-		rn.prevHardSt = rd.HardState
-	}
-
-	// If entries were applied (or a snapshot), update our cursor for
-	// the next Ready. Note that if the current HardState contains a
-	// new Commit index, this does not mean that we're also applying
-	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		rn.raft.raftLog.appliedTo(index)
-	}
-
-	if len(rd.Entries) > 0 {
-		e := rd.Entries[len(rd.Entries)-1]
-		rn.raft.raftLog.stableTo(e.Index, e.Term)
-	}
-	if !IsEmptySnap(rd.Snapshot) {
-		rn.raft.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
-	}
-	if len(rd.ReadStates) != 0 {
-		rn.raft.readStates = nil
-	}
-}
-
-// NewRawNode returns a new RawNode given configuration and a list of raft peers.
-func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
-	if config.ID == 0 {
-		panic("config.ID must not be zero")
-	}
+// NewRawNode instantiates a RawNode from the given configuration.
+//
+// See Bootstrap() for bootstrapping an initial state; this replaces the former
+// 'peers' argument to this method (with identical behavior). However, It is
+// recommended that instead of calling Bootstrap, applications bootstrap their
+// state manually by setting up a Storage that has a first index > 1 and which
+// stores the desired ConfState as its InitialState.
+func NewRawNode(config *Config) (*RawNode, error) {
 	r := newRaft(config)
 	rn := &RawNode{
 		raft: r,
 	}
-	lastIndex, err := config.Storage.LastIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	// If the log is empty, this is a new RawNode (like StartNode); otherwise it's
-	// restoring an existing RawNode (like RestartNode).
-	// TODO(bdarnell): rethink RawNode initialization and whether the application needs
-	// to be able to tell us when it expects the RawNode to exist.
-	if lastIndex == 0 {
-		r.becomeFollower(1, None)
-		ents := make([]pb.Entry, len(peers))
-		for i, peer := range peers {
-			cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
-			data, err := cc.Marshal()
-			if err != nil {
-				panic("unexpected marshal error")
-			}
-
-			ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
-		}
-		r.raftLog.append(ents...)
-		r.raftLog.committed = uint64(len(ents))
-		for _, peer := range peers {
-			r.addNode(peer.ID)
-		}
-	}
-
-	// Set the initial hard and soft states after performing all initialization.
 	rn.prevSoftSt = r.softState()
-	if lastIndex == 0 {
-		rn.prevHardSt = emptyState
-	} else {
-		rn.prevHardSt = r.hardState()
-	}
-
+	rn.prevHardSt = r.hardState()
 	return rn, nil
 }
 
@@ -150,37 +88,20 @@ func (rn *RawNode) Propose(data []byte) error {
 		}})
 }
 
-// ProposeConfChange proposes a config change.
-func (rn *RawNode) ProposeConfChange(cc pb.ConfChange) error {
-	data, err := cc.Marshal()
+// ProposeConfChange proposes a config change. See (Node).ProposeConfChange for
+// details.
+func (rn *RawNode) ProposeConfChange(cc pb.ConfChangeI) error {
+	m, err := confChangeToMsg(cc)
 	if err != nil {
 		return err
 	}
-	return rn.raft.Step(pb.Message{
-		Type: pb.MsgProp,
-		Entries: []pb.Entry{
-			{Type: pb.EntryConfChange, Data: data},
-		},
-	})
+	return rn.raft.Step(m)
 }
 
 // ApplyConfChange applies a config change to the local node.
-func (rn *RawNode) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
-	if cc.NodeID == None {
-		return &pb.ConfState{Nodes: rn.raft.prs.VoterNodes(), Learners: rn.raft.prs.LearnerNodes()}
-	}
-	switch cc.Type {
-	case pb.ConfChangeAddNode:
-		rn.raft.addNode(cc.NodeID)
-	case pb.ConfChangeAddLearnerNode:
-		rn.raft.addLearner(cc.NodeID)
-	case pb.ConfChangeRemoveNode:
-		rn.raft.removeNode(cc.NodeID)
-	case pb.ConfChangeUpdateNode:
-	default:
-		panic("unexpected conf type")
-	}
-	return &pb.ConfState{Nodes: rn.raft.prs.VoterNodes(), Learners: rn.raft.prs.LearnerNodes()}
+func (rn *RawNode) ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState {
+	cs := rn.raft.applyConfChange(cc.AsV2())
+	return &cs
 }
 
 // Step advances the state machine using the given message.
@@ -195,12 +116,33 @@ func (rn *RawNode) Step(m pb.Message) error {
 	return ErrStepPeerNotFound
 }
 
-// Ready returns the current point-in-time state of this RawNode.
+// Ready returns the outstanding work that the application needs to handle. This
+// includes appending and applying entries or a snapshot, updating the HardState,
+// and sending messages. The returned Ready() *must* be handled and subsequently
+// passed back via Advance().
 func (rn *RawNode) Ready() Ready {
-	rd := rn.newReady()
-	rn.raft.msgs = nil
-	rn.raft.reduceUncommittedSize(rd.CommittedEntries)
+	rd := rn.readyWithoutAccept()
+	rn.acceptReady(rd)
 	return rd
+}
+
+// readyWithoutAccept returns a Ready. This is a read-only operation, i.e. there
+// is no obligation that the Ready must be handled.
+func (rn *RawNode) readyWithoutAccept() Ready {
+	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
+}
+
+// acceptReady is called when the consumer of the RawNode has decided to go
+// ahead and handle a Ready. Nothing must alter the state of the RawNode between
+// this call and the prior call to Ready().
+func (rn *RawNode) acceptReady(rd Ready) {
+	if rd.SoftState != nil {
+		rn.prevSoftSt = rd.SoftState
+	}
+	if len(rd.ReadStates) != 0 {
+		rn.raft.readStates = nil
+	}
+	rn.raft.msgs = nil
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.
@@ -228,21 +170,23 @@ func (rn *RawNode) HasReady() bool {
 // Advance notifies the RawNode that the application has applied and saved progress in the
 // last Ready results.
 func (rn *RawNode) Advance(rd Ready) {
-	rn.commitReady(rd)
+	if !IsEmptyHardState(rd.HardState) {
+		rn.prevHardSt = rd.HardState
+	}
+	rn.raft.advance(rd)
 }
 
-// Status returns the current status of the given group.
-func (rn *RawNode) Status() *Status {
+// Status returns the current status of the given group. This allocates, see
+// BasicStatus and WithProgress for allocation-friendlier choices.
+func (rn *RawNode) Status() Status {
 	status := getStatus(rn.raft)
-	return &status
+	return status
 }
 
-// StatusWithoutProgress returns a Status without populating the Progress field
-// (and returns the Status as a value to avoid forcing it onto the heap). This
-// is more performant if the Progress is not required. See WithProgress for an
-// allocation-free way to introspect the Progress.
-func (rn *RawNode) StatusWithoutProgress() Status {
-	return getStatusWithoutProgress(rn.raft)
+// BasicStatus returns a BasicStatus. Notably this does not contain the
+// Progress map; see WithProgress for an allocation-free way to inspect it.
+func (rn *RawNode) BasicStatus() BasicStatus {
+	return getBasicStatus(rn.raft)
 }
 
 // ProgressType indicates the type of replica a Progress corresponds to.

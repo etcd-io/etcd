@@ -53,7 +53,6 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 
 ## Build Release Binaries and Images
 
-- Ensure `acbuild` is available.
 - Ensure `docker` is available.
 
 Run release script in root directory:
@@ -74,8 +73,6 @@ The following commands are used for public release sign:
 cd release
 # personal GPG is okay for now
 for i in etcd-*{.zip,.tar.gz}; do gpg --sign ${i}; done
-# use `CoreOS ACI Builder <release@coreos.com>` secret key
-for aci in etcd-${VERSION}.*.aci; do gpg -u 88182190 -a --output ${aci}.asc --detach-sig ${aci}; done
 ```
 
 ## Publish Release Page in GitHub

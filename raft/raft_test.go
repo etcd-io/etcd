@@ -356,8 +356,8 @@ func TestLearnerPromotion(t *testing.T) {
 
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 
-	n1.addNode(2)
-	n2.addNode(2)
+	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
+	n2.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
 	if n2.isLearner {
 		t.Error("peer 2 is learner, want not")
 	}
@@ -378,16 +378,21 @@ func TestLearnerPromotion(t *testing.T) {
 	}
 }
 
-// TestLearnerCannotVote checks that a learner can't vote even it receives a valid Vote request.
-func TestLearnerCannotVote(t *testing.T) {
+// TestLearnerCanVote checks that a learner can vote when it receives a valid Vote request.
+// See (*raft).Step for why this is necessary and correct behavior.
+func TestLearnerCanVote(t *testing.T) {
 	n2 := newTestLearnerRaft(2, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
 
 	n2.becomeFollower(1, None)
 
 	n2.Step(pb.Message{From: 1, To: 2, Term: 2, Type: pb.MsgVote, LogTerm: 11, Index: 11})
 
-	if len(n2.msgs) != 0 {
-		t.Errorf("expect learner not to vote, but received %v messages", n2.msgs)
+	if len(n2.msgs) != 1 {
+		t.Fatalf("expected exactly one message, not %+v", n2.msgs)
+	}
+	msg := n2.msgs[0]
+	if msg.Type != pb.MsgVoteResp && !msg.Reject {
+		t.Fatal("expected learner to not reject vote")
 	}
 }
 
@@ -1140,9 +1145,13 @@ func TestCommit(t *testing.T) {
 		storage.hardState = pb.HardState{Term: tt.smTerm}
 
 		sm := newTestRaft(1, []uint64{1}, 10, 2, storage)
-		sm.prs.RemoveAny(1)
 		for j := 0; j < len(tt.matches); j++ {
-			sm.prs.InitProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1, false)
+			id := uint64(j) + 1
+			if id > 1 {
+				sm.applyConfChange(pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: id}.AsV2())
+			}
+			pr := sm.prs.Progress[id]
+			pr.Match, pr.Next = tt.matches[j], tt.matches[j]+1
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -1927,7 +1936,7 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	nt := newNetwork(a, b)
 	setRandomizedElectionTimeout(b, b.electionTimeout+1)
 	// Need to remove 2 again to make it a non-promotable node since newNetwork overwritten some internal states
-	b.prs.RemoveAny(2)
+	b.applyConfChange(pb.ConfChange{Type: pb.ConfChangeRemoveNode, NodeID: 2}.AsV2())
 
 	if b.promotable() {
 		t.Fatalf("promotable = %v, want false", b.promotable())
@@ -2454,7 +2463,7 @@ func TestBcastBeat(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     offset,
 			Term:      1,
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2705,7 +2714,7 @@ func TestRestore(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 
@@ -2722,8 +2731,8 @@ func TestRestore(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
 	sg := sm.prs.VoterNodes()
-	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Nodes) {
-		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Metadata.ConfState.Nodes)
+	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Voters) {
+		t.Errorf("sm.Voters = %+v, want %+v", sg, s.Metadata.ConfState.Voters)
 	}
 
 	if ok := sm.restore(s); ok {
@@ -2737,7 +2746,7 @@ func TestRestoreWithLearner(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}, Learners: []uint64{3}},
 		},
 	}
 
@@ -2754,14 +2763,14 @@ func TestRestoreWithLearner(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
 	}
 	sg := sm.prs.VoterNodes()
-	if len(sg) != len(s.Metadata.ConfState.Nodes) {
-		t.Errorf("sm.Nodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Nodes)
+	if len(sg) != len(s.Metadata.ConfState.Voters) {
+		t.Errorf("sm.Voters = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Voters)
 	}
 	lns := sm.prs.LearnerNodes()
 	if len(lns) != len(s.Metadata.ConfState.Learners) {
 		t.Errorf("sm.LearnerNodes = %+v, length not equal with %+v", sg, s.Metadata.ConfState.Learners)
 	}
-	for _, n := range s.Metadata.ConfState.Nodes {
+	for _, n := range s.Metadata.ConfState.Voters {
 		if sm.prs.Progress[n].IsLearner {
 			t.Errorf("sm.Node %x isLearner = %s, want %t", n, sm.prs.Progress[n], false)
 		}
@@ -2777,14 +2786,20 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 }
 
-// TestRestoreInvalidLearner verfies that a normal peer can't become learner again
-// when restores snapshot.
-func TestRestoreInvalidLearner(t *testing.T) {
+// TestRestoreVoterToLearner verifies that a normal peer can be downgraded to a
+// learner through a snapshot. At the time of writing, we don't allow
+// configuration changes to do this directly, but note that the snapshot may
+// compress multiple changes to the configuration into one: the voter could have
+// been removed, then readded as a learner and the snapshot reflects both
+// changes. In that case, a voter receives a snapshot telling it that it is now
+// a learner. In fact, the node has to accept that snapshot, or it is
+// permanently cut off from the Raft log.
+func TestRestoreVoterToLearner(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}, Learners: []uint64{3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}, Learners: []uint64{3}},
 		},
 	}
 
@@ -2794,8 +2809,8 @@ func TestRestoreInvalidLearner(t *testing.T) {
 	if sm.isLearner {
 		t.Errorf("%x is learner, want not", sm.id)
 	}
-	if ok := sm.restore(s); ok {
-		t.Error("restore succeed, want fail")
+	if ok := sm.restore(s); !ok {
+		t.Error("restore failed unexpectedly")
 	}
 }
 
@@ -2806,7 +2821,7 @@ func TestRestoreLearnerPromotion(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2, 3}},
 		},
 	}
 
@@ -2833,7 +2848,7 @@ func TestLearnerReceiveSnapshot(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1}, Learners: []uint64{2}},
+			ConfState: pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}},
 		},
 	}
 
@@ -2871,7 +2886,7 @@ func TestRestoreIgnoreSnapshot(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     commit,
 			Term:      1,
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 
@@ -2899,7 +2914,7 @@ func TestProvideSnap(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2929,7 +2944,7 @@ func TestIgnoreProvidingSnap(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	storage := NewMemoryStorage()
@@ -2957,7 +2972,7 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number
-			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: pb.ConfState{Voters: []uint64{1, 2}},
 		},
 	}
 	m := pb.Message{Type: pb.MsgSnap, From: 1, Term: 2, Snapshot: s}
@@ -2982,7 +2997,7 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.VoterNodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Voters: lead.prs.VoterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()
@@ -3076,7 +3091,7 @@ func TestNewLeaderPendingConfig(t *testing.T) {
 // TestAddNode tests that addNode could update nodes correctly.
 func TestAddNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	r.addNode(2)
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
 	nodes := r.prs.VoterNodes()
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
@@ -3087,14 +3102,42 @@ func TestAddNode(t *testing.T) {
 // TestAddLearner tests that addLearner could update nodes correctly.
 func TestAddLearner(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	r.addLearner(2)
+	// Add new learner peer.
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddLearnerNode}.AsV2())
+	if r.isLearner {
+		t.Fatal("expected 1 to be voter")
+	}
 	nodes := r.prs.LearnerNodes()
 	wnodes := []uint64{2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
 	}
 	if !r.prs.Progress[2].IsLearner {
-		t.Errorf("node 2 is learner %t, want %t", r.prs.Progress[2].IsLearner, true)
+		t.Fatal("expected 2 to be learner")
+	}
+
+	// Promote peer to voter.
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
+	if r.prs.Progress[2].IsLearner {
+		t.Fatal("expected 2 to be voter")
+	}
+
+	// Demote r.
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeAddLearnerNode}.AsV2())
+	if !r.prs.Progress[1].IsLearner {
+		t.Fatal("expected 1 to be learner")
+	}
+	if !r.isLearner {
+		t.Fatal("expected 1 to be learner")
+	}
+
+	// Promote r again.
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeAddNode}.AsV2())
+	if r.prs.Progress[1].IsLearner {
+		t.Fatal("expected 1 to be voter")
+	}
+	if r.isLearner {
+		t.Fatal("expected 1 to be voter")
 	}
 }
 
@@ -3111,7 +3154,7 @@ func TestAddNodeCheckQuorum(t *testing.T) {
 		r.tick()
 	}
 
-	r.addNode(2)
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddNode}.AsV2())
 
 	// This tick will reach electionTimeout, which triggers a quorum check.
 	r.tick()
@@ -3136,41 +3179,45 @@ func TestAddNodeCheckQuorum(t *testing.T) {
 // and removed list correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-	r.removeNode(2)
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeRemoveNode}.AsV2())
 	w := []uint64{1}
 	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
-	r.removeNode(1)
-	w = []uint64{}
-	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
-		t.Errorf("nodes = %v, want %v", g, w)
-	}
+	// Removing the remaining voter will panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("did not panic")
+		}
+	}()
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode}.AsV2())
 }
 
 // TestRemoveLearner tests that removeNode could update nodes and
 // and removed list correctly.
 func TestRemoveLearner(t *testing.T) {
 	r := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
-	r.removeNode(2)
+	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeRemoveNode}.AsV2())
 	w := []uint64{1}
 	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	w = []uint64{}
+	w = nil
 	if g := r.prs.LearnerNodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
 
-	// remove all nodes from cluster
-	r.removeNode(1)
-	if g := r.prs.VoterNodes(); !reflect.DeepEqual(g, w) {
-		t.Errorf("nodes = %v, want %v", g, w)
-	}
+	// Removing the remaining voter will panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("did not panic")
+		}
+	}()
+	r.applyConfChange(pb.ConfChange{NodeID: 1, Type: pb.ConfChangeRemoveNode}.AsV2())
 }
+
 func TestPromotable(t *testing.T) {
 	id := uint64(1)
 	tests := []struct {
@@ -3300,7 +3347,7 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 
 	// Apply the config change. This reduces quorum requirements so the
 	// pending command can now commit.
-	r.removeNode(2)
+	r.applyConfChange(cc.AsV2())
 	ents = nextEnts(r, s)
 	if len(ents) != 1 || ents[0].Type != pb.EntryNormal ||
 		string(ents[0].Data) != "hello" {
@@ -3427,7 +3474,7 @@ func TestLeaderTransferAfterSnapshot(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.prs.VoterNodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Voters: lead.prs.VoterNodes()}, nil)
 	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()
@@ -3549,7 +3596,7 @@ func TestLeaderTransferRemoveNode(t *testing.T) {
 		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
 	}
 
-	lead.removeNode(3)
+	lead.applyConfChange(pb.ConfChange{NodeID: 3, Type: pb.ConfChangeRemoveNode}.AsV2())
 
 	checkLeaderTransferState(t, lead, StateLeader, 1)
 }
@@ -3875,9 +3922,9 @@ func TestPreVoteWithCheckQuorum(t *testing.T) {
 // a MsgHup or MsgTimeoutNow.
 func TestLearnerCampaign(t *testing.T) {
 	n1 := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	n1.addLearner(2)
+	n1.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddLearnerNode}.AsV2())
 	n2 := newTestRaft(2, []uint64{1}, 10, 1, NewMemoryStorage())
-	n2.addLearner(2)
+	n2.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeAddLearnerNode}.AsV2())
 	nt := newNetwork(n1, n2)
 	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
 
@@ -4118,12 +4165,16 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
+			// TODO(tbg): this is all pretty confused. Clean this up.
 			learners := make(map[uint64]bool, len(v.prs.Learners))
 			for i := range v.prs.Learners {
 				learners[i] = true
 			}
 			v.id = id
 			v.prs = tracker.MakeProgressTracker(v.prs.MaxInflight)
+			if len(learners) > 0 {
+				v.prs.Learners = map[uint64]struct{}{}
+			}
 			for i := 0; i < size; i++ {
 				pr := &tracker.Progress{}
 				if _, ok := learners[peerAddrs[i]]; ok {
@@ -4263,4 +4314,15 @@ func newTestLearnerRaft(id uint64, peers []uint64, learners []uint64, election, 
 	cfg := newTestConfig(id, peers, election, heartbeat, storage)
 	cfg.learners = learners
 	return newRaft(cfg)
+}
+
+// newTestRawNode sets up a RawNode with the given peers. The configuration will
+// not be reflected in the Storage.
+func newTestRawNode(id uint64, peers []uint64, election, heartbeat int, storage Storage) *RawNode {
+	cfg := newTestConfig(id, peers, election, heartbeat, storage)
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		panic(err)
+	}
+	return rn
 }

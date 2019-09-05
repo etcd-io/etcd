@@ -38,7 +38,14 @@ SCHWAG_ROOT="${GOPATH}/src/github.com/hexfusion/schwag"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 GRPC_GATEWAY_ROOT="${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway"
 
-rm -f "${ETCD_ROOT}"
+function cleanup {
+  # Remove the whole fake GOPATH which can really confuse go mod.
+  rm -rf "${PWD}/gopath.proto"
+}
+
+cleanup
+trap cleanup EXIT
+
 mkdir -p "${ETCD_IO_ROOT}"
 ln -s "${PWD}" "${ETCD_ROOT}"
 

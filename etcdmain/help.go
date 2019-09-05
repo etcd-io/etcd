@@ -128,6 +128,8 @@ Security:
     Enable client cert authentication.
   --client-crl-file ''
     Path to the client certificate revocation list file.
+  --client-cert-allowed-hostname ''
+    Allowed TLS hostname for client cert authentication.
   --trusted-ca-file ''
     Path to the client server TLS trusted CA cert file.
   --auto-tls 'false'
@@ -142,6 +144,8 @@ Security:
     Path to the peer server TLS trusted CA file.
   --peer-cert-allowed-cn ''
     Required CN for client certs connecting to the peer endpoint.
+  --peer-cert-allowed-hostname ''
+    Allowed TLS hostname for inter peer authentication.
   --peer-auto-tls 'false'
     Peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
   --peer-crl-file ''
@@ -169,15 +173,11 @@ Profiling and Monitoring:
 
 Logging:
   --logger 'capnslog'
-    Specify 'zap' for structured logging or 'capnslog'.
+    Specify 'zap' for structured logging or 'capnslog'. [WARN] 'capnslog' will be deprecated in v3.5.
   --log-outputs 'default'
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
-  --debug 'false'
-    Enable debug-level logging for etcd.
-
-Logging (to be deprecated in v3.5):
-  --log-package-levels ''
-    Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
+  --log-level 'info'
+    Configures log level. Only supports debug, info, warn, error, panic, or fatal.
 
 v2 Proxy (to be deprecated in v4):
   --proxy 'off'
@@ -200,15 +200,26 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
-  --experimental-backend-bbolt-freelist-type
+  --experimental-backend-bbolt-freelist-type 'array'
     ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
-  --experimental-enable-lease-checkpoint
+  --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+  --experimental-compaction-batch-limit 1000
+    ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
+  --experimental-peer-skip-client-san-verification 'false'
+    Skip verification of SAN field in client certificate for peer connections.
 
 Unsafe feature:
   --force-new-cluster 'false'
     Force to create a new one-member cluster.
 
 CAUTIOUS with unsafe flag! It may break the guarantees given by the consensus protocol!
+
+TO BE DEPRECATED:
+
+  --debug 'false'
+    Enable debug-level logging for etcd. [WARN] Will be deprecated in v3.5. Use '--log-level=debug' instead.
+  --log-package-levels ''
+    Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
 `
 )

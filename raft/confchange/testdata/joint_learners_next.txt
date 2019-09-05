@@ -1,0 +1,24 @@
+# Verify that when a voter is demoted in a joint config, it will show up in
+# learners_next until the joint config is left, and only then will the progress
+# turn into that of a learner, without resetting the progress. Note that this
+# last fact is verified by `next`, which can tell us which "round" the progress
+# was originally created in.
+
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=0
+
+enter-joint
+v2 l1
+----
+voters=(2)&&(1) learners_next=(1)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+
+leave-joint
+----
+voters=(2) learners=(1)
+1: StateProbe match=0 next=0 learner
+2: StateProbe match=0 next=1

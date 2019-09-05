@@ -148,6 +148,14 @@ func (ts *tsafeSet) Contains(value string) (exists bool) {
 func (ts *tsafeSet) Equals(other Set) bool {
 	ts.m.RLock()
 	defer ts.m.RUnlock()
+
+	// If ts and other represent the same variable, avoid calling
+	// ts.us.Equals(other), to avoid double RLock bug
+	if _other, ok := other.(*tsafeSet); ok {
+		if _other == ts {
+			return true
+		}
+	}
 	return ts.us.Equals(other)
 }
 
@@ -173,6 +181,15 @@ func (ts *tsafeSet) Copy() Set {
 func (ts *tsafeSet) Sub(other Set) Set {
 	ts.m.RLock()
 	defer ts.m.RUnlock()
+
+	// If ts and other represent the same variable, avoid calling
+	// ts.us.Sub(other), to avoid double RLock bug
+	if _other, ok := other.(*tsafeSet); ok {
+		if _other == ts {
+			usResult := NewUnsafeSet()
+			return &tsafeSet{usResult, sync.RWMutex{}}
+		}
+	}
 	usResult := ts.us.Sub(other).(*unsafeSet)
 	return &tsafeSet{usResult, sync.RWMutex{}}
 }

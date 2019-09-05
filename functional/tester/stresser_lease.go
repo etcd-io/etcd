@@ -226,7 +226,7 @@ func (ls *leaseStresser) createAliveLeases() {
 }
 
 func (ls *leaseStresser) createShortLivedLeases() {
-	// one round of createLeases() might not create all the short lived leases we want due to falures.
+	// one round of createLeases() might not create all the short lived leases we want due to failures.
 	// thus, we want to create remaining short lived leases in the future round.
 	neededLeases := ls.numLeases - len(ls.shortLivedLeases.getLeasesMap())
 	var wg sync.WaitGroup
@@ -328,10 +328,10 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 				zap.Error(ls.ctx.Err()),
 			)
 			// it is  possible that lease expires at invariant checking phase but not at keepLeaseAlive() phase.
-			// this scenerio is possible when alive lease is just about to expire when keepLeaseAlive() exists and expires at invariant checking phase.
-			// to circumvent that scenerio, we check each lease before keepalive loop exist to see if it has been renewed in last TTL/2 duration.
-			// if it is renewed, this means that invariant checking have at least ttl/2 time before lease exipres which is long enough for the checking to finish.
-			// if it is not renewed, we remove the lease from the alive map so that the lease doesn't exipre during invariant checking
+			// this scenario is possible when alive lease is just about to expire when keepLeaseAlive() exists and expires at invariant checking phase.
+			// to circumvent that scenario, we check each lease before keepalive loop exist to see if it has been renewed in last TTL/2 duration.
+			// if it is renewed, this means that invariant checking have at least ttl/2 time before lease expires which is long enough for the checking to finish.
+			// if it is not renewed, we remove the lease from the alive map so that the lease doesn't expire during invariant checking
 			renewTime, ok := ls.aliveLeases.read(leaseID)
 			if ok && renewTime.Add(defaultTTL/2*time.Second).Before(time.Now()) {
 				ls.aliveLeases.remove(leaseID)

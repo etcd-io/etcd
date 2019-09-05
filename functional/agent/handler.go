@@ -25,7 +25,6 @@ import (
 	"syscall"
 	"time"
 
-	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/functional/rpcpb"
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/pkg/proxy"
@@ -97,42 +96,26 @@ func (srv *Server) createEtcdLogFile() error {
 }
 
 func (srv *Server) creatEtcd(fromSnapshot bool) error {
-	if !fileutil.Exist(srv.Member.EtcdExec) && srv.Member.EtcdExec != "embed" {
-		return fmt.Errorf("unknown etcd exec %q or path does not exist", srv.Member.EtcdExec)
+	if !fileutil.Exist(srv.Member.EtcdExec) {
+		return fmt.Errorf("unknown etcd exec path %q does not exist", srv.Member.EtcdExec)
 	}
 
-	if srv.Member.EtcdExec != "embed" {
-		etcdPath, etcdFlags := srv.Member.EtcdExec, srv.Member.Etcd.Flags()
-		if fromSnapshot {
-			etcdFlags = srv.Member.EtcdOnSnapshotRestore.Flags()
-		}
-		u, _ := url.Parse(srv.Member.FailpointHTTPAddr)
-		srv.lg.Info(
-			"creating etcd command",
-			zap.String("etcd-exec", etcdPath),
-			zap.Strings("etcd-flags", etcdFlags),
-			zap.String("failpoint-http-addr", srv.Member.FailpointHTTPAddr),
-			zap.String("failpoint-addr", u.Host),
-		)
-		srv.etcdCmd = exec.Command(etcdPath, etcdFlags...)
-		srv.etcdCmd.Env = []string{"GOFAIL_HTTP=" + u.Host}
-		srv.etcdCmd.Stdout = srv.etcdLogFile
-		srv.etcdCmd.Stderr = srv.etcdLogFile
-		return nil
+	etcdPath, etcdFlags := srv.Member.EtcdExec, srv.Member.Etcd.Flags()
+	if fromSnapshot {
+		etcdFlags = srv.Member.EtcdOnSnapshotRestore.Flags()
 	}
-
-	cfg, err := srv.Member.Etcd.EmbedConfig()
-	if err != nil {
-		return err
-	}
-
-	srv.lg.Info("starting embedded etcd", zap.String("name", cfg.Name))
-	srv.etcdServer, err = embed.StartEtcd(cfg)
-	if err != nil {
-		return err
-	}
-	srv.lg.Info("started embedded etcd", zap.String("name", cfg.Name))
-
+	u, _ := url.Parse(srv.Member.FailpointHTTPAddr)
+	srv.lg.Info(
+		"creating etcd command",
+		zap.String("etcd-exec", etcdPath),
+		zap.Strings("etcd-flags", etcdFlags),
+		zap.String("failpoint-http-addr", srv.Member.FailpointHTTPAddr),
+		zap.String("failpoint-addr", u.Host),
+	)
+	srv.etcdCmd = exec.Command(etcdPath, etcdFlags...)
+	srv.etcdCmd.Env = []string{"GOFAIL_HTTP=" + u.Host}
+	srv.etcdCmd.Stdout = srv.etcdLogFile
+	srv.etcdCmd.Stderr = srv.etcdLogFile
 	return nil
 }
 
@@ -399,7 +382,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		fdir := filepath.Join(srv.Member.Etcd.DataDir, "fixtures", "peer")
 
 		srv.lg.Info(
-			"loading client auto TLS assets",
+			"loading peer auto TLS assets",
 			zap.String("dir", fdir),
 			zap.String("endpoint", srv.EtcdClientEndpoint),
 		)
@@ -467,10 +450,10 @@ func (srv *Server) loadAutoTLSAssets() error {
 
 		srv.lg.Info(
 			"loaded client TLS assets",
-			zap.String("peer-cert-path", certPath),
-			zap.Int("peer-cert-length", len(certData)),
-			zap.String("peer-key-path", keyPath),
-			zap.Int("peer-key-length", len(keyData)),
+			zap.String("client-cert-path", certPath),
+			zap.Int("client-cert-length", len(certData)),
+			zap.String("client-key-path", keyPath),
+			zap.Int("client-key-length", len(keyData)),
 		)
 	}
 

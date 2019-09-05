@@ -271,7 +271,10 @@ etcdctl --endpoints=$ENDPOINTS endpoint health
 
 <img src="https://storage.googleapis.com/etcd/demo/11_etcdctl_snapshot_2016051001.gif" alt="11_etcdctl_snapshot_2016051001"/>
 
+Snapshot can only be requested from one etcd node, so `--endpoints` flag should contain only one endpoint.
+
 ```
+ENDPOINTS=$HOST_1:2379
 etcdctl --endpoints=$ENDPOINTS snapshot save my.db
 
 Snapshot saved at my.db

@@ -54,6 +54,7 @@ var (
 	ErrGRPCUserNotFound         = status.New(codes.FailedPrecondition, "etcdserver: user name not found").Err()
 	ErrGRPCRoleAlreadyExist     = status.New(codes.FailedPrecondition, "etcdserver: role name already exists").Err()
 	ErrGRPCRoleNotFound         = status.New(codes.FailedPrecondition, "etcdserver: role name not found").Err()
+	ErrGRPCRoleEmpty            = status.New(codes.InvalidArgument, "etcdserver: role name is empty").Err()
 	ErrGRPCAuthFailed           = status.New(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password").Err()
 	ErrGRPCPermissionDenied     = status.New(codes.PermissionDenied, "etcdserver: permission denied").Err()
 	ErrGRPCRoleNotGranted       = status.New(codes.FailedPrecondition, "etcdserver: role is not granted to the user").Err()
@@ -110,6 +111,7 @@ var (
 		ErrorDesc(ErrGRPCUserNotFound):         ErrGRPCUserNotFound,
 		ErrorDesc(ErrGRPCRoleAlreadyExist):     ErrGRPCRoleAlreadyExist,
 		ErrorDesc(ErrGRPCRoleNotFound):         ErrGRPCRoleNotFound,
+		ErrorDesc(ErrGRPCRoleEmpty):            ErrGRPCRoleEmpty,
 		ErrorDesc(ErrGRPCAuthFailed):           ErrGRPCAuthFailed,
 		ErrorDesc(ErrGRPCPermissionDenied):     ErrGRPCPermissionDenied,
 		ErrorDesc(ErrGRPCRoleNotGranted):       ErrGRPCRoleNotGranted,
@@ -168,6 +170,7 @@ var (
 	ErrUserNotFound         = Error(ErrGRPCUserNotFound)
 	ErrRoleAlreadyExist     = Error(ErrGRPCRoleAlreadyExist)
 	ErrRoleNotFound         = Error(ErrGRPCRoleNotFound)
+	ErrRoleEmpty            = Error(ErrGRPCRoleEmpty)
 	ErrAuthFailed           = Error(ErrGRPCAuthFailed)
 	ErrPermissionDenied     = Error(ErrGRPCPermissionDenied)
 	ErrRoleNotGranted       = Error(ErrGRPCRoleNotGranted)

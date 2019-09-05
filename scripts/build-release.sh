@@ -11,11 +11,6 @@ if [ -z "${VERSION}" ]; then
 	exit 255
 fi
 
-if ! command -v acbuild >/dev/null; then
-    echo "cannot find acbuild"
-    exit 1
-fi
-
 if ! command -v docker >/dev/null; then
     echo "cannot find docker"
     exit 1
@@ -29,6 +24,6 @@ pushd "${ETCD_ROOT}" >/dev/null
 
 	for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
 		echo Building ${TARGET_ARCH} docker image...
-		GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
+		GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
 	done
 popd >/dev/null

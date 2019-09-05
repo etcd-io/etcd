@@ -63,7 +63,6 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 
 ## Build release binaries and images
 
-- Ensure `acbuild` is available.
 - Ensure `docker` is available.
 
 Run release script in root directory:

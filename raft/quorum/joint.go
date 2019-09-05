@@ -18,6 +18,13 @@ package quorum
 // majority configurations. Decisions require the support of both majorities.
 type JointConfig [2]MajorityConfig
 
+func (c JointConfig) String() string {
+	if len(c[1]) > 0 {
+		return c[0].String() + "&&" + c[1].String()
+	}
+	return c[0].String()
+}
+
 // IDs returns a newly initialized map representing the set of voters present
 // in the joint configuration.
 func (c JointConfig) IDs() map[uint64]struct{} {

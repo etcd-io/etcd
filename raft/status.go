@@ -21,14 +21,22 @@ import (
 	"go.etcd.io/etcd/raft/tracker"
 )
 
+// Status contains information about this Raft peer and its view of the system.
+// The Progress is only populated on the leader.
 type Status struct {
+	BasicStatus
+	Config   tracker.Config
+	Progress map[uint64]tracker.Progress
+}
+
+// BasicStatus contains basic information about the Raft peer. It does not allocate.
+type BasicStatus struct {
 	ID uint64
 
 	pb.HardState
 	SoftState
 
-	Applied  uint64
-	Progress map[uint64]tracker.Progress
+	Applied uint64
 
 	LeadTransferee uint64
 }
@@ -37,19 +45,17 @@ func getProgressCopy(r *raft) map[uint64]tracker.Progress {
 	m := make(map[uint64]tracker.Progress)
 	r.prs.Visit(func(id uint64, pr *tracker.Progress) {
 		var p tracker.Progress
-		p, pr = *pr, nil /* avoid accidental reuse below */
-
-		// The inflight buffer is tricky to copy and besides, it isn't exposed
-		// to the client, so pretend it's nil.
-		p.Inflights = nil
+		p = *pr
+		p.Inflights = pr.Inflights.Clone()
+		pr = nil
 
 		m[id] = p
 	})
 	return m
 }
 
-func getStatusWithoutProgress(r *raft) Status {
-	s := Status{
+func getBasicStatus(r *raft) BasicStatus {
+	s := BasicStatus{
 		ID:             r.id,
 		LeadTransferee: r.leadTransferee,
 	}
@@ -61,10 +67,12 @@ func getStatusWithoutProgress(r *raft) Status {
 
 // getStatus gets a copy of the current raft status.
 func getStatus(r *raft) Status {
-	s := getStatusWithoutProgress(r)
+	var s Status
+	s.BasicStatus = getBasicStatus(r)
 	if s.RaftState == StateLeader {
 		s.Progress = getProgressCopy(r)
 	}
+	s.Config = r.prs.Config.Clone()
 	return s
 }
 

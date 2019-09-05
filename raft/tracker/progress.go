@@ -14,7 +14,11 @@
 
 package tracker
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // Progress represents a follower’s progress in the view of the leader. Leader
 // maintains progresses of all followers, and sends entries to the follower
@@ -48,9 +52,11 @@ type Progress struct {
 	// RecentActive is true if the progress is recently active. Receiving any messages
 	// from the corresponding follower indicates the progress is active.
 	// RecentActive can be reset to false after an election timeout.
+	//
+	// TODO(tbg): the leader should always have this set to true.
 	RecentActive bool
 
-	// ProbeSent is used while this follow is in StateProbe. When ProbeSent is
+	// ProbeSent is used while this follower is in StateProbe. When ProbeSent is
 	// true, raft should pause sending replication message to this peer until
 	// ProbeSent is reset. See ProbeAcked() and IsPaused().
 	ProbeSent bool
@@ -210,6 +216,44 @@ func (pr *Progress) IsPaused() bool {
 }
 
 func (pr *Progress) String() string {
-	return fmt.Sprintf("next = %d, match = %d, state = %s, waiting = %v, pendingSnapshot = %d, recentActive = %v, isLearner = %v",
-		pr.Next, pr.Match, pr.State, pr.IsPaused(), pr.PendingSnapshot, pr.RecentActive, pr.IsLearner)
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "%s match=%d next=%d", pr.State, pr.Match, pr.Next)
+	if pr.IsLearner {
+		fmt.Fprint(&buf, " learner")
+	}
+	if pr.IsPaused() {
+		fmt.Fprint(&buf, " paused")
+	}
+	if pr.PendingSnapshot > 0 {
+		fmt.Fprintf(&buf, " pendingSnap=%d", pr.PendingSnapshot)
+	}
+	if !pr.RecentActive {
+		fmt.Fprintf(&buf, " inactive")
+	}
+	if n := pr.Inflights.Count(); n > 0 {
+		fmt.Fprintf(&buf, " inflight=%d", n)
+		if pr.Inflights.Full() {
+			fmt.Fprint(&buf, "[full]")
+		}
+	}
+	return buf.String()
+}
+
+// ProgressMap is a map of *Progress.
+type ProgressMap map[uint64]*Progress
+
+// String prints the ProgressMap in sorted key order, one Progress per line.
+func (m ProgressMap) String() string {
+	ids := make([]uint64, 0, len(m))
+	for k := range m {
+		ids = append(ids, k)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] < ids[j]
+	})
+	var buf strings.Builder
+	for _, id := range ids {
+		fmt.Fprintf(&buf, "%d: %s\n", id, m[id])
+	}
+	return buf.String()
 }

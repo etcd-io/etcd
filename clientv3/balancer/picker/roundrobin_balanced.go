@@ -24,31 +24,32 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-// NewRoundrobinBalanced returns a new roundrobin balanced picker.
-func NewRoundrobinBalanced(
-	lg *zap.Logger,
-	scs []balancer.SubConn,
-	addrToSc map[resolver.Address]balancer.SubConn,
-	scToAddr map[balancer.SubConn]resolver.Address,
-) Picker {
+// newRoundrobinBalanced returns a new roundrobin balanced picker.
+func newRoundrobinBalanced(cfg Config) Picker {
+	scs := make([]balancer.SubConn, 0, len(cfg.SubConnToResolverAddress))
+	for sc := range cfg.SubConnToResolverAddress {
+		scs = append(scs, sc)
+	}
 	return &rrBalanced{
-		lg:       lg,
+		p:        RoundrobinBalanced,
+		lg:       cfg.Logger,
 		scs:      scs,
-		addrToSc: addrToSc,
-		scToAddr: scToAddr,
+		scToAddr: cfg.SubConnToResolverAddress,
 	}
 }
 
 type rrBalanced struct {
+	p Policy
+
 	lg *zap.Logger
 
-	mu   sync.RWMutex
-	next int
-	scs  []balancer.SubConn
-
-	addrToSc map[resolver.Address]balancer.SubConn
+	mu       sync.RWMutex
+	next     int
+	scs      []balancer.SubConn
 	scToAddr map[balancer.SubConn]resolver.Address
 }
+
+func (rb *rrBalanced) String() string { return rb.p.String() }
 
 // Pick is called for every client request.
 func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
@@ -68,6 +69,7 @@ func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickOptions) (bala
 
 	rb.lg.Debug(
 		"picked",
+		zap.String("picker", rb.p.String()),
 		zap.String("address", picked),
 		zap.Int("subconn-index", cur),
 		zap.Int("subconn-size", n),
@@ -77,6 +79,7 @@ func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickOptions) (bala
 		// TODO: error handling?
 		fss := []zapcore.Field{
 			zap.Error(info.Err),
+			zap.String("picker", rb.p.String()),
 			zap.String("address", picked),
 			zap.Bool("success", info.Err == nil),
 			zap.Bool("bytes-sent", info.BytesSent),

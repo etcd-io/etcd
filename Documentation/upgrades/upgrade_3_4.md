@@ -35,6 +35,21 @@ OK
 +etcdctl put foo bar
 ```
 
+#### Make `etcd --enable-v2=false` default
+
+[`etcd --enable-v2=false`](https://github.com/etcd-io/etcd/pull/10935) is now the default.
+
+This means, unless `etcd --enable-v2=true` is specified, etcd v3.4 server would not serve v2 API requests.
+
+If v2 API were used, make sure to enable v2 API in v3.4:
+
+```diff
+-etcd
++etcd --enable-v2=true
+```
+
+Other HTTP APIs will still work (e.g. `[CLIENT-URL]/metrics`, `[CLIENT-URL]/health`, v3 gRPC gateway).
+
 #### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
 
 `--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
@@ -49,7 +64,51 @@ OK
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
-#### Promote `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
+#### Deprecated `grpc.ErrClientConnClosing` error
+
+`grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+
+```diff
+import (
++	"go.etcd.io/etcd/clientv3"
+
+	"google.golang.org/grpc"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
+)
+
+_, err := kvc.Get(ctx, "a")
+-if err == grpc.ErrClientConnClosing {
++if clientv3.IsConnCanceled(err) {
+
+// or
++s, ok := status.FromError(err)
++if ok {
++  if s.Code() == codes.Canceled
+```
+
+#### Require `grpc.WithBlock` for client dial
+
+[The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. As a result, v3.4 client requires `grpc.WithBlock` dial option to wait until the underlying connection is up.
+
+```diff
+import (
+	"time"
+	"go.etcd.io/etcd/clientv3"
++	"google.golang.org/grpc"
+)
+
++// "grpc.WithBlock()" to block until the underlying connection is up
+ccfg := clientv3.Config{
+  Endpoints:            []string{"localhost:2379"},
+  DialTimeout:          time.Second,
++ DialOptions:          []grpc.DialOption{grpc.WithBlock()},
+  DialKeepAliveTime:    time.Second,
+  DialKeepAliveTimeout: 500 * time.Millisecond,
+}
+```
+
+#### Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
 
 v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to `etcd_mvcc_db_total_size_in_bytes`, in order to encourage etcd storage monitoring.
 
@@ -60,7 +119,59 @@ v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to
 +etcd_mvcc_db_total_size_in_bytes
 ```
 
-Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we will promote more metrics.
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_put_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_put_total` Prometheus metrics to `etcd_mvcc_put_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_put_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_put_total
++etcd_mvcc_put_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_delete_total` Prometheus metrics to `etcd_mvcc_delete_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_delete_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_delete_total
++etcd_mvcc_delete_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_txn_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_txn_total` Prometheus metrics to `etcd_mvcc_txn_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_txn_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_txn_total
++etcd_mvcc_txn_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_range_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_range_total` Prometheus metrics to `etcd_mvcc_range_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_range_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_range_total
++etcd_mvcc_range_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
 
 #### Deprecating `etcd --log-output` flag (now `--log-outputs`)
 
@@ -104,6 +215,20 @@ cfg := &embed.Config{Debug: false}
 #### v3.5 deprecates `capnslog`
 
 **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+
+```diff
+-etcd
++etcd --logger zap
+```
+
+#### Deprecating `etcd --debug` flag (now `--log-level=debug`)
+
+v3.4 deprecates [`etcd --debug`](https://github.com/etcd-io/etcd/pull/10947) flag. Instead, use `etcd --log-level=debug` flag.
+
+```diff
+-etcd --debug
++etcd --logger zap --log-level debug
+```
 
 #### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
@@ -169,6 +294,22 @@ import "github.com/coreos/etcd/wal"
 
 -wal.Create(dirpath, metadata)
 +wal.Create(lg, dirpath, metadata)
+```
+
+#### Changed `IntervalTree` type in package `pkg/adt`
+
+`pkg/adt.IntervalTree` is now defined as an `interface`.
+
+```diff
+import (
+    "fmt"
+
+    "go.etcd.io/etcd/pkg/adt"
+)
+
+func main() {
+-    ivt := &adt.IntervalTree{}
++    ivt := adt.NewIntervalTree()
 ```
 
 #### Deprecated `embed.Config.SetupLogging`

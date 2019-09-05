@@ -1,0 +1,156 @@
+# TestSnapshotSucceedViaAppResp regression tests the situation in which a snap-
+# shot is sent to a follower at the most recent index (i.e. the snapshot index
+# is the leader's last index is the committed index). In that situation, a bug
+# in the past left the follower in probing status until the next log entry was
+# committed.
+#
+# See https://github.com/etcd-io/etcd/pull/10308 for additional background.
+
+# Turn off output during the setup of the test.
+log-level none
+----
+ok
+
+# Start with two nodes, but the config already has a third.
+add-nodes 2 voters=(1,2,3) index=10
+----
+ok
+
+campaign 1
+----
+ok
+
+# Fully replicate everything, including the leader's empty index.
+stabilize
+----
+ok (quiet)
+
+compact 1 11
+----
+ok (quiet)
+
+# Drop inflight messages to n3.
+deliver-msgs drop=(3)
+----
+ok (quiet)
+
+# Show the Raft log messages from now on.
+log-level debug
+----
+ok
+
+status 1
+----
+1: StateReplicate match=11 next=12 inactive
+2: StateReplicate match=11 next=12
+3: StateProbe match=0 next=11 paused inactive
+
+# Add the node that will receive a snapshot (it has no state at all, does not
+# even have a config).
+add-nodes 1
+----
+INFO 3 switched to configuration voters=()
+INFO 3 became follower at term 0
+INFO newRaft 3 [peers: [], term: 0, commit: 0, applied: 0, lastindex: 0, lastterm: 0]
+
+# Time passes on the leader so that it will try the previously missing follower
+# again.
+tick-heartbeat 1
+----
+ok
+
+process-ready 1
+----
+Ready MustSync=false:
+Messages:
+1->2 MsgHeartbeat Term:1 Log:0/0 Commit:11
+1->3 MsgHeartbeat Term:1 Log:0/0
+
+# Iterate until no more work is done by the new peer. It receives the heartbeat
+# and responds.
+stabilize 3
+----
+> 3 receiving messages
+  1->3 MsgHeartbeat Term:1 Log:0/0
+  INFO 3 [term: 0] received a MsgHeartbeat message with higher term from 1 [term: 1]
+  INFO 3 became follower at term 1
+> 3 handling Ready
+  Ready MustSync=true:
+  Lead:1 State:StateFollower
+  HardState Term:1 Commit:0
+  Messages:
+  3->1 MsgHeartbeatResp Term:1 Log:0/0
+
+# The leader in turn will realize that n3 needs a snapshot, which it initiates.
+stabilize 1
+----
+> 1 receiving messages
+  3->1 MsgHeartbeatResp Term:1 Log:0/0
+  DEBUG 1 [firstindex: 12, commit: 11] sent snapshot[index: 11, term: 1] to 3 [StateProbe match=0 next=11]
+  DEBUG 1 paused sending replication messages to 3 [StateSnapshot match=0 next=11 paused pendingSnap=11]
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
+
+status 1
+----
+1: StateReplicate match=11 next=12 inactive
+2: StateReplicate match=11 next=12
+3: StateSnapshot match=0 next=11 paused pendingSnap=11
+
+# Follower applies the snapshot. Note how it reacts with a MsgAppResp upon completion.
+# The snapshot fully catches the follower up (i.e. there are no more log entries it
+# needs to apply after). The bug was that the leader failed to realize that the follower
+# was now fully caught up.
+stabilize 3
+----
+> 3 receiving messages
+  1->3 MsgSnap Term:1 Log:0/0 Snapshot: Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
+  INFO log [committed=0, applied=0, unstable.offset=1, len(unstable.Entries)=0] starts to restore snapshot [index: 11, term: 1]
+  INFO 3 switched to configuration voters=(1 2 3)
+  INFO 3 [commit: 11, lastindex: 11, lastterm: 1] restored snapshot [index: 11, term: 1]
+  INFO 3 [commit: 11] restored snapshot [index: 11, term: 1]
+> 3 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Commit:11
+  Snapshot Index:11 Term:1 ConfState:Voters:[1 2 3] VotersOutgoing:[] Learners:[] LearnersNext:[] AutoLeave:false
+  Messages:
+  3->1 MsgAppResp Term:1 Log:0/11
+
+# The MsgAppResp lets the leader move the follower back to replicating state.
+# Leader sends another MsgAppResp, to communicate the updated commit index.
+stabilize 1
+----
+> 1 receiving messages
+  3->1 MsgAppResp Term:1 Log:0/11
+  DEBUG 1 recovered from needing snapshot, resumed sending replication messages to 3 [StateSnapshot match=11 next=12 paused pendingSnap=11]
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->3 MsgApp Term:1 Log:1/11 Commit:11
+
+status 1
+----
+1: StateReplicate match=11 next=12 inactive
+2: StateReplicate match=11 next=12
+3: StateReplicate match=11 next=12
+
+# Let things settle.
+stabilize
+----
+> 2 receiving messages
+  1->2 MsgHeartbeat Term:1 Log:0/0 Commit:11
+> 3 receiving messages
+  1->3 MsgApp Term:1 Log:1/11 Commit:11
+> 2 handling Ready
+  Ready MustSync=false:
+  Messages:
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+> 3 handling Ready
+  Ready MustSync=false:
+  Messages:
+  3->1 MsgAppResp Term:1 Log:0/11
+> 1 receiving messages
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+  3->1 MsgAppResp Term:1 Log:0/11

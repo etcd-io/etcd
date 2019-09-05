@@ -223,6 +223,18 @@ function functional_pass {
 	kill -s TERM "${agent_pids[@]}" || true
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
+		tail -1000 /tmp/etcd-functional-1/etcd.log
+
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
+		tail -1000 /tmp/etcd-functional-2/etcd.log
+
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
+		tail -1000 /tmp/etcd-functional-3/etcd.log
+
 		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi

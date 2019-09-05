@@ -35,7 +35,6 @@ import (
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/wal"
 	"go.etcd.io/etcd/wal/walpb"
-
 	"go.uber.org/zap"
 )
 
@@ -83,7 +82,7 @@ func main() {
 		switch err {
 		case nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-			nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
+			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
 				walsnap.Term, walsnap.Index, nodes)
 		case snap.ErrNoSnapshot:
@@ -91,7 +90,7 @@ func main() {
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)
 		}
-		fmt.Println("Start dupmping log entries from snapshot.")
+		fmt.Println("Start dumping log entries from snapshot.")
 	}
 
 	w, err := wal.OpenForRead(zap.NewExample(), walDir(dataDir), walsnap)

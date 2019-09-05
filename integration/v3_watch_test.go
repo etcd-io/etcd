@@ -245,6 +245,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		}
 
 		// asynchronously create keys
+		ch := make(chan struct{}, 1)
 		go func() {
 			for _, k := range tt.putKeys {
 				kvc := toGRPC(clus.RandClient()).KV
@@ -253,6 +254,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					t.Errorf("#%d: couldn't put key (%v)", i, err)
 				}
 			}
+			ch <- struct{}{}
 		}()
 
 		// check stream results
@@ -285,6 +287,9 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		if !rok {
 			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 		}
+
+		// wait for the client to finish sending the keys before terminating the cluster
+		<-ch
 
 		// can't defer because tcp ports will be in use
 		clus.Terminate(t)
@@ -479,8 +484,11 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	// last mod_revision that will be observed
 	nrRevisions := 32
 	// first revision already allocated as empty revision
+	var wg sync.WaitGroup
 	for i := 1; i < nrRevisions; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			kvc := toGRPC(clus.RandClient()).KV
 			req := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 			if _, err := kvc.Put(context.TODO(), req); err != nil {
@@ -540,6 +548,8 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	if rok, nr := waitResponse(wStream, time.Second); !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
+
+	wg.Wait()
 }
 
 // TestV3WatchEmptyKey ensures synced watchers see empty key PUTs as PUT events
