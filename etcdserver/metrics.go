@@ -209,7 +209,7 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 			if lg != nil {
 				lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
 			} else {
-				plog.Warningf("80% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
+				plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
 			}
 		}
 		select {
