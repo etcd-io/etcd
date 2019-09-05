@@ -207,7 +207,7 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 		}
 		if used >= limit/5*4 {
 			if lg != nil {
-				lg.Warn("80%% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
+				lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
 			} else {
 				plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
 			}
