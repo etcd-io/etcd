@@ -11,6 +11,9 @@
 		User
 		Permission
 		Role
+		PrototypeField
+		Prototype
+		AclEntry
 */
 package authpb
 
@@ -61,11 +64,34 @@ func (x Permission_Type) String() string {
 }
 func (Permission_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptorAuth, []int{1, 0} }
 
+type Prototype_Flags int32
+
+const (
+	NONE                  Prototype_Flags = 0
+	FORCE_SUBOBJECTS_FIND Prototype_Flags = 1
+)
+
+var Prototype_Flags_name = map[int32]string{
+	0: "NONE",
+	1: "FORCE_SUBOBJECTS_FIND",
+}
+var Prototype_Flags_value = map[string]int32{
+	"NONE":                  0,
+	"FORCE_SUBOBJECTS_FIND": 1,
+}
+
+func (x Prototype_Flags) String() string {
+	return proto.EnumName(Prototype_Flags_name, int32(x))
+}
+func (Prototype_Flags) EnumDescriptor() ([]byte, []int) { return fileDescriptorAuth, []int{4, 0} }
+
 // User is a single entry in the bucket authUsers
 type User struct {
 	Name     []byte   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password []byte   `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	Roles    []string `protobuf:"bytes,3,rep,name=roles" json:"roles,omitempty"`
+	// each path is unique in acl
+	Acl []*AclEntry `protobuf:"bytes,4,rep,name=acl" json:"acl,omitempty"`
 }
 
 func (m *User) Reset()                    { *m = User{} }
@@ -96,11 +122,50 @@ func (m *Role) String() string            { return proto.CompactTextString(m) }
 func (*Role) ProtoMessage()               {}
 func (*Role) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{2} }
 
+type PrototypeField struct {
+	Key         string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	RightsRead  uint32 `protobuf:"varint,2,opt,name=rightsRead,proto3" json:"rightsRead,omitempty"`
+	RightsWrite uint32 `protobuf:"varint,3,opt,name=rightsWrite,proto3" json:"rightsWrite,omitempty"`
+}
+
+func (m *PrototypeField) Reset()                    { *m = PrototypeField{} }
+func (m *PrototypeField) String() string            { return proto.CompactTextString(m) }
+func (*PrototypeField) ProtoMessage()               {}
+func (*PrototypeField) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{3} }
+
+// Prototype is a single entry in the bucket authPrototypes
+type Prototype struct {
+	Name []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// each key is unique in fields
+	Fields []*PrototypeField `protobuf:"bytes,2,rep,name=fields" json:"fields,omitempty"`
+	Flags  uint32            `protobuf:"varint,3,opt,name=flags,proto3" json:"flags,omitempty"`
+}
+
+func (m *Prototype) Reset()                    { *m = Prototype{} }
+func (m *Prototype) String() string            { return proto.CompactTextString(m) }
+func (*Prototype) ProtoMessage()               {}
+func (*Prototype) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{4} }
+
+type AclEntry struct {
+	Path        string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	RightsSet   uint32 `protobuf:"varint,2,opt,name=rightsSet,proto3" json:"rightsSet,omitempty"`
+	RightsUnset uint32 `protobuf:"varint,3,opt,name=rightsUnset,proto3" json:"rightsUnset,omitempty"`
+}
+
+func (m *AclEntry) Reset()                    { *m = AclEntry{} }
+func (m *AclEntry) String() string            { return proto.CompactTextString(m) }
+func (*AclEntry) ProtoMessage()               {}
+func (*AclEntry) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{5} }
+
 func init() {
 	proto.RegisterType((*User)(nil), "authpb.User")
 	proto.RegisterType((*Permission)(nil), "authpb.Permission")
 	proto.RegisterType((*Role)(nil), "authpb.Role")
+	proto.RegisterType((*PrototypeField)(nil), "authpb.PrototypeField")
+	proto.RegisterType((*Prototype)(nil), "authpb.Prototype")
+	proto.RegisterType((*AclEntry)(nil), "authpb.AclEntry")
 	proto.RegisterEnum("authpb.Permission_Type", Permission_Type_name, Permission_Type_value)
+	proto.RegisterEnum("authpb.Prototype_Flags", Prototype_Flags_name, Prototype_Flags_value)
 }
 func (m *User) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
@@ -142,6 +207,18 @@ func (m *User) MarshalTo(dAtA []byte) (int, error) {
 			dAtA[i] = uint8(l)
 			i++
 			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.Acl) > 0 {
+		for _, msg := range m.Acl {
+			dAtA[i] = 0x22
+			i++
+			i = encodeVarintAuth(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
 	return i, nil
@@ -218,6 +295,115 @@ func (m *Role) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *PrototypeField) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PrototypeField) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Key) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
+	}
+	if m.RightsRead != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(m.RightsRead))
+	}
+	if m.RightsWrite != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(m.RightsWrite))
+	}
+	return i, nil
+}
+
+func (m *Prototype) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Prototype) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Fields) > 0 {
+		for _, msg := range m.Fields {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintAuth(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.Flags != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(m.Flags))
+	}
+	return i, nil
+}
+
+func (m *AclEntry) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AclEntry) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Path) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(len(m.Path)))
+		i += copy(dAtA[i:], m.Path)
+	}
+	if m.RightsSet != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(m.RightsSet))
+	}
+	if m.RightsUnset != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintAuth(dAtA, i, uint64(m.RightsUnset))
+	}
+	return i, nil
+}
+
 func encodeVarintAuth(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
@@ -241,6 +427,12 @@ func (m *User) Size() (n int) {
 	if len(m.Roles) > 0 {
 		for _, s := range m.Roles {
 			l = len(s)
+			n += 1 + l + sovAuth(uint64(l))
+		}
+	}
+	if len(m.Acl) > 0 {
+		for _, e := range m.Acl {
+			l = e.Size()
 			n += 1 + l + sovAuth(uint64(l))
 		}
 	}
@@ -276,6 +468,57 @@ func (m *Role) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovAuth(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *PrototypeField) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
+	}
+	if m.RightsRead != 0 {
+		n += 1 + sovAuth(uint64(m.RightsRead))
+	}
+	if m.RightsWrite != 0 {
+		n += 1 + sovAuth(uint64(m.RightsWrite))
+	}
+	return n
+}
+
+func (m *Prototype) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
+	}
+	if len(m.Fields) > 0 {
+		for _, e := range m.Fields {
+			l = e.Size()
+			n += 1 + l + sovAuth(uint64(l))
+		}
+	}
+	if m.Flags != 0 {
+		n += 1 + sovAuth(uint64(m.Flags))
+	}
+	return n
+}
+
+func (m *AclEntry) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Path)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
+	}
+	if m.RightsSet != 0 {
+		n += 1 + sovAuth(uint64(m.RightsSet))
+	}
+	if m.RightsUnset != 0 {
+		n += 1 + sovAuth(uint64(m.RightsUnset))
 	}
 	return n
 }
@@ -412,6 +655,37 @@ func (m *User) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Roles = append(m.Roles, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Acl", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Acl = append(m.Acl, &AclEntry{})
+			if err := m.Acl[len(m.Acl)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -677,6 +951,371 @@ func (m *Role) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *PrototypeField) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuth
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PrototypeField: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PrototypeField: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RightsRead", wireType)
+			}
+			m.RightsRead = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RightsRead |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RightsWrite", wireType)
+			}
+			m.RightsWrite = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RightsWrite |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuth(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAuth
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Prototype) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuth
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Prototype: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Prototype: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = append(m.Name[:0], dAtA[iNdEx:postIndex]...)
+			if m.Name == nil {
+				m.Name = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Fields", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Fields = append(m.Fields, &PrototypeField{})
+			if err := m.Fields[len(m.Fields)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flags", wireType)
+			}
+			m.Flags = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Flags |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuth(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAuth
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AclEntry) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuth
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AclEntry: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AclEntry: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Path", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Path = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RightsSet", wireType)
+			}
+			m.RightsSet = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RightsSet |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RightsUnset", wireType)
+			}
+			m.RightsUnset = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RightsUnset |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuth(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAuth
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipAuth(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
@@ -785,23 +1424,35 @@ var (
 func init() { proto.RegisterFile("auth.proto", fileDescriptorAuth) }
 
 var fileDescriptorAuth = []byte{
-	// 288 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xc1, 0x4a, 0xc3, 0x30,
-	0x1c, 0xc6, 0x9b, 0xb6, 0x1b, 0xed, 0x5f, 0x27, 0x25, 0x0c, 0x0c, 0x13, 0x42, 0xe9, 0xa9, 0x78,
-	0xa8, 0xb0, 0x5d, 0xbc, 0x2a, 0xf6, 0x20, 0x78, 0x90, 0x50, 0xf1, 0x28, 0x1d, 0x0d, 0x75, 0x6c,
-	0x6d, 0x4a, 0x32, 0x91, 0xbe, 0x89, 0x07, 0x1f, 0x68, 0xc7, 0x3d, 0x82, 0xab, 0x2f, 0x22, 0x4d,
-	0x64, 0x43, 0xdc, 0xed, 0xfb, 0xbe, 0xff, 0x97, 0xe4, 0x97, 0x3f, 0x40, 0xfe, 0xb6, 0x7e, 0x4d,
-	0x1a, 0x29, 0xd6, 0x02, 0x0f, 0x7b, 0xdd, 0xcc, 0x27, 0xe3, 0x52, 0x94, 0x42, 0x47, 0x57, 0xbd,
-	0x32, 0xd3, 0xe8, 0x01, 0xdc, 0x27, 0xc5, 0x25, 0xc6, 0xe0, 0xd6, 0x79, 0xc5, 0x09, 0x0a, 0x51,
-	0x7c, 0xca, 0xb4, 0xc6, 0x13, 0xf0, 0x9a, 0x5c, 0xa9, 0x77, 0x21, 0x0b, 0x62, 0xeb, 0x7c, 0xef,
-	0xf1, 0x18, 0x06, 0x52, 0xac, 0xb8, 0x22, 0x4e, 0xe8, 0xc4, 0x3e, 0x33, 0x26, 0xfa, 0x44, 0x00,
-	0x8f, 0x5c, 0x56, 0x0b, 0xa5, 0x16, 0xa2, 0xc6, 0x33, 0xf0, 0x1a, 0x2e, 0xab, 0xac, 0x6d, 0xcc,
-	0xc5, 0x67, 0xd3, 0xf3, 0xc4, 0xd0, 0x24, 0x87, 0x56, 0xd2, 0x8f, 0xd9, 0xbe, 0x88, 0x03, 0x70,
-	0x96, 0xbc, 0xfd, 0x7d, 0xb0, 0x97, 0xf8, 0x02, 0x7c, 0x99, 0xd7, 0x25, 0x7f, 0xe1, 0x75, 0x41,
-	0x1c, 0x03, 0xa2, 0x83, 0xb4, 0x2e, 0xa2, 0x4b, 0x70, 0xf5, 0x31, 0x0f, 0x5c, 0x96, 0xde, 0xdc,
-	0x05, 0x16, 0xf6, 0x61, 0xf0, 0xcc, 0xee, 0xb3, 0x34, 0x40, 0x78, 0x04, 0x7e, 0x1f, 0x1a, 0x6b,
-	0x47, 0x19, 0xb8, 0x4c, 0xac, 0xf8, 0xd1, 0xcf, 0x5e, 0xc3, 0x68, 0xc9, 0xdb, 0x03, 0x16, 0xb1,
-	0x43, 0x27, 0x3e, 0x99, 0xe2, 0xff, 0xc0, 0xec, 0x6f, 0xf1, 0x96, 0x6c, 0x76, 0xd4, 0xda, 0xee,
-	0xa8, 0xb5, 0xe9, 0x28, 0xda, 0x76, 0x14, 0x7d, 0x75, 0x14, 0x7d, 0x7c, 0x53, 0x6b, 0x3e, 0xd4,
-	0x3b, 0x9e, 0xfd, 0x04, 0x00, 0x00, 0xff, 0xff, 0xcc, 0x76, 0x8d, 0x4f, 0x8f, 0x01, 0x00, 0x00,
+	// 468 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x92, 0x41, 0x6b, 0xdb, 0x30,
+	0x14, 0xc7, 0xad, 0xd8, 0x09, 0xf1, 0xeb, 0x52, 0x8c, 0xe8, 0x36, 0xaf, 0x1b, 0x26, 0xe8, 0x14,
+	0xc6, 0xf0, 0xa0, 0xbd, 0xec, 0xda, 0xb4, 0x0e, 0x74, 0x87, 0xa4, 0x28, 0x09, 0xbd, 0x2d, 0xb8,
+	0xb5, 0xea, 0x98, 0x3a, 0xb6, 0x91, 0x34, 0x86, 0x3f, 0xc7, 0x2e, 0x3b, 0xec, 0x03, 0xf5, 0xd8,
+	0x8f, 0xb0, 0x66, 0x5f, 0x64, 0x48, 0x72, 0x92, 0x86, 0xf5, 0xf6, 0x7f, 0x7f, 0x3d, 0xf9, 0xfd,
+	0x7f, 0xcf, 0x02, 0x88, 0xbf, 0xcb, 0x65, 0x58, 0xf1, 0x52, 0x96, 0xb8, 0xa3, 0x74, 0x75, 0x73,
+	0x7c, 0x94, 0x96, 0x69, 0xa9, 0xad, 0xcf, 0x4a, 0x99, 0x53, 0x52, 0x81, 0x33, 0x17, 0x8c, 0x63,
+	0x0c, 0x4e, 0x11, 0xaf, 0x98, 0x8f, 0xfa, 0x68, 0xf0, 0x8a, 0x6a, 0x8d, 0x8f, 0xa1, 0x5b, 0xc5,
+	0x42, 0xfc, 0x28, 0x79, 0xe2, 0xb7, 0xb4, 0xbf, 0xad, 0xf1, 0x11, 0xb4, 0x79, 0x99, 0x33, 0xe1,
+	0xdb, 0x7d, 0x7b, 0xe0, 0x52, 0x53, 0x60, 0x02, 0x76, 0x7c, 0x9b, 0xfb, 0x4e, 0xdf, 0x1e, 0x1c,
+	0x9c, 0x78, 0xa1, 0x99, 0x1c, 0x9e, 0xdd, 0xe6, 0x51, 0x21, 0x79, 0x4d, 0xd5, 0x21, 0xf9, 0x8d,
+	0x00, 0xae, 0x18, 0x5f, 0x65, 0x42, 0x64, 0x65, 0x81, 0x4f, 0xa1, 0x5b, 0x31, 0xbe, 0x9a, 0xd5,
+	0x95, 0x19, 0x7e, 0x78, 0xf2, 0x76, 0x73, 0x6f, 0xd7, 0x15, 0xaa, 0x63, 0xba, 0x6d, 0xc4, 0x1e,
+	0xd8, 0xf7, 0xac, 0x6e, 0x42, 0x29, 0x89, 0xdf, 0x83, 0xcb, 0xe3, 0x22, 0x65, 0x0b, 0x56, 0x24,
+	0xbe, 0x6d, 0xc2, 0x6a, 0x23, 0x2a, 0x12, 0xf2, 0x11, 0x1c, 0x7d, 0xad, 0x0b, 0x0e, 0x8d, 0xce,
+	0x2e, 0x3c, 0x0b, 0xbb, 0xd0, 0xbe, 0xa6, 0x97, 0xb3, 0xc8, 0x43, 0xb8, 0x07, 0xae, 0x32, 0x4d,
+	0xd9, 0x22, 0x33, 0x70, 0x68, 0x99, 0xb3, 0x17, 0x17, 0xf2, 0x05, 0x7a, 0xf7, 0xac, 0xde, 0xc5,
+	0xf2, 0x5b, 0x1a, 0x14, 0xff, 0x1f, 0x98, 0xee, 0x37, 0x92, 0x04, 0x0e, 0xaf, 0xd4, 0xbe, 0x65,
+	0x5d, 0xb1, 0x51, 0xc6, 0xf2, 0x64, 0x83, 0xa0, 0x3e, 0xef, 0x1a, 0x84, 0x00, 0x80, 0x67, 0xe9,
+	0x52, 0x0a, 0xca, 0x62, 0xb3, 0xf0, 0x1e, 0x7d, 0xe6, 0xe0, 0x3e, 0x1c, 0x98, 0xea, 0x9a, 0x67,
+	0x92, 0x69, 0xc8, 0x1e, 0x7d, 0x6e, 0x91, 0x9f, 0x08, 0xdc, 0xed, 0x98, 0x17, 0x09, 0x42, 0xe8,
+	0xdc, 0xa9, 0xf1, 0xa2, 0x89, 0xfe, 0x66, 0x1b, 0x7d, 0x2f, 0x1d, 0x6d, 0xba, 0xd4, 0x6f, 0xbe,
+	0xcb, 0xe3, 0x54, 0x34, 0xd3, 0x4c, 0x41, 0x3e, 0x41, 0x7b, 0xa4, 0x84, 0x5a, 0xe8, 0x78, 0x32,
+	0x8e, 0x3c, 0x0b, 0xbf, 0x83, 0xd7, 0xa3, 0x09, 0x3d, 0x8f, 0x16, 0xd3, 0xf9, 0x70, 0x32, 0xfc,
+	0x1a, 0x9d, 0xcf, 0xa6, 0x8b, 0xd1, 0xe5, 0xf8, 0xc2, 0x43, 0xe4, 0x1b, 0x74, 0x37, 0x2f, 0x40,
+	0x65, 0xaa, 0x62, 0xb9, 0x6c, 0xb0, 0xb5, 0xc6, 0x1f, 0xc0, 0x35, 0x10, 0x53, 0x26, 0x1b, 0xec,
+	0x9d, 0xb1, 0xa3, 0x9e, 0x17, 0x82, 0xc9, 0x7d, 0x6a, 0x6d, 0x0d, 0xfd, 0x87, 0xa7, 0xc0, 0x7a,
+	0x7c, 0x0a, 0xac, 0x87, 0x75, 0x80, 0x1e, 0xd7, 0x01, 0xfa, 0xb3, 0x0e, 0xd0, 0xaf, 0xbf, 0x81,
+	0x75, 0xd3, 0xd1, 0x6f, 0xfc, 0xf4, 0x5f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb1, 0xf3, 0x5e, 0x31,
+	0x0f, 0x03, 0x00, 0x00,
 }

@@ -14,6 +14,8 @@ message User {
   bytes name = 1;
   bytes password = 2;
   repeated string roles = 3;
+  // each path is unique in acl
+  repeated AclEntry acl = 4;
 }
 
 // Permission is a single entity
@@ -34,4 +36,31 @@ message Role {
   bytes name = 1;
 
   repeated Permission keyPermission = 2;
+}
+
+message PrototypeField {
+  string key = 1;
+  uint32 rightsRead = 2;
+  uint32 rightsWrite = 3;
+}
+
+// Prototype is a single entry in the bucket authPrototypes
+message Prototype {
+  enum Flags {
+    NONE = 0x00;
+    FORCE_SUBOBJECTS_FIND = 0x01;
+  }
+
+  bytes name = 1;
+
+  // each key is unique in fields
+  repeated PrototypeField fields = 2;
+
+  uint32 flags = 3;
+}
+
+message AclEntry {
+  string path = 1;
+  uint32 rightsSet = 2;
+  uint32 rightsUnset = 3;
 }

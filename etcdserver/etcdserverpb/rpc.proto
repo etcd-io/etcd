@@ -343,6 +343,48 @@ service Auth {
         body: "*"
     };
   }
+
+  rpc PrototypeUpdate(AuthPrototypeUpdateRequest) returns (AuthPrototypeUpdateResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/prototype/update"
+        body: "*"
+    };
+  }
+
+  rpc PrototypeDelete(AuthPrototypeDeleteRequest) returns (AuthPrototypeDeleteResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/prototype/delete"
+        body: "*"
+    };
+  }
+
+  rpc PrototypeList(AuthPrototypeListRequest) returns (AuthPrototypeListResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/prototype/list"
+        body: "*"
+    };
+  }
+
+  rpc UserListAcl(AuthUserListAclRequest) returns (AuthUserListAclResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/user/listacl"
+        body: "*"
+    };
+  }
+
+  rpc UserUpdateAcl(AuthUserUpdateAclRequest) returns (AuthUserUpdateAclResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/user/updateacl"
+        body: "*"
+    };
+  }
+
+  rpc UserRevisions(AuthUserRevisionsRequest) returns (AuthUserRevisionsResponse) {
+      option (google.api.http) = {
+        post: "/v3beta/auth/user/revisions"
+        body: "*"
+    };
+  }
 }
 
 message ResponseHeader {
@@ -978,6 +1020,29 @@ message AuthRoleRevokePermissionRequest {
   string range_end = 3;
 }
 
+message AuthPrototypeUpdateRequest {
+  authpb.Prototype prototype = 1;
+}
+
+message AuthPrototypeDeleteRequest {
+  string name = 1;
+}
+
+message AuthPrototypeListRequest {
+}
+
+message AuthUserListAclRequest {
+  string user = 1;
+}
+
+message AuthUserUpdateAclRequest {
+  string user = 1;
+  repeated authpb.AclEntry acl = 2;
+}
+
+message AuthUserRevisionsRequest {
+}
+
 message AuthEnableResponse {
   ResponseHeader header = 1;
 }
@@ -1050,4 +1115,35 @@ message AuthRoleGrantPermissionResponse {
 
 message AuthRoleRevokePermissionResponse {
   ResponseHeader header = 1;
+}
+
+message AuthPrototypeUpdateResponse {
+  ResponseHeader header = 1;
+}
+
+message AuthPrototypeDeleteResponse {
+  ResponseHeader header = 1;
+}
+
+message AuthPrototypeListResponse {
+  ResponseHeader header = 1;
+
+  repeated authpb.Prototype prototypes = 2;
+}
+
+message AuthUserListAclResponse {
+  ResponseHeader header = 1;
+
+  repeated authpb.AclEntry acl = 2;
+}
+
+message AuthUserUpdateAclResponse {
+  ResponseHeader header = 1;
+}
+
+message AuthUserRevisionsResponse {
+  ResponseHeader header = 1;
+
+  int64 prototypesRevision = 2;
+  int64 aclRevision = 3;
 }
