@@ -108,3 +108,33 @@ func (ap *AuthProxy) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 	conn := ap.client.ActiveConnection()
 	return pb.NewAuthClient(conn).UserChangePassword(ctx, r)
 }
+
+func (ap *AuthProxy) PrototypeUpdate(ctx context.Context, r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).PrototypeUpdate(ctx, r)
+}
+
+func (ap *AuthProxy) PrototypeDelete(ctx context.Context, r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).PrototypeDelete(ctx, r)
+}
+
+func (ap *AuthProxy) PrototypeList(ctx context.Context, r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).PrototypeList(ctx, r)
+}
+
+func (ap *AuthProxy) UserListAcl(ctx context.Context, r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).UserListAcl(ctx, r)
+}
+
+func (ap *AuthProxy) UserUpdateAcl(ctx context.Context, r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).UserUpdateAcl(ctx, r)
+}
+
+func (ap *AuthProxy) UserRevisions(ctx context.Context, r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).UserRevisions(ctx, r)
+}

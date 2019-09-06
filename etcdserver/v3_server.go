@@ -81,6 +81,12 @@ type Authenticator interface {
 	RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
+	PrototypeUpdate(ctx context.Context, r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error)
+	PrototypeDelete(ctx context.Context, r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error)
+	PrototypeList(ctx context.Context, r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error)
+	UserListAcl(ctx context.Context, r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error)
+	UserUpdateAcl(ctx context.Context, r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error)
+	UserRevisions(ctx context.Context, r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error)
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -499,6 +505,54 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 		return nil, err
 	}
 	return resp.(*pb.AuthRoleDeleteResponse), nil
+}
+
+func (s *EtcdServer) PrototypeUpdate(ctx context.Context, r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthPrototypeUpdate: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthPrototypeUpdateResponse), nil
+}
+
+func (s *EtcdServer) PrototypeDelete(ctx context.Context, r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthPrototypeDelete: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthPrototypeDeleteResponse), nil
+}
+
+func (s *EtcdServer) PrototypeList(ctx context.Context, r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthPrototypeList: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthPrototypeListResponse), nil
+}
+
+func (s *EtcdServer) UserListAcl(ctx context.Context, r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserListAcl: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthUserListAclResponse), nil
+}
+
+func (s *EtcdServer) UserUpdateAcl(ctx context.Context, r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserUpdateAcl: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthUserUpdateAclResponse), nil
+}
+
+func (s *EtcdServer) UserRevisions(ctx context.Context, r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserRevisions: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.AuthUserRevisionsResponse), nil
 }
 
 func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {

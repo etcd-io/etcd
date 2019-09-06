@@ -91,3 +91,27 @@ func (s *as2ac) UserRevokeRole(ctx context.Context, in *pb.AuthUserRevokeRoleReq
 func (s *as2ac) UserChangePassword(ctx context.Context, in *pb.AuthUserChangePasswordRequest, opts ...grpc.CallOption) (*pb.AuthUserChangePasswordResponse, error) {
 	return s.as.UserChangePassword(ctx, in)
 }
+
+func (s *as2ac) PrototypeUpdate(ctx context.Context, in *pb.AuthPrototypeUpdateRequest, opts ...grpc.CallOption) (*pb.AuthPrototypeUpdateResponse, error) {
+	return s.as.PrototypeUpdate(ctx, in)
+}
+
+func (s *as2ac) PrototypeDelete(ctx context.Context, in *pb.AuthPrototypeDeleteRequest, opts ...grpc.CallOption) (*pb.AuthPrototypeDeleteResponse, error) {
+	return s.as.PrototypeDelete(ctx, in)
+}
+
+func (s *as2ac) PrototypeList(ctx context.Context, in *pb.AuthPrototypeListRequest, opts ...grpc.CallOption) (*pb.AuthPrototypeListResponse, error) {
+	return s.as.PrototypeList(ctx, in)
+}
+
+func (s *as2ac) UserListAcl(ctx context.Context, in *pb.AuthUserListAclRequest, opts ...grpc.CallOption) (*pb.AuthUserListAclResponse, error) {
+	return s.as.UserListAcl(ctx, in)
+}
+
+func (s *as2ac) UserUpdateAcl(ctx context.Context, in *pb.AuthUserUpdateAclRequest, opts ...grpc.CallOption) (*pb.AuthUserUpdateAclResponse, error) {
+	return s.as.UserUpdateAcl(ctx, in)
+}
+
+func (s *as2ac) UserRevisions(ctx context.Context, in *pb.AuthUserRevisionsRequest, opts ...grpc.CallOption) (*pb.AuthUserRevisionsResponse, error) {
+	return s.as.UserRevisions(ctx, in)
+}

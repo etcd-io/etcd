@@ -56,6 +56,13 @@ message InternalRaftRequest {
   AuthRoleGetRequest auth_role_get = 1202;
   AuthRoleGrantPermissionRequest auth_role_grant_permission = 1203;
   AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1204;
+
+  AuthPrototypeUpdateRequest auth_prototype_update = 1900;
+  AuthPrototypeDeleteRequest auth_prototype_delete = 1901;
+  AuthPrototypeListRequest auth_prototype_list = 1902;
+  AuthUserListAclRequest auth_user_list_acl = 1903;
+  AuthUserUpdateAclRequest auth_user_update_acl = 1904;
+  AuthUserRevisionsRequest auth_user_revisions = 1905;
 }
 
 message EmptyResponse {
@@ -71,4 +78,3 @@ message InternalAuthenticateRequest {
   // simple_token is generated in API layer (etcdserver/v3_server.go)
   string simple_token = 3;
 }
-

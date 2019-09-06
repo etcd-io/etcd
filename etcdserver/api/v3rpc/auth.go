@@ -156,3 +156,51 @@ func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChan
 	}
 	return resp, nil
 }
+
+func (as *AuthServer) PrototypeUpdate(ctx context.Context, r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
+	resp, err := as.authenticator.PrototypeUpdate(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) PrototypeDelete(ctx context.Context, r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	resp, err := as.authenticator.PrototypeDelete(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) PrototypeList(ctx context.Context, r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
+	resp, err := as.authenticator.PrototypeList(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) UserListAcl(ctx context.Context, r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	resp, err := as.authenticator.UserListAcl(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) UserUpdateAcl(ctx context.Context, r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	resp, err := as.authenticator.UserUpdateAcl(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) UserRevisions(ctx context.Context, r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	resp, err := as.authenticator.UserRevisions(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}

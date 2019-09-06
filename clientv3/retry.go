@@ -494,3 +494,51 @@ func (rac *retryAuthClient) Authenticate(ctx context.Context, in *pb.Authenticat
 	}, nonRepeatable)
 	return resp, err
 }
+
+func (rac *retryAuthClient) PrototypeUpdate(ctx context.Context, in *pb.AuthPrototypeUpdateRequest, opts ...grpc.CallOption) (resp *pb.AuthPrototypeUpdateResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.PrototypeUpdate(rctx, in, opts...)
+		return err
+	}, nonRepeatable)
+	return resp, err
+}
+
+func (rac *retryAuthClient) PrototypeDelete(ctx context.Context, in *pb.AuthPrototypeDeleteRequest, opts ...grpc.CallOption) (resp *pb.AuthPrototypeDeleteResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.PrototypeDelete(rctx, in, opts...)
+		return err
+	}, nonRepeatable)
+	return resp, err
+}
+
+func (rac *retryAuthClient) PrototypeList(ctx context.Context, in *pb.AuthPrototypeListRequest, opts ...grpc.CallOption) (resp *pb.AuthPrototypeListResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.PrototypeList(rctx, in, opts...)
+		return err
+	}, repeatable)
+	return resp, err
+}
+
+func (rac *retryAuthClient) UserListAcl(ctx context.Context, in *pb.AuthUserListAclRequest, opts ...grpc.CallOption) (resp *pb.AuthUserListAclResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.UserListAcl(rctx, in, opts...)
+		return err
+	}, repeatable)
+	return resp, err
+}
+
+func (rac *retryAuthClient) UserUpdateAcl(ctx context.Context, in *pb.AuthUserUpdateAclRequest, opts ...grpc.CallOption) (resp *pb.AuthUserUpdateAclResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.UserUpdateAcl(rctx, in, opts...)
+		return err
+	}, nonRepeatable)
+	return resp, err
+}
+
+func (rac *retryAuthClient) UserRevisions(ctx context.Context, in *pb.AuthUserRevisionsRequest, opts ...grpc.CallOption) (resp *pb.AuthUserRevisionsResponse, err error) {
+	err = rac.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rac.ac.UserRevisions(rctx, in, opts...)
+		return err
+	}, repeatable)
+	return resp, err
+}
