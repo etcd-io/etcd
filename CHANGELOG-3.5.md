@@ -3,12 +3,19 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.4.md).
 
 
+The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+
+
 <hr>
 
 
-## v3.5.0 (TBD)
+## v3.5.0 (2020 TBD)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and [v3.5 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_5.md) for any breaking changes.
+
+- [v3.5.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.1...v3.5.0).
+- [v3.5.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.1) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.0...v3.5.0-rc.1).
+- [v3.5.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0-rc.0).
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.5 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_5.md).**
 
@@ -67,6 +74,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
   - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
+- Support [rollback/downgrade](TODO).
 
 ### Package `embed`
 
@@ -82,6 +90,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Go
 
 - Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
+- Compile with [*Go 1.13*](https://golang.org/doc/devel/release.html#go1.13)
+
 
 <hr>
 

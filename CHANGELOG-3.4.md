@@ -2,13 +2,27 @@
 
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md).
 
+
+The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+
+
 <hr>
+
 
 ## [v3.4.1](https://github.com/etcd-io/etcd/releases/tag/v3.4.1) (2019-TBD)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.4.1) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+
+### Metrics, Monitoring
+
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
+- Add [`etcd_debugging_mvcc_current_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
+- Add [`etcd_debugging_mvcc_compact_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
 
 ### etcd server
 
@@ -17,8 +31,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.4.1) and 
 
 ### Go
 
-- Compile with Go 1.12.9 including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
-- See [*Go 1.12 release page*](https://golang.org/doc/devel/release.html#go1.12) for more.
+- Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
 
 <hr>
@@ -111,7 +124,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - Fix [gRPC panic "send on closed channel](https://github.com/etcd-io/etcd/issues/9956).
   - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. To block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
-  - Compile with Go 1.12.9 including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+  - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 - Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
   - <= 3.3 puts `vendor` directory under `cmd/vendor` directory to [prevent conflicting transitive dependencies](https://github.com/etcd-io/etcd/issues/4913).
   - 3.4 moves `cmd/vendor` directory to `vendor` at repository root.
@@ -620,8 +633,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### Go
 
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
-- Compile with Go 1.12.9 including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
-  - See [*Go 1.12 release page*](https://golang.org/doc/devel/release.html#go1.12) for more.
+- Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
 ### Dockerfile
 
