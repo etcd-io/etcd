@@ -89,6 +89,7 @@ func init() {
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
+		command.NewPrototypeCommand(),
 	)
 }
 

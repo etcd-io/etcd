@@ -42,6 +42,12 @@ type (
 	AuthRoleDeleteResponse           pb.AuthRoleDeleteResponse
 	AuthUserListResponse             pb.AuthUserListResponse
 	AuthRoleListResponse             pb.AuthRoleListResponse
+	AuthPrototypeUpdateResponse      pb.AuthPrototypeUpdateResponse
+	AuthPrototypeDeleteResponse      pb.AuthPrototypeDeleteResponse
+	AuthPrototypeListResponse        pb.AuthPrototypeListResponse
+	AuthUserListAclResponse          pb.AuthUserListAclResponse
+	AuthUserUpdateAclResponse        pb.AuthUserUpdateAclResponse
+	AuthUserRevisionsResponse        pb.AuthUserRevisionsResponse
 
 	PermissionType authpb.Permission_Type
 	Permission     authpb.Permission
@@ -98,6 +104,18 @@ type Auth interface {
 
 	// RoleDelete deletes a role.
 	RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error)
+
+	PrototypeUpdate(ctx context.Context, prototype *authpb.Prototype) (*AuthPrototypeUpdateResponse, error)
+
+	PrototypeDelete(ctx context.Context, prototype string) (*AuthPrototypeDeleteResponse, error)
+
+	PrototypeList(ctx context.Context) (*AuthPrototypeListResponse, error)
+
+	UserListAcl(ctx context.Context, user string) (*AuthUserListAclResponse, error)
+
+	UserUpdateAcl(ctx context.Context, user string, acl []*authpb.AclEntry) (*AuthUserUpdateAclResponse, error)
+
+	UserRevisions(ctx context.Context) (*AuthUserRevisionsResponse, error)
 }
 
 type auth struct {
@@ -191,6 +209,36 @@ func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key, ra
 func (auth *auth) RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error) {
 	resp, err := auth.remote.RoleDelete(ctx, &pb.AuthRoleDeleteRequest{Role: role}, auth.callOpts...)
 	return (*AuthRoleDeleteResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) PrototypeUpdate(ctx context.Context, prototype *authpb.Prototype) (*AuthPrototypeUpdateResponse, error) {
+	resp, err := auth.remote.PrototypeUpdate(ctx, &pb.AuthPrototypeUpdateRequest{Prototype: prototype}, auth.callOpts...)
+	return (*AuthPrototypeUpdateResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) PrototypeDelete(ctx context.Context, prototype string) (*AuthPrototypeDeleteResponse, error) {
+	resp, err := auth.remote.PrototypeDelete(ctx, &pb.AuthPrototypeDeleteRequest{Name: prototype}, auth.callOpts...)
+	return (*AuthPrototypeDeleteResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) PrototypeList(ctx context.Context) (*AuthPrototypeListResponse, error) {
+	resp, err := auth.remote.PrototypeList(ctx, &pb.AuthPrototypeListRequest{}, auth.callOpts...)
+	return (*AuthPrototypeListResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) UserListAcl(ctx context.Context, user string) (*AuthUserListAclResponse, error) {
+	resp, err := auth.remote.UserListAcl(ctx, &pb.AuthUserListAclRequest{User: user}, auth.callOpts...)
+	return (*AuthUserListAclResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) UserUpdateAcl(ctx context.Context, user string, acl []*authpb.AclEntry) (*AuthUserUpdateAclResponse, error) {
+	resp, err := auth.remote.UserUpdateAcl(ctx, &pb.AuthUserUpdateAclRequest{User: user, Acl: acl}, auth.callOpts...)
+	return (*AuthUserUpdateAclResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) UserRevisions(ctx context.Context) (*AuthUserRevisionsResponse, error) {
+	resp, err := auth.remote.UserRevisions(ctx, &pb.AuthUserRevisionsRequest{}, auth.callOpts...)
+	return (*AuthUserRevisionsResponse)(resp), toErr(ctx, err)
 }
 
 func StrToPermissionType(s string) (PermissionType, error) {

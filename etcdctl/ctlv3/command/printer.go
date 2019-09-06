@@ -22,6 +22,7 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/dustin/go-humanize"
 
+	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -64,6 +65,13 @@ type printer interface {
 	UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse)
 	UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse)
 	UserDelete(user string, r v3.AuthUserDeleteResponse)
+
+	PrototypeUpdate(prototype *authpb.Prototype, r v3.AuthPrototypeUpdateResponse)
+	PrototypeDelete(prototype string, r v3.AuthPrototypeDeleteResponse)
+	PrototypeList(r v3.AuthPrototypeListResponse)
+	UserListAcl(user string, r v3.AuthUserListAclResponse)
+	UserUpdateAcl(user string, acl []*authpb.AclEntry, r v3.AuthUserUpdateAclResponse)
+	UserRevisions(r v3.AuthUserRevisionsResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {

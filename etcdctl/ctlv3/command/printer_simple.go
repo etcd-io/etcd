@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/etcd/auth/authpb"
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
@@ -268,4 +269,23 @@ func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
 	for _, user := range r.Users {
 		fmt.Printf("%s\n", user)
 	}
+}
+
+func (s *simplePrinter) PrototypeUpdate(prototype *authpb.Prototype, r v3.AuthPrototypeUpdateResponse) {
+	fmt.Printf("Prototype %s updated\n", prototype.Name)
+}
+
+func (s *simplePrinter) PrototypeDelete(prototype string, r v3.AuthPrototypeDeleteResponse) {
+}
+
+func (s *simplePrinter) PrototypeList(r v3.AuthPrototypeListResponse) {
+}
+
+func (s *simplePrinter) UserListAcl(user string, r v3.AuthUserListAclResponse) {
+}
+
+func (s *simplePrinter) UserUpdateAcl(user string, acl []*authpb.AclEntry, r v3.AuthUserUpdateAclResponse) {
+}
+
+func (s *simplePrinter) UserRevisions(r v3.AuthUserRevisionsResponse) {
 }
