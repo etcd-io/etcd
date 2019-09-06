@@ -142,6 +142,13 @@ type AuthStore interface {
 	// RoleList gets a list of all roles
 	RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 
+	PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error)
+	PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error)
+	PrototypeList(r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error)
+	UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error)
+	UserUpdateAcl(r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error)
+	UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error)
+
 	// IsPutPermitted checks put permission of the user
 	IsPutPermitted(authInfo *AuthInfo, key []byte) error
 
@@ -671,6 +678,31 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	plog.Noticef("Role %s is created", r.Name)
 
 	return &pb.AuthRoleAddResponse{}, nil
+}
+
+func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
+	plog.Infof("Prototype %s update", string(r.Prototype.Name))
+	return &pb.AuthPrototypeUpdateResponse{}, nil
+}
+
+func (as *authStore) PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	return &pb.AuthPrototypeDeleteResponse{}, nil
+}
+
+func (as *authStore) PrototypeList(r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
+	return &pb.AuthPrototypeListResponse{}, nil
+}
+
+func (as *authStore) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	return &pb.AuthUserListAclResponse{}, nil
+}
+
+func (as *authStore) UserUpdateAcl(r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	return &pb.AuthUserUpdateAclResponse{}, nil
+}
+
+func (as *authStore) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	return &pb.AuthUserRevisionsResponse{}, nil
 }
 
 func (as *authStore) authInfoFromToken(ctx context.Context, token string) (*AuthInfo, bool) {

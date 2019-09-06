@@ -76,6 +76,13 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
+
+	PrototypeUpdate(ua *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error)
+	PrototypeDelete(ua *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error)
+	PrototypeList(ua *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error)
+	UserListAcl(ua *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error)
+	UserUpdateAcl(ua *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error)
+	UserRevisions(ua *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error)
 }
 
 type checkReqFunc func(mvcc.ReadView, *pb.RequestOp) error
@@ -162,6 +169,18 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.UserList(r.AuthUserList)
 	case r.AuthRoleList != nil:
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
+	case r.AuthPrototypeUpdate != nil:
+		ar.resp, ar.err = a.s.applyV3.PrototypeUpdate(r.AuthPrototypeUpdate)
+	case r.AuthPrototypeDelete != nil:
+		ar.resp, ar.err = a.s.applyV3.PrototypeDelete(r.AuthPrototypeDelete)
+	case r.AuthPrototypeList != nil:
+		ar.resp, ar.err = a.s.applyV3.PrototypeList(r.AuthPrototypeList)
+	case r.AuthUserListAcl != nil:
+		ar.resp, ar.err = a.s.applyV3.UserListAcl(r.AuthUserListAcl)
+	case r.AuthUserUpdateAcl != nil:
+		ar.resp, ar.err = a.s.applyV3.UserUpdateAcl(r.AuthUserUpdateAcl)
+	case r.AuthUserRevisions != nil:
+		ar.resp, ar.err = a.s.applyV3.UserRevisions(r.AuthUserRevisions)
 	default:
 		panic("not implemented")
 	}
@@ -762,6 +781,54 @@ func (a *applierV3backend) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserList
 
 func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
 	resp, err := a.s.AuthStore().RoleList(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
+	resp, err := a.s.AuthStore().PrototypeUpdate(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	resp, err := a.s.AuthStore().PrototypeDelete(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) PrototypeList(r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
+	resp, err := a.s.AuthStore().PrototypeList(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	resp, err := a.s.AuthStore().UserListAcl(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) UserUpdateAcl(r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	resp, err := a.s.AuthStore().UserUpdateAcl(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	resp, err := a.s.AuthStore().UserRevisions(r)
 	if resp != nil {
 		resp.Header = newHeader(a.s)
 	}
