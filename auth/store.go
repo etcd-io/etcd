@@ -66,6 +66,7 @@ var (
 	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
 	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
 	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
+	ErrPrototypeNameEmpty   = errors.New("auth: prototype name is empty")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
@@ -683,7 +684,18 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 }
 
 func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.AuthPrototypeUpdateResponse, error) {
-	plog.Infof("Prototype %s update", string(r.Prototype.Name))
+	if len(r.Prototype.Name) == 0 {
+		return nil, ErrPrototypeNameEmpty
+	}
+
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	as.commitRevision(tx)
+
+	plog.Noticef("updated prototype: %s", r.Prototype.Name)
+
 	return &pb.AuthPrototypeUpdateResponse{}, nil
 }
 
@@ -942,6 +954,7 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 	tx.UnsafeCreateBucket(authBucketName)
 	tx.UnsafeCreateBucket(authUsersBucketName)
 	tx.UnsafeCreateBucket(authRolesBucketName)
+	tx.UnsafeCreateBucket(authPrototypesBucketName)
 
 	enabled := false
 	_, vs := tx.UnsafeRange(authBucketName, enableFlagKey, nil, 0)
