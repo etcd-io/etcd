@@ -75,7 +75,7 @@ script:
       linux-amd64-fmt)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='fmt bom dep' ./test"
+          /bin/bash -c "GOARCH=amd64 PASSES='fmt dep' ./test"
         ;;
       linux-amd64-integration-1-cpu)
         docker run --rm \
