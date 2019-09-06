@@ -30,7 +30,7 @@ func TestSimpleTokenDisabled(t *testing.T) {
 
 	for _, tp := range []*tokenSimple{initialState, explicitlyDisabled} {
 		ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
-		token, err := tp.assign(ctx, "user1", 0)
+		token, err := tp.assign(ctx, "user1", 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func TestSimpleTokenAssign(t *testing.T) {
 	tp := newTokenProviderSimple(dummyIndexWaiter)
 	tp.enable()
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
-	token, err := tp.assign(ctx, "user1", 0)
+	token, err := tp.assign(ctx, "user1", 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

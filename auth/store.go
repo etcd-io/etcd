@@ -85,6 +85,7 @@ const (
 type AuthInfo struct {
 	Username string
 	Revision uint64
+	State    *CapturedState
 }
 
 // AuthenticateParamIndex is used for a key of context in the parameters of Authenticate()
@@ -192,7 +193,7 @@ type AuthStore interface {
 
 type TokenProvider interface {
 	info(ctx context.Context, token string, revision uint64) (*AuthInfo, bool)
-	assign(ctx context.Context, username string, revision uint64) (string, error)
+	assign(ctx context.Context, username string, revision uint64, state *CapturedState) (string, error)
 	enable()
 	disable()
 
@@ -209,6 +210,9 @@ type authStore struct {
 	enabledMu sync.RWMutex
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
+	aclCache       map[string]*AclCache                // username -> AclCache
+
+	prototypeCache *PrototypeCache
 
 	tokenProvider TokenProvider
 }
@@ -298,7 +302,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 	// Password checking is already performed in the API layer, so we don't need to check for now.
 	// Staleness of password can be detected with OCC in the API layer, too.
 
-	token, err := as.tokenProvider.assign(ctx, username, as.Revision())
+	token, err := as.tokenProvider.assign(ctx, username, as.Revision(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1146,7 +1150,7 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		ctxForAssign = ctx
 	}
 
-	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision())
+	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision(), nil)
 	if err != nil {
 		// this must not happen
 		plog.Errorf("failed to assign token for lease revoking: %s", err)

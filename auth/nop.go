@@ -27,7 +27,7 @@ func (t *tokenNop) genTokenPrefix() (string, error) { return "", nil }
 func (t *tokenNop) info(ctx context.Context, token string, rev uint64) (*AuthInfo, bool) {
 	return nil, false
 }
-func (t *tokenNop) assign(ctx context.Context, username string, revision uint64) (string, error) {
+func (t *tokenNop) assign(ctx context.Context, username string, revision uint64, state *CapturedState) (string, error) {
 	return "", ErrAuthFailed
 }
 func newTokenProviderNop() (*tokenNop, error) {

@@ -186,7 +186,7 @@ func (t *tokenSimple) info(ctx context.Context, token string, revision uint64) (
 	return &AuthInfo{Username: username, Revision: revision}, ok
 }
 
-func (t *tokenSimple) assign(ctx context.Context, username string, rev uint64) (string, error) {
+func (t *tokenSimple) assign(ctx context.Context, username string, rev uint64, state *CapturedState) (string, error) {
 	// rev isn't used in simple token, it is only used in JWT
 	index := ctx.Value(AuthenticateParamIndex{}).(uint64)
 	simpleTokenPrefix := ctx.Value(AuthenticateParamSimpleTokenPrefix{}).(string)

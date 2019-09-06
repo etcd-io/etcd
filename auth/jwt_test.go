@@ -35,7 +35,7 @@ func TestJWTInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, aerr := jwt.assign(context.TODO(), "abc", 123)
+	token, aerr := jwt.assign(context.TODO(), "abc", 123, nil)
 	if aerr != nil {
 		t.Fatal(err)
 	}
