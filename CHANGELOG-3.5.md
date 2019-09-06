@@ -79,6 +79,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 
+### Go
+
+- Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
 
 <hr>
 
