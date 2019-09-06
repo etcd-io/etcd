@@ -56,6 +56,9 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// go1.13 enables TLS13 by default, and in TLS13, cipher suites are not configurable
+	// setting Max TLS version to TLS12 for go1.13
+	cc.MaxVersion = tls.VersionTLS12
 	cli, cerr := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
