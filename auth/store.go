@@ -40,11 +40,13 @@ var (
 	authEnabled   = []byte{1}
 	authDisabled  = []byte{0}
 
-	revisionKey = []byte("authRevision")
+	revisionKey          = []byte("authRevision")
+	prototypeRevisionKey = []byte("authPrototypeRevision")
 
-	authBucketName      = []byte("auth")
-	authUsersBucketName = []byte("authUsers")
-	authRolesBucketName = []byte("authRoles")
+	authBucketName           = []byte("auth")
+	authUsersBucketName      = []byte("authUsers")
+	authRolesBucketName      = []byte("authRoles")
+	authPrototypesBucketName = []byte("authPrototypes")
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 

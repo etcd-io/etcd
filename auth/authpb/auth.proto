@@ -16,6 +16,7 @@ message User {
   repeated string roles = 3;
   // each path is unique in acl
   repeated AclEntry acl = 4;
+  int64 aclRevision = 5;
 }
 
 // Permission is a single entity
