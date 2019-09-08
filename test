@@ -460,12 +460,12 @@ function govet_shadow_pass {
 	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
 	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
-	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	go get -v golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
 	export PATH=${GOPATH}/bin:${PATH}
 	shadow_tool=$(which shadow)
 	vetRes=$(go vet -all -vettool="${shadow_tool}" "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
-		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
+		echo -e "govet -shadow checking failed:\\n${vetRes}"
 		exit 255
 	fi
 }
@@ -617,7 +617,6 @@ function fmt_pass {
 			goword \
 			gofmt \
 			govet \
-			govet_shadow \
 			revive \
 			license_header \
 			receiver_name \

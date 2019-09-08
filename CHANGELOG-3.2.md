@@ -27,6 +27,8 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
+- Add [`etcd_debugging_mvcc_current_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
+- Add [`etcd_debugging_mvcc_compact_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
 
 <hr>
 

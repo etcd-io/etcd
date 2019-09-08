@@ -1,6 +1,6 @@
 Snapshot:
 empty
-Start dupmping log entries from snapshot.
+Start dumping log entries from snapshot.
 WAL metadata:
 nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
 WAL entries:
@@ -26,7 +26,7 @@ term	     index	type	data	decoder_status	decoded_data
   12	        18	norm	ID:13 auth_enable:<> 	decoder output format is not right, print output anyway	jhjdcbcejj
   13	        19	norm	ID:14 auth_disable:<> 	decoder output format is not right, print output anyway	jhjeiacfjj
   14	        20	norm	ID:15 authenticate:<name:"myname" password:"password" simple_token:"token" > 	decoder output format is not right, print output anyway	jhjfabcfaijajffdgifefafdfeabjhgjfagcgcggffgbfdaajegdfffbfefe
-  15	        21	norm	ID:16 auth_user_add:<name:"name1" password:"pass1" > 	decoder output format is not right, print output anyway	jhajebddjejajefefafdfecaabjegjfagcgcca
+  15	        21	norm	ID:16 auth_user_add:<name:"name1" password:"pass1" options:<> > 	decoder output format is not right, print output anyway	jhajebddajjajefefafdfecaabjegjfagcgccaaajj
   16	        22	norm	ID:17 auth_user_delete:<name:"name1" > 	decoder output format is not right, print output anyway	jhaaeaddjgjajefefafdfeca
   17	        23	norm	ID:18 auth_user_get:<name:"name1" > 	decoder output format is not right, print output anyway	jhabfbddjgjajefefafdfeca
   18	        24	norm	ID:19 auth_user_change_password:<name:"name1" password:"pass2" > 	decoder output format is not right, print output anyway	jhacfaddjejajefefafdfecaabjegjfagcgccb
@@ -41,4 +41,4 @@ term	     index	type	data	decoder_status	decoded_data
   27	        33	norm	ID:28 auth_role_revoke_permission:<role:"role3" key:"key" range_end:"rangeend" > 	decoder output format is not right, print output anyway	jhacabdbafjajegbfffcfeccabjcfbfegiaajhgbfafefgfefefefd
   27	        34	norm	???	decoder output format is not right, print output anyway	cf
 
-Entry types () count is : 34
+Entry types (Normal,ConfigChange) count is : 34
