@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -42,6 +43,7 @@ var (
 
 	revisionKey          = []byte("authRevision")
 	prototypeRevisionKey = []byte("authPrototypeRevision")
+	prototypeLastIdxKey  = []byte("authPrototypeLastIdx")
 
 	authBucketName           = []byte("auth")
 	authUsersBucketName      = []byte("authUsers")
@@ -50,23 +52,24 @@ var (
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 
-	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
-	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
-	ErrUserAlreadyExist     = errors.New("auth: user already exists")
-	ErrUserEmpty            = errors.New("auth: user name is empty")
-	ErrUserNotFound         = errors.New("auth: user not found")
-	ErrRoleAlreadyExist     = errors.New("auth: role already exists")
-	ErrRoleNotFound         = errors.New("auth: role not found")
-	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
-	ErrPermissionDenied     = errors.New("auth: permission denied")
-	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
-	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
-	ErrAuthNotEnabled       = errors.New("auth: authentication is not enabled")
-	ErrAuthOldRevision      = errors.New("auth: revision in header is old")
-	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
-	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
-	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
-	ErrPrototypeNameEmpty   = errors.New("auth: prototype name is empty")
+	ErrRootUserNotExist      = errors.New("auth: root user does not exist")
+	ErrRootRoleNotExist      = errors.New("auth: root user does not have root role")
+	ErrUserAlreadyExist      = errors.New("auth: user already exists")
+	ErrUserEmpty             = errors.New("auth: user name is empty")
+	ErrUserNotFound          = errors.New("auth: user not found")
+	ErrRoleAlreadyExist      = errors.New("auth: role already exists")
+	ErrRoleNotFound          = errors.New("auth: role not found")
+	ErrAuthFailed            = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrPermissionDenied      = errors.New("auth: permission denied")
+	ErrRoleNotGranted        = errors.New("auth: role is not granted to the user")
+	ErrPermissionNotGranted  = errors.New("auth: permission is not granted to the role")
+	ErrAuthNotEnabled        = errors.New("auth: authentication is not enabled")
+	ErrAuthOldRevision       = errors.New("auth: revision in header is old")
+	ErrInvalidAuthToken      = errors.New("auth: invalid auth token")
+	ErrInvalidAuthOpts       = errors.New("auth: invalid auth options")
+	ErrInvalidAuthMgmt       = errors.New("auth: invalid auth management")
+	ErrPrototypeNameEmpty    = errors.New("auth: prototype name is empty")
+	ErrPrototypeDuplicateKey = errors.New("auth: duplicate keys not allowed in prototypes")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
@@ -79,7 +82,8 @@ const (
 	tokenTypeSimple = "simple"
 	tokenTypeJWT    = "jwt"
 
-	revBytesLen = 8
+	revBytesLen          = 8
+	prototypeRevBytesLen = 8
 )
 
 type AuthInfo struct {
@@ -346,6 +350,8 @@ func (as *authStore) Recover(be backend.Backend) {
 	}
 
 	as.setRevision(getRevision(tx))
+
+	as.reinitCaches(tx)
 
 	tx.Unlock()
 
@@ -696,6 +702,19 @@ func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.Auth
 	tx.Lock()
 	defer tx.Unlock()
 
+	newCache, prototype, err := as.prototypeCache.Update(r.Prototype)
+	if err != nil {
+		return nil, err
+	}
+	putPrototype(tx, prototype)
+	if newCache.LastIdx != as.prototypeCache.LastIdx {
+		putPrototypeLastIdx(tx, newCache.LastIdx)
+	}
+	if newCache.Rev != as.prototypeCache.Rev {
+		putPrototypeRevision(tx, newCache.Rev)
+	}
+	as.prototypeCache = newCache
+
 	as.commitRevision(tx)
 
 	plog.Noticef("updated prototype: %s", r.Prototype.Name)
@@ -945,6 +964,40 @@ func delRole(tx backend.BatchTx, rolename string) {
 	tx.UnsafeDelete(authRolesBucketName, []byte(rolename))
 }
 
+func getAllPrototypes(tx backend.BatchTx) ([]int64, []*authpb.Prototype) {
+	min, max := newProtoIdxBytes(), newProtoIdxBytes()
+	protoIdxToBytes(1, min)
+	protoIdxToBytes(math.MaxInt64, max)
+
+	ks, vs := tx.UnsafeRange(authPrototypesBucketName, min, max, -1)
+	if len(vs) == 0 {
+		return make([]int64, 0), make([]*authpb.Prototype, 0)
+	}
+
+	prototypes := make([]*authpb.Prototype, len(vs))
+	protoIdxs := make([]int64, len(ks))
+	for i, key := range ks {
+		prototype := &authpb.Prototype{}
+		err := prototype.Unmarshal(vs[i])
+		if err != nil {
+			plog.Panicf("failed to unmarshal prototype struct: %s", err)
+		}
+		prototypes[i] = prototype
+		protoIdxs[i] = bytesToProtoIdx(key)
+	}
+	return protoIdxs, prototypes
+}
+
+func putPrototype(tx backend.BatchTx, prototype *CachedPrototype) {
+	p, err := prototype.Orig.Marshal()
+	if err != nil {
+		plog.Panicf("failed to marshal prototype struct (name: %s): %s", prototype.Orig.Name, err)
+	}
+	idx := newProtoIdxBytes()
+	protoIdxToBytes(prototype.Idx, idx)
+	tx.UnsafePut(authPrototypesBucketName, idx, p)
+}
+
 func (as *authStore) isAuthEnabled() bool {
 	as.enabledMu.RLock()
 	defer as.enabledMu.RUnlock()
@@ -984,6 +1037,8 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 		as.commitRevision(tx)
 	}
 
+	as.reinitCaches(tx)
+
 	tx.Unlock()
 	be.ForceCommit()
 
@@ -1011,6 +1066,36 @@ func getRevision(tx backend.BatchTx) uint64 {
 	}
 
 	return binary.BigEndian.Uint64(vs[0])
+}
+
+func getPrototypeRevision(tx backend.BatchTx) int64 {
+	_, vs := tx.UnsafeRange(authBucketName, []byte(prototypeRevisionKey), nil, 0)
+	if len(vs) != 1 {
+		// this can happen in the initialization phase
+		return 0
+	}
+	return int64(binary.BigEndian.Uint64(vs[0]))
+}
+
+func putPrototypeRevision(tx backend.BatchTx, rev int64) {
+	prototypeRevBytes := make([]byte, prototypeRevBytesLen)
+	binary.BigEndian.PutUint64(prototypeRevBytes, uint64(rev))
+	tx.UnsafePut(authBucketName, prototypeRevisionKey, prototypeRevBytes)
+}
+
+func getPrototypeLastIdx(tx backend.BatchTx) int64 {
+	_, vs := tx.UnsafeRange(authBucketName, []byte(prototypeLastIdxKey), nil, 0)
+	if len(vs) != 1 {
+		// this can happen in the initialization phase
+		return 0
+	}
+	return bytesToProtoIdx(vs[0])
+}
+
+func putPrototypeLastIdx(tx backend.BatchTx, lastIdx int64) {
+	bytes := newProtoIdxBytes()
+	protoIdxToBytes(lastIdx, bytes)
+	tx.UnsafePut(authBucketName, prototypeLastIdxKey, bytes)
 }
 
 func (as *authStore) setRevision(rev uint64) {
@@ -1184,4 +1269,22 @@ func (as *authStore) HasRole(user, role string) bool {
 	}
 
 	return false
+}
+
+func (as *authStore) reinitCaches(tx backend.BatchTx) {
+	as.aclCache = make(map[string]*AclCache)
+	protoIdxs, prototypes := getAllPrototypes(tx)
+	as.prototypeCache = newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
+}
+
+func newProtoIdxBytes() []byte {
+	return make([]byte, 8)
+}
+
+func protoIdxToBytes(protoIdx int64, bytes []byte) {
+	binary.BigEndian.PutUint64(bytes, uint64(protoIdx))
+}
+
+func bytesToProtoIdx(bytes []byte) int64 {
+	return int64(binary.BigEndian.Uint64(bytes[0:8]))
 }
