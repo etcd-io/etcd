@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -146,4 +147,12 @@ type ConsistentWatchableKV interface {
 	WatchableKV
 	// ConsistentIndex returns the current consistent index of the KV.
 	ConsistentIndex() uint64
+}
+
+type PrototypeCacheGetter interface {
+	// Get prototype cache as of the time of the call. The returned
+	// cache is immutable, however, calling this several times might not
+	// yield the same results, call this once and use the returned cache for
+	// an entire transaction.
+	PrototypeCache() *auth.PrototypeCache
 }

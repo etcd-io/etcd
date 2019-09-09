@@ -457,7 +457,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	srv.lessor = lease.NewLessor(srv.be, int64(math.Ceil(minTTL.Seconds())))
-	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex)
+	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex, srv.authStore)
 	if beExist {
 		kvindex := srv.kv.ConsistentIndex()
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade

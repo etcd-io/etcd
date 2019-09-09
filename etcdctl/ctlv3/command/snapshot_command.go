@@ -381,7 +381,7 @@ func makeDB(snapdir, dbfile string, commit int) {
 	be := backend.NewDefaultBackend(dbpath)
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(be, math.MaxInt64)
-	s := mvcc.NewStore(be, lessor, (*initIndex)(&commit))
+	s := mvcc.NewStore(be, lessor, (*initIndex)(&commit), nil)
 	txn := s.Write()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
