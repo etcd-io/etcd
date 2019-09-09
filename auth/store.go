@@ -70,6 +70,7 @@ var (
 	ErrInvalidAuthMgmt       = errors.New("auth: invalid auth management")
 	ErrPrototypeNameEmpty    = errors.New("auth: prototype name is empty")
 	ErrPrototypeDuplicateKey = errors.New("auth: duplicate keys not allowed in prototypes")
+	ErrPrototypeNotFound     = errors.New("auth: prototype not found")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
@@ -723,11 +724,34 @@ func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.Auth
 }
 
 func (as *authStore) PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.AuthPrototypeDeleteResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	newCache, idx, err := as.prototypeCache.Delete(r.Name)
+	if err != nil {
+		return nil, err
+	}
+	if newCache.Rev != as.prototypeCache.Rev {
+		putPrototypeRevision(tx, newCache.Rev)
+	}
+	as.prototypeCache = newCache
+
+	delPrototype(tx, idx)
+
+	as.commitRevision(tx)
+
+	plog.Noticef("deleted prototype: %s", r.Name)
+
 	return &pb.AuthPrototypeDeleteResponse{}, nil
 }
 
 func (as *authStore) PrototypeList(r *pb.AuthPrototypeListRequest) (*pb.AuthPrototypeListResponse, error) {
-	return &pb.AuthPrototypeListResponse{}, nil
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	return &pb.AuthPrototypeListResponse{Prototypes: as.prototypeCache.List()}, nil
 }
 
 func (as *authStore) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
@@ -996,6 +1020,12 @@ func putPrototype(tx backend.BatchTx, prototype *CachedPrototype) {
 	idx := newProtoIdxBytes()
 	protoIdxToBytes(prototype.Idx, idx)
 	tx.UnsafePut(authPrototypesBucketName, idx, p)
+}
+
+func delPrototype(tx backend.BatchTx, idx int64) {
+	bytes := newProtoIdxBytes()
+	protoIdxToBytes(idx, bytes)
+	tx.UnsafeDelete(authPrototypesBucketName, bytes)
 }
 
 func (as *authStore) isAuthEnabled() bool {

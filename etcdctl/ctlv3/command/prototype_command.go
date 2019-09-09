@@ -93,7 +93,26 @@ func prototypeUpdateCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func prototypeDeleteCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("prototype delete command requires prototype name as its argument."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.PrototypeDelete(context.TODO(), args[0])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	display.PrototypeDelete(args[0], *resp)
 }
 
 func prototypeListCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("prototype list command requires no arguments."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.PrototypeList(context.TODO())
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	display.PrototypeList(*resp)
 }

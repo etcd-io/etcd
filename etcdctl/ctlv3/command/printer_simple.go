@@ -276,9 +276,13 @@ func (s *simplePrinter) PrototypeUpdate(prototype *authpb.Prototype, r v3.AuthPr
 }
 
 func (s *simplePrinter) PrototypeDelete(prototype string, r v3.AuthPrototypeDeleteResponse) {
+	fmt.Printf("Prototype %s deleted\n", prototype)
 }
 
 func (s *simplePrinter) PrototypeList(r v3.AuthPrototypeListResponse) {
+	for _, proto := range r.Prototypes {
+		fmt.Printf("%v\n", proto)
+	}
 }
 
 func (s *simplePrinter) UserListAcl(user string, r v3.AuthUserListAclResponse) {

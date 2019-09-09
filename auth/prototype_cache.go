@@ -72,19 +72,7 @@ func newPrototypeCache(rev int64, lastIdx int64, protoIdxs []int64, prototypes [
 }
 
 func (pc *PrototypeCache) Update(prototype *authpb.Prototype) (*PrototypeCache, *CachedPrototype, error) {
-	newPc := &PrototypeCache{
-		Rev:     pc.Rev,
-		LastIdx: pc.LastIdx,
-		byIdx:   make(map[int64]*CachedPrototype),
-		byName:  make(map[string]*CachedPrototype),
-	}
-
-	for key, val := range pc.byIdx {
-		newPc.byIdx[key] = val
-	}
-	for key, val := range pc.byName {
-		newPc.byName[key] = val
-	}
+	newPc := pc.clone()
 
 	var idx int64 = 0
 	cachedProto, exists := newPc.byName[string(prototype.Name)]
@@ -110,6 +98,32 @@ func (pc *PrototypeCache) Update(prototype *authpb.Prototype) (*PrototypeCache, 
 	return newPc, cachedProto, nil
 }
 
+func (pc *PrototypeCache) Delete(name string) (*PrototypeCache, int64, error) {
+	cachedProto, ok := pc.byName[name]
+	if !ok {
+		return nil, 0, ErrPrototypeNotFound
+	}
+
+	newPc := pc.clone()
+
+	delete(newPc.byIdx, cachedProto.Idx)
+	delete(newPc.byName, string(cachedProto.Orig.Name))
+
+	newPc.Rev++
+
+	return newPc, cachedProto.Idx, nil
+}
+
+func (pc *PrototypeCache) List() []*authpb.Prototype {
+	prototypes := make([]*authpb.Prototype, len(pc.byIdx))
+	i := 0
+	for _, proto := range pc.byIdx {
+		prototypes[i] = proto.Orig
+		i++
+	}
+	return prototypes
+}
+
 func (pc *PrototypeCache) GetIdx(name string) int64 {
 	// TODO: get prototype index
 	return 0
@@ -118,4 +132,21 @@ func (pc *PrototypeCache) GetIdx(name string) int64 {
 func (pc *PrototypeCache) GetPrototype(idx int64) *CachedPrototype {
 	// TODO: get prototype by idx
 	return nil
+}
+
+func (pc *PrototypeCache) clone() *PrototypeCache {
+	newPc := &PrototypeCache{
+		Rev:     pc.Rev,
+		LastIdx: pc.LastIdx,
+		byIdx:   make(map[int64]*CachedPrototype),
+		byName:  make(map[string]*CachedPrototype),
+	}
+
+	for key, val := range pc.byIdx {
+		newPc.byIdx[key] = val
+	}
+	for key, val := range pc.byName {
+		newPc.byName[key] = val
+	}
+	return newPc
 }
