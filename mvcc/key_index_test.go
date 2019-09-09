@@ -520,11 +520,11 @@ func cloneKeyIndex(ki *keyIndex) *keyIndex {
 
 func cloneGeneration(g *generation) *generation {
 	if g.revs == nil {
-		return &generation{g.ver, g.created, nil}
+		return &generation{g.ver, g.created, nil, nil}
 	}
 	tmp := make([]revision, len(g.revs))
 	copy(tmp, g.revs)
-	return &generation{g.ver, g.created, tmp}
+	return &generation{g.ver, g.created, tmp, nil}
 }
 
 // test that compact on version that higher than last modified version works well

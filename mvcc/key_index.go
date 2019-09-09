@@ -26,6 +26,11 @@ var (
 	ErrRevisionNotFound = errors.New("mvcc: revision not found")
 )
 
+type prototypeInfo struct {
+	prototypeIdx   int64
+	forceFindDepth int32
+}
+
 // keyIndex stores the revisions of a key in the backend.
 // Each keyIndex has at least one key generation.
 // Each generation might have several key versions.
@@ -314,6 +319,7 @@ type generation struct {
 	ver     int64
 	created revision // when the generation is created (put in first revision).
 	revs    []revision
+	pi      []prototypeInfo
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
