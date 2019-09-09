@@ -18,6 +18,7 @@ import (
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -27,9 +28,11 @@ type storeTxnRead struct {
 
 	firstRev int64
 	rev      int64
+
+	trace *traceutil.Trace
 }
 
-func (s *store) Read() TxnRead {
+func (s *store) Read(trace *traceutil.Trace) TxnRead {
 	s.mu.RLock()
 	s.revMu.RLock()
 	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
@@ -38,7 +41,7 @@ func (s *store) Read() TxnRead {
 	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
+	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, trace})
 }
 
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
@@ -66,7 +69,7 @@ func (s *store) Write() TxnWrite {
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, nil},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
@@ -124,6 +127,9 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	}
 
 	revpairs := tr.s.kvindex.Revisions(key, end, rev)
+	if tr.trace != nil {
+		tr.trace.Step("Range keys from in-memory index tree.")
+	}
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -162,6 +168,9 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 				plog.Fatalf("cannot unmarshal event: %v", err)
 			}
 		}
+	}
+	if tr.trace != nil {
+		tr.trace.Step("Range keys from bolt db.")
 	}
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
 }

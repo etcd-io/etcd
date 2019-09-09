@@ -18,6 +18,7 @@ import (
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 )
 
 type RangeOptions struct {
@@ -102,7 +103,7 @@ type KV interface {
 	WriteView
 
 	// Read creates a read transaction.
-	Read() TxnRead
+	Read(trace *traceutil.Trace) TxnRead
 
 	// Write creates a write transaction.
 	Write() TxnWrite

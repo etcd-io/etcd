@@ -47,7 +47,7 @@ var (
 		return kv.Range(key, end, ro)
 	}
 	txnRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
-		txn := kv.Read()
+		txn := kv.Read(nil)
 		defer txn.End()
 		return txn.Range(key, end, ro)
 	}
