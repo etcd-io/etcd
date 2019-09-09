@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/gogo/protobuf/proto"
@@ -50,7 +51,7 @@ type applierV3 interface {
 	Apply(r *pb.InternalRaftRequest) *applyResult
 
 	Put(txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, error)
-	Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
@@ -119,7 +120,7 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
 	switch {
 	case r.Range != nil:
-		ar.resp, ar.err = a.s.applyV3.Range(nil, r.Range)
+		ar.resp, ar.err = a.s.applyV3.Range(context.TODO(), nil, r.Range)
 	case r.Put != nil:
 		ar.resp, ar.err = a.s.applyV3.Put(nil, r.Put)
 	case r.DeleteRange != nil:
@@ -245,12 +246,18 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	return resp, nil
 }
 
-func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	trace, ok := ctx.Value("trace").(*traceutil.Trace)
+	if !ok || trace == nil {
+		trace = traceutil.New("Apply Range")
+		ctx = context.WithValue(ctx, "trace", trace)
+	}
+
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 
 	if txn == nil {
-		txn = a.s.kv.Read()
+		txn = a.s.kv.Read(trace)
 		defer txn.End()
 	}
 
@@ -327,7 +334,7 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
-
+	trace.Step("Filter and sort the key-value pairs.")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
@@ -337,12 +344,14 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
+	trace.Step("Assemble the response.")
 	return resp, nil
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	isWrite := !isTxnReadonly(rt)
-	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read())
+	trace := traceutil.New("ReadOnlyTxn")
+	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(trace))
 
 	txnPath := compareToPath(txn, rt)
 	if isWrite {
@@ -516,7 +525,7 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPat
 		respi := tresp.Responses[i].Response
 		switch tv := req.Request.(type) {
 		case *pb.RequestOp_RequestRange:
-			resp, err := a.Range(txn, tv.RequestRange)
+			resp, err := a.Range(context.TODO(), txn, tv.RequestRange)
 			if err != nil {
 				if lg != nil {
 					lg.Panic("unexpected error during txn", zap.Error(err))

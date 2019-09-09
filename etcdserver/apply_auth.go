@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"context"
 	"sync"
 
 	"go.etcd.io/etcd/auth"
@@ -83,11 +84,11 @@ func (aa *authApplierV3) Put(txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutRespon
 	return aa.applierV3.Put(txn, r)
 }
 
-func (aa *authApplierV3) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (aa *authApplierV3) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
-	return aa.applierV3.Range(txn, r)
+	return aa.applierV3.Range(ctx, txn, r)
 }
 
 func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {

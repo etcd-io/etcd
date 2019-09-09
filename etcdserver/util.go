@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/rafthttp"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.etcd.io/etcd/pkg/types"
 
 	"go.uber.org/zap"
@@ -108,7 +109,7 @@ func warnOfExpensiveRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Strin
 	if !isNil(respMsg) {
 		resp = fmt.Sprintf("size:%d", proto.Size(respMsg))
 	}
-	warnOfExpensiveGenericRequest(lg, now, reqStringer, "", resp, err)
+	warnOfExpensiveGenericRequest(lg, nil, now, reqStringer, "", resp, err)
 }
 
 func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
@@ -126,18 +127,18 @@ func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnR
 		}
 		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), proto.Size(txnResponse))
 	}
-	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only range ", resp, err)
+	warnOfExpensiveGenericRequest(lg, nil, now, reqStringer, "read-only range ", resp, err)
 }
 
-func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
+func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, trace *traceutil.Trace, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
 	var resp string
 	if !isNil(rangeResponse) {
 		resp = fmt.Sprintf("range_response_count:%d size:%d", len(rangeResponse.Kvs), proto.Size(rangeResponse))
 	}
-	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only range ", resp, err)
+	warnOfExpensiveGenericRequest(lg, trace, now, reqStringer, "read-only range ", resp, err)
 }
 
-func warnOfExpensiveGenericRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, prefix string, resp string, err error) {
+func warnOfExpensiveGenericRequest(lg *zap.Logger, trace *traceutil.Trace, now time.Time, reqStringer fmt.Stringer, prefix string, resp string, err error) {
 	d := time.Since(now)
 	if d > warnApplyDuration {
 		if lg != nil {
@@ -158,6 +159,9 @@ func warnOfExpensiveGenericRequest(lg *zap.Logger, now time.Time, reqStringer fm
 				result = resp
 			}
 			plog.Warningf("%srequest %q with result %q took too long (%v) to execute", prefix, reqStringer.String(), result, d)
+		}
+		if trace != nil {
+			trace.Log(lg)
 		}
 		slowApplies.Inc()
 	}
