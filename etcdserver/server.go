@@ -443,17 +443,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	srv.be = be
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
-	tp, err := auth.NewTokenProvider(cfg.AuthToken,
-		func(index uint64) <-chan struct{} {
-			return srv.applyWait.Wait(index)
-		},
-	)
-	if err != nil {
-		plog.Errorf("failed to create token provider: %s", err)
-		return nil, err
-	}
-	srv.authStore = auth.NewAuthStore(srv.be, tp)
-
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	srv.lessor = lease.NewLessor(srv.be, int64(math.Ceil(minTTL.Seconds())))
@@ -479,6 +468,16 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}()
 
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
+	tp, err := auth.NewTokenProvider(cfg.AuthToken,
+		func(index uint64) <-chan struct{} {
+			return srv.applyWait.Wait(index)
+		},
+	)
+	if err != nil {
+		plog.Errorf("failed to create token provider: %s", err)
+		return nil, err
+	}
+	srv.authStore = auth.NewAuthStore(srv.be, tp)
 	if num := cfg.AutoCompactionRetention; num != 0 {
 		srv.compactor, err = compactor.New(cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {
@@ -884,13 +883,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panic(err)
 	}
 
-	// recover auth before KV since KV needs to access auth for prototypes
-	if s.authStore != nil {
-		plog.Info("recovering auth store...")
-		s.authStore.Recover(newbe)
-		plog.Info("finished recovering auth store")
-	}
-
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	if s.lessor != nil {
@@ -930,6 +922,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panicf("restore alarms error: %v", err)
 	}
 	plog.Info("finished recovering alarms")
+
+	if s.authStore != nil {
+		plog.Info("recovering auth store...")
+		s.authStore.Recover(newbe)
+		plog.Info("finished recovering auth store")
+	}
 
 	plog.Info("recovering store v2...")
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
