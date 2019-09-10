@@ -83,8 +83,6 @@ type store struct {
 
 	le lease.Lessor
 
-	pcg PrototypeCacheGetter
-
 	// revMuLock protects currentRev and compactMainRev.
 	// Locked at end of write txn and released after write txn unlock lock.
 	// Locked before locking read txn and released after locking.
@@ -105,14 +103,13 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, pcg PrototypeCacheGetter) *store {
+func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
 	s := &store{
 		b:       b,
 		ig:      ig,
 		kvindex: newTreeIndex(),
 
-		le:  le,
-		pcg: pcg,
+		le: le,
 
 		currentRev:     1,
 		compactMainRev: -1,

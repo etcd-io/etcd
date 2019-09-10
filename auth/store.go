@@ -194,8 +194,6 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
-
-	PrototypeCache() *PrototypeCache
 }
 
 type TokenProvider interface {
@@ -219,8 +217,7 @@ type authStore struct {
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 	aclCache       map[string]*AclCache                // username -> AclCache
 
-	prototypeCache   *PrototypeCache
-	prototypeCacheMu sync.RWMutex
+	prototypeCache *PrototypeCache
 
 	tokenProvider TokenProvider
 }
@@ -717,9 +714,7 @@ func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.Auth
 	if newCache.Rev != as.prototypeCache.Rev {
 		putPrototypeRevision(tx, newCache.Rev)
 	}
-	as.prototypeCacheMu.Lock()
 	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
 
 	as.commitRevision(tx)
 
@@ -740,9 +735,7 @@ func (as *authStore) PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.Auth
 	if newCache.Rev != as.prototypeCache.Rev {
 		putPrototypeRevision(tx, newCache.Rev)
 	}
-	as.prototypeCacheMu.Lock()
 	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
 
 	delPrototype(tx, idx)
 
@@ -1308,19 +1301,10 @@ func (as *authStore) HasRole(user, role string) bool {
 	return false
 }
 
-func (as *authStore) PrototypeCache() *PrototypeCache {
-	as.prototypeCacheMu.RLock()
-	defer as.prototypeCacheMu.RUnlock()
-	return as.prototypeCache
-}
-
 func (as *authStore) reinitCaches(tx backend.BatchTx) {
 	as.aclCache = make(map[string]*AclCache)
 	protoIdxs, prototypes := getAllPrototypes(tx)
-	newCache := newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
-	as.prototypeCacheMu.Lock()
-	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
+	as.prototypeCache = newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
 }
 
 func newProtoIdxBytes() []byte {
