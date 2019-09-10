@@ -195,7 +195,8 @@ type AuthStore interface {
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
 
-	PrototypeCache() *PrototypeCache
+	// Fetch prototype cache as of time of this call. Returned cache is immutable
+	GetPrototypeCache() *PrototypeCache
 }
 
 type TokenProvider interface {
@@ -1308,7 +1309,7 @@ func (as *authStore) HasRole(user, role string) bool {
 	return false
 }
 
-func (as *authStore) PrototypeCache() *PrototypeCache {
+func (as *authStore) GetPrototypeCache() *PrototypeCache {
 	as.prototypeCacheMu.RLock()
 	defer as.prototypeCacheMu.RUnlock()
 	return as.prototypeCache
