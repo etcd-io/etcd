@@ -44,20 +44,23 @@ var (
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
 
-	ErrGRPCRootUserNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not exist").Err()
-	ErrGRPCRootRoleNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not have root role").Err()
-	ErrGRPCUserAlreadyExist     = status.New(codes.FailedPrecondition, "etcdserver: user name already exists").Err()
-	ErrGRPCUserEmpty            = status.New(codes.InvalidArgument, "etcdserver: user name is empty").Err()
-	ErrGRPCUserNotFound         = status.New(codes.FailedPrecondition, "etcdserver: user name not found").Err()
-	ErrGRPCRoleAlreadyExist     = status.New(codes.FailedPrecondition, "etcdserver: role name already exists").Err()
-	ErrGRPCRoleNotFound         = status.New(codes.FailedPrecondition, "etcdserver: role name not found").Err()
-	ErrGRPCAuthFailed           = status.New(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password").Err()
-	ErrGRPCPermissionDenied     = status.New(codes.PermissionDenied, "etcdserver: permission denied").Err()
-	ErrGRPCRoleNotGranted       = status.New(codes.FailedPrecondition, "etcdserver: role is not granted to the user").Err()
-	ErrGRPCPermissionNotGranted = status.New(codes.FailedPrecondition, "etcdserver: permission is not granted to the role").Err()
-	ErrGRPCAuthNotEnabled       = status.New(codes.FailedPrecondition, "etcdserver: authentication is not enabled").Err()
-	ErrGRPCInvalidAuthToken     = status.New(codes.Unauthenticated, "etcdserver: invalid auth token").Err()
-	ErrGRPCInvalidAuthMgmt      = status.New(codes.InvalidArgument, "etcdserver: invalid auth management").Err()
+	ErrGRPCRootUserNotExist      = status.New(codes.FailedPrecondition, "etcdserver: root user does not exist").Err()
+	ErrGRPCRootRoleNotExist      = status.New(codes.FailedPrecondition, "etcdserver: root user does not have root role").Err()
+	ErrGRPCUserAlreadyExist      = status.New(codes.FailedPrecondition, "etcdserver: user name already exists").Err()
+	ErrGRPCUserEmpty             = status.New(codes.InvalidArgument, "etcdserver: user name is empty").Err()
+	ErrGRPCUserNotFound          = status.New(codes.FailedPrecondition, "etcdserver: user name not found").Err()
+	ErrGRPCRoleAlreadyExist      = status.New(codes.FailedPrecondition, "etcdserver: role name already exists").Err()
+	ErrGRPCRoleNotFound          = status.New(codes.FailedPrecondition, "etcdserver: role name not found").Err()
+	ErrGRPCAuthFailed            = status.New(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password").Err()
+	ErrGRPCPermissionDenied      = status.New(codes.PermissionDenied, "etcdserver: permission denied").Err()
+	ErrGRPCRoleNotGranted        = status.New(codes.FailedPrecondition, "etcdserver: role is not granted to the user").Err()
+	ErrGRPCPermissionNotGranted  = status.New(codes.FailedPrecondition, "etcdserver: permission is not granted to the role").Err()
+	ErrGRPCAuthNotEnabled        = status.New(codes.FailedPrecondition, "etcdserver: authentication is not enabled").Err()
+	ErrGRPCInvalidAuthToken      = status.New(codes.Unauthenticated, "etcdserver: invalid auth token").Err()
+	ErrGRPCInvalidAuthMgmt       = status.New(codes.InvalidArgument, "etcdserver: invalid auth management").Err()
+	ErrGRPCPrototypeNameEmpty    = status.New(codes.FailedPrecondition, "etcdserver: prototype name is empty").Err()
+	ErrGRPCPrototypeDuplicateKey = status.New(codes.FailedPrecondition, "etcdserver: duplicate keys not allowed in prototypes").Err()
+	ErrGRPCPrototypeNotFound     = status.New(codes.FailedPrecondition, "etcdserver: prototype not found").Err()
 
 	ErrGRPCNoLeader                   = status.New(codes.Unavailable, "etcdserver: no leader").Err()
 	ErrGRPCNotLeader                  = status.New(codes.FailedPrecondition, "etcdserver: not leader").Err()
@@ -94,20 +97,23 @@ var (
 		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
 
-		ErrorDesc(ErrGRPCRootUserNotExist):     ErrGRPCRootUserNotExist,
-		ErrorDesc(ErrGRPCRootRoleNotExist):     ErrGRPCRootRoleNotExist,
-		ErrorDesc(ErrGRPCUserAlreadyExist):     ErrGRPCUserAlreadyExist,
-		ErrorDesc(ErrGRPCUserEmpty):            ErrGRPCUserEmpty,
-		ErrorDesc(ErrGRPCUserNotFound):         ErrGRPCUserNotFound,
-		ErrorDesc(ErrGRPCRoleAlreadyExist):     ErrGRPCRoleAlreadyExist,
-		ErrorDesc(ErrGRPCRoleNotFound):         ErrGRPCRoleNotFound,
-		ErrorDesc(ErrGRPCAuthFailed):           ErrGRPCAuthFailed,
-		ErrorDesc(ErrGRPCPermissionDenied):     ErrGRPCPermissionDenied,
-		ErrorDesc(ErrGRPCRoleNotGranted):       ErrGRPCRoleNotGranted,
-		ErrorDesc(ErrGRPCPermissionNotGranted): ErrGRPCPermissionNotGranted,
-		ErrorDesc(ErrGRPCAuthNotEnabled):       ErrGRPCAuthNotEnabled,
-		ErrorDesc(ErrGRPCInvalidAuthToken):     ErrGRPCInvalidAuthToken,
-		ErrorDesc(ErrGRPCInvalidAuthMgmt):      ErrGRPCInvalidAuthMgmt,
+		ErrorDesc(ErrGRPCRootUserNotExist):      ErrGRPCRootUserNotExist,
+		ErrorDesc(ErrGRPCRootRoleNotExist):      ErrGRPCRootRoleNotExist,
+		ErrorDesc(ErrGRPCUserAlreadyExist):      ErrGRPCUserAlreadyExist,
+		ErrorDesc(ErrGRPCUserEmpty):             ErrGRPCUserEmpty,
+		ErrorDesc(ErrGRPCUserNotFound):          ErrGRPCUserNotFound,
+		ErrorDesc(ErrGRPCRoleAlreadyExist):      ErrGRPCRoleAlreadyExist,
+		ErrorDesc(ErrGRPCRoleNotFound):          ErrGRPCRoleNotFound,
+		ErrorDesc(ErrGRPCAuthFailed):            ErrGRPCAuthFailed,
+		ErrorDesc(ErrGRPCPermissionDenied):      ErrGRPCPermissionDenied,
+		ErrorDesc(ErrGRPCRoleNotGranted):        ErrGRPCRoleNotGranted,
+		ErrorDesc(ErrGRPCPermissionNotGranted):  ErrGRPCPermissionNotGranted,
+		ErrorDesc(ErrGRPCAuthNotEnabled):        ErrGRPCAuthNotEnabled,
+		ErrorDesc(ErrGRPCInvalidAuthToken):      ErrGRPCInvalidAuthToken,
+		ErrorDesc(ErrGRPCInvalidAuthMgmt):       ErrGRPCInvalidAuthMgmt,
+		ErrorDesc(ErrGRPCPrototypeNameEmpty):    ErrGRPCPrototypeNameEmpty,
+		ErrorDesc(ErrGRPCPrototypeDuplicateKey): ErrGRPCPrototypeDuplicateKey,
+		ErrorDesc(ErrGRPCPrototypeNotFound):     ErrGRPCPrototypeNotFound,
 
 		ErrorDesc(ErrGRPCNoLeader):                   ErrGRPCNoLeader,
 		ErrorDesc(ErrGRPCNotLeader):                  ErrGRPCNotLeader,
@@ -146,20 +152,23 @@ var (
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
 
-	ErrRootUserNotExist     = Error(ErrGRPCRootUserNotExist)
-	ErrRootRoleNotExist     = Error(ErrGRPCRootRoleNotExist)
-	ErrUserAlreadyExist     = Error(ErrGRPCUserAlreadyExist)
-	ErrUserEmpty            = Error(ErrGRPCUserEmpty)
-	ErrUserNotFound         = Error(ErrGRPCUserNotFound)
-	ErrRoleAlreadyExist     = Error(ErrGRPCRoleAlreadyExist)
-	ErrRoleNotFound         = Error(ErrGRPCRoleNotFound)
-	ErrAuthFailed           = Error(ErrGRPCAuthFailed)
-	ErrPermissionDenied     = Error(ErrGRPCPermissionDenied)
-	ErrRoleNotGranted       = Error(ErrGRPCRoleNotGranted)
-	ErrPermissionNotGranted = Error(ErrGRPCPermissionNotGranted)
-	ErrAuthNotEnabled       = Error(ErrGRPCAuthNotEnabled)
-	ErrInvalidAuthToken     = Error(ErrGRPCInvalidAuthToken)
-	ErrInvalidAuthMgmt      = Error(ErrGRPCInvalidAuthMgmt)
+	ErrRootUserNotExist      = Error(ErrGRPCRootUserNotExist)
+	ErrRootRoleNotExist      = Error(ErrGRPCRootRoleNotExist)
+	ErrUserAlreadyExist      = Error(ErrGRPCUserAlreadyExist)
+	ErrUserEmpty             = Error(ErrGRPCUserEmpty)
+	ErrUserNotFound          = Error(ErrGRPCUserNotFound)
+	ErrRoleAlreadyExist      = Error(ErrGRPCRoleAlreadyExist)
+	ErrRoleNotFound          = Error(ErrGRPCRoleNotFound)
+	ErrAuthFailed            = Error(ErrGRPCAuthFailed)
+	ErrPermissionDenied      = Error(ErrGRPCPermissionDenied)
+	ErrRoleNotGranted        = Error(ErrGRPCRoleNotGranted)
+	ErrPermissionNotGranted  = Error(ErrGRPCPermissionNotGranted)
+	ErrAuthNotEnabled        = Error(ErrGRPCAuthNotEnabled)
+	ErrInvalidAuthToken      = Error(ErrGRPCInvalidAuthToken)
+	ErrInvalidAuthMgmt       = Error(ErrGRPCInvalidAuthMgmt)
+	ErrPrototypeNameEmpty    = Error(ErrGRPCPrototypeNameEmpty)
+	ErrPrototypeDuplicateKey = Error(ErrGRPCPrototypeDuplicateKey)
+	ErrPrototypeNotFound     = Error(ErrGRPCPrototypeNotFound)
 
 	ErrNoLeader                   = Error(ErrGRPCNoLeader)
 	ErrNotLeader                  = Error(ErrGRPCNotLeader)
