@@ -29,6 +29,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [secure server logging message](https://github.com/etcd-io/etcd/commit/8b053b0f44c14ac0d9f39b9b78c17c57d47966eb).
 - Remove [redundant `%` characters in file descriptor warning message](https://github.com/etcd-io/etcd/commit/d5f79adc9cea9ec8c93669526464b0aa19ed417b).
 
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.23.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.1).
+
 ### Go
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
