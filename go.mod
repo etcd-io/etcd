@@ -43,7 +43,7 @@ require (
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
-	google.golang.org/grpc v1.23.0
+	google.golang.org/grpc v1.23.1
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
 	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0
