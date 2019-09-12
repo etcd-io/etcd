@@ -31,6 +31,10 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
 )
 
+const (
+	maxErrorLogNumsPerSecond = 10
+)
+
 var (
 	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "proxy/httpproxy")
 
@@ -47,6 +51,8 @@ var (
 		"Transfer-Encoding",
 		"Upgrade",
 	}
+	noEndpointLogNums int32
+	noRespLogNums     int32
 )
 
 func removeSingleHopHeaders(hdrs *http.Header) {
@@ -58,6 +64,16 @@ func removeSingleHopHeaders(hdrs *http.Header) {
 type reverseProxy struct {
 	director  *director
 	transport http.RoundTripper
+}
+
+func startLogRateLimit(logsNum *int32, msg string) {
+	timerObj := time.NewTimer(time.Duration(1) * time.Second)
+	select {
+	case <-timerObj.C:
+		logNums := atomic.SwapInt32(logsNum, 0)
+		errMsg := "Receive error msg(count: %d): " + "\"" + msg + "\"" + " in one second."
+		plog.Println(errMsg, logNums)
+	}
 }
 
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
@@ -97,15 +113,23 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		msg := "zero endpoints currently available"
 		reportRequestDropped(clientreq, zeroEndpoints)
 
-		// TODO: limit the rate of the error logging.
-		plog.Println(msg)
+		//limit the rate of the error logging.
+		logNum := atomic.AddInt32(&noEndpointLogNums, 1)
+		if logNum <= maxErrorLogNumsPerSecond {
+			plog.Println(msg)
+		}
+
+		if logNum == maxErrorLogNumsPerSecond {
+			plog.Println("Start limit the rate of the error logging for no endpoint(s).")
+			go startLogRateLimit(&noEndpointLogNums, msg)
+		}
 		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
 		}
 		return
 	}
-
+	atomic.StoreInt32(&noEndpointLogNums, 0)
 	var requestClosed int32
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
@@ -152,17 +176,25 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	if res == nil {
-		// TODO: limit the rate of the error logging.
 		msg := fmt.Sprintf("unable to get response from %d endpoint(s)", len(endpoints))
 		reportRequestDropped(clientreq, failedGettingResponse)
-		plog.Println(msg)
+		//limit the rate of the error logging.
+		logNum := atomic.AddInt32(&noRespLogNums, 1)
+		if logNum <= maxErrorLogNumsPerSecond {
+			plog.Println(msg)
+		}
+
+		if logNum == maxErrorLogNumsPerSecond {
+			plog.Println("Start limit the rate of the error logging for no endpoint(s) response.")
+			go startLogRateLimit(&noRespLogNums, msg)
+		}
 		e := httptypes.NewHTTPError(http.StatusBadGateway, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
 		}
 		return
 	}
-
+	atomic.StoreInt32(&noRespLogNums, 0)
 	defer res.Body.Close()
 	reportRequestHandled(clientreq, res, startTime)
 	removeSingleHopHeaders(&res.Header)
