@@ -303,8 +303,8 @@ type Config struct {
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
 
-	// zapLoggerBuilder is used to build the zap logger.
-	zapLoggerBuilder func(*Config) error
+	// ZapLoggerBuilder is used to build the zap logger.
+	ZapLoggerBuilder func(*Config) error
 
 	// logger logs server-side operations. The default is nil,
 	// and "setupLogging" must be called before starting server.
