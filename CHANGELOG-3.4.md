@@ -37,6 +37,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
+### Package `embed`
+
+- Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11148) to allow creating a custom zap logger.
+
 
 <hr>
 

@@ -80,6 +80,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
   - Use `embed.Config.LogLevel` instead.
+- Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11147) to allow creating a custom zap logger.
 
 ### Package `clientv3`
 
