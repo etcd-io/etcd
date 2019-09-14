@@ -273,14 +273,13 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
 	start := time.Now()
-	keep := s.kvindex.Compact(rev)
-	trace.Step("compact in-memory index tree")
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
 		if ctx.Err() != nil {
 			s.compactBarrier(ctx, ch)
 			return
 		}
+		keep := s.kvindex.Compact(rev)
 		if !s.scheduleCompaction(rev, keep) {
 			s.compactBarrier(nil, ch)
 			return
