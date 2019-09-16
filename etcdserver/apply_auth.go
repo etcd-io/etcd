@@ -211,6 +211,28 @@ func (aa *authApplierV3) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRespo
 	return aa.applierV3.RoleGet(r)
 }
 
+func (aa *authApplierV3) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
+	err := aa.as.IsAdminPermitted(&aa.authInfo)
+	if err != nil && r.User != aa.authInfo.Username {
+		aa.authInfo.Username = ""
+		aa.authInfo.Revision = 0
+		return &pb.AuthUserListAclResponse{}, err
+	}
+
+	return aa.applierV3.UserListAcl(r)
+}
+
+func (aa *authApplierV3) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
+	err := aa.as.IsAdminPermitted(&aa.authInfo)
+	if err != nil && r.User != aa.authInfo.Username {
+		aa.authInfo.Username = ""
+		aa.authInfo.Revision = 0
+		return &pb.AuthUserRevisionsResponse{}, err
+	}
+
+	return aa.applierV3.UserRevisions(r)
+}
+
 func needAdminPermission(r *pb.InternalRaftRequest) bool {
 	switch {
 	case r.AuthEnable != nil:
@@ -244,8 +266,6 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 	case r.AuthPrototypeDelete != nil:
 		return true
 	case r.AuthPrototypeList != nil:
-		return true
-	case r.AuthUserListAcl != nil:
 		return true
 	case r.AuthUserUpdateAcl != nil:
 		return true

@@ -801,7 +801,20 @@ func (as *authStore) UserUpdateAcl(r *pb.AuthUserUpdateAclRequest) (*pb.AuthUser
 }
 
 func (as *authStore) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
-	return &pb.AuthUserRevisionsResponse{}, nil
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	user := getUser(tx, r.User)
+
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	var resp pb.AuthUserRevisionsResponse
+	resp.PrototypesRevision = as.prototypeCache.Rev
+	resp.AclRevision = as.getAclCache(user).Rev
+	return &resp, nil
 }
 
 func (as *authStore) authInfoFromToken(ctx context.Context, token string) (*AuthInfo, bool) {
