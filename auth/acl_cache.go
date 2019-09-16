@@ -12,7 +12,7 @@ type AclCache struct {
 	entries *adt.IntervalTree
 }
 
-func newAclCache(rev int64, entries []*authpb.AclEntry) (*AclCache, error) {
+func newAclCache(rev int64, entries []*authpb.AclEntry) *AclCache {
 	ac := &AclCache{
 		Rev: rev,
 	}
@@ -20,10 +20,10 @@ func newAclCache(rev int64, entries []*authpb.AclEntry) (*AclCache, error) {
 	err := ac.updateInternal(entries)
 
 	if err != nil {
-		return nil, err
+		plog.Panicf("Bad acl entries: %v", err)
 	}
 
-	return ac, nil
+	return ac
 }
 
 func (ac *AclCache) Update(entries []*authpb.AclEntry) (*AclCache, error) {

@@ -253,6 +253,7 @@ func (as *authStore) AuthEnable() error {
 	as.tokenProvider.enable()
 
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
+	as.aclCache = make(map[string]*AclCache)
 
 	as.setRevision(getRevision(tx))
 
@@ -416,6 +417,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	as.commitRevision(tx)
 
 	as.invalidateCachedPerm(r.Name)
+	delete(as.aclCache, r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
 
 	plog.Noticef("deleted a user: %s", r.Name)
@@ -756,10 +758,45 @@ func (as *authStore) PrototypeList(r *pb.AuthPrototypeListRequest) (*pb.AuthProt
 }
 
 func (as *authStore) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
-	return &pb.AuthUserListAclResponse{}, nil
+	tx := as.be.BatchTx()
+	tx.Lock()
+	user := getUser(tx, r.User)
+	tx.Unlock()
+
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	var resp pb.AuthUserListAclResponse
+	resp.Acl = append(resp.Acl, user.Acl...)
+	return &resp, nil
 }
 
 func (as *authStore) UserUpdateAcl(r *pb.AuthUserUpdateAclRequest) (*pb.AuthUserUpdateAclResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	user := getUser(tx, r.User)
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	ac := as.getAclCache(user)
+
+	newAc, err := ac.Update(r.Acl)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Acl = r.Acl
+	user.AclRevision = newAc.Rev
+	putUser(tx, user)
+	as.aclCache[string(user.Name)] = newAc
+
+	as.commitRevision(tx)
+
+	plog.Noticef("user %s acl updated", r.User)
 	return &pb.AuthUserUpdateAclResponse{}, nil
 }
 
@@ -1307,6 +1344,16 @@ func (as *authStore) reinitCaches(tx backend.BatchTx) {
 	protoIdxs, prototypes := getAllPrototypes(tx)
 	newCache := newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
 	as.prototypeCache = newCache
+}
+
+func (as *authStore) getAclCache(user *authpb.User) *AclCache {
+	userName := string(user.Name)
+	ac, ok := as.aclCache[userName]
+	if !ok {
+		ac = newAclCache(user.AclRevision, user.Acl)
+		as.aclCache[userName] = ac
+	}
+	return ac
 }
 
 func newProtoIdxBytes() []byte {

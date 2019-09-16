@@ -8,20 +8,14 @@ import (
 )
 
 func TestAclEmpty(t *testing.T) {
-	ac, err := newAclCache(0, []*authpb.AclEntry{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	ac := newAclCache(0, []*authpb.AclEntry{})
 	if res := ac.GetRights("/a/b/c"); res != math.MaxUint32 {
 		t.Errorf("expected MaxUint32 got %v", res)
 	}
 }
 
 func TestAclSingleEntry(t *testing.T) {
-	ac, err := newAclCache(0, []*authpb.AclEntry{&authpb.AclEntry{"/a", 0x8, 0}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	ac := newAclCache(0, []*authpb.AclEntry{&authpb.AclEntry{"/a", 0x8, 0}})
 	if res := ac.GetRights("/c/test1"); res != 0 {
 		t.Errorf("expected 0 got %v", res)
 	}
@@ -34,14 +28,11 @@ func TestAclSingleEntry(t *testing.T) {
 }
 
 func TestAclMultipleEntries(t *testing.T) {
-	ac, err := newAclCache(0, []*authpb.AclEntry{
+	ac := newAclCache(0, []*authpb.AclEntry{
 		&authpb.AclEntry{"/a", 0x7, 0},
 		&authpb.AclEntry{"/a/b/c/d", 0x8, 0x1},
 		&authpb.AclEntry{"/a/b/c/d/e", 0x1, 0x2},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if res := ac.GetRights("/c/test1"); res != 0 {
 		t.Errorf("expected 0 got %v", res)
 	}
