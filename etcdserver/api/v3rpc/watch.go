@@ -162,17 +162,23 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	return err
 }
 
-func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) bool {
+func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) (bool, *auth.CapturedState) {
 	authInfo, err := sws.ag.AuthInfoFromCtx(sws.gRPCStream.Context())
 	if err != nil {
-		return false
+		return false, nil
 	}
 	if authInfo == nil {
 		// if auth is enabled, IsRangePermitted() can cause an error
 		authInfo = &auth.AuthInfo{}
 	}
 
-	return sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd) == nil
+	cs, err := sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd)
+
+	if err != nil {
+		return false, nil
+	}
+
+	return true, cs
 }
 
 func (sws *serverWatchStream) recvLoop() error {
@@ -206,7 +212,9 @@ func (sws *serverWatchStream) recvLoop() error {
 				creq.RangeEnd = []byte{}
 			}
 
-			if !sws.isWatchPermitted(creq) {
+			permitted, cs := sws.isWatchPermitted(creq)
+
+			if !permitted {
 				wr := &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
 					WatchId:      -1,
@@ -229,7 +237,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			if rev == 0 {
 				rev = wsrev + 1
 			}
-			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev, filters...)
+			id := sws.watchStream.Watch(cs, creq.Key, creq.RangeEnd, rev, filters...)
 			if id != -1 {
 				sws.mu.Lock()
 				if creq.ProgressNotify {

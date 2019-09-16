@@ -76,6 +76,8 @@ var (
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
+
+	EmptyCapturedState = newCapturedState(nil, nil)
 )
 
 const (
@@ -160,13 +162,13 @@ type AuthStore interface {
 	UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error)
 
 	// IsPutPermitted checks put permission of the user
-	IsPutPermitted(authInfo *AuthInfo, key []byte) error
+	IsPutPermitted(authInfo *AuthInfo, key []byte) (*CapturedState, error)
 
 	// IsRangePermitted checks range permission of the user
-	IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error
+	IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*CapturedState, error)
 
 	// IsDeleteRangePermitted checks delete-range permission of the user
-	IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error
+	IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*CapturedState, error)
 
 	// IsAdminPermitted checks admin permission of the user
 	IsAdminPermitted(authInfo *AuthInfo) error
@@ -877,15 +879,15 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) error {
+func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) (*CapturedState, error) {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
-		return nil
+		return newCapturedState(as.prototypeCache, nil), nil
 	}
 
 	// only gets rev == 0 when passed AuthInfo{}; no user given
 	if revision == 0 {
-		return ErrUserEmpty
+		return newCapturedState(as.prototypeCache, nil), ErrUserEmpty
 	}
 
 	tx := as.be.BatchTx()
@@ -893,36 +895,36 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	defer tx.Unlock()
 
 	if revision != as.Revision() {
-		return ErrAuthOldRevision
+		return newCapturedState(as.prototypeCache, nil), ErrAuthOldRevision
 	}
 
 	user := getUser(tx, userName)
 	if user == nil {
 		plog.Errorf("invalid user name %s for permission checking", userName)
-		return ErrPermissionDenied
+		return newCapturedState(as.prototypeCache, nil), ErrPermissionDenied
 	}
 
 	// root role should have permission on all ranges
 	if hasRootRole(user) {
-		return nil
+		return newCapturedState(as.prototypeCache, nil), nil
 	}
 
 	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
-		return nil
+		return newCapturedState(as.prototypeCache, as.getAclCache(user)), nil
 	}
 
-	return ErrPermissionDenied
+	return newCapturedState(as.prototypeCache, nil), ErrPermissionDenied
 }
 
-func (as *authStore) IsPutPermitted(authInfo *AuthInfo, key []byte) error {
+func (as *authStore) IsPutPermitted(authInfo *AuthInfo, key []byte) (*CapturedState, error) {
 	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, nil, authpb.WRITE)
 }
 
-func (as *authStore) IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
+func (as *authStore) IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*CapturedState, error) {
 	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.READ)
 }
 
-func (as *authStore) IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
+func (as *authStore) IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) (*CapturedState, error) {
 	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.WRITE)
 }
 

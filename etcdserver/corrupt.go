@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -233,19 +234,19 @@ type applierV3Corrupt struct {
 
 func newApplierV3Corrupt(a applierV3) *applierV3Corrupt { return &applierV3Corrupt{a} }
 
-func (a *applierV3Corrupt) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, error) {
+func (a *applierV3Corrupt) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.PutRequest) (*pb.PutResponse, error) {
 	return nil, ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Range(txn mvcc.TxnRead, p *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (a *applierV3Corrupt) Range(txn mvcc.TxnRead, cs *auth.CapturedState, p *pb.RangeRequest) (*pb.RangeResponse, error) {
 	return nil, ErrCorrupt
 }
 
-func (a *applierV3Corrupt) DeleteRange(txn mvcc.TxnWrite, p *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func (a *applierV3Corrupt) DeleteRange(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	return nil, ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (a *applierV3Corrupt) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	return nil, ErrCorrupt
 }
 

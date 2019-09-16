@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -36,7 +37,7 @@ var (
 )
 
 type watchable interface {
-	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
+	watch(cs *auth.CapturedState, key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
 	rev() int64
 }
@@ -107,7 +108,7 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	}
 }
 
-func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(cs *auth.CapturedState, key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
 	wa := &watcher{
 		key:    key,
 		end:    end,
