@@ -1041,6 +1041,7 @@ message AuthUserUpdateAclRequest {
 }
 
 message AuthUserRevisionsRequest {
+  string user = 1;
 }
 
 message AuthEnableResponse {
