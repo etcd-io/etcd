@@ -17,9 +17,11 @@ package command
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/bgentry/speakeasy"
+	"github.com/coreos/etcd/auth/authpb"
 	"github.com/spf13/cobra"
 )
 
@@ -41,6 +43,9 @@ func NewUserCommand() *cobra.Command {
 	ac.AddCommand(newUserChangePasswordCommand())
 	ac.AddCommand(newUserGrantRoleCommand())
 	ac.AddCommand(newUserRevokeRoleCommand())
+	ac.AddCommand(newUserListAclCommand())
+	ac.AddCommand(newUserUpdateAclCommand())
+	ac.AddCommand(newUserRevisionsCommand())
 
 	return ac
 }
@@ -114,6 +119,30 @@ func newUserRevokeRoleCommand() *cobra.Command {
 		Use:   "revoke-role <user name> <role name>",
 		Short: "Revokes a role from a user",
 		Run:   userRevokeRoleCommandFunc,
+	}
+}
+
+func newUserListAclCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "listacl <user name>",
+		Short: "List user's acl",
+		Run:   userListAclCommandFunc,
+	}
+}
+
+func newUserUpdateAclCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "updateacl <user name> [path:rightsSet:rightsUnset,...]",
+		Short: "Update user's acl",
+		Run:   userUpdateAclCommandFunc,
+	}
+}
+
+func newUserRevisionsCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "revisions <user name>",
+		Short: "Get user revisions",
+		Run:   userRevisionsCommandFunc,
 	}
 }
 
@@ -277,4 +306,70 @@ func readPasswordInteractive(name string) string {
 	}
 
 	return password1
+}
+
+func userListAclCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user listacl command requires user name as its argument."))
+	}
+
+	name := args[0]
+	client := mustClientFromCmd(cmd)
+	resp, err := client.Auth.UserListAcl(context.TODO(), name)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	display.UserListAcl(name, *resp)
+}
+
+func userUpdateAclCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) < 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user updateacl command requires user name as its argument."))
+	}
+
+	acl := []*authpb.AclEntry{}
+
+	if len(args) >= 2 {
+		entries := strings.SplitN(args[1], ":", -1)
+		for _, entry := range entries {
+			parts := strings.SplitN(entry, ",", 3)
+			if len(parts) < 3 {
+				ExitWithError(ExitBadArgs, fmt.Errorf("bad acl entry (%v)", entry))
+			}
+			rightsSet, err := strconv.ParseInt(parts[1], 10, 32)
+			if err != nil {
+				ExitWithError(ExitBadArgs, fmt.Errorf("bad rightsSet (%v)", err))
+			}
+			rightsUnset, err := strconv.ParseInt(parts[2], 10, 32)
+			if err != nil {
+				ExitWithError(ExitBadArgs, fmt.Errorf("bad rightsUnset (%v)", err))
+			}
+			acl = append(acl,
+				&authpb.AclEntry{Path: parts[0],
+					RightsSet:   uint32(rightsSet),
+					RightsUnset: uint32(rightsUnset)})
+		}
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.UserUpdateAcl(context.TODO(), args[0], acl)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	display.UserUpdateAcl(args[0], acl, *resp)
+}
+
+func userRevisionsCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user revisions command requires user name as its argument."))
+	}
+
+	name := args[0]
+	client := mustClientFromCmd(cmd)
+	resp, err := client.Auth.UserRevisions(context.TODO(), name)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	display.UserRevisions(*resp)
 }

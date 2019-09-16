@@ -115,7 +115,7 @@ type Auth interface {
 
 	UserUpdateAcl(ctx context.Context, user string, acl []*authpb.AclEntry) (*AuthUserUpdateAclResponse, error)
 
-	UserRevisions(ctx context.Context) (*AuthUserRevisionsResponse, error)
+	UserRevisions(ctx context.Context, user string) (*AuthUserRevisionsResponse, error)
 }
 
 type auth struct {
@@ -236,8 +236,8 @@ func (auth *auth) UserUpdateAcl(ctx context.Context, user string, acl []*authpb.
 	return (*AuthUserUpdateAclResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) UserRevisions(ctx context.Context) (*AuthUserRevisionsResponse, error) {
-	resp, err := auth.remote.UserRevisions(ctx, &pb.AuthUserRevisionsRequest{}, auth.callOpts...)
+func (auth *auth) UserRevisions(ctx context.Context, user string) (*AuthUserRevisionsResponse, error) {
+	resp, err := auth.remote.UserRevisions(ctx, &pb.AuthUserRevisionsRequest{User: user}, auth.callOpts...)
 	return (*AuthUserRevisionsResponse)(resp), toErr(ctx, err)
 }
 
