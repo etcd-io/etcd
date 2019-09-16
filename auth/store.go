@@ -845,13 +845,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 		return ErrUserEmpty
 	}
 
-	if revision < as.Revision() {
-		return ErrAuthOldRevision
-	}
-
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
+
+	if revision != as.Revision() {
+		return ErrAuthOldRevision
+	}
 
 	user := getUser(tx, userName)
 	if user == nil {
