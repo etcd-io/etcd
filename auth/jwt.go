@@ -63,7 +63,7 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 	return &AuthInfo{Username: username, Revision: revision}, true
 }
 
-func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64, state *CapturedState) (string, error) {
+func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64) (string, error) {
 	// Future work: let a jwt token include permission information would be useful for
 	// permission checking in proxy side.
 	tk := jwt.NewWithClaims(jwt.GetSigningMethod(t.signMethod),

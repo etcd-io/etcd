@@ -90,7 +90,6 @@ const (
 type AuthInfo struct {
 	Username string
 	Revision uint64
-	State    *CapturedState
 }
 
 // AuthenticateParamIndex is used for a key of context in the parameters of Authenticate()
@@ -194,14 +193,11 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
-
-	// Fetch prototype cache as of time of this call. Returned cache is immutable
-	GetPrototypeCache() *PrototypeCache
 }
 
 type TokenProvider interface {
 	info(ctx context.Context, token string, revision uint64) (*AuthInfo, bool)
-	assign(ctx context.Context, username string, revision uint64, state *CapturedState) (string, error)
+	assign(ctx context.Context, username string, revision uint64) (string, error)
 	enable()
 	disable()
 
@@ -220,8 +216,7 @@ type authStore struct {
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 	aclCache       map[string]*AclCache                // username -> AclCache
 
-	prototypeCache   *PrototypeCache
-	prototypeCacheMu sync.RWMutex
+	prototypeCache *PrototypeCache
 
 	tokenProvider TokenProvider
 }
@@ -311,7 +306,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 	// Password checking is already performed in the API layer, so we don't need to check for now.
 	// Staleness of password can be detected with OCC in the API layer, too.
 
-	token, err := as.tokenProvider.assign(ctx, username, as.Revision(), nil)
+	token, err := as.tokenProvider.assign(ctx, username, as.Revision())
 	if err != nil {
 		return nil, err
 	}
@@ -718,9 +713,7 @@ func (as *authStore) PrototypeUpdate(r *pb.AuthPrototypeUpdateRequest) (*pb.Auth
 	if newCache.Rev != as.prototypeCache.Rev {
 		putPrototypeRevision(tx, newCache.Rev)
 	}
-	as.prototypeCacheMu.Lock()
 	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
 
 	as.commitRevision(tx)
 
@@ -741,9 +734,7 @@ func (as *authStore) PrototypeDelete(r *pb.AuthPrototypeDeleteRequest) (*pb.Auth
 	if newCache.Rev != as.prototypeCache.Rev {
 		putPrototypeRevision(tx, newCache.Rev)
 	}
-	as.prototypeCacheMu.Lock()
 	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
 
 	delPrototype(tx, idx)
 
@@ -1273,7 +1264,7 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		ctxForAssign = ctx
 	}
 
-	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision(), nil)
+	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision())
 	if err != nil {
 		// this must not happen
 		plog.Errorf("failed to assign token for lease revoking: %s", err)
@@ -1309,19 +1300,11 @@ func (as *authStore) HasRole(user, role string) bool {
 	return false
 }
 
-func (as *authStore) GetPrototypeCache() *PrototypeCache {
-	as.prototypeCacheMu.RLock()
-	defer as.prototypeCacheMu.RUnlock()
-	return as.prototypeCache
-}
-
 func (as *authStore) reinitCaches(tx backend.BatchTx) {
 	as.aclCache = make(map[string]*AclCache)
 	protoIdxs, prototypes := getAllPrototypes(tx)
 	newCache := newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
-	as.prototypeCacheMu.Lock()
 	as.prototypeCache = newCache
-	as.prototypeCacheMu.Unlock()
 }
 
 func newProtoIdxBytes() []byte {
