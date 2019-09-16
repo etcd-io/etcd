@@ -276,8 +276,7 @@ func TestMemberPromote(t *testing.T) {
 		select {
 		case <-time.After(500 * time.Millisecond):
 		case <-timeout:
-			t.Errorf("failed all attempts to promote learner member, last error: %v", err)
-			break
+			t.Fatalf("failed all attempts to promote learner member, last error: %v", err)
 		}
 
 		_, err = capi.MemberPromote(context.Background(), learnerID)
