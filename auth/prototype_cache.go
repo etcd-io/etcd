@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"sort"
+
 	"github.com/coreos/etcd/auth/authpb"
 )
 
@@ -115,12 +117,17 @@ func (pc *PrototypeCache) Delete(name string) (*PrototypeCache, int64, error) {
 }
 
 func (pc *PrototypeCache) List() []*authpb.Prototype {
-	prototypes := make([]*authpb.Prototype, len(pc.byIdx))
-	i := 0
-	for _, proto := range pc.byIdx {
-		prototypes[i] = proto.Orig
-		i++
+	sortedKeys := make([]int64, 0, len(pc.byIdx))
+	for k := range pc.byIdx {
+		sortedKeys = append(sortedKeys, k)
 	}
+	sort.Slice(sortedKeys, func(i, j int) bool { return sortedKeys[i] < sortedKeys[j] })
+
+	prototypes := make([]*authpb.Prototype, len(pc.byIdx))
+	for i, k := range sortedKeys {
+		prototypes[i] = pc.byIdx[k].Orig
+	}
+
 	return prototypes
 }
 
