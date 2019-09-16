@@ -1,25 +1,80 @@
 package auth
 
 import (
+	"math"
+
 	"github.com/coreos/etcd/auth/authpb"
+	"github.com/coreos/etcd/pkg/adt"
 )
 
 type AclCache struct {
-	rev int64
-	// TODO: use interval tree for fast access
+	Rev     int64
+	entries *adt.IntervalTree
 }
 
-func newAclCache(rev int64) *AclCache {
+func newAclCache(rev int64, entries []*authpb.AclEntry) (*AclCache, error) {
 	ac := &AclCache{
-		rev: rev,
+		Rev: rev,
 	}
 
-	// TODO: fill in the cache
+	err := ac.updateInternal(entries)
 
-	return ac
+	if err != nil {
+		return nil, err
+	}
+
+	return ac, nil
 }
 
-func (ac *AclCache) Update(acl []*authpb.AclEntry) *AclCache {
-	// TODO: update, return new cache if changed
+func (ac *AclCache) Update(entries []*authpb.AclEntry) (*AclCache, error) {
+	newAc := &AclCache{
+		Rev: ac.Rev,
+	}
+
+	err := newAc.updateInternal(entries)
+
+	if err != nil {
+		return nil, err
+	}
+
+	newAc.Rev++
+
+	return newAc, nil
+}
+
+func (ac *AclCache) IsEmpty() bool {
+	return ac.entries.Len() == 0
+}
+
+func (ac *AclCache) GetRights(path string) uint32 {
+	if ac.IsEmpty() {
+		return math.MaxUint32
+	}
+	rights := uint32(0)
+	ac.entries.Visit(adt.NewStringAffinePoint(path),
+		func(iv *adt.IntervalValue) bool {
+			val := iv.Val.(*authpb.AclEntry)
+			rights |= val.RightsSet
+			rights &= ^val.RightsUnset
+			return true
+		})
+	return rights
+}
+
+func (ac *AclCache) updateInternal(acl []*authpb.AclEntry) error {
+	ac.entries = &adt.IntervalTree{}
+
+	for _, entry := range acl {
+		if (len(entry.Path) > 0) && (entry.Path[len(entry.Path)-1] == '/') {
+			return ErrAclBadPath
+		}
+
+		iv := adt.NewStringAffineInterval(entry.Path+"/", entry.Path+"0")
+		if ac.entries.Find(iv) != nil {
+			return ErrAclDuplicatePath
+		}
+		ac.entries.Insert(iv, entry)
+	}
+
 	return nil
 }

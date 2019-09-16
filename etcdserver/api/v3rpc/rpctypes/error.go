@@ -61,6 +61,8 @@ var (
 	ErrGRPCPrototypeNameEmpty    = status.New(codes.FailedPrecondition, "etcdserver: prototype name is empty").Err()
 	ErrGRPCPrototypeDuplicateKey = status.New(codes.FailedPrecondition, "etcdserver: duplicate keys not allowed in prototypes").Err()
 	ErrGRPCPrototypeNotFound     = status.New(codes.FailedPrecondition, "etcdserver: prototype not found").Err()
+	ErrGRPCAclBadPath            = status.New(codes.FailedPrecondition, "etcdserver: bad path in acl").Err()
+	ErrGRPCAclDuplicatePath      = status.New(codes.FailedPrecondition, "etcdserver: duplicate paths not allowed in acls").Err()
 
 	ErrGRPCNoLeader                   = status.New(codes.Unavailable, "etcdserver: no leader").Err()
 	ErrGRPCNotLeader                  = status.New(codes.FailedPrecondition, "etcdserver: not leader").Err()
@@ -114,6 +116,8 @@ var (
 		ErrorDesc(ErrGRPCPrototypeNameEmpty):    ErrGRPCPrototypeNameEmpty,
 		ErrorDesc(ErrGRPCPrototypeDuplicateKey): ErrGRPCPrototypeDuplicateKey,
 		ErrorDesc(ErrGRPCPrototypeNotFound):     ErrGRPCPrototypeNotFound,
+		ErrorDesc(ErrGRPCAclBadPath):            ErrGRPCAclBadPath,
+		ErrorDesc(ErrGRPCAclDuplicatePath):      ErrGRPCAclDuplicatePath,
 
 		ErrorDesc(ErrGRPCNoLeader):                   ErrGRPCNoLeader,
 		ErrorDesc(ErrGRPCNotLeader):                  ErrGRPCNotLeader,
@@ -169,6 +173,8 @@ var (
 	ErrPrototypeNameEmpty    = Error(ErrGRPCPrototypeNameEmpty)
 	ErrPrototypeDuplicateKey = Error(ErrGRPCPrototypeDuplicateKey)
 	ErrPrototypeNotFound     = Error(ErrGRPCPrototypeNotFound)
+	ErrAclBadPath            = Error(ErrGRPCAclBadPath)
+	ErrAclDuplicatePath      = Error(ErrGRPCAclDuplicatePath)
 
 	ErrNoLeader                   = Error(ErrGRPCNoLeader)
 	ErrNotLeader                  = Error(ErrGRPCNotLeader)

@@ -73,6 +73,8 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrPrototypeNameEmpty:    rpctypes.ErrGRPCPrototypeNameEmpty,
 	auth.ErrPrototypeDuplicateKey: rpctypes.ErrGRPCPrototypeDuplicateKey,
 	auth.ErrPrototypeNotFound:     rpctypes.ErrGRPCPrototypeNotFound,
+	auth.ErrAclBadPath:            rpctypes.ErrGRPCAclBadPath,
+	auth.ErrAclDuplicatePath:      rpctypes.ErrGRPCAclDuplicatePath,
 }
 
 func togRPCError(err error) error {

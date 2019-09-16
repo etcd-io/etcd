@@ -71,6 +71,8 @@ var (
 	ErrPrototypeNameEmpty    = errors.New("auth: prototype name is empty")
 	ErrPrototypeDuplicateKey = errors.New("auth: duplicate keys not allowed in prototypes")
 	ErrPrototypeNotFound     = errors.New("auth: prototype not found")
+	ErrAclBadPath            = errors.New("auth: bad path in acl")
+	ErrAclDuplicatePath      = errors.New("auth: duplicate paths not allowed in acls")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
