@@ -26,7 +26,7 @@ var (
 	ErrRevisionNotFound = errors.New("mvcc: revision not found")
 )
 
-type prototypeInfo struct {
+type PrototypeInfo struct {
 	prototypeIdx   int64
 	forceFindDepth int32
 }
@@ -319,7 +319,7 @@ type generation struct {
 	ver     int64
 	created revision // when the generation is created (put in first revision).
 	revs    []revision
-	pi      []prototypeInfo
+	pi      []PrototypeInfo
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }

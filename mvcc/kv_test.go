@@ -52,12 +52,12 @@ var (
 	}
 
 	normalPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
-		return kv.Put(key, value, lease)
+		return kv.Put(key, value, lease, PrototypeInfo{})
 	}
 	txnPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
 		txn := kv.Write()
 		defer txn.End()
-		return txn.Put(key, value, lease)
+		return txn.Put(key, value, lease, PrototypeInfo{})
 	}
 
 	normalDeleteRangeFunc = func(kv KV, key, end []byte) (n, rev int64) {
@@ -315,9 +315,9 @@ func testKVDeleteRange(t *testing.T, f deleteRangeFunc) {
 		b, tmpPath := backend.NewDefaultTmpBackend()
 		s := NewStore(b, &lease.FakeLessor{}, nil)
 
-		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-		s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease)
-		s.Put([]byte("foo2"), []byte("bar2"), lease.NoLease)
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
+		s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease, PrototypeInfo{})
+		s.Put([]byte("foo2"), []byte("bar2"), lease.NoLease, PrototypeInfo{})
 
 		n, rev := f(s, tt.key, tt.end)
 		if n != tt.wN || rev != tt.wrev {
@@ -336,7 +336,7 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 
 	n, rev := f(s, []byte("foo"), nil)
 	if n != 1 || rev != 3 {
@@ -361,7 +361,7 @@ func TestKVOperationInSequence(t *testing.T) {
 		base := int64(i*2 + 1)
 
 		// put foo
-		rev := s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		rev := s.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 		if rev != base+1 {
 			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
 		}
@@ -404,7 +404,7 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 
 	tests := []func(){
-		func() { s.Put([]byte("foo"), nil, lease.NoLease) },
+		func() { s.Put([]byte("foo"), nil, lease.NoLease, PrototypeInfo{}) },
 		func() { s.DeleteRange([]byte("foo"), nil) },
 	}
 	for i, tt := range tests {
@@ -463,7 +463,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 		base := int64(i + 1)
 
 		// put foo
-		rev := txn.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		rev := txn.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 		if rev != base+1 {
 			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
 		}
@@ -508,10 +508,10 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar0"), 1)
-	s.Put([]byte("foo"), []byte("bar1"), 2)
+	s.Put([]byte("foo"), []byte("bar0"), 1, PrototypeInfo{})
+	s.Put([]byte("foo"), []byte("bar1"), 2, PrototypeInfo{})
 	s.DeleteRange([]byte("foo"), nil)
-	s.Put([]byte("foo"), []byte("bar2"), 3)
+	s.Put([]byte("foo"), []byte("bar2"), 3, PrototypeInfo{})
 
 	// rev in tests will be called in Compact() one by one on the same store
 	tests := []struct {
@@ -562,9 +562,9 @@ func TestKVCompactBad(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar0"), lease.NoLease)
-	s.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-	s.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+	s.Put([]byte("foo"), []byte("bar0"), lease.NoLease, PrototypeInfo{})
+	s.Put([]byte("foo"), []byte("bar1"), lease.NoLease, PrototypeInfo{})
+	s.Put([]byte("foo"), []byte("bar2"), lease.NoLease, PrototypeInfo{})
 
 	// rev in tests will be called in Compact() one by one on the same store
 	tests := []struct {
@@ -593,8 +593,8 @@ func TestKVHash(t *testing.T) {
 		var err error
 		b, tmpPath := backend.NewDefaultTmpBackend()
 		kv := NewStore(b, &lease.FakeLessor{}, nil)
-		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
-		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
+		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease, PrototypeInfo{})
+		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease, PrototypeInfo{})
 		hashes[i], _, err = kv.Hash()
 		if err != nil {
 			t.Fatalf("failed to get hash: %v", err)
@@ -612,19 +612,19 @@ func TestKVHash(t *testing.T) {
 func TestKVRestore(t *testing.T) {
 	tests := []func(kv KV){
 		func(kv KV) {
-			kv.Put([]byte("foo"), []byte("bar0"), 1)
-			kv.Put([]byte("foo"), []byte("bar1"), 2)
-			kv.Put([]byte("foo"), []byte("bar2"), 3)
-			kv.Put([]byte("foo2"), []byte("bar0"), 1)
+			kv.Put([]byte("foo"), []byte("bar0"), 1, PrototypeInfo{})
+			kv.Put([]byte("foo"), []byte("bar1"), 2, PrototypeInfo{})
+			kv.Put([]byte("foo"), []byte("bar2"), 3, PrototypeInfo{})
+			kv.Put([]byte("foo2"), []byte("bar0"), 1, PrototypeInfo{})
 		},
 		func(kv KV) {
-			kv.Put([]byte("foo"), []byte("bar0"), 1)
+			kv.Put([]byte("foo"), []byte("bar0"), 1, PrototypeInfo{})
 			kv.DeleteRange([]byte("foo"), nil)
-			kv.Put([]byte("foo"), []byte("bar1"), 2)
+			kv.Put([]byte("foo"), []byte("bar1"), 2, PrototypeInfo{})
 		},
 		func(kv KV) {
-			kv.Put([]byte("foo"), []byte("bar0"), 1)
-			kv.Put([]byte("foo"), []byte("bar1"), 2)
+			kv.Put([]byte("foo"), []byte("bar0"), 1, PrototypeInfo{})
+			kv.Put([]byte("foo"), []byte("bar1"), 2, PrototypeInfo{})
 			kv.Compact(1)
 		},
 	}
@@ -753,7 +753,7 @@ func TestWatchableKVWatch(t *testing.T) {
 		},
 	}
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
+	s.Put([]byte("foo"), []byte("bar"), 1, PrototypeInfo{})
 	select {
 	case resp := <-w.Chan():
 		if resp.WatchID != wid {
@@ -768,7 +768,7 @@ func TestWatchableKVWatch(t *testing.T) {
 		testutil.FatalStack(t, "failed to watch the event")
 	}
 
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
+	s.Put([]byte("foo1"), []byte("bar1"), 2, PrototypeInfo{})
 	select {
 	case resp := <-w.Chan():
 		if resp.WatchID != wid {
@@ -798,7 +798,7 @@ func TestWatchableKVWatch(t *testing.T) {
 		testutil.FatalStack(t, "failed to watch the event")
 	}
 
-	s.Put([]byte("foo1"), []byte("bar11"), 3)
+	s.Put([]byte("foo1"), []byte("bar11"), 3, PrototypeInfo{})
 	select {
 	case resp := <-w.Chan():
 		if resp.WatchID != wid {
@@ -820,9 +820,9 @@ func cleanup(s KV, b backend.Backend, path string) {
 }
 
 func put3TestKVs(s KV) []mvccpb.KeyValue {
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	s.Put([]byte("foo2"), []byte("bar2"), 3)
+	s.Put([]byte("foo"), []byte("bar"), 1, PrototypeInfo{})
+	s.Put([]byte("foo1"), []byte("bar1"), 2, PrototypeInfo{})
+	s.Put([]byte("foo2"), []byte("bar2"), 3, PrototypeInfo{})
 	return []mvccpb.KeyValue{
 		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 1},
 		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 2},

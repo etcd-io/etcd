@@ -45,6 +45,11 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 	return tr.rangeKeys(key, end, tr.Rev(), ro)
 }
 
+func (tr *storeTxnRead) GetPrototypeInfo(key []byte) PrototypeInfo {
+	// TODO(s.vorobiev): use tr.s.kvindex and fetch proto info
+	return PrototypeInfo{}
+}
+
 func (tr *storeTxnRead) End() {
 	tr.tx.Unlock()
 	tr.s.mu.RUnlock()
@@ -88,7 +93,7 @@ func (tw *storeTxnWrite) DeleteRange(key, end []byte) (int64, int64) {
 	return 0, int64(tw.beginRev)
 }
 
-func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID) int64 {
+func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) int64 {
 	tw.put(key, value, lease)
 	return int64(tw.beginRev + 1)
 }

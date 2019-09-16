@@ -46,8 +46,8 @@ func (wv *writeView) DeleteRange(key, end []byte) (n, rev int64) {
 	return tw.DeleteRange(key, end)
 }
 
-func (wv *writeView) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
+func (wv *writeView) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) (rev int64) {
 	tw := wv.kv.Write()
 	defer tw.End()
-	return tw.Put(key, value, lease)
+	return tw.Put(key, value, lease, pi)
 }

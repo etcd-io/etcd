@@ -58,6 +58,8 @@ type TxnRead interface {
 	ReadView
 	// End marks the transaction is complete and ready to commit.
 	End()
+
+	GetPrototypeInfo(key []byte) PrototypeInfo
 }
 
 type WriteView interface {
@@ -75,7 +77,7 @@ type WriteView interface {
 	// id.
 	// A put also increases the rev of the store, and generates one event in the event history.
 	// The returned rev is the current revision of the KV when the operation is executed.
-	Put(key, value []byte, lease lease.LeaseID) (rev int64)
+	Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) (rev int64)
 }
 
 // TxnWrite represents a transaction that can modify the store.
@@ -90,7 +92,7 @@ type TxnWrite interface {
 type txnReadWrite struct{ TxnRead }
 
 func (trw *txnReadWrite) DeleteRange(key, end []byte) (n, rev int64) { panic("unexpected DeleteRange") }
-func (trw *txnReadWrite) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
+func (trw *txnReadWrite) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) (rev int64) {
 	panic("unexpected Put")
 }
 func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { return nil }

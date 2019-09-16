@@ -36,7 +36,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		s.Put(keys[i], vals[i], lease.NoLease)
+		s.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{})
 	}
 }
 
@@ -58,7 +58,7 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		txn := s.Write()
-		txn.Put(keys[i], vals[i], lease.NoLease)
+		txn.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{})
 		txn.End()
 	}
 }
@@ -85,7 +85,7 @@ func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
 	b.ReportAllocs()
 
 	// trigger watchers
-	s.Put(k, v, lease.NoLease)
+	s.Put(k, v, lease.NoLease, PrototypeInfo{})
 	for range watchIDs {
 		<-w.Chan()
 	}
@@ -131,7 +131,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := ws.NewWatchStream()
 
@@ -172,7 +172,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	// Put a key so that we can spawn watchers on that key
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 

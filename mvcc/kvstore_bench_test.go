@@ -41,7 +41,7 @@ func BenchmarkStorePut(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Put(keys[i], vals[i], lease.NoLease)
+		s.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{})
 	}
 }
 
@@ -57,7 +57,7 @@ func benchmarkStoreRange(b *testing.B, n int) {
 	// 64 byte key/val
 	keys, val := createBytesSlice(64, n), createBytesSlice(64, 1)
 	for i := range keys {
-		s.Put(keys[i], val[0], lease.NoLease)
+		s.Put(keys[i], val[0], lease.NoLease, PrototypeInfo{})
 	}
 	// Force into boltdb tx instead of backend read tx.
 	s.Commit()
@@ -107,7 +107,7 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Put(keys[0], vals[0], lease.NoLease)
+		s.Put(keys[0], vals[0], lease.NoLease, PrototypeInfo{})
 	}
 }
 
@@ -129,7 +129,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		txn := s.Write()
-		txn.Put(keys[i], vals[i], lease.NoLease)
+		txn.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{})
 		txn.End()
 	}
 }
@@ -150,7 +150,7 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < revsPerKey; j++ {
 			txn := s.Write()
-			txn.Put(keys[i], vals[i], lease.NoLease)
+			txn.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{})
 			txn.End()
 		}
 	}

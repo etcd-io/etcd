@@ -101,9 +101,9 @@ func TestCompactAllAndRestore(t *testing.T) {
 	s0 := NewStore(b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
+	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease, PrototypeInfo{})
+	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease, PrototypeInfo{})
 	s0.DeleteRange([]byte("foo"), nil)
 
 	rev := s0.Rev()

@@ -46,7 +46,7 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 
 		resp := <-w.Chan()
 		if resp.WatchID != id {
@@ -58,7 +58,7 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 	}
 
-	s.Put([]byte("foo2"), []byte("bar"), lease.NoLease)
+	s.Put([]byte("foo2"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
@@ -101,7 +101,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		s.Put(keyPut, val, lease.NoLease)
+		s.Put(keyPut, val, lease.NoLease, PrototypeInfo{})
 
 		resp := <-w.Chan()
 		if resp.WatchID != id {
@@ -123,7 +123,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	}
 
 	keyWatch1, keyEnd1, keyPut1 := []byte("foo1"), []byte("foo2"), []byte("foo1bar")
-	s.Put(keyPut1, val, lease.NoLease)
+	s.Put(keyPut1, val, lease.NoLease, PrototypeInfo{})
 
 	// unsynced watchers
 	for i := 10; i < 15; i++ {
@@ -187,7 +187,7 @@ func TestWatchDeleteRange(t *testing.T) {
 	testKeyPrefix := []byte("foo")
 
 	for i := 0; i < 3; i++ {
-		s.Put([]byte(fmt.Sprintf("%s_%d", testKeyPrefix, i)), []byte("bar"), lease.NoLease)
+		s.Put([]byte(fmt.Sprintf("%s_%d", testKeyPrefix, i)), []byte("bar"), lease.NoLease, PrototypeInfo{})
 	}
 
 	w := s.NewWatchStream()
@@ -272,7 +272,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	testKey := []byte("foo")
 	notTestKey := []byte("bad")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 
@@ -326,7 +326,7 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 		done <- struct{}{}
 	}()
 
-	s.Put([]byte("foo"), []byte("bar"), 0)
+	s.Put([]byte("foo"), []byte("bar"), 0, PrototypeInfo{})
 
 	select {
 	case <-done:

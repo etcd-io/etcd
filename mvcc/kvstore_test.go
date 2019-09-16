@@ -40,7 +40,7 @@ func TestStoreRev(t *testing.T) {
 	defer os.Remove(tmpPath)
 
 	for i := 1; i <= 3; i++ {
-		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
 		if r := s.Rev(); r != int64(i+1) {
 			t.Errorf("#%d: rev = %d, want %d", i, r, i+1)
 		}
@@ -133,7 +133,7 @@ func TestStorePut(t *testing.T) {
 			b.tx.rangeRespc <- *tt.rr
 		}
 
-		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
+		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1), PrototypeInfo{})
 
 		data, err := tt.wkv.Marshal()
 		if err != nil {
@@ -426,13 +426,13 @@ func TestRestoreDelete(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
 		k := []byte(ks)
-		s.Put(k, []byte("bar"), lease.NoLease)
+		s.Put(k, []byte("bar"), lease.NoLease, PrototypeInfo{})
 		keys[ks] = struct{}{}
 		switch mrand.Intn(3) {
 		case 0:
 			// put random key from past via random range on map
 			ks = fmt.Sprintf("foo-%d", mrand.Intn(i+1))
-			s.Put([]byte(ks), []byte("baz"), lease.NoLease)
+			s.Put([]byte(ks), []byte("baz"), lease.NoLease, PrototypeInfo{})
 			keys[ks] = struct{}{}
 		case 1:
 			// delete random key via random range on map
@@ -468,9 +468,9 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	s0 := NewStore(b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease, PrototypeInfo{})
+	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease, PrototypeInfo{})
+	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease, PrototypeInfo{})
 
 	// write scheduled compaction, but not do compaction
 	rbytes := newRevBytes()
@@ -524,7 +524,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 
 	rev := 10000
 	for i := 2; i <= rev; i++ {
-		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
+		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease, PrototypeInfo{})
 	}
 
 	hashCompactc := make(chan hashKVResult, 1)
@@ -592,7 +592,7 @@ func TestHashKVZeroRevision(t *testing.T) {
 
 	rev := 1000
 	for i := 2; i <= rev; i++ {
-		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
+		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease, PrototypeInfo{})
 	}
 	if _, err := s.Compact(int64(rev / 2)); err != nil {
 		t.Fatal(err)
@@ -626,7 +626,7 @@ func TestTxnPut(t *testing.T) {
 	for i := 0; i < sliceN; i++ {
 		txn := s.Write()
 		base := int64(i + 2)
-		if rev := txn.Put(keys[i], vals[i], lease.NoLease); rev != base {
+		if rev := txn.Put(keys[i], vals[i], lease.NoLease, PrototypeInfo{}); rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
 		}
 		txn.End()

@@ -39,7 +39,7 @@ func TestWatch(t *testing.T) {
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 	w.Watch(nil, testKey, nil, 0)
@@ -60,7 +60,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 	wt := w.Watch(nil, testKey, nil, 0)
@@ -103,7 +103,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 
@@ -151,7 +151,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	w := s.NewWatchStream()
 
@@ -234,7 +234,7 @@ func TestWatchCompacted(t *testing.T) {
 	maxRev := 10
 	compactRev := int64(5)
 	for i := 0; i < maxRev; i++ {
-		s.Put(testKey, testValue, lease.NoLease)
+		s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 	}
 	_, err := s.Compact(compactRev)
 	if err != nil {
@@ -274,7 +274,7 @@ func TestWatchFutureRev(t *testing.T) {
 	w.Watch(nil, testKey, nil, wrev)
 
 	for i := 0; i < 10; i++ {
-		rev := s.Put(testKey, testValue, lease.NoLease)
+		rev := s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 		if rev >= wrev {
 			break
 		}
@@ -305,7 +305,7 @@ func TestWatchRestore(t *testing.T) {
 
 			testKey := []byte("foo")
 			testValue := []byte("bar")
-			rev := s.Put(testKey, testValue, lease.NoLease)
+			rev := s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 			newBackend, newPath := backend.NewDefaultTmpBackend()
 			newStore := newWatchableStore(newBackend, &lease.FakeLessor{}, nil)
@@ -354,7 +354,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	defer cleanup(s2, b2, b2Path)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
-	rev := s1.Put(testKey, testValue, lease.NoLease)
+	rev := s1.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 	startRev := rev + 2
 
 	// create a watcher with a future revision
@@ -363,8 +363,8 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	w1.Watch(nil, testKey, nil, startRev)
 
 	// make "s2" ends up with a higher last revision
-	s2.Put(testKey, testValue, lease.NoLease)
-	s2.Put(testKey, testValue, lease.NoLease)
+	s2.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
+	s2.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	// overwrite storage with higher revisions
 	if err := s1.Restore(b2); err != nil {
@@ -376,7 +376,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// trigger events for "startRev"
-	s1.Put(testKey, testValue, lease.NoLease)
+	s1.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 
 	select {
 	case resp := <-w1.Chan():
@@ -410,7 +410,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 
 	v := []byte("foo")
 	for i := 0; i < watchBatchMaxRevs*batches; i++ {
-		s.Put(v, v, lease.NoLease)
+		s.Put(v, v, lease.NoLease, PrototypeInfo{})
 	}
 
 	w := s.NewWatchStream()
@@ -592,7 +592,7 @@ func TestWatchVictims(t *testing.T) {
 	for i := 0; i < numPuts; i++ {
 		go func() {
 			defer wgPut.Done()
-			s.Put(testKey, testValue, lease.NoLease)
+			s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 		}()
 	}
 	wgPut.Wait()
@@ -645,7 +645,7 @@ func TestStressWatchCancelClose(t *testing.T) {
 
 	close(readyc)
 	for i := 0; i < 100; i++ {
-		s.Put(testKey, testValue, lease.NoLease)
+		s.Put(testKey, testValue, lease.NoLease, PrototypeInfo{})
 	}
 
 	wg.Wait()

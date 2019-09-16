@@ -43,9 +43,9 @@ func (tw *metricsTxnWrite) DeleteRange(key, end []byte) (n, rev int64) {
 	return tw.TxnWrite.DeleteRange(key, end)
 }
 
-func (tw *metricsTxnWrite) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
+func (tw *metricsTxnWrite) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) (rev int64) {
 	tw.puts++
-	return tw.TxnWrite.Put(key, value, lease)
+	return tw.TxnWrite.Put(key, value, lease, pi)
 }
 
 func (tw *metricsTxnWrite) End() {

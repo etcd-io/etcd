@@ -227,7 +227,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.
 		}
 	}
 
-	resp.Header.Revision = txn.Put(p.Key, val, leaseID)
+	resp.Header.Revision = txn.Put(p.Key, val, leaseID, mvcc.PrototypeInfo{})
 	return resp, nil
 }
 
