@@ -116,6 +116,10 @@ func (ws *watchStream) Watch(cs *auth.CapturedState, key, end []byte, startRev i
 	id := ws.nextID
 	ws.nextID++
 
+	if cs == nil {
+		cs = auth.EmptyCapturedState
+	}
+
 	w, c := ws.watchable.watch(cs, key, end, startRev, id, ws.ch, fcs...)
 
 	ws.cancels[id] = c
