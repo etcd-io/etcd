@@ -246,6 +246,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	if info.KeyFile == "" || info.CertFile == "" {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
+
 	if info.Logger == nil {
 		info.Logger = zap.NewNop()
 	}
@@ -360,8 +361,12 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
+	if info.ClientCertAuth && info.TrustedCAFile == "" {
+		return nil, fmt.Errorf("ClientCertAuth and TrustedCAFile must both be present[key: %v, cert: %v]", info.ClientCertAuth, info.TrustedCAFile)
+	}
+
 	cfg.ClientAuth = tls.NoClientCert
-	if info.TrustedCAFile != "" || info.ClientCertAuth {
+	if info.ClientCertAuth {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
