@@ -37,7 +37,7 @@ type PrototypeCache struct {
 	byName  map[string]*CachedPrototype
 }
 
-func newPrototypeCache(rev int64, lastIdx int64, protoIdxs []int64, prototypes []*authpb.Prototype) *PrototypeCache {
+func NewPrototypeCache(rev int64, lastIdx int64, protoIdxs []int64, prototypes []*authpb.Prototype) *PrototypeCache {
 	pc := &PrototypeCache{
 		Rev:     rev,
 		LastIdx: lastIdx,

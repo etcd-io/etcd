@@ -5,7 +5,7 @@ type CapturedState struct {
 	AclCache   *AclCache
 }
 
-func newCapturedState(prototypeCache *PrototypeCache, aclCache *AclCache) *CapturedState {
+func NewCapturedState(prototypeCache *PrototypeCache, aclCache *AclCache) *CapturedState {
 	return &CapturedState{
 		ProtoCache: prototypeCache,
 		AclCache:   aclCache,

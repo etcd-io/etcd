@@ -77,7 +77,7 @@ var (
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
 
-	EmptyCapturedState = newCapturedState(nil, nil)
+	EmptyCapturedState = NewCapturedState(nil, nil)
 )
 
 const (
@@ -882,12 +882,12 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) (*CapturedState, error) {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
-		return newCapturedState(as.prototypeCache, nil), nil
+		return NewCapturedState(as.prototypeCache, nil), nil
 	}
 
 	// only gets rev == 0 when passed AuthInfo{}; no user given
 	if revision == 0 {
-		return newCapturedState(as.prototypeCache, nil), ErrUserEmpty
+		return NewCapturedState(as.prototypeCache, nil), ErrUserEmpty
 	}
 
 	tx := as.be.BatchTx()
@@ -895,25 +895,25 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	defer tx.Unlock()
 
 	if revision != as.Revision() {
-		return newCapturedState(as.prototypeCache, nil), ErrAuthOldRevision
+		return NewCapturedState(as.prototypeCache, nil), ErrAuthOldRevision
 	}
 
 	user := getUser(tx, userName)
 	if user == nil {
 		plog.Errorf("invalid user name %s for permission checking", userName)
-		return newCapturedState(as.prototypeCache, nil), ErrPermissionDenied
+		return NewCapturedState(as.prototypeCache, nil), ErrPermissionDenied
 	}
 
 	// root role should have permission on all ranges
 	if hasRootRole(user) {
-		return newCapturedState(as.prototypeCache, nil), nil
+		return NewCapturedState(as.prototypeCache, nil), nil
 	}
 
 	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
-		return newCapturedState(as.prototypeCache, as.getAclCache(user)), nil
+		return NewCapturedState(as.prototypeCache, as.getAclCache(user)), nil
 	}
 
-	return newCapturedState(as.prototypeCache, nil), ErrPermissionDenied
+	return NewCapturedState(as.prototypeCache, nil), ErrPermissionDenied
 }
 
 func (as *authStore) IsPutPermitted(authInfo *AuthInfo, key []byte) (*CapturedState, error) {
@@ -1357,7 +1357,7 @@ func (as *authStore) HasRole(user, role string) bool {
 func (as *authStore) reinitCaches(tx backend.BatchTx) {
 	as.aclCache = make(map[string]*AclCache)
 	protoIdxs, prototypes := getAllPrototypes(tx)
-	newCache := newPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
+	newCache := NewPrototypeCache(getPrototypeRevision(tx), getPrototypeLastIdx(tx), protoIdxs, prototypes)
 	as.prototypeCache = newCache
 }
 
@@ -1365,7 +1365,7 @@ func (as *authStore) getAclCache(user *authpb.User) *AclCache {
 	userName := string(user.Name)
 	ac, ok := as.aclCache[userName]
 	if !ok {
-		ac = newAclCache(user.AclRevision, user.Acl)
+		ac = NewAclCache(user.AclRevision, user.Acl)
 		as.aclCache[userName] = ac
 	}
 	return ac

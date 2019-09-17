@@ -359,6 +359,18 @@ func (a *applierV3backend) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.T
 
 	txnPath := compareToPath(txn, rt)
 	if isWrite {
+		putRequests := make([]*pb.PutRequest, 0)
+		checkRequests(txn, rt, txnPath, func(rv mvcc.ReadView, reqOp *pb.RequestOp) error {
+			tv, ok := reqOp.Request.(*pb.RequestOp_RequestPut)
+			if !ok || tv.RequestPut == nil {
+				return nil
+			}
+			putRequests = append(putRequests, tv.RequestPut)
+			return nil
+		})
+
+		_ = mvcc.CheckPut(txn, cs, putRequests)
+
 		if _, err := checkRequests(txn, rt, txnPath, a.checkPut); err != nil {
 			txn.End()
 			return nil, err

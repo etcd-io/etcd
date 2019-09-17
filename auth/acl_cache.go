@@ -12,7 +12,7 @@ type AclCache struct {
 	entries *adt.IntervalTree
 }
 
-func newAclCache(rev int64, entries []*authpb.AclEntry) *AclCache {
+func NewAclCache(rev int64, entries []*authpb.AclEntry) *AclCache {
 	ac := &AclCache{
 		Rev: rev,
 	}
