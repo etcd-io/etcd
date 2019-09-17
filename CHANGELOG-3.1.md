@@ -10,7 +10,7 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 
 ## [v3.1.21](https://github.com/etcd-io/etcd/releases/tag/v3.1.21) (2019-TBD)
 
-### etcdctl
+### etcdctl v3
 
 - [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
 - Add [`etcdctl endpoint health --write-out` support](https://github.com/etcd-io/etcd/pull/9540).

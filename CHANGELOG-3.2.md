@@ -9,9 +9,9 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 <hr>
 
 
-## [v3.2.27](https://github.com/etcd-io/etcd/releases/tag/v3.2.27) (2019-TBD)
+## [v3.2.27](https://github.com/etcd-io/etcd/releases/tag/v3.2.27) (2019-09-17)
 
-### etcdctl
+### etcdctl v3
 
 - [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
 - Add [`etcdctl endpoint health --write-out` support](https://github.com/etcd-io/etcd/pull/9540).
@@ -19,6 +19,13 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
   - The command output is changed. Previously, if endpoint is unreachable, the command output is
   "\<endpoint\> is unhealthy: failed to connect: \<error message\>". This change unified the error message, all error types
   now have the same output "\<endpoint\> is unhealthy: failed to commit proposal: \<error message\>".
+- Fix [`etcdctl snapshot status` to not modify snapshot file](https://github.com/etcd-io/etcd/pull/11157).
+  - For example, start etcd `v3.3.10`
+  - Write some data
+  - Use etcdctl `v3.3.10` to save snapshot
+  - Somehow, upgrading Kubernetes fails, thus rolling back to previous version etcd `v3.2.24`
+  - Run etcdctl `v3.2.24` `snapshot status` against the snapshot file saved from `v3.3.10` server
+  - Run etcdctl `v3.2.24` `snapshot restore` fails with `"expected sha256 [12..."`
 
 ### Metrics, Monitoring
 
@@ -29,6 +36,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix bug where [db_compaction_total_duration_milliseconds metric incorrectly measured duration as 0](https://github.com/etcd-io/etcd/pull/10646).
 - Add [`etcd_debugging_mvcc_current_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
 - Add [`etcd_debugging_mvcc_compact_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
+
+### Go
+
+- Compile with [*Go 1.8.7*](https://golang.org/doc/devel/release.html#go1.8).
 
 
 <hr>
