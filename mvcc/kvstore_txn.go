@@ -45,7 +45,7 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 	return tr.rangeKeys(key, end, tr.Rev(), ro)
 }
 
-func (tr *storeTxnRead) GetPrototypeInfo(key []byte) PrototypeInfo {
+func (tr *storeTxnRead) GetPrototypeInfo(key []byte, atRev int64) PrototypeInfo {
 	// TODO(s.vorobiev): use tr.s.kvindex and fetch proto info
 	return PrototypeInfo{}
 }

@@ -59,7 +59,7 @@ type TxnRead interface {
 	// End marks the transaction is complete and ready to commit.
 	End()
 
-	GetPrototypeInfo(key []byte) PrototypeInfo
+	GetPrototypeInfo(key []byte, atRev int64) PrototypeInfo
 }
 
 type WriteView interface {

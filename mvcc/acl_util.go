@@ -29,7 +29,12 @@ func CheckDelete(txn TxnRead, cs *auth.CapturedState, request *pb.DeleteRangeReq
 	return nil
 }
 
-func CheckGet(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
+func CheckGet(txn TxnRead, cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
+	// TODO(s.vorobiev) : impl
+	return false
+}
+
+func checkWatch(kvindex index, cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
 	// TODO(s.vorobiev) : impl
 	return false
 }
