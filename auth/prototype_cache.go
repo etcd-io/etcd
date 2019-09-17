@@ -131,14 +131,12 @@ func (pc *PrototypeCache) List() []*authpb.Prototype {
 	return prototypes
 }
 
-func (pc *PrototypeCache) GetIdx(name string) int64 {
-	// TODO: get prototype index
-	return 0
+func (pc *PrototypeCache) GetPrototypeByName(name string) *CachedPrototype {
+	return pc.byName[name]
 }
 
 func (pc *PrototypeCache) GetPrototype(idx int64) *CachedPrototype {
-	// TODO: get prototype by idx
-	return nil
+	return pc.byIdx[idx]
 }
 
 func (pc *PrototypeCache) clone() *PrototypeCache {

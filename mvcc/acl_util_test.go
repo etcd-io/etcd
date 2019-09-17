@@ -18,14 +18,20 @@ const (
 	T_RIGHTS_SETUP = 0x4
 	T_RIGHTS_ROOT  = 0x8
 
-	T_PI_Channels = 1
-	T_PI_Channel  = 2
-	T_PI_Info     = 3
-	T_PI_InfoSub  = 4
+	T_PI_Root     = 1
+	T_PI_Channels = 2
+	T_PI_Channel  = 3
+	T_PI_Info     = 4
+	T_PI_InfoSub  = 5
 )
 
 func newTestProtoCache() *auth.PrototypeCache {
-	return auth.NewPrototypeCache(15, 4, []int64{1, 2, 3, 4}, []*authpb.Prototype{
+	return auth.NewPrototypeCache(15, 5, []int64{1, 2, 3, 4, 5}, []*authpb.Prototype{
+		&authpb.Prototype{
+			Name:   []byte("Root"),
+			Fields: []*authpb.PrototypeField{},
+			Flags:  uint32(authpb.NONE),
+		},
 		&authpb.Prototype{
 			Name: []byte("Channels"),
 			Fields: []*authpb.PrototypeField{
@@ -81,6 +87,7 @@ func newTestRootCapturedState() *auth.CapturedState {
 }
 
 func fillTestStore(vw WriteView) {
+	vw.Put([]byte("/"), []byte("Root"), lease.NoLease, PrototypeInfo{T_PI_Root, 0})
 	vw.Put([]byte("/channels/"), []byte("src1,Channels"), lease.NoLease, PrototypeInfo{T_PI_Channels, 0})
 	vw.Put([]byte("/channels/abc123/"), []byte("src1,Channel"), lease.NoLease, PrototypeInfo{T_PI_Channel, 1})
 	vw.Put([]byte("/channels/abc456/"), []byte("src1,Channel"), lease.NoLease, PrototypeInfo{T_PI_Channel, 1})
@@ -113,8 +120,11 @@ func TestAclUtilPathFuncs(t *testing.T) {
 	if string(pathGetProtoName([]byte("src1,Channel"))) != "Channel" {
 		t.Errorf("pathGetProtoName(src1,Channel) failed")
 	}
-	if pathGetProtoName([]byte("src1")) != nil {
-		t.Errorf("pathGetProtoName(src1) failed")
+	if string(pathGetProtoName([]byte("Channel"))) != "Channel" {
+		t.Errorf("pathGetProtoName(Channel) failed")
+	}
+	if string(pathGetProtoName([]byte("/Channel"))) != "/Channel" {
+		t.Errorf("pathGetProtoName(/Channel) failed")
 	}
 	if pathGetProtoName([]byte("src1,")) != nil {
 		t.Errorf("pathGetProtoName(src1,) failed")
