@@ -27,8 +27,8 @@ var (
 )
 
 type PrototypeInfo struct {
-	prototypeIdx   int64
-	forceFindDepth int32
+	PrototypeIdx   int64
+	ForceFindDepth int32
 }
 
 // keyIndex stores the revisions of a key in the backend.
