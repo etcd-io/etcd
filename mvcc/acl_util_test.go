@@ -97,6 +97,69 @@ func fillTestStore(vw WriteView) {
 	vw.Put([]byte("/channels/abc456/key2"), []byte("src1,key2val"), lease.NoLease, PrototypeInfo{T_PI_Channel, 1})
 }
 
+func TestAclUtilPathFuncs(t *testing.T) {
+	if !pathIsDir([]byte("/a/b/c/")) {
+		t.Errorf("pathIsDir(/a/b/c/) failed")
+	}
+	if pathIsDir([]byte("/a/b/c")) {
+		t.Errorf("pathIsDir(/a/b/c) failed")
+	}
+	if pathIsDir([]byte("")) {
+		t.Errorf("pathIsDir() failed")
+	}
+	if !pathIsDir([]byte("/")) {
+		t.Errorf("pathIsDir(/) failed")
+	}
+	if string(pathGetProtoName([]byte("src1,Channel"))) != "Channel" {
+		t.Errorf("pathGetProtoName(src1,Channel) failed")
+	}
+	if pathGetProtoName([]byte("src1")) != nil {
+		t.Errorf("pathGetProtoName(src1) failed")
+	}
+	if pathGetProtoName([]byte("src1,")) != nil {
+		t.Errorf("pathGetProtoName(src1,) failed")
+	}
+	if pathGetProtoName([]byte("src1,/")) != nil {
+		t.Errorf("pathGetProtoName(src1,/) failed")
+	}
+	if pathGetProtoName([]byte("src1,/a/b/c")) != nil {
+		t.Errorf("pathGetProtoName(src1,/a/b/c) failed")
+	}
+	if pathGetProtoName([]byte("")) != nil {
+		t.Errorf("pathGetProtoName() failed")
+	}
+	if string(pathGetProtoName([]byte(",A"))) != "A" {
+		t.Errorf("pathGetProtoName(,A) failed")
+	}
+	if pathGetProtoName([]byte(",")) != nil {
+		t.Errorf("pathGetProtoName(,) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/test1"), 0)) != "/a/b/test1" {
+		t.Errorf("pathGetPrefix(/a/b/test1, 0) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/test1"), 1)) != "/a/b/" {
+		t.Errorf("pathGetPrefix(/a/b/test1, 1) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/test1"), 2)) != "/a/" {
+		t.Errorf("pathGetPrefix(/a/b/test1, 2) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/test1"), 3)) != "/" {
+		t.Errorf("pathGetPrefix(/a/b/test1, 3) failed")
+	}
+	if pathGetPrefix([]byte("/a/b/test1"), 4) != nil {
+		t.Errorf("pathGetPrefix(/a/b/test1, 4) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/"), 1)) != "/a/" {
+		t.Errorf("pathGetPrefix(/a/b/, 1) failed")
+	}
+	if string(pathGetPrefix([]byte("/a/b/c"), 1)) != "/a/b/" {
+		t.Errorf("pathGetPrefix(/a/b/c, 1) failed")
+	}
+	if pathGetPrefix([]byte(""), 1) != nil {
+		t.Errorf("pathGetPrefix(, 1) failed")
+	}
+}
+
 func TestAclUtilCheckPutRoot(t *testing.T) {
 	tests := []struct {
 		requests []*pb.PutRequest
