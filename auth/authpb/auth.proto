@@ -39,6 +39,11 @@ message Role {
   repeated Permission keyPermission = 2;
 }
 
+enum BuiltinRights {
+  BUILTIN_RIGHTS_NONE = 0x00;
+  BUILTIN_RIGHTS_VIEW = 0x01;
+}
+
 message PrototypeField {
   string key = 1;
   uint32 rightsRead = 2;
