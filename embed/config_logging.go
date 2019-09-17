@@ -181,8 +181,8 @@ func (cfg *Config) setupLogging() error {
 				// TODO: remove "Debug" check in v3.5
 				grpc.EnableTracing = true
 			}
-			if cfg.zapLoggerBuilder == nil {
-				cfg.zapLoggerBuilder = func(c *Config) error {
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
 					var err error
 					c.logger, err = copied.Build()
 					if err != nil {
@@ -235,8 +235,8 @@ func (cfg *Config) setupLogging() error {
 				syncer,
 				lvl,
 			)
-			if cfg.zapLoggerBuilder == nil {
-				cfg.zapLoggerBuilder = func(c *Config) error {
+			if cfg.ZapLoggerBuilder == nil {
+				cfg.ZapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
@@ -252,7 +252,7 @@ func (cfg *Config) setupLogging() error {
 			}
 		}
 
-		err := cfg.zapLoggerBuilder(cfg)
+		err := cfg.ZapLoggerBuilder(cfg)
 		if err != nil {
 			return err
 		}
