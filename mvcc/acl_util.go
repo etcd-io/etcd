@@ -39,7 +39,8 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 					res[i].ProtoInfo = txn.GetPrototypeInfo(p1, txn.Rev())
 				}
 			}
-			res[i].CanRead, res[i].CanWrite = cs.CanReadWrite(r.Key, res[i].ProtoInfo.PrototypeIdx, res[i].ProtoInfo.ForceFindDepth)
+			res[i].CanRead, res[i].CanWrite = cs.CanReadWrite(r.Key,
+				res[i].ProtoInfo.PrototypeIdx, res[i].ProtoInfo.ForceFindDepth)
 		}
 		return res
 	}
@@ -52,6 +53,7 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 		sortedRequests[i].idx = i
 		sortedRequests[i].req = req
 	}
+	// First, sort all requests by path
 	sort.Slice(sortedRequests, func(i, j int) bool {
 		return bytes.Compare(sortedRequests[i].req.Key, sortedRequests[j].req.Key) < 0
 	})
@@ -59,12 +61,15 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 	for i, r := range sortedRequests {
 		prevPi := PrototypeInfo{}
 
+		// Get parent dir
 		p1 := auth.PathGetPrefix(r.req.Key, 1)
 		if p1 != nil {
 			idx := sort.Search(i, func(j int) bool { return bytes.Compare(sortedRequests[j].req.Key, p1) >= 0 })
 			if idx < i && bytes.Compare(sortedRequests[idx].req.Key, p1) == 0 {
+				// Parent dir was added in this transaction, get its proto info from processed request
 				prevPi = res[sortedRequests[idx].idx].ProtoInfo
 			} else {
+				// Parent dir is in store, get proto info from store
 				prevPi = txn.GetPrototypeInfo(p1, txn.Rev())
 			}
 		}
@@ -75,6 +80,8 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 		}
 
 		if (prevProto != nil) || auth.PathIsRoot(r.req.Key) {
+			// Should only set proto info for this path if proto info for prev path exists
+			// or if it's a root path, i.e. simply "/"
 			if auth.PathIsDir(r.req.Key) {
 				pn := auth.PathGetProtoName(r.req.Value)
 				if pn != nil {
@@ -82,15 +89,21 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 					if proto != nil {
 						res[r.idx].ProtoInfo.PrototypeIdx = proto.Idx
 						if (prevProto != nil) && ((prevProto.Orig.Flags & uint32(authpb.FORCE_SUBOBJECTS_FIND)) != 0) {
+							// Parent dir has FORCE_SUBOBJECTS_FIND on, so get ForceFindDepth from prev dir
+							// and assign this dir's ForceFindDepth as prev dir's ForceFindDepth + 1
+							// ForceFindDepth specifies how many consecutive FORCE_SUBOBJECTS_FIND parents are
+							// on the path, this allows us to check for dir visibility very quickly on acl check time.
 							res[r.idx].ProtoInfo.ForceFindDepth = prevPi.ForceFindDepth + 1
 						}
 					}
 				}
 			} else {
+				// For keys proto info is just parent dir's proto info
 				res[r.idx].ProtoInfo = prevPi
 			}
 		}
 
+		// User without acl can always read/write everything (well, after etcd perm checks)
 		res[r.idx].CanRead = true
 		res[r.idx].CanWrite = true
 	}
