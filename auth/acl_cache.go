@@ -46,12 +46,12 @@ func (ac *AclCache) IsEmpty() bool {
 	return ac.entries.Len() == 0
 }
 
-func (ac *AclCache) GetRights(path string) uint32 {
+func (ac *AclCache) GetRights(path []byte) uint32 {
 	if ac.IsEmpty() {
 		return math.MaxUint32
 	}
 	rights := uint32(0)
-	ac.entries.Visit(adt.NewStringAffinePoint(path),
+	ac.entries.Visit(adt.NewBytesAffinePoint(path),
 		func(iv *adt.IntervalValue) bool {
 			val := iv.Val.(*authpb.AclEntry)
 			rights |= val.RightsSet
@@ -69,11 +69,23 @@ func (ac *AclCache) updateInternal(acl []*authpb.AclEntry) error {
 			return ErrAclBadPath
 		}
 
-		iv := adt.NewStringAffineInterval(entry.Path+"/", entry.Path+"0")
-		if ac.entries.Find(iv) != nil {
+		ivl := adt.NewBytesAffineInterval([]byte(entry.Path+"/"), []byte(entry.Path+"0"))
+		found := false
+		// For some stupid fucking reason .Find causes segfault for []byte intervals,
+		// probably because of .Find uses "!=" for compare. We can't just fix .Find because it'll
+		// slow down string intervals comparison
+		ac.entries.Visit(ivl,
+			func(iv *adt.IntervalValue) bool {
+				if (iv.Ivl.Begin.Compare(ivl.Begin) == 0) && (iv.Ivl.End.Compare(ivl.End) == 0) {
+					found = true
+					return false
+				}
+				return true
+			})
+		if found {
 			return ErrAclDuplicatePath
 		}
-		ac.entries.Insert(iv, entry)
+		ac.entries.Insert(ivl, entry)
 	}
 
 	return nil

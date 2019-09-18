@@ -14,7 +14,7 @@ import (
 
 const (
 	T_RIGHTS_NONE  = 0
-	T_RIGHTS_VIEW  = 0x1
+	T_RIGHTS_VIEW  = uint32(authpb.BUILTIN_RIGHTS_VIEW)
 	T_RIGHTS_SETUP = 0x4
 	T_RIGHTS_ROOT  = 0x8
 
@@ -105,67 +105,67 @@ func fillTestStore(vw WriteView) {
 }
 
 func TestAclUtilPathFuncs(t *testing.T) {
-	if !pathIsDir([]byte("/a/b/c/")) {
+	if !auth.PathIsDir([]byte("/a/b/c/")) {
 		t.Errorf("pathIsDir(/a/b/c/) failed")
 	}
-	if pathIsDir([]byte("/a/b/c")) {
+	if auth.PathIsDir([]byte("/a/b/c")) {
 		t.Errorf("pathIsDir(/a/b/c) failed")
 	}
-	if pathIsDir([]byte("")) {
+	if auth.PathIsDir([]byte("")) {
 		t.Errorf("pathIsDir() failed")
 	}
-	if !pathIsDir([]byte("/")) {
+	if !auth.PathIsDir([]byte("/")) {
 		t.Errorf("pathIsDir(/) failed")
 	}
-	if string(pathGetProtoName([]byte("src1,Channel"))) != "Channel" {
+	if string(auth.PathGetProtoName([]byte("src1,Channel"))) != "Channel" {
 		t.Errorf("pathGetProtoName(src1,Channel) failed")
 	}
-	if string(pathGetProtoName([]byte("Channel"))) != "Channel" {
+	if string(auth.PathGetProtoName([]byte("Channel"))) != "Channel" {
 		t.Errorf("pathGetProtoName(Channel) failed")
 	}
-	if string(pathGetProtoName([]byte("/Channel"))) != "/Channel" {
+	if string(auth.PathGetProtoName([]byte("/Channel"))) != "/Channel" {
 		t.Errorf("pathGetProtoName(/Channel) failed")
 	}
-	if pathGetProtoName([]byte("src1,")) != nil {
+	if auth.PathGetProtoName([]byte("src1,")) != nil {
 		t.Errorf("pathGetProtoName(src1,) failed")
 	}
-	if pathGetProtoName([]byte("src1,/")) != nil {
+	if auth.PathGetProtoName([]byte("src1,/")) != nil {
 		t.Errorf("pathGetProtoName(src1,/) failed")
 	}
-	if pathGetProtoName([]byte("src1,/a/b/c")) != nil {
+	if auth.PathGetProtoName([]byte("src1,/a/b/c")) != nil {
 		t.Errorf("pathGetProtoName(src1,/a/b/c) failed")
 	}
-	if pathGetProtoName([]byte("")) != nil {
+	if auth.PathGetProtoName([]byte("")) != nil {
 		t.Errorf("pathGetProtoName() failed")
 	}
-	if string(pathGetProtoName([]byte(",A"))) != "A" {
+	if string(auth.PathGetProtoName([]byte(",A"))) != "A" {
 		t.Errorf("pathGetProtoName(,A) failed")
 	}
-	if pathGetProtoName([]byte(",")) != nil {
+	if auth.PathGetProtoName([]byte(",")) != nil {
 		t.Errorf("pathGetProtoName(,) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/test1"), 0)) != "/a/b/test1" {
+	if string(auth.PathGetPrefix([]byte("/a/b/test1"), 0)) != "/a/b/test1" {
 		t.Errorf("pathGetPrefix(/a/b/test1, 0) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/test1"), 1)) != "/a/b/" {
+	if string(auth.PathGetPrefix([]byte("/a/b/test1"), 1)) != "/a/b/" {
 		t.Errorf("pathGetPrefix(/a/b/test1, 1) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/test1"), 2)) != "/a/" {
+	if string(auth.PathGetPrefix([]byte("/a/b/test1"), 2)) != "/a/" {
 		t.Errorf("pathGetPrefix(/a/b/test1, 2) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/test1"), 3)) != "/" {
+	if string(auth.PathGetPrefix([]byte("/a/b/test1"), 3)) != "/" {
 		t.Errorf("pathGetPrefix(/a/b/test1, 3) failed")
 	}
-	if pathGetPrefix([]byte("/a/b/test1"), 4) != nil {
+	if auth.PathGetPrefix([]byte("/a/b/test1"), 4) != nil {
 		t.Errorf("pathGetPrefix(/a/b/test1, 4) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/"), 1)) != "/a/" {
+	if string(auth.PathGetPrefix([]byte("/a/b/"), 1)) != "/a/" {
 		t.Errorf("pathGetPrefix(/a/b/, 1) failed")
 	}
-	if string(pathGetPrefix([]byte("/a/b/c"), 1)) != "/a/b/" {
+	if string(auth.PathGetPrefix([]byte("/a/b/c"), 1)) != "/a/b/" {
 		t.Errorf("pathGetPrefix(/a/b/c, 1) failed")
 	}
-	if pathGetPrefix([]byte(""), 1) != nil {
+	if auth.PathGetPrefix([]byte(""), 1) != nil {
 		t.Errorf("pathGetPrefix(, 1) failed")
 	}
 }
@@ -215,6 +215,77 @@ func TestAclUtilCheckPutRoot(t *testing.T) {
 	fillTestStore(s)
 
 	cs := newTestRootCapturedState()
+
+	txn := s.Read()
+
+	for i, tst := range tests {
+		res := CheckPut(txn, cs, tst.requests)
+		if len(res) != len(tst.results) {
+			t.Errorf("#%d: failed, size mismatch", i)
+		}
+		for j, r := range res {
+			if !reflect.DeepEqual(r, tst.results[j]) {
+				t.Errorf("#%d: failed at %d: %v != %v", i, j, r, tst.results[j])
+			}
+		}
+	}
+
+	txn.End()
+}
+
+func TestAclUtilCheckPutUser(t *testing.T) {
+	tests := []struct {
+		requests []*pb.PutRequest
+		results  []CheckPutResult
+	}{
+		{
+			requests: []*pb.PutRequest{
+				&pb.PutRequest{Key: []byte("/abba/111/data1"), Value: []byte("src2,hhhhh")},
+				&pb.PutRequest{Key: []byte("/channels/-----"), Value: []byte("fdfdfd")},
+				&pb.PutRequest{Key: []byte("/channels/test1"), Value: []byte("aaa")},
+				&pb.PutRequest{Key: []byte("/channels/test2"), Value: []byte("aaa")},
+				&pb.PutRequest{Key: []byte("/channels/isub"), Value: []byte("bbb")},
+			},
+			results: []CheckPutResult{
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{}},
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{T_PI_Channels, 0}},
+				CheckPutResult{CanWrite: false, CanRead: true, ProtoInfo: PrototypeInfo{T_PI_Channels, 0}},
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{T_PI_Channels, 0}},
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{T_PI_Channels, 0}},
+			},
+		},
+		{
+			requests: []*pb.PutRequest{
+				&pb.PutRequest{Key: []byte("/channels/abc456/"), Value: []byte("kkk")},
+				&pb.PutRequest{Key: []byte("/channels/abc123/"), Value: []byte("kkk")},
+				&pb.PutRequest{Key: []byte("/channels/abc123/skey0"), Value: []byte("kkk")},
+				&pb.PutRequest{Key: []byte("/channels/abc456/skey0"), Value: []byte("kkk")},
+				&pb.PutRequest{Key: []byte("/channels/def789/skey0"), Value: []byte("kkk")},
+			},
+			results: []CheckPutResult{
+				CheckPutResult{CanWrite: false, CanRead: true, ProtoInfo: PrototypeInfo{T_PI_Channel, 1}},
+				CheckPutResult{CanWrite: false, CanRead: true, ProtoInfo: PrototypeInfo{T_PI_Channel, 1}},
+				CheckPutResult{CanWrite: true, CanRead: true, ProtoInfo: PrototypeInfo{T_PI_Channel, 1}},
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{T_PI_Channel, 1}},
+				CheckPutResult{CanWrite: false, CanRead: false, ProtoInfo: PrototypeInfo{T_PI_Channel, 1}},
+			},
+		},
+	}
+
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b, &lease.FakeLessor{}, nil)
+	defer s.Close()
+	defer os.Remove(tmpPath)
+
+	fillTestStore(s)
+
+	cs := newTestCapturedState([]*authpb.AclEntry{
+		{Path: "", RightsSet: 0, RightsUnset: 0},
+		{Path: "/channels", RightsSet: T_RIGHTS_VIEW, RightsUnset: 0},
+		{Path: "/channels/abc456", RightsSet: 0, RightsUnset: T_RIGHTS_VIEW},
+		{Path: "/channels/def789", RightsSet: 0, RightsUnset: T_RIGHTS_VIEW},
+		{Path: "/channels/abc123", RightsSet: T_RIGHTS_SETUP, RightsUnset: 0},
+	})
 
 	txn := s.Read()
 

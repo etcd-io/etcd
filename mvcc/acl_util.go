@@ -26,7 +26,21 @@ type CheckDeleteResult struct {
 func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []CheckPutResult {
 	res := make([]CheckPutResult, len(requests))
 
-	if !cs.IsRoot() {
+	if cs.HaveAcl() {
+		// Users with ACL cannot create dirs and change prototypes, they can only read/write keys
+		for i, r := range requests {
+			if auth.PathIsDir(r.Key) {
+				res[i].ProtoInfo = txn.GetPrototypeInfo(r.Key, txn.Rev())
+			} else {
+				// If it's a key it may not exist yet, but its dir should already exist, so
+				// get prototype of a dir instead
+				p1 := auth.PathGetPrefix(r.Key, 1)
+				if p1 != nil {
+					res[i].ProtoInfo = txn.GetPrototypeInfo(p1, txn.Rev())
+				}
+			}
+			res[i].CanRead, res[i].CanWrite = cs.CanReadWrite(r.Key, res[i].ProtoInfo.PrototypeIdx, res[i].ProtoInfo.ForceFindDepth)
+		}
 		return res
 	}
 
@@ -45,7 +59,7 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 	for i, r := range sortedRequests {
 		prevPi := PrototypeInfo{}
 
-		p1 := pathGetPrefix(r.req.Key, 1)
+		p1 := auth.PathGetPrefix(r.req.Key, 1)
 		if p1 != nil {
 			idx := sort.Search(i, func(j int) bool { return bytes.Compare(sortedRequests[j].req.Key, p1) >= 0 })
 			if idx < i && bytes.Compare(sortedRequests[idx].req.Key, p1) == 0 {
@@ -60,9 +74,9 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 			prevProto = cs.GetPrototype(prevPi.PrototypeIdx)
 		}
 
-		if (prevProto != nil) || pathIsRoot(r.req.Key) {
-			if pathIsDir(r.req.Key) {
-				pn := pathGetProtoName(r.req.Value)
+		if (prevProto != nil) || auth.PathIsRoot(r.req.Key) {
+			if auth.PathIsDir(r.req.Key) {
+				pn := auth.PathGetProtoName(r.req.Value)
 				if pn != nil {
 					proto := cs.GetPrototypeByName(string(pn))
 					if proto != nil {
@@ -89,47 +103,7 @@ func CheckDelete(txn TxnRead, cs *auth.CapturedState, request *pb.DeleteRangeReq
 	return nil
 }
 
-func CheckGet(txn TxnRead, cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
+func CheckGet(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
 	// TODO(s.vorobiev) : impl
 	return false
-}
-
-func checkWatch(kvindex index, cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
-	// TODO(s.vorobiev) : impl
-	return false
-}
-
-func pathIsRoot(key []byte) bool {
-	return (len(key) == 1) && key[0] == '/'
-}
-
-func pathIsDir(key []byte) bool {
-	return (len(key) > 0) && key[len(key)-1] == '/'
-}
-
-func pathGetProtoName(value []byte) []byte {
-	pos := bytes.IndexByte(value, ',')
-	if pos >= 0 {
-		value = value[pos+1:]
-		if (len(value) > 0) && (value[0] != '/') {
-			return value
-		}
-	} else if len(value) > 0 {
-		return value
-	}
-	return nil
-}
-
-func pathGetPrefix(key []byte, N int) []byte {
-	for i := 0; i < N; i++ {
-		if len(key) < 1 {
-			return nil
-		}
-		pos := bytes.LastIndexByte(key[:len(key)-1], '/')
-		if pos < 0 {
-			return nil
-		}
-		key = key[:pos+1]
-	}
-	return key
 }
