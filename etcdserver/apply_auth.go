@@ -164,13 +164,19 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*aut
 			return cs, err
 		}
 	}
-	cs, err = checkTxnReqsPermission(as, ai, rt.Success)
+	cs2, err := checkTxnReqsPermission(as, ai, rt.Success)
 	if err != nil {
-		return cs, err
+		return cs2, err
 	}
-	cs, err = checkTxnReqsPermission(as, ai, rt.Failure)
+	if cs2 != nil {
+		cs = cs2
+	}
+	cs2, err = checkTxnReqsPermission(as, ai, rt.Failure)
 	if err != nil {
-		return cs, err
+		return cs2, err
+	}
+	if cs2 != nil {
+		cs = cs2
 	}
 	return cs, nil
 }
