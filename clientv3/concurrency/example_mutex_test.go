@@ -36,14 +36,14 @@ func ExampleMutex_TryLock() {
 		log.Fatal(err)
 	}
 	defer s1.Close()
-	m1 := concurrency.NewMutex(s1, "/my-lock/")
+	m1 := concurrency.NewMutex(s1, "/my-lock")
 
 	s2, err := concurrency.NewSession(cli)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer s2.Close()
-	m2 := concurrency.NewMutex(s2, "/my-lock/")
+	m2 := concurrency.NewMutex(s2, "/my-lock")
 
 	// acquire lock for s1
 	if err = m1.Lock(context.TODO()); err != nil {
