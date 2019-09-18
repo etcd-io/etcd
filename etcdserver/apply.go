@@ -188,6 +188,10 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 }
 
 func (a *applierV3backend) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.PutRequest) (resp *pb.PutResponse, err error) {
+	return a.putImpl(txn, cs, p, mvcc.CheckPutResult{})
+}
+
+func (a *applierV3backend) putImpl(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.PutRequest, cpr mvcc.CheckPutResult) (resp *pb.PutResponse, err error) {
 	resp = &pb.PutResponse{}
 	resp.Header = &pb.ResponseHeader{}
 
@@ -200,9 +204,25 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.
 		}
 		txn = a.s.KV().Write()
 		defer txn.End()
+		cpr = mvcc.CheckPut(txn, cs, []*pb.PutRequest{p})[0]
 	}
 
 	var rr *mvcc.RangeResult
+
+	if !cpr.CanWrite {
+		// Can't write this path, so just silently skip.
+		// Note that when p.PrevKv is set and cpr.CanRead is true
+		// we technically might return the key to the user (without putting it),
+		// but this will complicate the logic because we also have
+		// p.IgnoreValue and p.IgnoreLease which require key to exist before putting.
+		// For now, just drop this case, if we'll REALLY need it, then it can be implemented.
+		resp.Header.Revision = txn.Rev()
+		if len(txn.Changes()) != 0 {
+			resp.Header.Revision++
+		}
+		return resp, nil
+	}
+
 	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
 		rr, err = txn.Range(p.Key, nil, mvcc.RangeOptions{})
 		if err != nil {
@@ -227,7 +247,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, p *pb.
 		}
 	}
 
-	resp.Header.Revision = txn.Put(p.Key, val, leaseID, mvcc.PrototypeInfo{})
+	resp.Header.Revision = txn.Put(p.Key, val, leaseID, cpr.ProtoInfo)
 	return resp, nil
 }
 
@@ -357,8 +377,12 @@ func (a *applierV3backend) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.T
 	isWrite := !isTxnReadonly(rt)
 	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read())
 
+	checkPutRes := []mvcc.CheckPutResult{}
+
 	txnPath := compareToPath(txn, rt)
 	if isWrite {
+		// First, gather all put requests on txn path, the path
+		// is already evaluated and will not change
 		putRequests := make([]*pb.PutRequest, 0)
 		checkRequests(txn, rt, txnPath, func(rv mvcc.ReadView, reqOp *pb.RequestOp) error {
 			tv, ok := reqOp.Request.(*pb.RequestOp_RequestPut)
@@ -369,9 +393,25 @@ func (a *applierV3backend) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.T
 			return nil
 		})
 
-		_ = mvcc.CheckPut(txn, cs, putRequests)
+		// Check all put requests at once, calculating prototypes and checking
+		// acl rights
+		checkPutRes = mvcc.CheckPut(txn, cs, putRequests)
+		checkPutResI := 0
 
-		if _, err := checkRequests(txn, rt, txnPath, a.checkPut); err != nil {
+		// Run usual checkPut only on those put requests that'll actually get executed later
+		if _, err := checkRequests(txn, rt, txnPath, func(rv mvcc.ReadView, reqOp *pb.RequestOp) error {
+			tv, ok := reqOp.Request.(*pb.RequestOp_RequestPut)
+			if !ok || tv.RequestPut == nil {
+				return nil
+			}
+			cw := checkPutRes[checkPutResI].CanWrite
+			checkPutResI++
+			if cw {
+				return a.checkPut(rv, reqOp)
+			}
+
+			return nil
+		}); err != nil {
 			txn.End()
 			return nil, err
 		}
@@ -391,7 +431,7 @@ func (a *applierV3backend) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.T
 		txn.End()
 		txn = a.s.KV().Write()
 	}
-	a.applyTxn(txn, cs, rt, txnPath, txnResp)
+	a.applyTxn(txn, cs, rt, txnPath, checkPutRes, txnResp)
 	rev := txn.Rev()
 	if len(txn.Changes()) != 0 {
 		rev++
@@ -530,7 +570,7 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 	return true
 }
 
-func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, cs *auth.CapturedState, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int) {
+func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, cs *auth.CapturedState, rt *pb.TxnRequest, txnPath []bool, checkPutRes []mvcc.CheckPutResult, tresp *pb.TxnResponse) (txns int) {
 	reqs := rt.Success
 	if !txnPath[0] {
 		reqs = rt.Failure
@@ -545,7 +585,9 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, cs *auth.CapturedState, r
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 		case *pb.RequestOp_RequestPut:
-			resp, err := a.Put(txn, cs, tv.RequestPut)
+			cpr := checkPutRes[0]
+			checkPutRes = checkPutRes[1:]
+			resp, err := a.putImpl(txn, cs, tv.RequestPut, cpr)
 			if err != nil {
 				plog.Panicf("unexpected error during txn: %v", err)
 			}
@@ -558,7 +600,7 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, cs *auth.CapturedState, r
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
 			resp := respi.(*pb.ResponseOp_ResponseTxn).ResponseTxn
-			applyTxns := a.applyTxn(txn, cs, tv.RequestTxn, txnPath[1:], resp)
+			applyTxns := a.applyTxn(txn, cs, tv.RequestTxn, txnPath[1:], checkPutRes, resp)
 			txns += applyTxns + 1
 			txnPath = txnPath[applyTxns+1:]
 		default:
