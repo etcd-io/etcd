@@ -814,8 +814,15 @@ func (as *authStore) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUser
 	}
 
 	var resp pb.AuthUserRevisionsResponse
-	resp.PrototypesRevision = as.prototypeCache.Rev
-	resp.AclRevision = as.getAclCache(user).Rev
+	if hasRootRole(user) {
+		// for root we pretend that acl info never changes, that's because
+		// it's never actually used
+		resp.PrototypesRevision = 0
+		resp.AclRevision = 0
+	} else {
+		resp.PrototypesRevision = as.prototypeCache.Rev
+		resp.AclRevision = as.getAclCache(user).Rev
+	}
 	return &resp, nil
 }
 
@@ -906,6 +913,7 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 
 	// root role should have permission on all ranges
 	if hasRootRole(user) {
+		// we don't use acl for the root user
 		return NewCapturedState(as.prototypeCache, nil), nil
 	}
 
