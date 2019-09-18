@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	warnApplyDuration = 100 * time.Millisecond
+	warnApplyDuration   = 100 * time.Millisecond
+	rangeTraceThreshold = 100 * time.Millisecond
 )
 
 type applyResult struct {
@@ -247,11 +248,7 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 }
 
 func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace, ok := ctx.Value("trace").(*traceutil.Trace)
-	if !ok || trace == nil {
-		trace = traceutil.New("Apply Range")
-		ctx = context.WithValue(ctx, "trace", trace)
-	}
+	trace := traceutil.Get(ctx)
 
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
@@ -350,8 +347,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	isWrite := !isTxnReadonly(rt)
-	trace := traceutil.New("ReadOnlyTxn")
-	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(trace))
+	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(traceutil.TODO()))
 
 	txnPath := compareToPath(txn, rt)
 	if isWrite {
