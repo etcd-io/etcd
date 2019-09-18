@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -47,7 +48,7 @@ var (
 		return kv.Range(key, end, ro)
 	}
 	txnRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
-		txn := kv.Read(nil)
+		txn := kv.Read(traceutil.TODO())
 		defer txn.End()
 		return txn.Range(key, end, ro)
 	}

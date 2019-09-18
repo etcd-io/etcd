@@ -69,7 +69,7 @@ func (s *store) Write() TxnWrite {
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0, nil},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, traceutil.TODO()},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
@@ -127,9 +127,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	}
 
 	revpairs := tr.s.kvindex.Revisions(key, end, rev)
-	if tr.trace != nil {
-		tr.trace.Step("Range keys from in-memory index tree.")
-	}
+	tr.trace.Step("Range keys from in-memory index tree.")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -169,9 +167,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 			}
 		}
 	}
-	if tr.trace != nil {
-		tr.trace.Step("Range keys from bolt db.")
-	}
+	tr.trace.Step("Range keys from bolt db.")
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
 }
 

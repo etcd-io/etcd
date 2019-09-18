@@ -86,13 +86,23 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.New("Range")
+	trace := traceutil.New("Range",
+		traceutil.Field{Key: "RangeBegin", Value: string(r.Key)},
+		traceutil.Field{Key: "RangeEnd", Value: string(r.RangeEnd)},
+	)
 	ctx = context.WithValue(ctx, "trace", trace)
 
 	var resp *pb.RangeResponse
 	var err error
 	defer func(start time.Time) {
-		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), trace, start, r, resp, err)
+		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), start, r, resp, err)
+		if resp != nil {
+			trace.AddField(
+				traceutil.Field{Key: "ResponseCount", Value: len(resp.Kvs)},
+				traceutil.Field{Key: "ResponseRevision", Value: resp.Header.Revision},
+			)
+		}
+		trace.LogIfLong(rangeTraceThreshold, s.getLogger())
 	}(time.Now())
 
 	if !r.Serializable {
@@ -564,9 +574,8 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 		return err
 	}
 
-	if trace, ok := ctx.Value("trace").(*traceutil.Trace); ok && trace != nil {
-		trace.Step("Authentication.")
-	}
+	trace := traceutil.Get(ctx)
+	trace.Step("Authentication.")
 	// fetch response for serialized request
 	get()
 	// check for stale token revision in case the auth store was updated while
