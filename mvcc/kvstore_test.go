@@ -72,7 +72,7 @@ func TestStorePut(t *testing.T) {
 	}{
 		{
 			revision{1, 0},
-			indexGetResp{revision{}, revision{}, 0, ErrRevisionNotFound},
+			indexGetResp{revision{}, revision{}, 0, PrototypeInfo{}, ErrRevisionNotFound},
 			nil,
 
 			revision{2, 0},
@@ -89,7 +89,7 @@ func TestStorePut(t *testing.T) {
 		},
 		{
 			revision{1, 1},
-			indexGetResp{revision{2, 0}, revision{2, 0}, 1, nil},
+			indexGetResp{revision{2, 0}, revision{2, 0}, 1, PrototypeInfo{}, nil},
 			&rangeResp{[][]byte{newTestKeyBytes(revision{2, 1}, false)}, [][]byte{kvb}},
 
 			revision{2, 0},
@@ -106,7 +106,7 @@ func TestStorePut(t *testing.T) {
 		},
 		{
 			revision{2, 0},
-			indexGetResp{revision{2, 1}, revision{2, 0}, 2, nil},
+			indexGetResp{revision{2, 1}, revision{2, 0}, 2, PrototypeInfo{}, nil},
 			&rangeResp{[][]byte{newTestKeyBytes(revision{2, 1}, false)}, [][]byte{kvb}},
 
 			revision{3, 0},
@@ -188,11 +188,11 @@ func TestStoreRange(t *testing.T) {
 		r    rangeResp
 	}{
 		{
-			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}},
+			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}, []PrototypeInfo{{}}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 		{
-			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []revision{{2, 0}, {3, 0}}},
+			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []revision{{2, 0}, {3, 0}}, []PrototypeInfo{{}, {}}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 	}
@@ -266,7 +266,7 @@ func TestStoreDeleteRange(t *testing.T) {
 	}{
 		{
 			revision{2, 0},
-			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}},
+			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}, []PrototypeInfo{{}}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 
 			newTestKeyBytes(revision{3, 0}, true),
@@ -400,8 +400,8 @@ func TestStoreRestore(t *testing.T) {
 	}
 
 	gens := []generation{
-		{created: revision{4, 0}, ver: 2, revs: []revision{{3, 0}, {5, 0}}},
-		{created: revision{0, 0}, ver: 0, revs: nil},
+		{created: revision{4, 0}, ver: 2, revs: []revision{{3, 0}, {5, 0}}, pi: []PrototypeInfo{{}, {}}},
+		{created: revision{0, 0}, ver: 0, revs: nil, pi: nil},
 	}
 	ki := &keyIndex{key: []byte("foo"), modified: revision{5, 0}, generations: gens}
 	wact = []testutil.Action{
@@ -751,12 +751,14 @@ type indexGetResp struct {
 	rev     revision
 	created revision
 	ver     int64
+	pi      PrototypeInfo
 	err     error
 }
 
 type indexRangeResp struct {
 	keys [][]byte
 	revs []revision
+	pi   []PrototypeInfo
 }
 
 type indexRangeEventsResp struct {
@@ -771,25 +773,25 @@ type fakeIndex struct {
 	indexCompactRespc     chan map[revision]struct{}
 }
 
-func (i *fakeIndex) Revisions(key, end []byte, atRev int64) []revision {
-	_, rev := i.Range(key, end, atRev)
-	return rev
+func (i *fakeIndex) Revisions(key, end []byte, atRev int64) ([]revision, []PrototypeInfo) {
+	_, rev, pi := i.Range(key, end, atRev)
+	return rev, pi
 }
 
-func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created revision, ver int64, err error) {
+func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created revision, ver int64, pi PrototypeInfo, err error) {
 	i.Recorder.Record(testutil.Action{Name: "get", Params: []interface{}{key, atRev}})
 	r := <-i.indexGetRespc
-	return r.rev, r.created, r.ver, r.err
+	return r.rev, r.created, r.ver, r.pi, r.err
 }
-func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision) {
+func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision, []PrototypeInfo) {
 	i.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{key, end, atRev}})
 	r := <-i.indexRangeRespc
-	return r.keys, r.revs
+	return r.keys, r.revs, r.pi
 }
-func (i *fakeIndex) Put(key []byte, rev revision) {
+func (i *fakeIndex) Put(key []byte, rev revision, pi PrototypeInfo) {
 	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev}})
 }
-func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
+func (i *fakeIndex) Tombstone(key []byte, rev revision, pi PrototypeInfo) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})
 	return nil
 }

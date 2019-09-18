@@ -46,8 +46,8 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 }
 
 func (tr *storeTxnRead) GetPrototypeInfo(key []byte, atRev int64) PrototypeInfo {
-	// TODO(s.vorobiev): use tr.s.kvindex and fetch proto info
-	return PrototypeInfo{}
+	_, _, _, pi, _ := tr.s.kvindex.Get(key, atRev)
+	return pi
 }
 
 func (tr *storeTxnRead) End() {
@@ -94,7 +94,7 @@ func (tw *storeTxnWrite) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) int64 {
-	tw.put(key, value, lease)
+	tw.put(key, value, lease, pi)
 	return int64(tw.beginRev + 1)
 }
 
@@ -125,7 +125,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 
-	revpairs := tr.s.kvindex.Revisions(key, end, int64(rev))
+	revpairs, _ := tr.s.kvindex.Revisions(key, end, int64(rev))
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -153,14 +153,14 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
 }
 
-func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
+func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID, pi PrototypeInfo) {
 	rev := tw.beginRev + 1
 	c := rev
 	oldLease := lease.NoLease
 
 	// if the key exists before, use its previous created and
 	// get its previous leaseID
-	_, created, ver, err := tw.s.kvindex.Get(key, rev)
+	_, created, ver, _, err := tw.s.kvindex.Get(key, rev)
 	if err == nil {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
@@ -178,6 +178,8 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		ModRevision:    rev,
 		Version:        ver,
 		Lease:          int64(leaseID),
+		PrototypeIdx:   pi.PrototypeIdx,
+		ForceFindDepth: pi.ForceFindDepth,
 	}
 
 	d, err := kv.Marshal()
@@ -186,7 +188,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	}
 
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
-	tw.s.kvindex.Put(key, idxRev)
+	tw.s.kvindex.Put(key, idxRev, pi)
 	tw.changes = append(tw.changes, kv)
 
 	if oldLease != lease.NoLease {
@@ -214,23 +216,23 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	if len(tw.changes) > 0 {
 		rrev += 1
 	}
-	keys, revs := tw.s.kvindex.Range(key, end, rrev)
+	keys, revs, pi := tw.s.kvindex.Range(key, end, rrev)
 	if len(keys) == 0 {
 		return 0
 	}
 	for i, key := range keys {
-		tw.delete(key, revs[i])
+		tw.delete(key, revs[i], pi[i])
 	}
 	return int64(len(keys))
 }
 
-func (tw *storeTxnWrite) delete(key []byte, rev revision) {
+func (tw *storeTxnWrite) delete(key []byte, rev revision, pi PrototypeInfo) {
 	ibytes := newRevBytes()
 	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
 	ibytes = appendMarkTombstone(ibytes)
 
-	kv := mvccpb.KeyValue{Key: key}
+	kv := mvccpb.KeyValue{Key: key, PrototypeIdx: pi.PrototypeIdx, ForceFindDepth: pi.ForceFindDepth}
 
 	d, err := kv.Marshal()
 	if err != nil {
@@ -238,7 +240,7 @@ func (tw *storeTxnWrite) delete(key []byte, rev revision) {
 	}
 
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
-	err = tw.s.kvindex.Tombstone(key, idxRev)
+	err = tw.s.kvindex.Tombstone(key, idxRev, pi)
 	if err != nil {
 		plog.Fatalf("cannot tombstone an existing key (%s): %v", string(key), err)
 	}

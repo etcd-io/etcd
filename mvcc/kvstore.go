@@ -429,12 +429,13 @@ func restoreIntoIndex(idx index) (chan<- revKeyValue, <-chan int64) {
 			currentRev = rev.main
 			if ok {
 				if isTombstone(rkv.key) {
-					ki.tombstone(rev.main, rev.sub)
+					ki.tombstone(rev.main, rev.sub, PrototypeInfo{rkv.kv.PrototypeIdx, rkv.kv.ForceFindDepth})
 					continue
 				}
-				ki.put(rev.main, rev.sub)
+				ki.put(rev.main, rev.sub, PrototypeInfo{rkv.kv.PrototypeIdx, rkv.kv.ForceFindDepth})
 			} else if !isTombstone(rkv.key) {
-				ki.restore(revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				ki.restore(revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version,
+					PrototypeInfo{rkv.kv.PrototypeIdx, rkv.kv.ForceFindDepth})
 				idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}

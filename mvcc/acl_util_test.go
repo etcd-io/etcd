@@ -225,7 +225,7 @@ func TestAclUtilCheckPutRoot(t *testing.T) {
 		}
 		for j, r := range res {
 			if !reflect.DeepEqual(r, tst.results[j]) {
-				t.Errorf("#%d: failed at %d", i, j)
+				t.Errorf("#%d: failed at %d: %v != %v", i, j, r, tst.results[j])
 			}
 		}
 	}

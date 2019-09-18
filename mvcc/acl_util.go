@@ -24,6 +24,12 @@ type CheckDeleteResult struct {
 }
 
 func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []CheckPutResult {
+	res := make([]CheckPutResult, len(requests))
+
+	if !cs.IsRoot() {
+		return res
+	}
+
 	sortedRequests := make([]struct {
 		idx int
 		req *pb.PutRequest
@@ -35,8 +41,6 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 	sort.Slice(sortedRequests, func(i, j int) bool {
 		return bytes.Compare(sortedRequests[i].req.Key, sortedRequests[j].req.Key) < 0
 	})
-
-	res := make([]CheckPutResult, len(requests))
 
 	for i, r := range sortedRequests {
 		prevPi := PrototypeInfo{}
@@ -72,6 +76,9 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 				res[r.idx].ProtoInfo = prevPi
 			}
 		}
+
+		res[r.idx].CanRead = true
+		res[r.idx].CanWrite = true
 	}
 
 	return res

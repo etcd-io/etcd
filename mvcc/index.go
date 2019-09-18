@@ -22,11 +22,11 @@ import (
 )
 
 type index interface {
-	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
-	Range(key, end []byte, atRev int64) ([][]byte, []revision)
-	Revisions(key, end []byte, atRev int64) []revision
-	Put(key []byte, rev revision)
-	Tombstone(key []byte, rev revision) error
+	Get(key []byte, atRev int64) (rev, created revision, ver int64, pi PrototypeInfo, err error)
+	Range(key, end []byte, atRev int64) ([][]byte, []revision, []PrototypeInfo)
+	Revisions(key, end []byte, atRev int64) ([]revision, []PrototypeInfo)
+	Put(key []byte, rev revision, pi PrototypeInfo)
+	Tombstone(key []byte, rev revision, pi PrototypeInfo) error
 	RangeSince(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
 	Keep(rev int64) map[revision]struct{}
@@ -47,27 +47,27 @@ func newTreeIndex() index {
 	}
 }
 
-func (ti *treeIndex) Put(key []byte, rev revision) {
+func (ti *treeIndex) Put(key []byte, rev revision, pi PrototypeInfo) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.put(rev.main, rev.sub)
+		keyi.put(rev.main, rev.sub, pi)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(rev.main, rev.sub)
+	okeyi.put(rev.main, rev.sub, pi)
 }
 
-func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
+func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, pi PrototypeInfo, err error) {
 	keyi := &keyIndex{key: key}
 	ti.RLock()
 	defer ti.RUnlock()
 	if keyi = ti.keyIndex(keyi); keyi == nil {
-		return revision{}, revision{}, 0, ErrRevisionNotFound
+		return revision{}, revision{}, 0, PrototypeInfo{}, ErrRevisionNotFound
 	}
 	return keyi.get(atRev)
 }
@@ -100,40 +100,42 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex)) {
 	})
 }
 
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision, pis []PrototypeInfo) {
 	if end == nil {
-		rev, _, _, err := ti.Get(key, atRev)
-		if err != nil {
-			return nil
-		}
-		return []revision{rev}
-	}
-	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
-			revs = append(revs, rev)
-		}
-	})
-	return revs
-}
-
-func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
-	if end == nil {
-		rev, _, _, err := ti.Get(key, atRev)
+		rev, _, _, pi, err := ti.Get(key, atRev)
 		if err != nil {
 			return nil, nil
 		}
-		return [][]byte{key}, []revision{rev}
+		return []revision{rev}, []PrototypeInfo{pi}
 	}
 	ti.visit(key, end, func(ki *keyIndex) {
-		if rev, _, _, err := ki.get(atRev); err == nil {
+		if rev, _, _, pi, err := ki.get(atRev); err == nil {
 			revs = append(revs, rev)
+			pis = append(pis, pi)
+		}
+	})
+	return revs, pis
+}
+
+func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision, pis []PrototypeInfo) {
+	if end == nil {
+		rev, _, _, pi, err := ti.Get(key, atRev)
+		if err != nil {
+			return nil, nil, nil
+		}
+		return [][]byte{key}, []revision{rev}, []PrototypeInfo{pi}
+	}
+	ti.visit(key, end, func(ki *keyIndex) {
+		if rev, _, _, pi, err := ki.get(atRev); err == nil {
+			revs = append(revs, rev)
+			pis = append(pis, pi)
 			keys = append(keys, ki.key)
 		}
 	})
-	return keys, revs
+	return keys, revs, pis
 }
 
-func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
+func (ti *treeIndex) Tombstone(key []byte, rev revision, pi PrototypeInfo) error {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
@@ -144,7 +146,7 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	}
 
 	ki := item.(*keyIndex)
-	return ki.tombstone(rev.main, rev.sub)
+	return ki.tombstone(rev.main, rev.sub, pi)
 }
 
 // RangeSince returns all revisions from key(including) to end(excluding)

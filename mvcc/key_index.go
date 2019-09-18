@@ -78,7 +78,7 @@ type keyIndex struct {
 }
 
 // put puts a revision to the keyIndex.
-func (ki *keyIndex) put(main int64, sub int64) {
+func (ki *keyIndex) put(main int64, sub int64, pi PrototypeInfo) {
 	rev := revision{main: main, sub: sub}
 
 	if !rev.GreaterThan(ki.modified) {
@@ -93,17 +93,18 @@ func (ki *keyIndex) put(main int64, sub int64) {
 		g.created = rev
 	}
 	g.revs = append(g.revs, rev)
+	g.pi = append(g.pi, pi)
 	g.ver++
 	ki.modified = rev
 }
 
-func (ki *keyIndex) restore(created, modified revision, ver int64) {
+func (ki *keyIndex) restore(created, modified revision, ver int64, pi PrototypeInfo) {
 	if len(ki.generations) != 0 {
 		plog.Panicf("store.keyindex: cannot restore non-empty keyIndex")
 	}
 
 	ki.modified = modified
-	g := generation{created: created, ver: ver, revs: []revision{modified}}
+	g := generation{created: created, ver: ver, revs: []revision{modified}, pi: []PrototypeInfo{pi}}
 	ki.generations = append(ki.generations, g)
 	keysGauge.Inc()
 }
@@ -111,14 +112,14 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 // tombstone puts a revision, pointing to a tombstone, to the keyIndex.
 // It also creates a new empty generation in the keyIndex.
 // It returns ErrRevisionNotFound when tombstone on an empty generation.
-func (ki *keyIndex) tombstone(main int64, sub int64) error {
+func (ki *keyIndex) tombstone(main int64, sub int64, pi PrototypeInfo) error {
 	if ki.isEmpty() {
 		plog.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
 	}
 	if ki.generations[len(ki.generations)-1].isEmpty() {
 		return ErrRevisionNotFound
 	}
-	ki.put(main, sub)
+	ki.put(main, sub, pi)
 	ki.generations = append(ki.generations, generation{})
 	keysGauge.Dec()
 	return nil
@@ -126,21 +127,21 @@ func (ki *keyIndex) tombstone(main int64, sub int64) error {
 
 // get gets the modified, created revision and version of the key that satisfies the given atRev.
 // Rev must be higher than or equal to the given atRev.
-func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err error) {
+func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, pi PrototypeInfo, err error) {
 	if ki.isEmpty() {
 		plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
-		return revision{}, revision{}, 0, ErrRevisionNotFound
+		return revision{}, revision{}, 0, PrototypeInfo{}, ErrRevisionNotFound
 	}
 
 	n := g.walk(func(rev revision) bool { return rev.main > atRev })
 	if n != -1 {
-		return g.revs[n], g.created, g.ver - int64(len(g.revs)-n-1), nil
+		return g.revs[n], g.created, g.ver - int64(len(g.revs)-n-1), g.pi[n], nil
 	}
 
-	return revision{}, revision{}, 0, ErrRevisionNotFound
+	return revision{}, revision{}, 0, PrototypeInfo{}, ErrRevisionNotFound
 }
 
 // since returns revisions since the given rev. Only the revision with the
@@ -199,6 +200,7 @@ func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 		// remove the previous contents.
 		if revIndex != -1 {
 			g.revs = g.revs[revIndex:]
+			g.pi = g.pi[revIndex:]
 		}
 		// remove any tombstone
 		if len(g.revs) == 1 && genIdx != len(ki.generations)-1 {
@@ -341,7 +343,7 @@ func (g *generation) walk(f func(rev revision) bool) int {
 }
 
 func (g *generation) String() string {
-	return fmt.Sprintf("g: created[%d] ver[%d], revs %#v\n", g.created, g.ver, g.revs)
+	return fmt.Sprintf("g: created[%d] ver[%d], revs %#v, pi %#v\n", g.created, g.ver, g.revs, g.pi)
 }
 
 func (a generation) equal(b generation) bool {
@@ -351,10 +353,17 @@ func (a generation) equal(b generation) bool {
 	if len(a.revs) != len(b.revs) {
 		return false
 	}
+	if len(a.pi) != len(b.pi) {
+		return false
+	}
 
 	for i := range a.revs {
 		ar, br := a.revs[i], b.revs[i]
 		if ar != br {
+			return false
+		}
+		ap, bp := a.pi[i], b.pi[i]
+		if ap != bp {
 			return false
 		}
 	}

@@ -23,9 +23,9 @@ import (
 
 func TestIndexGet(t *testing.T) {
 	ti := newTreeIndex()
-	ti.Put([]byte("foo"), revision{main: 2})
-	ti.Put([]byte("foo"), revision{main: 4})
-	ti.Tombstone([]byte("foo"), revision{main: 6})
+	ti.Put([]byte("foo"), revision{main: 2}, PrototypeInfo{})
+	ti.Put([]byte("foo"), revision{main: 4}, PrototypeInfo{})
+	ti.Tombstone([]byte("foo"), revision{main: 6}, PrototypeInfo{})
 
 	tests := []struct {
 		rev int64
@@ -44,7 +44,7 @@ func TestIndexGet(t *testing.T) {
 		{6, revision{}, revision{}, 0, ErrRevisionNotFound},
 	}
 	for i, tt := range tests {
-		rev, created, ver, err := ti.Get([]byte("foo"), tt.rev)
+		rev, created, ver, _, err := ti.Get([]byte("foo"), tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
@@ -66,7 +66,7 @@ func TestIndexRange(t *testing.T) {
 
 	ti := newTreeIndex()
 	for i := range allKeys {
-		ti.Put(allKeys[i], allRevs[i])
+		ti.Put(allKeys[i], allRevs[i], PrototypeInfo{})
 	}
 
 	atRev := int64(3)
@@ -109,7 +109,7 @@ func TestIndexRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		keys, revs := ti.Range(tt.key, tt.end, atRev)
+		keys, revs, _ := ti.Range(tt.key, tt.end, atRev)
 		if !reflect.DeepEqual(keys, tt.wkeys) {
 			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
 		}
@@ -121,18 +121,18 @@ func TestIndexRange(t *testing.T) {
 
 func TestIndexTombstone(t *testing.T) {
 	ti := newTreeIndex()
-	ti.Put([]byte("foo"), revision{main: 1})
+	ti.Put([]byte("foo"), revision{main: 1}, PrototypeInfo{})
 
-	err := ti.Tombstone([]byte("foo"), revision{main: 2})
+	err := ti.Tombstone([]byte("foo"), revision{main: 2}, PrototypeInfo{})
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
 
-	_, _, _, err = ti.Get([]byte("foo"), 2)
+	_, _, _, _, err = ti.Get([]byte("foo"), 2)
 	if err != ErrRevisionNotFound {
 		t.Errorf("get error = %v, want nil", err)
 	}
-	err = ti.Tombstone([]byte("foo"), revision{main: 3})
+	err = ti.Tombstone([]byte("foo"), revision{main: 3}, PrototypeInfo{})
 	if err != ErrRevisionNotFound {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
@@ -144,7 +144,7 @@ func TestIndexRangeSince(t *testing.T) {
 
 	ti := newTreeIndex()
 	for i := range allKeys {
-		ti.Put(allKeys[i], allRevs[i])
+		ti.Put(allKeys[i], allRevs[i], PrototypeInfo{})
 	}
 
 	atRev := int64(1)
@@ -219,9 +219,9 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	ti := newTreeIndex()
 	for _, tt := range tests {
 		if tt.remove {
-			ti.Tombstone(tt.key, tt.rev)
+			ti.Tombstone(tt.key, tt.rev, PrototypeInfo{})
 		} else {
-			ti.Put(tt.key, tt.rev)
+			ti.Put(tt.key, tt.rev, PrototypeInfo{})
 		}
 	}
 	for i := int64(1); i < maxRev; i++ {
@@ -234,7 +234,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
+					wti.Tombstone(tt.key, tt.rev, PrototypeInfo{})
 				} else {
 					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
 				}
@@ -250,9 +250,9 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		ti := newTreeIndex()
 		for _, tt := range tests {
 			if tt.remove {
-				ti.Tombstone(tt.key, tt.rev)
+				ti.Tombstone(tt.key, tt.rev, PrototypeInfo{})
 			} else {
-				ti.Put(tt.key, tt.rev)
+				ti.Put(tt.key, tt.rev, PrototypeInfo{})
 			}
 		}
 		am := ti.Compact(i)
@@ -264,7 +264,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
+					wti.Tombstone(tt.key, tt.rev, PrototypeInfo{})
 				} else {
 					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
 				}
@@ -283,10 +283,10 @@ func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.restore(created, modified, ver)
+		keyi.restore(created, modified, ver, PrototypeInfo{})
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(modified.main, modified.sub)
+	okeyi.put(modified.main, modified.sub, PrototypeInfo{})
 }

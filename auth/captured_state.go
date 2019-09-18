@@ -12,6 +12,10 @@ func NewCapturedState(prototypeCache *PrototypeCache, aclCache *AclCache) *Captu
 	}
 }
 
+func (cs *CapturedState) IsRoot() bool {
+	return cs.aclCache == nil
+}
+
 func (cs *CapturedState) GetPrototypeByName(name string) *CachedPrototype {
 	if cs.protoCache == nil {
 		return nil
@@ -26,6 +30,6 @@ func (cs *CapturedState) GetPrototype(idx int64) *CachedPrototype {
 	return cs.protoCache.GetPrototype(idx)
 }
 
-func (cs *CapturedState) CheckRights(path []byte, protoIdx int64) (bool, bool) {
-	return false, false
+func (cs *CapturedState) CheckRights(path []byte) (*CachedPrototype, bool, bool) {
+	return nil, false, false
 }
