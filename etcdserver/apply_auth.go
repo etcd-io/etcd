@@ -182,9 +182,12 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*aut
 }
 
 func (aa *authApplierV3) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
-	cs, err := checkTxnAuth(aa.as, &aa.authInfo, rt)
+	cs2, err := checkTxnAuth(aa.as, &aa.authInfo, rt)
 	if err != nil {
 		return nil, err
+	}
+	if cs2 != nil {
+		cs = cs2
 	}
 	return aa.applierV3.Txn(cs, rt)
 }
