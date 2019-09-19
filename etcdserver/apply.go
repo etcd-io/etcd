@@ -223,7 +223,7 @@ func (a *applierV3backend) putImpl(txn mvcc.TxnWrite, cs *auth.CapturedState, p 
 		return resp, nil
 	}
 
-	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
+	if p.IgnoreValue || p.IgnoreLease || (p.PrevKv && cpr.CanRead) {
 		rr, err = txn.Range(p.Key, nil, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, err
@@ -241,7 +241,7 @@ func (a *applierV3backend) putImpl(txn mvcc.TxnWrite, cs *auth.CapturedState, p 
 	if p.IgnoreLease {
 		leaseID = lease.LeaseID(rr.KVs[0].Lease)
 	}
-	if p.PrevKv {
+	if p.PrevKv && cpr.CanRead {
 		if rr != nil && len(rr.KVs) != 0 {
 			resp.PrevKv = &rr.KVs[0]
 		}
