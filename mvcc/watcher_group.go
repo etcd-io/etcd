@@ -85,7 +85,7 @@ func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
 
 	wb := make(watcherBatch)
 	for _, ev := range evs {
-		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
+		for w := range wg.watcherSetByEvent(&ev) {
 			if ev.Kv.ModRevision >= w.minRev {
 				// don't double notify
 				wb.add(w, ev)
@@ -264,6 +264,21 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 		}
 	}
 	return minRev
+}
+
+// watcherSetByEvent gets the set of watchers that should receive the event.
+func (wg *watcherGroup) watcherSetByEvent(evt *mvccpb.Event) watcherSet {
+	ws := wg.watcherSetByKey(string(evt.Kv.Key))
+	if ws != nil {
+		wsFiltered := make(watcherSet)
+		for wa := range ws {
+			if (wa.cs == nil) || CheckWatch(wa.cs, evt.Kv) {
+				wsFiltered.add(wa)
+			}
+		}
+		ws = wsFiltered
+	}
+	return ws
 }
 
 // watcherSetByKey gets the set of watchers that receive events on the given key.

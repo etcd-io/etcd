@@ -116,6 +116,7 @@ func (s *watchableStore) watch(cs *auth.CapturedState, key, end []byte, startRev
 		id:     id,
 		ch:     ch,
 		fcs:    fcs,
+		cs:     cs,
 	}
 
 	s.mu.Lock()
@@ -500,6 +501,8 @@ type watcher struct {
 	// a chan to send out the watch response.
 	// The chan might be shared with other watchers.
 	ch chan<- WatchResponse
+
+	cs *auth.CapturedState
 }
 
 func (w *watcher) send(wr WatchResponse) bool {
