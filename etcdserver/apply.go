@@ -302,10 +302,12 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, cs *auth.CapturedState, r *pb
 		Count: r.CountOnly,
 	}
 
-	rr, err := txn.Range(r.Key, mkGteRange(r.RangeEnd), ro)
+	rer, err := txn.RangeEx(r.Key, mkGteRange(r.RangeEnd), ro)
 	if err != nil {
 		return nil, err
 	}
+
+	rr := mvcc.CheckRange(txn, cs, rer)
 
 	if r.MaxModRevision != 0 {
 		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }

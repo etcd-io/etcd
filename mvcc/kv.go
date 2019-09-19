@@ -32,6 +32,13 @@ type RangeResult struct {
 	Count int
 }
 
+type RangeExResult struct {
+	Rev   int64
+	Count int
+	Revs  []revision
+	Limit int
+}
+
 type ReadView interface {
 	// FirstRev returns the first KV revision at the time of opening the txn.
 	// After a compaction, the first revision increases to the compaction
@@ -60,6 +67,10 @@ type TxnRead interface {
 	End()
 
 	GetPrototypeInfo(key []byte, atRev int64) PrototypeInfo
+
+	RangeEx(key, end []byte, ro RangeOptions) (r *RangeExResult, err error)
+
+	RangeExReadKV(r []byte, kv *mvccpb.KeyValue)
 }
 
 type WriteView interface {

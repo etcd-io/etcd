@@ -123,7 +123,39 @@ func CheckDelete(cs *auth.CapturedState, keys [][]byte, revs []revision, pi []Pr
 	return fKeys, fRevs, fPi, fCanRead
 }
 
-func CheckGet(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
-	// TODO(s.vorobiev) : impl
-	return false
+func CheckRange(txn TxnRead, cs *auth.CapturedState, rer *RangeExResult) *RangeResult {
+	rr := &RangeResult{KVs: nil, Count: rer.Count, Rev: rer.Rev}
+	if rer.Limit > 0 {
+		rr.KVs = make([]mvccpb.KeyValue, 0, rer.Limit)
+		revBytes := newRevBytes()
+		for _, rev := range rer.Revs {
+			kv := mvccpb.KeyValue{}
+			revToBytes(rev, revBytes)
+			txn.RangeExReadKV(revBytes, &kv)
+			cr, _ := cs.CanReadWrite(kv.Key, kv.PrototypeIdx, kv.ForceFindDepth)
+			if cr {
+				rr.KVs = append(rr.KVs, kv)
+				if len(rr.KVs) >= rer.Limit {
+					break
+				}
+			}
+		}
+		if len(rr.KVs) <= 0 {
+			// It's hard to say what to do here, in general, .Count should be
+			// equal to total number of keys visible, but in order to check that
+			// we'll have to read all the keys and check acl against all keys, that's
+			// an overkill, so we just return .Count as is. On the other hand .KVs
+			// should have as much as .Limit kvs, but what if all acl checks failed,
+			// we can't set .Count to 0 here as well, that'll be inconsistent with the
+			// rest of the logic... So just set KVs no nil and pretend no keys are there,
+			// but keep the original .Count. m.b. we'll have to fix this some time later...
+			rr.KVs = nil
+		}
+	}
+	return rr
+}
+
+func CheckWatch(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
+	cr, _ := cs.CanReadWrite(kv.Key, kv.PrototypeIdx, kv.ForceFindDepth)
+	return cr
 }

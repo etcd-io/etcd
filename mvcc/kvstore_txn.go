@@ -50,6 +50,20 @@ func (tr *storeTxnRead) GetPrototypeInfo(key []byte, atRev int64) PrototypeInfo 
 	return pi
 }
 
+func (tr *storeTxnRead) RangeEx(key, end []byte, ro RangeOptions) (*RangeExResult, error) {
+	return tr.rangeKeysEx(key, end, tr.Rev(), ro)
+}
+
+func (tr *storeTxnRead) RangeExReadKV(r []byte, kv *mvccpb.KeyValue) {
+	_, vs := tr.tx.UnsafeRange(keyBucketName, r, nil, 0)
+	if len(vs) != 1 {
+		plog.Fatalf("range cannot find rev (%v)", r)
+	}
+	if err := kv.Unmarshal(vs[0]); err != nil {
+		plog.Fatalf("cannot unmarshal event: %v", err)
+	}
+}
+
 func (tr *storeTxnRead) End() {
 	tr.tx.Unlock()
 	tr.s.mu.RUnlock()
@@ -84,6 +98,14 @@ func (tw *storeTxnWrite) Range(key, end []byte, ro RangeOptions) (r *RangeResult
 		rev++
 	}
 	return tw.rangeKeys(key, end, rev, ro)
+}
+
+func (tw *storeTxnWrite) RangeEx(key, end []byte, ro RangeOptions) (*RangeExResult, error) {
+	rev := tw.beginRev
+	if len(tw.changes) > 0 {
+		rev++
+	}
+	return tw.rangeKeysEx(key, end, rev, ro)
 }
 
 func (tw *storeTxnWrite) DeleteRangeExPrepare(key, end []byte) ([][]byte, []revision, []PrototypeInfo) {
@@ -153,24 +175,24 @@ func (tw *storeTxnWrite) End() {
 	tw.s.mu.RUnlock()
 }
 
-func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
+func (tr *storeTxnRead) rangeKeysEx(key, end []byte, curRev int64, ro RangeOptions) (*RangeExResult, error) {
 	rev := ro.Rev
 	if rev > curRev {
-		return &RangeResult{KVs: nil, Count: -1, Rev: curRev}, ErrFutureRev
+		return &RangeExResult{Revs: nil, Limit: 0, Count: -1, Rev: curRev}, ErrFutureRev
 	}
 	if rev <= 0 {
 		rev = curRev
 	}
 	if rev < tr.s.compactMainRev {
-		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
+		return &RangeExResult{Revs: nil, Limit: 0, Count: -1, Rev: 0}, ErrCompacted
 	}
 
 	revpairs, _ := tr.s.kvindex.Revisions(key, end, int64(rev))
 	if len(revpairs) == 0 {
-		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
+		return &RangeExResult{Revs: nil, Limit: 0, Count: 0, Rev: curRev}, nil
 	}
 	if ro.Count {
-		return &RangeResult{KVs: nil, Count: len(revpairs), Rev: curRev}, nil
+		return &RangeExResult{Revs: nil, Limit: 0, Count: len(revpairs), Rev: curRev}, nil
 	}
 
 	limit := int(ro.Limit)
@@ -178,19 +200,21 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		limit = len(revpairs)
 	}
 
-	kvs := make([]mvccpb.KeyValue, limit)
-	revBytes := newRevBytes()
-	for i, revpair := range revpairs[:len(kvs)] {
-		revToBytes(revpair, revBytes)
-		_, vs := tr.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
-		if len(vs) != 1 {
-			plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
-		}
-		if err := kvs[i].Unmarshal(vs[0]); err != nil {
-			plog.Fatalf("cannot unmarshal event: %v", err)
+	return &RangeExResult{Revs: revpairs, Limit: limit, Count: len(revpairs), Rev: curRev}, nil
+}
+
+func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
+	rer, err := tr.rangeKeysEx(key, end, curRev, ro)
+	rr := &RangeResult{KVs: nil, Count: rer.Count, Rev: rer.Rev}
+	if rer.Limit > 0 {
+		rr.KVs = make([]mvccpb.KeyValue, rer.Limit)
+		revBytes := newRevBytes()
+		for i, rev := range rer.Revs[:len(rr.KVs)] {
+			revToBytes(rev, revBytes)
+			tr.RangeExReadKV(revBytes, &rr.KVs[i])
 		}
 	}
-	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
+	return rr, err
 }
 
 func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID, pi PrototypeInfo) {
