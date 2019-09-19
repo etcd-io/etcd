@@ -77,8 +77,8 @@ type KeyValue struct {
 	// Index of a prototype for ACL checking. If this key is a dir, this is dir's
 	// prototype, if it's a simple value, it's a prototype of a parent dir.
 	PrototypeIdx int64 `protobuf:"varint,101,opt,name=prototype_idx,json=prototypeIdx,proto3" json:"prototype_idx,omitempty"`
-	// If this prototype has FORCE_SUBOBJECTS_FIND flag this field indicates
-	// how many dirs with FORCE_SUBOBJECTS_FIND are there in a row.
+	// If this field is > 0 it specifies
+	// how many dirs with FORCE_SUBOBJECTS_FIND are there in a row above this path.
 	ForceFindDepth int32 `protobuf:"varint,102,opt,name=force_find_depth,json=forceFindDepth,proto3" json:"force_find_depth,omitempty"`
 }
 
