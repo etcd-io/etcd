@@ -378,7 +378,7 @@ func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error)
 			return nil, ErrNoLeader
 		}
 	}
-	if leader == nil || len(leader.PeerURLs) == 0 {
+	if len(leader.PeerURLs) == 0 {
 		return nil, ErrNoLeader
 	}
 	return leader, nil

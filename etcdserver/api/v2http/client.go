@@ -475,7 +475,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 			)
 		}
 		refresh = &bv
-		if refresh != nil && *refresh {
+		if *refresh {
 			val := r.FormValue("value")
 			if _, ok := r.Form["value"]; ok && val != "" {
 				return emptyReq, false, v2error.NewRequestError(

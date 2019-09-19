@@ -70,9 +70,6 @@ func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 		zap.String("took", resp.SnapshotInfo.Took),
 		zap.Error(err),
 	)
-	if err != nil {
-		return err
-	}
 	clus.Members[lead].SnapshotInfo = resp.SnapshotInfo
 
 	leaderc, err := clus.Members[lead].CreateEtcdClient()
