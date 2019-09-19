@@ -120,12 +120,10 @@ func (tw *storeTxnWrite) DeleteRangeExPrevKV(keys [][]byte, revs []revision, can
 	kvs := make([]*mvccpb.KeyValue, len(revs))
 	revBytes := newRevBytes()
 	for i, revpair := range revs {
-		kvs[i] = &mvccpb.KeyValue{Key: keys[i]}
+		kvs[i] = &mvccpb.KeyValue{}
 		if !canRead[i] {
-			// We can't read the key, but we must return at least something,
-			// returning the key itself is ok since it's writeable by the user, i.e.
-			// user knows that it exists. The rest of the stuff... Let's just skip
-			// it for now, though it's not nice to return 0 revisions...
+			// We can't read the key, don't return anything even the key name,
+			// that's in order to be consistent with Put's behavior.
 			continue
 		}
 		revToBytes(revpair, revBytes)
