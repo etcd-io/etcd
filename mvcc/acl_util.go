@@ -16,13 +16,6 @@ type CheckPutResult struct {
 	ProtoInfo PrototypeInfo
 }
 
-type CheckDeleteResult struct {
-	Key     []byte
-	MainRev int64
-	SubRev  int64
-	CanRead bool
-}
-
 func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []CheckPutResult {
 	res := make([]CheckPutResult, len(requests))
 
@@ -111,9 +104,23 @@ func CheckPut(txn TxnRead, cs *auth.CapturedState, requests []*pb.PutRequest) []
 	return res
 }
 
-func CheckDelete(txn TxnRead, cs *auth.CapturedState, request *pb.DeleteRangeRequest) []CheckDeleteResult {
-	// TODO(s.vorobiev) : impl
-	return nil
+func CheckDelete(cs *auth.CapturedState, keys [][]byte, revs []revision, pi []PrototypeInfo) ([][]byte, []revision, []PrototypeInfo, []bool) {
+	fKeys := make([][]byte, 0, len(keys))
+	fRevs := make([]revision, 0, len(revs))
+	fPi := make([]PrototypeInfo, 0, len(pi))
+	fCanRead := make([]bool, 0, len(keys))
+
+	for i, key := range keys {
+		cr, cw := cs.CanReadWrite(key, pi[i].PrototypeIdx, pi[i].ForceFindDepth)
+		if cw {
+			fKeys = append(fKeys, key)
+			fRevs = append(fRevs, revs[i])
+			fPi = append(fPi, pi[i])
+			fCanRead = append(fCanRead, cr)
+		}
+	}
+
+	return fKeys, fRevs, fPi, fCanRead
 }
 
 func CheckGet(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {

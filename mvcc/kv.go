@@ -86,6 +86,16 @@ type TxnWrite interface {
 	WriteView
 	// Changes gets the changes made since opening the write txn.
 	Changes() []mvccpb.KeyValue
+
+	DeleteRangeExPrepare(key, end []byte) ([][]byte, []revision, []PrototypeInfo)
+
+	DeleteRangeExPrevKV(keys [][]byte, revs []revision, canRead []bool) []*mvccpb.KeyValue
+
+	// DeleteRangeEx deletes given keys from the store.
+	// A deleteRangeEx increases the rev of the store if len(keys) > 0.
+	// The returned rev is the current revision of the KV when the operation is executed.
+	// It also generates one event for each key delete in the event history.
+	DeleteRangeEx(keys [][]byte, revs []revision, pi []PrototypeInfo) int64
 }
 
 // txnReadWrite coerces a read txn to a write, panicking on any write operation.
@@ -96,6 +106,18 @@ func (trw *txnReadWrite) Put(key, value []byte, lease lease.LeaseID, pi Prototyp
 	panic("unexpected Put")
 }
 func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { return nil }
+
+func (trw *txnReadWrite) DeleteRangeExPrepare(key, end []byte) ([][]byte, []revision, []PrototypeInfo) {
+	panic("unexpected DeleteRangeExPrepare")
+}
+
+func (trw *txnReadWrite) DeleteRangeExPrevKV(keys [][]byte, revs []revision, canRead []bool) []*mvccpb.KeyValue {
+	panic("unexpected DeleteRangeExPrevKV")
+}
+
+func (trw *txnReadWrite) DeleteRangeEx(keys [][]byte, revs []revision, pi []PrototypeInfo) int64 {
+	panic("unexpected DeleteRangeEx")
+}
 
 func NewReadOnlyTxnWrite(txn TxnRead) TxnWrite { return &txnReadWrite{txn} }
 

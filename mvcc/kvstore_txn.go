@@ -86,11 +86,51 @@ func (tw *storeTxnWrite) Range(key, end []byte, ro RangeOptions) (r *RangeResult
 	return tw.rangeKeys(key, end, rev, ro)
 }
 
-func (tw *storeTxnWrite) DeleteRange(key, end []byte) (int64, int64) {
-	if n := tw.deleteRange(key, end); n != 0 || len(tw.changes) > 0 {
-		return n, int64(tw.beginRev + 1)
+func (tw *storeTxnWrite) DeleteRangeExPrepare(key, end []byte) ([][]byte, []revision, []PrototypeInfo) {
+	rev := tw.beginRev
+	if len(tw.changes) > 0 {
+		rev++
 	}
-	return 0, int64(tw.beginRev)
+	return tw.s.kvindex.Range(key, end, rev)
+}
+
+func (tw *storeTxnWrite) DeleteRangeExPrevKV(keys [][]byte, revs []revision, canRead []bool) []*mvccpb.KeyValue {
+	kvs := make([]*mvccpb.KeyValue, len(revs))
+	revBytes := newRevBytes()
+	for i, revpair := range revs {
+		kvs[i] = &mvccpb.KeyValue{Key: keys[i]}
+		if !canRead[i] {
+			// We can't read the key, but we must return at least something,
+			// returning the key itself is ok since it's writeable by the user, i.e.
+			// user knows that it exists. The rest of the stuff... Let's just skip
+			// it for now, though it's not nice to return 0 revisions...
+			continue
+		}
+		revToBytes(revpair, revBytes)
+		_, vs := tw.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
+		if len(vs) != 1 {
+			plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+		}
+		if err := kvs[i].Unmarshal(vs[0]); err != nil {
+			plog.Fatalf("cannot unmarshal event: %v", err)
+		}
+	}
+	return kvs
+}
+
+func (tw *storeTxnWrite) DeleteRangeEx(keys [][]byte, revs []revision, pi []PrototypeInfo) int64 {
+	for i, key := range keys {
+		tw.delete(key, revs[i], pi[i])
+	}
+	if len(keys) != 0 || len(tw.changes) > 0 {
+		return int64(tw.beginRev + 1)
+	}
+	return int64(tw.beginRev)
+}
+
+func (tw *storeTxnWrite) DeleteRange(key, end []byte) (n, rev int64) {
+	keys, revs, pi := tw.DeleteRangeExPrepare(key, end)
+	return int64(len(keys)), tw.DeleteRangeEx(keys, revs, pi)
 }
 
 func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID, pi PrototypeInfo) int64 {
@@ -209,21 +249,6 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID, pi Protot
 			panic("unexpected error from lease Attach")
 		}
 	}
-}
-
-func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
-	rrev := tw.beginRev
-	if len(tw.changes) > 0 {
-		rrev += 1
-	}
-	keys, revs, pi := tw.s.kvindex.Range(key, end, rrev)
-	if len(keys) == 0 {
-		return 0
-	}
-	for i, key := range keys {
-		tw.delete(key, revs[i], pi[i])
-	}
-	return int64(len(keys))
 }
 
 func (tw *storeTxnWrite) delete(key []byte, rev revision, pi PrototypeInfo) {

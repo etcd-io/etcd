@@ -261,20 +261,17 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, cs *auth.CapturedState
 		defer txn.End()
 	}
 
+	keys, revs, pi := txn.DeleteRangeExPrepare(dr.Key, end)
+
+	fKeys, fRevs, fPi, fCanRead := mvcc.CheckDelete(cs, keys, revs, pi)
+
 	if dr.PrevKv {
-		rr, err := txn.Range(dr.Key, end, mvcc.RangeOptions{})
-		if err != nil {
-			return nil, err
-		}
-		if rr != nil {
-			resp.PrevKvs = make([]*mvccpb.KeyValue, len(rr.KVs))
-			for i := range rr.KVs {
-				resp.PrevKvs[i] = &rr.KVs[i]
-			}
-		}
+		resp.PrevKvs = txn.DeleteRangeExPrevKV(fKeys, fRevs, fCanRead)
 	}
 
-	resp.Deleted, resp.Header.Revision = txn.DeleteRange(dr.Key, end)
+	resp.Deleted = int64(len(fKeys))
+	resp.Header.Revision = txn.DeleteRangeEx(fKeys, fRevs, fPi)
+
 	return resp, nil
 }
 
