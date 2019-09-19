@@ -718,7 +718,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		numOfWrites          = 100
 		maxNumOfPutsPerWrite = 10
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
-		mu                   sync.Mutex // mu protectes committedKVs
+		mu                   sync.Mutex // mu protects committedKVs
 	)
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
