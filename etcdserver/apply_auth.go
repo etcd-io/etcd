@@ -237,10 +237,14 @@ func (aa *authApplierV3) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRespo
 
 func (aa *authApplierV3) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUserListAclResponse, error) {
 	err := aa.as.IsAdminPermitted(&aa.authInfo)
-	if err != nil && r.User != aa.authInfo.Username {
+	if err != nil && len(r.User) > 0 && r.User != aa.authInfo.Username {
 		aa.authInfo.Username = ""
 		aa.authInfo.Revision = 0
 		return &pb.AuthUserListAclResponse{}, err
+	}
+
+	if len(r.User) <= 0 {
+		r = &pb.AuthUserListAclRequest{User: aa.authInfo.Username}
 	}
 
 	return aa.applierV3.UserListAcl(r)
@@ -248,10 +252,14 @@ func (aa *authApplierV3) UserListAcl(r *pb.AuthUserListAclRequest) (*pb.AuthUser
 
 func (aa *authApplierV3) UserRevisions(r *pb.AuthUserRevisionsRequest) (*pb.AuthUserRevisionsResponse, error) {
 	err := aa.as.IsAdminPermitted(&aa.authInfo)
-	if err != nil && r.User != aa.authInfo.Username {
+	if err != nil && len(r.User) > 0 && r.User != aa.authInfo.Username {
 		aa.authInfo.Username = ""
 		aa.authInfo.Revision = 0
 		return &pb.AuthUserRevisionsResponse{}, err
+	}
+
+	if len(r.User) <= 0 {
+		r = &pb.AuthUserRevisionsRequest{User: aa.authInfo.Username}
 	}
 
 	return aa.applierV3.UserRevisions(r)
