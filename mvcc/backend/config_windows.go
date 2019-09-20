@@ -19,7 +19,7 @@ package backend
 import bolt "github.com/coreos/bbolt"
 
 var boltOpenOptions = &bolt.Options{
-	NoSync: true
+	NoSync: true,
 }
 
 // setting mmap size != 0 on windows will allocate the entire
