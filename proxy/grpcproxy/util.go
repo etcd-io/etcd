@@ -16,7 +16,9 @@ package grpcproxy
 
 import (
 	"context"
+	"sort"
 
+	"github.com/coreos/etcd/auth/authpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -70,4 +72,19 @@ func AuthStreamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc 
 		opts = append(opts, grpc.PerRPCCredentials(tokenCred))
 	}
 	return streamer(ctx, desc, cc, method, opts...)
+}
+
+func aclToString(acl []*authpb.AclEntry) string {
+	sortedAcl := make([]*authpb.AclEntry, 0, len(acl))
+	for _, entry := range acl {
+		sortedAcl = append(sortedAcl, entry)
+	}
+	sort.Slice(sortedAcl, func(i, j int) bool { return sortedAcl[i].Path < sortedAcl[j].Path })
+
+	h := &authpb.AclHelper{Acl: sortedAcl}
+	b, err := h.Marshal()
+	if err != nil {
+		plog.Panicf("failed to marshal acl %v: %s", acl, err)
+	}
+	return string(b)
 }

@@ -70,3 +70,8 @@ message AclEntry {
   uint32 rightsSet = 2;
   uint32 rightsUnset = 3;
 }
+
+// For internal use only
+message AclHelper {
+  repeated AclEntry acl = 1;
+}
