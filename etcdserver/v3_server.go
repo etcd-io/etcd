@@ -141,7 +141,11 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		var resp *pb.TxnResponse
 		var err error
 		chk := func(ai *auth.AuthInfo) (*auth.CapturedState, error) {
-			return checkTxnAuth(s.lessor, s.authStore, ai, r)
+			cs, err := checkTxnAuth(s.lessor, s.authStore, ai, r)
+			if cs == nil {
+				cs = auth.EmptyCapturedState
+			}
+			return cs, err
 		}
 
 		defer func(start time.Time) {
