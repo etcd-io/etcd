@@ -166,8 +166,8 @@ func TestV3CorruptAlarm(t *testing.T) {
 	be := backend.NewDefaultBackend(fp)
 	s := mvcc.NewStore(be, nil, &fakeConsistentIndex{13})
 	// NOTE: cluster_proxy mode with namespacing won't set 'k', but namespace/'k'.
-	s.Put([]byte("abc"), []byte("def"), 0)
-	s.Put([]byte("xyz"), []byte("123"), 0)
+	s.Put([]byte("abc"), []byte("def"), 0, mvcc.PrototypeInfo{})
+	s.Put([]byte("xyz"), []byte("123"), 0, mvcc.PrototypeInfo{})
 	s.Compact(5)
 	s.Commit()
 	s.Close()
