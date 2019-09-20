@@ -19,18 +19,17 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/proxy/grpcproxy/cache"
 )
 
 type kvProxy struct {
-	kv    clientv3.KV
-	cache cache.Cache
+	kv clientv3.KV
+	//cache cache.Cache
 }
 
 func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 	kv := &kvProxy{
-		kv:    c.KV,
-		cache: cache.NewCache(cache.DefaultMaxEntries),
+		kv: c.KV,
+		//cache: cache.NewCache(cache.DefaultMaxEntries),
 	}
 	donec := make(chan struct{})
 	close(donec)
@@ -38,7 +37,7 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 }
 
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	if r.Serializable {
+	/*if r.Serializable {
 		resp, err := p.cache.Get(r)
 		switch err {
 		case nil:
@@ -50,7 +49,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 		}
 
 		cachedMisses.Inc()
-	}
+	}*/
 
 	resp, err := p.kv.Do(ctx, RangeRequestToOp(r))
 	if err != nil {
@@ -61,30 +60,30 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	req := *r
 	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(&req, gresp)
-	cacheKeys.Set(float64(p.cache.Size()))
+	//p.cache.Add(&req, gresp)
+	//cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	p.cache.Invalidate(r.Key, nil)
-	cacheKeys.Set(float64(p.cache.Size()))
+	//p.cache.Invalidate(r.Key, nil)
+	//cacheKeys.Set(float64(p.cache.Size()))
 
 	resp, err := p.kv.Do(ctx, PutRequestToOp(r))
 	return (*pb.PutResponse)(resp.Put()), err
 }
 
 func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	p.cache.Invalidate(r.Key, r.RangeEnd)
-	cacheKeys.Set(float64(p.cache.Size()))
+	//p.cache.Invalidate(r.Key, r.RangeEnd)
+	//cacheKeys.Set(float64(p.cache.Size()))
 
 	resp, err := p.kv.Do(ctx, DelRequestToOp(r))
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
 func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
-	for i := range resps {
+	/*for i := range resps {
 		switch tv := resps[i].Response.(type) {
 		case *pb.ResponseOp_ResponsePut:
 			p.cache.Invalidate(reqs[i].GetRequestPut().Key, nil)
@@ -96,7 +95,7 @@ func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
 			req.Serializable = true
 			p.cache.Add(&req, tv.ResponseRange)
 		}
-	}
+	}*/
 }
 
 func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
@@ -108,9 +107,9 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	resp := opResp.Txn()
 
 	// txn may claim an outdated key is updated; be safe and invalidate
-	for _, cmp := range r.Compare {
+	/*for _, cmp := range r.Compare {
 		p.cache.Invalidate(cmp.Key, cmp.RangeEnd)
-	}
+	}*/
 	// update any fetched keys
 	if resp.Succeeded {
 		p.txnToCache(r.Success, resp.Responses)
@@ -118,7 +117,7 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 		p.txnToCache(r.Failure, resp.Responses)
 	}
 
-	cacheKeys.Set(float64(p.cache.Size()))
+	//cacheKeys.Set(float64(p.cache.Size()))
 
 	return (*pb.TxnResponse)(resp), nil
 }
@@ -131,10 +130,10 @@ func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Com
 
 	resp, err := p.kv.Compact(ctx, r.Revision, opts...)
 	if err == nil {
-		p.cache.Compact(r.Revision)
+		//p.cache.Compact(r.Revision)
 	}
 
-	cacheKeys.Set(float64(p.cache.Size()))
+	//cacheKeys.Set(float64(p.cache.Size()))
 
 	return (*pb.CompactionResponse)(resp), err
 }
