@@ -133,7 +133,7 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 	for i := 0; i < itemn; i++ {
 		go func() {
 			defer wg.Done()
-			l.Keys()
+			l.Items()
 		}()
 	}
 
@@ -166,8 +166,8 @@ func TestLessorRevoke(t *testing.T) {
 	}
 
 	items := []LeaseItem{
-		{"foo"},
-		{"bar"},
+		{"foo", 0, 0},
+		{"bar", 0, 0},
 	}
 
 	if err = le.Attach(l.ID, items); err != nil {
@@ -299,8 +299,8 @@ func TestLessorDetach(t *testing.T) {
 	}
 
 	items := []LeaseItem{
-		{"foo"},
-		{"bar"},
+		{"foo", 0, 0},
+		{"bar", 0, 0},
 	}
 
 	if err := le.Attach(l.ID, items); err != nil {
@@ -315,7 +315,7 @@ func TestLessorDetach(t *testing.T) {
 	if len(l.itemSet) != 1 {
 		t.Fatalf("len(l.itemSet) = %d, failed to de-attach items", len(l.itemSet))
 	}
-	if _, ok := l.itemSet[LeaseItem{"bar"}]; !ok {
+	if _, ok := l.itemSet["bar"]; !ok {
 		t.Fatalf("de-attached wrong item, want %q exists", "bar")
 	}
 }

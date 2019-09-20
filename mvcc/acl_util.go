@@ -7,6 +7,7 @@ import (
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
@@ -158,4 +159,9 @@ func CheckRange(txn TxnRead, cs *auth.CapturedState, rer *RangeExResult) *RangeR
 func CheckWatch(cs *auth.CapturedState, kv *mvccpb.KeyValue) bool {
 	cr, _ := cs.CanReadWrite(kv.Key, kv.PrototypeIdx, kv.ForceFindDepth)
 	return cr
+}
+
+func CheckLease(cs *auth.CapturedState, li *lease.LeaseItem) bool {
+	_, cw := cs.CanReadWrite([]byte(li.Key), li.PrototypeIdx, li.ForceFindDepth)
+	return cw
 }

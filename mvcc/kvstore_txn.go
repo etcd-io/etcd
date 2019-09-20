@@ -266,7 +266,8 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID, pi Protot
 		if tw.s.le == nil {
 			panic("no lessor to attach lease")
 		}
-		err = tw.s.le.Attach(leaseID, []lease.LeaseItem{{Key: string(key)}})
+		err = tw.s.le.Attach(leaseID, []lease.LeaseItem{{Key: string(key),
+			PrototypeIdx: pi.PrototypeIdx, ForceFindDepth: pi.ForceFindDepth}})
 		if err != nil {
 			panic("unexpected error from lease Attach")
 		}

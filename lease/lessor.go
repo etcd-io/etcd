@@ -58,6 +58,11 @@ type RangeDeleter func() TxnDelete
 
 type LeaseID int64
 
+type leaseInfo struct {
+	lid  LeaseID
+	item LeaseItem
+}
+
 // Lessor owns leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
 	// SetRangeDeleter lets the lessor create TxnDeletes to the store.
@@ -130,7 +135,7 @@ type lessor struct {
 	// findExpiredLeases and Renew should be the most frequent operations.
 	leaseMap map[LeaseID]*Lease
 
-	itemMap map[LeaseItem]LeaseID
+	itemMap map[string]leaseInfo
 
 	// When a lease expires, the lessor will delete the
 	// leased range (or key) by the RangeDeleter.
@@ -158,7 +163,7 @@ func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
 func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 	l := &lessor{
 		leaseMap:    make(map[LeaseID]*Lease),
-		itemMap:     make(map[LeaseItem]LeaseID),
+		itemMap:     make(map[string]leaseInfo),
 		b:           b,
 		minLeaseTTL: minLeaseTTL,
 		// expiredC is a small buffered chan to avoid unnecessary blocking.
@@ -211,7 +216,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	l := &Lease{
 		ID:      id,
 		ttl:     ttl,
-		itemSet: make(map[LeaseItem]struct{}),
+		itemSet: make(map[string]LeaseItem),
 		revokec: make(chan struct{}),
 	}
 
@@ -258,10 +263,10 @@ func (le *lessor) Revoke(id LeaseID) error {
 
 	// sort keys so deletes are in same order among all members,
 	// otherwise the backened hashes will be different
-	keys := l.Keys()
-	sort.StringSlice(keys).Sort()
-	for _, key := range keys {
-		txn.DeleteRange([]byte(key), nil)
+	items := l.Items()
+	sort.Slice(items, func(i, j int) bool { return items[i].Key < items[j].Key })
+	for _, it := range items {
+		txn.DeleteRange([]byte(it.Key), nil)
 	}
 
 	le.mu.Lock()
@@ -422,8 +427,8 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 
 	l.mu.Lock()
 	for _, it := range items {
-		l.itemSet[it] = struct{}{}
-		le.itemMap[it] = id
+		l.itemSet[it.Key] = it
+		le.itemMap[it.Key] = leaseInfo{id, it}
 	}
 	l.mu.Unlock()
 	return nil
@@ -431,7 +436,7 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 
 func (le *lessor) GetLease(item LeaseItem) LeaseID {
 	le.mu.Lock()
-	id := le.itemMap[item]
+	id := le.itemMap[item.Key].lid
 	le.mu.Unlock()
 	return id
 }
@@ -449,8 +454,8 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 
 	l.mu.Lock()
 	for _, it := range items {
-		delete(l.itemSet, it)
-		delete(le.itemMap, it)
+		delete(l.itemSet, it.Key)
+		delete(le.itemMap, it.Key)
 	}
 	l.mu.Unlock()
 	return nil
@@ -463,7 +468,7 @@ func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) {
 	le.b = b
 	le.rd = rd
 	le.leaseMap = make(map[LeaseID]*Lease)
-	le.itemMap = make(map[LeaseItem]LeaseID)
+	le.itemMap = make(map[string]leaseInfo)
 	le.initAndRecover()
 }
 
@@ -555,7 +560,7 @@ func (le *lessor) initAndRecover() {
 			ttl: lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
-			itemSet: make(map[LeaseItem]struct{}),
+			itemSet: make(map[string]LeaseItem),
 			expiry:  forever,
 			revokec: make(chan struct{}),
 		}
@@ -575,7 +580,7 @@ type Lease struct {
 
 	// mu protects concurrent accesses to itemSet
 	mu      sync.RWMutex
-	itemSet map[LeaseItem]struct{}
+	itemSet map[string]LeaseItem
 	revokec chan struct{}
 }
 
@@ -618,14 +623,14 @@ func (l *Lease) forever() {
 }
 
 // Keys returns all the keys attached to the lease.
-func (l *Lease) Keys() []string {
+func (l *Lease) Items() []LeaseItem {
 	l.mu.RLock()
-	keys := make([]string, 0, len(l.itemSet))
-	for k := range l.itemSet {
-		keys = append(keys, k.Key)
+	items := make([]LeaseItem, 0, len(l.itemSet))
+	for _, it := range l.itemSet {
+		items = append(items, it)
 	}
 	l.mu.RUnlock()
-	return keys
+	return items
 }
 
 // Remaining returns the remaining time of the lease.
@@ -639,7 +644,9 @@ func (l *Lease) Remaining() time.Duration {
 }
 
 type LeaseItem struct {
-	Key string
+	Key            string
+	PrototypeIdx   int64
+	ForceFindDepth int32
 }
 
 func int64ToBytes(n int64) []byte {

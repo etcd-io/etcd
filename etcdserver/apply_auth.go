@@ -202,10 +202,13 @@ func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevoke
 func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
 	lease := aa.lessor.Lookup(leaseID)
 	if lease != nil {
-		for _, key := range lease.Keys() {
-			_, err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key))
+		for _, it := range lease.Items() {
+			cs, err := aa.as.IsPutPermitted(&aa.authInfo, []byte(it.Key))
 			if err != nil {
 				return err
+			}
+			if !mvcc.CheckLease(cs, &it) {
+				return auth.ErrPermissionDenied
 			}
 		}
 	}

@@ -117,10 +117,10 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		if lreq.LeaseTimeToLiveRequest.Keys {
-			ks := l.Keys()
-			kbs := make([][]byte, len(ks))
-			for i := range ks {
-				kbs[i] = []byte(ks[i])
+			its := l.Items()
+			kbs := make([][]byte, len(its))
+			for i := range its {
+				kbs[i] = []byte(its[i].Key)
 			}
 			resp.LeaseTimeToLiveResponse.Keys = kbs
 		}
