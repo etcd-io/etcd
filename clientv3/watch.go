@@ -822,7 +822,8 @@ func (wr *watchRequest) toPB() *pb.WatchRequest {
 
 func streamKeyFromCtx(ctx context.Context) string {
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		return fmt.Sprintf("%+v", md)
+		return fmt.Sprintf("%+v%+v", md, ctx.Value("token"))
+	} else {
+		return fmt.Sprintf("%+v", ctx.Value("token"))
 	}
-	return ""
 }

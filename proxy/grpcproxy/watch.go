@@ -43,6 +43,9 @@ type watchProxy struct {
 
 	// kv is used for permission checking
 	kv clientv3.KV
+
+	// auth is used for acl fetch
+	auth clientv3.Auth
 }
 
 func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
@@ -52,7 +55,8 @@ func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 		ctx:    cctx,
 		leader: newLeader(c.Ctx(), c.Watcher),
 
-		kv: c.KV, // for permission checking
+		kv:   c.KV, // for permission checking
+		auth: c.Auth,
 	}
 	wp.ranges = newWatchRanges(wp)
 	ch := make(chan struct{})
@@ -98,6 +102,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		kv:       wp.kv,
+		auth:     wp.auth,
 	}
 
 	var lostLeaderC <-chan struct{}
@@ -180,6 +185,9 @@ type watchProxyStream struct {
 
 	// kv is used for permission checking
 	kv clientv3.KV
+
+	// auth is used for acl fetch
+	auth clientv3.Auth
 }
 
 func (wps *watchProxyStream) close() {
@@ -219,6 +227,19 @@ func (wps *watchProxyStream) checkPermissionForWatch(key, rangeEnd []byte) error
 	return err
 }
 
+func (wps *watchProxyStream) getAcl() (string, error) {
+	if len(getAuthTokenFromClient(wps.ctx)) <= 0 {
+		// No auth, treat as no acl
+		return "", nil
+	}
+
+	ar, err := wps.auth.UserListAcl(wps.ctx, "")
+	if err == nil {
+		return aclToString(ar.Acl), nil
+	}
+	return "", err
+}
+
 func (wps *watchProxyStream) recvLoop() error {
 	for {
 		req, err := wps.stream.Recv()
@@ -229,16 +250,24 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CreateRequest:
 			cr := uv.CreateRequest
 
-			if err = wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil && err == rpctypes.ErrPermissionDenied {
-				// Return WatchResponse which is caused by permission checking if and only if
-				// the error is permission denied. For other errors (e.g. timeout or connection closed),
-				// the permission checking mechanism should do nothing for preserving error code.
-				wps.watchCh <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, WatchId: -1, Created: true, Canceled: true}
+			acl, err := wps.getAcl()
+			if err != nil {
+				wps.watchCh <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, WatchId: -1, Created: true, Canceled: true, CancelReason: err.Error()}
+				continue
+			}
+
+			// It used to be "err != nil && err == rpctypes.ErrPermissionDenied" check here, the reason was
+			// that if check is not a permission error then we should just move on, however, what if token was invalid
+			// or a transient failure happened, in that case we could coalesce with existing watch on the same range which
+			// may be incorrect, i.e. we've bypassed security check just because server had temporary problems.
+			// With jwt we also may get rpctypes.ErrAuthOldRevision here, so in general if check failed - it failed.
+			if err = wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
+				wps.watchCh <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, WatchId: -1, Created: true, Canceled: true, CancelReason: err.Error()}
 				continue
 			}
 
 			w := &watcher{
-				wr:  watchRange{string(cr.Key), string(cr.RangeEnd)},
+				wr:  watchRange{string(cr.Key), string(cr.RangeEnd), acl},
 				id:  wps.nextWatcherID,
 				wps: wps,
 

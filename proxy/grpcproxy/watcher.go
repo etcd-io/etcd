@@ -25,6 +25,7 @@ import (
 
 type watchRange struct {
 	key, end string
+	acl      string
 }
 
 func (wr *watchRange) valid() bool {
