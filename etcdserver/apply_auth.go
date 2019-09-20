@@ -67,7 +67,7 @@ func (aa *authApplierV3) Put(txn mvcc.TxnWrite, cs *auth.CapturedState, r *pb.Pu
 		return nil, err
 	}
 
-	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
+	if err := checkLeasePuts(aa.lessor, aa.as, &aa.authInfo, lease.LeaseID(r.Lease)); err != nil {
 		// The specified lease is already attached with a key that cannot
 		// be written by this user. It means the user cannot revoke the
 		// lease so attaching the lease to the newly written key should
@@ -108,7 +108,7 @@ func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, cs *auth.CapturedState, 
 	return aa.applierV3.DeleteRange(txn, cs, r)
 }
 
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) (*auth.CapturedState, error) {
+func checkTxnReqsPermission(lessor lease.Lessor, as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) (*auth.CapturedState, error) {
 	var cs *auth.CapturedState
 	var err error
 	for _, requ := range reqs {
@@ -133,6 +133,18 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 				return cs, err
 			}
 
+			err = checkLeasePuts(lessor, as, ai, lease.LeaseID(tv.RequestPut.Lease))
+			if err != nil {
+				return cs, err
+			}
+
+			if tv.RequestPut.PrevKv {
+				cs, err = as.IsRangePermitted(ai, tv.RequestPut.Key, nil)
+				if err != nil {
+					return cs, err
+				}
+			}
+
 		case *pb.RequestOp_RequestDeleteRange:
 			if tv.RequestDeleteRange == nil {
 				continue
@@ -155,7 +167,7 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 	return cs, nil
 }
 
-func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*auth.CapturedState, error) {
+func checkTxnAuth(lessor lease.Lessor, as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*auth.CapturedState, error) {
 	var cs *auth.CapturedState
 	var err error
 	for _, c := range rt.Compare {
@@ -164,14 +176,14 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*aut
 			return cs, err
 		}
 	}
-	cs2, err := checkTxnReqsPermission(as, ai, rt.Success)
+	cs2, err := checkTxnReqsPermission(lessor, as, ai, rt.Success)
 	if err != nil {
 		return cs2, err
 	}
 	if cs2 != nil {
 		cs = cs2
 	}
-	cs2, err = checkTxnReqsPermission(as, ai, rt.Failure)
+	cs2, err = checkTxnReqsPermission(lessor, as, ai, rt.Failure)
 	if err != nil {
 		return cs2, err
 	}
@@ -182,7 +194,7 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) (*aut
 }
 
 func (aa *authApplierV3) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
-	cs2, err := checkTxnAuth(aa.as, &aa.authInfo, rt)
+	cs2, err := checkTxnAuth(aa.lessor, aa.as, &aa.authInfo, rt)
 	if err != nil {
 		return nil, err
 	}
@@ -193,17 +205,17 @@ func (aa *authApplierV3) Txn(cs *auth.CapturedState, rt *pb.TxnRequest) (*pb.Txn
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	if err := aa.checkLeasePuts(lease.LeaseID(lc.ID)); err != nil {
+	if err := checkLeasePuts(aa.lessor, aa.as, &aa.authInfo, lease.LeaseID(lc.ID)); err != nil {
 		return nil, err
 	}
 	return aa.applierV3.LeaseRevoke(lc)
 }
 
-func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
-	lease := aa.lessor.Lookup(leaseID)
+func checkLeasePuts(lessor lease.Lessor, as auth.AuthStore, ai *auth.AuthInfo, leaseID lease.LeaseID) error {
+	lease := lessor.Lookup(leaseID)
 	if lease != nil {
 		for _, it := range lease.Items() {
-			cs, err := aa.as.IsPutPermitted(&aa.authInfo, []byte(it.Key))
+			cs, err := as.IsPutPermitted(ai, []byte(it.Key))
 			if err != nil {
 				return err
 			}
