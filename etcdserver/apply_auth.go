@@ -301,6 +301,8 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 		return true
 	case r.AuthUserUpdateAcl != nil:
 		return true
+	case r.Compaction != nil:
+		return true
 	default:
 		return false
 	}
