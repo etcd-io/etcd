@@ -163,6 +163,10 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 }
 
 func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) (bool, *auth.CapturedState) {
+	if (len(wcr.Key) > 0) && (string(wcr.Key) == "__lostleader") && (wcr.RangeEnd == nil) {
+		return true, nil
+	}
+
 	authInfo, err := sws.ag.AuthInfoFromCtx(sws.gRPCStream.Context())
 	if err != nil {
 		return false, nil
