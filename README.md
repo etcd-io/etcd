@@ -56,12 +56,9 @@ Time:
 - Nov 14, 2019 11:00 AM
 - Dec 12, 2019 11:00 AM
 
-Join Hangouts Meet
-meet.google.com/umg-nrxn-qvs
+Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
 
-Join by phone
-‪+1 405-792-0633‬ PIN: ‪299 906‬#
-More phone numbers
+Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
 
 ## Getting started
