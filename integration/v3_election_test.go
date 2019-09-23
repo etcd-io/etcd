@@ -140,13 +140,10 @@ func TestElectionFailover(t *testing.T) {
 	}
 
 	// next leader
-	electedc := make(chan struct{})
+	errChan := make(chan error)
 	go func() {
 		ee := concurrency.NewElection(ss[1], "test-election")
-		if eer := ee.Campaign(context.TODO(), "bar"); eer != nil {
-			t.Fatal(eer)
-		}
-		electedc <- struct{}{}
+		errChan <- ee.Campaign(context.TODO(), "bar")
 	}()
 
 	// invoke leader failover
@@ -166,7 +163,9 @@ func TestElectionFailover(t *testing.T) {
 	}
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
-	<-electedc
+	if err := <-errChan; err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestElectionSessionRelock ensures that campaigning twice on the same election
