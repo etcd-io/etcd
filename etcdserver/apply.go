@@ -331,7 +331,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
-	trace.Step("Filter and sort the key-value pairs.")
+	trace.Step("filter and sort the key-value pairs")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
@@ -341,7 +341,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
-	trace.Step("Assemble the response.")
+	trace.Step("assemble the response")
 	return resp, nil
 }
 
