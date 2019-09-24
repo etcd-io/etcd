@@ -411,7 +411,7 @@ Follow the instructions when using these flags.
 + env variable: ETCD_ENABLE_PPROF
 
 ### --metrics
-+ Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
++ Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
 + default: basic
 + env variable: ETCD_METRICS
 
