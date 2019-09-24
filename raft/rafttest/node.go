@@ -64,7 +64,7 @@ func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 
 func (n *node) start() {
 	n.stopc = make(chan struct{})
-	ticker := time.Tick(5 * time.Millisecond)
+	ticker := time.NewTicker(5 * time.Millisecond).C
 
 	go func() {
 		for {
