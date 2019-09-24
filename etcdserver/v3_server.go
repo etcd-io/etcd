@@ -86,11 +86,12 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.New("Range",
-		traceutil.Field{Key: "RangeBegin", Value: string(r.Key)},
-		traceutil.Field{Key: "RangeEnd", Value: string(r.RangeEnd)},
+	trace := traceutil.New("range",
+		s.getLogger(),
+		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
+		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
-	ctx = context.WithValue(ctx, "trace", trace)
+	ctx = context.WithValue(ctx, traceutil.CtxKey, trace)
 
 	var resp *pb.RangeResponse
 	var err error
@@ -98,16 +99,16 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), start, r, resp, err)
 		if resp != nil {
 			trace.AddField(
-				traceutil.Field{Key: "ResponseCount", Value: len(resp.Kvs)},
-				traceutil.Field{Key: "ResponseRevision", Value: resp.Header.Revision},
+				traceutil.Field{Key: "response_count", Value: len(resp.Kvs)},
+				traceutil.Field{Key: "response_revision", Value: resp.Header.Revision},
 			)
 		}
-		trace.LogIfLong(rangeTraceThreshold, s.getLogger())
+		trace.LogIfLong(rangeTraceThreshold)
 	}(time.Now())
 
 	if !r.Serializable {
 		err = s.linearizableReadNotify(ctx)
-		trace.Step("Agreement among raft nodes before linearized reading.")
+		trace.Step("agreement among raft nodes before linearized reading")
 		if err != nil {
 			return nil, err
 		}
@@ -562,6 +563,7 @@ func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) 
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
 func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
+	trace := traceutil.Get(ctx)
 	ai, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
 		return err
@@ -573,9 +575,7 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 	if err = chk(ai); err != nil {
 		return err
 	}
-
-	trace := traceutil.Get(ctx)
-	trace.Step("Authentication.")
+	trace.Step("get authentication metadata")
 	// fetch response for serialized request
 	get()
 	// check for stale token revision in case the auth store was updated while
