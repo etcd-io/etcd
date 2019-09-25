@@ -16,7 +16,9 @@
 package endpoint
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 	"sync"
@@ -226,4 +228,20 @@ func ParseTarget(target string) (string, string, error) {
 		return "", "", fmt.Errorf("malformed target, expected %s://<id>/<endpoint>, but got %s", scheme, target)
 	}
 	return parts[0], parts[1], nil
+}
+
+// Dialer dials a endpoint using net.Dialer.
+// Context cancelation and timeout are supported.
+func Dialer(ctx context.Context, dialEp string) (net.Conn, error) {
+	proto, host, _ := ParseEndpoint(dialEp)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	dialer := &net.Dialer{}
+	if deadline, ok := ctx.Deadline(); ok {
+		dialer.Deadline = deadline
+	}
+	return dialer.DialContext(ctx, proto, host)
 }
