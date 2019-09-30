@@ -1,4 +1,4 @@
-# The official list of maintainers, approvers, and reviewers for the project maintenance.
+# The official list of maintainers and reviewers for the project maintenance.
 #
 # Refer to the GOVERNANCE.md for description of the roles.
 #
@@ -20,10 +20,6 @@ Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft
 Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
-
-# APPROVERS
-Anthony Romano <romanoanthony061@gmail.com> (@heyitsanthony) pkg:*
-Fanmin Shi <fashi@redhat.com> (@fanminshi) pkg:*
 
 # REVIEWERS
 Wenjia Zhang <wenjiazhang@google.com> (@wenjiaswe) pkg:*

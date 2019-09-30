@@ -42,7 +42,7 @@ below.
 Contributors who are interested in becoming a maintainer, if performing these
 responsibilities, should discuss their interest with the existing maintainers. New
 maintainers must be nominated by an existing maintainer and must be elected by a
-supermajority of  maintainers. Likewise, maintainers can be removed by a supermajority
+supermajority of maintainers. Likewise, maintainers can be removed by a supermajority
 of the maintainers and moved to emeritus status.
 
 Life priorities, interests, and passions can change. If a maintainer needs to step
@@ -51,22 +51,14 @@ to pick up the related work. At the very least, ensure the related work can be c
 Afterward, create a pull request to remove yourself from the [MAINTAINERS](./MAINTAINERS)
 file.
 
-## Approvers
-
-[Approvers](./MAINTAINERS) are contributors with merge rights. They are active reviewers
-and have created significant numbers of PRs in the various code areas to add new features,
-fix bugs and improve code. New approvers must be nominated by an existing maintainer
-and must be elected by a supermajority of maintainers. Likewise, approvers can be removed
-by a supermajority of the maintainers or can resign by notifying the maintainers.
-
 ## Reviewers
 
 [Reviewers](./MAINTAINERS) are contributors who have demonstrated greater skill in
 reviewing the code contribution from other contributors. Their LGTM counts towards
-merging a code change into the project. New reviewers must be nominated by an existing
-maintainer and must be elected by a supermajority of maintainers. Likewise, reviewers
-can be removed by a supermajority of the  maintainers or can resign by notifying the
-maintainers.
+merging a code change into the project. A reviewer is generally on the ladder towards
+maintainership. New reviewers must be nominated by an existing maintainer and must be
+elected by a supermajority of maintainers. Likewise, reviewers can be removed by a
+supermajority of the  maintainers or can resign by notifying the maintainers.
 
 ## Decision making process
 
