@@ -102,6 +102,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
 - Compile with [*Go 1.13*](https://golang.org/doc/devel/release.html#go1.13)
 
+### Project Governance
+
+- The etcd team has added, a well defined and openly discussed, project [governance](https://github.com/etcd-io/etcd/pull/11175).
 
 <hr>
 
