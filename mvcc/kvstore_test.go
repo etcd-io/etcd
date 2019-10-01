@@ -640,7 +640,7 @@ func TestTxnPut(t *testing.T) {
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		base := int64(i + 2)
 		if rev := txn.Put(keys[i], vals[i], lease.NoLease); rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
@@ -731,7 +731,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			defer wg.Done()
 			time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond) // random starting time
 
-			tx := s.Write()
+			tx := s.Write(traceutil.TODO())
 			numOfPuts := mrand.Intn(maxNumOfPutsPerWrite) + 1
 			var pendingKvs kvs
 			for j := 0; j < numOfPuts; j++ {

@@ -64,12 +64,12 @@ type storeTxnWrite struct {
 	changes  []mvccpb.KeyValue
 }
 
-func (s *store) Write() TxnWrite {
+func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	s.mu.RLock()
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0, traceutil.TODO()},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
@@ -183,7 +183,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 	}
-
+	tw.trace.Step("get key's previous created_revision and leaseID")
 	ibytes := newRevBytes()
 	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
@@ -210,9 +210,11 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 	}
 
+	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
+	tw.trace.Step("store kv pair into bolt db")
 
 	if oldLease != lease.NoLease {
 		if tw.s.le == nil {
@@ -239,6 +241,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 			panic("unexpected error from lease Attach")
 		}
 	}
+	tw.trace.Step("attach lease to kv pair")
 }
 
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {

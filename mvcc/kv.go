@@ -106,7 +106,7 @@ type KV interface {
 	Read(trace *traceutil.Trace) TxnRead
 
 	// Write creates a write transaction.
-	Write() TxnWrite
+	Write(trace *traceutil.Trace) TxnWrite
 
 	// Hash computes the hash of the KV's backend.
 	Hash() (hash uint32, revision int64, err error)
