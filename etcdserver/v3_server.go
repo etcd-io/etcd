@@ -39,6 +39,8 @@ const (
 	// However, if the committed entries are very heavy to apply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
 	maxGapBetweenApplyAndCommitIndex = 5000
+	rangeTraceThreshold              = 100 * time.Millisecond
+	putTraceThreshold                = 100 * time.Millisecond
 )
 
 type RaftKV interface {
@@ -126,6 +128,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	ctx = context.WithValue(ctx, "time", time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
@@ -548,6 +551,11 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 	}
 	if result.err != nil {
 		return nil, result.err
+	}
+	if startTime, ok := ctx.Value("time").(time.Time); ok && result.trace != nil {
+		applyStart := result.trace.ResetStartTime(startTime)
+		result.trace.InsertStep(0, applyStart, "process raft request")
+		result.trace.LogIfLong(putTraceThreshold)
 	}
 	return result.resp, nil
 }
