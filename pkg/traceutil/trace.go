@@ -81,6 +81,21 @@ func Get(ctx context.Context) *Trace {
 	return TODO()
 }
 
+func (t *Trace) ResetStartTime(time time.Time) (prev time.Time) {
+	prev = t.startTime
+	t.startTime = time
+	return prev
+}
+
+func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) {
+	newStep := step{time, msg, fields}
+	if at < len(t.steps) {
+		t.steps = append(t.steps[:at+1], t.steps[at:]...)
+		t.steps[at] = newStep
+	} else {
+		t.steps = append(t.steps, newStep)
+	}
+}
 func (t *Trace) Step(msg string, fields ...Field) {
 	if !t.inStep {
 		t.steps = append(t.steps, step{time: time.Now(), msg: msg, fields: fields})
