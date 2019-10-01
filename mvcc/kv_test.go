@@ -57,7 +57,7 @@ var (
 		return kv.Put(key, value, lease)
 	}
 	txnPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
-		txn := kv.Write()
+		txn := kv.Write(traceutil.TODO())
 		defer txn.End()
 		return txn.Put(key, value, lease)
 	}
@@ -66,7 +66,7 @@ var (
 		return kv.DeleteRange(key, end)
 	}
 	txnDeleteRangeFunc = func(kv KV, key, end []byte) (n, rev int64) {
-		txn := kv.Write()
+		txn := kv.Write(traceutil.TODO())
 		defer txn.End()
 		return txn.DeleteRange(key, end)
 	}
@@ -410,7 +410,7 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 		func() { s.DeleteRange([]byte("foo"), nil) },
 	}
 	for i, tt := range tests {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		done := make(chan struct{}, 1)
 		go func() {
 			tt()
@@ -439,7 +439,7 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
-	txn := s.Write()
+	txn := s.Write(traceutil.TODO())
 	defer txn.End()
 
 	donec := make(chan struct{})
@@ -461,7 +461,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		base := int64(i + 1)
 
 		// put foo

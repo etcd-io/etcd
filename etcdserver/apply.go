@@ -179,7 +179,14 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, err error) {
 	resp = &pb.PutResponse{}
 	resp.Header = &pb.ResponseHeader{}
-
+	trace := traceutil.New("put",
+		a.s.getLogger(),
+		traceutil.Field{Key: "key", Value: string(p.Key)},
+		traceutil.Field{Key: "value", Value: string(p.Value)},
+	)
+	defer func() {
+		trace.LogIfLong(warnApplyDuration)
+	}()
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {
 		if leaseID != lease.NoLease {
@@ -187,16 +194,18 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 				return nil, lease.ErrLeaseNotFound
 			}
 		}
-		txn = a.s.KV().Write()
+		txn = a.s.KV().Write(trace)
 		defer txn.End()
 	}
 
 	var rr *mvcc.RangeResult
 	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
+		trace.StepBegin()
 		rr, err = txn.Range(p.Key, nil, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, err
 		}
+		trace.StepEnd("get previous kv pair")
 	}
 	if p.IgnoreValue || p.IgnoreLease {
 		if rr == nil || len(rr.KVs) == 0 {
@@ -226,7 +235,7 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	end := mkGteRange(dr.RangeEnd)
 
 	if txn == nil {
-		txn = a.s.kv.Write()
+		txn = a.s.kv.Write(traceutil.TODO())
 		defer txn.End()
 	}
 
@@ -369,7 +378,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	// be the revision of the write txn.
 	if isWrite {
 		txn.End()
-		txn = a.s.KV().Write()
+		txn = a.s.KV().Write(traceutil.TODO())
 	}
 	a.applyTxn(txn, rt, txnPath, txnResp)
 	rev := txn.Rev()

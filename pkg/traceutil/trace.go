@@ -56,6 +56,7 @@ type Trace struct {
 	fields    []Field
 	startTime time.Time
 	steps     []step
+	inStep    bool
 }
 
 type step struct {
@@ -81,7 +82,18 @@ func Get(ctx context.Context) *Trace {
 }
 
 func (t *Trace) Step(msg string, fields ...Field) {
-	t.steps = append(t.steps, step{time: time.Now(), msg: msg, fields: fields})
+	if !t.inStep {
+		t.steps = append(t.steps, step{time: time.Now(), msg: msg, fields: fields})
+	}
+}
+
+func (t *Trace) StepBegin() {
+	t.inStep = true
+}
+
+func (t *Trace) StepEnd(msg string, fields ...Field) {
+	t.inStep = false
+	t.Step(msg, fields...)
 }
 
 func (t *Trace) AddField(fields ...Field) {
