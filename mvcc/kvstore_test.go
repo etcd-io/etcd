@@ -332,7 +332,7 @@ func TestStoreCompact(t *testing.T) {
 	key2 := newTestKeyBytes(revision{2, 0}, false)
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
-	s.Compact(3)
+	s.Compact(traceutil.TODO(), 3)
 	s.fifoSched.WaitFinish(1)
 
 	if s.compactMainRev != 3 {
@@ -583,7 +583,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 100; i >= 0; i-- {
-			_, err := s.Compact(int64(rev - 1 - i))
+			_, err := s.Compact(traceutil.TODO(), int64(rev-1-i))
 			if err != nil {
 				t.Error(err)
 			}
@@ -610,7 +610,7 @@ func TestHashKVZeroRevision(t *testing.T) {
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
-	if _, err := s.Compact(int64(rev / 2)); err != nil {
+	if _, err := s.Compact(traceutil.TODO(), int64(rev/2)); err != nil {
 		t.Fatal(err)
 	}
 

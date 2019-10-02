@@ -55,7 +55,7 @@ type applierV3 interface {
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error)
-	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
+	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
@@ -129,7 +129,7 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	case r.Txn != nil:
 		ar.resp, ar.err = a.s.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
-		ar.resp, ar.physc, ar.err = a.s.applyV3.Compaction(r.Compaction)
+		ar.resp, ar.physc, ar.trace, ar.err = a.s.applyV3.Compaction(r.Compaction)
 	case r.LeaseGrant != nil:
 		ar.resp, ar.err = a.s.applyV3.LeaseGrant(r.LeaseGrant)
 	case r.LeaseRevoke != nil:
@@ -182,7 +182,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 	trace = traceutil.New("put",
 		a.s.getLogger(),
 		traceutil.Field{Key: "key", Value: string(p.Key)},
-		traceutil.Field{Key: "value", Value: string(p.Value)},
+		traceutil.Field{Key: "req_size", Value: proto.Size(p)},
 	)
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {
@@ -197,12 +197,13 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 
 	var rr *mvcc.RangeResult
 	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
-		trace.StepBegin()
+		trace.DisableStep()
 		rr, err = txn.Range(p.Key, nil, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, nil, err
 		}
-		trace.StepEnd("get previous kv pair")
+		trace.EnableStep()
+		trace.Step("get previous kv pair")
 	}
 	if p.IgnoreValue || p.IgnoreLease {
 		if rr == nil || len(rr.KVs) == 0 {
@@ -223,6 +224,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 	}
 
 	resp.Header.Revision = txn.Put(p.Key, val, leaseID)
+	trace.AddField(traceutil.Field{Key: "response_revision", Value: resp.Header.Revision})
 	return resp, trace, nil
 }
 
@@ -568,17 +570,22 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPat
 	return txns
 }
 
-func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error) {
+func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	ch, err := a.s.KV().Compact(compaction.Revision)
+	trace := traceutil.New("compact",
+		a.s.getLogger(),
+		traceutil.Field{Key: "revision", Value: compaction.Revision},
+	)
+
+	ch, err := a.s.KV().Compact(trace, compaction.Revision)
 	if err != nil {
-		return nil, ch, err
+		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
 	rr, _ := a.s.KV().Range([]byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
-	return resp, ch, err
+	return resp, ch, trace, err
 }
 
 func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {

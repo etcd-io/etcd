@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -237,7 +238,7 @@ func TestWatchCompacted(t *testing.T) {
 	for i := 0; i < maxRev; i++ {
 		s.Put(testKey, testValue, lease.NoLease)
 	}
-	_, err := s.Compact(compactRev)
+	_, err := s.Compact(traceutil.TODO(), compactRev)
 	if err != nil {
 		t.Fatalf("failed to compact kv (%v)", err)
 	}

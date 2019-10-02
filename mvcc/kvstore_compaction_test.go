@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -109,7 +110,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 
 	rev := s0.Rev()
 	// compact all keys
-	done, err := s0.Compact(rev)
+	done, err := s0.Compact(traceutil.TODO(), rev)
 	if err != nil {
 		t.Fatal(err)
 	}
