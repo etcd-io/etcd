@@ -41,7 +41,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:        "When the context has trace",
-			inputCtx:    context.WithValue(context.Background(), CtxKey, traceForTest),
+			inputCtx:    context.WithValue(context.Background(), TraceKey, traceForTest),
 			outputTrace: traceForTest,
 		},
 	}

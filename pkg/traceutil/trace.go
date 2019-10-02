@@ -25,7 +25,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const CtxKey = "trace"
+const (
+	TraceKey     = "trace"
+	StartTimeKey = "startTime"
+)
 
 // Field is a kv pair to record additional details of the trace.
 type Field struct {
@@ -51,12 +54,12 @@ func writeFields(fields []Field) string {
 }
 
 type Trace struct {
-	operation string
-	lg        *zap.Logger
-	fields    []Field
-	startTime time.Time
-	steps     []step
-	inStep    bool
+	operation    string
+	lg           *zap.Logger
+	fields       []Field
+	startTime    time.Time
+	steps        []step
+	stepDisabled bool
 }
 
 type step struct {
@@ -75,16 +78,18 @@ func TODO() *Trace {
 }
 
 func Get(ctx context.Context) *Trace {
-	if trace, ok := ctx.Value(CtxKey).(*Trace); ok && trace != nil {
+	if trace, ok := ctx.Value(TraceKey).(*Trace); ok && trace != nil {
 		return trace
 	}
 	return TODO()
 }
 
-func (t *Trace) ResetStartTime(time time.Time) (prev time.Time) {
-	prev = t.startTime
+func (t *Trace) GetStartTime() time.Time {
+	return t.startTime
+}
+
+func (t *Trace) SetStartTime(time time.Time) {
 	t.startTime = time
-	return prev
 }
 
 func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) {
@@ -96,19 +101,22 @@ func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) 
 		t.steps = append(t.steps, newStep)
 	}
 }
+
+// Step adds step to trace
 func (t *Trace) Step(msg string, fields ...Field) {
-	if !t.inStep {
+	if !t.stepDisabled {
 		t.steps = append(t.steps, step{time: time.Now(), msg: msg, fields: fields})
 	}
 }
 
-func (t *Trace) StepBegin() {
-	t.inStep = true
+// DisableStep sets the flag to prevent the trace from adding steps
+func (t *Trace) DisableStep() {
+	t.stepDisabled = true
 }
 
-func (t *Trace) StepEnd(msg string, fields ...Field) {
-	t.inStep = false
-	t.Step(msg, fields...)
+// EnableStep re-enable the trace to add steps
+func (t *Trace) EnableStep() {
+	t.stepDisabled = false
 }
 
 func (t *Trace) AddField(fields ...Field) {
@@ -149,7 +157,7 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 	for _, step := range t.steps {
 		stepDuration := step.time.Sub(lastStepTime)
 		if stepDuration > threshold {
-			steps = append(steps, fmt.Sprintf("trace[%d] step '%v' %s (duration: %v)",
+			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
 				traceNum, step.msg, writeFields(step.fields), stepDuration))
 		}
 		lastStepTime = step.time
