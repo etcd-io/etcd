@@ -32,9 +32,18 @@ type tlsListener struct {
 	donec            chan struct{}
 	err              error
 	handshakeFailure func(*tls.Conn, error)
+	check            tlsCheckFunc
 }
 
-func newTLSListener(l net.Listener, tlsinfo *TLSInfo) (net.Listener, error) {
+type tlsCheckFunc func(context.Context, *tls.Conn) error
+
+// NewTLSListener handshakes TLS connections and performs optional CRL checking.
+func NewTLSListener(l net.Listener, tlsinfo *TLSInfo) (net.Listener, error) {
+	check := func(context.Context, *tls.Conn) error { return nil }
+	return newTLSListener(l, tlsinfo, check)
+}
+
+func newTLSListener(l net.Listener, tlsinfo *TLSInfo, check tlsCheckFunc) (net.Listener, error) {
 	if tlsinfo == nil || tlsinfo.Empty() {
 		l.Close()
 		return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", l.Addr().String())
@@ -53,6 +62,7 @@ func newTLSListener(l net.Listener, tlsinfo *TLSInfo) (net.Listener, error) {
 		connc:            make(chan net.Conn),
 		donec:            make(chan struct{}),
 		handshakeFailure: hf,
+		check:            check,
 	}
 	go tlsl.acceptLoop()
 	return tlsl, nil
@@ -116,14 +126,9 @@ func (l *tlsListener) acceptLoop() {
 				return
 			}
 
-			st := tlsConn.ConnectionState()
-			if len(st.PeerCertificates) > 0 {
-				cert := st.PeerCertificates[0]
-				addr := tlsConn.RemoteAddr().String()
-				if cerr := checkCert(ctx, cert, addr); cerr != nil {
-					l.handshakeFailure(tlsConn, cerr)
-					return
-				}
+			if err := l.check(ctx, tlsConn); err != nil {
+				l.handshakeFailure(tlsConn, err)
+				return
 			}
 			select {
 			case l.connc <- tlsConn:
@@ -134,11 +139,20 @@ func (l *tlsListener) acceptLoop() {
 	}
 }
 
-func checkCert(ctx context.Context, cert *x509.Certificate, remoteAddr string) error {
-	h, _, herr := net.SplitHostPort(remoteAddr)
+func checkSAN(ctx context.Context, tlsConn *tls.Conn) error {
+	st := tlsConn.ConnectionState()
+	if certs := st.PeerCertificates; len(certs) > 0 {
+		addr := tlsConn.RemoteAddr().String()
+		return checkCertSAN(ctx, certs[0], addr)
+	}
+	return nil
+}
+
+func checkCertSAN(ctx context.Context, cert *x509.Certificate, remoteAddr string) error {
 	if len(cert.IPAddresses) == 0 && len(cert.DNSNames) == 0 {
 		return nil
 	}
+	h, _, herr := net.SplitHostPort(remoteAddr)
 	if herr != nil {
 		return herr
 	}
