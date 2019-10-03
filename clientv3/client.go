@@ -230,24 +230,17 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	}
 	opts = append(opts, dopts...)
 
-	// Provide a net dialer that supports cancelation and timeout.
-	f := func(dialEp string, t time.Duration) (net.Conn, error) {
-		proto, host, _ := endpoint.ParseEndpoint(dialEp)
-		select {
-		case <-c.ctx.Done():
-			return nil, c.ctx.Err()
-		default:
-		}
-		dialer := &net.Dialer{Timeout: t}
-		return dialer.DialContext(c.ctx, proto, host)
-	}
-	opts = append(opts, grpc.WithDialer(f))
-
+	dialer := endpoint.Dialer
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(creds))
+		// gRPC load balancer workaround. See credentials.transportCredential for details.
+		if credsDialer, ok := creds.(TransportCredentialsWithDialer); ok {
+			dialer = credsDialer.Dialer
+		}
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
+	opts = append(opts, grpc.WithContextDialer(dialer))
 
 	// Interceptor retry and backoff.
 	// TODO: Replace all of clientv3/retry.go with interceptor based retry, or with
@@ -662,4 +655,10 @@ func IsConnCanceled(err error) bool {
 
 	// <= gRPC v1.7.x returns 'errors.New("grpc: the client connection is closing")'
 	return strings.Contains(err.Error(), "grpc: the client connection is closing")
+}
+
+// TransportCredentialsWithDialer is for a gRPC load balancer workaround. See credentials.transportCredential for details.
+type TransportCredentialsWithDialer interface {
+	grpccredentials.TransportCredentials
+	Dialer(ctx context.Context, dialEp string) (net.Conn, error)
 }
