@@ -18,6 +18,41 @@ ETCDCTL_KEY=/tmp/key.pem
 
 Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`). Note that the environment variables with the prefix `ETCDCTL_` can only be used with the etcdctl global flags. Also, the environment variable `ETCDCTL_API` is a special case variable for etcdctl internal use only.
 
+## Global Configuration file
+Along with ENV Prefix based flag support, `etcdctl` now also supports a global configuration file under `$HOME/.etcd/config.yaml` file.
+
+This config yaml can be used to provide common top-level `etcdctl` arguments to be used with each `etcdctl` command.
+
+```yaml
+endpoints:
+  - https://localhost:2379
+  - https://etcd.kube-system.svc.cluster.local:2379
+user: admin
+# Base64 encoded password
+password: cGFzc3dvcmQ=
+```
+
+| Global Option            | Option Type                  |
+|--------------------------|------------------------------|
+| endpoints                | []string                     |
+| debug                    | bool                         |
+| write-out                | string                       |
+| hex                      | bool                         |
+| dial-timeout             | string / any int / any float  |
+| command-timeout          | string / any int / any float  |
+| keepalive-time           | string / any int / any float  |
+| keepalive-timeout        | string / any int / any float  |
+| insecure-transport       | bool                         |
+| insecure-discovery       | bool                         |
+| insecure-skip-tls-verify | bool                         |
+| cert                     | string                       |
+| key                      | string                       |
+| cacert                   | string                       |
+| user                     | string                       |
+| password                 | base64 encoded string        |
+| discovery-srv            | string                       |
+| discovery-srv-name       | string                       |
+
 ## Key-value commands
 
 ### PUT [options] \<key\> \<value\>

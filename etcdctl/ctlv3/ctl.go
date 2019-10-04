@@ -16,11 +16,13 @@
 package ctlv3
 
 import (
+	"os"
 	"time"
 
 	"go.etcd.io/etcd/etcdctl/ctlv3/command"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -43,9 +45,35 @@ var (
 		Short:      cliDescription,
 		SuggestFor: []string{"etcdctl"},
 	}
+	viperHandler = viper.New()
+)
+
+var (
+	cfgFile   string
+	viperArgs = []string{
+		"endpoints",
+		"debug",
+		"write-out",
+		"hex",
+		"dial-timeout",
+		"command-timeout",
+		"keepalive-timeout",
+		"keepalive-time",
+		"insecure-transport",
+		"insecure-discovery",
+		"insecure-skip-tls-verify",
+		"cert",
+		"key",
+		"cacert",
+		"user",
+		"password",
+		"discovery-srv",
+		"discovery-srv-name",
+	}
 )
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "etcdctlconfig", "", "ETCDCTL Configuration file")
 	rootCmd.PersistentFlags().StringSliceVar(&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "enable client-side debug logging")
 
@@ -93,8 +121,30 @@ func init() {
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
 	)
+
+	for _, arg := range viperArgs {
+		_ = viperHandler.BindPFlag(arg, rootCmd.PersistentFlags().Lookup(arg))
+	}
+	command.SetViperHandler(viperHandler)
+	cobra.OnInitialize(initViperOverwrite)
 }
 
 func init() {
 	cobra.EnablePrefixMatching = true
+}
+
+func initViperOverwrite() {
+	viperHandler.AddConfigPath("$HOME/.etcd/")
+	viperHandler.SetConfigName("config")
+	if cfgFile != "" {
+		if _, err := os.Stat(cfgFile); err != nil {
+			command.ExitWithError(command.ExitIO, err)
+		}
+		viperHandler.SetConfigFile(cfgFile)
+	}
+	if err := viperHandler.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			command.ExitWithError(command.ExitIO, err)
+		}
+	}
 }

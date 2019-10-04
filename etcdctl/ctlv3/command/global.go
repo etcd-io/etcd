@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"os"
@@ -81,22 +82,6 @@ type discoveryCfg struct {
 	serviceName string
 }
 
-var display printer = &simplePrinter{}
-
-func initDisplayFromCmd(cmd *cobra.Command) {
-	isHex, err := cmd.Flags().GetBool("hex")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	outputType, err := cmd.Flags().GetString("write-out")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	if display = NewPrinter(outputType, isHex); display == nil {
-		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
-	}
-}
-
 type clientConfig struct {
 	endpoints        []string
 	dialTimeout      time.Duration
@@ -107,6 +92,97 @@ type clientConfig struct {
 }
 
 type discardValue struct{}
+
+var display printer = &simplePrinter{}
+
+var (
+	viperHandler *viper.Viper
+)
+
+func SetViperHandler(v *viper.Viper) {
+	viperHandler = v
+}
+
+func getViperBasedParam(cmd *cobra.Command, f *pflag.Flag) (interface{}, error) {
+	switch f.Value.Type() {
+	case "stringSlice":
+		return getStringSliceParamBasedOnConfig(cmd, f.Name)
+	case "bool":
+		return getBooleanParamBasedOnConfig(cmd, f.Name)
+	case "duration":
+		return getDurationParamBasedOnConfig(cmd, f.Name)
+	case "string", "":
+		return getStringParamBasedOnConfig(cmd, f.Name)
+	default:
+		return getStringParamBasedOnConfig(cmd, f.Name)
+	}
+}
+
+func getBooleanParamBasedOnConfig(cmd *cobra.Command, arg string) (bool, error) {
+	var val bool
+	var err error
+	flagSet := cmd.Flags().Lookup(arg)
+	val, err = cmd.Flags().GetBool(arg)
+	if viperHandler.IsSet(arg) && !flagSet.Changed {
+		val = viperHandler.GetBool(arg)
+	}
+	return val, err
+}
+
+func getStringParamBasedOnConfig(cmd *cobra.Command, arg string) (string, error) {
+	var val string
+	var err error
+	flagSet := cmd.Flags().Lookup(arg)
+	val, err = cmd.Flags().GetString(arg)
+	if viperHandler.IsSet(arg) && !flagSet.Changed {
+		val = viperHandler.GetString(arg)
+	}
+	return val, err
+}
+
+func getStringParamBasedOnConfigWithHook(cmd *cobra.Command, arg string, hook func(string) (string, error)) (string, error) {
+	val, err := getStringParamBasedOnConfig(cmd, arg)
+	if err == nil && (viperHandler.IsSet(arg) && !cmd.Flags().Lookup(arg).Changed) {
+		val, err = hook(val)
+	}
+	return val, err
+}
+
+func getStringSliceParamBasedOnConfig(cmd *cobra.Command, arg string) ([]string, error) {
+	var val []string
+	var err error
+	flagSet := cmd.Flags().Lookup(arg)
+	val, err = cmd.Flags().GetStringSlice(arg)
+	if viperHandler.IsSet(arg) && !flagSet.Changed {
+		val = viperHandler.GetStringSlice(arg)
+	}
+	return val, err
+}
+
+func getDurationParamBasedOnConfig(cmd *cobra.Command, arg string) (time.Duration, error) {
+	var val time.Duration
+	var err error
+	flagSet := cmd.Flags().Lookup(arg)
+	val, err = cmd.Flags().GetDuration(arg)
+	if viperHandler.IsSet(arg) && !flagSet.Changed {
+		val = viperHandler.GetDuration(arg)
+	}
+	return val, err
+}
+
+func initDisplayFromCmd(cmd *cobra.Command) {
+	isHex, err := getBooleanParamBasedOnConfig(cmd, "hex")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	outputType, err := getStringParamBasedOnConfig(cmd, "write-out")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	if display = NewPrinter(outputType, isHex); display == nil {
+		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
+	}
+}
 
 func (*discardValue) String() string   { return "" }
 func (*discardValue) Set(string) error { return nil }
@@ -126,14 +202,18 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 	}
 	flags.SetPflagsFromEnv(lg, "ETCDCTL", fs)
 
-	debug, err := cmd.Flags().GetBool("debug")
+	debug, err := getBooleanParamBasedOnConfig(cmd, "debug")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 	if debug {
 		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 		fs.VisitAll(func(f *pflag.Flag) {
-			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
+			var val interface{}
+			if val, err = getViperBasedParam(cmd, f); err != nil {
+				val = f.Value
+			}
+			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), val)
 		})
 	} else {
 		// WARNING logs contain important information like TLS misconfirugation, but spams
@@ -261,7 +341,7 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 }
 
 func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
-	dialTimeout, err := cmd.Flags().GetDuration("dial-timeout")
+	dialTimeout, err := getDurationParamBasedOnConfig(cmd, "dial-timeout")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -269,7 +349,7 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 }
 
 func keepAliveTimeFromCmd(cmd *cobra.Command) time.Duration {
-	keepAliveTime, err := cmd.Flags().GetDuration("keepalive-time")
+	keepAliveTime, err := getDurationParamBasedOnConfig(cmd, "keepalive-time")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -277,7 +357,7 @@ func keepAliveTimeFromCmd(cmd *cobra.Command) time.Duration {
 }
 
 func keepAliveTimeoutFromCmd(cmd *cobra.Command) time.Duration {
-	keepAliveTimeout, err := cmd.Flags().GetDuration("keepalive-timeout")
+	keepAliveTimeout, err := getDurationParamBasedOnConfig(cmd, "keepalive-timeout")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -306,7 +386,7 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 }
 
 func insecureTransportFromCmd(cmd *cobra.Command) bool {
-	insecureTr, err := cmd.Flags().GetBool("insecure-transport")
+	insecureTr, err := getBooleanParamBasedOnConfig(cmd, "insecure-transport")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -314,7 +394,7 @@ func insecureTransportFromCmd(cmd *cobra.Command) bool {
 }
 
 func insecureSkipVerifyFromCmd(cmd *cobra.Command) bool {
-	skipVerify, err := cmd.Flags().GetBool("insecure-skip-tls-verify")
+	skipVerify, err := getBooleanParamBasedOnConfig(cmd, "insecure-skip-tls-verify")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -323,19 +403,19 @@ func insecureSkipVerifyFromCmd(cmd *cobra.Command) bool {
 
 func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 	var err error
-	if cert, err = cmd.Flags().GetString("cert"); err != nil {
+	if cert, err = getStringParamBasedOnConfig(cmd, "cert"); err != nil {
 		ExitWithError(ExitBadArgs, err)
 	} else if cert == "" && cmd.Flags().Changed("cert") {
 		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
 	}
 
-	if key, err = cmd.Flags().GetString("key"); err != nil {
+	if key, err = getStringParamBasedOnConfig(cmd, "key"); err != nil {
 		ExitWithError(ExitBadArgs, err)
 	} else if key == "" && cmd.Flags().Changed("key") {
 		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
 	}
 
-	if cacert, err = cmd.Flags().GetString("cacert"); err != nil {
+	if cacert, err = getStringParamBasedOnConfig(cmd, "cacert"); err != nil {
 		ExitWithError(ExitBadArgs, err)
 	} else if cacert == "" && cmd.Flags().Changed("cacert") {
 		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
@@ -345,11 +425,11 @@ func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 }
 
 func authCfgFromCmd(cmd *cobra.Command) *authCfg {
-	userFlag, err := cmd.Flags().GetString("user")
+	userFlag, err := getStringParamBasedOnConfig(cmd, "user")
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
-	passwordFlag, err := cmd.Flags().GetString("password")
+	passwordFlag, err := getStringParamBasedOnConfigWithHook(cmd, "password", decodePassword)
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -381,7 +461,7 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 }
 
 func insecureDiscoveryFromCmd(cmd *cobra.Command) bool {
-	discovery, err := cmd.Flags().GetBool("insecure-discovery")
+	discovery, err := getBooleanParamBasedOnConfig(cmd, "insecure-discovery")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -389,7 +469,7 @@ func insecureDiscoveryFromCmd(cmd *cobra.Command) bool {
 }
 
 func discoverySrvFromCmd(cmd *cobra.Command) string {
-	domainStr, err := cmd.Flags().GetString("discovery-srv")
+	domainStr, err := getStringParamBasedOnConfig(cmd, "discovery-srv")
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -397,7 +477,7 @@ func discoverySrvFromCmd(cmd *cobra.Command) string {
 }
 
 func discoveryDNSClusterServiceNameFromCmd(cmd *cobra.Command) string {
-	serviceNameStr, err := cmd.Flags().GetString("discovery-srv-name")
+	serviceNameStr, err := getStringParamBasedOnConfig(cmd, "discovery-srv-name")
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -419,7 +499,7 @@ func endpointsFromCmd(cmd *cobra.Command) ([]string, error) {
 	}
 	// If domain discovery returns no endpoints, check endpoints flag
 	if len(eps) == 0 {
-		eps, err = cmd.Flags().GetStringSlice("endpoints")
+		eps, err = getStringSliceParamBasedOnConfig(cmd, "endpoints")
 		if err == nil {
 			for i, ip := range eps {
 				eps[i] = strings.TrimSpace(ip)

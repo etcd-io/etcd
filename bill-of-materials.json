@@ -54,6 +54,15 @@
 		]
 	},
 	{
+		"project": "github.com/fsnotify/fsnotify",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "github.com/gogo/protobuf",
 		"licenses": [
 			{
@@ -135,6 +144,15 @@
 		]
 	},
 	{
+		"project": "github.com/hashicorp/hcl",
+		"licenses": [
+			{
+				"type": "Mozilla Public License 2.0",
+				"confidence": 0.9971724787935909
+			}
+		]
+	},
+	{
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
 			{
@@ -162,6 +180,15 @@
 		]
 	},
 	{
+		"project": "github.com/magiconair/properties",
+		"licenses": [
+			{
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 0.9577464788732394
+			}
+		]
+	},
+	{
 		"project": "github.com/mattn/go-runewidth",
 		"licenses": [
 			{
@@ -175,6 +202,15 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/mitchellh/mapstructure",
+		"licenses": [
+			{
+				"type": "MIT License",
 				"confidence": 1
 			}
 		]
@@ -203,6 +239,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "github.com/pelletier/go-toml",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -261,6 +306,24 @@
 		]
 	},
 	{
+		"project": "github.com/spf13/afero",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 0.9573241061130334
+			}
+		]
+	},
+	{
+		"project": "github.com/spf13/cast",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/spf13/cobra",
 		"licenses": [
 			{
@@ -270,11 +333,29 @@
 		]
 	},
 	{
+		"project": "github.com/spf13/jwalterweatherman",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/spf13/pflag",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "github.com/spf13/viper",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},

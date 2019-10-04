@@ -213,7 +213,7 @@ func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
 
 func endpointsFromCluster(cmd *cobra.Command) []string {
 	if !epClusterEndpoints {
-		endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+		endpoints, err := getStringSliceParamBasedOnConfig(cmd, "endpoints")
 		if err != nil {
 			ExitWithError(ExitError, err)
 		}

@@ -16,6 +16,7 @@ package command
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -75,7 +76,7 @@ func argify(s string) []string {
 }
 
 func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
-	timeOut, err := cmd.Flags().GetDuration("command-timeout")
+	timeOut, err := getDurationParamBasedOnConfig(cmd, "command-timeout")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -151,4 +152,12 @@ func defrag(c *v3.Client, ep string) {
 		ExitWithError(ExitError, err)
 	}
 	fmt.Printf("Defragmented %q\n", ep)
+}
+
+func decodePassword(password string) (string, error) {
+	d, err := base64.StdEncoding.DecodeString(password)
+	if err == nil {
+		return string(d), err
+	}
+	return "", err
 }
