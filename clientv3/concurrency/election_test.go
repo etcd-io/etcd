@@ -71,7 +71,8 @@ func TestResumeElection(t *testing.T) {
 			select {
 			case resp, ok := <-o:
 				if !ok {
-					t.Fatal("Observe() channel closed prematurely")
+					respChan <- nil
+					return
 				}
 				// Ignore any observations that candidate1 was elected
 				if string(resp.Kvs[0].Value) == "candidate1" {
@@ -105,6 +106,9 @@ func TestResumeElection(t *testing.T) {
 
 	// wait for observed leader change
 	resp := <-respChan
+	if resp == nil {
+		t.Fatal("Observe() channel closed prematurely")
+	}
 
 	kv := resp.Kvs[0]
 	if !strings.HasPrefix(string(kv.Key), prefix) {
