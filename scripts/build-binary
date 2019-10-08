@@ -57,6 +57,11 @@ function main {
 	cd release
 	setup_env "${PROJ}" "${VER}"
 
+	tarcmd=tar
+	if [[ $(go env GOOS) == "darwin" ]]; then
+		tarcmd=gtar
+	fi
+
 	for os in darwin windows linux; do
 		export GOOS=${os}
 		TARGET_ARCHS=("amd64")
@@ -78,7 +83,7 @@ function main {
 			package "${TARGET}" "${PROJ}"
 
 			if [ ${GOOS} == "linux" ]; then
-				tar cfz "${TARGET}.tar.gz" "${TARGET}"
+				${tarcmd} cfz "${TARGET}.tar.gz" "${TARGET}"
 				echo "Wrote release/${TARGET}.tar.gz"
 			else
 				zip -qr "${TARGET}.zip" "${TARGET}"

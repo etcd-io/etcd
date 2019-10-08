@@ -249,7 +249,6 @@ func ExampleKV_txn() {
 	}
 
 	gresp, err := kvc.Get(context.TODO(), "key")
-	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
