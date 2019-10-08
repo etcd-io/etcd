@@ -259,7 +259,10 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 
 // Dial connects to a single endpoint using the client's config.
 func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
-	creds := c.directDialCreds(ep)
+	creds, err := c.directDialCreds(ep)
+	if err != nil {
+		return nil, err
+	}
 	// Use the grpc passthrough resolver to directly dial a single endpoint.
 	// This resolver passes through the 'unix' and 'unixs' endpoints schemes used
 	// by etcd without modification, allowing us to directly dial endpoints and
@@ -362,8 +365,8 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 	return conn, nil
 }
 
-func (c *Client) directDialCreds(ep string) grpccredentials.TransportCredentials {
-	_, hostPort, scheme := endpoint.ParseEndpoint(ep)
+func (c *Client) directDialCreds(ep string) (grpccredentials.TransportCredentials, error) {
+	_, host, scheme := endpoint.ParseEndpoint(ep)
 	creds := c.creds
 	if len(scheme) != 0 {
 		creds = c.processCreds(scheme)
@@ -372,12 +375,17 @@ func (c *Client) directDialCreds(ep string) grpccredentials.TransportCredentials
 			// Set the server name must to the endpoint hostname without port since grpc
 			// otherwise attempts to check if x509 cert is valid for the full endpoint
 			// including the scheme and port, which fails.
-			host, _ := endpoint.ParseHostPort(hostPort)
-			clone.OverrideServerName(host)
+			overrideServerName, _, err := net.SplitHostPort(host)
+			if err != nil {
+				// Either the host didn't have a port or the host could not be parsed. Either way, continue with the
+				// original host string.
+				overrideServerName = host
+			}
+			clone.OverrideServerName(overrideServerName)
 			creds = clone
 		}
 	}
-	return creds
+	return creds, nil
 }
 
 func (c *Client) dialWithBalancerCreds(ep string) grpccredentials.TransportCredentials {
