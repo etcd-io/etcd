@@ -152,6 +152,8 @@ security flags:
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 	--cipher-suites ''
 		comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).
+	--experimental-peer-skip-client-san-verification 'false'
+		Skip verification of SAN field in client certificate for peer connections.
 
 logging flags
 
