@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/schedule"
 	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
@@ -331,7 +332,7 @@ func TestStoreCompact(t *testing.T) {
 	key2 := newTestKeyBytes(revision{2, 0}, false)
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
-	s.Compact(3)
+	s.Compact(traceutil.TODO(), 3)
 	s.fifoSched.WaitFinish(1)
 
 	if s.compactMainRev != 3 {
@@ -582,7 +583,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 100; i >= 0; i-- {
-			_, err := s.Compact(int64(rev - 1 - i))
+			_, err := s.Compact(traceutil.TODO(), int64(rev-1-i))
 			if err != nil {
 				t.Error(err)
 			}
@@ -609,7 +610,7 @@ func TestHashKVZeroRevision(t *testing.T) {
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
-	if _, err := s.Compact(int64(rev / 2)); err != nil {
+	if _, err := s.Compact(traceutil.TODO(), int64(rev/2)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -639,7 +640,7 @@ func TestTxnPut(t *testing.T) {
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		base := int64(i + 2)
 		if rev := txn.Put(keys[i], vals[i], lease.NoLease); rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
@@ -658,7 +659,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 	// readTx simulates a long read request
-	readTx1 := s.Read()
+	readTx1 := s.Read(traceutil.TODO())
 
 	// write should not be blocked by reads
 	done := make(chan struct{})
@@ -673,7 +674,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	}
 
 	// readTx2 simulates a short read request
-	readTx2 := s.Read()
+	readTx2 := s.Read(traceutil.TODO())
 	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
 	ret, err := readTx2.Range([]byte("foo"), nil, ro)
 	if err != nil {
@@ -730,7 +731,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			defer wg.Done()
 			time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond) // random starting time
 
-			tx := s.Write()
+			tx := s.Write(traceutil.TODO())
 			numOfPuts := mrand.Intn(maxNumOfPutsPerWrite) + 1
 			var pendingKvs kvs
 			for j := 0; j < numOfPuts; j++ {
@@ -756,7 +757,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			mu.Lock()
 			wKVs := make(kvs, len(committedKVs))
 			copy(wKVs, committedKVs)
-			tx := s.Read()
+			tx := s.Read(traceutil.TODO())
 			mu.Unlock()
 			// get all keys in backend store, and compare with wKVs
 			ret, err := tx.Range([]byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})

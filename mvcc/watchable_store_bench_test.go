@@ -21,6 +21,7 @@ import (
 
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
@@ -59,7 +60,7 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		txn.Put(keys[i], vals[i], lease.NoLease)
 		txn.End()
 	}
