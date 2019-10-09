@@ -23,6 +23,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.1...v3.4.2) and 
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
 
+### etcdserver
+
+- Add [`tracing`](https://github.com/etcd-io/etcd/pull/11179) to range, put and compact requests in etcdserver.
+
 ### Go
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
