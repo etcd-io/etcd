@@ -23,30 +23,30 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
-	"go.etcd.io/etcd/contrib/recipes"
+	recipe "go.etcd.io/etcd/contrib/recipes"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
 )
 
-func TestMutexSingleNode(t *testing.T) {
+func TestMutexLockSingleNode(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
-	testMutex(t, 5, makeSingleNodeClients(t, clus.cluster, &clients))
+	testMutexLock(t, 5, makeSingleNodeClients(t, clus.cluster, &clients))
 	closeClients(t, clients)
 }
 
-func TestMutexMultiNode(t *testing.T) {
+func TestMutexLockMultiNode(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
-	testMutex(t, 5, makeMultiNodeClients(t, clus.cluster, &clients))
+	testMutexLock(t, 5, makeMultiNodeClients(t, clus.cluster, &clients))
 	closeClients(t, clients)
 }
 
-func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
+func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream lock acquisitions
 	lockedC := make(chan *concurrency.Mutex)
 	for i := 0; i < waiters; i++ {
@@ -79,6 +79,62 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 				t.Fatalf("could not release lock (%v)", err)
 			}
 		}
+	}
+}
+
+func TestMutexTryLockSingleNode(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	var clients []*clientv3.Client
+	testMutexTryLock(t, 5, makeSingleNodeClients(t, clus.cluster, &clients))
+	closeClients(t, clients)
+}
+
+func TestMutexTryLockMultiNode(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	var clients []*clientv3.Client
+	testMutexTryLock(t, 5, makeMultiNodeClients(t, clus.cluster, &clients))
+	closeClients(t, clients)
+}
+
+func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
+	lockedC := make(chan *concurrency.Mutex)
+	notlockedC := make(chan *concurrency.Mutex)
+	for i := 0; i < lockers; i++ {
+		go func() {
+			session, err := concurrency.NewSession(chooseClient())
+			if err != nil {
+				t.Error(err)
+			}
+			m := concurrency.NewMutex(session, "test-mutex-try-lock")
+			err = m.TryLock(context.TODO())
+			if err == nil {
+				lockedC <- m
+			} else if err == concurrency.ErrLocked {
+				notlockedC <- m
+			} else {
+				t.Errorf("Unexpected Error %v", err)
+			}
+		}()
+	}
+
+	timerC := time.After(time.Second)
+	select {
+	case <-lockedC:
+		for i := 0; i < lockers-1; i++ {
+			select {
+			case <-lockedC:
+				t.Fatalf("Multiple Mutes locked on same key")
+			case <-notlockedC:
+			case <-timerC:
+				t.Errorf("timed out waiting for lock")
+			}
+		}
+	case <-timerC:
+		t.Errorf("timed out waiting for lock")
 	}
 }
 
@@ -219,7 +275,7 @@ func BenchmarkMutex4Waiters(b *testing.B) {
 	clus := NewClusterV3(nil, &ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
-		testMutex(nil, 4, func() *clientv3.Client { return clus.RandClient() })
+		testMutexLock(nil, 4, func() *clientv3.Client { return clus.RandClient() })
 	}
 }
 

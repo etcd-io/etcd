@@ -80,6 +80,15 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
   - Use `embed.Config.LogLevel` instead.
+- Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11147) to allow creating a custom zap logger.
+
+### Package `clientv3`
+
+- Add [TryLock](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
+
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
 
 ### gRPC gateway
 
@@ -87,11 +96,18 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.23.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.1).
+
 ### Go
 
 - Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
 - Compile with [*Go 1.13*](https://golang.org/doc/devel/release.html#go1.13)
 
+### Project Governance
+
+- The etcd team has added, a well defined and openly discussed, project [governance](https://github.com/etcd-io/etcd/pull/11175).
 
 <hr>
 

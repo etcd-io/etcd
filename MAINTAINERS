@@ -1,4 +1,6 @@
-# This is the official list of etcd maintainers.
+# The official list of maintainers and reviewers for the project maintenance.
+#
+# Refer to the GOVERNANCE.md for description of the roles.
 #
 # Names should be added to this file like so:
 #     Individual's name <submission email address> (@GITHUB_HANDLE) pkg:*
@@ -6,6 +8,7 @@
 #
 # Please keep the list sorted.
 
+# MAINTAINERS
 Brandon Philips <bphilips@redhat.com> (@philips) pkg:*
 Gyuho Lee <gyuhox@gmail.com> <leegyuho@amazon.com> (@gyuho) pkg:*
 Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
@@ -18,3 +21,5 @@ Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft
 Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
 
+# REVIEWERS
+Wenjia Zhang <wenjiazhang@google.com> (@wenjiaswe) pkg:*

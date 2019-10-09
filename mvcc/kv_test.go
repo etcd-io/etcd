@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -47,7 +48,7 @@ var (
 		return kv.Range(key, end, ro)
 	}
 	txnRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
-		txn := kv.Read()
+		txn := kv.Read(traceutil.TODO())
 		defer txn.End()
 		return txn.Range(key, end, ro)
 	}
@@ -56,7 +57,7 @@ var (
 		return kv.Put(key, value, lease)
 	}
 	txnPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
-		txn := kv.Write()
+		txn := kv.Write(traceutil.TODO())
 		defer txn.End()
 		return txn.Put(key, value, lease)
 	}
@@ -65,7 +66,7 @@ var (
 		return kv.DeleteRange(key, end)
 	}
 	txnDeleteRangeFunc = func(kv KV, key, end []byte) (n, rev int64) {
-		txn := kv.Write()
+		txn := kv.Write(traceutil.TODO())
 		defer txn.End()
 		return txn.DeleteRange(key, end)
 	}
@@ -182,7 +183,7 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	defer cleanup(s, b, tmpPath)
 
 	put3TestKVs(s)
-	if _, err := s.Compact(4); err != nil {
+	if _, err := s.Compact(traceutil.TODO(), 4); err != nil {
 		t.Fatalf("compact error (%v)", err)
 	}
 
@@ -409,7 +410,7 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 		func() { s.DeleteRange([]byte("foo"), nil) },
 	}
 	for i, tt := range tests {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		done := make(chan struct{}, 1)
 		go func() {
 			tt()
@@ -438,7 +439,7 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
-	txn := s.Write()
+	txn := s.Write(traceutil.TODO())
 	defer txn.End()
 
 	donec := make(chan struct{})
@@ -460,7 +461,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		base := int64(i + 1)
 
 		// put foo
@@ -544,7 +545,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		_, err := s.Compact(tt.rev)
+		_, err := s.Compact(traceutil.TODO(), tt.rev)
 		if err != nil {
 			t.Errorf("#%d: unexpect compact error %v", i, err)
 		}
@@ -580,7 +581,7 @@ func TestKVCompactBad(t *testing.T) {
 		{100, ErrFutureRev},
 	}
 	for i, tt := range tests {
-		_, err := s.Compact(tt.rev)
+		_, err := s.Compact(traceutil.TODO(), tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: compact error = %v, want %v", i, err, tt.werr)
 		}
@@ -626,7 +627,7 @@ func TestKVRestore(t *testing.T) {
 		func(kv KV) {
 			kv.Put([]byte("foo"), []byte("bar0"), 1)
 			kv.Put([]byte("foo"), []byte("bar1"), 2)
-			kv.Compact(1)
+			kv.Compact(traceutil.TODO(), 1)
 		},
 	}
 	for i, tt := range tests {
