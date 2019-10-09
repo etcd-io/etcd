@@ -8,6 +8,12 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 
 <hr>
 
+## [v3.2.28](https://github.com/etcd-io/etcd/releases/tag/v3.2.28) (2019-TBD)
+
+### Improved
+- Add `etcd --experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/11195).
+
+<hr>
 
 ## [v3.2.27](https://github.com/etcd-io/etcd/releases/tag/v3.2.27) (2019-09-17)
 

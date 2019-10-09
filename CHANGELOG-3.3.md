@@ -15,6 +15,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) an
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
+### Improved
+
+- Add `etcd --experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/11196).
+
 ### Metrics, Monitoring
 
 See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
