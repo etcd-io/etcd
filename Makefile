@@ -51,7 +51,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.13
+GO_VERSION ?= 1.13.1
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -65,11 +65,11 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.13 make build-docker-test
+#   GO_VERSION=1.13.1 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.13 make push-docker-test
+#   GO_VERSION=1.13.1 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -281,6 +281,7 @@ docker-static-ip-test-certs-metrics-proxy-run:
 #   make docker-dns-test-certs-wildcard-run
 #   make docker-dns-test-certs-common-name-auth-run
 #   make docker-dns-test-certs-common-name-multi-run
+#   make docker-dns-test-certs-san-dns-run
 
 build-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -389,6 +390,19 @@ docker-dns-test-certs-common-name-multi-run:
 	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-common-name-multi/run.sh && rm -rf m*.etcd"
 
+docker-dns-test-certs-san-dns-run:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  $(TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/tests/docker-dns/certs-san-dns,destination=/certs-san-dns \
+	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-san-dns/run.sh && rm -rf m*.etcd"
 
 
 # Example:

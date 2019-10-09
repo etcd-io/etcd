@@ -9,7 +9,33 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 <hr>
 
 
-## [v3.4.1](https://github.com/etcd-io/etcd/releases/tag/v3.4.1) (2019-TBD)
+## [v3.4.2](https://github.com/etcd-io/etcd/releases/tag/v3.4.2) (2019 TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.1...v3.4.2) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.1) to [**`v1.24.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.24.0).
+
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
+
+### etcdserver
+
+- Add [`tracing`](https://github.com/etcd-io/etcd/pull/11179) to range, put and compact requests in etcdserver.
+
+### Go
+
+- Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+
+
+<hr>
+
+
+## [v3.4.1](https://github.com/etcd-io/etcd/releases/tag/v3.4.1) (2019-09-17)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.4.1) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
@@ -28,6 +54,14 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix [secure server logging message](https://github.com/etcd-io/etcd/commit/8b053b0f44c14ac0d9f39b9b78c17c57d47966eb).
 - Remove [redundant `%` characters in file descriptor warning message](https://github.com/etcd-io/etcd/commit/d5f79adc9cea9ec8c93669526464b0aa19ed417b).
+
+### Package `embed`
+
+- Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11148) to allow creating a custom zap logger.
+
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.23.1`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.1).
 
 ### Go
 
