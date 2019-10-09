@@ -253,6 +253,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_PEER_AUTO_TLS
 
+### --experimental-peer-skip-client-san-verification 
++ Skip verification of SAN field in client certificate for peer connections.
++ default: false
++ env variable: ETCD_EXPERIMENTAL_PEER_SKIP_CLIENT_SAN_VERIFICATION
+
 ## Logging flags
 
 ### --debug
