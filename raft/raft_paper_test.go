@@ -32,7 +32,7 @@ import (
 	"sort"
 	"testing"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v4/raft/raftpb"
 )
 
 func TestFollowerUpdateTermFromMessage(t *testing.T) {

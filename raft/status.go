@@ -17,8 +17,8 @@ package raft
 import (
 	"fmt"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	pb "go.etcd.io/etcd/v4/raft/raftpb"
+	"go.etcd.io/etcd/v4/raft/tracker"
 )
 
 // Status contains information about this Raft peer and its view of the system.

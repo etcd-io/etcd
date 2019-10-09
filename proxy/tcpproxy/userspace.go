@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "proxy/tcpproxy")
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd/v4", "proxy/tcpproxy")
 
 type remote struct {
 	mu       sync.Mutex

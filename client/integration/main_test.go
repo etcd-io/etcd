@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v4/pkg/testutil"
 )
 
 func TestMain(m *testing.M) {

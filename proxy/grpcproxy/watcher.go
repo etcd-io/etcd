@@ -17,10 +17,10 @@ package grpcproxy
 import (
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/v4/clientv3"
+	pb "go.etcd.io/etcd/v4/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v4/mvcc"
+	"go.etcd.io/etcd/v4/mvcc/mvccpb"
 )
 
 type watchRange struct {

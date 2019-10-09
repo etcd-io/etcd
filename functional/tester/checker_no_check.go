@@ -14,7 +14,7 @@
 
 package tester
 
-import "go.etcd.io/etcd/functional/rpcpb"
+import "go.etcd.io/etcd/v4/functional/rpcpb"
 
 type noCheck struct{}
 

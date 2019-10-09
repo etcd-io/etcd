@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/expect"
+	"go.etcd.io/etcd/v4/pkg/expect"
 )
 
 func TestCtlV3Elect(t *testing.T) {

@@ -28,7 +28,7 @@ import (
 	"syscall"
 	"time"
 
-	"go.etcd.io/etcd/pkg/proxy"
+	"go.etcd.io/etcd/v4/pkg/proxy"
 
 	"go.uber.org/zap"
 )

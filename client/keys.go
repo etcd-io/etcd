@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.etcd.io/etcd/pkg/pathutil"
+	"go.etcd.io/etcd/v4/pkg/pathutil"
 	"net/http"
 	"net/url"
 	"strconv"

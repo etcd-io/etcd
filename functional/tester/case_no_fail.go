@@ -17,7 +17,7 @@ package tester
 import (
 	"time"
 
-	"go.etcd.io/etcd/functional/rpcpb"
+	"go.etcd.io/etcd/v4/functional/rpcpb"
 
 	"go.uber.org/zap"
 )

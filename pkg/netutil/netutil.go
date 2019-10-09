@@ -23,7 +23,7 @@ import (
 	"sort"
 	"time"
 
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v4/pkg/types"
 
 	"go.uber.org/zap"
 )

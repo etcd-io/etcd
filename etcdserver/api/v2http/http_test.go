@@ -22,12 +22,12 @@ import (
 	"sort"
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v4/etcdserver"
+	"go.etcd.io/etcd/v4/etcdserver/api/membership"
+	"go.etcd.io/etcd/v4/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v4/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v4/pkg/types"
+	"go.etcd.io/etcd/v4/raft/raftpb"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"

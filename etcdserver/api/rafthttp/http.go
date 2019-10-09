@@ -24,11 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	pioutil "go.etcd.io/etcd/pkg/ioutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v4/etcdserver/api/snap"
+	pioutil "go.etcd.io/etcd/v4/pkg/ioutil"
+	"go.etcd.io/etcd/v4/pkg/types"
+	"go.etcd.io/etcd/v4/raft/raftpb"
+	"go.etcd.io/etcd/v4/version"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"

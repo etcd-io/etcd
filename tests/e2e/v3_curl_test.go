@@ -22,11 +22,11 @@ import (
 	"strconv"
 	"testing"
 
-	"go.etcd.io/etcd/auth/authpb"
-	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v4/auth/authpb"
+	epb "go.etcd.io/etcd/v4/etcdserver/api/v3election/v3electionpb"
+	"go.etcd.io/etcd/v4/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v4/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v4/pkg/testutil"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )

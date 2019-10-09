@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/v4/clientv3"
+	"go.etcd.io/etcd/v4/mvcc/mvccpb"
 
 	bolt "go.etcd.io/bbolt"
 )

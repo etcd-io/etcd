@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"path"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v4/etcdserver"
+	"go.etcd.io/etcd/v4/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v4/etcdserver/etcdserverpb"
 
 	"go.uber.org/zap"
 )

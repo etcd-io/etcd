@@ -18,7 +18,7 @@ import (
 	"errors"
 	"sync"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v4/raft/raftpb"
 )
 
 // ErrCompacted is returned by Storage.Entries/Compact when a requested

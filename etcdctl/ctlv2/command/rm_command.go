@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	"github.com/urfave/cli"
-	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/v4/client"
 )
 
 // NewRemoveCommand returns the CLI command for "rm".

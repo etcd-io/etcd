@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/v4/pkg/fileutil"
 
 	"go.uber.org/zap"
 )

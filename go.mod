@@ -1,4 +1,4 @@
-module go.etcd.io/etcd
+module go.etcd.io/etcd/v4
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
