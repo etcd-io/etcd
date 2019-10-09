@@ -42,7 +42,7 @@ var (
 	// This only works for linux.
 	initialMmapSize = uint64(10 * 1024 * 1024 * 1024)
 
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc/backend")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd/v3", "mvcc/backend")
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
 	minSnapshotWarningTimeout = 30 * time.Second

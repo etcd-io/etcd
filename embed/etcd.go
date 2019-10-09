@@ -29,18 +29,18 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/v2http"
-	"go.etcd.io/etcd/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/etcdserver/api/v3client"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/pkg/debugutil"
-	runtimeutil "go.etcd.io/etcd/pkg/runtime"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2v3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/v3/pkg/debugutil"
+	runtimeutil "go.etcd.io/etcd/v3/pkg/runtime"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/version"
 
 	"github.com/coreos/pkg/capnslog"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -50,7 +50,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "embed")
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd/v3", "embed")
 
 const (
 	// internal fd usage includes disk usage and transport usage.
