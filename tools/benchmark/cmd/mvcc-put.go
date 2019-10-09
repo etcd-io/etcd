@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/pkg/report"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"github.com/spf13/cobra"
 )
@@ -114,7 +115,7 @@ func mvccPutFunc(cmd *cobra.Command, args []string) {
 		for i := 0; i < mvccTotalRequests; i++ {
 			st := time.Now()
 
-			tw := s.Write()
+			tw := s.Write(traceutil.TODO())
 			for j := i; j < i+nrTxnOps; j++ {
 				tw.Put(keys[j], vals[j], lease.NoLease)
 			}

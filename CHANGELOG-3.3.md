@@ -15,14 +15,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) an
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### Dependency
-
-- Upgrade [`github.com/coreos/bbolt`](https://github.com/etcd-io/bbolt/releases) from [**`v1.3.1-coreos.6`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.1-coreos.6) to [**`v1.3.3`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3).
-
-### Go
-
-- Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
-
 ### Metrics, Monitoring
 
 See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
@@ -31,6 +23,18 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_debugging_mvcc_current_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
 - Add [`etcd_debugging_mvcc_compact_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
+
+### Dependency
+
+- Upgrade [`github.com/coreos/bbolt`](https://github.com/etcd-io/bbolt/releases) from [**`v1.3.1-coreos.6`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.1-coreos.6) to [**`v1.3.3`**](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3).
+
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
+
+### Go
+
+- Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
 
 <hr>
@@ -208,7 +212,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
 
-### etcdctl
+### etcdctl v3
 
 - [Strip out insecure endpoints from DNS SRV records when using discovery](https://github.com/etcd-io/etcd/pull/10443) with etcdctl v2
 
@@ -772,6 +776,13 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 - Enable [`clientv3.WithRequireLeader(context.Context)` for `watch`](https://github.com/etcd-io/etcd/pull/8672) command.
 - Print [`"del"` instead of `"delete"`](https://github.com/etcd-io/etcd/pull/8297) in `txn` interactive mode.
 - Print [`ETCD_INITIAL_ADVERTISE_PEER_URLS` in `member add`](https://github.com/etcd-io/etcd/pull/8332).
+- Fix [`etcdctl snapshot status` to not modify snapshot file](https://github.com/etcd-io/etcd/pull/8815).
+  - For example, start etcd `v3.3.10`
+  - Write some data
+  - Use etcdctl `v3.3.10` to save snapshot
+  - Somehow, upgrading Kubernetes fails, thus rolling back to previous version etcd `v3.2.24`
+  - Run etcdctl `v3.2.24` `snapshot status` against the snapshot file saved from `v3.3.10` server
+  - Run etcdctl `v3.2.24` `snapshot restore` fails with `"expected sha256 [12..."`
 
 ### etcdctl v3
 

@@ -52,16 +52,13 @@ Time:
 - [Jul 11th, 2019 11:00 AM video](https://youtu.be/k_FZEipWD6Y)
 - [Jul 25, 2019 11:00 AM video](https://youtu.be/VSUJTACO93I)
 - [Aug 22, 2019 11:00 AM video](https://youtu.be/6IBQ-VxQmuM) 
-- Sep 19, 2019 11:00 AM
+- [Sep 19, 2019 11:00 AM video](https://youtu.be/SqfxU9DhBOc)
 - Nov 14, 2019 11:00 AM
 - Dec 12, 2019 11:00 AM
 
-Join Hangouts Meet
-meet.google.com/umg-nrxn-qvs
+Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
 
-Join by phone
-‪+1 405-792-0633‬ PIN: ‪299 906‬#
-More phone numbers
+Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
 
 ## Getting started

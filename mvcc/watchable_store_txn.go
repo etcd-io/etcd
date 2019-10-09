@@ -14,7 +14,10 @@
 
 package mvcc
 
-import "go.etcd.io/etcd/mvcc/mvccpb"
+import (
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
+)
 
 func (tw *watchableStoreTxnWrite) End() {
 	changes := tw.Changes()
@@ -48,4 +51,6 @@ type watchableStoreTxnWrite struct {
 	s *watchableStore
 }
 
-func (s *watchableStore) Write() TxnWrite { return &watchableStoreTxnWrite{s.store.Write(), s} }
+func (s *watchableStore) Write(trace *traceutil.Trace) TxnWrite {
+	return &watchableStoreTxnWrite{s.store.Write(trace), s}
+}
