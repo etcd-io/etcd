@@ -57,6 +57,11 @@ function main {
 	cd release
 	setup_env "${PROJ}" "${VER}"
 
+	if [[ $(go env GOOS) == "darwin" ]]; then
+		echo "Please use linux machine for release builds."
+		exit 1
+	fi
+
 	for os in darwin windows linux; do
 		export GOOS=${os}
 		TARGET_ARCHS=("amd64")
