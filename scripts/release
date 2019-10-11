@@ -51,7 +51,7 @@ main() {
   if [ ! -d "${reldir}/etcd" ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone git@github.com:etcd-io/etcd.git --branch "${BRANCH}"
+    git clone https://github.com/etcd-io/etcd.git --branch "${BRANCH}"
   fi
   cd "${reldir}/etcd"
 
