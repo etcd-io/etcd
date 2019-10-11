@@ -5,11 +5,31 @@ Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
 
+<hr>
+
+
+## [v3.3.17](https://github.com/etcd-io/etcd/releases/tag/v3.3.17) (2019-10-11)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.16...v3.3.17) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Release details
+
+This release replaces 3.3.16.
+
+Due to the etcd 3.3.16 release being incorrectly released (see details below), please use this release instead.
+
 
 <hr>
 
 
-## [v3.3.16](https://github.com/etcd-io/etcd/releases/tag/v3.3.16) (2019-TBD)
+## [v3.3.16](https://github.com/etcd-io/etcd/releases/tag/v3.3.16) (2019-10-10)
+
+**WARNING: This is a bad release! Please use etcd 3.3.17 instead. See https://github.com/etcd-io/etcd/issues/11241 for details.**
+
+### Issues with release
+
+- go mod for 'v3.3.16' may return a different hash if retrieved from a go mod proxy than if retrieved directly from github. Depending on this version is unsafe. See https://github.com/etcd-io/etcd/issues/11241 for details.
+- The binaries and docker image for this release have been published and will be left as-is, but will not be signed since this is a bad release.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
