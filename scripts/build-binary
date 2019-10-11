@@ -59,7 +59,8 @@ function main {
 
 	tarcmd=tar
 	if [[ $(go env GOOS) == "darwin" ]]; then
-		tarcmd=gtar
+	  	echo "Please use linux machine for release builds."
+		exit 1
 	fi
 
 	for os in darwin windows linux; do
