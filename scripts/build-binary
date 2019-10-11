@@ -84,7 +84,7 @@ function main {
 			package "${TARGET}" "${PROJ}"
 
 			if [ ${GOOS} == "linux" ]; then
-				tar cfz "${TARGET}.tar.gz" "${TARGET}"
+				${tarcmd} cfz "${TARGET}.tar.gz" "${TARGET}"
 				echo "Wrote release/${TARGET}.tar.gz"
 			else
 				zip -qr "${TARGET}.zip" "${TARGET}"

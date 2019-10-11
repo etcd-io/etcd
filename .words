@@ -95,6 +95,7 @@ jitter
 WithBackoff
 BackoffLinearWithJitter
 jitter
+WithDialer
 WithMax
 ServerStreams
 BidiStreams

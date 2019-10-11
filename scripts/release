@@ -51,7 +51,7 @@ main() {
   if [ ! -d "${reldir}/etcd" ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone git@github.com:etcd-io/etcd.git --branch "${BRANCH}"
+    git clone https://github.com/etcd-io/etcd.git --branch "${BRANCH}"
   fi
   cd "${reldir}/etcd"
 
@@ -106,7 +106,7 @@ main() {
 
     # Push the version change if it's not already been pushed.
     if [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
-      read -pr "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " confirm
+      read -p "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " -r confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       git push
     fi
@@ -120,7 +120,7 @@ main() {
     fi
 
     # Push the tag change if it's not already been pushed.
-    read -pr "Push etcd ${RELEASE_VERSION} tag [y/N]? " confirm
+    read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     git push origin "tags/${RELEASE_VERSION}"
   fi
@@ -147,7 +147,7 @@ main() {
   # Generate SHA256SUMS
   echo -e "Generating sha256sums of release artifacts.\n"
   pushd ./release
-  grep . -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
+  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
   if [ -s ./release/SHA256SUMS ]; then
     cat ./release/SHA256SUMS
@@ -160,7 +160,7 @@ main() {
   if [ "${NO_UPLOAD}" == 1 ]; then
     echo "Skipping artifact upload to gs://etcd. --no-upload flat is set."
   else
-    read -pr "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " confirm
+    read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     gsutil -m cp ./release/SHA256SUMS "gs://etcd/${RELEASE_VERSION}/"
     gsutil -m cp ./release/*.zip "gs://etcd/${RELEASE_VERSION}/"
@@ -172,7 +172,7 @@ main() {
   if [ "${NO_DOCKER_PUSH}" == 1 ]; then
     echo "Skipping docker push. --no-docker-push flat is set."
   else
-    read -pr "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " confirm
+    read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     # shellcheck disable=SC2034
     for i in {1..5}; do
@@ -185,7 +185,7 @@ main() {
     docker push "quay.io/coreos/etcd:${RELEASE_VERSION}"
 
     echo "Pushing container images to gcr.io ${RELEASE_VERSION}"
-    gcloud docker -- "push gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+    gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
 
     for TARGET_ARCH in "-arm64" "-ppc64le"; do
       echo "Pushing container images to quay.io ${RELEASE_VERSION}${TARGET_ARCH}"
