@@ -316,6 +316,13 @@ func (cfg *config) parse(arguments []string) error {
 }
 
 func (cfg *config) configFromCmdLine() error {
+	verKey := "ETCD_VERSION"
+	if verVal := os.Getenv(verKey); verVal != "" {
+		// unset to avoid any possible side-effect.
+		os.Unsetenv(verKey)
+		plog.Warningf("cannot set special environment variable %s=%s", verKey, verVal)
+	}
+
 	err := flags.SetFlagsFromEnv("ETCD", cfg.cf.flagSet)
 	if err != nil {
 		return err
