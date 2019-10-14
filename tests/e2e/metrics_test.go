@@ -48,7 +48,7 @@ func metricsTest(cx ctlCtx) {
 		{"/metrics", fmt.Sprintf("etcd_debugging_mvcc_keys_total 1")},
 		{"/metrics", fmt.Sprintf("etcd_mvcc_delete_total 3")},
 		{"/metrics", fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
-		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version)+".0")},
+		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version))},
 		{"/health", `{"health":"true"}`},
 	} {
 		i++
