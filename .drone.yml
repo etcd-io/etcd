@@ -1,0 +1,17 @@
+---
+kind: pipeline
+name: default
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: test
+  image: golang:1.13.1
+  commands:
+  - PASSES='build' ./test
+  - PASSES='unit' ./test
+  - CPU=1 PASSES='integration' ./test
+  - CPU=2 PASSES='integration' ./test
+  - CPU=4 PASSES='integration' ./test
