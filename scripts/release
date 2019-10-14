@@ -119,6 +119,20 @@ main() {
       git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
     fi
 
+    # Verify the latest commit has the version tag
+    local tag="$(git describe --exact-match HEAD)"
+    if [ "${tag}" != "${RELEASE_VERSION}" ]; then
+      echo "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
+      exit 1
+    fi
+
+    # Verify the version tag is on the right branch
+    local branch=$(git branch --contains "${RELEASE_VERSION}")
+    if [ "${branch}" != "release-${MINOR_VERSION}" ]; then
+      echo "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
+      exit 1
+    fi
+
     # Push the tag change if it's not already been pushed.
     read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
@@ -197,6 +211,28 @@ main() {
 
     echo "Setting permissions using gsutil..."
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
+  fi
+
+  ### Release validation
+  mkdir -p downloads
+
+  # Check image versions
+  for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
+    local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
+    if [ "${image_version}" != "${VERSION}" ]; then
+      echo "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
+      exit 1
+    fi
+  done
+
+  # Check gsutil binary versions
+  local BINARY_TGZ="etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64.tar.gz"
+  gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
+  tar -zx -C downloads -f "downloads/${BINARY_TGZ}"
+  local binary_version=$("./downloads/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
+  if [ "${binary_version}" != "${VERSION}" ]; then
+    echo "Check failed: etcd --version output for ${BINARY_TGZ} from gs://etcd/${RELEASE_VERSION} is incorrect: ${binary_version}"
+    exit 1
   fi
 
   # TODO: signing process
