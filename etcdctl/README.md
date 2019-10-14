@@ -533,8 +533,8 @@ Prints a message with the granted lease ID.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 ```
 
 ### LEASE REVOKE \<leaseID\>
@@ -609,8 +609,8 @@ Prints a message with a list of active leases.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 
 ./etcdctl lease list
 32695410dcc0ca06

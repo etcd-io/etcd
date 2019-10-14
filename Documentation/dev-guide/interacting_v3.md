@@ -408,9 +408,9 @@ Applications can grant leases for keys from an etcd cluster. When a key is attac
 Here is the command to grant a lease:
 
 ```bash
-# grant a lease with 10 second TTL
-$ etcdctl lease grant 10
-lease 32695410dcc0ca06 granted with TTL(10s)
+# grant a lease with 60 second TTL
+$ etcdctl lease grant 60
+lease 32695410dcc0ca06 granted with TTL(60s)
 
 # attach key foo to lease 32695410dcc0ca06
 $ etcdctl put --lease=32695410dcc0ca06 foo bar
@@ -424,8 +424,8 @@ Applications revoke leases by lease ID. Revoking a lease deletes all of its atta
 Suppose we finished the following sequence of operations:
 
 ```bash
-$ etcdctl lease grant 10
-lease 32695410dcc0ca06 granted with TTL(10s)
+$ etcdctl lease grant 60
+lease 32695410dcc0ca06 granted with TTL(60s)
 $ etcdctl put --lease=32695410dcc0ca06 foo bar
 OK
 ```
@@ -447,17 +447,17 @@ Applications can keep a lease alive by refreshing its TTL so it does not expire.
 Suppose we finished the following sequence of operations:
 
 ```bash
-$ etcdctl lease grant 10
-lease 32695410dcc0ca06 granted with TTL(10s)
+$ etcdctl lease grant 60
+lease 32695410dcc0ca06 granted with TTL(60s)
 ```
 
 Here is the command to keep the same lease alive:
 
 ```bash
 $ etcdctl lease keep-alive 32695410dcc0ca06
-lease 32695410dcc0ca06 keepalived with TTL(10)
-lease 32695410dcc0ca06 keepalived with TTL(10)
-lease 32695410dcc0ca06 keepalived with TTL(10)
+lease 32695410dcc0ca06 keepalived with TTL(60)
+lease 32695410dcc0ca06 keepalived with TTL(60)
+lease 32695410dcc0ca06 keepalived with TTL(60)
 ...
 ```
 
