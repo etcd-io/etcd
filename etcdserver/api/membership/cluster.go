@@ -575,9 +575,9 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
 	if oldVer != nil {
-		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": oldVer.String()}).Set(0)
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
 	}
-	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": ver.String()}).Set(1)
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
 	onSet(c.lg, ver)
 }
 
