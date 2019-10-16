@@ -369,6 +369,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	} else {
 		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 	}
+	oldVer := c.version
 	c.version = ver
 	mustDetectDowngrade(c.version)
 	if c.store != nil {
@@ -377,8 +378,11 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
-	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": ver.String()}).Set(1)
-    onSet(ver)
+	if oldVer != nil {
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
+	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
+	onSet(ver)
 }
 
 func (c *RaftCluster) IsReadyToAddNewMember() bool {

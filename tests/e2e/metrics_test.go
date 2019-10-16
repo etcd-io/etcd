@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/version"
+	"github.com/coreos/etcd/version"
 )
 
 func TestV3MetricsSecure(t *testing.T) {
@@ -50,7 +50,7 @@ func metricsTest(cx ctlCtx) {
 	if strings.HasSuffix(ver, "+git") {
 		ver = strings.Replace(ver, "+git", "", 1)
 	}
-	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, ver), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
+	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version)), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health":"true"}`, metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
