@@ -17,7 +17,6 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -55,7 +54,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	// so there's a window at boot time where it doesn't have V3rpcCapability enabled
 	// poll /version until etcdcluster is >2.3.x before making v3 requests
 	for i := 0; i < 7; i++ {
-		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"` + version.Cluster(version.Version)}); err != nil {
+		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"3.`}); err != nil {
 			t.Logf("#%d: v3 is not ready yet (%v)", i, err)
 			time.Sleep(time.Second)
 			continue
@@ -63,7 +62,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		break
 	}
 	if err != nil {
-		t.Skipf("cannot pull version (%v)", err)
+		t.Fatalf("cannot pull version (%v)", err)
 	}
 
 	os.Setenv("ETCDCTL_API", "3")
@@ -105,12 +104,18 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	// TODO: update after release candidate
 	// expect upgraded cluster version
-	ver := version.Version
-	if strings.HasSuffix(ver, "-pre") {
-		ver = strings.Replace(ver, "-pre", "", 1)
+	// new cluster version needs more time to upgrade
+	ver := version.Cluster(version.Version)
+	for i := 0; i < 7; i++ {
+		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"` + ver}); err != nil {
+			t.Logf("#%d: %v is not ready yet (%v)", i, ver, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
 	}
-	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, ver), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
-		cx.t.Fatalf("failed get with curl (%v)", err)
+	if err != nil {
+		t.Fatalf("cluster version is not upgraded (%v)", err)
 	}
 }
 
