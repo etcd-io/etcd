@@ -69,6 +69,8 @@ Member:
     Maximum number of wal files to retain (0 is unlimited).
   --quota-backend-bytes '0'
     Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
+  --backend-bbolt-freelist-type 'map'
+    BackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
   --backend-batch-interval ''
     BackendBatchInterval is the maximum time before commit the backend transaction.
   --backend-batch-limit '0'
@@ -200,8 +202,6 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
-  --experimental-backend-bbolt-freelist-type 'array'
-    ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000

@@ -77,7 +77,7 @@ const (
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
 	// backend freelist map type
-	freelistMapType = "map"
+	freelistArrayType = "array"
 )
 
 var (
@@ -171,10 +171,12 @@ type Config struct {
 	// BackendBatchInterval is the maximum time before commit the backend transaction.
 	BackendBatchInterval time.Duration `json:"backend-batch-interval"`
 	// BackendBatchLimit is the maximum operations before commit the backend transaction.
-	BackendBatchLimit int   `json:"backend-batch-limit"`
-	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
-	MaxTxnOps         uint  `json:"max-txn-ops"`
-	MaxRequestBytes   uint  `json:"max-request-bytes"`
+	BackendBatchLimit int `json:"backend-batch-limit"`
+	// BackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
+	BackendFreelistType string `json:"backend-bbolt-freelist-type"`
+	QuotaBackendBytes   int64  `json:"quota-backend-bytes"`
+	MaxTxnOps           uint   `json:"max-txn-ops"`
+	MaxRequestBytes     uint   `json:"max-request-bytes"`
 
 	LPUrls, LCUrls []url.URL
 	APUrls, ACUrls []url.URL
@@ -276,8 +278,6 @@ type Config struct {
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
-	// ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
-	ExperimentalBackendFreelistType string `json:"experimental-backend-bbolt-freelist-type"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
 	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
 	ExperimentalCompactionBatchLimit  int  `json:"experimental-compaction-batch-limit"`
@@ -907,9 +907,9 @@ func (cfg *Config) getMetricsURLs() (ss []string) {
 }
 
 func parseBackendFreelistType(freelistType string) bolt.FreelistType {
-	if freelistType == freelistMapType {
-		return bolt.FreelistMapType
+	if freelistType == freelistArrayType {
+		return bolt.FreelistArrayType
 	}
 
-	return bolt.FreelistArrayType
+	return bolt.FreelistMapType
 }
