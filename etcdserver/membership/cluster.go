@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // RaftCluster is a list of Members that belong to the same raft cluster
@@ -368,6 +369,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	} else {
 		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 	}
+	oldVer := c.version
 	c.version = ver
 	mustDetectDowngrade(c.version)
 	if c.store != nil {
@@ -376,6 +378,10 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	if oldVer != nil {
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
+	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
 	onSet(ver)
 }
 
