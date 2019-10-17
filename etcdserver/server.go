@@ -591,6 +591,7 @@ func (s *EtcdServer) start() {
 	s.readNotifier = newNotifier()
 	if s.ClusterVersion() != nil {
 		plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, version.Cluster(s.ClusterVersion().String()))
+		membership.ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(s.ClusterVersion().String())}).Set(1)
 	} else {
 		plog.Infof("starting server... [version: %v, cluster version: to_be_decided]", version.Version)
 	}
