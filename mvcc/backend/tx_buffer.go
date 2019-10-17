@@ -162,7 +162,7 @@ func (bb *bucketBuffer) add(k, v []byte) {
 	}
 }
 
-// merge merges data from bb into bbsrc.
+// merge merges data from bbsrc into bb.
 func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 	for i := 0; i < bbsrc.used; i++ {
 		bb.add(bbsrc.buf[i].key, bbsrc.buf[i].val)
