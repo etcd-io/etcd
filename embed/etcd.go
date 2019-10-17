@@ -159,7 +159,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
-	backendFreelistType := parseBackendFreelistType(cfg.ExperimentalBackendFreelistType)
+	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
 	srvcfg := etcdserver.ServerConfig{
 		Name:                       cfg.Name,

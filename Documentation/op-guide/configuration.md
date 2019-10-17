@@ -89,6 +89,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_BACKEND_BATCH_LIMIT
 
+### --backend-bbolt-freelist-type
++ The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
++ default: map
++ env variable: ETCD_BACKEND_BBOLT_FREELIST_TYPE
+
 ### --backend-batch-interval
 + BackendBatchInterval is the maximum time before commit the backend transaction.
 + default: 0
@@ -435,11 +440,6 @@ Follow the instructions when using these flags.
 + env variable: (not supported)
 
 ## Experimental flags
-
-### --experimental-backend-bbolt-freelist-type
-+ The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
-+ default: array
-+ env variable: ETCD_EXPERIMENTAL_BACKEND_BBOLT_FREELIST_TYPE
 
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
