@@ -77,7 +77,7 @@ In theory, it’s possible to build these primitives atop any storage systems pr
 
 For distributed coordination, choosing etcd can help prevent operational headaches and save engineering effort.
 
-[production-users]: ../production-users.md
+[production-users]: ../../ADOPTERS.md
 [grpc]: https://www.grpc.io
 [consul-bulletproof]: https://www.consul.io/docs/internals/sessions.html
 [curator]: http://curator.apache.org/
