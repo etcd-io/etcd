@@ -1,8 +1,7 @@
-FROM s390x/alpine:3.6
+FROM k8s.gcr.io/debian-base-s390x:v1.0.0
 
 ADD bin/etcd /usr/local/bin/
 ADD bin/etcdctl /usr/local/bin/
-ENV ETCD_UNSUPPORTED_ARCH=s390x
 RUN mkdir -p /var/etcd/
 RUN mkdir -p /var/lib/etcd/
 
