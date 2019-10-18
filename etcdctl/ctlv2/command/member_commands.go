@@ -164,7 +164,7 @@ func actionMemberRemove(c *cli.Context) error {
 		if m.Name == removalID {
 			// Note that, so long as it's not ambiguous, we *could* do the right thing by name here.
 			fmt.Fprintf(os.Stderr, "Found a member named %s; if this is correct, please use its ID, eg:\n\tetcdctl member remove %s\n", m.Name, m.ID)
-			fmt.Fprintf(os.Stderr, "For more details, read the documentation at https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md#remove-a-member\n\n")
+			fmt.Fprintf(os.Stderr, "For more details, read the documentation at https://github.com/etcd-io/etcd/blob/master/Documentation/runtime-configuration.md#remove-a-member\n\n")
 		}
 	}
 	if !foundID {

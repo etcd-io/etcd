@@ -1,4 +1,6 @@
-# Set up a local cluster
+---
+title: Set up a local cluster
+---
 
 For testing and development deployments, the quickest and easiest way is to configure a local cluster. For a production deployment, refer to the [clustering][clustering] section.
 
@@ -21,14 +23,7 @@ The running etcd member listens on `localhost:2379` for client requests.
 
 Use `etcdctl` to interact with the running cluster:
 
-1. Configure the environment to have `ETCDCTL_API=3` so `etcdctl` uses the etcd API version 3 instead of defaulting to version 2.
-
-    ```
-    # use API version 3
-    $ export ETCDCTL_API=3
-    ```
-
-2. Store an example key-value pair in the cluster:
+1. Store an example key-value pair in the cluster:
 
     ```
       $ ./etcdctl put foo bar
@@ -37,7 +32,7 @@ Use `etcdctl` to interact with the running cluster:
 
     If OK is printed, storing key-value pair is successful.
 
-3. Retrieve the value of `foo`:
+2. Retrieve the value of `foo`:
 
     ```
     $ ./etcdctl get foo
@@ -70,14 +65,7 @@ A `Procfile` at the base of the etcd git repository is provided to easily config
 
 Use `etcdctl` to interact with the running cluster:
 
-1. Configure the environment to have `ETCDCTL_API=3` so `etcdctl` uses the etcd API version 3 instead of defaulting to version 2.
-
-    ```
-    # use API version 3
-    $ export ETCDCTL_API=3
-    ```
-
-2. Print the list of members:
+1. Print the list of members:
 
     ```
     $ etcdctl --write-out=table --endpoints=localhost:2379 member list
@@ -94,7 +82,7 @@ Use `etcdctl` to interact with the running cluster:
     +------------------+---------+--------+------------------------+------------------------+
     ```
 
-3. Store an example key-value pair in the cluster:
+2. Store an example key-value pair in the cluster:
 
     ```
     $ etcdctl put foo bar

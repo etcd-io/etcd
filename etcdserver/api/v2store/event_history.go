@@ -20,7 +20,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
 )
 
 type EventHistory struct {
@@ -79,7 +79,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		e := eh.Queue.Events[i]
 
 		if !e.Refresh {
-			ok := (e.Node.Key == key)
+			ok := e.Node.Key == key
 
 			if recursive {
 				// add tailing slash

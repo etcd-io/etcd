@@ -27,17 +27,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/netutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/netutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
+
+const maxLearners = 1
 
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
@@ -58,6 +61,17 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 }
 
+// ConfigChangeContext represents a context for confChange.
+type ConfigChangeContext struct {
+	Member
+	// IsPromote indicates if the config change is for promoting a learner member.
+	// This flag is needed because both adding a new member and promoting a learner member
+	// uses the same config change type 'ConfChangeAddNode'.
+	IsPromote bool `json:"isPromote"`
+}
+
+// NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
+// cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
 	c := NewCluster(lg, token)
 	for name, urls := range urlsmap {
@@ -109,6 +123,19 @@ func (c *RaftCluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
 	return c.members[id].Clone()
+}
+
+func (c *RaftCluster) VotingMembers() []*Member {
+	c.Lock()
+	defer c.Unlock()
+	var ms MembersByID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ms = append(ms, m.Clone())
+		}
+	}
+	sort.Sort(ms)
+	return []*Member(ms)
 }
 
 // MemberByName returns a Member with the given name if exists.
@@ -258,30 +285,52 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
-	case raftpb.ConfChangeAddNode:
-		if members[id] != nil {
-			return ErrIDExists
-		}
-		urls := make(map[string]bool)
-		for _, m := range members {
-			for _, u := range m.PeerURLs {
-				urls[u] = true
-			}
-		}
-		m := new(Member)
-		if err := json.Unmarshal(cc.Context, m); err != nil {
+	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
+		confChangeContext := new(ConfigChangeContext)
+		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			if c.lg != nil {
-				c.lg.Panic("failed to unmarshal member", zap.Error(err))
+				c.lg.Panic("failed to unmarshal confChangeContext", zap.Error(err))
 			} else {
-				plog.Panicf("unmarshal member should never fail: %v", err)
-			}
-		}
-		for _, u := range m.PeerURLs {
-			if urls[u] {
-				return ErrPeerURLexists
+				plog.Panicf("unmarshal confChangeContext should never fail: %v", err)
 			}
 		}
 
+		if confChangeContext.IsPromote { // promoting a learner member to voting member
+			if members[id] == nil {
+				return ErrIDNotFound
+			}
+			if !members[id].IsLearner {
+				return ErrMemberNotLearner
+			}
+		} else { // adding a new member
+			if members[id] != nil {
+				return ErrIDExists
+			}
+
+			urls := make(map[string]bool)
+			for _, m := range members {
+				for _, u := range m.PeerURLs {
+					urls[u] = true
+				}
+			}
+			for _, u := range confChangeContext.Member.PeerURLs {
+				if urls[u] {
+					return ErrPeerURLexists
+				}
+			}
+
+			if confChangeContext.Member.IsLearner { // the new member is a learner
+				numLearners := 0
+				for _, m := range members {
+					if m.IsLearner {
+						numLearners++
+					}
+				}
+				if numLearners+1 > maxLearners {
+					return ErrTooManyLearners
+				}
+			}
+		}
 	case raftpb.ConfChangeRemoveNode:
 		if members[id] == nil {
 			return ErrIDNotFound
@@ -431,6 +480,30 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 	}
 }
 
+// PromoteMember marks the member's IsLearner RaftAttributes to false.
+func (c *RaftCluster) PromoteMember(id types.ID) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.members[id].RaftAttributes.IsLearner = false
+	if c.v2store != nil {
+		mustUpdateMemberInStore(c.v2store, c.members[id])
+	}
+	if c.be != nil {
+		mustSaveMemberToBackend(c.be, c.members[id])
+	}
+
+	if c.lg != nil {
+		c.lg.Info(
+			"promote member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	} else {
+		plog.Noticef("promote member %s in cluster %s", id, c.cid)
+	}
+}
+
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.Lock()
 	defer c.Unlock()
@@ -492,6 +565,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 			plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 		}
 	}
+	oldVer := c.version
 	c.version = ver
 	mustDetectDowngrade(c.lg, c.version)
 	if c.v2store != nil {
@@ -500,14 +574,18 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	if oldVer != nil {
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
+	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
 	onSet(c.lg, ver)
 }
 
-func (c *RaftCluster) IsReadyToAddNewMember() bool {
+func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 	nmembers := 1
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if member.IsStarted() {
 			nstarted++
 		}
@@ -516,7 +594,7 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://github.com/coreos/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
+		// https://github.com/etcd-io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
 		if c.lg != nil {
 			c.lg.Debug("number of started member is 1; can accept add member request")
 		} else {
@@ -544,11 +622,11 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	return true
 }
 
-func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	nmembers := 0
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if uint64(member.ID) == id {
 			continue
 		}
@@ -571,6 +649,36 @@ func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 			)
 		} else {
 			plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		}
+		return false
+	}
+
+	return true
+}
+
+func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
+	nmembers := 1
+	nstarted := 0
+
+	for _, member := range c.VotingMembers() {
+		if member.IsStarted() {
+			nstarted++
+		}
+		nmembers++
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		if c.lg != nil {
+			c.lg.Warn(
+				"rejecting member promote; started member will be less than quorum",
+				zap.Int("number-of-started-member", nstarted),
+				zap.Int("quorum", nquorum),
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Warningf("Reject promote member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
 		}
 		return false
 	}
@@ -655,16 +763,21 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	if len(ems) != len(lms) {
 		return fmt.Errorf("member count is unequal")
 	}
-	sort.Sort(MembersByPeerURLs(ems))
-	sort.Sort(MembersByPeerURLs(lms))
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 	for i := range ems {
-		if ok, err := netutil.URLStringsEqual(ctx, lg, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
-			return fmt.Errorf("unmatched member while checking PeerURLs (%v)", err)
+		var err error
+		ok := false
+		for j := range lms {
+			if ok, err = netutil.URLStringsEqual(ctx, lg, ems[i].PeerURLs, lms[j].PeerURLs); ok {
+				lms[j].ID = ems[i].ID
+				break
+			}
 		}
-		lms[i].ID = ems[i].ID
+		if !ok {
+			return fmt.Errorf("PeerURLs: no match found for existing member (%v, %v), last resolver error (%v)", ems[i].ID, ems[i].PeerURLs, err)
+		}
 	}
 	local.members = make(map[types.ID]*Member)
 	for _, m := range lms {
@@ -688,4 +801,45 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
 		}
 	}
+}
+
+// IsLocalMemberLearner returns if the local member is raft learner
+func (c *RaftCluster) IsLocalMemberLearner() bool {
+	c.Lock()
+	defer c.Unlock()
+	localMember, ok := c.members[c.localID]
+	if !ok {
+		if c.lg != nil {
+			c.lg.Panic(
+				"failed to find local ID in cluster members",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+			)
+		} else {
+			plog.Panicf("failed to find local ID %s in cluster %s", c.localID.String(), c.cid.String())
+		}
+	}
+	return localMember.IsLearner
+}
+
+// IsMemberExist returns if the member with the given id exists in cluster.
+func (c *RaftCluster) IsMemberExist(id types.ID) bool {
+	c.Lock()
+	defer c.Unlock()
+	_, ok := c.members[id]
+	return ok
+}
+
+// VotingMemberIDs returns the ID of voting members in cluster.
+func (c *RaftCluster) VotingMemberIDs() []types.ID {
+	c.Lock()
+	defer c.Unlock()
+	var ids []types.ID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ids = append(ids, m.ID)
+		}
+	}
+	sort.Sort(types.IDSlice(ids))
+	return ids
 }

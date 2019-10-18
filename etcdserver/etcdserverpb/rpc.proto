@@ -165,6 +165,14 @@ service Cluster {
         body: "*"
     };
   }
+
+  // MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
+  rpc MemberPromote(MemberPromoteRequest) returns (MemberPromoteResponse) {
+      option (google.api.http) = {
+        post: "/v3/cluster/member/promote"
+        body: "*"
+    };
+  }
 }
 
 service Maintenance {
@@ -256,7 +264,7 @@ service Auth {
     };
   }
 
-  // UserAdd adds a new user.
+  // UserAdd adds a new user. User name cannot be empty.
   rpc UserAdd(AuthUserAddRequest) returns (AuthUserAddResponse) {
       option (google.api.http) = {
         post: "/v3/auth/user/add"
@@ -312,7 +320,7 @@ service Auth {
     };
   }
 
-  // RoleAdd adds a new role.
+  // RoleAdd adds a new role. Role name cannot be empty.
   rpc RoleAdd(AuthRoleAddRequest) returns (AuthRoleAddResponse) {
       option (google.api.http) = {
         post: "/v3/auth/role/add"
@@ -846,11 +854,15 @@ message Member {
   repeated string peerURLs = 3;
   // clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty.
   repeated string clientURLs = 4;
+  // isLearner indicates if the member is raft learner.
+  bool isLearner = 5;
 }
 
 message MemberAddRequest {
   // peerURLs is the list of URLs the added member will use to communicate with the cluster.
   repeated string peerURLs = 1;
+  // isLearner indicates if the added member is raft learner.
+  bool isLearner = 2;
 }
 
 message MemberAddResponse {
@@ -891,6 +903,17 @@ message MemberListRequest {
 message MemberListResponse {
   ResponseHeader header = 1;
   // members is a list of all members associated with the cluster.
+  repeated Member members = 2;
+}
+
+message MemberPromoteRequest {
+  // ID is the member ID of the member to promote.
+  uint64 ID = 1;
+}
+
+message MemberPromoteResponse {
+  ResponseHeader header = 1;
+  // members is a list of all members after promoting the member.
   repeated Member members = 2;
 }
 
@@ -967,6 +990,8 @@ message StatusResponse {
   repeated string errors = 8;
   // dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member.
   int64 dbSizeInUse = 9;
+  // isLearner indicates if the member is raft learner.
+  bool isLearner = 10;
 }
 
 message AuthEnableRequest {
@@ -983,6 +1008,7 @@ message AuthenticateRequest {
 message AuthUserAddRequest {
   string name = 1;
   string password = 2;
+  authpb.UserAddOptions options = 3;
 }
 
 message AuthUserGetRequest {

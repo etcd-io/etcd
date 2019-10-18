@@ -29,9 +29,9 @@ func scToString(sc balancer.SubConn) string {
 	return fmt.Sprintf("%p", sc)
 }
 
-func scsToStrings(scs map[resolver.Address]balancer.SubConn) (ss []string) {
+func scsToStrings(scs map[balancer.SubConn]resolver.Address) (ss []string) {
 	ss = make([]string, 0, len(scs))
-	for a, sc := range scs {
+	for sc, a := range scs {
 		ss = append(ss, fmt.Sprintf("%s (%s)", a.Addr, scToString(sc)))
 	}
 	sort.Strings(ss)

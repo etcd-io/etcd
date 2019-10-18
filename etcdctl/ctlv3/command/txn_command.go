@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/clientv3"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func NewTxnCommand() *cobra.Command {
 // txnCommandFunc executes the "txn" command.
 func txnCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("txn command does not accept argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("txn command does not accept argument"))
 	}
 
 	reader := bufio.NewReader(os.Stdin)

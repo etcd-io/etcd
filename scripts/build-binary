@@ -17,7 +17,7 @@ function setup_env {
 	local ver=${2}
 
 	if [ ! -d "${proj}" ]; then
-		git clone https://github.com/coreos/"${proj}"
+		git clone https://github.com/etcd-io/"${proj}"
 	fi
 
 	pushd "${proj}" >/dev/null
@@ -57,6 +57,12 @@ function main {
 	cd release
 	setup_env "${PROJ}" "${VER}"
 
+	tarcmd=tar
+	if [[ $(go env GOOS) == "darwin" ]]; then
+	  	echo "Please use linux machine for release builds."
+		exit 1
+	fi
+
 	for os in darwin windows linux; do
 		export GOOS=${os}
 		TARGET_ARCHS=("amd64")
@@ -78,7 +84,7 @@ function main {
 			package "${TARGET}" "${PROJ}"
 
 			if [ ${GOOS} == "linux" ]; then
-				tar cfz "${TARGET}.tar.gz" "${TARGET}"
+				${tarcmd} cfz "${TARGET}.tar.gz" "${TARGET}"
 				echo "Wrote release/${TARGET}.tar.gz"
 			else
 				zip -qr "${TARGET}.zip" "${TARGET}"

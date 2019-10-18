@@ -23,8 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/report"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/report"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
@@ -35,14 +35,14 @@ import (
 var watchCmd = &cobra.Command{
 	Use:   "watch",
 	Short: "Benchmark watch",
-	Long: `Benchmark watch tests the performance of processing watch requests and 
-sending events to watchers. It tests the sending performance by 
-changing the value of the watched keys with concurrent put 
+	Long: `Benchmark watch tests the performance of processing watch requests and
+sending events to watchers. It tests the sending performance by
+changing the value of the watched keys with concurrent put
 requests.
 
-During the test, each watcher watches (--total/--watchers) keys 
+During the test, each watcher watches (--total/--watchers) keys
 
-(a watcher might watch on the same key multiple times if 
+(a watcher might watch on the same key multiple times if
 --watched-key-total is small).
 
 Each key is watched by (--total/--watched-key-total) watchers.

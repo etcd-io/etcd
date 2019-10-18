@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 // UniqueURLs contains unique URLs

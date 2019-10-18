@@ -19,11 +19,11 @@ defined in the raftpb package.
 Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
 For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
-(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+(https://raft.github.io/raft.pdf) by Diego Ongaro and John Ousterhout.
 
 A simple example application, _raftexample_, is also available to help illustrate
 how to use this package in practice:
-https://github.com/coreos/etcd/tree/master/contrib/raftexample
+https://github.com/etcd-io/etcd/tree/master/contrib/raftexample
 
 Usage
 
@@ -87,7 +87,7 @@ large).
 
 Note: Marshalling messages is not thread-safe; it is important that you
 make sure that no new entries are persisted while marshalling.
-The easiest way to achieve this is to serialise the messages directly inside
+The easiest way to achieve this is to serialize the messages directly inside
 your main raft loop.
 
 3. Apply Snapshot (if any) and CommittedEntries to the state machine.
@@ -153,7 +153,7 @@ If the proposal is committed, data will appear in committed entries with type
 raftpb.EntryNormal. There is no guarantee that a proposed command will be
 committed; you may have to re-propose after a timeout.
 
-To add or remove node in a cluster, build ConfChange struct 'cc' and call:
+To add or remove a node in a cluster, build ConfChange struct 'cc' and call:
 
 	n.ProposeConfChange(ctx, cc)
 
@@ -172,7 +172,7 @@ may be reused. Node IDs must be non-zero.
 Implementation notes
 
 This implementation is up to date with the final Raft thesis
-(https://ramcloud.stanford.edu/~ongaro/thesis.pdf), although our
+(https://github.com/ongardie/dissertation/blob/master/stanford.pdf), although our
 implementation of the membership change protocol differs somewhat from
 that described in chapter 4. The key invariant that membership changes
 happen one node at a time is preserved, but in our implementation the
@@ -260,7 +260,7 @@ stale log entries:
 	'MsgPreVote' and 'MsgPreVoteResp' are used in an optional two-phase election
 	protocol. When Config.PreVote is true, a pre-election is carried out first
 	(using the same rules as a regular election), and no node increases its term
-	number unless the pre-election indicates that the campaigining node would win.
+	number unless the pre-election indicates that the campaigning node would win.
 	This minimizes disruption when a partitioned node rejoins the cluster.
 
 	'MsgSnap' requests to install a snapshot message. When a node has just

@@ -6,7 +6,7 @@ if ! [[ "${0}" =~ "scripts/docker-local-tester.sh" ]]; then
 fi
 
 if [[ -z "${GO_VERSION}" ]]; then
-  GO_VERSION=1.10.1
+  GO_VERSION=1.13.1
 fi
 echo "Running with GO_VERSION:" ${GO_VERSION}
 
@@ -14,5 +14,5 @@ docker run \
   --rm \
   --net=host \
   --name tester \
-  gcr.io/etcd-development/etcd-functional-tester:go${GO_VERSION} \
+  gcr.io/etcd-development/etcd-functional:go${GO_VERSION} \
   /bin/bash -c "./bin/etcd-tester --config ./functional.yaml"

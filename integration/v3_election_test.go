@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 // TestElectionWait tests if followers can correctly wait for elections.
@@ -53,7 +53,7 @@ func TestElectionWait(t *testing.T) {
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
 				if !ok {
-					t.Fatalf("could not observe election; channel closed")
+					t.Errorf("could not observe election; channel closed")
 				}
 				electedc <- string(s.Kvs[0].Value)
 				// wait for next election round
@@ -76,7 +76,7 @@ func TestElectionWait(t *testing.T) {
 			e := concurrency.NewElection(session, "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
 			if err := e.Campaign(context.TODO(), ev); err != nil {
-				t.Fatalf("failed volunteer (%v)", err)
+				t.Errorf("failed volunteer (%v)", err)
 			}
 			// wait for followers to accept leadership
 			for j := 0; j < followers; j++ {
@@ -87,7 +87,7 @@ func TestElectionWait(t *testing.T) {
 			}
 			// let next leader take over
 			if err := e.Resign(context.TODO()); err != nil {
-				t.Fatalf("failed resign (%v)", err)
+				t.Errorf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader
 			for j := 0; j < followers; j++ {
@@ -201,7 +201,7 @@ func TestElectionSessionRecampaign(t *testing.T) {
 // TestElectionOnPrefixOfExistingKey checks that a single
 // candidate can be elected on a new key that is a prefix
 // of an existing key. To wit, check for regression
-// of bug #6278. https://github.com/coreos/etcd/issues/6278
+// of bug #6278. https://github.com/etcd-io/etcd/issues/6278
 //
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})

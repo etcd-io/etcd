@@ -40,7 +40,7 @@ func TestNewRaftLogger(t *testing.T) {
 			Thereafter: 100,
 		},
 		Encoding:         "json",
-		EncoderConfig:    zap.NewProductionEncoderConfig(),
+		EncoderConfig:    DefaultZapLoggerConfig.EncoderConfig,
 		OutputPaths:      []string{logPath},
 		ErrorOutputPaths: []string{logPath},
 	}

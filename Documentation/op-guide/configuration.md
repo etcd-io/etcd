@@ -1,8 +1,10 @@
-# Configuration flags
+---
+title: Configuration flags
+---
 
 etcd is configurable through a configuration file, various command-line flags, and environment variables.
 
-A reusable configuration file is a YAML file made with name and value of one or more command-line flags described below. In order to use this file, specify the file path as a value to the `--config-file` flag. The [sample configuration file][sample-config-file] can be used as a starting point to create a new configuration file as needed.
+A reusable configuration file is a YAML file made with name and value of one or more command-line flags described below. In order to use this file, specify the file path as a value to the `--config-file` flag or `ETCD_CONFIG_FILE` environment variable. The [sample configuration file][sample-config-file] can be used as a starting point to create a new configuration file as needed.
 
 Options set on the command line take precedence over those from the environment. If a configuration file is provided, other command line flags and environment variables will be ignored.
 For example, `etcd --config-file etcd.conf.yml.sample --data-dir /tmp` will ignore the `--data-dir` flag.
@@ -47,14 +49,14 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + env variable: ETCD_ELECTION_TIMEOUT
 
 ### --listen-peer-urls
-+ List of URLs to listen on for peer traffic. This flag tells the etcd to accept incoming requests from its peers on the specified scheme://IP:port combinations. Scheme can be either http or https.If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
++ List of URLs to listen on for peer traffic. This flag tells the etcd to accept incoming requests from its peers on the specified scheme://IP:port combinations. Scheme can be http or https. Alternatively, use `unix://<file-path>` or `unixs://<file-path>` for unix sockets. If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
 + default: "http://localhost:2380"
 + env variable: ETCD_LISTEN_PEER_URLS
 + example: "http://10.0.0.1:2380"
 + invalid example: "http://example.com:2380" (domain name is invalid for binding)
 
 ### --listen-client-urls
-+ List of URLs to listen on for client traffic. This flag tells the etcd to accept incoming requests from the clients on the specified scheme://IP:port combinations. Scheme can be either http or https. If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
++ List of URLs to listen on for client traffic. This flag tells the etcd to accept incoming requests from the clients on the specified scheme://IP:port combinations. Scheme can be either http or https. Alternatively, use `unix://<file-path>` or `unixs://<file-path>` for unix sockets. If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
 + default: "http://localhost:2379"
 + env variable: ETCD_LISTEN_CLIENT_URLS
 + example: "http://10.0.0.1:2379"
@@ -81,6 +83,21 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
 + default: 0
 + env variable: ETCD_QUOTA_BACKEND_BYTES
+
+### --backend-batch-limit
++ BackendBatchLimit is the maximum operations before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_LIMIT
+
+### --backend-bbolt-freelist-type
++ The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
++ default: map
++ env variable: ETCD_BACKEND_BBOLT_FREELIST_TYPE
+
+### --backend-batch-interval
++ BackendBatchInterval is the maximum time before commit the backend transaction.
++ default: 0
++ env variable: ETCD_BACKEND_BATCH_INTERVAL
 
 ### --max-txn-ops
 + Maximum number of operations permitted in a transaction.
@@ -172,7 +189,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --strict-reconfig-check
 + Reject reconfiguration requests that would cause quorum loss.
-+ default: false
++ default: true
 + env variable: ETCD_STRICT_RECONFIG_CHECK
 
 ### --auto-compaction-retention
@@ -187,7 +204,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --enable-v2
 + Accept etcd V2 client requests
-+ default: true
++ default: false
 + env variable: ETCD_ENABLE_V2
 
 ## Proxy flags
@@ -251,11 +268,17 @@ The security flags help to [build a secure etcd cluster][security].
 + Enable client cert authentication.
 + default: false
 + env variable: ETCD_CLIENT_CERT_AUTH
++ CN authentication is not supported by gRPC-gateway.
 
 ### --client-crl-file
 + Path to the client certificate revocation list file.
 + default: ""
 + env variable: ETCD_CLIENT_CRL_FILE
+
+### --client-cert-allowed-hostname
++ Allowed Allowed TLS name for client cert authentication.
++ default: ""
++ env variable: ETCD_CLIENT_CERT_ALLOWED_HOSTNAME
 
 ### --trusted-ca-file
 + Path to the client server TLS trusted CA cert file.
@@ -307,12 +330,26 @@ The security flags help to [build a secure etcd cluster][security].
 
 ### --peer-cert-allowed-cn
 + Allowed CommonName for inter peer authentication.
-+ default: none
++ default: ""
 + env variable: ETCD_PEER_CERT_ALLOWED_CN
+
+### --peer-cert-allowed-hostname
++ Allowed TLS certificate name for inter peer authentication.
++ default: ""
++ env variable: ETCD_PEER_CERT_ALLOWED_HOSTNAME
+
+### --cipher-suites
++ Comma-separated list of supported TLS cipher suites between server/client and peers.
++ default: ""
++ env variable: ETCD_CIPHER_SUITES
 
 ## Logging flags
 
 ### --logger
+
+**Available from v3.4.**
+**WARNING: `--logger=capnslog` to be deprecated in v3.5.**
+
 + Specify 'zap' for structured logging or 'capnslog'.
 + default: capnslog
 + env variable: ETCD_LOGGER
@@ -320,14 +357,30 @@ The security flags help to [build a secure etcd cluster][security].
 ### --log-outputs
 + Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
 + default: default
-+ env variable: ETCD_LOG_OUTPUT
++ env variable: ETCD_LOG_OUTPUTS
++ 'default' use 'stderr' config for v3.4 during zap logger migraion
+
+### --log-level
+
+**Available from v3.4.**
+
++ Configures log level. Only supports debug, info, warn, error, panic, or fatal.
++ default: info
++ env variable: ETCD_LOG_LEVEL
++ 'default' use 'info'.
 
 ### --debug
+
+**WARNING: to be deprecated in v3.5.**
+
 + Drop the default log level to DEBUG for all subpackages.
 + default: false (INFO for all packages)
 + env variable: ETCD_DEBUG
 
 ### --log-package-levels
+
+**WARNING: to be deprecated in v3.5.**
+
 + Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
 + default: "" (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
@@ -339,7 +392,7 @@ For example, it may panic if other members in the cluster are still alive.
 Follow the instructions when using these flags.
 
 ### --force-new-cluster
-+ Force to create a new one-member cluster. It commits configuration changes forcing to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
++ Force to create a new one-member cluster. It commits configuration changes forcing to remove all existing members in the cluster and add itself, but is strongly discouraged. Please review the [disaster recovery][recovery] documentation for preferred v3 recovery procedures.
 + default: false
 + env variable: ETCD_FORCE_NEW_CLUSTER
 
@@ -350,23 +403,27 @@ Follow the instructions when using these flags.
 + default: false
 
 ### --config-file
-+ Load server configuration from a file.
++ Load server configuration from a file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
 + default: ""
 + example: [sample configuration file][sample-config-file]
++ env variable: ETCD_CONFIG_FILE
 
 ## Profiling flags
 
 ### --enable-pprof
 + Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 + default: false
++ env variable: ETCD_ENABLE_PPROF
 
 ### --metrics
-+ Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
++ Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
 + default: basic
++ env variable: ETCD_METRICS
 
 ### --listen-metrics-urls
 + List of additional URLs to listen on that will respond to both the `/metrics` and `/health` endpoints
 + default: ""
++ env variable: ETCD_LISTEN_METRICS_URLS
 
 ## Auth flags
 
@@ -375,16 +432,24 @@ Follow the instructions when using these flags.
 + For asymmetric algorithms ('RS', 'PS', 'ES'), the public key is optional, as the private key contains enough information to both sign and verify tokens.
 + Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512,ttl=10m'
 + default: "simple"
++ env variable: ETCD_AUTH_TOKEN
 
 ### --bcrypt-cost
 + Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between 4 and 31.
 + default: 10
++ env variable: (not supported)
 
 ## Experimental flags
 
 ### --experimental-corrupt-check-time
 + Duration of time between cluster corruption check passes
 + default: 0s
++ env variable: ETCD_EXPERIMENTAL_CORRUPT_CHECK_TIME
+
+### --experimental-compaction-batch-limit
++ Sets the maximum revisions deleted in each compaction batch.
++ default: 1000
++ env variable: ETCD_EXPERIMENTAL_COMPACTION_BATCH_LIMIT
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
@@ -396,3 +461,13 @@ Follow the instructions when using these flags.
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
 [tuning]: ../tuning.md#time-parameters
 [sample-config-file]: ../../etcd.conf.yml.sample
+[recovery]: recovery.md#disaster-recovery
+
+### --experimental-peer-skip-client-san-verification
++ Skip verification of SAN field in client certificate for peer connections. This can be helpful e.g. if
+cluster members run in different networks behind a NAT.
+
+  In this case make sure to use peer certificates based on
+a private certificate authority using `--peer-cert-file`, `--peer-key-file`, `--peer-trusted-ca-file`
++ default: false
++ env variable: ETCD_EXPERIMENTAL_PEER_SKIP_CLIENT_SAN_VERIFICATION

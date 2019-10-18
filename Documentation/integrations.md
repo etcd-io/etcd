@@ -1,8 +1,10 @@
-# Libraries and tools
+---
+title: Libraries and tools
+---
 
 **Tools**
 
-- [etcdctl](https://github.com/coreos/etcd/tree/master/etcdctl) - A command line client for etcd
+- [etcdctl](https://github.com/etcd-io/etcd/tree/master/etcdctl) - A command line client for etcd
 - [etcd-backup](https://github.com/fanhattan/etcd-backup) - A powerful command line utility for dumping/restoring etcd - Supports v2
 - [etcd-dump](https://npmjs.org/package/etcd-dump) - Command line utility for dumping/restoring etcd.
 - [etcd-fs](https://github.com/xetorthio/etcd-fs) - FUSE filesystem for etcd
@@ -16,17 +18,19 @@
 - [etcdsh](https://github.com/kamilhark/etcdsh) - A command line client with support of command history and tab completion. Supports v2
 - [etcdloadtest](https://github.com/sinsharat/etcdloadtest) - A command line load test client for etcd version 3.0 and above.
 - [lucas](https://github.com/ringtail/lucas) - A web-based key-value viewer for kubernetes etcd3.0+ cluster.
+- [etcd-manager](https://github.com/gtamas/etcdmanager) - A modern, efficient, multi-platform and free ETCD 3.x GUI & client tool. Available for Windows, Linux and Mac.
+- [etcd-backup-restore](https://github.com/gardener/etcd-backup-restore) -  Utility to periodic and incrementally backup and restore the etcd. 
 
 **Go libraries**
 
-- [etcd/clientv3](https://github.com/coreos/etcd/blob/master/clientv3) - the officially maintained Go client for v3
-- [etcd/client](https://github.com/coreos/etcd/blob/master/client) - the officially maintained Go client for v2
+- [etcd/clientv3](https://github.com/etcd-io/etcd/blob/master/clientv3) - the officially maintained Go client for v3
+- [etcd/client](https://github.com/etcd-io/etcd/blob/master/client) - the officially maintained Go client for v2
 - [go-etcd](https://github.com/coreos/go-etcd) - the deprecated official client. May be useful for older (<2.0.0) versions of etcd.
 - [encWrapper](https://github.com/lumjjb/etcd/tree/enc_wrapper/clientwrap/encwrapper) - encWrapper is an encryption wrapper for the etcd client Keys API/KV.
 
 **Java libraries**
 
-- [coreos/jetcd](https://github.com/coreos/jetcd) - Supports v3
+- [coreos/jetcd](https://github.com/etcd-io/jetcd) - Supports v3
 - [boonproject/etcd](https://github.com/boonproject/boon/blob/master/etcd/README.md) - Supports v2, Async/Sync and waits
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
@@ -54,6 +58,7 @@
 - [txaio-etcd](https://github.com/crossbario/txaio-etcd) - Asynchronous etcd v3-only client library for Twisted (today) and asyncio (future)
 - [dims/etcd3-gateway](https://github.com/dims/etcd3-gateway) - etcd v3 API library using the HTTP grpc gateway
 - [aioetcd3](https://github.com/gaopeiliang/aioetcd3) - (Python 3.6+) etcd v3 API for asyncio
+- [Revolution1/etcd3-py](https://github.com/Revolution1/etcd3-py) - (python2.7 and python3.5+) Python client for etcd v3, using gRPC-JSON-Gateway
 
 **Node libraries**
 
@@ -89,7 +94,8 @@
 
 **Erlang libraries**
 
-- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
+- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl) - Supports v2
+- [zhongwencool/eetcd](https://github.com/zhongwencool/eetcd) - Supports v3+ (GRPC only)
 
 **.Net Libraries**
 
@@ -167,4 +173,9 @@
 - [Vitess](http://vitess.io/) - Vitess is a database clustering system for horizontal scaling of MySQL.
 - [lclarkmichalek/etcdhcp](https://github.com/lclarkmichalek/etcdhcp) - DHCP server that uses etcd for persistence and coordination.
 - [openstack/networking-vpp](https://github.com/openstack/networking-vpp) - A networking driver that programs the [FD.io VPP dataplane](https://wiki.fd.io/view/VPP) to provide [OpenStack](https://www.openstack.org/) cloud virtual networking
-- [openstack](https://github.com/openstack/governance/blob/master/reference/base-services.rst) - OpenStack services can rely on etcd as a base service.
+- [OpenStack](https://github.com/openstack/governance/blob/master/reference/base-services.rst) - OpenStack services can rely on etcd as a base service.
+- [CoreDNS](https://github.com/coredns/coredns/tree/master/plugin/etcd) - CoreDNS is a DNS server that chains plugins, part of CNCF and Kubernetes
+- [Uber M3](https://github.com/m3db/m3) - M3: Uber’s Open Source, Large-scale Metrics Platform for Prometheus
+- [Rook](https://github.com/rook/rook) - Storage Orchestration for Kubernetes
+- [Patroni](https://github.com/zalando/patroni) - A template for PostgreSQL High Availability with ZooKeeper, etcd, or Consul
+- [Trillian](https://github.com/google/trillian) - Trillian implements a Merkle tree whose contents are served from a data storage layer, to allow scalability to extremely large trees.

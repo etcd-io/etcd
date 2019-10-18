@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/coreos/go-systemd/daemon"
-	systemdutil "github.com/coreos/go-systemd/util"
 	"go.uber.org/zap"
 )
 
@@ -48,27 +47,12 @@ func Main() {
 }
 
 func notifySystemd(lg *zap.Logger) {
-	if !systemdutil.IsRunningSystemd() {
-		return
-	}
-
-	if lg != nil {
-		lg.Info("host was booted with systemd, sends READY=1 message to init daemon")
-	}
-	sent, err := daemon.SdNotify(false, "READY=1")
+	_, err := daemon.SdNotify(false, daemon.SdNotifyReady)
 	if err != nil {
 		if lg != nil {
 			lg.Error("failed to notify systemd for readiness", zap.Error(err))
 		} else {
 			plog.Errorf("failed to notify systemd for readiness: %v", err)
-		}
-	}
-
-	if !sent {
-		if lg != nil {
-			lg.Warn("forgot to set Type=notify in systemd service file?")
-		} else {
-			plog.Errorf("forgot to set Type=notify in systemd service file?")
 		}
 	}
 }

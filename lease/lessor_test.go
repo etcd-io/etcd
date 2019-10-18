@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/backend"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/backend"
 	"go.uber.org/zap"
 )
 
@@ -236,6 +236,50 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
+func TestLessorRenewWithCheckpointer(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer be.Close()
+	defer os.RemoveAll(dir)
+
+	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL})
+	fakerCheckerpointer := func(ctx context.Context, cp *pb.LeaseCheckpointRequest) {
+		for _, cp := range cp.GetCheckpoints() {
+			le.Checkpoint(LeaseID(cp.GetID()), cp.GetRemaining_TTL())
+		}
+	}
+	defer le.Stop()
+	// Set checkpointer
+	le.SetCheckpointer(fakerCheckerpointer)
+	le.Promote(0)
+
+	l, err := le.Grant(1, minLeaseTTL)
+	if err != nil {
+		t.Fatalf("failed to grant lease (%v)", err)
+	}
+
+	// manually change the ttl field
+	le.mu.Lock()
+	l.ttl = 10
+	l.remainingTTL = 10
+	le.mu.Unlock()
+	ttl, err := le.Renew(l.ID)
+	if err != nil {
+		t.Fatalf("failed to renew lease (%v)", err)
+	}
+	if ttl != l.ttl {
+		t.Errorf("ttl = %d, want %d", ttl, l.ttl)
+	}
+	if l.remainingTTL != 0 {
+		t.Fatalf("remianingTTL = %d, want %d", l.remainingTTL, 0)
+	}
+
+	l = le.Lookup(l.ID)
+	if l.Remaining() < 9*time.Second {
+		t.Errorf("failed to renew the lease")
+	}
+}
+
 // TestLessorRenewExtendPileup ensures Lessor extends leases on promotion if too many
 // expire at the same time.
 func TestLessorRenewExtendPileup(t *testing.T) {
@@ -389,7 +433,7 @@ func TestLessorExpire(t *testing.T) {
 	go func() {
 		// expired lease cannot be renewed
 		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
-			t.Fatalf("unexpected renew")
+			t.Errorf("unexpected renew")
 		}
 		donec <- struct{}{}
 	}()
@@ -442,7 +486,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	go func() {
 		// expired lease cannot be renewed
 		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
-			t.Fatalf("unexpected renew: %v", err)
+			t.Errorf("unexpected renew: %v", err)
 		}
 		donec <- struct{}{}
 	}()

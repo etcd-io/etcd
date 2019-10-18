@@ -1,5 +1,6 @@
-
-## Why gRPC gateway
+---
+title: Why gRPC gateway
+---
 
 etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes a gRPC-based [Go client][go-client] and a command line utility, [etcdctl][etcdctl], for communicating with an etcd cluster through gRPC. For languages with no gRPC support, etcd provides a JSON [gRPC gateway][grpc-gateway]. This gateway serves a RESTful proxy that translates HTTP/JSON requests into gRPC messages.
 
@@ -17,6 +18,8 @@ gRPC gateway endpoint has changed since etcd v3.3:
   - **`[CLIENT-URL]/v3alpha/*` is deprecated**.
 - etcd v3.5 or later uses only `[CLIENT-URL]/v3/*`.
   - **`[CLIENT-URL]/v3beta/*` is deprecated**.
+
+gRPC-gateway does not support authentication using TLS Common Name.
 
 ### Put and get keys
 
@@ -48,7 +51,7 @@ curl -L http://localhost:2379/v3/kv/range \
 Use the `/v3/watch` service to watch keys:
 
 ```bash
-curl http://localhost:2379/v3/watch \
+curl -N http://localhost:2379/v3/watch \
   -X POST -d '{"create_request": {"key":"Zm9v"} }' &
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
 
@@ -62,10 +65,19 @@ curl -L http://localhost:2379/v3/kv/put \
 Issue a transaction with `/v3/kv/txn`:
 
 ```bash
+# target CREATE
 curl -L http://localhost:2379/v3/kv/txn \
   -X POST \
   -d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
+```
+
+```bash
+# target VERSION
+curl -L http://localhost:2379/v3/kv/txn \
+  -X POST \
+  -d '{"compare":[{"version":"4","result":"EQUAL","target":"VERSION","key":"Zm9v"}],"success":[{"requestRange":{"key":"Zm9v"}}]}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"6","raft_term":"3"},"succeeded":true,"responses":[{"response_range":{"header":{"revision":"6"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"6","version":"4","value":"YmF6"}],"count":"1"}}]}
 ```
 
 ### Authentication
@@ -118,7 +130,7 @@ Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][
 [api-ref]: ./api_reference_v3.md
 [go-client]: https://github.com/coreos/etcd/tree/master/clientv3
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
-[grpc]: http://www.grpc.io/
+[grpc]: https://www.grpc.io/
 [grpc-gateway]: https://github.com/grpc-ecosystem/grpc-gateway
 [json-mapping]: https://developers.google.com/protocol-buffers/docs/proto3#json
 [swagger]: http://swagger.io/

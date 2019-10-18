@@ -18,12 +18,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 type ClusterServer struct {
@@ -45,15 +45,24 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	}
 
 	now := time.Now()
-	m := membership.NewMember("", urls, "", &now)
+	var m *membership.Member
+	if r.IsLearner {
+		m = membership.NewMemberAsLearner("", urls, "", &now)
+	} else {
+		m = membership.NewMember("", urls, "", &now)
+	}
 	membs, merr := cs.server.AddMember(ctx, *m)
 	if merr != nil {
 		return nil, togRPCError(merr)
 	}
 
 	return &pb.MemberAddResponse{
-		Header:  cs.header(),
-		Member:  &pb.Member{ID: uint64(m.ID), PeerURLs: m.PeerURLs},
+		Header: cs.header(),
+		Member: &pb.Member{
+			ID:        uint64(m.ID),
+			PeerURLs:  m.PeerURLs,
+			IsLearner: m.IsLearner,
+		},
 		Members: membersToProtoMembers(membs),
 	}, nil
 }
@@ -83,6 +92,14 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }
 
+func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	membs, err := cs.server.PromoteMember(ctx, r.ID)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
+}
+
 func (cs *ClusterServer) header() *pb.ResponseHeader {
 	return &pb.ResponseHeader{ClusterId: uint64(cs.cluster.ID()), MemberId: uint64(cs.server.ID()), RaftTerm: cs.server.Term()}
 }
@@ -95,6 +112,7 @@ func membersToProtoMembers(membs []*membership.Member) []*pb.Member {
 			ID:         uint64(membs[i].ID),
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
+			IsLearner:  membs[i].IsLearner,
 		}
 	}
 	return protoMembs

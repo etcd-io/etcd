@@ -68,8 +68,10 @@ To learn more about the concepts and internals behind etcd, read the following p
  - [Understand data model][data_model]
  - [Understand APIs][understand_apis]
  - [Glossary][glossary]
- - Internals
-   - [Auth subsystem][auth_design]
+ - Design
+   - [Auth subsystem][design-auth-v3]
+   - [Client][design-client]
+   - [Learner][design-learner]
 
 [api_ref]: dev-guide/api_reference_v3.md
 [api_concurrency_ref]: dev-guide/api_concurrency_reference_v3.md
@@ -82,12 +84,12 @@ To learn more about the concepts and internals behind etcd, read the following p
 [data_model]: learning/data_model.md
 [demo]: demo.md
 [download_build]: dl_build.md
-[embed_etcd]: https://godoc.org/github.com/coreos/etcd/embed
+[embed_etcd]: https://godoc.org/github.com/etcd-io/etcd/embed
 [grpc_naming]: dev-guide/grpc_naming.md
 [failures]: op-guide/failures.md
 [gateway]: op-guide/gateway.md
 [glossary]: learning/glossary.md
-[namespace_client]: https://godoc.org/github.com/coreos/etcd/clientv3/namespace
+[namespace_client]: https://godoc.org/github.com/etcd-io/etcd/clientv3/namespace
 [namespace_proxy]: op-guide/grpc_proxy.md#namespacing
 [grpc_proxy]: op-guide/grpc_proxy.md
 [hardware]: op-guide/hardware.md
@@ -109,6 +111,8 @@ To learn more about the concepts and internals behind etcd, read the following p
 [aws_platform]: platforms/aws.md
 [experimental]: dev-guide/experimental_apis.md
 [authentication]: op-guide/authentication.md
-[auth_design]: learning/auth_design.md
+[design-auth-v3]: learning/design-auth-v3.md
+[design-client]: learning/design-client.md
+[design-learner]: learning/design-learner.md
 [tuning]: tuning.md
 [upgrading]: upgrades/upgrading-etcd.md

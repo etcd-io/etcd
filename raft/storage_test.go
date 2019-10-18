@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	pb "github.com/coreos/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
 func TestStorageTerm(t *testing.T) {
@@ -106,7 +106,7 @@ func TestStorageLastIndex(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if last != 5 {
-		t.Errorf("term = %d, want %d", last, 5)
+		t.Errorf("last = %d, want %d", last, 5)
 	}
 
 	s.Append([]pb.Entry{{Index: 6, Term: 5}})
@@ -115,7 +115,7 @@ func TestStorageLastIndex(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if last != 6 {
-		t.Errorf("last = %d, want %d", last, 5)
+		t.Errorf("last = %d, want %d", last, 6)
 	}
 }
 
@@ -177,7 +177,7 @@ func TestStorageCompact(t *testing.T) {
 
 func TestStorageCreateSnapshot(t *testing.T) {
 	ents := []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}}
-	cs := &pb.ConfState{Nodes: []uint64{1, 2, 3}}
+	cs := &pb.ConfState{Voters: []uint64{1, 2, 3}}
 	data := []byte("data")
 
 	tests := []struct {
@@ -210,6 +210,11 @@ func TestStorageAppend(t *testing.T) {
 		werr     error
 		wentries []pb.Entry
 	}{
+		{
+			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}},
+			nil,
+			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}},
+		},
 		{
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}},
 			nil,
@@ -258,7 +263,7 @@ func TestStorageAppend(t *testing.T) {
 }
 
 func TestStorageApplySnapshot(t *testing.T) {
-	cs := &pb.ConfState{Nodes: []uint64{1, 2, 3}}
+	cs := &pb.ConfState{Voters: []uint64{1, 2, 3}}
 	data := []byte("data")
 
 	tests := []pb.Snapshot{{Data: data, Metadata: pb.SnapshotMetadata{Index: 4, Term: 4, ConfState: *cs}},

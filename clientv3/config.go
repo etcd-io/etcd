@@ -68,6 +68,8 @@ type Config struct {
 	RejectOldCluster bool `json:"reject-old-cluster"`
 
 	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
+	// For example, pass "grpc.WithBlock()" to block until the underlying connection is up.
+	// Without this, Dial returns immediately and connecting the server happens in background.
 	DialOptions []grpc.DialOption
 
 	// Context is the default client context; it can be used to cancel grpc dial out and
@@ -78,22 +80,9 @@ type Config struct {
 	// If nil, use the default logger.
 	// TODO: configure gRPC logger
 	LogConfig *zap.Config
-}
 
-// DefaultLogConfig is the default client logging configuration.
-// Default log level is "Warn". Use "zap.InfoLevel" for debugging.
-// Use "/dev/null" for output paths, to discard all logs.
-var DefaultLogConfig = zap.Config{
-	Level:       zap.NewAtomicLevelAt(zap.WarnLevel),
-	Development: false,
-	Sampling: &zap.SamplingConfig{
-		Initial:    100,
-		Thereafter: 100,
-	},
-	Encoding:      "json",
-	EncoderConfig: zap.NewProductionEncoderConfig(),
+	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
+	PermitWithoutStream bool `json:"permit-without-stream"`
 
-	// Use "/dev/null" to discard all
-	OutputPaths:      []string{"stderr"},
-	ErrorOutputPaths: []string{"stderr"},
+	// TODO: support custom balancer picker
 }

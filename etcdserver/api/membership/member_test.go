@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 func timeParse(value string) *time.Time {
@@ -110,6 +110,14 @@ func newTestMember(id uint64, peerURLs []string, name string, clientURLs []strin
 	return &Member{
 		ID:             types.ID(id),
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
+		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
+	}
+}
+
+func newTestMemberAsLearner(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	return &Member{
+		ID:             types.ID(id),
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs, IsLearner: true},
 		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}
 }

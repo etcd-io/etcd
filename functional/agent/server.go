@@ -21,9 +21,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/functional/rpcpb"
-	"github.com/coreos/etcd/pkg/proxy"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/functional/rpcpb"
+	"go.etcd.io/etcd/pkg/proxy"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -64,10 +64,10 @@ func NewServer(
 	address string,
 ) *Server {
 	return &Server{
-		lg:      lg,
-		network: network,
-		address: address,
-		last:    rpcpb.Operation_NOT_STARTED,
+		lg:                         lg,
+		network:                    network,
+		address:                    address,
+		last:                       rpcpb.Operation_NOT_STARTED,
 		advertiseClientPortToProxy: make(map[int]proxy.Server),
 		advertisePeerPortToProxy:   make(map[int]proxy.Server),
 	}
@@ -126,11 +126,12 @@ func (srv *Server) Stop() {
 }
 
 // Transport communicates with etcd tester.
-func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error) {
-	errc := make(chan error)
+func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (reterr error) {
+	errc := make(chan error, 1)
 	go func() {
 		for {
 			var req *rpcpb.Request
+			var err error
 			req, err = stream.Recv()
 			if err != nil {
 				errc <- err
@@ -161,9 +162,9 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (err error)
 	}()
 
 	select {
-	case err = <-errc:
+	case reterr = <-errc:
 	case <-stream.Context().Done():
-		err = stream.Context().Err()
+		reterr = stream.Context().Err()
 	}
-	return err
+	return reterr
 }

@@ -17,8 +17,8 @@ package clientv3
 import (
 	"context"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,10 +42,6 @@ func (rp retryPolicy) String() string {
 		return "UNKNOWN"
 	}
 }
-
-type rpcFunc func(ctx context.Context) error
-type retryRPCFunc func(context.Context, rpcFunc, retryPolicy) error
-type retryStopErrFunc func(error) bool
 
 // isSafeRetryImmutableRPC returns "true" when an immutable request is safe for retry.
 //
@@ -181,6 +177,10 @@ func (rcc *retryClusterClient) MemberRemove(ctx context.Context, in *pb.MemberRe
 
 func (rcc *retryClusterClient) MemberUpdate(ctx context.Context, in *pb.MemberUpdateRequest, opts ...grpc.CallOption) (resp *pb.MemberUpdateResponse, err error) {
 	return rcc.cc.MemberUpdate(ctx, in, opts...)
+}
+
+func (rcc *retryClusterClient) MemberPromote(ctx context.Context, in *pb.MemberPromoteRequest, opts ...grpc.CallOption) (resp *pb.MemberPromoteResponse, err error) {
+	return rcc.cc.MemberPromote(ctx, in, opts...)
 }
 
 type retryMaintenanceClient struct {

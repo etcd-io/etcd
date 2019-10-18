@@ -2,7 +2,10 @@ etcdctl
 ========
 
 `etcdctl` is a command line client for [etcd][etcd].
-Make sure to set environment variable `ETCDCTL_API=3`. For etcdctl v2, please check [READMEv2][READMEv2].
+
+The v3 API is used by default on master branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
+
+If using released versions earlier than v3.4, set `ETCDCTL_API=3` to use v3 API.
 
 Global flags (e.g., `dial-timeout`, `--cacert`, `--cert`, `--key`) can be set with environment variables:
 
@@ -13,7 +16,7 @@ ETCDCTL_CERT=/tmp/cert.pem
 ETCDCTL_KEY=/tmp/key.pem
 ```
 
-Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`).
+Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`). Note that the environment variables with the prefix `ETCDCTL_` can only be used with the etcdctl global flags. Also, the environment variable `ETCDCTL_API` is a special case variable for etcdctl internal use only.
 
 ## Key-value commands
 
@@ -328,6 +331,27 @@ put key2 "some extra key"
 # OK
 ```
 
+#### Remarks
+
+When using multi-line values within a TXN command, newlines must be represented as `\n`. Literal newlines will cause parsing failures. This differs from other commands (such as PUT) where the shell will convert literal newlines for us. For example:
+
+```bash
+./etcdctl txn <<<'mod("key1") > "0"
+
+put key1 "overwrote-key1"
+
+put key1 "created-key1"
+put key2 "this is\na multi-line\nvalue"
+
+'
+
+# FAILURE
+
+# OK
+
+# OK
+```
+
 ### COMPACTION [options] \<revision\>
 
 COMPACTION discards all etcd event history prior to a given revision. Since etcd uses a multiversion concurrency control
@@ -509,8 +533,8 @@ Prints a message with the granted lease ID.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 ```
 
 ### LEASE REVOKE \<leaseID\>
@@ -585,8 +609,8 @@ Prints a message with a list of active leases.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 
 ./etcdctl lease list
 32695410dcc0ca06
@@ -685,7 +709,7 @@ Prints the member ID of the removed member and the cluster ID.
 
 MEMBER LIST prints the member details for all members associated with an etcd cluster.
 
-RPC: [MemberList][member_list_rpc].
+RPC: MemberList
 
 #### Output
 
@@ -1056,7 +1080,7 @@ echo ${transferee_id}
 
 ### LOCK [options] \<lockname\> [command arg1 arg2 ...]
 
-LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
+LOCK acquires a distributed mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
 
 #### Options
 
@@ -1064,9 +1088,9 @@ LOCK acquires a distributed named mutex with a given name. Once the lock is acqu
 
 #### Output
 
-Once the lock is acquired, the result for the GET on the unique lock holder key is displayed.
+Once the lock is acquired but no command is given, the result for the GET on the unique lock holder key is displayed.
 
-If a command is given, it will be launched with environment variables `ETCD_LOCK_KEY` and `ETCD_LOCK_REV` set to the lock's holder key and revision.
+If a command is given, it will be executed with environment variables `ETCD_LOCK_KEY` and `ETCD_LOCK_REV` set to the lock's holder key and revision.
 
 #### Example
 
@@ -1082,6 +1106,12 @@ Acquire lock and execute `echo lock acquired`:
 ```bash
 ./etcdctl lock mylock echo lock acquired
 # lock acquired
+```
+
+Acquire lock and execute `etcdctl put` command
+```bash
+./etcdctl lock mylock ./etcdctl put foo bar
+# OK
 ```
 
 #### Remarks
@@ -1655,4 +1685,3 @@ backward compatibility for `JSON` format and the format in non-interactive mode.
 [v3key]: ../mvcc/mvccpb/kv.proto#L12-L29
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../mvcc/mvccpb/kv.proto
-[member_list_rpc]: ../etcdserver/etcdserverpb/rpc.proto#L493-L497

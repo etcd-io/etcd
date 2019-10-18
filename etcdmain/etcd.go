@@ -26,17 +26,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/api/v2discovery"
-	"github.com/coreos/etcd/pkg/fileutil"
-	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
-	"github.com/coreos/etcd/pkg/osutil"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/proxy/httpproxy"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/etcdserver/api/v2discovery"
+	"go.etcd.io/etcd/pkg/fileutil"
+	pkgioutil "go.etcd.io/etcd/pkg/ioutil"
+	"go.etcd.io/etcd/pkg/osutil"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/proxy/httpproxy"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
@@ -45,7 +45,7 @@ import (
 
 type dirType string
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdmain")
 
 var (
 	dirMember = dirType("member")
@@ -60,8 +60,8 @@ func startEtcdOrProxyV2() {
 	defaultInitialCluster := cfg.ec.InitialCluster
 
 	err := cfg.parse(os.Args[1:])
+	lg := cfg.ec.GetLogger()
 	if err != nil {
-		lg := cfg.ec.GetLogger()
 		if lg != nil {
 			lg.Warn("failed to verify flags", zap.Error(err))
 		} else {
@@ -77,8 +77,6 @@ func startEtcdOrProxyV2() {
 		}
 		os.Exit(1)
 	}
-
-	lg := cfg.ec.GetLogger()
 
 	if lg == nil {
 		// TODO: remove in 3.5
@@ -289,7 +287,7 @@ func startEtcdOrProxyV2() {
 	case lerr := <-errc:
 		// fatal out on listener errors
 		if lg != nil {
-			lg.Fatal("listener failed", zap.Error(err))
+			lg.Fatal("listener failed", zap.Error(lerr))
 		} else {
 			plog.Fatal(lerr)
 		}

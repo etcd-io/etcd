@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 // store implements the Store interface for V2 using
@@ -531,8 +531,8 @@ func compareFail(nodePath, prevValue string, prevIndex uint64, resp *clientv3.Tx
 		return v2error.NewError(v2error.EcodeKeyNotFound, nodePath, mkV2Rev(resp.Header.Revision))
 	}
 	kv := kvs[0]
-	indexMatch := (prevIndex == 0 || kv.ModRevision == int64(prevIndex))
-	valueMatch := (prevValue == "" || string(kv.Value) == prevValue)
+	indexMatch := prevIndex == 0 || kv.ModRevision == int64(prevIndex)
+	valueMatch := prevValue == "" || string(kv.Value) == prevValue
 	var cause string
 	switch {
 	case indexMatch && !valueMatch:

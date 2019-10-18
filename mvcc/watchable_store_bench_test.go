@@ -19,15 +19,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil)
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -48,7 +49,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &i)
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -59,7 +60,7 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		txn.Put(keys[i], vals[i], lease.NoLease)
 		txn.End()
 	}
@@ -79,7 +80,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	k := []byte("testkey")
@@ -122,7 +123,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
@@ -179,7 +180,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 
 	defer func() {
 		s.store.Close()

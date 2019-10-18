@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 )
 
 func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
@@ -66,6 +66,9 @@ func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsername, withCfg(configClientTLSCertAuth))
 }
 func TestCtlV3AuthJWTExpire(t *testing.T) { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
+func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
+	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(configClientTLSCertAuth))
+}
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -510,13 +513,13 @@ func authTestMemberAdd(cx ctlCtx) {
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
 	// ordinary user cannot add a new member
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3MemberAdd(cx, peerURL); err == nil {
+	if err := ctlV3MemberAdd(cx, peerURL, false); err == nil {
 		cx.t.Fatalf("ordinary user must not be allowed to add a member")
 	}
 
 	// root can add a new member
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3MemberAdd(cx, peerURL); err != nil {
+	if err := ctlV3MemberAdd(cx, peerURL, false); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -786,8 +789,19 @@ func authLeaseTestLeaseRevoke(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	if err := leaseTestRevoke(cx); err != nil {
-		cx.t.Fatalf("authLeaseTestLeaseRevoke: error (%v)", err)
+	// put with TTL 10 seconds and revoke
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatalf("ctlV3LeaseGrant error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
+		cx.t.Fatalf("ctlV3Put error (%v)", err)
+	}
+	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
+		cx.t.Fatalf("ctlV3LeaseRevoke error (%v)", err)
+	}
+	if err := ctlV3GetWithErr(cx, []string{"key"}, []string{"retrying of unary invoker failed"}); err != nil { // expect errors
+		cx.t.Fatalf("ctlV3GetWithErr error (%v)", err)
 	}
 }
 
@@ -845,7 +859,7 @@ func authTestWatch(cx ctlCtx) {
 			defer close(donec)
 			for j := range puts {
 				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
-					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
+					cx.t.Errorf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 				}
 			}
 		}(i, tt.puts)
@@ -1030,7 +1044,7 @@ func authTestEndpointHealth(cx ctlCtx) {
 	}
 }
 
-func authTestCertCNAndUsername(cx ctlCtx) {
+func certCNAndUsername(cx ctlCtx, noPassword bool) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -1038,8 +1052,14 @@ func authTestCertCNAndUsername(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
-		cx.t.Fatal(err)
+	if noPassword {
+		if err := ctlV3User(cx, []string{"add", "example.com", "--no-password"}, "User example.com created", []string{""}); err != nil {
+			cx.t.Fatal(err)
+		}
+	} else {
+		if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
+			cx.t.Fatal(err)
+		}
 	}
 	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), "Role test-role-cn created"); err != nil {
 		cx.t.Fatal(err)
@@ -1080,6 +1100,14 @@ func authTestCertCNAndUsername(cx ctlCtx) {
 	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
 		cx.t.Error(err)
 	}
+}
+
+func authTestCertCNAndUsername(cx ctlCtx) {
+	certCNAndUsername(cx, false)
+}
+
+func authTestCertCNAndUsernameNoPassword(cx ctlCtx) {
+	certCNAndUsername(cx, true)
 }
 
 func authTestJWTExpire(cx ctlCtx) {

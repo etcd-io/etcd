@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	v3pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/clientv3"
+	v3pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 const revokeBackoff = 2 * time.Second
@@ -256,7 +256,7 @@ func (lc *leaseCache) clearOldRevokes(ctx context.Context) {
 		case <-time.After(time.Second):
 			lc.mu.Lock()
 			for k, lr := range lc.revokes {
-				if time.Now().Sub(lr.Add(revokeBackoff)) > 0 {
+				if time.Since(lr.Add(revokeBackoff)) > 0 {
 					delete(lc.revokes, k)
 				}
 			}

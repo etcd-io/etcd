@@ -39,8 +39,8 @@ RUN rm -rf ${GOROOT} \
   && mkdir -p ${GOPATH}/src ${GOPATH}/bin \
   && go version
 
-RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
-WORKDIR ${GOPATH}/src/github.com/coreos/etcd
+RUN mkdir -p ${GOPATH}/src/go.etcd.io/etcd
+WORKDIR ${GOPATH}/src/go.etcd.io/etcd
 
 ADD ./scripts/install-marker.sh /tmp/install-marker.sh
 
@@ -49,8 +49,6 @@ RUN go get -v -u -tags spell github.com/chzchzchz/goword \
   && go get -v -u github.com/mgechev/revive \
   && go get -v -u github.com/mdempsky/unconvert \
   && go get -v -u mvdan.cc/unparam \
-  && go get -v -u honnef.co/go/tools/cmd/gosimple \
-  && go get -v -u honnef.co/go/tools/cmd/unused \
   && go get -v -u honnef.co/go/tools/cmd/staticcheck \
   && go get -v -u github.com/gyuho/gocovmerge \
   && go get -v -u github.com/gordonklaus/ineffassign \

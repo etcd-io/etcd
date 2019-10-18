@@ -17,13 +17,15 @@ package raft
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // readyWithTimeout selects from n.Ready() with a 1-second timeout. It
@@ -128,11 +130,14 @@ func TestNodePropose(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
-	n.Campaign(context.TODO())
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
+	if err := n.Campaign(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
 	for {
 		rd := <-n.Ready()
 		s.Append(rd.Entries)
@@ -168,12 +173,13 @@ func TestNodeReadIndex(t *testing.T) {
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
 	r.readStates = wrs
 
-	go n.run(r)
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -305,10 +311,11 @@ func TestNodeProposeConfig(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -343,10 +350,10 @@ func TestNodeProposeConfig(t *testing.T) {
 // TestNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
 // not affect the later propose to add new node.
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 	rdyEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
@@ -419,9 +426,9 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 // know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
-	n := newNode()
-	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n := newNode(rn)
+	go n.run()
 	defer n.Stop()
 
 	errc := make(chan error, 1)
@@ -459,10 +466,11 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 		return nil
 	}
 
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
@@ -493,10 +501,11 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 // TestNodeTick ensures that node.Tick() will increase the
 // elapsed of the underlying raft state machine.
 func TestNodeTick(t *testing.T) {
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	r := rn.raft
+	go n.run()
 	elapsed := r.electionElapsed
 	n.Tick()
 
@@ -513,13 +522,12 @@ func TestNodeTick(t *testing.T) {
 // TestNodeStop ensures that node.Stop() blocks until the node has stopped
 // processing, and that it is idempotent
 func TestNodeStop(t *testing.T) {
-	n := newNode()
-	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	n := newNode(rn)
 	donec := make(chan struct{})
 
 	go func() {
-		n.run(r)
+		n.run()
 		close(donec)
 	}()
 
@@ -616,7 +624,9 @@ func TestNodeStart(t *testing.T) {
 		n.Advance()
 	}
 
-	n.Campaign(ctx)
+	if err := n.Campaign(ctx); err != nil {
+		t.Fatal(err)
+	}
 	rd := <-n.Ready()
 	storage.Append(rd.Entries)
 	n.Advance()
@@ -644,10 +654,12 @@ func TestNodeRestart(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 1}
 
 	want := Ready{
-		HardState: st,
+		// No HardState is emitted because there was no change.
+		HardState: raftpb.HardState{},
 		// commit up to index commit index in st
 		CommittedEntries: entries[:st.Commit],
-		MustSync:         true,
+		// MustSync is false because no HardState or new entries are provided.
+		MustSync: false,
 	}
 
 	storage := NewMemoryStorage()
@@ -678,7 +690,7 @@ func TestNodeRestart(t *testing.T) {
 func TestNodeRestartFromSnapshot(t *testing.T) {
 	snap := raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{
-			ConfState: raftpb.ConfState{Nodes: []uint64{1, 2}},
+			ConfState: raftpb.ConfState{Voters: []uint64{1, 2}},
 			Index:     2,
 			Term:      1,
 		},
@@ -689,10 +701,14 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 3}
 
 	want := Ready{
-		HardState: st,
+		// No HardState is emitted because nothing changed relative to what is
+		// already persisted.
+		HardState: raftpb.HardState{},
 		// commit up to index commit index in st
 		CommittedEntries: entries,
-		MustSync:         true,
+		// MustSync is only true when there is a new HardState or new entries;
+		// neither is the case here.
+		MustSync: false,
 	}
 
 	s := NewMemoryStorage()
@@ -796,10 +812,10 @@ func TestIsHardStateEqual(t *testing.T) {
 func TestNodeProposeAddLearnerNode(t *testing.T) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
-	n := newNode()
 	s := NewMemoryStorage()
-	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	go n.run(r)
+	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 	stop := make(chan struct{})
 	done := make(chan struct{})
@@ -828,7 +844,7 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 						t.Errorf("apply conf change should return new added learner: %v", state.String())
 					}
 
-					if len(state.Nodes) != 1 {
+					if len(state.Voters) != 1 {
 						t.Errorf("add learner should not change the nodes: %v", state.String())
 					}
 					t.Logf("apply raft conf %v changed to: %v", cc, state.String())
@@ -892,10 +908,13 @@ func TestAppendPagination(t *testing.T) {
 func TestCommitPagination(t *testing.T) {
 	s := NewMemoryStorage()
 	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
-	cfg.MaxSizePerMsg = 2048
-	r := newRaft(cfg)
-	n := newNode()
-	go n.run(r)
+	cfg.MaxCommittedSizePerReady = 2048
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := newNode(rn)
+	go n.run()
 	n.Campaign(context.TODO())
 
 	rd := readyWithTimeout(&n)
@@ -925,4 +944,76 @@ func TestCommitPagination(t *testing.T) {
 	}
 	s.Append(rd.Entries)
 	n.Advance()
+}
+
+type ignoreSizeHintMemStorage struct {
+	*MemoryStorage
+}
+
+func (s *ignoreSizeHintMemStorage) Entries(lo, hi uint64, maxSize uint64) ([]raftpb.Entry, error) {
+	return s.MemoryStorage.Entries(lo, hi, math.MaxUint64)
+}
+
+// TestNodeCommitPaginationAfterRestart regression tests a scenario in which the
+// Storage's Entries size limitation is slightly more permissive than Raft's
+// internal one. The original bug was the following:
+//
+// - node learns that index 11 (or 100, doesn't matter) is committed
+// - nextEnts returns index 1..10 in CommittedEntries due to size limiting. However,
+//   index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
+// - Commit index gets bumped to 10
+// - the node persists the HardState, but crashes before applying the entries
+// - upon restart, the storage returns the same entries, but `slice` takes a different code path
+//   (since it is now called with an upper bound of 10) and removes the last entry.
+// - Raft emits a HardState with a regressing commit index.
+//
+// A simpler version of this test would have the storage return a lot less entries than dictated
+// by maxSize (for example, exactly one entry) after the restart, resulting in a larger regression.
+// This wouldn't need to exploit anything about Raft-internal code paths to fail.
+func TestNodeCommitPaginationAfterRestart(t *testing.T) {
+	s := &ignoreSizeHintMemStorage{
+		MemoryStorage: NewMemoryStorage(),
+	}
+	persistedHardState := raftpb.HardState{
+		Term:   1,
+		Vote:   1,
+		Commit: 10,
+	}
+
+	s.hardState = persistedHardState
+	s.ents = make([]raftpb.Entry, 10)
+	var size uint64
+	for i := range s.ents {
+		ent := raftpb.Entry{
+			Term:  1,
+			Index: uint64(i + 1),
+			Type:  raftpb.EntryNormal,
+			Data:  []byte("a"),
+		}
+
+		s.ents[i] = ent
+		size += uint64(ent.Size())
+	}
+
+	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	// Set a MaxSizePerMsg that would suggest to Raft that the last committed entry should
+	// not be included in the initial rd.CommittedEntries. However, our storage will ignore
+	// this and *will* return it (which is how the Commit index ended up being 10 initially).
+	cfg.MaxSizePerMsg = size - uint64(s.ents[len(s.ents)-1].Size()) - 1
+
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := newNode(rn)
+	go n.run()
+	defer n.Stop()
+
+	rd := readyWithTimeout(&n)
+	if !IsEmptyHardState(rd.HardState) && rd.HardState.Commit < persistedHardState.Commit {
+		t.Errorf("HardState regressed: Commit %d -> %d\nCommitting:\n%+v",
+			persistedHardState.Commit, rd.HardState.Commit,
+			DescribeEntries(rd.CommittedEntries, func(data []byte) string { return fmt.Sprintf("%q", data) }),
+		)
+	}
 }

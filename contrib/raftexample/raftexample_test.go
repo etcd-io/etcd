@@ -15,11 +15,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/raftpb"
 )
 
 type cluster struct {
@@ -112,7 +117,7 @@ func TestProposeOnCommit(t *testing.T) {
 				case pC <- *s:
 					continue
 				case err := <-eC:
-					t.Fatalf("eC message (%v)", err)
+					t.Errorf("eC message (%v)", err)
 				}
 			}
 			donec <- struct{}{}
@@ -155,5 +160,63 @@ func TestCloseProposerInflight(t *testing.T) {
 	// wait for one message
 	if c, ok := <-clus.commitC[0]; *c != "foo" || !ok {
 		t.Fatalf("Commit failed")
+	}
+}
+
+func TestPutAndGetKeyValue(t *testing.T) {
+	clusters := []string{"http://127.0.0.1:9021"}
+
+	proposeC := make(chan string)
+	defer close(proposeC)
+
+	confChangeC := make(chan raftpb.ConfChange)
+	defer close(confChangeC)
+
+	var kvs *kvstore
+	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
+	commitC, errorC, snapshotterReady := newRaftNode(1, clusters, false, getSnapshot, proposeC, confChangeC)
+
+	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
+
+	srv := httptest.NewServer(&httpKVAPI{
+		store:       kvs,
+		confChangeC: confChangeC,
+	})
+	defer srv.Close()
+
+	// wait server started
+	<-time.After(time.Second * 3)
+
+	wantKey, wantValue := "test-key", "test-value"
+	url := fmt.Sprintf("%s/%s", srv.URL, wantKey)
+	body := bytes.NewBufferString(wantValue)
+	cli := srv.Client()
+
+	req, err := http.NewRequest("PUT", url, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "text/html; charset=utf-8")
+	_, err = cli.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wait for a moment for processing message, otherwise get would be failed.
+	<-time.After(time.Second)
+
+	resp, err := cli.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if gotValue := string(data); wantValue != gotValue {
+		t.Fatalf("expect %s, got %s", wantValue, gotValue)
 	}
 }

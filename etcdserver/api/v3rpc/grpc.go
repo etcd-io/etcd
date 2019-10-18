@@ -18,13 +18,13 @@ import (
 	"crypto/tls"
 	"math"
 
-	"github.com/coreos/etcd/etcdserver"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"go.etcd.io/etcd/clientv3/credentials"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -39,7 +39,8 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOptio
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
-		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
+		bundle := credentials.NewBundle(credentials.Config{TLSConfig: tls})
+		opts = append(opts, grpc.Creds(bundle.TransportCredentials()))
 	}
 	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 		newLogUnaryInterceptor(s),

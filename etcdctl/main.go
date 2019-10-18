@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/etcdctl/ctlv2"
-	"github.com/coreos/etcd/etcdctl/ctlv3"
+	"go.etcd.io/etcd/etcdctl/ctlv2"
+	"go.etcd.io/etcd/etcdctl/ctlv3"
 )
 
 const (

@@ -1,4 +1,6 @@
-# Performance
+---
+title: Performance
+---
 
 ## Understanding performance
 

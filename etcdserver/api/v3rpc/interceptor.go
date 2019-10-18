@@ -19,14 +19,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/pkg/capnslog"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -46,6 +46,10 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if !api.IsCapabilityEnabled(api.V3rpcCapability) {
 			return nil, rpctypes.ErrGRPCNotCapable
+		}
+
+		if s.IsMemberExist(s.ID()) && s.IsLearner() && !isRPCSupportedForLearner(req) {
+			return nil, rpctypes.ErrGPRCNotSupportedForLearner
 		}
 
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -81,7 +85,7 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 	if ok {
 		remote = peerInfo.Addr.String()
 	}
-	var responseType string = info.FullMethod
+	responseType := info.FullMethod
 	var reqCount, respCount int64
 	var reqSize, respSize int
 	var reqContent string
@@ -188,6 +192,10 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		if !api.IsCapabilityEnabled(api.V3rpcCapability) {
 			return rpctypes.ErrGRPCNotCapable
+		}
+
+		if s.IsMemberExist(s.ID()) && s.IsLearner() { // learner does not support stream RPC
+			return rpctypes.ErrGPRCNotSupportedForLearner
 		}
 
 		md, ok := metadata.FromIncomingContext(ss.Context())

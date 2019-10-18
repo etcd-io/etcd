@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func TestV2CurlNoTLS(t *testing.T)      { testCurlPutGet(t, &configNoTLS) }
@@ -37,6 +37,7 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 	// stale reads that will break the test
 	cfg = configStandalone(*cfg)
 
+	cfg.enableV2 = true
 	epc, err := newEtcdProcessCluster(cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
@@ -69,7 +70,9 @@ func TestV2CurlIssue5182(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, &configNoTLS, false)
+	copied := configNoTLS
+	copied.enableV2 = true
+	epc := setupEtcdctlTest(t, &copied, false)
 	defer func() {
 		if err := epc.Close(); err != nil {
 			t.Fatalf("error closing etcd processes (%v)", err)
@@ -149,7 +152,11 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 			acurl = toTLS(clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl)
 		} else if clus.cfg.clientTLS == clientTLS {
-			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+			if !clus.cfg.noCN {
+				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+			} else {
+				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath3, "--key", privateKeyPath3)
+			}
 		}
 	}
 	if req.metricsURLScheme != "" {

@@ -43,6 +43,15 @@ cfssl gencert \
 mv server-ip.pem server-ip.crt
 mv server-ip-key.pem server-ip.key.insecure
 
+# generate IPv6: [::1], CN: example.com certificates
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  ./server-ca-csr-ipv6.json | cfssljson --bare ./server-ip
+mv server-ip.pem server-ipv6.crt
+mv server-ip-key.pem server-ipv6.key.insecure
+
 # generate DNS: localhost, IP: 127.0.0.1, CN: example2.com certificates
 cfssl gencert \
   --ca ./ca.crt \
@@ -51,6 +60,15 @@ cfssl gencert \
   ./server-ca-csr2.json | cfssljson --bare ./server2
 mv server2.pem server2.crt
 mv server2-key.pem server2.key.insecure
+
+# generate DNS: localhost, IP: 127.0.0.1, CN: "" certificates
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  ./server-ca-csr3.json | cfssljson --bare ./server3
+mv server3.pem server3.crt
+mv server3-key.pem server3.key.insecure
 
 # generate revoked certificates and crl
 cfssl gencert --ca ./ca.crt \

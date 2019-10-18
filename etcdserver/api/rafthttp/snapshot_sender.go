@@ -22,11 +22,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	"github.com/coreos/etcd/pkg/httputil"
-	pioutil "github.com/coreos/etcd/pkg/ioutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/httputil"
+	pioutil "go.etcd.io/etcd/pkg/ioutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -90,6 +90,11 @@ func (s *snapshotSender) send(merged snap.Message) {
 		plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
 	}
 
+	snapshotSendInflights.WithLabelValues(to).Inc()
+	defer func() {
+		snapshotSendInflights.WithLabelValues(to).Dec()
+	}()
+
 	err := s.post(req)
 	defer merged.CloseWithError(err)
 	if err != nil {
@@ -139,7 +144,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 	}
 
 	sentBytes.WithLabelValues(to).Add(float64(merged.TotalSize))
-
 	snapshotSend.WithLabelValues(to).Inc()
 	snapshotSendSeconds.WithLabelValues(to).Observe(time.Since(start).Seconds())
 }

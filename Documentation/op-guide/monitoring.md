@@ -1,4 +1,6 @@
-# Monitoring etcd
+---
+title: Monitoring etcd
+---
 
 Each etcd server provides local monitoring information on its client port through http endpoints. The monitoring data is useful for both system health checking and cluster debugging.
 
@@ -121,8 +123,6 @@ Access: proxy
 
 Then import the default [etcd dashboard template][template] and customize. For instance, if Prometheus data source name is `my-etcd`, the `datasource` field values in JSON also need to be `my-etcd`.
 
-See the [demo][demo].
-
 Sample dashboard:
 
 ![](./etcd-sample-grafana.png)
@@ -131,4 +131,3 @@ Sample dashboard:
 [prometheus]: https://prometheus.io/
 [grafana]: http://grafana.org/
 [template]: ./grafana.json
-[demo]: http://dash.etcd.io/dashboard/db/test-etcd-kubernetes

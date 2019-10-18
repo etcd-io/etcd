@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/types"
 
 	"go.uber.org/zap"
 )
@@ -65,10 +65,10 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 	msg := fmt.Sprintf("failed to %s %s on %s (%s)", failure.action, s.id, failure.source, reason)
 	if s.active {
 		if s.lg != nil {
-			s.lg.Warn("peer became inactive", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
+			s.lg.Warn("peer became inactive (message send to peer failed)", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
 		} else {
 			plog.Errorf(msg)
-			plog.Infof("peer %s became inactive", s.id)
+			plog.Infof("peer %s became inactive (message send to peer failed)", s.id)
 		}
 		s.active = false
 		s.since = time.Time{}

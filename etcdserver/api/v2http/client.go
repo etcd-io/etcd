@@ -27,17 +27,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/v2auth"
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	stats "github.com/coreos/etcd/etcdserver/api/v2stats"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v2auth"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
+	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
@@ -76,12 +76,12 @@ func handleV2(lg *zap.Logger, mux *http.ServeMux, server etcdserver.ServerV2, ti
 	}
 
 	mh := &membersHandler{
-		lg:      lg,
-		sec:     sec,
-		server:  server,
-		cluster: server.Cluster(),
-		timeout: timeout,
-		clock:   clockwork.NewRealClock(),
+		lg:                    lg,
+		sec:                   sec,
+		server:                server,
+		cluster:               server.Cluster(),
+		timeout:               timeout,
+		clock:                 clockwork.NewRealClock(),
 		clientCertAuthEnabled: server.ClientCertAuthEnabled(),
 	}
 
@@ -161,7 +161,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		handleKeyWatch(ctx, h.lg, w, resp, rr.Stream)
 	default:
-		writeKeyError(h.lg, w, errors.New("received response with no Event/Watcher!"))
+		writeKeyError(h.lg, w, errors.New("received response with no Event/Watcher"))
 	}
 }
 
@@ -556,7 +556,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuccess bool) error {
 	ev := resp.Event
 	if ev == nil {
-		return errors.New("cannot write empty Event!")
+		return errors.New("cannot write empty Event")
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))

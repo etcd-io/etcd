@@ -19,10 +19,10 @@ import (
 	"os"
 	"strings"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/snapshot"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/types"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/snapshot"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 )
 
 type simplePrinter struct {
@@ -136,6 +136,10 @@ func (s *simplePrinter) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
 	fmt.Printf("Member %16x updated in cluster %16x\n", id, r.Header.ClusterId)
 }
 
+func (s *simplePrinter) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+	fmt.Printf("Member %16x promoted in cluster %16x\n", id, r.Header.ClusterId)
+}
+
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	_, rows := makeMemberListTable(resp)
 	for _, row := range rows {
@@ -148,7 +152,7 @@ func (s *simplePrinter) EndpointHealth(hs []epHealth) {
 		if h.Error == "" {
 			fmt.Fprintf(os.Stderr, "%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
 		} else {
-			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v", h.Ep, h.Error)
+			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v\n", h.Ep, h.Error)
 		}
 	}
 }

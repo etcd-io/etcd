@@ -133,7 +133,7 @@ Label `remoteID` is the member ID of the message destination.
 
 ## Prometheus supplied metrics
 
-The Prometheus client library provides a number of metrics under the `go` and `process` namespaces. There are a few that are particlarly interesting.
+The Prometheus client library provides a number of metrics under the `go` and `process` namespaces. There are a few that are particularly interesting.
 
 | Name                              | Description                                | Type         |
 |-----------------------------------|--------------------------------------------|--------------|

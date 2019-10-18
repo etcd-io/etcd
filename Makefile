@@ -14,7 +14,7 @@
 build:
 	GO_BUILD_FLAGS="-v" ./build
 	./bin/etcd --version
-	ETCDCTL_API=3 ./bin/etcdctl version
+	./bin/etcdctl version
 
 clean:
 	rm -f ./codecov
@@ -51,7 +51,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.10.3
+GO_VERSION ?= 1.13.1
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -65,11 +65,11 @@ endif
 
 
 # Example:
-#   GO_VERSION=1.8.7 make build-docker-test
+#   GO_VERSION=1.13.1 make build-docker-test
 #   make build-docker-test
 #
 #   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-#   GO_VERSION=1.8.7 make push-docker-test
+#   GO_VERSION=1.13.1 make push-docker-test
 #   make push-docker-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -102,9 +102,9 @@ compile-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	docker run \
 	  --rm \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version"
+	  /bin/bash -c "GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version"
 
 compile-setup-gopath-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -112,7 +112,7 @@ compile-setup-gopath-with-docker-test:
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v ./build && ./bin/etcd --version && rm -rf ./gopath"
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
@@ -158,7 +158,7 @@ docker-test:
 	docker run \
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
 	  /bin/bash -c "$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
@@ -172,7 +172,7 @@ docker-test-coverage:
 	docker run \
 	  --rm \
 	  $(TMP_DIR_MOUNT_FLAG) \
-	  --mount type=bind,source=`pwd`,destination=/go/src/github.com/coreos/etcd \
+	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
 	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
@@ -197,7 +197,7 @@ build-docker-release-master:
 	docker run \
 	  --rm \
 	  gcr.io/etcd-development/etcd:$(ETCD_VERSION) \
-	  /bin/sh -c "/usr/local/bin/etcd --version && ETCDCTL_API=3 /usr/local/bin/etcdctl version"
+	  /bin/sh -c "/usr/local/bin/etcd --version && /usr/local/bin/etcdctl version"
 
 push-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
@@ -281,6 +281,7 @@ docker-static-ip-test-certs-metrics-proxy-run:
 #   make docker-dns-test-certs-wildcard-run
 #   make docker-dns-test-certs-common-name-auth-run
 #   make docker-dns-test-certs-common-name-multi-run
+#   make docker-dns-test-certs-san-dns-run
 
 build-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -389,6 +390,19 @@ docker-dns-test-certs-common-name-multi-run:
 	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
 	  /bin/bash -c "cd /etcd && /certs-common-name-multi/run.sh && rm -rf m*.etcd"
 
+docker-dns-test-certs-san-dns-run:
+	$(info GO_VERSION: $(GO_VERSION))
+	$(info HOST_TMP_DIR: $(HOST_TMP_DIR))
+	$(info TMP_DIR_MOUNT_FLAG: $(TMP_DIR_MOUNT_FLAG))
+	docker run \
+	  --rm \
+	  --tty \
+	  --dns 127.0.0.1 \
+	  $(TMP_DIR_MOUNT_FLAG) \
+	  --mount type=bind,source=`pwd`/bin,destination=/etcd \
+	  --mount type=bind,source=`pwd`/tests/docker-dns/certs-san-dns,destination=/certs-san-dns \
+	  gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
+	  /bin/bash -c "cd /etcd && /certs-san-dns/run.sh && rm -rf m*.etcd"
 
 
 # Example:
@@ -500,7 +514,7 @@ build-docker-functional:
 	  gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
 	  /bin/bash -c "./bin/etcd --version && \
 	   ./bin/etcd-failpoints --version && \
-	   ETCDCTL_API=3 ./bin/etcdctl version && \
+	   ./bin/etcdctl version && \
 	   ./bin/etcd-agent -help || true && \
 	   ./bin/etcd-proxy -help || true && \
 	   ./bin/etcd-runner --help || true && \

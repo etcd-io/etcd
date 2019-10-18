@@ -6,13 +6,17 @@ if ! [[ "$0" =~ scripts/updatedep.sh ]]; then
   exit 255
 fi
 
-go get -v -u github.com/golang/dep/cmd/dep
-
-if [[ -z "$1" ]]; then
-  echo "dep ensure on all packages"
-  dep ensure -v
-else
-  echo "dep update on" "$1"
-  # shellcheck disable=SC2086
-  dep ensure -v -update $1
+if [ -d "gopath.proto" ]; then
+  # gopath.proto is created by genproto.sh and it thoroughly messes
+  # with go mod.
+  echo "Remove gopath.proto before running this script"
+  exit 255
 fi
+
+if [[ $(go version) != "go version go1.13"* ]]; then
+  echo "expect Go 1.13+, got:" "$(go version)"
+  exit 255
+fi
+
+GO111MODULE=on go mod tidy -v
+GO111MODULE=on go mod vendor -v

@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal/walpb"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
@@ -54,7 +54,7 @@ var (
 	// so that tests can set a different segment size.
 	SegmentSizeBytes int64 = 64 * 1000 * 1000 // 64MB
 
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "wal")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "wal")
 
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
@@ -184,6 +184,13 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, err
 	}
 
+	var perr error
+	defer func() {
+		if perr != nil {
+			w.cleanupWAL(lg)
+		}
+	}()
+
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
@@ -208,7 +215,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		}
 		return nil, perr
 	}
-	if perr = pdir.Close(); err != nil {
+	if perr = pdir.Close(); perr != nil {
 		if lg != nil {
 			lg.Warn(
 				"failed to close the parent data directory file",
@@ -221,6 +228,30 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	return w, nil
+}
+
+func (w *WAL) cleanupWAL(lg *zap.Logger) {
+	var err error
+	if err = w.Close(); err != nil {
+		if lg != nil {
+			lg.Panic("failed to close WAL during cleanup", zap.Error(err))
+		} else {
+			plog.Panicf("failed to close WAL during cleanup: %v", err)
+		}
+	}
+	brokenDirName := fmt.Sprintf("%s.broken.%v", w.dir, time.Now().Format("20060102.150405.999999"))
+	if err = os.Rename(w.dir, brokenDirName); err != nil {
+		if lg != nil {
+			lg.Panic(
+				"failed to rename WAL during cleanup",
+				zap.Error(err),
+				zap.String("source-path", w.dir),
+				zap.String("rename-path", brokenDirName),
+			)
+		} else {
+			plog.Panicf("failed to rename WAL during cleanup: %v", err)
+		}
+	}
 }
 
 func (w *WAL) renameWAL(tmpdirpath string) (*WAL, error) {
@@ -299,43 +330,15 @@ func OpenForRead(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, err
 }
 
 func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) {
-	names, err := readWALNames(lg, dirpath)
+	names, nameIndex, err := selectWALFiles(lg, dirpath, snap)
 	if err != nil {
 		return nil, err
 	}
 
-	nameIndex, ok := searchIndex(lg, names, snap.Index)
-	if !ok || !isValidSeq(lg, names[nameIndex:]) {
-		return nil, ErrFileNotFound
+	rs, ls, closer, err := openWALFiles(lg, dirpath, names, nameIndex, write)
+	if err != nil {
+		return nil, err
 	}
-
-	// open the wal files
-	rcs := make([]io.ReadCloser, 0)
-	rs := make([]io.Reader, 0)
-	ls := make([]*fileutil.LockedFile, 0)
-	for _, name := range names[nameIndex:] {
-		p := filepath.Join(dirpath, name)
-		if write {
-			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
-			if err != nil {
-				closeAll(rcs...)
-				return nil, err
-			}
-			ls = append(ls, l)
-			rcs = append(rcs, l)
-		} else {
-			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
-			if err != nil {
-				closeAll(rcs...)
-				return nil, err
-			}
-			ls = append(ls, nil)
-			rcs = append(rcs, rf)
-		}
-		rs = append(rs, rcs[len(rcs)-1])
-	}
-
-	closer := func() error { return closeAll(rcs...) }
 
 	// create a WAL ready for reading
 	w := &WAL{
@@ -355,10 +358,56 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 			closer()
 			return nil, err
 		}
-		w.fp = newFilePipeline(w.lg, w.dir, SegmentSizeBytes)
+		w.fp = newFilePipeline(lg, w.dir, SegmentSizeBytes)
 	}
 
 	return w, nil
+}
+
+func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]string, int, error) {
+	names, err := readWALNames(lg, dirpath)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	nameIndex, ok := searchIndex(lg, names, snap.Index)
+	if !ok || !isValidSeq(lg, names[nameIndex:]) {
+		err = ErrFileNotFound
+		return nil, -1, err
+	}
+
+	return names, nameIndex, nil
+}
+
+func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int, write bool) ([]io.Reader, []*fileutil.LockedFile, func() error, error) {
+	rcs := make([]io.ReadCloser, 0)
+	rs := make([]io.Reader, 0)
+	ls := make([]*fileutil.LockedFile, 0)
+	for _, name := range names[nameIndex:] {
+		p := filepath.Join(dirpath, name)
+		if write {
+			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
+			if err != nil {
+				closeAll(rcs...)
+				return nil, nil, nil, err
+			}
+			ls = append(ls, l)
+			rcs = append(rcs, l)
+		} else {
+			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
+			if err != nil {
+				closeAll(rcs...)
+				return nil, nil, nil, err
+			}
+			ls = append(ls, nil)
+			rcs = append(rcs, rf)
+		}
+		rs = append(rs, rcs[len(rcs)-1])
+	}
+
+	closer := func() error { return closeAll(rcs...) }
+
+	return rs, ls, closer, nil
 }
 
 // ReadAll reads out records of the current WAL.
@@ -478,6 +527,86 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	w.decoder = nil
 
 	return metadata, state, ents, err
+}
+
+// Verify reads through the given WAL and verifies that it is not corrupted.
+// It creates a new decoder to read through the records of the given WAL.
+// It does not conflict with any open WAL, but it is recommended not to
+// call this function after opening the WAL for writing.
+// If it cannot read out the expected snap, it will return ErrSnapshotNotFound.
+// If the loaded snap doesn't match with the expected one, it will
+// return error ErrSnapshotMismatch.
+func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
+	var metadata []byte
+	var err error
+	var match bool
+
+	rec := &walpb.Record{}
+
+	names, nameIndex, err := selectWALFiles(lg, walDir, snap)
+	if err != nil {
+		return err
+	}
+
+	// open wal files in read mode, so that there is no conflict
+	// when the same WAL is opened elsewhere in write mode
+	rs, _, closer, err := openWALFiles(lg, walDir, names, nameIndex, false)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closer != nil {
+			closer()
+		}
+	}()
+
+	// create a new decoder from the readers on the WAL files
+	decoder := newDecoder(rs...)
+
+	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
+		switch rec.Type {
+		case metadataType:
+			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
+				return ErrMetadataConflict
+			}
+			metadata = rec.Data
+		case crcType:
+			crc := decoder.crc.Sum32()
+			// Current crc of decoder must match the crc of the record.
+			// We need not match 0 crc, since the decoder is a new one at this point.
+			if crc != 0 && rec.Validate(crc) != nil {
+				return ErrCRCMismatch
+			}
+			decoder.updateCRC(rec.Crc)
+		case snapshotType:
+			var loadedSnap walpb.Snapshot
+			pbutil.MustUnmarshal(&loadedSnap, rec.Data)
+			if loadedSnap.Index == snap.Index {
+				if loadedSnap.Term != snap.Term {
+					return ErrSnapshotMismatch
+				}
+				match = true
+			}
+		// We ignore all entry and state type records as these
+		// are not necessary for validating the WAL contents
+		case entryType:
+		case stateType:
+		default:
+			return fmt.Errorf("unexpected block type %d", rec.Type)
+		}
+	}
+
+	// We do not have to read out all the WAL entries
+	// as the decoder is opened in read mode.
+	if err != io.EOF && err != io.ErrUnexpectedEOF {
+		return err
+	}
+
+	if !match {
+		return ErrSnapshotNotFound
+	}
+
+	return nil
 }
 
 // cut closes current file written and creates a new one ready to append.

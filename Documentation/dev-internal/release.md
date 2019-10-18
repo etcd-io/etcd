@@ -1,4 +1,6 @@
-# etcd release guide
+---
+title: etcd release guide
+---
 
 The guide talks about how to release a new version of etcd.
 
@@ -12,6 +14,7 @@ release and for ensuring the stability of the release branch.
 
 | Releases | Manager |
 | -------- | ------- |
+| 3.1 patch (post 3.1.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
 | 3.2 patch (post 3.2.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
 | 3.3 patch (post 3.3.0) | Gyuho Lee [@gyuho](https://github.com/gyuho) |
 
@@ -29,9 +32,9 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 ### Major, minor version release, or its pre-release
 
 - Ensure the relevant milestone on GitHub is complete. All referenced issues should be closed, or moved elsewhere.
-- Remove this release from [roadmap](https://github.com/coreos/etcd/blob/master/ROADMAP.md), if necessary.
+- Remove this release from [roadmap](https://github.com/etcd-io/etcd/blob/master/ROADMAP.md), if necessary.
 - Ensure the latest upgrade documentation is available.
-- Bump [hardcoded MinClusterVerion in the repository](https://github.com/coreos/etcd/blob/master/version/version.go#L29), if necessary.
+- Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/master/version/version.go#L29), if necessary.
 - Add feature capability maps for the new version, if necessary.
 
 ### Patch version release
@@ -49,18 +52,17 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 
 ## Tag version
 
-- Bump [hardcoded Version in the repository](https://github.com/coreos/etcd/blob/master/version/version.go#L30) to the latest version `${VERSION}`.
+- Bump [hardcoded Version in the repository](https://github.com/etcd-io/etcd/blob/master/version/version.go#L30) to the latest version `${VERSION}`.
 - Ensure all tests on CI system are passed.
 - Manually check etcd is buildable in Linux, Darwin and Windows.
 - Manually check upgrade etcd cluster of previous minor version works well.
 - Manually check new features work well.
 - Add a signed tag through `git tag -s ${VERSION}`.
 - Sanity check tag correctness through `git show tags/$VERSION`.
-- Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/coreos/etcd".
+- Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/etcd-io/etcd".
 
 ## Build release binaries and images
 
-- Ensure `acbuild` is available.
 - Ensure `docker` is available.
 
 Run release script in root directory:
@@ -83,11 +85,11 @@ for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --armor --output 
 for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
 
 # sign zipped source code files
-wget https://github.com/coreos/etcd/archive/${VERSION}.zip
+wget https://github.com/etcd-io/etcd/archive/${VERSION}.zip
 gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.zip.asc --detach-sign ${VERSION}.zip
 gpg2 --verify ${VERSION}.zip.asc ${VERSION}.zip
 
-wget https://github.com/coreos/etcd/archive/${VERSION}.tar.gz
+wget https://github.com/etcd-io/etcd/archive/${VERSION}.tar.gz
 gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.tar.gz.asc --detach-sign ${VERSION}.tar.gz
 gpg2 --verify ${VERSION}.tar.gz.asc ${VERSION}.tar.gz
 ```
@@ -155,5 +157,5 @@ git log ...${PREV_VERSION} --pretty=format:"%an" | sort | uniq | tr '\n' ',' | s
 
 ## Post release
 
-- Create new stable branch through `git push origin ${VERSION_MAJOR}.${VERSION_MINOR}` if this is a major stable release. This assumes `origin` corresponds to "https://github.com/coreos/etcd".
-- Bump [hardcoded Version in the repository](https://github.com/coreos/etcd/blob/master/version/version.go#L30) to the version `${VERSION}+git`.
+- Create new stable branch through `git push origin ${VERSION_MAJOR}.${VERSION_MINOR}` if this is a major stable release. This assumes `origin` corresponds to "https://github.com/etcd-io/etcd".
+- Bump [hardcoded Version in the repository](https://github.com/etcd-io/etcd/blob/master/version/version.go#L30) to the version `${VERSION}+git`.

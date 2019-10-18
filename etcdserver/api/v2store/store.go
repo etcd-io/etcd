@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v2error"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver/api/v2error"
+	"go.etcd.io/etcd/pkg/types"
 
 	"github.com/jonboulle/clockwork"
 )

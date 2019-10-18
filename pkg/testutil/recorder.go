@@ -49,6 +49,7 @@ func (r *RecorderBuffered) Record(a Action) {
 	r.actions = append(r.actions, a)
 	r.Unlock()
 }
+
 func (r *RecorderBuffered) Action() []Action {
 	r.Lock()
 	cpy := make([]Action, len(r.actions))
@@ -56,6 +57,7 @@ func (r *RecorderBuffered) Action() []Action {
 	r.Unlock()
 	return cpy
 }
+
 func (r *RecorderBuffered) Wait(n int) (acts []Action, err error) {
 	// legacy racey behavior
 	WaitSchedule()

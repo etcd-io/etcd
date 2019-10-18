@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/pkg/flags"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/flags"
 
 	"github.com/spf13/cobra"
 )
@@ -60,7 +60,7 @@ func newEpStatusCommand() *cobra.Command {
 		Use:   "status",
 		Short: "Prints out the status of endpoints specified in `--endpoints` flag",
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
-The items in the lists are endpoint, ID, version, db size, is leader, raft term, raft index.
+The items in the lists are endpoint, ID, version, db size, is leader, is learner, raft term, raft index, raft applied index, errors.
 `,
 		Run: epStatusCommandFunc,
 	}

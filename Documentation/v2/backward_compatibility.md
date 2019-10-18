@@ -1,9 +1,10 @@
+---
+title: Backward Compatibility
+---
+
 **This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
 
 [v3-docs]: ../docs.md#documentation
-
-
-# Backward Compatibility
 
 The main goal of etcd 2.0 release is to improve cluster safety around bootstrapping and dynamic reconfiguration. To do this, we deprecated the old error-prone APIs and provide a new set of APIs.
 
@@ -23,7 +24,7 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
  - `-peer-election-timeout` is replaced by `-election-timeout`.
 
 The documentation of new command line flags can be found at
-https://github.com/coreos/etcd/blob/master/Documentation/v2/configuration.md.
+https://github.com/etcd-io/etcd/blob/master/Documentation/v2/configuration.md.
 
 ## Data Directory Naming
 

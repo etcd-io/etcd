@@ -24,10 +24,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/backend"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/backend"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
@@ -48,7 +48,7 @@ var (
 	authUsersBucketName = []byte("authUsers")
 	authRolesBucketName = []byte("authRoles")
 
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "auth")
 
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
 	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
@@ -57,6 +57,7 @@ var (
 	ErrUserNotFound         = errors.New("auth: user not found")
 	ErrRoleAlreadyExist     = errors.New("auth: role already exists")
 	ErrRoleNotFound         = errors.New("auth: role not found")
+	ErrRoleEmpty            = errors.New("auth: role name is empty")
 	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
@@ -305,6 +306,10 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 		return nil, ErrAuthFailed
 	}
 
+	if user.Options.NoPassword {
+		return nil, ErrAuthFailed
+	}
+
 	// Password checking is already performed in the API layer, so we don't need to check for now.
 	// Staleness of password can be detected with OCC in the API layer, too.
 
@@ -336,6 +341,10 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 
 	user := getUser(as.lg, tx, username)
 	if user == nil {
+		return 0, ErrAuthFailed
+	}
+
+	if user.Options.NoPassword {
 		return 0, ErrAuthFailed
 	}
 
@@ -376,18 +385,23 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		return nil, ErrUserEmpty
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
-	if err != nil {
-		if as.lg != nil {
-			as.lg.Warn(
-				"failed to bcrypt hash password",
-				zap.String("user-name", r.Name),
-				zap.Error(err),
-			)
-		} else {
-			plog.Errorf("failed to hash password: %s", err)
+	var hashed []byte
+	var err error
+
+	if r.Options != nil && !r.Options.NoPassword {
+		hashed, err = bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
+		if err != nil {
+			if as.lg != nil {
+				as.lg.Warn(
+					"failed to bcrypt hash password",
+					zap.String("user-name", r.Name),
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("failed to hash password: %s", err)
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 
 	tx := as.be.BatchTx()
@@ -399,9 +413,17 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		return nil, ErrUserAlreadyExist
 	}
 
+	options := r.Options
+	if options == nil {
+		options = &authpb.UserAddOptions{
+			NoPassword: false,
+		}
+	}
+
 	newUser := &authpb.User{
 		Name:     []byte(r.Name),
 		Password: hashed,
+		Options:  options,
 	}
 
 	putUser(as.lg, tx, newUser)
@@ -484,6 +506,7 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 		Name:     []byte(r.Name),
 		Roles:    user.Roles,
 		Password: hashed,
+		Options:  user.Options,
 	}
 
 	putUser(as.lg, tx, updatedUser)
@@ -613,6 +636,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	updatedUser := &authpb.User{
 		Name:     user.Name,
 		Password: user.Password,
+		Options:  user.Options,
 	}
 
 	for _, role := range user.Roles {
@@ -744,6 +768,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 		updatedUser := &authpb.User{
 			Name:     user.Name,
 			Password: user.Password,
+			Options:  user.Options,
 		}
 
 		for _, role := range user.Roles {
@@ -772,6 +797,10 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 }
 
 func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
+	if len(r.Name) == 0 {
+		return nil, ErrRoleEmpty
+	}
+
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -1165,6 +1194,27 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 		ai = &AuthInfo{
 			Username: chains[0].Subject.CommonName,
 			Revision: as.Revision(),
+		}
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return nil
+		}
+
+		// gRPC-gateway proxy request to etcd server includes Grpcgateway-Accept
+		// header. The proxy uses etcd client server certificate. If the certificate
+		// has a CommonName we should never use this for authentication.
+		if gw := md["grpcgateway-accept"]; len(gw) > 0 {
+			if as.lg != nil {
+				as.lg.Warn(
+					"ignoring common name in gRPC-gateway proxy request",
+					zap.String("common-name", ai.Username),
+					zap.String("user-name", ai.Username),
+					zap.Uint64("revision", ai.Revision),
+				)
+			} else {
+				plog.Warningf("ignoring common name in gRPC-gateway proxy request %s", ai.Username)
+			}
+			return nil
 		}
 		if as.lg != nil {
 			as.lg.Debug(

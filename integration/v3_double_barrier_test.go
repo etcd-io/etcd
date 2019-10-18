@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/contrib/recipes"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/contrib/recipes"
 )
 
 func TestDoubleBarrier(t *testing.T) {
@@ -45,11 +45,11 @@ func TestDoubleBarrier(t *testing.T) {
 
 			bb := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
 			if err := bb.Enter(); err != nil {
-				t.Fatalf("could not enter on barrier (%v)", err)
+				t.Errorf("could not enter on barrier (%v)", err)
 			}
 			donec <- struct{}{}
 			if err := bb.Leave(); err != nil {
-				t.Fatalf("could not leave on barrier (%v)", err)
+				t.Errorf("could not leave on barrier (%v)", err)
 			}
 			donec <- struct{}{}
 		}()
@@ -115,7 +115,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	go func() {
 		b := recipe.NewDoubleBarrier(s0, "test-barrier", waiters)
 		if berr := b.Enter(); berr != nil {
-			t.Fatalf("could not enter on barrier (%v)", berr)
+			t.Errorf("could not enter on barrier (%v)", berr)
 		}
 		donec <- struct{}{}
 	}()
@@ -124,7 +124,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 		go func() {
 			b := recipe.NewDoubleBarrier(s1, "test-barrier", waiters)
 			if berr := b.Enter(); berr != nil {
-				t.Fatalf("could not enter on barrier (%v)", berr)
+				t.Errorf("could not enter on barrier (%v)", berr)
 			}
 			donec <- struct{}{}
 			b.Leave()

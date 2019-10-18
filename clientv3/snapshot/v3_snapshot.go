@@ -25,25 +25,26 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/snap"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
-
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -166,6 +167,14 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	if err = db.View(func(tx *bolt.Tx) error {
+		// check snapshot file integrity first
+		var dbErrStrings []string
+		for dbErr := range tx.Check() {
+			dbErrStrings = append(dbErrStrings, dbErr.Error())
+		}
+		if len(dbErrStrings) > 0 {
+			return fmt.Errorf("snapshot file integrity check failed. %d errors found.\n"+strings.Join(dbErrStrings, "\n"), len(dbErrStrings))
+		}
 		ds.TotalSize = tx.Size()
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
@@ -375,8 +384,8 @@ func (s *v3Manager) saveDB() error {
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
 
-	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit))
-	txn := mvs.Write()
+	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit), mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	txn := mvs.Write(traceutil.TODO())
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
 		txn.DeleteRange(k, nil)
@@ -473,7 +482,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 			Index: commit,
 			Term:  term,
 			ConfState: raftpb.ConfState{
-				Nodes: nodeIDs,
+				Voters: nodeIDs,
 			},
 		},
 	}

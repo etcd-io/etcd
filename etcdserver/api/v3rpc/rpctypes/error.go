@@ -40,6 +40,9 @@ var (
 	ErrGRPCMemberNotEnoughStarted = status.New(codes.FailedPrecondition, "etcdserver: re-configuration failed due to not enough started members").Err()
 	ErrGRPCMemberBadURLs          = status.New(codes.InvalidArgument, "etcdserver: given member URLs are invalid").Err()
 	ErrGRPCMemberNotFound         = status.New(codes.NotFound, "etcdserver: member not found").Err()
+	ErrGRPCMemberNotLearner       = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member").Err()
+	ErrGRPCLearnerNotReady        = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader").Err()
+	ErrGRPCTooManyLearners        = status.New(codes.FailedPrecondition, "etcdserver: too many learner members in cluster").Err()
 
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
@@ -51,6 +54,7 @@ var (
 	ErrGRPCUserNotFound         = status.New(codes.FailedPrecondition, "etcdserver: user name not found").Err()
 	ErrGRPCRoleAlreadyExist     = status.New(codes.FailedPrecondition, "etcdserver: role name already exists").Err()
 	ErrGRPCRoleNotFound         = status.New(codes.FailedPrecondition, "etcdserver: role name not found").Err()
+	ErrGRPCRoleEmpty            = status.New(codes.InvalidArgument, "etcdserver: role name is empty").Err()
 	ErrGRPCAuthFailed           = status.New(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password").Err()
 	ErrGRPCPermissionDenied     = status.New(codes.PermissionDenied, "etcdserver: permission denied").Err()
 	ErrGRPCRoleNotGranted       = status.New(codes.FailedPrecondition, "etcdserver: role is not granted to the user").Err()
@@ -61,6 +65,7 @@ var (
 
 	ErrGRPCNoLeader                   = status.New(codes.Unavailable, "etcdserver: no leader").Err()
 	ErrGRPCNotLeader                  = status.New(codes.FailedPrecondition, "etcdserver: not leader").Err()
+	ErrGRPCLeaderChanged              = status.New(codes.Unavailable, "etcdserver: leader changed").Err()
 	ErrGRPCNotCapable                 = status.New(codes.Unavailable, "etcdserver: not capable").Err()
 	ErrGRPCStopped                    = status.New(codes.Unavailable, "etcdserver: server stopped").Err()
 	ErrGRPCTimeout                    = status.New(codes.Unavailable, "etcdserver: request timed out").Err()
@@ -68,6 +73,8 @@ var (
 	ErrGRPCTimeoutDueToConnectionLost = status.New(codes.Unavailable, "etcdserver: request timed out, possibly due to connection lost").Err()
 	ErrGRPCUnhealthy                  = status.New(codes.Unavailable, "etcdserver: unhealthy cluster").Err()
 	ErrGRPCCorrupt                    = status.New(codes.DataLoss, "etcdserver: corrupt cluster").Err()
+	ErrGPRCNotSupportedForLearner     = status.New(codes.Unavailable, "etcdserver: rpc not supported for learner").Err()
+	ErrGRPCBadLeaderTransferee        = status.New(codes.FailedPrecondition, "etcdserver: bad leader transferee").Err()
 
 	errStringToError = map[string]error{
 		ErrorDesc(ErrGRPCEmptyKey):      ErrGRPCEmptyKey,
@@ -90,6 +97,9 @@ var (
 		ErrorDesc(ErrGRPCMemberNotEnoughStarted): ErrGRPCMemberNotEnoughStarted,
 		ErrorDesc(ErrGRPCMemberBadURLs):          ErrGRPCMemberBadURLs,
 		ErrorDesc(ErrGRPCMemberNotFound):         ErrGRPCMemberNotFound,
+		ErrorDesc(ErrGRPCMemberNotLearner):       ErrGRPCMemberNotLearner,
+		ErrorDesc(ErrGRPCLearnerNotReady):        ErrGRPCLearnerNotReady,
+		ErrorDesc(ErrGRPCTooManyLearners):        ErrGRPCTooManyLearners,
 
 		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
@@ -101,6 +111,7 @@ var (
 		ErrorDesc(ErrGRPCUserNotFound):         ErrGRPCUserNotFound,
 		ErrorDesc(ErrGRPCRoleAlreadyExist):     ErrGRPCRoleAlreadyExist,
 		ErrorDesc(ErrGRPCRoleNotFound):         ErrGRPCRoleNotFound,
+		ErrorDesc(ErrGRPCRoleEmpty):            ErrGRPCRoleEmpty,
 		ErrorDesc(ErrGRPCAuthFailed):           ErrGRPCAuthFailed,
 		ErrorDesc(ErrGRPCPermissionDenied):     ErrGRPCPermissionDenied,
 		ErrorDesc(ErrGRPCRoleNotGranted):       ErrGRPCRoleNotGranted,
@@ -111,6 +122,7 @@ var (
 
 		ErrorDesc(ErrGRPCNoLeader):                   ErrGRPCNoLeader,
 		ErrorDesc(ErrGRPCNotLeader):                  ErrGRPCNotLeader,
+		ErrorDesc(ErrGRPCLeaderChanged):              ErrGRPCLeaderChanged,
 		ErrorDesc(ErrGRPCNotCapable):                 ErrGRPCNotCapable,
 		ErrorDesc(ErrGRPCStopped):                    ErrGRPCStopped,
 		ErrorDesc(ErrGRPCTimeout):                    ErrGRPCTimeout,
@@ -118,6 +130,8 @@ var (
 		ErrorDesc(ErrGRPCTimeoutDueToConnectionLost): ErrGRPCTimeoutDueToConnectionLost,
 		ErrorDesc(ErrGRPCUnhealthy):                  ErrGRPCUnhealthy,
 		ErrorDesc(ErrGRPCCorrupt):                    ErrGRPCCorrupt,
+		ErrorDesc(ErrGPRCNotSupportedForLearner):     ErrGPRCNotSupportedForLearner,
+		ErrorDesc(ErrGRPCBadLeaderTransferee):        ErrGRPCBadLeaderTransferee,
 	}
 )
 
@@ -142,6 +156,9 @@ var (
 	ErrMemberNotEnoughStarted = Error(ErrGRPCMemberNotEnoughStarted)
 	ErrMemberBadURLs          = Error(ErrGRPCMemberBadURLs)
 	ErrMemberNotFound         = Error(ErrGRPCMemberNotFound)
+	ErrMemberNotLearner       = Error(ErrGRPCMemberNotLearner)
+	ErrMemberLearnerNotReady  = Error(ErrGRPCLearnerNotReady)
+	ErrTooManyLearners        = Error(ErrGRPCTooManyLearners)
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
@@ -153,6 +170,7 @@ var (
 	ErrUserNotFound         = Error(ErrGRPCUserNotFound)
 	ErrRoleAlreadyExist     = Error(ErrGRPCRoleAlreadyExist)
 	ErrRoleNotFound         = Error(ErrGRPCRoleNotFound)
+	ErrRoleEmpty            = Error(ErrGRPCRoleEmpty)
 	ErrAuthFailed           = Error(ErrGRPCAuthFailed)
 	ErrPermissionDenied     = Error(ErrGRPCPermissionDenied)
 	ErrRoleNotGranted       = Error(ErrGRPCRoleNotGranted)
@@ -163,6 +181,7 @@ var (
 
 	ErrNoLeader                   = Error(ErrGRPCNoLeader)
 	ErrNotLeader                  = Error(ErrGRPCNotLeader)
+	ErrLeaderChanged              = Error(ErrGRPCLeaderChanged)
 	ErrNotCapable                 = Error(ErrGRPCNotCapable)
 	ErrStopped                    = Error(ErrGRPCStopped)
 	ErrTimeout                    = Error(ErrGRPCTimeout)
@@ -170,6 +189,7 @@ var (
 	ErrTimeoutDueToConnectionLost = Error(ErrGRPCTimeoutDueToConnectionLost)
 	ErrUnhealthy                  = Error(ErrGRPCUnhealthy)
 	ErrCorrupt                    = Error(ErrGRPCCorrupt)
+	ErrBadLeaderTransferee        = Error(ErrGRPCBadLeaderTransferee)
 )
 
 // EtcdError defines gRPC server errors.

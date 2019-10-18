@@ -17,23 +17,23 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/rafthttp"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/contention"
-	"github.com/coreos/etcd/pkg/logutil"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
-
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/contention"
+	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -58,25 +58,6 @@ var (
 )
 
 func init() {
-	lcfg := &zap.Config{
-		Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-		Development: false,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding:      "json",
-		EncoderConfig: zap.NewProductionEncoderConfig(),
-
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-	lg, err := logutil.NewRaftLogger(lcfg)
-	if err != nil {
-		log.Fatalf("cannot create raft logger %v", err)
-	}
-	raft.SetLogger(lg)
-
 	expvar.Publish("raft.status", expvar.Func(func() interface{} {
 		raftStatusMu.Lock()
 		defer raftStatusMu.Unlock()
@@ -136,6 +117,18 @@ type raftNodeConfig struct {
 }
 
 func newRaftNode(cfg raftNodeConfig) *raftNode {
+	var lg raft.Logger
+	if cfg.lg != nil {
+		lg = logutil.NewRaftLoggerZap(cfg.lg)
+	} else {
+		lcfg := logutil.DefaultZapLoggerConfig
+		var err error
+		lg, err = logutil.NewRaftLogger(&lcfg)
+		if err != nil {
+			log.Fatalf("cannot create raft logger %v", err)
+		}
+	}
+	raft.SetLogger(lg)
 	r := &raftNode{
 		lg:             cfg.lg,
 		tickMu:         new(sync.Mutex),
@@ -369,12 +362,13 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 				if r.lg != nil {
 					r.lg.Warn(
 						"leader failed to send out heartbeat on time; took too long, leader is overloaded likely from slow disk",
+						zap.String("to", fmt.Sprintf("%x", ms[i].To)),
 						zap.Duration("heartbeat-interval", r.heartbeat),
 						zap.Duration("expected-duration", 2*r.heartbeat),
 						zap.Duration("exceeded-duration", exceed),
 					)
 				} else {
-					plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v)", r.heartbeat, exceed)
+					plog.Warningf("failed to send out heartbeat on time (exceeded the %v timeout for %v, to %x)", r.heartbeat, exceed, ms[i].To)
 					plog.Warningf("server is likely overloaded")
 				}
 				heartbeatSendFailures.Inc()
@@ -439,9 +433,9 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	)
 	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), metadata); err != nil {
 		if cfg.Logger != nil {
-			cfg.Logger.Fatal("failed to create WAL", zap.Error(err))
+			cfg.Logger.Panic("failed to create WAL", zap.Error(err))
 		} else {
-			plog.Fatalf("create wal error: %v", err)
+			plog.Panicf("create wal error: %v", err)
 		}
 	}
 	peers := make([]raft.Peer, len(ids))
@@ -490,7 +484,11 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 		}
 	}
 
-	n = raft.StartNode(c, peers)
+	if len(peers) == 0 {
+		n = raft.RestartNode(c)
+	} else {
+		n = raft.StartNode(c, peers)
+	}
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
@@ -654,7 +652,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Nodes {
+		for _, id := range snap.Metadata.ConfState.Voters {
 			ids[id] = true
 		}
 	}
@@ -693,27 +691,18 @@ func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
 func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	ents := make([]raftpb.Entry, 0)
-	next := index + 1
 	found := false
 	for _, id := range ids {
 		if id == self {
 			found = true
-			continue
 		}
-		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-		next++
 	}
+
+	var ents []raftpb.Entry
+	next := index + 1
+
+	// NB: always add self first, then remove other nodes. Raft will panic if the
+	// set of voters ever becomes empty.
 	if !found {
 		m := membership.Member{
 			ID:             types.ID(self),
@@ -739,6 +728,26 @@ func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			Index: next,
 		}
 		ents = append(ents, e)
+		next++
 	}
+
+	for _, id := range ids {
+		if id == self {
+			continue
+		}
+		cc := &raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: id,
+		}
+		e := raftpb.Entry{
+			Type:  raftpb.EntryConfChange,
+			Data:  pbutil.MustMarshal(cc),
+			Term:  term,
+			Index: next,
+		}
+		ents = append(ents, e)
+		next++
+	}
+
 	return ents
 }

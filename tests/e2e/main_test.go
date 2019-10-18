@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 var (
@@ -23,6 +23,9 @@ var (
 
 	certPath2       string
 	privateKeyPath2 string
+
+	certPath3       string
+	privateKeyPath3 string
 
 	crlPath               string
 	revokedCertPath       string
@@ -48,6 +51,9 @@ func TestMain(m *testing.M) {
 
 	certPath2 = certDir + "/server2.crt"
 	privateKeyPath2 = certDir + "/server2.key.insecure"
+
+	certPath3 = certDir + "/server3.crt"
+	privateKeyPath3 = certDir + "/server3.key.insecure"
 
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {

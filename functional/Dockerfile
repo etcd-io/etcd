@@ -20,12 +20,12 @@ RUN rm -rf ${GOROOT} \
   && mkdir -p ${GOPATH}/src ${GOPATH}/bin \
   && go version
 
-RUN mkdir -p ${GOPATH}/src/github.com/coreos/etcd
-ADD . ${GOPATH}/src/github.com/coreos/etcd
+RUN mkdir -p ${GOPATH}/src/go.etcd.io/etcd
+ADD . ${GOPATH}/src/go.etcd.io/etcd
 ADD ./functional.yaml /functional.yaml
 
-RUN go get -v github.com/coreos/gofail \
-  && pushd ${GOPATH}/src/github.com/coreos/etcd \
+RUN go get -v go.etcd.io/gofail \
+  && pushd ${GOPATH}/src/go.etcd.io/etcd \
   && GO_BUILD_FLAGS="-v" ./build \
   && mkdir -p /bin \
   && cp ./bin/etcd /bin/etcd \
@@ -39,4 +39,4 @@ RUN go get -v github.com/coreos/gofail \
   && cp ./bin/etcd-tester /bin/etcd-tester \
   && go build -v -o /bin/benchmark ./tools/benchmark \
   && popd \
-  && rm -rf ${GOPATH}/src/github.com/coreos/etcd
+  && rm -rf ${GOPATH}/src/go.etcd.io/etcd

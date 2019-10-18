@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"testing"
 
-	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/pkg/testutil"
+	v3 "go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // TestSTMConflict tests that conflicts are retried.
@@ -170,7 +170,7 @@ func TestSTMSerialize(t *testing.T) {
 				ops = append(ops, v3.OpPut(k, s))
 			}
 			if _, err := etcdc.Txn(context.TODO()).Then(ops...).Commit(); err != nil {
-				t.Fatalf("couldn't put keys (%v)", err)
+				t.Errorf("couldn't put keys (%v)", err)
 			}
 			updatec <- struct{}{}
 		}
@@ -220,7 +220,7 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	go func() {
 		<-readyc
 		if _, err := etcdc.Delete(context.TODO(), "foo"); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		close(donec)
 	}()

@@ -27,20 +27,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v3compactor"
-	"github.com/coreos/etcd/pkg/flags"
-	"github.com/coreos/etcd/pkg/netutil"
-	"github.com/coreos/etcd/pkg/srv"
-	"github.com/coreos/etcd/pkg/tlsutil"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/pkg/netutil"
+	"go.etcd.io/etcd/pkg/srv"
+	"go.etcd.io/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
 
-	"github.com/ghodss/yaml"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -68,13 +70,14 @@ const (
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
 	// DefaultEnableV2 is the default value for "--enable-v2" flag.
-	// v2 is enabled by default.
-	// TODO: disable v2 when deprecated.
-	DefaultEnableV2 = true
+	// v2 API is disabled by default.
+	DefaultEnableV2 = false
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
+	// backend freelist map type
+	freelistArrayType = "array"
 )
 
 var (
@@ -162,12 +165,18 @@ type Config struct {
 	//
 	// If single-node, it advances ticks regardless.
 	//
-	// See https://github.com/coreos/etcd/issues/9333 for more detail.
+	// See https://github.com/etcd-io/etcd/issues/9333 for more detail.
 	InitialElectionTickAdvance bool `json:"initial-election-tick-advance"`
 
-	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
-	MaxTxnOps         uint  `json:"max-txn-ops"`
-	MaxRequestBytes   uint  `json:"max-request-bytes"`
+	// BackendBatchInterval is the maximum time before commit the backend transaction.
+	BackendBatchInterval time.Duration `json:"backend-batch-interval"`
+	// BackendBatchLimit is the maximum operations before commit the backend transaction.
+	BackendBatchLimit int `json:"backend-batch-limit"`
+	// BackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
+	BackendFreelistType string `json:"backend-bbolt-freelist-type"`
+	QuotaBackendBytes   int64  `json:"quota-backend-bytes"`
+	MaxTxnOps           uint   `json:"max-txn-ops"`
+	MaxRequestBytes     uint   `json:"max-request-bytes"`
 
 	LPUrls, LCUrls []url.URL
 	APUrls, ACUrls []url.URL
@@ -246,7 +255,7 @@ type Config struct {
 	// CVE-2018-5702 reference:
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
 	// - https://github.com/transmission/transmission/pull/468
-	// - https://github.com/coreos/etcd/issues/9353
+	// - https://github.com/etcd-io/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
 	// UserHandlers is for registering users handlers and only used for
@@ -269,6 +278,9 @@ type Config struct {
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
+	ExperimentalCompactionBatchLimit  int  `json:"experimental-compaction-batch-limit"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -281,11 +293,8 @@ type Config struct {
 	// Logger is logger options: "zap", "capnslog".
 	// WARN: "capnslog" is being deprecated in v3.5.
 	Logger string `json:"logger"`
-
-	// DeprecatedLogOutput is to be deprecated in v3.5.
-	// Just here for safe migration in v3.4.
-	DeprecatedLogOutput []string `json:"log-output"`
-
+	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
+	LogLevel string `json:"log-level"`
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
@@ -294,8 +303,8 @@ type Config struct {
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
 
-	// Debug is true, to enable debug level logging.
-	Debug bool `json:"debug"`
+	// ZapLoggerBuilder is used to build the zap logger.
+	ZapLoggerBuilder func(*Config) error
 
 	// logger logs server-side operations. The default is nil,
 	// and "setupLogging" must be called before starting server.
@@ -311,8 +320,17 @@ type Config struct {
 	loggerCore        zapcore.Core
 	loggerWriteSyncer zapcore.WriteSyncer
 
+	// EnableGRPCGateway is false to disable grpc gateway.
+	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
+
 	// TO BE DEPRECATED
 
+	// DeprecatedLogOutput is to be deprecated in v3.5.
+	// Just here for safe migration in v3.4.
+	DeprecatedLogOutput []string `json:"log-output"`
+	// Debug is true, to enable debug level logging.
+	// WARNING: to be deprecated in 3.5. Use "--log-level=debug" instead.
+	Debug bool `json:"debug"`
 	// LogPkgLevels is being deprecated in v3.5.
 	// Only valid if "logger" option is "capnslog".
 	// WARN: DO NOT USE THIS!
@@ -399,6 +417,7 @@ func NewConfig() *Config {
 		DeprecatedLogOutput: []string{DefaultLogOutput},
 		LogOutputs:          []string{DefaultLogOutput},
 		Debug:               false,
+		LogLevel:            logutil.DefaultLogLevel,
 		LogPkgLevels:        "",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
@@ -885,4 +904,12 @@ func (cfg *Config) getMetricsURLs() (ss []string) {
 		ss[i] = cfg.ListenMetricsUrls[i].String()
 	}
 	return ss
+}
+
+func parseBackendFreelistType(freelistType string) bolt.FreelistType {
+	if freelistType == freelistArrayType {
+		return bolt.FreelistArrayType
+	}
+
+	return bolt.FreelistMapType
 }

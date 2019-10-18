@@ -29,9 +29,9 @@ import (
 
 	_ "github.com/gogo/protobuf/gogoproto"
 
-	etcdserverpb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	etcdserverpb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
+	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
 
 	context "golang.org/x/net/context"
 

@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/bgentry/speakeasy"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/report"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/report"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -96,7 +96,7 @@ func mustCreateConn() *clientv3.Client {
 		Endpoints:   connEndpoints,
 		DialTimeout: dialTimeout,
 	}
-	if !tls.Empty() {
+	if !tls.Empty() || tls.TrustedCAFile != "" {
 		cfgtls, err := tls.ClientConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "bad tls config: %v\n", err)

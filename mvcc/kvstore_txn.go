@@ -15,9 +15,10 @@
 package mvcc
 
 import (
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -27,16 +28,20 @@ type storeTxnRead struct {
 
 	firstRev int64
 	rev      int64
+
+	trace *traceutil.Trace
 }
 
-func (s *store) Read() TxnRead {
+func (s *store) Read(trace *traceutil.Trace) TxnRead {
 	s.mu.RLock()
-	tx := s.b.ReadTx()
 	s.revMu.RLock()
-	tx.Lock()
+	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
+	// ConcurrentReadTx is created, it will not block write transaction.
+	tx := s.b.ConcurrentReadTx()
+	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
+	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, trace})
 }
 
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
@@ -47,7 +52,7 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 }
 
 func (tr *storeTxnRead) End() {
-	tr.tx.Unlock()
+	tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
 	tr.s.mu.RUnlock()
 }
 
@@ -59,12 +64,12 @@ type storeTxnWrite struct {
 	changes  []mvccpb.KeyValue
 }
 
-func (s *store) Write() TxnWrite {
+func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	s.mu.RLock()
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
@@ -122,6 +127,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	}
 
 	revpairs := tr.s.kvindex.Revisions(key, end, rev)
+	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -161,6 +167,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 			}
 		}
 	}
+	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
 }
 
@@ -176,7 +183,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 	}
-
+	tw.trace.Step("get key's previous created_revision and leaseID")
 	ibytes := newRevBytes()
 	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
@@ -203,9 +210,11 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 	}
 
+	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
+	tw.trace.Step("store kv pair into bolt db")
 
 	if oldLease != lease.NoLease {
 		if tw.s.le == nil {
@@ -232,6 +241,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 			panic("unexpected error from lease Attach")
 		}
 	}
+	tw.trace.Step("attach lease to kv pair")
 }
 
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {

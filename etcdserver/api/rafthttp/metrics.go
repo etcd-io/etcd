@@ -80,6 +80,15 @@ var (
 		[]string{"To"},
 	)
 
+	snapshotSendInflights = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "snapshot_send_inflights_total",
+		Help:      "Total number of inflight snapshot sends",
+	},
+		[]string{"To"},
+	)
+
 	snapshotSendFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -111,6 +120,15 @@ var (
 		[]string{"From"},
 	)
 
+	snapshotReceiveInflights = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "snapshot_receive_inflights_total",
+		Help:      "Total number of inflight snapshot receives",
+	},
+		[]string{"From"},
+	)
+
 	snapshotReceiveFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -137,7 +155,7 @@ var (
 		Namespace: "etcd",
 		Subsystem: "network",
 		Name:      "peer_round_trip_time_seconds",
-		Help:      "Round-Trip-Time histogram between peers.",
+		Help:      "Round-Trip-Time histogram between peers",
 
 		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
 		// highest bucket start of 0.0001 sec * 2^15 == 3.2768 sec
@@ -156,9 +174,11 @@ func init() {
 	prometheus.MustRegister(recvFailures)
 
 	prometheus.MustRegister(snapshotSend)
+	prometheus.MustRegister(snapshotSendInflights)
 	prometheus.MustRegister(snapshotSendFailures)
 	prometheus.MustRegister(snapshotSendSeconds)
 	prometheus.MustRegister(snapshotReceive)
+	prometheus.MustRegister(snapshotReceiveInflights)
 	prometheus.MustRegister(snapshotReceiveFailures)
 	prometheus.MustRegister(snapshotReceiveSeconds)
 

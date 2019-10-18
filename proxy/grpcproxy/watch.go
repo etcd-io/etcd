@@ -18,13 +18,14 @@ import (
 	"context"
 	"sync"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type watchProxy struct {
@@ -80,7 +81,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		wp.mu.Unlock()
 		select {
 		case <-wp.leader.disconnectNotify():
-			return grpc.ErrClientConnClosing
+			return status.Error(codes.Canceled, "the client connection is closing")
 		default:
 			return wp.ctx.Err()
 		}
@@ -153,7 +154,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	case <-lostLeaderC:
 		return rpctypes.ErrNoLeader
 	case <-wp.leader.disconnectNotify():
-		return grpc.ErrClientConnClosing
+		return status.Error(codes.Canceled, "the client connection is closing")
 	default:
 		return wps.ctx.Err()
 	}
@@ -229,14 +230,18 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CreateRequest:
 			cr := uv.CreateRequest
 
-			if err = wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil && err == rpctypes.ErrPermissionDenied {
-				// Return WatchResponse which is caused by permission checking if and only if
-				// the error is permission denied. For other errors (e.g. timeout or connection closed),
-				// the permission checking mechanism should do nothing for preserving error code.
-				wps.watchCh <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, WatchId: -1, Created: true, Canceled: true}
+			if err := wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
+				wps.watchCh <- &pb.WatchResponse{
+					Header:       &pb.ResponseHeader{},
+					WatchId:      -1,
+					Created:      true,
+					Canceled:     true,
+					CancelReason: err.Error(),
+				}
 				continue
 			}
 
+			wps.mu.Lock()
 			w := &watcher{
 				wr:  watchRange{string(cr.Key), string(cr.RangeEnd)},
 				id:  wps.nextWatcherID,
@@ -255,6 +260,7 @@ func (wps *watchProxyStream) recvLoop() error {
 			w.nextrev = cr.StartRevision
 			wps.watchers[w.id] = w
 			wps.ranges.add(w)
+			wps.mu.Unlock()
 		case *pb.WatchRequest_CancelRequest:
 			wps.delete(uv.CancelRequest.WatchId)
 		default:

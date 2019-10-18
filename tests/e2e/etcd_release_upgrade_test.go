@@ -17,13 +17,14 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/version"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
@@ -62,7 +63,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		break
 	}
 	if err != nil {
-		t.Fatalf("cannot pull version (%v)", err)
+		t.Skipf("cannot pull version (%v)", err)
 	}
 
 	os.Setenv("ETCDCTL_API", "3")
@@ -100,6 +101,16 @@ func TestReleaseUpgrade(t *testing.T) {
 				cx.t.Fatalf("#%d-%d: ctlV3Get error (%v)", i, j, err)
 			}
 		}
+	}
+
+	// TODO: update after release candidate
+	// expect upgraded cluster version
+	ver := version.Version
+	if strings.HasSuffix(ver, "-pre") {
+		ver = strings.Replace(ver, "-pre", "", 1)
+	}
+	if err := cURLGet(cx.epc, cURLReq{endpoint: "/metrics", expected: fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, ver), metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 }
 
@@ -158,7 +169,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 			epc.procs[i].Config().execPath = binDir + "/etcd"
 			epc.procs[i].Config().keepDataDir = true
 			if err := epc.procs[i].Restart(); err != nil {
-				t.Fatalf("error restarting etcd process (%v)", err)
+				t.Errorf("error restarting etcd process (%v)", err)
 			}
 			wg.Done()
 		}(i)

@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 )
 
@@ -43,6 +43,29 @@ type batchTx struct {
 	backend *backend
 
 	pending int
+}
+
+func (t *batchTx) Lock() {
+	t.Mutex.Lock()
+}
+
+func (t *batchTx) Unlock() {
+	if t.pending >= t.backend.batchLimit {
+		t.commit(false)
+	}
+	t.Mutex.Unlock()
+}
+
+// BatchTx interface embeds ReadTx interface. But RLock() and RUnlock() do not
+// have appropriate semantics in BatchTx interface. Therefore should not be called.
+// TODO: might want to decouple ReadTx and BatchTx
+
+func (t *batchTx) RLock() {
+	panic("unexpected RLock")
+}
+
+func (t *batchTx) RUnlock() {
+	panic("unexpected RUnlock")
 }
 
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
@@ -194,13 +217,6 @@ func (t *batchTx) CommitAndStop() {
 	t.Unlock()
 }
 
-func (t *batchTx) Unlock() {
-	if t.pending >= t.backend.batchLimit {
-		t.commit(false)
-	}
-	t.Mutex.Unlock()
-}
-
 func (t *batchTx) safePending() int {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
@@ -259,9 +275,9 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
-		t.backend.readTx.mu.Lock()
+		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
 		t.buf.writeback(&t.backend.readTx.buf)
-		t.backend.readTx.mu.Unlock()
+		t.backend.readTx.Unlock()
 		if t.pending >= t.backend.batchLimit {
 			t.commit(false)
 		}
@@ -283,20 +299,25 @@ func (t *batchTxBuffered) CommitAndStop() {
 
 func (t *batchTxBuffered) commit(stop bool) {
 	// all read txs must be closed to acquire boltdb commit rwlock
-	t.backend.readTx.mu.Lock()
+	t.backend.readTx.Lock()
 	t.unsafeCommit(stop)
-	t.backend.readTx.mu.Unlock()
+	t.backend.readTx.Unlock()
 }
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	if t.backend.readTx.tx != nil {
-		if err := t.backend.readTx.tx.Rollback(); err != nil {
-			if t.backend.lg != nil {
-				t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
-			} else {
-				plog.Fatalf("cannot rollback tx (%s)", err)
+		// wait all store read transactions using the current boltdb tx to finish,
+		// then close the boltdb tx
+		go func(tx *bolt.Tx, wg *sync.WaitGroup) {
+			wg.Wait()
+			if err := tx.Rollback(); err != nil {
+				if t.backend.lg != nil {
+					t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
+				} else {
+					plog.Fatalf("cannot rollback tx (%s)", err)
+				}
 			}
-		}
+		}(t.backend.readTx.tx, t.backend.readTx.txWg)
 		t.backend.readTx.reset()
 	}
 

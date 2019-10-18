@@ -34,7 +34,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthenticateResponse"
             }
@@ -61,7 +61,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthDisableResponse"
             }
@@ -88,7 +88,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthEnableResponse"
             }
@@ -101,7 +101,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "RoleAdd adds a new role.",
+        "summary": "RoleAdd adds a new role. Role name cannot be empty.",
         "operationId": "RoleAdd",
         "parameters": [
           {
@@ -115,7 +115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleAddResponse"
             }
@@ -142,7 +142,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleDeleteResponse"
             }
@@ -169,7 +169,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleGetResponse"
             }
@@ -196,7 +196,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionResponse"
             }
@@ -223,7 +223,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleListResponse"
             }
@@ -250,7 +250,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionResponse"
             }
@@ -263,7 +263,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "UserAdd adds a new user.",
+        "summary": "UserAdd adds a new user. User name cannot be empty.",
         "operationId": "UserAdd",
         "parameters": [
           {
@@ -277,7 +277,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserAddResponse"
             }
@@ -304,7 +304,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordResponse"
             }
@@ -331,7 +331,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserDeleteResponse"
             }
@@ -358,7 +358,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserGetResponse"
             }
@@ -385,7 +385,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleResponse"
             }
@@ -412,7 +412,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserListResponse"
             }
@@ -439,7 +439,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleResponse"
             }
@@ -466,7 +466,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberAddResponse"
             }
@@ -493,9 +493,36 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberListResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v3/cluster/member/promote": {
+      "post": {
+        "tags": [
+          "Cluster"
+        ],
+        "summary": "MemberPromote promotes a member from raft learner (non-voting) to raft voting member.",
+        "operationId": "MemberPromote",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberPromoteRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberPromoteResponse"
             }
           }
         }
@@ -520,7 +547,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberRemoveResponse"
             }
@@ -547,7 +574,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMemberUpdateResponse"
             }
@@ -574,7 +601,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbCompactionResponse"
             }
@@ -601,7 +628,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
             }
@@ -628,7 +655,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
             }
@@ -655,7 +682,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
             }
@@ -682,7 +709,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
             }
@@ -709,7 +736,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbPutResponse"
             }
@@ -736,7 +763,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbRangeResponse"
             }
@@ -763,7 +790,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbTxnResponse"
             }
@@ -790,7 +817,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseGrantResponse"
             }
@@ -807,7 +834,7 @@
         "operationId": "LeaseKeepAlive",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
@@ -818,9 +845,9 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbLeaseKeepAliveResponse"
             }
           }
         }
@@ -845,7 +872,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
             }
@@ -872,7 +899,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
             }
@@ -899,7 +926,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
             }
@@ -926,7 +953,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAlarmResponse"
             }
@@ -953,7 +980,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbDefragmentResponse"
             }
@@ -980,7 +1007,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbHashKVResponse"
             }
@@ -1007,9 +1034,9 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbSnapshotResponse"
             }
           }
         }
@@ -1034,7 +1061,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbStatusResponse"
             }
@@ -1061,7 +1088,7 @@
         ],
         "responses": {
           "200": {
-            "description": "(empty)",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbMoveLeaderResponse"
             }
@@ -1078,7 +1105,7 @@
         "operationId": "Watch",
         "parameters": [
           {
-            "description": "(streaming inputs)",
+            "description": " (streaming inputs)",
             "name": "body",
             "in": "body",
             "required": true,
@@ -1089,9 +1116,9 @@
         ],
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbWatchResponse"
+              "$ref": "#/x-stream-definitions/etcdserverpbWatchResponse"
             }
           }
         }
@@ -1191,6 +1218,15 @@
         "WRITE",
         "READWRITE"
       ]
+    },
+    "authpbUserAddOptions": {
+      "type": "object",
+      "properties": {
+        "no_password": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
     },
     "etcdserverpbAlarmMember": {
       "type": "object",
@@ -1392,6 +1428,9 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/authpbUserAddOptions"
         },
         "password": {
           "type": "string"
@@ -1882,6 +1921,11 @@
             "type": "string"
           }
         },
+        "isLearner": {
+          "description": "isLearner indicates if the member is raft learner.",
+          "type": "boolean",
+          "format": "boolean"
+        },
         "name": {
           "description": "name is the human-readable name of the member. If the member is not started, the name will be an empty string.",
           "type": "string"
@@ -1898,6 +1942,11 @@
     "etcdserverpbMemberAddRequest": {
       "type": "object",
       "properties": {
+        "isLearner": {
+          "description": "isLearner indicates if the added member is raft learner.",
+          "type": "boolean",
+          "format": "boolean"
+        },
         "peerURLs": {
           "description": "peerURLs is the list of URLs the added member will use to communicate with the cluster.",
           "type": "array",
@@ -1937,6 +1986,31 @@
         },
         "members": {
           "description": "members is a list of all members associated with the cluster.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbMember"
+          }
+        }
+      }
+    },
+    "etcdserverpbMemberPromoteRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "description": "ID is the member ID of the member to promote.",
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "etcdserverpbMemberPromoteResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "description": "members is a list of all members after promoting the member.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/etcdserverpbMember"
@@ -2266,6 +2340,11 @@
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
+        "isLearner": {
+          "description": "isLearner indicates if the member is raft learner.",
+          "type": "boolean",
+          "format": "boolean"
+        },
         "leader": {
           "description": "leader is the member ID which the responding member believes is the current leader.",
           "type": "string",
@@ -2508,6 +2587,43 @@
           "format": "int64"
         }
       }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        },
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
     }
   },
   "securityDefinitions": {
@@ -2521,5 +2637,43 @@
     {
       "ApiKey": []
     }
-  ]
+  ],
+  "x-stream-definitions": {
+    "etcdserverpbLeaseKeepAliveResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbLeaseKeepAliveResponse",
+      "type": "object"
+    },
+    "etcdserverpbSnapshotResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbSnapshotResponse",
+      "type": "object"
+    },
+    "etcdserverpbWatchResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        },
+        "result": {
+          "$ref": "#/definitions/etcdserverpbWatchResponse"
+        }
+      },
+      "title": "Stream result of etcdserverpbWatchResponse",
+      "type": "object"
+    }
+  }
 }

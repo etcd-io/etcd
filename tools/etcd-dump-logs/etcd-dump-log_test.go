@@ -24,12 +24,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
+	"go.etcd.io/etcd/auth/authpb"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
 	"go.uber.org/zap"
 )
 
@@ -203,7 +203,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrauthenticate := &etcdserverpb.InternalAuthenticateRequest{Name: "myname", Password: "password", SimpleToken: "token"}
 
-	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1"}
+	irrauthuseradd := &etcdserverpb.AuthUserAddRequest{Name: "name1", Password: "pass1", Options: &authpb.UserAddOptions{NoPassword: false}}
 
 	irrauthuserdelete := &etcdserverpb.AuthUserDeleteRequest{Name: "name1"}
 

@@ -14,7 +14,7 @@
 
 package raft
 
-import pb "github.com/coreos/etcd/raft/raftpb"
+import pb "go.etcd.io/etcd/raft/raftpb"
 
 // unstable.entries[i] has raft log position i+unstable.offset.
 // Note that unstable.offset may be less than the highest log
@@ -55,10 +55,7 @@ func (u *unstable) maybeLastIndex() (uint64, bool) {
 // is any.
 func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 	if i < u.offset {
-		if u.snapshot == nil {
-			return 0, false
-		}
-		if u.snapshot.Metadata.Index == i {
+		if u.snapshot != nil && u.snapshot.Metadata.Index == i {
 			return u.snapshot.Metadata.Term, true
 		}
 		return 0, false
@@ -71,6 +68,7 @@ func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 	if i > last {
 		return 0, false
 	}
+
 	return u.entries[i-u.offset].Term, true
 }
 

@@ -14,7 +14,7 @@
 
 package clientv3
 
-import pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+import pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 type opType int
 
@@ -113,13 +113,13 @@ func (op Op) IsGet() bool { return op.t == tRange }
 func (op Op) IsDelete() bool { return op.t == tDeleteRange }
 
 // IsSerializable returns true if the serializable field is true.
-func (op Op) IsSerializable() bool { return op.serializable == true }
+func (op Op) IsSerializable() bool { return op.serializable }
 
 // IsKeysOnly returns whether keysOnly is set.
-func (op Op) IsKeysOnly() bool { return op.keysOnly == true }
+func (op Op) IsKeysOnly() bool { return op.keysOnly }
 
 // IsCountOnly returns whether countOnly is set.
-func (op Op) IsCountOnly() bool { return op.countOnly == true }
+func (op Op) IsCountOnly() bool { return op.countOnly }
 
 // MinModRev returns the operation's minimum modify revision.
 func (op Op) MinModRev() int64 { return op.minModRev }
@@ -218,6 +218,10 @@ func (op Op) isWrite() bool {
 
 // OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	return ret
@@ -225,6 +229,10 @@ func OpGet(key string, opts ...OpOption) Op {
 
 // OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tDeleteRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
@@ -392,7 +400,14 @@ func WithRange(endKey string) OpOption {
 
 // WithFromKey specifies the range of 'Get', 'Delete', 'Watch' requests
 // to be equal or greater than the key in the argument.
-func WithFromKey() OpOption { return WithRange("\x00") }
+func WithFromKey() OpOption {
+	return func(op *Op) {
+		if len(op.key) == 0 {
+			op.key = []byte{0}
+		}
+		op.end = []byte("\x00")
+	}
+}
 
 // WithSerializable makes 'Get' request serializable. By default,
 // it's linearizable. Serializable requests are better for lower latency
@@ -537,3 +552,9 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 	ret.applyOpts(opts)
 	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }
+
+// isWithPrefix returns true if WithPrefix is being called in the op
+func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+
+// isWithFromKey returns true if WithFromKey is being called in the op
+func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }

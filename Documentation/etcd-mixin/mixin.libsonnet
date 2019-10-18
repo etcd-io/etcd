@@ -9,20 +9,40 @@
         name: 'etcd',
         rules: [
           {
-            alert: 'EtcdInsufficientMembers',
+            alert: 'etcdMembersDown',
             expr: |||
-              count(up{%(etcd_selector)s} == 0) by (job) > (count(up{%(etcd_selector)s}) by (job) / 2 - 1)
+              max by (job) (
+                sum by (job) (up{%(etcd_selector)s} == bool 0)
+              or
+                count by (job,endpoint) (
+                  sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[3m])) > 0.01
+                )
+              )
+              > 0
             ||| % $._config,
             'for': '3m',
             labels: {
               severity: 'critical',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": insufficient members ({{ $value }}).',
+              message: 'etcd cluster "{{ $labels.job }}": members are down ({{ $value }}).',
             },
           },
           {
-            alert: 'EtcdNoLeader',
+            alert: 'etcdInsufficientMembers',
+            expr: |||
+              sum(up{%(etcd_selector)s} == bool 1) by (job) < ((count(up{%(etcd_selector)s}) by (job) + 1) / 2)
+            ||| % $._config,
+            'for': '3m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              message: 'etcd cluster "{{ $labels.job }}": insufficient members ({{ $value }}).',
+            },
+          },
+          {
+            alert: 'etcdNoLeader',
             expr: |||
               etcd_server_has_leader{%(etcd_selector)s} == 0
             ||| % $._config,
@@ -31,11 +51,11 @@
               severity: 'critical',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": member {{ $labels.instance }} has no leader.',
+              message: 'etcd cluster "{{ $labels.job }}": member {{ $labels.instance }} has no leader.',
             },
           },
           {
-            alert: 'EtcdHighNumberOfLeaderChanges',
+            alert: 'etcdHighNumberOfLeaderChanges',
             expr: |||
               rate(etcd_server_leader_changes_seen_total{%(etcd_selector)s}[15m]) > 3
             ||| % $._config,
@@ -44,11 +64,11 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last hour.',
+              message: 'etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last 30 minutes.',
             },
           },
           {
-            alert: 'EtcdHighNumberOfFailedGRPCRequests',
+            alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
               100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
                 /
@@ -60,11 +80,11 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdHighNumberOfFailedGRPCRequests',
+            alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
               100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
                 /
@@ -76,11 +96,11 @@
               severity: 'critical',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": {{ $value }}% of requests for {{ $labels.grpc_method }} failed on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdGRPCRequestsSlow',
+            alert: 'etcdGRPCRequestsSlow',
             expr: |||
               histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_type="unary"}[5m])) by (job, instance, grpc_service, grpc_method, le))
               > 0.15
@@ -90,11 +110,11 @@
               severity: 'critical',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": gRPC requests to {{ $labels.grpc_method }} are taking {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": gRPC requests to {{ $labels.grpc_method }} are taking {{ $value }}s on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdMemberCommunicationSlow',
+            alert: 'etcdMemberCommunicationSlow',
             expr: |||
               histogram_quantile(0.99, rate(etcd_network_peer_round_trip_time_seconds_bucket{%(etcd_selector)s}[5m]))
               > 0.15
@@ -104,11 +124,11 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": member communication with {{ $labels.To }} is taking {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": member communication with {{ $labels.To }} is taking {{ $value }}s on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdHighNumberOfFailedProposals',
+            alert: 'etcdHighNumberOfFailedProposals',
             expr: |||
               rate(etcd_server_proposals_failed_total{%(etcd_selector)s}[15m]) > 5
             ||| % $._config,
@@ -117,11 +137,11 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": {{ $value }} proposal failures within the last hour on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": {{ $value }} proposal failures within the last 30 minutes on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdHighFsyncDurations',
+            alert: 'etcdHighFsyncDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{%(etcd_selector)s}[5m]))
               > 0.5
@@ -131,11 +151,11 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": 99th percentile fync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": 99th percentile fync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            alert: 'EtcdHighCommitDurations',
+            alert: 'etcdHighCommitDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket{%(etcd_selector)s}[5m]))
               > 0.25
@@ -145,37 +165,49 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'Etcd cluster "{{ $labels.job }}": 99th percentile commit durations {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              message: 'etcd cluster "{{ $labels.job }}": 99th percentile commit durations {{ $value }}s on etcd instance {{ $labels.instance }}.',
             },
           },
           {
-            record: 'instance:fd_utilization',
-            expr: 'process_open_fds / process_max_fds',
-          },
-          {
-            alert: 'FdExhaustionClose',
+            alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              predict_linear(instance:fd_utilization{%(etcd_selector)s}[1h], 3600 * 4) > 1
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              BY (method) > 0.01
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              message: '{{ $labels.job }} instance {{ $labels.instance }} will exhaust its file descriptors soon',
+              message: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}',
             },
           },
           {
-            alert: 'FdExhaustionClose',
+            alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              predict_linear(instance:fd_utilization{%(etcd_selector)s}[10m], 3600) > 1
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              BY (method) > 0.05
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'critical',
             },
             annotations: {
-              description: '{{ $labels.job }} instance {{ $labels.instance }} will exhaust its file descriptors soon',
+              message: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}.',
+            },
+          },
+          {
+            alert: 'etcdHTTPRequestsSlow',
+            expr: |||
+              histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m]))
+              > 0.15
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              message: 'etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow.',
             },
           },
         ],
@@ -1251,7 +1283,7 @@
       annotations: {
         list: [],
       },
-      refresh: false,
+      refresh: '10s',
       schemaVersion: 13,
       version: 215,
       links: [],

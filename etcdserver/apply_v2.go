@@ -19,10 +19,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api"
-	"github.com/coreos/etcd/etcdserver/api/membership"
-	"github.com/coreos/etcd/etcdserver/api/v2store"
-	"github.com/coreos/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/pkg/pbutil"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -38,7 +38,7 @@ type ApplierV2 interface {
 }
 
 func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
-	return &applierV2store{store: s, cluster: c}
+	return &applierV2store{lg: lg, store: s, cluster: c}
 }
 
 type applierV2store struct {

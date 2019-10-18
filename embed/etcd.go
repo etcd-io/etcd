@@ -29,28 +29,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/api/rafthttp"
-	"github.com/coreos/etcd/etcdserver/api/v2http"
-	"github.com/coreos/etcd/etcdserver/api/v2v3"
-	"github.com/coreos/etcd/etcdserver/api/v3client"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	"github.com/coreos/etcd/pkg/debugutil"
-	runtimeutil "github.com/coreos/etcd/pkg/runtime"
-	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/version"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/etcdserver/api/v2http"
+	"go.etcd.io/etcd/etcdserver/api/v2v3"
+	"go.etcd.io/etcd/etcdserver/api/v3client"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/pkg/debugutil"
+	runtimeutil "go.etcd.io/etcd/pkg/runtime"
+	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "embed")
+var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "embed")
 
 const (
 	// internal fd usage includes disk usage and transport usage.
@@ -159,6 +159,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
+
 	srvcfg := etcdserver.ServerConfig{
 		Name:                       cfg.Name,
 		ClientURLs:                 cfg.ACUrls,
@@ -181,6 +183,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionRetention:    autoCompactionRetention,
 		AutoCompactionMode:         cfg.AutoCompactionMode,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
+		BackendBatchLimit:          cfg.BackendBatchLimit,
+		BackendFreelistType:        backendFreelistType,
+		BackendBatchInterval:       cfg.BackendBatchInterval,
 		MaxTxnOps:                  cfg.MaxTxnOps,
 		MaxRequestBytes:            cfg.MaxRequestBytes,
 		StrictReconfigCheck:        cfg.StrictReconfigCheck,
@@ -198,6 +203,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LoggerWriteSyncer:          cfg.loggerWriteSyncer,
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
+		EnableGRPCGateway:          cfg.EnableGRPCGateway,
+		EnableLeaseCheckpoint:      cfg.ExperimentalEnableLeaseCheckpoint,
+		CompactionBatchLimit:       cfg.ExperimentalCompactionBatchLimit,
 	}
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
@@ -412,7 +420,7 @@ func stopServers(ctx context.Context, ss *servers) {
 
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
-	// and https://github.com/coreos/etcd/issues/8916
+	// and https://github.com/etcd-io/etcd/issues/8916
 	if ss.secure {
 		shutdownNow()
 		return
@@ -617,7 +625,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			}
 		}
 		if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
-			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPs scheme", u.String())
+			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
 		}
 
 		network := "tcp"
@@ -737,7 +745,7 @@ func (e *Etcd) serveClients() (err error) {
 		}))
 	}
 
-	// start client servers in a goroutine
+	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, gopts...))

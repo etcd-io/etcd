@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # set some environment variables
-ORG_PATH="github.com/coreos"
+ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [[ ! -z "$FAILPOINTS" ]]; then
+if [[ -n "$FAILPOINTS" ]]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
@@ -15,7 +15,7 @@ GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 # enable/disable failpoints
 toggle_failpoints() {
 	mode="$1"
-	if which gofail >/dev/null 2>&1; then
+	if command -v gofail >/dev/null 2>&1; then
 		gofail "$mode" etcdserver/ mvcc/backend/
 	elif [[ "$mode" != "disable" ]]; then
 		echo "FAILPOINTS set but gofail not found"
@@ -34,15 +34,15 @@ etcd_setup_gopath() {
 		GOPATH=":$GOPATH"
 	fi
 	rm -rf "${etcdGOPATH:?}/"
-	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/github.com/coreos"
+	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/go.etcd.io"
 	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src${GOPATH}
 	ln -s "${CDIR}/vendor" "${etcdGOPATH}/vendor/src"
-	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/github.com/coreos/etcd"
+	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/go.etcd.io/etcd"
 }
 
 toggle_failpoints_default() {
 	mode="disable"
-	if [[ ! -z "$FAILPOINTS" ]]; then mode="enable"; fi
+	if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
 	toggle_failpoints "$mode"
 }
 

@@ -17,8 +17,8 @@
 // To use, first import the packages:
 //
 //	import (
-//		"github.com/coreos/etcd/clientv3"
-//		etcdnaming "github.com/coreos/etcd/clientv3/naming"
+//		"go.etcd.io/etcd/clientv3"
+//		etcdnaming "go.etcd.io/etcd/clientv3/naming"
 //
 //		"google.golang.org/grpc"
 //		"google.golang.org/grpc/naming"
@@ -43,7 +43,7 @@
 //
 //	func etcdDelete(c *clientv3, service, addr string) error {
 //		r := &etcdnaming.GRPCResolver{Client: c}
-//		return r.Update(c.Ctx(), "my-service", naming.Update{Op: naming.Delete, Addr: "1.2.3.4"})
+//		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Delete, Addr: "1.2.3.4"})
 //	}
 //
 // Or register an expiring endpoint with a lease:

@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/coreos/etcd/pkg/testutil"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
@@ -245,14 +245,16 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		}
 
 		// asynchronously create keys
+		ch := make(chan struct{}, 1)
 		go func() {
 			for _, k := range tt.putKeys {
 				kvc := toGRPC(clus.RandClient()).KV
 				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
 				if _, err := kvc.Put(context.TODO(), req); err != nil {
-					t.Fatalf("#%d: couldn't put key (%v)", i, err)
+					t.Errorf("#%d: couldn't put key (%v)", i, err)
 				}
 			}
+			ch <- struct{}{}
 		}()
 
 		// check stream results
@@ -285,6 +287,9 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		if !rok {
 			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 		}
+
+		// wait for the client to finish sending the keys before terminating the cluster
+		<-ch
 
 		// can't defer because tcp ports will be in use
 		clus.Terminate(t)
@@ -479,12 +484,15 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	// last mod_revision that will be observed
 	nrRevisions := 32
 	// first revision already allocated as empty revision
+	var wg sync.WaitGroup
 	for i := 1; i < nrRevisions; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			kvc := toGRPC(clus.RandClient()).KV
 			req := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 			if _, err := kvc.Put(context.TODO(), req); err != nil {
-				t.Fatalf("couldn't put key (%v)", err)
+				t.Errorf("couldn't put key (%v)", err)
 			}
 		}()
 	}
@@ -540,6 +548,8 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	if rok, nr := waitResponse(wStream, time.Second); !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
+
+	wg.Wait()
 }
 
 // TestV3WatchEmptyKey ensures synced watchers see empty key PUTs as PUT events
@@ -927,7 +937,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 			wStream := streams[i]
 			wresp, err := wStream.Recv()
 			if err != nil {
-				t.Fatalf("wStream.Recv error: %v", err)
+				t.Errorf("wStream.Recv error: %v", err)
 			}
 			if wresp.WatchId != 0 {
 				t.Errorf("watchId got = %d, want = 0", wresp.WatchId)
@@ -1090,7 +1100,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 		// check received PUT
 		resp, rerr := ws.Recv()
 		if rerr != nil {
-			t.Fatal(rerr)
+			t.Error(rerr)
 		}
 		recv <- resp
 	}()
@@ -1183,7 +1193,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 			// check received PUT
 			resp, rerr := ws.Recv()
 			if rerr != nil {
-				t.Fatal(rerr)
+				t.Error(rerr)
 			}
 			recv <- resp
 		}()

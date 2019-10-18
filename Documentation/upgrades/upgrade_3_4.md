@@ -1,4 +1,6 @@
-## Upgrade etcd from 3.3 to 3.4
+---
+title: Upgrade etcd from 3.3 to 3.4
+---
 
 In the general case, upgrading from etcd 3.3 to 3.4 can be a zero-downtime, rolling upgrade:
  - one by one, stop the etcd v3.3 processes and replace them with etcd v3.4 processes
@@ -10,7 +12,7 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 ### Upgrade checklists
 
-**NOTE:** When [migrating from v2 with no v3 data](https://github.com/coreos/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
+**NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
 
 Highlighted breaking changes in 3.4.
 
@@ -33,6 +35,21 @@ OK
 +etcdctl put foo bar
 ```
 
+#### Make `etcd --enable-v2=false` default
+
+[`etcd --enable-v2=false`](https://github.com/etcd-io/etcd/pull/10935) is now the default.
+
+This means, unless `etcd --enable-v2=true` is specified, etcd v3.4 server would not serve v2 API requests.
+
+If v2 API were used, make sure to enable v2 API in v3.4:
+
+```diff
+-etcd
++etcd --enable-v2=true
+```
+
+Other HTTP APIs will still work (e.g. `[CLIENT-URL]/metrics`, `[CLIENT-URL]/health`, v3 gRPC gateway).
+
 #### Deprecated `etcd --ca-file` and `etcd --peer-ca-file` flags
 
 `--ca-file` and `--peer-ca-file` flags are deprecated; they have been deprecated since v2.1.
@@ -47,7 +64,51 @@ OK
 +etcd --peer-trusted-ca-file ca-peer.crt
 ```
 
-#### Promote `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
+#### Deprecated `grpc.ErrClientConnClosing` error
+
+`grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+
+```diff
+import (
++	"go.etcd.io/etcd/clientv3"
+
+	"google.golang.org/grpc"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
+)
+
+_, err := kvc.Get(ctx, "a")
+-if err == grpc.ErrClientConnClosing {
++if clientv3.IsConnCanceled(err) {
+
+// or
++s, ok := status.FromError(err)
++if ok {
++  if s.Code() == codes.Canceled
+```
+
+#### Require `grpc.WithBlock` for client dial
+
+[The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. As a result, v3.4 client requires `grpc.WithBlock` dial option to wait until the underlying connection is up.
+
+```diff
+import (
+	"time"
+	"go.etcd.io/etcd/clientv3"
++	"google.golang.org/grpc"
+)
+
++// "grpc.WithBlock()" to block until the underlying connection is up
+ccfg := clientv3.Config{
+  Endpoints:            []string{"localhost:2379"},
+  DialTimeout:          time.Second,
++ DialOptions:          []grpc.DialOption{grpc.WithBlock()},
+  DialKeepAliveTime:    time.Second,
+  DialKeepAliveTimeout: 500 * time.Millisecond,
+}
+```
+
+#### Deprecating `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics
 
 v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to `etcd_mvcc_db_total_size_in_bytes`, in order to encourage etcd storage monitoring.
 
@@ -58,11 +119,63 @@ v3.4 promotes `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics to
 +etcd_mvcc_db_total_size_in_bytes
 ```
 
-Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we will promote more metrics.
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_put_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_put_total` Prometheus metrics to `etcd_mvcc_put_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_put_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_put_total
++etcd_mvcc_put_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_delete_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_delete_total` Prometheus metrics to `etcd_mvcc_delete_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_delete_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_delete_total
++etcd_mvcc_delete_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_txn_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_txn_total` Prometheus metrics to `etcd_mvcc_txn_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_txn_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_txn_total
++etcd_mvcc_txn_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
+
+#### Deprecating `etcd_debugging_mvcc_range_total` Prometheus metrics
+
+v3.4 promotes `etcd_debugging_mvcc_range_total` Prometheus metrics to `etcd_mvcc_range_total`, in order to encourage etcd storage monitoring.
+
+`etcd_debugging_mvcc_range_total` is still served in v3.4 for backward compatibilities. It will be completely deprecated in v3.5.
+
+```diff
+-etcd_debugging_mvcc_range_total
++etcd_mvcc_range_total
+```
+
+Note that `etcd_debugging_*` namespace metrics have been marked as experimental. As we improve monitoring guide, we may promote more metrics.
 
 #### Deprecating `etcd --log-output` flag (now `--log-outputs`)
 
-Rename [`etcd --log-output` to `--log-outputs`](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. **`etcd --logger=capnslog` does not support multiple log outputs.**
+Rename [`etcd --log-output` to `--log-outputs`](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs. **`etcd --logger=capnslog` does not support multiple log outputs.**
 
 **`etcd --log-output`** will be deprecated in v3.5. **`etcd --logger=capnslog` will be deprecated in v3.5**.
 
@@ -89,7 +202,7 @@ Now that `log-outputs` (old field name `log-output`) accepts multiple writers, e
 
 #### Renamed `embed.Config.LogOutput` to `embed.Config.LogOutputs`
 
-Renamed [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/coreos/etcd/pull/9624) to support multiple log outputs. And changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/coreos/etcd/pull/9579) to support multiple log outputs.
+Renamed [**`embed.Config.LogOutput`** to **`embed.Config.LogOutputs`**](https://github.com/etcd-io/etcd/pull/9624) to support multiple log outputs. And changed [`embed.Config.LogOutput` type from `string` to `[]string`](https://github.com/etcd-io/etcd/pull/9579) to support multiple log outputs.
 
 ```diff
 import "github.com/coreos/etcd/embed"
@@ -102,6 +215,20 @@ cfg := &embed.Config{Debug: false}
 #### v3.5 deprecates `capnslog`
 
 **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `etcd --logger=zap --log-outputs=stderr` will the default. **v3.5 will deprecate `[CLIENT-URL]/config/local/log` endpoint.**
+
+```diff
+-etcd
++etcd --logger zap
+```
+
+#### Deprecating `etcd --debug` flag (now `--log-level=debug`)
+
+v3.4 deprecates [`etcd --debug`](https://github.com/etcd-io/etcd/pull/10947) flag. Instead, use `etcd --log-level=debug` flag.
+
+```diff
+-etcd --debug
++etcd --logger zap --log-level debug
+```
 
 #### Deprecated `pkg/transport.TLSInfo.CAFile` field
 
@@ -167,6 +294,22 @@ import "github.com/coreos/etcd/wal"
 
 -wal.Create(dirpath, metadata)
 +wal.Create(lg, dirpath, metadata)
+```
+
+#### Changed `IntervalTree` type in package `pkg/adt`
+
+`pkg/adt.IntervalTree` is now defined as an `interface`.
+
+```diff
+import (
+    "fmt"
+
+    "go.etcd.io/etcd/pkg/adt"
+)
+
+func main() {
+-    ivt := &adt.IntervalTree{}
++    ivt := adt.NewIntervalTree()
 ```
 
 #### Deprecated `embed.Config.SetupLogging`
