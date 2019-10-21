@@ -29,7 +29,7 @@ import (
 
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
-func TestCusterVersion(t *testing.T) {
+func TestClusterVersion(t *testing.T) {
 	binary := binDir + "/etcd"
 	if !fileutil.Exist(binary) {
 		t.Skipf("%q does not exist", binary)
