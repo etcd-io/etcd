@@ -380,6 +380,14 @@ func TestCheckStreamSupport(t *testing.T) {
 	}
 }
 
+func TestStreamSupportCurrentVersion(t *testing.T) {
+	cv := version.Cluster(version.Version)
+	cv = cv + ".0"
+	if _, ok := supportedStream[cv]; !ok {
+		t.Errorf("Current version does not have stream support.")
+	}
+}
+
 type fakeWriteFlushCloser struct {
 	mu      sync.Mutex
 	err     error
