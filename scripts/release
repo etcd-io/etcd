@@ -37,12 +37,6 @@ main() {
     exit 1
   fi
 
-  KEYID=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
-  if [[ -z "${KEYID}" ]]; then
-    echo "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
-    exit 1
-  fi
-
   # Expected umask for etcd release artifacts
   umask 022
 
@@ -116,6 +110,11 @@ main() {
       echo "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
       echo "Tagging release..."
+      KEYID=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
+      if [[ -z "${KEYID}" ]]; then
+        echo "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
+        exit 1
+      fi
       git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
     fi
 
