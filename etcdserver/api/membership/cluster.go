@@ -59,6 +59,16 @@ type RaftCluster struct {
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
+
+	downgrade Downgrade
+}
+
+type Downgrade struct {
+	// the target downgrade version, if the cluster is not under downgrade,
+	// the targetVersion will be nil
+	TargetVersion *semver.Version
+	// true is the cluster is downgrading
+	Enabled bool
 }
 
 // ConfigChangeContext represents a context for confChange.
@@ -817,15 +827,38 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
 		if IsVersionChangable(cv, lv) {
-			plog.Infof("cluster is downgrading to current version: %s from determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			if lg != nil {
+				lg.Info(
+					"cluster is downgrading to current server version",
+					zap.String("current-server-version", version.Version),
+					zap.String("determined-cluster-version", version.Cluster(cv.String())),
+				)
+			} else {
+				plog.Infof("cluster is downgrading to current version: %s from determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			}
 		} else {
-			plog.Fatalf("cluster cannot be downgraded (current version: %s is too much lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			if lg != nil {
+				lg.Fatal(
+					"invalid downgrade; server version is lower than determined cluster version",
+					zap.String("current-server-version", version.Version),
+					zap.String("determined-cluster-version", version.Cluster(cv.String())),
+				)
+			} else {
+				plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			}
 		}
 	}
 }
 
 func IsVersionChangable(cv *semver.Version, lv *semver.Version) bool {
 	if (cv.Major == lv.Major) && ((cv.Minor-lv.Minor) == 1 || lv.Minor > cv.Minor) {
+		return true
+	}
+	return false
+}
+
+func IsOneMinorVersionDiff(cv *semver.Version, lv *semver.Version) bool {
+	if (cv.Major == lv.Major) && ((cv.Minor-lv.Minor) == 1 || (lv.Minor-cv.Minor) == 1) {
 		return true
 	}
 	return false
@@ -870,4 +903,11 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	}
 	sort.Sort(types.IDSlice(ids))
 	return ids
+}
+
+// Downgrade returns the capability status of the cluster
+func (c *RaftCluster) Downgrade() Downgrade {
+	c.Lock()
+	defer c.Unlock()
+	return c.downgrade
 }
