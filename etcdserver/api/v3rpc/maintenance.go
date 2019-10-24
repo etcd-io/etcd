@@ -46,6 +46,10 @@ type Alarmer interface {
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 }
 
+type Downgrader interface {
+	Downgrade(ctx context.Context, dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error)
+}
+
 type LeaderTransferrer interface {
 	MoveLeader(ctx context.Context, lead, target uint64) error
 }
@@ -68,6 +72,7 @@ type maintenanceServer struct {
 	lt  LeaderTransferrer
 	hdr header
 	cs  ClusterStatusGetter
+	d   Downgrader
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
@@ -206,6 +211,10 @@ func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRe
 	return &pb.MoveLeaderResponse{}, nil
 }
 
+func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return ms.d.Downgrade(ctx, r)
+}
+
 type authMaintenanceServer struct {
 	*maintenanceServer
 	ag AuthGetter
@@ -257,4 +266,8 @@ func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusReque
 
 func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
 	return ams.maintenanceServer.MoveLeader(ctx, tr)
+}
+
+func (ams *authMaintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return ams.maintenanceServer.Downgrade(ctx, r)
 }
