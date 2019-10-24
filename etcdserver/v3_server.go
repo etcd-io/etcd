@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
@@ -802,4 +804,50 @@ func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 	authInfo = s.AuthStore().AuthInfoFromTLS(ctx)
 	return authInfo, nil
 
+}
+
+func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	switch r.Action {
+	case pb.DowngradeRequest_VALIDATE:
+		return s.downgradeValidate(ctx, r)
+	case pb.DowngradeRequest_DOWNGRADE:
+		return s.downgradeStart(ctx, r)
+	case pb.DowngradeRequest_CANCEL:
+		return s.downgradeCancel(ctx, r)
+	}
+	return nil, nil
+}
+
+func (s *EtcdServer) downgradeValidate(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	var resp *pb.DowngradeResponse
+	var err error
+
+	cv := s.ClusterVersion()
+	targetVersion := semver.Must(semver.NewVersion(r.Version))
+	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
+
+	resp.Version = cv.String()
+	if cv.LessThan(*targetVersion) {
+		err = errors.New("target version is higher than current cluster version")
+		return resp, err
+	}
+
+	if !membership.IsOneMinorVersionDiff(cv, targetVersion) {
+		err = errors.New("Target version violates the downgrade policy. The cluster can only be downgraded to ")
+		return resp, err
+	}
+
+	err = s.linearizableReadNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	downgradeInfo := s.cluster.Downgrade()
+
+	if downgradeInfo.Enabled {
+		// Todo: return the downgrade status along with the error msg
+		err = errors.New("the cluster has a ongoing downgrade job")
+		return resp, err
+	}
+	return resp, nil
 }

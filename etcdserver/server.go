@@ -2722,3 +2722,13 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
 }
+
+// Todo: start downgrade
+func (s *EtcdServer) downgradeStart(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return nil, nil
+}
+
+// Todo: cancel downgrade
+func (s *EtcdServer) downgradeCancel(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return nil, nil
+}
