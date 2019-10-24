@@ -74,6 +74,7 @@ This is a generated documentation. Please read the proto files for more.
 | HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. It only iterates "key" bucket in backend storage. |
 | Snapshot | SnapshotRequest | SnapshotResponse | Snapshot sends a snapshot of the entire backend from a member over a stream to a client. |
 | MoveLeader | MoveLeaderRequest | MoveLeaderResponse | MoveLeader requests current leader node to transfer its leadership to transferee. |
+| Downgrade | DowngradeRequest | DowngradeResponse | Downgrade requests downgrade, cancel downgrade on the cluster version. |
 
 
 
@@ -442,6 +443,25 @@ Empty field.
 | header |  | ResponseHeader |
 | deleted | deleted is the number of keys deleted by the delete range request. | int64 |
 | prev_kvs | if prev_kv is set in the request, the previous key-value pairs will be returned. | (slice of) mvccpb.KeyValue |
+
+
+
+##### message `DowngradeRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| action | action is the kind of downgrade request to issue. The action may VALIDATE the target version, DOWNGRADE the cluster version, or CANCEL the current downgrading job. | DowngradeAction |
+| version | version is the target version to downgrade. | string |
+
+
+
+##### message `DowngradeResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| version | version is the current cluster version. | string |
+| status | status is how the version of the servers in the cluster like. | string |
 
 
 

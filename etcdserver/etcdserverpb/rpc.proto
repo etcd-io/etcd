@@ -237,6 +237,14 @@ service Maintenance {
         body: "*"
     };
   }
+
+  // Downgrade requests downgrade, cancel downgrade on the cluster version.
+  rpc Downgrade(DowngradeRequest) returns (DowngradeResponse) {
+      option (google.api.http) = {
+        post: "/v3/maintenance/downgrade"
+        body: "*"
+      };
+  }
 }
 
 service Auth {
@@ -967,6 +975,30 @@ message AlarmResponse {
   ResponseHeader header = 1;
   // alarms is a list of alarms associated with the alarm request.
   repeated AlarmMember alarms = 2;
+}
+
+message DowngradeRequest {
+  enum DowngradeAction {
+  VALIDATE = 0;
+  DOWNGRADE = 1;
+  CANCEL = 2;
+  STATUS = 3;
+  }
+
+  // action is the kind of downgrade request to issue. The action may
+  // VALIDATE the target version, DOWNGRADE the cluster version,
+  // or CANCEL the current downgrading job.
+  DowngradeAction action = 1;
+  // version is the target version to downgrade.
+  string version = 2;
+}
+
+message DowngradeResponse {
+  ResponseHeader header = 1;
+  // version is the current cluster version.
+  string version = 2;
+  // status is how the version of the servers in the cluster like.
+  string status = 3;
 }
 
 message StatusRequest {

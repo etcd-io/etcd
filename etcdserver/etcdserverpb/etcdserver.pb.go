@@ -73,6 +73,8 @@
 		AlarmRequest
 		AlarmMember
 		AlarmResponse
+		DowngradeRequest
+		DowngradeResponse
 		StatusRequest
 		StatusResponse
 		AuthEnableRequest
