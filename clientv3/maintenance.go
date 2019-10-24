@@ -31,6 +31,7 @@ type (
 	StatusResponse     pb.StatusResponse
 	HashKVResponse     pb.HashKVResponse
 	MoveLeaderResponse pb.MoveLeaderResponse
+	DowngradeResponse  pb.DowngradeResponse
 )
 
 type Maintenance interface {
@@ -65,6 +66,15 @@ type Maintenance interface {
 	// MoveLeader requests current leader to transfer its leadership to the transferee.
 	// Request must be made to the leader.
 	MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error)
+
+	// DowngradeValidate requests validation of the downgrade request
+	DowngradeValidate(ctx context.Context, version string) (*DowngradeResponse, error)
+
+	// Downgrade requests to downgrade the current cluster version to target version.
+	Downgrade(ctx context.Context, version string) (*DowngradeResponse, error)
+
+	// DowngradeCancel cancels the current downgrade job.
+	DowngradeCancel(ctx context.Context) (*DowngradeResponse, error)
 }
 
 type maintenance struct {
@@ -212,6 +222,50 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 		pw.Close()
 	}()
 	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, nil
+}
+
+// Todo: WIP
+func (m *maintenance) DowngradeValidate(ctx context.Context, version string) (*DowngradeResponse, error) {
+	req := &pb.DowngradeRequest{
+		Action:  pb.DowngradeRequest_VALIDATE,
+		Version: version,
+	}
+
+	resp, err := m.remote.Downgrade(ctx, req)
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+
+	return (*DowngradeResponse)(resp), nil
+}
+
+// Todo: WIP
+func (m *maintenance) Downgrade(ctx context.Context, version string) (*DowngradeResponse, error) {
+	req := &pb.DowngradeRequest{
+		Action:  pb.DowngradeRequest_DOWNGRADE,
+		Version: version,
+	}
+
+	resp, err := m.remote.Downgrade(ctx, req)
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+
+	return (*DowngradeResponse)(resp), nil
+}
+
+// Todo: WIP
+func (m *maintenance) DowngradeCancel(ctx context.Context) (*DowngradeResponse, error) {
+	req := &pb.DowngradeRequest{
+		Action: pb.DowngradeRequest_CANCEL,
+	}
+
+	resp, err := m.remote.Downgrade(ctx, req)
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+
+	return (*DowngradeResponse)(resp), nil
 }
 
 type snapshotReadCloser struct {
