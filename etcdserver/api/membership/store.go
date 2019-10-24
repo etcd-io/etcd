@@ -75,6 +75,19 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
 }
 
+func mustSaveDowngradeToBackend(be backend.Backend, downgrade *Downgrade) {
+	dkey := backendDowngradeKey()
+	dvalue, err := json.Marshal(downgrade)
+	if err != nil {
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
+	}
+
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePut(clusterBucketName, dkey, dvalue)
+}
+
 func mustSaveMemberToStore(s v2store.Store, m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
@@ -159,6 +172,9 @@ func backendClusterVersionKey() []byte {
 	return []byte("clusterVersion")
 }
 
+func backendDowngradeKey() []byte {
+	return []byte("downgrade")
+}
 func mustCreateBackendBuckets(be backend.Backend) {
 	tx := be.BatchTx()
 	tx.Lock()
