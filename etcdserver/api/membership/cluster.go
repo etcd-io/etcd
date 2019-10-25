@@ -816,16 +816,19 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
-		if lg != nil {
-			lg.Fatal(
-				"invalid downgrade; server version is lower than determined cluster version",
-				zap.String("current-server-version", version.Version),
-				zap.String("determined-cluster-version", version.Cluster(cv.String())),
-			)
+		if IsVersionChangable(cv, lv) {
+			plog.Infof("cluster is downgrading to current version: %s from determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
 		} else {
-			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			plog.Fatalf("cluster cannot be downgraded (current version: %s is too much lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
 		}
 	}
+}
+
+func IsVersionChangable(cv *semver.Version, lv *semver.Version) bool {
+	if (cv.Major == lv.Major) && ((cv.Minor-lv.Minor) == 1 || lv.Minor > cv.Minor) {
+		return true
+	}
+	return false
 }
 
 // IsLocalMemberLearner returns if the local member is raft learner

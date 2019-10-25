@@ -364,7 +364,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
+		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt, cfg.EnableClusterDowngrade) {
 			return nil, fmt.Errorf("incompatible with current running cluster")
 		}
 
@@ -2555,9 +2555,10 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		// update cluster version only if the decided version is greater than
-		// the current cluster version
-		if v != nil && s.cluster.Version().LessThan(*v) {
+		// Original etcd v3.1.26 only update cluster version if the decided version is
+		// greater than the current cluster version, in this patched etcd, we relax the rule
+		// and allow +1 or -1 minor version cluster version change
+		if v != nil && canUpdateClusterVersion(s.Cfg.EnableClusterDowngrade, v, s.cluster.Version()) {
 			s.goAttach(func() { s.updateClusterVersion(v.String()) })
 		}
 	}

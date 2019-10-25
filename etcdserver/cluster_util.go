@@ -224,19 +224,40 @@ func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *se
 	return cv
 }
 
+// canUpdateClusterVersion verify whether to update cluster version:
+// - if --experimental-enable-cluster-downgrade is set to false (default),
+//   update cluster version only if the decided version is greater than
+//   the current cluster version
+// - if --experimental-enable-cluster-downgrade is set to true,
+//    update cluster version if the decided version is +1 or -1 minor
+//    version difference than current cluster version
+func canUpdateClusterVersion(clusterDowngradeEnabled bool, decidedClusterVersion *semver.Version, currentClusterVersion *semver.Version) bool {
+	if (!clusterDowngradeEnabled && currentClusterVersion.LessThan(*decidedClusterVersion)) ||
+		(clusterDowngradeEnabled && membership.IsVersionChangable(currentClusterVersion, decidedClusterVersion)) {
+		return true
+	}
+	return false
+}
+
 // isCompatibleWithCluster return true if the local member has a compatible version with
 // the current running cluster.
 // The version is considered as compatible when at least one of the other members in the cluster has a
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+// When cluster downgrade support is enabled, set maximum cluster version to be 1 minor version higher to
+// to allow current local member to join a cluster at 1 minor version high.
+func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper, clusterDowngradeEnabled bool) bool {
 	vers := getVersions(lg, cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))
+	allowedClusterMinor := maxV.Minor
+	if clusterDowngradeEnabled {
+		allowedClusterMinor = maxV.Minor + 1
+	}
 	maxV = &semver.Version{
 		Major: maxV.Major,
-		Minor: maxV.Minor,
+		Minor: allowedClusterMinor,
 	}
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }

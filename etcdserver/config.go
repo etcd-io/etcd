@@ -157,6 +157,8 @@ type ServerConfig struct {
 	LeaseCheckpointInterval time.Duration
 
 	EnableGRPCGateway bool
+
+	EnableClusterDowngrade bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
