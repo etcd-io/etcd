@@ -60,7 +60,7 @@ type RaftCluster struct {
 	// removed id cannot be reused.
 	removed map[types.ID]bool
 
-	downgrade Downgrade
+	downgrade *Downgrade
 }
 
 type Downgrade struct {
@@ -257,6 +257,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
+	c.downgrade = downgradeFromBackend(c.be)
+
 	if c.be != nil {
 		c.version = clusterVersionFromBackend(c.lg, c.be)
 	} else {
@@ -909,7 +911,7 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 func (c *RaftCluster) Downgrade() Downgrade {
 	c.Lock()
 	defer c.Unlock()
-	return c.downgrade
+	return *c.downgrade
 }
 
 func (c *RaftCluster) UpdateDowngrade(d *Downgrade) {
@@ -920,5 +922,5 @@ func (c *RaftCluster) UpdateDowngrade(d *Downgrade) {
 		mustSaveDowngradeToBackend(c.be, d)
 	}
 
-	c.downgrade = *d
+	c.downgrade = d
 }

@@ -88,6 +88,23 @@ func mustSaveDowngradeToBackend(be backend.Backend, downgrade *Downgrade) {
 	tx.UnsafePut(clusterBucketName, dkey, dvalue)
 }
 
+func downgradeFromBackend(be backend.Backend) *Downgrade {
+	dkey := backendDowngradeKey()
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	_, vs := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+
+	if len(vs) != 0 {
+		var d Downgrade
+		if err := json.Unmarshal(vs[0], &d); err != nil {
+			plog.Panicf("fail to unmarshal downgrade: %v", err)
+		}
+		return &d
+	}
+	return nil
+}
+
 func mustSaveMemberToStore(s v2store.Store, m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
