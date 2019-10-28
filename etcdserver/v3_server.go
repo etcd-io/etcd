@@ -809,21 +809,23 @@ func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	switch r.Action {
 	case pb.DowngradeRequest_VALIDATE:
-		return s.downgradeValidate(ctx, r)
+		return s.downgradeValidate(ctx, r.Version)
 	case pb.DowngradeRequest_DOWNGRADE:
-		return s.downgradeStart(ctx, r)
+		targetVersion := semver.Must(semver.NewVersion(r.Version))
+		d := membership.Downgrade{Enabled: true, TargetVersion: targetVersion}
+		return s.downgradeStart(ctx, d)
 	case pb.DowngradeRequest_CANCEL:
-		return s.downgradeCancel(ctx, r)
+		return s.downgradeCancel(ctx)
 	}
 	return nil, nil
 }
 
-func (s *EtcdServer) downgradeValidate(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
 	var resp *pb.DowngradeResponse
 	var err error
 
 	cv := s.ClusterVersion()
-	targetVersion := semver.Must(semver.NewVersion(r.Version))
+	targetVersion := semver.Must(semver.NewVersion(v))
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 
 	resp.Version = cv.String()

@@ -923,4 +923,13 @@ func (c *RaftCluster) UpdateDowngrade(d *Downgrade) {
 	}
 
 	c.downgrade = d
+
+	if d.Enabled {
+		if c.lg != nil {
+			c.lg.Info("The server is available for downgrade",
+				zap.String("target-version", d.TargetVersion.String()))
+		} else {
+			plog.Info("The server is available for downgrade to target version %v", d.TargetVersion.String())
+		}
+	}
 }

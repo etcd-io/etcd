@@ -2387,6 +2387,17 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if m.ID != s.id {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
+
+	case raftpb.ConfChangeDowngrade:
+		var d membership.Downgrade
+		if err := json.Unmarshal(cc.Context, d); err != nil {
+			if lg != nil {
+				lg.Panic("failed to unmarshal downgrade", zap.Error(err))
+			} else {
+				plog.Panicf("unmarshal downgrade should never fail: %v", err)
+			}
+		}
+		s.cluster.UpdateDowngrade(&d)
 	}
 	return false, nil
 }
@@ -2723,12 +2734,40 @@ func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
 }
 
-// Todo: start downgrade
-func (s *EtcdServer) downgradeStart(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	return nil, nil
+func (s *EtcdServer) downgradeStart(ctx context.Context, d membership.Downgrade) (*pb.DowngradeResponse, error) {
+	b, err := json.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeDowngrade,
+		Context: b,
+	}
+
+	if _, err = s.configure(ctx, cc); err != nil {
+		return nil, err
+	}
+	resp := &pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return resp, nil
 }
 
-// Todo: cancel downgrade
-func (s *EtcdServer) downgradeCancel(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	return nil, nil
+func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	d := membership.Downgrade{Enabled: false}
+
+	b, err := json.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeDowngrade,
+		Context: b,
+	}
+
+	if _, err = s.configure(ctx, cc); err != nil {
+		return nil, err
+	}
+	resp := &pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return resp, nil
 }

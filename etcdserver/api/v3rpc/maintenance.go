@@ -212,7 +212,13 @@ func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRe
 }
 
 func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	return ms.d.Downgrade(ctx, r)
+	resp, err := ms.d.Downgrade(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 type authMaintenanceServer struct {
