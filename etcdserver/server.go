@@ -101,6 +101,9 @@ const (
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
 
 	readyPercent = 0.9
+
+	// Todo: need to be decided
+	monitorDowngradeInterval = time.Second
 )
 
 var (
@@ -738,6 +741,7 @@ func (s *EtcdServer) Start() {
 	s.goAttach(s.monitorVersions)
 	s.goAttach(s.linearizableReadLoop)
 	s.goAttach(s.monitorKVHash)
+	s.goAttach(s.monitorDowngrade)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -2625,6 +2629,40 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 			lg.Warn("failed to update cluster version", zap.Error(err))
 		} else {
 			plog.Errorf("error updating cluster version (%v)", err)
+		}
+	}
+}
+
+func (s *EtcdServer) monitorDowngrade() {
+	lg := s.getLogger()
+	for {
+		select {
+		case <-time.After(monitorDowngradeInterval):
+		case <-s.stopping:
+			return
+		}
+
+		if s.Leader() != s.ID() {
+			continue
+		}
+
+		d := s.cluster.Downgrade()
+		if !d.Enabled {
+			continue
+		}
+
+		targetVersion := d.TargetVersion
+		v := decideClusterVersion(s.getLogger(), getVersions(s.getLogger(), s.cluster, s.id, s.peerRt))
+
+		if v.Equal(*targetVersion) {
+			if _, err := s.downgradeCancel(context.Background()); err != nil {
+				if lg != nil {
+					lg.Warn("failed to cancel downgrade", zap.Error(err))
+				} else {
+					plog.Warningf("failed to cancel downgrade %v", err)
+				}
+			}
+			continue
 		}
 	}
 }
