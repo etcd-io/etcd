@@ -88,3 +88,8 @@ func (mp *maintenanceProxy) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequ
 	conn := mp.client.ActiveConnection()
 	return pb.NewMaintenanceClient(conn).MoveLeader(ctx, r)
 }
+
+func (mp *maintenanceProxy) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	conn := mp.client.ActiveConnection()
+	return pb.NewMaintenanceClient(conn).Downgrade(ctx, r)
+}

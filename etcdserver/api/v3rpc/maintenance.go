@@ -76,7 +76,7 @@ type maintenanceServer struct {
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s}
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s}
 	return &authMaintenanceServer{srv, s}
 }
 
@@ -217,6 +217,7 @@ func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeReque
 		return nil, err
 	}
 
+	resp.Header = &pb.ResponseHeader{}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }

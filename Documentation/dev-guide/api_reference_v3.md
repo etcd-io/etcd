@@ -461,7 +461,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | version | version is the current cluster version. | string |
-| status | status is how the version of the servers in the cluster like. | string |
+| status | status is the situation of each server's version in the cluster | string |
 
 
 

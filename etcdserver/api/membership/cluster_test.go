@@ -617,7 +617,12 @@ func TestNodeToMember(t *testing.T) {
 }
 
 func newTestCluster(membs []*Member) *RaftCluster {
-	c := &RaftCluster{lg: zap.NewExample(), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	c := &RaftCluster{
+		lg:        zap.NewExample(),
+		members:   make(map[types.ID]*Member),
+		removed:   make(map[types.ID]bool),
+		downgrade: &Downgrade{Enabled: false},
+	}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}

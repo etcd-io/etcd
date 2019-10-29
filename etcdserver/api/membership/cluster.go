@@ -109,10 +109,11 @@ func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*M
 
 func NewCluster(lg *zap.Logger, token string) *RaftCluster {
 	return &RaftCluster{
-		lg:      lg,
-		token:   token,
-		members: make(map[types.ID]*Member),
-		removed: make(map[types.ID]bool),
+		lg:        lg,
+		token:     token,
+		members:   make(map[types.ID]*Member),
+		removed:   make(map[types.ID]bool),
+		downgrade: &Downgrade{Enabled: false},
 	}
 }
 
@@ -380,6 +381,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 
+	case raftpb.ConfChangeDowngrade:
 	default:
 		if c.lg != nil {
 			c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))
@@ -908,10 +910,14 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 }
 
 // Downgrade returns the capability status of the cluster
-func (c *RaftCluster) Downgrade() Downgrade {
+func (c *RaftCluster) Downgrade() *Downgrade {
 	c.Lock()
 	defer c.Unlock()
-	return *c.downgrade
+	if c.downgrade == nil {
+		return &Downgrade{Enabled: false}
+	}
+	d := &Downgrade{Enabled: c.downgrade.Enabled, TargetVersion: c.downgrade.TargetVersion}
+	return d
 }
 
 func (c *RaftCluster) UpdateDowngrade(d *Downgrade) {

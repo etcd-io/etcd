@@ -67,6 +67,10 @@ type printer interface {
 	UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse)
 	UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse)
 	UserDelete(user string, r v3.AuthUserDeleteResponse)
+
+	DowngradeValidate(r v3.DowngradeResponse)
+	DowngradeStart(r v3.DowngradeResponse)
+	DowngradeCancel(r v3.DowngradeResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {

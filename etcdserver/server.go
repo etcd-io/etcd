@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"expvar"
 	"fmt"
 	"math"
@@ -2393,7 +2394,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 
 	case raftpb.ConfChangeDowngrade:
-		var d membership.Downgrade
+		d := &membership.Downgrade{}
 		if err := json.Unmarshal(cc.Context, d); err != nil {
 			if lg != nil {
 				lg.Panic("failed to unmarshal downgrade", zap.Error(err))
@@ -2401,7 +2402,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 				plog.Panicf("unmarshal downgrade should never fail: %v", err)
 			}
 		}
-		s.cluster.UpdateDowngrade(&d)
+		s.cluster.UpdateDowngrade(d)
 	}
 	return false, nil
 }
@@ -2772,7 +2773,19 @@ func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
 }
 
-func (s *EtcdServer) downgradeStart(ctx context.Context, d membership.Downgrade) (*pb.DowngradeResponse, error) {
+func (s *EtcdServer) downgradeStart(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
+	// validate downgrade capability before starting job
+	if resp, err := s.downgradeValidate(ctx, v); err != nil {
+		return resp, err
+	}
+
+	targetVersion, err := semver.NewVersion(v)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("wrong version format: %v", err))
+	}
+	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
+	d := membership.Downgrade{Enabled: true, TargetVersion: targetVersion}
+
 	b, err := json.Marshal(d)
 	if err != nil {
 		return nil, err
@@ -2791,6 +2804,15 @@ func (s *EtcdServer) downgradeStart(ctx context.Context, d membership.Downgrade)
 }
 
 func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	if err := s.linearizableReadNotify(ctx); err != nil {
+		return nil, err
+	}
+
+	downgradeInfo := s.cluster.Downgrade()
+	if !downgradeInfo.Enabled {
+		return nil, errors.New("the cluster is not downgrading")
+	}
+
 	d := membership.Downgrade{Enabled: false}
 
 	b, err := json.Marshal(d)

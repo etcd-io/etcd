@@ -997,7 +997,7 @@ message DowngradeResponse {
   ResponseHeader header = 1;
   // version is the current cluster version.
   string version = 2;
-  // status is how the version of the servers in the cluster like.
+  // status is the situation of each server's version in the cluster
   string status = 3;
 }
 

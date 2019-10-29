@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
@@ -811,9 +812,7 @@ func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb
 	case pb.DowngradeRequest_VALIDATE:
 		return s.downgradeValidate(ctx, r.Version)
 	case pb.DowngradeRequest_DOWNGRADE:
-		targetVersion := semver.Must(semver.NewVersion(r.Version))
-		d := membership.Downgrade{Enabled: true, TargetVersion: targetVersion}
-		return s.downgradeStart(ctx, d)
+		return s.downgradeStart(ctx, r.Version)
 	case pb.DowngradeRequest_CANCEL:
 		return s.downgradeCancel(ctx)
 	}
@@ -821,22 +820,33 @@ func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb
 }
 
 func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
-	var resp *pb.DowngradeResponse
+	resp := &pb.DowngradeResponse{}
 	var err error
 
 	cv := s.ClusterVersion()
-	targetVersion := semver.Must(semver.NewVersion(v))
+	targetVersion, err := semver.NewVersion(v)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("wrong version format: %v", err))
+	}
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 
 	resp.Version = cv.String()
 	if cv.LessThan(*targetVersion) {
 		err = errors.New("target version is higher than current cluster version")
-		return resp, err
+		return nil, err
 	}
 
+	if cv.Equal(*targetVersion) {
+		err = errors.New("target version is current cluster version")
+		return nil, err
+	}
 	if !membership.IsOneMinorVersionDiff(cv, targetVersion) {
-		err = errors.New("Target version violates the downgrade policy. The cluster can only be downgraded to ")
-		return resp, err
+		err = errors.New(
+			fmt.Sprintf(
+				"Target version violates the downgrade policy. "+
+					"The cluster can only be downgraded to %s",
+				semver.Version{Major: cv.Major, Minor: cv.Minor - 1}.String()))
+		return nil, err
 	}
 
 	err = s.linearizableReadNotify(ctx)
