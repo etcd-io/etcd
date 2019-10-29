@@ -848,8 +848,8 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 						t.Errorf("add learner should not change the nodes: %v", state.String())
 					}
 					t.Logf("apply raft conf %v changed to: %v", cc, state.String())
-					applyConfChan <- struct{}{}
 				}
+				applyConfChan <- struct{}{}
 				n.Advance()
 			}
 		}
