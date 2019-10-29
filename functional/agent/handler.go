@@ -121,7 +121,7 @@ func (srv *Server) creatEtcd(fromSnapshot bool) error {
 
 // start but do not wait for it to complete
 func (srv *Server) runEtcd() error {
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		time.Sleep(5 * time.Second)
 		// server advertise client/peer listener had to start first
