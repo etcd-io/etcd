@@ -427,6 +427,7 @@ func (s *store) restore() error {
 
 	for key, lid := range keyToLease {
 		if s.le == nil {
+			tx.Unlock()
 			panic("no lessor to attach lease")
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
