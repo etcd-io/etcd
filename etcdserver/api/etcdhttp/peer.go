@@ -34,6 +34,7 @@ import (
 const (
 	peerMembersPath         = "/members"
 	peerMemberPromotePrefix = "/members/promote/"
+	downgradeEnabledPath    = "/downgrade/enabled"
 )
 
 // NewPeerHandler generates an http.Handler to handle etcd peer requests.
@@ -56,6 +57,7 @@ func newPeerHandler(lg *zap.Logger, s etcdserver.Server, raftHandler http.Handle
 		mux.Handle(leasehttp.LeaseInternalPrefix, leaseHandler)
 	}
 	mux.HandleFunc(versionPath, versionHandler(s.Cluster(), serveVersion))
+	mux.HandleFunc(downgradeEnabledPath, downgradeHandler(s.Cluster(), serveDowngrade))
 	return mux
 }
 
@@ -77,6 +79,26 @@ func newPeerMemberPromoteHandler(lg *zap.Logger, s etcdserver.Server) http.Handl
 		cluster: s.Cluster(),
 		server:  s,
 	}
+}
+
+func downgradeHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, bool)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		d := c.Downgrade()
+		fn(w, r, d.Enabled)
+	}
+}
+
+func serveDowngrade(w http.ResponseWriter, r *http.Request, enabled bool) {
+	if !allowMethod(w, r, "GET") {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.Marshal(enabled)
+	if err != nil {
+		plog.Panicf("cannot marshal versions to json (%v)", err)
+	}
+	w.Write(b)
 }
 
 type peerMemberPromoteHandler struct {

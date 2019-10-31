@@ -33,9 +33,9 @@ func NewDowngradeValidateCommand() *cobra.Command {
 // NewDowngradeStartCommand returns the cobra command for "downgrade start"
 func NewDowngradeStartCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "start <targetVersion>",
-		Short: "Start to downgrade the cluster to target version",
-		Run:   downgradeStartCommandFunc,
+		Use:   "enable <targetVersion>",
+		Short: "Enable the cluster to downgrade to target version",
+		Run:   downgradeEnableCommandFunc,
 	}
 	return cc
 }
@@ -77,8 +77,8 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 	display.DowngradeValidate(*resp)
 }
 
-// downgradeStartCommandFunc executes the "downgrade start" command
-func downgradeStartCommandFunc(cmd *cobra.Command, args []string) {
+// downgradeEnableCommandFunc executes the "downgrade start" command
+func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
 		ExitWithError(ExitBadArgs, errors.New("target version not provided"))
 	}
@@ -95,13 +95,13 @@ func downgradeStartCommandFunc(cmd *cobra.Command, args []string) {
 		err  error
 	)
 
-	resp, err = cli.Downgrade(ctx, version)
+	resp, err = cli.DowngradeEnable(ctx, version)
 
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	display.DowngradeStart(*resp)
+	display.DowngradeEnable(*resp)
 }
 
 // downgradeCancelCommandFunc executes the "downgrade cancel" command

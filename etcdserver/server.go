@@ -368,7 +368,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt, cfg.EnableClusterDowngrade) {
+		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
 			return nil, fmt.Errorf("incompatible with current running cluster")
 		}
 
@@ -2574,7 +2574,7 @@ func (s *EtcdServer) monitorVersions() {
 		// Original etcd v3.1.26 only update cluster version if the decided version is
 		// greater than the current cluster version, in this patched etcd, we relax the rule
 		// and allow +1 or -1 minor version cluster version change
-		if v != nil && canUpdateClusterVersion(s.Cfg.EnableClusterDowngrade, v, s.cluster.Version()) {
+		if v != nil && membership.IsVersionChangable(s.cluster.Version(), v) {
 			s.goAttach(func() { s.updateClusterVersion(v.String()) })
 		}
 	}
@@ -2653,9 +2653,12 @@ func (s *EtcdServer) monitorDowngrade() {
 		}
 
 		targetVersion := d.TargetVersion
-		v := decideClusterVersion(s.getLogger(), getVersions(s.getLogger(), s.cluster, s.id, s.peerRt))
-
-		if v.Equal(*targetVersion) {
+		if decideDowngradeStatus(s.getLogger(), targetVersion, getVersions(s.getLogger(), s.cluster, s.id, s.peerRt)) {
+			if lg != nil {
+				lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion.String()))
+			} else {
+				plog.Infof("the cluster has been downgraded to version %v", targetVersion.String())
+			}
 			if _, err := s.downgradeCancel(context.Background()); err != nil {
 				if lg != nil {
 					lg.Warn("failed to cancel downgrade", zap.Error(err))
@@ -2773,7 +2776,7 @@ func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
 }
 
-func (s *EtcdServer) downgradeStart(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
+func (s *EtcdServer) downgradeEnable(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
 	// validate downgrade capability before starting job
 	if resp, err := s.downgradeValidate(ctx, v); err != nil {
 		return resp, err
@@ -2783,6 +2786,7 @@ func (s *EtcdServer) downgradeStart(ctx context.Context, v string) (*pb.Downgrad
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("wrong version format: %v", err))
 	}
+	// cluster version only keeps major.minor, remove patch version
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 	d := membership.Downgrade{Enabled: true, TargetVersion: targetVersion}
 

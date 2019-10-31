@@ -35,4 +35,6 @@ type Cluster interface {
 	Member(id types.ID) *membership.Member
 	// Version is the cluster-wide minimum major.minor version.
 	Version() *semver.Version
+	// Downgrade is the downgrade information of the cluster
+	Downgrade() *membership.Downgrade
 }

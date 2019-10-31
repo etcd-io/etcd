@@ -811,8 +811,8 @@ func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb
 	switch r.Action {
 	case pb.DowngradeRequest_VALIDATE:
 		return s.downgradeValidate(ctx, r.Version)
-	case pb.DowngradeRequest_DOWNGRADE:
-		return s.downgradeStart(ctx, r.Version)
+	case pb.DowngradeRequest_ENABLE:
+		return s.downgradeEnable(ctx, r.Version)
 	case pb.DowngradeRequest_CANCEL:
 		return s.downgradeCancel(ctx)
 	}
@@ -840,7 +840,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 		err = errors.New("target version is current cluster version")
 		return nil, err
 	}
-	if !membership.IsOneMinorVersionDiff(cv, targetVersion) {
+	if !membership.IsVersionChangable(cv, targetVersion) {
 		err = errors.New(
 			fmt.Sprintf(
 				"Target version violates the downgrade policy. "+

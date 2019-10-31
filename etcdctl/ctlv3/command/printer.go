@@ -69,7 +69,7 @@ type printer interface {
 	UserDelete(user string, r v3.AuthUserDeleteResponse)
 
 	DowngradeValidate(r v3.DowngradeResponse)
-	DowngradeStart(r v3.DowngradeResponse)
+	DowngradeEnable(r v3.DowngradeResponse)
 	DowngradeCancel(r v3.DowngradeResponse)
 }
 

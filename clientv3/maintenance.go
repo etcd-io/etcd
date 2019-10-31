@@ -71,7 +71,7 @@ type Maintenance interface {
 	DowngradeValidate(ctx context.Context, version string) (*DowngradeResponse, error)
 
 	// Downgrade requests to downgrade the current cluster version to target version.
-	Downgrade(ctx context.Context, version string) (*DowngradeResponse, error)
+	DowngradeEnable(ctx context.Context, version string) (*DowngradeResponse, error)
 
 	// DowngradeCancel cancels the current downgrade job.
 	DowngradeCancel(ctx context.Context) (*DowngradeResponse, error)
@@ -224,7 +224,6 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, nil
 }
 
-// Todo: WIP
 func (m *maintenance) DowngradeValidate(ctx context.Context, version string) (*DowngradeResponse, error) {
 	req := &pb.DowngradeRequest{
 		Action:  pb.DowngradeRequest_VALIDATE,
@@ -239,10 +238,9 @@ func (m *maintenance) DowngradeValidate(ctx context.Context, version string) (*D
 	return (*DowngradeResponse)(resp), nil
 }
 
-// Todo: WIP
-func (m *maintenance) Downgrade(ctx context.Context, version string) (*DowngradeResponse, error) {
+func (m *maintenance) DowngradeEnable(ctx context.Context, version string) (*DowngradeResponse, error) {
 	req := &pb.DowngradeRequest{
-		Action:  pb.DowngradeRequest_DOWNGRADE,
+		Action:  pb.DowngradeRequest_ENABLE,
 		Version: version,
 	}
 
@@ -254,7 +252,6 @@ func (m *maintenance) Downgrade(ctx context.Context, version string) (*Downgrade
 	return (*DowngradeResponse)(resp), nil
 }
 
-// Todo: WIP
 func (m *maintenance) DowngradeCancel(ctx context.Context) (*DowngradeResponse, error) {
 	req := &pb.DowngradeRequest{
 		Action: pb.DowngradeRequest_CANCEL,

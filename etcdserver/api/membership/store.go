@@ -105,6 +105,24 @@ func downgradeFromBackend(be backend.Backend) *Downgrade {
 	return nil
 }
 
+func clusterVersionFromBackend(be backend.Backend) *semver.Version {
+	ckey := backendClusterVersionKey()
+
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
+
+	if len(vs) != 0 {
+		v := string(vs[0])
+		if sv, err := semver.NewVersion(v); err == nil {
+			return sv
+		}
+	}
+	return nil
+}
+
 func mustSaveMemberToStore(s v2store.Store, m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {

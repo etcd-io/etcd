@@ -291,7 +291,7 @@ func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
 		"Current cluster version is %s\n", r.Version)
 }
 
-func (s *simplePrinter) DowngradeStart(r v3.DowngradeResponse) {
+func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
 	fmt.Printf("The cluster is available to downgrade. Please wait until all servers are ready.\n")
 }
 

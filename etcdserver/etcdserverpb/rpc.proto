@@ -980,7 +980,7 @@ message AlarmResponse {
 message DowngradeRequest {
   enum DowngradeAction {
   VALIDATE = 0;
-  DOWNGRADE = 1;
+  ENABLE = 1;
   CANCEL = 2;
   STATUS = 3;
   }
