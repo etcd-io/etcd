@@ -150,7 +150,7 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 func (s *simplePrinter) EndpointHealth(hs []epHealth) {
 	for _, h := range hs {
 		if h.Error == "" {
-			fmt.Fprintf(os.Stderr, "%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
+			fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
 		} else {
 			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v\n", h.Ep, h.Error)
 		}
