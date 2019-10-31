@@ -159,6 +159,7 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		}
 
 		if !wa.victim {
+			s.mu.Unlock()
 			panic("watcher not victim but not in watch groups")
 		}
 
