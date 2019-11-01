@@ -435,7 +435,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 
 	peers := make([]raft.Peer, len(s.cl.MemberIDs()))
 	for i, id := range s.cl.MemberIDs() {
-		ctx, err := json.Marshal((*s.cl).Member(id))
+		ctx, err := json.Marshal(s.cl.Member(id))
 		if err != nil {
 			return err
 		}

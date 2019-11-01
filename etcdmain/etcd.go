@@ -94,7 +94,7 @@ func startEtcdOrProxyV2() {
 		}
 	}()
 
-	defaultHost, dhErr := (&cfg.ec).UpdateDefaultClusterFromName(defaultInitialCluster)
+	defaultHost, dhErr := cfg.ec.UpdateDefaultClusterFromName(defaultInitialCluster)
 	if defaultHost != "" {
 		if lg != nil {
 			lg.Info(

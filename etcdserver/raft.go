@@ -441,7 +441,7 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		var ctx []byte
-		ctx, err = json.Marshal((*cl).Member(id))
+		ctx, err = json.Marshal(cl.Member(id))
 		if err != nil {
 			if cfg.Logger != nil {
 				cfg.Logger.Panic("failed to marshal member", zap.Error(err))
