@@ -313,7 +313,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 	// TODO: handle the case when "s.cluster.Members" have not
 	// been populated (e.g. no snapshot to load from disk)
 	mbs := s.cluster.Members()
-	pss := make([]peerHashKVResp, len(mbs))
+	pss := make([]peerHashKVResp, 0, len(mbs))
 	for _, m := range mbs {
 		if m.ID == s.ID() {
 			continue
