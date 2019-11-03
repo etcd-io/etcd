@@ -46,7 +46,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and 
 
 ### Go
 
-- Require [*Go 2*](https://blog.golang.org/go2draft).
+- Require [* Go 2 *](https://blog.golang.org/go2draft).
 
 
 <hr>
