@@ -41,6 +41,7 @@ type fakeCluster struct {
 	id         uint64
 	clientURLs []string
 	members    map[uint64]*membership.Member
+	downgrade  *membership.Downgrade
 }
 
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
@@ -55,7 +56,7 @@ func (c *fakeCluster) Members() []*membership.Member {
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
-func (s *fakeCluster) Downgrade() *membership.Downgrade      { return nil }
+func (c *fakeCluster) Downgrade() *membership.Downgrade      { return c.downgrade }
 
 type fakeServer struct {
 	cluster api.Cluster
@@ -276,6 +277,55 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 		}
 		if tt.checkBody && strings.Contains(string(body), tt.wKeyWords) {
 			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
+		}
+	}
+}
+
+// TestServeDowngradeEnabledGet verifies the request to get the downgrade enabled status
+func TestServeDowngradeEnabledGet(t *testing.T) {
+	d := &membership.Downgrade{Enabled: true}
+	cluster := &fakeCluster{
+		id:        1,
+		downgrade: d,
+	}
+	h := newDowngradeEnabledHandler(nil, cluster)
+	b, err := json.Marshal(d.Enabled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+
+	tests := []struct {
+		path  string
+		wcode int
+		wct   string
+		wbody string
+	}{
+		{downgradeEnabledPath, http.StatusOK, "application/json", s},
+		{path.Join(downgradeEnabledPath, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
+	}
+
+	for i, tt := range tests {
+		req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rw := httptest.NewRecorder()
+		h.ServeHTTP(rw, req)
+
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
+		}
+		if rw.Body.String() != tt.wbody {
+			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+		}
+		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+		wcid := cluster.ID().String()
+		if gcid != wcid {
+			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 		}
 	}
 }

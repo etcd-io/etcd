@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+	"go.etcd.io/etcd/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
@@ -238,5 +240,109 @@ func TestMaintenanceStatus(t *testing.T) {
 	}
 	if !leaderFound {
 		t.Fatal("no leader found")
+	}
+}
+
+func TestDowngradeValidateFromClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.WaitLeader(t)
+
+	eps := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		eps[i] = clus.Members[i].GRPCAddr()
+	}
+
+	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	serverVersion := semver.Must(semver.NewVersion(version.Version))
+	clusterVersion := semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor}
+	targetVersion := &semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor - 1}
+	resp, err := cli.DowngradeValidate(context.TODO(), targetVersion.String())
+
+	if err != nil {
+		t.Fatalf("failed to validate downgrade against target version (%v)", err)
+	}
+	if resp.Version != clusterVersion.String() {
+		t.Errorf("expected %v; got %v", clusterVersion.String(), resp.Version)
+	}
+}
+
+func TestDowngradeEnableFromClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.WaitLeader(t)
+
+	eps := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		eps[i] = clus.Members[i].GRPCAddr()
+	}
+
+	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	serverVersion := semver.Must(semver.NewVersion(version.Version))
+	clusterVersion := semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor}
+	targetVersion := &semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor - 1}
+	resp, err := cli.DowngradeEnable(context.TODO(), targetVersion.String())
+
+	if err != nil {
+		t.Fatalf("failed to enable downgrade to target version (%v)", err)
+	}
+	if resp.Version != clusterVersion.String() {
+		t.Errorf("expected %v; got %v", clusterVersion.String(), resp.Version)
+	}
+}
+
+func TestDowngradeCancelFromClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.WaitLeader(t)
+
+	eps := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		eps[i] = clus.Members[i].GRPCAddr()
+	}
+
+	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	serverVersion := semver.Must(semver.NewVersion(version.Version))
+	clusterVersion := semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor}
+	targetVersion := &semver.Version{Major: serverVersion.Major, Minor: serverVersion.Minor - 1}
+	// send downgrade enable request
+	resp, err := cli.DowngradeEnable(context.TODO(), targetVersion.String())
+
+	if err != nil {
+		t.Fatalf("failed to enable downgrade to target version (%v)", err)
+	}
+
+	// send downgrade cancel request
+	resp, err = cli.DowngradeCancel(context.TODO())
+	if err != nil {
+		t.Fatalf("failed to cancel downgrade (%v)", err)
+	}
+
+	if resp.Version != clusterVersion.String() {
+		t.Errorf("expected %v; got %v", clusterVersion.String(), resp.Version)
 	}
 }

@@ -2784,7 +2784,7 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, v string) (*pb.Downgra
 
 	targetVersion, err := semver.NewVersion(v)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("wrong version format: %v", err))
+		return nil, fmt.Errorf("wrong version format: %v", err)
 	}
 	// cluster version only keeps major.minor, remove patch version
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}

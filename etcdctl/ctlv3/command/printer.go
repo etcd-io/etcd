@@ -146,6 +146,10 @@ func (p *printerRPC) UserDelete(_ string, r v3.AuthUserDeleteResponse) {
 	p.p((*pb.AuthUserDeleteResponse)(&r))
 }
 
+func (p *printerRPC) DowngradeValidate(r v3.DowngradeResponse) { p.p((*pb.DowngradeResponse)(&r)) }
+func (p *printerRPC) DowngradeEnable(r v3.DowngradeResponse)   { p.p((*pb.DowngradeResponse)(&r)) }
+func (p *printerRPC) DowngradeCancel(r v3.DowngradeResponse)   { p.p((*pb.DowngradeResponse)(&r)) }
+
 type printerUnsupported struct{ printerRPC }
 
 func newPrinterUnsupported(n string) printer {

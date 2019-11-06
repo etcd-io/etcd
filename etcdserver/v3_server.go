@@ -826,7 +826,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	cv := s.ClusterVersion()
 	targetVersion, err := semver.NewVersion(v)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("wrong version format: %v", err))
+		return nil, fmt.Errorf("wrong version format: %v", err)
 	}
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 
@@ -841,11 +841,10 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 		return nil, err
 	}
 	if !membership.IsVersionChangable(cv, targetVersion) {
-		err = errors.New(
-			fmt.Sprintf(
-				"Target version violates the downgrade policy. "+
-					"The cluster can only be downgraded to %s",
-				semver.Version{Major: cv.Major, Minor: cv.Minor - 1}.String()))
+		err = fmt.Errorf(
+			"target version violates the downgrade policy. "+
+				"the cluster can only be downgraded to %s",
+			semver.Version{Major: cv.Major, Minor: cv.Minor - 1}.String())
 		return nil, err
 	}
 

@@ -64,10 +64,10 @@ type RaftCluster struct {
 }
 
 type Downgrade struct {
-	// the target downgrade version, if the cluster is not under downgrade,
+	// TargetVersion is the target downgrade version, if the cluster is not under downgrade,
 	// the targetVersion will be nil
 	TargetVersion *semver.Version
-	// true is the cluster is downgrading
+	// Enabled indicates whether the cluster is enabled to downgrade
 	Enabled bool
 }
 
@@ -853,7 +853,7 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *Downgrade) {
 		if d.Enabled && d.TargetVersion.Equal(*lv) {
 			if lg != nil {
 				lg.Info(
-					"cluster is downgrading to target server version",
+					"cluster is downgrading to target version",
 					zap.String("target-cluster-version", d.TargetVersion.String()),
 					zap.String("determined-cluster-version", version.Cluster(cv.String())),
 					zap.String("current-server-version", version.Version),
@@ -874,13 +874,16 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *Downgrade) {
 					zap.String("determined-cluster-version", version.Cluster(cv.String())),
 				)
 			} else {
-				plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+				plog.Fatalf("invalid downgrade; server version is lower than determined cluster version (current version: %s, determined cluster version: %s).",
+					version.Version, version.Cluster(cv.String()))
 			}
 		}
 	}
 }
 
 func IsVersionChangable(cv *semver.Version, lv *semver.Version) bool {
+	cv = &semver.Version{Major: cv.Major, Minor: cv.Minor}
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if (cv.Major == lv.Major) && ((cv.Minor-lv.Minor) == 1 || cv.LessThan(*lv)) {
 		return true
 	}

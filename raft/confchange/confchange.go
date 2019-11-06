@@ -165,6 +165,7 @@ func (c Changer) apply(cfg *tracker.Config, prs tracker.ProgressMap, ccs ...pb.C
 		case pb.ConfChangeRemoveNode:
 			c.remove(cfg, prs, cc.NodeID)
 		case pb.ConfChangeUpdateNode:
+		case pb.ConfChangeDowngrade:
 		default:
 			return fmt.Errorf("unexpected conf type %d", cc.Type)
 		}

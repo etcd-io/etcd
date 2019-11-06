@@ -70,7 +70,7 @@ type Maintenance interface {
 	// DowngradeValidate requests validation of the downgrade request
 	DowngradeValidate(ctx context.Context, version string) (*DowngradeResponse, error)
 
-	// Downgrade requests to downgrade the current cluster version to target version.
+	// DowngradeEnable requests to downgrade the current cluster version to target version.
 	DowngradeEnable(ctx context.Context, version string) (*DowngradeResponse, error)
 
 	// DowngradeCancel cancels the current downgrade job.
