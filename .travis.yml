@@ -5,6 +5,9 @@ sudo: required
 
 services: docker
 
+arch: s390x
+os: linux
+
 go:
   - 1.13.1
   - tip
