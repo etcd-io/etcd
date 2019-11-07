@@ -5,8 +5,8 @@ sudo: required
 
 services: docker
 
-arch: s390x
 os: linux
+arch: s390x
 
 go:
   - 1.13.1
@@ -18,17 +18,17 @@ notifications:
 
 env:
   matrix:
-    - TARGET=linux-amd64-fmt
-    - TARGET=linux-amd64-integration-1-cpu
-    - TARGET=linux-amd64-integration-2-cpu
-    - TARGET=linux-amd64-integration-4-cpu
-    - TARGET=linux-amd64-functional
-    - TARGET=linux-amd64-unit
+ #   - TARGET=linux-amd64-fmt
+ #   - TARGET=linux-amd64-integration-1-cpu
+ #   - TARGET=linux-amd64-integration-2-cpu
+ #   - TARGET=linux-amd64-integration-4-cpu
+ #   - TARGET=linux-amd64-functional
+ #   - TARGET=linux-amd64-unit
     - TARGET=all-build
-    - TARGET=linux-amd64-grpcproxy
-    - TARGET=linux-amd64-coverage
-    - TARGET=linux-amd64-fmt-unit-go-tip
-    - TARGET=linux-386-unit
+ #   - TARGET=linux-amd64-grpcproxy
+ #   - TARGET=linux-amd64-coverage
+ #   - TARGET=linux-amd64-fmt-unit-go-tip
+ #   - TARGET=linux-386-unit
 
 matrix:
   fast_finish: true
