@@ -18,6 +18,12 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11261) Prometheus metric.
 
+### etcdserver
+
+- Fix [`wait purge file loop during shutdown`](https://github.com/etcd-io/etcd/pull/11308).
+  - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
+  - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
+
 <hr>
 
 
