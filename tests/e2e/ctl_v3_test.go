@@ -99,6 +99,21 @@ func clusterVersionTest(cx ctlCtx, expected string) {
 	}
 }
 
+func clusterVersionTest(cx ctlCtx, expected string) {
+	var err error
+	for i := 0; i < 7; i++ {
+		if err = cURLGet(cx.epc, cURLReq{endpoint: "/version", expected: expected}); err != nil {
+			cx.t.Logf("#%d:  is not ready yet (%v)", i, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		cx.t.Fatalf("failed cluster version test expected %v got (%v)", expected, err)
+	}
+}
+
 func ctlV3Version(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "version")
 	return spawnWithExpect(cmdArgs, version.Version)
