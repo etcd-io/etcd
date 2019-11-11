@@ -35,11 +35,13 @@ import (
 
 type fakeCluster struct {
 	id         uint64
+	localID    uint64
 	clientURLs []string
 	members    map[uint64]*membership.Member
 }
 
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
+func (c *fakeCluster) LocalID() types.ID    { return types.ID(c.localID) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*membership.Member {
 	var ms membership.MembersByID

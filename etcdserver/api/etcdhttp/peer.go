@@ -34,6 +34,7 @@ import (
 const (
 	peerMembersPath         = "/members"
 	peerMemberPromotePrefix = "/members/promote/"
+	downgradeStatusPath     = "/downgrade"
 	downgradeEnabledPath    = "/downgrade/enabled"
 )
 
@@ -42,9 +43,13 @@ func NewPeerHandler(lg *zap.Logger, s etcdserver.ServerPeer) http.Handler {
 	return newPeerHandler(lg, s, s.RaftHandler(), s.LeaseHandler())
 }
 
-func newPeerHandler(lg *zap.Logger, s etcdserver.Server, raftHandler http.Handler, leaseHandler http.Handler) http.Handler {
+func newPeerHandler(lg *zap.Logger, s etcdserver.ServerPeer, raftHandler http.Handler, leaseHandler http.Handler) http.Handler {
 	peerMembersHandler := newPeerMembersHandler(lg, s.Cluster())
 	peerMemberPromoteHandler := newPeerMemberPromoteHandler(lg, s)
+	// downgradeStatusHandler handles the request to get the downgrade status in a cluster;
+	// only leader will return its downgrade status
+	downgradeStatusHandler := newDowngradeStatusHandler(lg, s)
+	// downgradeEnabledHandler handles the request to get local downgrade enabled status
 	downgradeEnabledHandler := newDowngradeEnabledHandler(lg, s.Cluster())
 
 	mux := http.NewServeMux()
@@ -53,13 +58,13 @@ func newPeerHandler(lg *zap.Logger, s etcdserver.Server, raftHandler http.Handle
 	mux.Handle(rafthttp.RaftPrefix+"/", raftHandler)
 	mux.Handle(peerMembersPath, peerMembersHandler)
 	mux.Handle(peerMemberPromotePrefix, peerMemberPromoteHandler)
+	mux.Handle(downgradeStatusPath, downgradeStatusHandler)
 	mux.Handle(downgradeEnabledPath, downgradeEnabledHandler)
 	if leaseHandler != nil {
 		mux.Handle(leasehttp.LeasePrefix, leaseHandler)
 		mux.Handle(leasehttp.LeaseInternalPrefix, leaseHandler)
 	}
 	mux.HandleFunc(versionPath, versionHandler(s.Cluster(), serveVersion))
-	//mux.HandleFunc(downgradeEnabledPath, downgradeHandler(s.Cluster(), serveDowngrade))
 	return mux
 }
 
@@ -87,6 +92,20 @@ type peerMemberPromoteHandler struct {
 	lg      *zap.Logger
 	cluster api.Cluster
 	server  etcdserver.Server
+}
+
+func newDowngradeStatusHandler(lg *zap.Logger, s etcdserver.ServerPeer) http.Handler {
+	return &downgradeStatusHandler{
+		lg:      lg,
+		cluster: s.Cluster(),
+		server:  s,
+	}
+}
+
+type downgradeStatusHandler struct {
+	lg      *zap.Logger
+	cluster api.Cluster
+	server  etcdserver.ServerPeer
 }
 
 func newDowngradeEnabledHandler(lg *zap.Logger, cluster api.Cluster) http.Handler {
@@ -172,6 +191,34 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 			plog.Warningf("failed to encode members response (%v)", err)
 		}
 	}
+}
+
+func (h *downgradeStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, "GET") {
+		return
+	}
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
+
+	if r.URL.Path != downgradeStatusPath {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	downgrade := membership.Downgrade{Enabled: false}
+	// get leader's downgrade status
+	if h.server.Leader() == h.cluster.LocalID() {
+		downgrade = *h.cluster.Downgrade()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.Marshal(downgrade)
+	if err != nil {
+		if h.lg != nil {
+			h.lg.Warn("failed to marshal downgrade to json", zap.Error(err))
+		} else {
+			plog.Warningf("failed to marshal downgrade to json (%v)", err)
+		}
+	}
+	w.Write(b)
 }
 
 func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -119,6 +119,8 @@ func NewCluster(lg *zap.Logger, token string) *RaftCluster {
 
 func (c *RaftCluster) ID() types.ID { return c.cid }
 
+func (c *RaftCluster) LocalID() types.ID { return c.localID }
+
 func (c *RaftCluster) Members() []*Member {
 	c.Lock()
 	defer c.Unlock()
@@ -269,8 +271,10 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	if c.downgrade == nil {
 		d = &Downgrade{Enabled: false}
 	} else {
+		//fmt.Println("downgrade enabled:", d.Enabled)
 		d = &Downgrade{Enabled: c.downgrade.Enabled, TargetVersion: c.downgrade.TargetVersion}
 	}
+	fmt.Println("downgrade enabled:", d.Enabled)
 	mustDetectDowngrade(c.lg, c.version, d)
 	onSet(c.lg, c.version)
 
