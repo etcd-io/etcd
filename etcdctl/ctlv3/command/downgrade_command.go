@@ -28,7 +28,7 @@ func NewDowngradeCommand() *cobra.Command {
 	}
 
 	dc.AddCommand(NewDowngradeValidateCommand())
-	dc.AddCommand(NewDowngradeStartCommand())
+	dc.AddCommand(NewDowngradeEnableCommand())
 	dc.AddCommand(NewDowngradeCancelCommand())
 
 	return dc
@@ -44,8 +44,8 @@ func NewDowngradeValidateCommand() *cobra.Command {
 	return cc
 }
 
-// NewDowngradeStartCommand returns the cobra command for "downgrade start"
-func NewDowngradeStartCommand() *cobra.Command {
+// NewDowngradeEnableCommand returns the cobra command for "downgrade enable"
+func NewDowngradeEnableCommand() *cobra.Command {
 	cc := &cobra.Command{
 		Use:   "enable <targetVersion>",
 		Short: "Enable the cluster to downgrade to target version",
@@ -67,7 +67,7 @@ func NewDowngradeCancelCommand() *cobra.Command {
 // downgradeValidateCommandFunc executes the "downgrade validate" command
 func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
-		ExitWithError(ExitBadArgs, errors.New("target version not provided"))
+		ExitWithError(ExitBadArgs, errors.New("no target version input"))
 	}
 
 	if len(args) > 1 {
@@ -94,7 +94,7 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 // downgradeEnableCommandFunc executes the "downgrade start" command
 func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
-		ExitWithError(ExitBadArgs, errors.New("target version not provided"))
+		ExitWithError(ExitBadArgs, errors.New("no target version input"))
 	}
 
 	if len(args) > 1 {

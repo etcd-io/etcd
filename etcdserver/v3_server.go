@@ -832,7 +832,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 
 	resp.Version = cv.String()
 	if cv.LessThan(*targetVersion) {
-		err = errors.New("target version is higher than current cluster version")
+		err = errors.New("target version too high")
 		return nil, err
 	}
 
@@ -842,7 +842,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	}
 	if !membership.IsVersionChangable(cv, targetVersion) {
 		err = fmt.Errorf(
-			"target version violates the downgrade policy. "+
+			"target version too small. "+
 				"the cluster can only be downgraded to %s",
 			semver.Version{Major: cv.Major, Minor: cv.Minor - 1}.String())
 		return nil, err

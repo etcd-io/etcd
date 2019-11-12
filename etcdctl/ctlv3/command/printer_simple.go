@@ -287,8 +287,7 @@ func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
 }
 
 func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
-	fmt.Printf("The cluster can be downgrade to target version. "+
-		"Current cluster version is %s\n", r.Version)
+	fmt.Printf("Validate succeeded. Current cluster version is %s\n", r.Version)
 }
 
 func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
@@ -296,5 +295,5 @@ func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
 }
 
 func (s *simplePrinter) DowngradeCancel(r v3.DowngradeResponse) {
-	fmt.Printf("Current downgrade job has been cancelled.\n")
+	fmt.Printf("Cancelled.\n")
 }

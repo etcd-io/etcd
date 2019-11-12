@@ -886,9 +886,6 @@ func TestMustDetectDowngrade(t *testing.T) {
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	oneMinorHigher := &semver.Version{Major: lv.Major, Minor: lv.Minor + 1}
 	oneMinorLower := &semver.Version{Major: lv.Major, Minor: lv.Minor - 1}
-
-	fmt.Println(oneMinorHigher.String())
-	fmt.Println(oneMinorLower.String())
 	downgradeEnabledHigherVersion := &Downgrade{Enabled: true, TargetVersion: oneMinorHigher}
 	downgradeEnabledEqualVersion := &Downgrade{Enabled: true, TargetVersion: lv}
 	downgradeEnabledLowerVersion := &Downgrade{Enabled: true, TargetVersion: oneMinorLower}

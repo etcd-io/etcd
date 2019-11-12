@@ -229,7 +229,7 @@ func (p *fieldsPrinter) UserDelete(user string, r v3.AuthUserDeleteResponse) { p
 
 func (p *fieldsPrinter) DowngradeValidate(r v3.DowngradeResponse) {
 	p.hdr(r.Header)
-	fmt.Println("The cluster can be downgrade to target version.")
+	fmt.Println("Validate succeeded")
 	fmt.Println(`"Current cluster version" :`, r.Version)
 }
 
@@ -241,6 +241,6 @@ func (p *fieldsPrinter) DowngradeEnable(r v3.DowngradeResponse) {
 
 func (p *fieldsPrinter) DowngradeCancel(r v3.DowngradeResponse) {
 	p.hdr(r.Header)
-	fmt.Println("Current downgrade job has been cancelled.")
+	fmt.Println("Cancelled")
 	fmt.Println(`"Current cluster version" :`, r.Version)
 }

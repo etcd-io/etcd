@@ -271,10 +271,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	if c.downgrade == nil {
 		d = &Downgrade{Enabled: false}
 	} else {
-		//fmt.Println("downgrade enabled:", d.Enabled)
 		d = &Downgrade{Enabled: c.downgrade.Enabled, TargetVersion: c.downgrade.TargetVersion}
 	}
-	fmt.Println("downgrade enabled:", d.Enabled)
 	mustDetectDowngrade(c.lg, c.version, d)
 	onSet(c.lg, c.version)
 

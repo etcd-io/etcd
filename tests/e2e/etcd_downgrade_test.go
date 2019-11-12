@@ -70,11 +70,7 @@ func TestRollingDowngrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
-
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, tv.String())
 
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
@@ -133,11 +129,7 @@ func TestRestartDowngrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
-
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, tv.String())
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
 	}
@@ -203,11 +195,8 @@ func TestDowngradeThenUpgrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
+	ctlDowngradeEnable(cx, tv.String())
 
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
 	}
@@ -288,11 +277,7 @@ func TestDowngradeThenRestart(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
-
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, tv.String())
 
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
@@ -376,11 +361,7 @@ func TestDowngradeThenDowngrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
-
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, tv.String())
 
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
@@ -405,10 +386,7 @@ func TestDowngradeThenDowngrade(t *testing.T) {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "false")
 	}
 	// downgrade to lower version
-	if err := testCtlDowngradeEnable(cx, lowerTv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, lowerTv.String())
 
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
@@ -461,11 +439,7 @@ func TestDowngradeFromSnapshot(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	putKVPairs(cx, kvs)
-
-	if err := testCtlDowngradeEnable(cx, tv.String(),
-		"The cluster is available to downgrade"); err != nil {
-		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
-	}
+	ctlDowngradeEnable(cx, tv.String())
 
 	for i := range epc.procs {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
@@ -561,7 +535,9 @@ func putKVPairs(cx ctlCtx, kvs []kv) {
 		}
 	}
 }
-func testCtlDowngradeEnable(cx ctlCtx, tv string, expected string) error {
+func ctlDowngradeEnable(cx ctlCtx, tv string) {
 	cmdArgs := append(cx.PrefixArgs(), "downgrade", "enable", tv)
-	return spawnWithExpect(cmdArgs, expected)
+	if err := spawnWithExpect(cmdArgs, "The cluster is available to downgrade"); err != nil {
+		cx.t.Fatalf("testCtlDowngradeEnable error (%v)", err)
+	}
 }

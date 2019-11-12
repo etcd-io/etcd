@@ -67,7 +67,7 @@ func TestDowngradeValidate(t *testing.T) {
 			"validate downgrade against one minor version higher",
 			oneMinorHigher.String(),
 			false,
-			"target version is higher than current cluster version",
+			"target version too high",
 		},
 		{
 			"validate downgrade against one minor version lower",
@@ -79,7 +79,7 @@ func TestDowngradeValidate(t *testing.T) {
 			"validate downgrade against two minor version lower",
 			twoMinorLower.String(),
 			false,
-			"target version violates the downgrade policy",
+			"target version too small",
 		},
 		{
 			"validate downgrade against one minor version lower with patch version 1",

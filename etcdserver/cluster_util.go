@@ -177,9 +177,9 @@ func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt 
 	return vers
 }
 
-// isDowngradeEnabled returns the downgrade enabled status in the given cluster.
-// If the local server or any other remote server has already enable downgrade, return true.
-// Otherwise, return false.
+// isDowngradeEnabled returns the downgrade status in the given cluster.
+// If the local server or any other remote server has already enable downgrade, return true and target version.
+// Otherwise, return false and nil.
 func isDowngradeEnabled(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) (bool, *semver.Version) {
 	members := cl.Members()
 	for _, m := range members {
@@ -202,8 +202,8 @@ func isDowngradeEnabled(lg *zap.Logger, cl *membership.RaftCluster, local types.
 	return false, nil
 }
 
-// getDowngradeStatus returns the downgrade enabled status of the given member
-// via its peerURLs. Returns the last error if it fails to get the version.
+// getDowngradeStatus returns the downgrade status of the given member
+// via its peerURLs. Returns the last error if it fails to get it.
 func getDowngradeStatus(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*membership.Downgrade, error) {
 	cc := &http.Client{
 		Transport: rt,
@@ -343,8 +343,9 @@ func decideDowngradeStatus(lg *zap.Logger, targetVersion *semver.Version, vers m
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-// When cluster downgrade support is enabled, set maximum cluster version to be 1 minor version higher to
-// to allow current local member to join a cluster at 1 minor version high.
+// When cluster downgrade support is enabled, check whether the local version matches downgrade target version.
+// If yes, set maximum cluster version to be 1 minor version higher to
+// allow current local member to join a cluster at 1 minor version high.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(lg, cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))

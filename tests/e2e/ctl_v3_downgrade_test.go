@@ -1,4 +1,4 @@
-// Copyright 2019d Authors
+// Copyright 2019 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,122 +17,170 @@ package e2e
 import (
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/version"
 )
 
-func TestCtlV3DowngradeValidate(t *testing.T)   { testCtl(t, ctlV3DowngradeValidate) }
-func TestCtlV3DowngradeValidateNoTLS(t *testing.T)   { testCtl(t, ctlV3DowngradeValidate, withCfg(configNoTLS)) }
-func TestCtlV3DowngradeValidateClientTLS(t *testing.T)   { testCtl(t, ctlV3DowngradeValidate, withCfg(configClientTLS)) }
+func TestCtlV3DowngradeValidate(t *testing.T) { testCtl(t, ctlV3DowngradeValidate) }
+func TestCtlV3DowngradeValidateNoTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeValidate, withCfg(configNoTLS))
+}
+func TestCtlV3DowngradeValidateClientTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeValidate, withCfg(configClientTLS))
+}
 
-func TestCtlV3DowngradeStart(t *testing.T)      { testCtl(t, ctlV3DowngradeStart) }
-func TestCtlV3DowngradeStartNoTLS(t *testing.T)      { testCtl(t, ctlV3DowngradeStart, withCfg(configNoTLS)) }
-func TestCtlV3DowngradeStartClientTLS(t *testing.T)      { testCtl(t, ctlV3DowngradeStart, withCfg(configClientTLS)) }
+func TestCtlV3DowngradeEnable(t *testing.T) { testCtl(t, ctlV3DowngradeEnable) }
+func TestCtlV3DowngradeEnableNoTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeEnable, withCfg(configNoTLS))
+}
+func TestCtlV3DowngradeEnableClientTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeEnable, withCfg(configClientTLS))
+}
 
-func TestCtlV3DowngradeCancel(t *testing.T)     { testCtl(t, ctlV3DowngradeCancel) }
-func TestCtlV3DowngradeCancelNoTLS(t *testing.T)     { testCtl(t, ctlV3DowngradeCancel, withCfg(configNoTLS)) }
-func TestCtlV3DowngradeCancelClientTLS(t *testing.T)     { testCtl(t, ctlV3DowngradeCancel, withCfg(configClientTLS)) }
+func TestCtlV3DowngradeCancel(t *testing.T) { testCtl(t, ctlV3DowngradeCancel) }
+func TestCtlV3DowngradeCancelNoTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeCancel, withCfg(configNoTLS))
+}
+func TestCtlV3DowngradeCancelClientTLS(t *testing.T) {
+	testCtl(t, ctlV3DowngradeCancel, withCfg(configClientTLS))
+}
 
 func ctlV3DowngradeValidate(cx ctlCtx) {
-	version.Cluster(version.Version)
+	cv := semver.Must(semver.NewVersion(version.Version))
+	oneMinorLower := semver.Version{Major: cv.Major, Minor: cv.Minor - 1}
+	oneMinorHigher := semver.Version{Major: cv.Major, Minor: cv.Minor + 1}
+	twoMinorLower := semver.Version{Major: cv.Major, Minor: cv.Minor - 2}
+
 	tests := []struct {
-		name   string
+		name string
 		args []string
 		want string
 	}{
 		{
 			name: "Success",
+			args: []string{"downgrade", "validate", oneMinorLower.String()},
+			want: "Validate succeeded",
+		},
+		{
+			name: "Failed with no target version input",
+			args: []string{"downgrade", "validate"},
+			want: "no target version input",
+		},
+		{
+			name: "Failed with too many arguments",
+			args: []string{"downgrade", "validate", "target_version", "3.4.0"},
+			want: "too many arguments",
+		},
+		{
+			name: "Failed with target version is current cluster version",
+			args: []string{"downgrade", "validate", cv.String()},
+			want: "target version is current cluster version",
+		},
+		{
+			name: "Failed with wrong version format",
 			args: []string{"downgrade", "validate", "3.4"},
-			want: "Validate succeeded",
-		},
-		{
-			name: "Failed with no target version input",
-			args: []string{"", "--prefix"},
-			want: "Validate failed, no target version input",
+			want: "wrong version format",
 		},
 		{
 			name: "Failed with target version out of range too small",
-			args: []string{"downgrade", "validate", "3.3"},
-			want: "Validate failed, target version too small",
+			args: []string{"downgrade", "validate", twoMinorLower.String()},
+			want: "target version too small",
 		},
 		{
-			name: "Failed with target version out of range larger than current cluster version ",
-			args: []string{"downgrade", "validate", "3.6"},
-			want: "Validate failed, target version larger than current cluster version",
-		},
-		{
-			name: "Failed with no target version input",
-			args: []string{"", "--prefix"},
-			want: "Validate failed, no target version input",
+			name: "Failed with target version out of range too high",
+			args: []string{"downgrade", "validate", oneMinorHigher.String()},
+			want: "target version too high",
 		},
 	}
 	for i, tt := range tests {
-		cmdArgs := append(cx.PrefixArgs(), tt.args...)
-		lines := make([]string, cx.cfg.clusterSize)
-		for j := range lines {
-			// TODO verify response
-			lines[j] = "Validated"
-		}
-		if err := spawnWithExpects(cmdArgs, lines...); err != nil {
-			cx.t.Fatalf("#%d: %v", i, err)
-		}
+		cx.t.Run(tt.name, func(t *testing.T) {
+			cmdArgs := append(cx.PrefixArgs(), tt.args...)
+			if err := spawnWithExpects(cmdArgs, tt.want); err != nil {
+				cx.t.Fatalf("#%d: %v", i, err)
+			}
+		})
 	}
 }
 
-func ctlV3DowngradeStart(cx ctlCtx) {
-	version.Cluster(version.Version)
+func ctlV3DowngradeEnable(cx ctlCtx) {
+	cv := semver.Must(semver.NewVersion(version.Version))
+	oneMinorLower := semver.Version{Major: cv.Major, Minor: cv.Minor - 1}
+	oneMinorHigher := semver.Version{Major: cv.Major, Minor: cv.Minor + 1}
+	twoMinorLower := semver.Version{Major: cv.Major, Minor: cv.Minor - 2}
+
 	tests := []struct {
-		name   string
+		name string
 		args []string
 		want string
 	}{
 		{
 			name: "Success",
-			args: []string{"downgrade", "start", "3.4"},
-			want: "Validate succeeded",
+			args: []string{"downgrade", "enable", oneMinorLower.String()},
+			want: "The cluster is available to downgrade",
 		},
 		{
 			name: "Failed with no target version input",
-			args: []string{"", "--prefix"},
-			want: "Validate failed, no target version input",
+			args: []string{"downgrade", "enable"},
+			want: "no target version input",
+		},
+		{
+			name: "Failed with too many arguments",
+			args: []string{"downgrade", "enable", "target_version", "3.4.0"},
+			want: "too many arguments",
+		},
+		{
+			name: "Failed with target version is current cluster version",
+			args: []string{"downgrade", "enable", cv.String()},
+			want: "target version is current cluster version",
+		},
+		{
+			name: "Failed with wrong version format",
+			args: []string{"downgrade", "enable", "3.4"},
+			want: "wrong version format",
 		},
 		{
 			name: "Failed with target version out of range too small",
-			args: []string{"downgrade", "start", "3.3"},
-			want: "Validate failed, target version too small",
+			args: []string{"downgrade", "enable", twoMinorLower.String()},
+			want: "target version too small",
 		},
 		{
-			name: "Failed with target version out of range larger than current cluster version ",
-			args: []string{"downgrade", "start", "3.6"},
-			want: "Validate failed, target version larger than current cluster version",
-		},
-		{
-			name: "Failed with no target version input",
-			args: []string{"", "--prefix"},
-			want: "Validate failed, no target version input",
+			name: "Failed with target version out of range too high",
+			args: []string{"downgrade", "enable", oneMinorHigher.String()},
+			want: "target version too high",
 		},
 	}
 	for i, tt := range tests {
-		cmdArgs := append(cx.PrefixArgs(), tt.args...)
-		lines := make([]string, cx.cfg.clusterSize)
-		for j := range lines {
-			// TODO verify response
-			lines[j] = "Started"
-		}
-		if err := spawnWithExpects(cmdArgs, lines...); err != nil {
-			cx.t.Fatalf("#%d: %v", i, err)
-		}
+		cx.t.Run(tt.name, func(t *testing.T) {
+			cmdArgs := append(cx.PrefixArgs(), tt.args...)
+			if err := spawnWithExpects(cmdArgs, tt.want); err != nil {
+				cx.t.Fatalf("#%d: %v", i, err)
+			}
+		})
 	}
 }
 
-func ctlV3DowngradeCancel(cx ctlCtx)  {
-	cmdArgs := append(cx.PrefixArgs(), "downgrade", "cancel")
-	lines := make([]string, cx.cfg.clusterSize)
-	for i := range lines {
-		// TODO verify response
-		lines[i] = "Canceled"
+func ctlV3DowngradeCancel(cx ctlCtx) {
+	cv := semver.Must(semver.NewVersion(version.Version))
+	oneMinorLower := semver.Version{Major: cv.Major, Minor: cv.Minor - 1}
+
+	cmdArgsCancel := append(cx.PrefixArgs(), "downgrade", "cancel")
+	cmdArgsCancelFail := append(cx.PrefixArgs(), "downgrade", "cancel", "3.4.0")
+
+	cmdArgsEnable := append(cx.PrefixArgs(), "downgrade", "enable", oneMinorLower.String())
+
+	if err := spawnWithExpects(cmdArgsCancel, "the cluster is not downgrading"); err != nil {
+		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpects(cmdArgs, lines...); err != nil {
-		cx.t.Fatalf("#%d: %v", err)
+
+	if err := spawnWithExpects(cmdArgsEnable, "The cluster is available to downgrade"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := spawnWithExpects(cmdArgsCancelFail, "too many arguments"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := spawnWithExpects(cmdArgsCancel, "Cancelled"); err != nil {
+		cx.t.Fatal(err)
 	}
 }
