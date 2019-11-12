@@ -433,8 +433,8 @@ func (r *raft) send(m pb.Message) {
 
 // sendAppend sends an append RPC with new entries (if any) and the
 // current commit index to the given peer.
-func (r *raft) sendAppend(to uint64) {
-	r.maybeSendAppend(to, true)
+func (r *raft) sendAppend(to uint64) bool {
+	return r.maybeSendAppend(to, true)
 }
 
 // maybeSendAppend sends an append RPC with new entries to the given peer,
@@ -526,12 +526,21 @@ func (r *raft) sendHeartbeat(to uint64, ctx []byte) {
 // bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
+	bcastMsg := true
 	r.prs.Visit(func(id uint64, _ *tracker.Progress) {
 		if id == r.id {
 			return
 		}
-		r.sendAppend(id)
+		if !r.sendAppend(id) && bcastMsg {
+			bcastMsg = false
+		}
 	})
+	// When there is no pending Readindex, MsgAppend will do the
+	// work of MsgHeartbeat, so we can reset heartbeat_elapsed
+	// here to reduce MsgHeartbeat
+	if bcastMsg && len(r.readOnly.lastPendingRequestCtx()) == 0 {
+		r.heartbeatElapsed = 0
+	}
 }
 
 // bcastHeartbeat sends RPC, without entries to all the peers.
