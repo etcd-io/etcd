@@ -988,6 +988,33 @@
         }
       }
     },
+    "/v3/maintenance/downgrade": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Downgrade requests downgrade, cancel downgrade on the cluster version.",
+        "operationId": "Downgrade",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeResponse"
+            }
+          }
+        }
+      }
+    },
     "/v3/maintenance/hash": {
       "post": {
         "tags": [
@@ -1154,6 +1181,15 @@
         "MOD",
         "VALUE",
         "LEASE"
+      ]
+    },
+    "DowngradeRequestDowngradeAction": {
+      "type": "string",
+      "default": "VALIDATE",
+      "enum": [
+        "VALIDATE",
+        "ENABLE",
+        "CANCEL"
       ]
     },
     "EventEventType": {
@@ -1705,6 +1741,31 @@
           "items": {
             "$ref": "#/definitions/mvccpbKeyValue"
           }
+        }
+      }
+    },
+    "etcdserverpbDowngradeRequest": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "action is the kind of downgrade request to issue. The action may\nVALIDATE the target version, DOWNGRADE the cluster version,\nor CANCEL the current downgrading job.",
+          "$ref": "#/definitions/DowngradeRequestDowngradeAction"
+        },
+        "version": {
+          "description": "version is the target version to downgrade.",
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbDowngradeResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "version": {
+          "description": "version is the current cluster version.",
+          "type": "string"
         }
       }
     },
