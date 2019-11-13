@@ -19,9 +19,9 @@ import (
 	"os"
 	"testing"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"
 )

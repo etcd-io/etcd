@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 func TestCtlV3MemberList(t *testing.T)          { testCtl(t, memberListTest) }

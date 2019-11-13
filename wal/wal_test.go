@@ -27,10 +27,10 @@ import (
 	"regexp"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/pbutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal/walpb"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/pbutil"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )

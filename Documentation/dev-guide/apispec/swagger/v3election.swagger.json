@@ -4,10 +4,6 @@
     "title": "etcdserver/api/v3election/v3electionpb/v3election.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
