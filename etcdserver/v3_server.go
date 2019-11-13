@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/gogo/protobuf/proto"
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
@@ -31,8 +32,6 @@ import (
 	"go.etcd.io/etcd/mvcc"
 	"go.etcd.io/etcd/pkg/traceutil"
 	"go.etcd.io/etcd/raft"
-
-	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 )
 
@@ -812,7 +811,7 @@ func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb
 	case pb.DowngradeRequest_VALIDATE:
 		return s.downgradeValidate(ctx, r.Version)
 	case pb.DowngradeRequest_ENABLE:
-		return s.downgradeEnable(ctx, r.Version)
+		return s.downgradeEnable(ctx, r)
 	case pb.DowngradeRequest_CANCEL:
 		return s.downgradeCancel(ctx)
 	}
@@ -861,4 +860,44 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 		return resp, err
 	}
 	return resp, nil
+}
+
+func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	// validate downgrade capability before starting downgrade
+	v := r.Version
+	if resp, err := s.downgradeValidate(ctx, v); err != nil {
+		return resp, err
+	}
+
+	targetVersion, err := semver.NewVersion(v)
+	if err != nil {
+		return nil, fmt.Errorf("wrong version format: %v", err)
+	}
+	// cluster version only keeps major.minor, remove patch version
+	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
+	r.Version = targetVersion.String()
+
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Downgrade: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.DowngradeResponse), nil
+}
+
+func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	if err := s.linearizableReadNotify(ctx); err != nil {
+		return nil, err
+	}
+
+	downgradeInfo := s.cluster.Downgrade()
+	if !downgradeInfo.Enabled {
+		return nil, errors.New("the cluster is not downgrading")
+	}
+
+	resp, err := s.raftRequest(ctx,
+		pb.InternalRaftRequest{Downgrade: &pb.DowngradeRequest{Action: pb.DowngradeRequest_CANCEL}})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.DowngradeResponse), nil
 }

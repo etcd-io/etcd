@@ -388,7 +388,6 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 
-	case raftpb.ConfChangeDowngrade:
 	default:
 		if c.lg != nil {
 			c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))

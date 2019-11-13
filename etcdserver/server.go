@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"expvar"
 	"fmt"
 	"math"
@@ -2392,17 +2391,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if m.ID != s.id {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
-
-	case raftpb.ConfChangeDowngrade:
-		d := &membership.Downgrade{}
-		if err := json.Unmarshal(cc.Context, d); err != nil {
-			if lg != nil {
-				lg.Panic("failed to unmarshal downgrade", zap.Error(err))
-			} else {
-				plog.Panicf("unmarshal downgrade should never fail: %v", err)
-			}
-		}
-		s.cluster.UpdateDowngrade(d)
 	}
 	return false, nil
 }
@@ -2774,64 +2762,4 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 // raftStatus returns the raft status of this etcd node.
 func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
-}
-
-func (s *EtcdServer) downgradeEnable(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
-	// validate downgrade capability before starting downgrade
-	if resp, err := s.downgradeValidate(ctx, v); err != nil {
-		return resp, err
-	}
-
-	targetVersion, err := semver.NewVersion(v)
-	if err != nil {
-		return nil, fmt.Errorf("wrong version format: %v", err)
-	}
-	// cluster version only keeps major.minor, remove patch version
-	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
-	d := membership.Downgrade{Enabled: true, TargetVersion: targetVersion}
-
-	b, err := json.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-
-	cc := raftpb.ConfChange{
-		Type:    raftpb.ConfChangeDowngrade,
-		Context: b,
-	}
-
-	if _, err = s.configure(ctx, cc); err != nil {
-		return nil, err
-	}
-	resp := &pb.DowngradeResponse{Version: s.ClusterVersion().String()}
-	return resp, nil
-}
-
-func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
-	if err := s.linearizableReadNotify(ctx); err != nil {
-		return nil, err
-	}
-
-	downgradeInfo := s.cluster.Downgrade()
-	if !downgradeInfo.Enabled {
-		return nil, errors.New("the cluster is not downgrading")
-	}
-
-	d := membership.Downgrade{Enabled: false}
-
-	b, err := json.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-
-	cc := raftpb.ConfChange{
-		Type:    raftpb.ConfChangeDowngrade,
-		Context: b,
-	}
-
-	if _, err = s.configure(ctx, cc); err != nil {
-		return nil, err
-	}
-	resp := &pb.DowngradeResponse{Version: s.ClusterVersion().String()}
-	return resp, nil
 }

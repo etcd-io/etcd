@@ -429,14 +429,6 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 			},
 			ErrIDNotFound,
 		},
-		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeDowngrade,
-				NodeID:  1,
-				Context: ctx1,
-			},
-			nil,
-		},
 	}
 	for i, tt := range tests {
 		err := cl.ValidateConfigurationChange(tt.cc)

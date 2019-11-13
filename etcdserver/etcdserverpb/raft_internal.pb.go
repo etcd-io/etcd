@@ -68,6 +68,7 @@ type InternalRaftRequest struct {
 	AuthRoleRevokePermission *AuthRoleRevokePermissionRequest          `protobuf:"bytes,1204,opt,name=auth_role_revoke_permission,json=authRoleRevokePermission" json:"auth_role_revoke_permission,omitempty"`
 	ClusterVersionSet        *membershippb.ClusterVersionSetRequest    `protobuf:"bytes,1300,opt,name=cluster_version_set,json=clusterVersionSet" json:"cluster_version_set,omitempty"`
 	ClusterMemberAttrSet     *membershippb.ClusterMemberAttrSetRequest `protobuf:"bytes,1301,opt,name=cluster_member_attr_set,json=clusterMemberAttrSet" json:"cluster_member_attr_set,omitempty"`
+	Downgrade                *DowngradeRequest                				 `protobuf:"bytes,1302,opt,name=downgrade" json:"downgrade,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequest{} }
@@ -464,6 +465,18 @@ func (m *InternalRaftRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n27
 	}
+	if m.Downgrade != nil {
+		dAtA[i] = 0xa2
+		i++
+		dAtA[i] = 0x51
+		i++
+		i = encodeVarintRaftInternal(dAtA, i, uint64(m.Downgrade.Size()))
+		n28, err := m.Downgrade.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n28
+	}
 	if m.ClusterVersionSet != nil {
 		dAtA[i] = 0xa2
 		i++
@@ -682,6 +695,10 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.AuthRoleRevokePermission != nil {
 		l = m.AuthRoleRevokePermission.Size()
+		n += 2 + l + sovRaftInternal(uint64(l))
+	}
+	if m.Downgrade != nil {
+		l = m.Downgrade.Size()
 		n += 2 + l + sovRaftInternal(uint64(l))
 	}
 	if m.ClusterVersionSet != nil {
@@ -1851,6 +1868,39 @@ func (m *InternalRaftRequest) Unmarshal(dAtA []byte) error {
 				m.ClusterMemberAttrSet = &membershippb.ClusterMemberAttrSetRequest{}
 			}
 			if err := m.ClusterMemberAttrSet.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 1302:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Downgrade", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftInternal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Downgrade == nil {
+				m.Downgrade = &DowngradeRequest{}
+			}
+			if err := m.Downgrade.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
