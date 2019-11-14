@@ -53,8 +53,6 @@ func HandleBasic(mux *http.ServeMux, server etcdserver.ServerPeer) {
 
 	HandleMetricsHealth(mux, server)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
-	mux.Handle(downgradeStatusPath, newDowngradeStatusHandler(nil, server))
-	mux.Handle(downgradeEnabledPath, newDowngradeEnabledHandler(nil, server.Cluster()))
 }
 
 func versionHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {

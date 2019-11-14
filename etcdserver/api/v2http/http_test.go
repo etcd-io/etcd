@@ -41,7 +41,6 @@ type fakeCluster struct {
 }
 
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
-func (c *fakeCluster) LocalID() types.ID    { return types.ID(c.localID) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*membership.Member {
 	var ms membership.MembersByID
@@ -53,7 +52,6 @@ func (c *fakeCluster) Members() []*membership.Member {
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
-func (c *fakeCluster) Downgrade() *membership.Downgrade      { return nil }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.

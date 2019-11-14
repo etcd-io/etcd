@@ -26,7 +26,6 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver"
 	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
@@ -47,7 +46,6 @@ type fakeCluster struct {
 }
 
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
-func (c *fakeCluster) LocalID() types.ID    { return types.ID(c.localID) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*membership.Member {
 	var ms membership.MembersByID
@@ -59,17 +57,9 @@ func (c *fakeCluster) Members() []*membership.Member {
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
-func (c *fakeCluster) Downgrade() *membership.Downgrade      { return c.downgrade }
-
-type fakeStats struct{}
-
-func (s *fakeStats) SelfStats() []byte   { return nil }
-func (s *fakeStats) LeaderStats() []byte { return nil }
-func (s *fakeStats) StoreStats() []byte  { return nil }
 
 type fakeServer struct {
-	cluster api.Cluster
-	fakeStats
+	cluster *fakeCluster
 }
 
 func (s *fakeServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
@@ -88,16 +78,7 @@ func (s *fakeServer) ClusterVersion() *semver.Version { return nil }
 func (s *fakeServer) Cluster() api.Cluster            { return s.cluster }
 func (s *fakeServer) Alarms() []*pb.AlarmMember       { return nil }
 
-func (s *fakeServer) Leader() types.ID { return s.cluster.Members()[0].ID }
-
-func (s *fakeServer) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
-	return etcdserver.Response{}, nil
-}
-
-func (s *fakeServer) ClientCertAuthEnabled() bool { return false }
-
-func (s *fakeServer) LeaseHandler() http.Handler { return nil }
-func (s *fakeServer) RaftHandler() http.Handler  { return fakeRaftHandler }
+func (s *fakeServer) DowngradeInfo() *membership.Downgrade { return s.cluster.downgrade }
 
 var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("test data"))
@@ -106,7 +87,7 @@ var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.
 func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -254,7 +235,7 @@ func TestServeMemberPromoteFails(t *testing.T) {
 
 // TestNewPeerHandlerOnMembersPromotePrefix verifies the request with members promote prefix is routed correctly
 func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -302,66 +283,6 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 	}
 }
 
-// TestServeDowngradeStatusGet verifies the request to get the downgrade status of the cluster
-func TestServeDowngradeStatusGet(t *testing.T) {
-	tv := semver.Version{Major: 3, Minor: 4}
-	ds := []membership.Downgrade{{Enabled: true, TargetVersion: &tv}, {Enabled: false}}
-	memb1 := membership.Member{ID: 1, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
-	memb2 := membership.Member{ID: 2, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
-	cluster := &fakeCluster{
-		id:        1,
-		downgrade: &ds[0],
-		members:   map[uint64]*membership.Member{1: &memb1, 2: &memb2},
-	}
-	h := newDowngradeStatusHandler(zap.NewExample(), &fakeServer{cluster: cluster})
-
-	var wbodys [2]string
-	for i, d := range ds {
-		b, err := json.Marshal(&d)
-		if err != nil {
-			t.Fatal(err)
-		}
-		wbodys[i] = string(b)
-	}
-
-	tests := []struct {
-		path    string
-		localID uint64
-		wcode   int
-		wct     string
-		wbody   string
-	}{
-		{downgradeStatusPath, 1, http.StatusOK, "application/json", wbodys[0]},
-		{downgradeStatusPath, 2, http.StatusOK, "application/json", wbodys[1]},
-		{path.Join(downgradeStatusPath, "bad"), 2, http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
-	}
-
-	for i, tt := range tests {
-		cluster.localID = tt.localID
-		req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rw := httptest.NewRecorder()
-		h.ServeHTTP(rw, req)
-
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
-		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
-			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
-		}
-		if rw.Body.String() != tt.wbody {
-			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
-		}
-		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-		wcid := cluster.ID().String()
-		if gcid != wcid {
-			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
-		}
-	}
-}
-
 // TestServeDowngradeEnabledGet verifies the request to get local downgrade enabled status
 func TestServeDowngradeEnabledGet(t *testing.T) {
 	d := &membership.Downgrade{Enabled: true}
@@ -369,44 +290,49 @@ func TestServeDowngradeEnabledGet(t *testing.T) {
 		id:        1,
 		downgrade: d,
 	}
-	h := newDowngradeEnabledHandler(nil, cluster)
+	s := fakeServer{cluster}
+	h := newDowngradeEnabledHandler(nil, cluster, &s)
 	b, err := json.Marshal(d.Enabled)
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := string(b)
+	str := string(b)
 
 	tests := []struct {
+		name  string
 		path  string
 		wcode int
 		wct   string
 		wbody string
 	}{
-		{downgradeEnabledPath, http.StatusOK, "application/json", s},
-		{path.Join(downgradeEnabledPath, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
+		{"Succeeded", downgradeEnabledPath, http.StatusOK, "application/json", str},
+		{"Failed with bad path", path.Join(downgradeEnabledPath, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
 	}
 
 	for i, tt := range tests {
-		req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rw := httptest.NewRecorder()
-		h.ServeHTTP(rw, req)
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rw := httptest.NewRecorder()
+			h.ServeHTTP(rw, req)
 
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
-		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
-			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
-		}
-		if rw.Body.String() != tt.wbody {
-			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
-		}
-		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-		wcid := cluster.ID().String()
-		if gcid != wcid {
-			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
-		}
+			if rw.Code != tt.wcode {
+				t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+			}
+			if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+				t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
+			}
+			if rw.Body.String() != tt.wbody {
+				t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+			}
+			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+			wcid := cluster.ID().String()
+			if gcid != wcid {
+				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+			}
+		})
+
 	}
 }

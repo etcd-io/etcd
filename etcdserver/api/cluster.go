@@ -25,8 +25,6 @@ import (
 type Cluster interface {
 	// ID returns the cluster ID
 	ID() types.ID
-	// LocalID returns the local server ID
-	LocalID() types.ID
 	// ClientURLs returns an aggregate set of all URLs on which this
 	// cluster is listening for client requests
 	ClientURLs() []string
@@ -37,6 +35,4 @@ type Cluster interface {
 	Member(id types.ID) *membership.Member
 	// Version is the cluster-wide minimum major.minor version.
 	Version() *semver.Version
-	// Downgrade is the downgrade information of the cluster
-	Downgrade() *membership.Downgrade
 }

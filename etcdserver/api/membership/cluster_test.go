@@ -626,10 +626,9 @@ func TestNodeToMember(t *testing.T) {
 
 func newTestCluster(membs []*Member) *RaftCluster {
 	c := &RaftCluster{
-		lg:        zap.NewExample(),
-		members:   make(map[types.ID]*Member),
-		removed:   make(map[types.ID]bool),
-		downgrade: &Downgrade{Enabled: false},
+		lg:      zap.NewExample(),
+		members: make(map[types.ID]*Member),
+		removed: make(map[types.ID]bool),
 	}
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -884,54 +883,70 @@ func TestMustDetectDowngrade(t *testing.T) {
 	downgradeDisabled := &Downgrade{Enabled: false}
 
 	tests := []struct {
-		currentVersion *semver.Version
+		name           string
+		clusterVersion *semver.Version
 		downgrade      *Downgrade
 		success        bool
 		message        string
 	}{
 		{
+			"Succeeded when downgrade is disabled and cluster version is nil",
 			nil,
 			downgradeDisabled,
 			true,
 			"",
 		},
 		{
+			"Succeeded when downgrade is disabled and cluster version is one minor lower",
 			oneMinorLower,
 			downgradeDisabled,
 			true,
 			"",
 		},
 		{
+			"Failed when downgrade is disabled and server version is lower than determined cluster version ",
 			oneMinorHigher,
 			downgradeDisabled,
 			false,
 			"invalid downgrade; server version is lower than determined cluster version",
 		},
 		{
+			"Succeeded when downgrade is disabled and server version is cluster version",
 			lv,
 			downgradeDisabled,
 			true,
 			"",
 		},
 		{
+			"Succeeded when downgrade is enabled and cluster version is nil",
 			nil,
 			downgradeEnabledLowerVersion,
-			false,
-			"invalid downgrade; server version does not match the downgrade target version",
+			true,
+			"",
 		},
 		{
+			"Failed when downgrade is enabled and local version is out of range and cluster version is nil",
+			nil,
+			downgradeEnabledHigherVersion,
+			false,
+			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
+		},
+		{
+			"Succeeded when downgrade is enabled and server version is cluster version",
 			lv,
 			downgradeEnabledLowerVersion,
-			false,
-			"invalid downgrade; server version does not match the downgrade target version",
+			true,
+			"cluster is downgrading to target version",
 		},
 		{
+			"Failed when downgrade is enabled and local version is out of range",
 			lv,
 			downgradeEnabledHigherVersion,
 			false,
-			"invalid downgrade; server version does not match the downgrade target version",
+			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
 		},
 		{
+			"Succeeded when downgrade is enabled and server version is target version",
 			lv,
 			downgradeEnabledEqualVersion,
 			true,
@@ -949,39 +964,45 @@ func TestMustDetectDowngrade(t *testing.T) {
 		lcfg.ErrorOutputPaths = []string{logPath}
 		lg, _ := lcfg.Build()
 
-		mustDetectDowngrade(lg, tests[iint].currentVersion, tests[iint].downgrade)
+		mustDetectDowngrade(lg, tests[iint].clusterVersion, tests[iint].downgrade)
 		return
 	}
 
 	for i, tt := range tests {
-		logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-must-detect-downgrade-%d", i))
-		defer os.RemoveAll(logPath)
+		t.Run(tt.name, func(t *testing.T) {
+			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-must-detect-downgrade-%d", i))
+			defer os.RemoveAll(logPath)
 
-		cmd := exec.Command(os.Args[0], "-test.run=TestMustDetectDowngrade")
-		cmd.Env = append(os.Environ(), fmt.Sprintf("DETECT_DOWNGRADE=%d", i))
-		if err := cmd.Start(); err != nil {
-			t.Fatal(err)
-		}
-
-		data, err := ioutil.ReadFile(logPath)
-		if err == nil {
-			t.Log(len(data))
-			if !bytes.Contains(data, []byte(tt.message)) {
-				t.Errorf("Expected to find %v in log", tt.message)
+			cmd := exec.Command(os.Args[0], "-test.run=TestMustDetectDowngrade")
+			cmd.Env = append(os.Environ(), fmt.Sprintf("DETECT_DOWNGRADE=%d", i))
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
 			}
-		}
 
-		err = cmd.Wait()
-		if !tt.success {
-			e, ok := err.(*exec.ExitError)
-			if !ok || e.Success() {
-				t.Errorf("Expected exit with status 1; Got %v", err)
+			errCmd := cmd.Wait()
+
+			data, err := ioutil.ReadFile(logPath)
+			if err == nil {
+				t.Log(len(data))
+				if !bytes.Contains(data, []byte(tt.message)) {
+					t.Errorf("Expected to find %v in log", tt.message)
+					t.Log(string(data))
+				}
+			} else {
+				t.Log(err)
 			}
-		}
 
-		if tt.success && err != nil {
-			t.Errorf("Expected not failure; Got %v", err)
-		}
+			if !tt.success {
+				e, ok := errCmd.(*exec.ExitError)
+				if !ok || e.Success() {
+					t.Errorf("Expected exit with status 1; Got %v", err)
+				}
+			}
+
+			if tt.success && errCmd != nil {
+				t.Errorf("Expected not failure; Got %v", err)
+			}
+		})
 	}
 }
 
@@ -1061,12 +1082,12 @@ func TestGetDowngrade(t *testing.T) {
 			nil,
 		},
 		{
-			&RaftCluster{downgrade: &Downgrade{Enabled: false}},
+			&RaftCluster{downgradeInfo: &Downgrade{Enabled: false}},
 			false,
 			nil,
 		},
 		{
-			&RaftCluster{downgrade: &Downgrade{Enabled: true, TargetVersion: semver.Must(semver.NewVersion("3.4.0"))}},
+			&RaftCluster{downgradeInfo: &Downgrade{Enabled: true, TargetVersion: semver.Must(semver.NewVersion("3.4.0"))}},
 			true,
 			semver.Must(semver.NewVersion("3.4.0")),
 		},

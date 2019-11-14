@@ -177,34 +177,61 @@ func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt 
 	return vers
 }
 
-// isDowngradeEnabled returns the downgrade status in the given cluster.
-// If the local server or any other remote server has already enable downgrade, return true and target version.
-// Otherwise, return false and nil.
-func isDowngradeEnabled(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) (bool, *semver.Version) {
+// decideAllowedVersionRange decides the available version range of the cluster that local server can join in;
+// if the downgrade enable status of the cluster is not decided(some server allows downgrade some not),
+// the version window is [localVersion, localVersion];
+// if the downgrade enable status is true, the version window is [localVersion, oneMinorHigher]
+// if the downgrade is not enabled, the version window is [MinClusterVersion, localVersion]
+func decideAllowedVersionRange(enables []bool) (minV *semver.Version, maxV *semver.Version) {
+	minV = semver.Must(semver.NewVersion(version.MinClusterVersion))
+	maxV = semver.Must(semver.NewVersion(version.Version))
+	maxV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
+
+	if len(enables) == 0 {
+		return minV, maxV
+	}
+	enable := enables[0]
+	for _, e := range enables {
+		// if the downgrade enable status of the cluster is not decided,
+		// the local server can only join into a cluster with exactly same version
+		if e != enable {
+			minV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
+			return minV, maxV
+		}
+	}
+
+	if enable {
+		minV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
+		maxV.Minor = maxV.Minor + 1
+	}
+	return minV, maxV
+}
+
+func getDowngradableOfCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) []bool {
 	members := cl.Members()
+	var enables []bool
 	for _, m := range members {
 		if m.ID == local {
 			continue
 		}
-		d, err := getDowngradeStatus(lg, m, rt)
+		enable, err := getDowngradable(lg, m, rt)
 		if err != nil {
 			if lg != nil {
 				lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
 			} else {
 				plog.Warningf("cannot get the downgrade enabled status of member %s (%v)", m.ID, err)
 			}
+			enables = append(enables, false)
 		} else {
-			if d.Enabled {
-				return true, d.TargetVersion
-			}
+			enables = append(enables, enable)
 		}
 	}
-	return false, nil
+	return enables
 }
 
 // getDowngradeStatus returns the downgrade status of the given member
 // via its peerURLs. Returns the last error if it fails to get it.
-func getDowngradeStatus(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*membership.Downgrade, error) {
+func getDowngradable(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (bool, error) {
 	cc := &http.Client{
 		Transport: rt,
 	}
@@ -214,7 +241,7 @@ func getDowngradeStatus(lg *zap.Logger, m *membership.Member, rt http.RoundTripp
 	)
 
 	for _, u := range m.PeerURLs {
-		addr := u + "/downgrade"
+		addr := u + "/downgrade/enable"
 		resp, err = cc.Get(addr)
 		if err != nil {
 			if lg != nil {
@@ -245,8 +272,8 @@ func getDowngradeStatus(lg *zap.Logger, m *membership.Member, rt http.RoundTripp
 			}
 			continue
 		}
-		var d membership.Downgrade
-		if err = json.Unmarshal(b, &d); err != nil {
+		var enable bool
+		if err = json.Unmarshal(b, &enable); err != nil {
 			if lg != nil {
 				lg.Warn(
 					"failed to unmarshal response",
@@ -259,9 +286,9 @@ func getDowngradeStatus(lg *zap.Logger, m *membership.Member, rt http.RoundTripp
 			}
 			continue
 		}
-		return &d, nil
+		return enable, nil
 	}
-	return nil, err
+	return false, err
 }
 
 // decideClusterVersion decides the cluster version based on the versions map.
@@ -340,37 +367,12 @@ func decideDowngradeStatus(lg *zap.Logger, targetVersion *semver.Version, vers m
 // isCompatibleWithCluster return true if the local member has a compatible version with
 // the current running cluster.
 // The version is considered as compatible when at least one of the other members in the cluster has a
-// cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
+// cluster version in the range of [MinV, MaxV] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-// When cluster downgrade support is enabled, check whether the local version matches downgrade target version.
-// If yes, set maximum cluster version to be 1 minor version higher to
-// allow current local member to join a cluster at 1 minor version high.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(lg, cl, local, rt)
-	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
-	maxV := semver.Must(semver.NewVersion(version.Version))
-
-	allowedClusterMinor := maxV.Minor
-	if enabled, tv := isDowngradeEnabled(lg, cl, local, rt); enabled {
-		if tv.Major != maxV.Major || tv.Minor != maxV.Minor {
-			if lg != nil {
-				lg.Warn(
-					"server version does not match the downgrade target version",
-					zap.String("downgrade-target-version", tv.String()),
-				)
-			} else {
-				plog.Errorf("server version does not match the downgrade target version (%v)", tv.String())
-			}
-			return false
-		}
-		// server can join into 1 minor version higher cluster if the cluster enables downgrade
-		allowedClusterMinor = maxV.Minor + 1
-	}
-	maxV = &semver.Version{
-		Major: maxV.Major,
-		Minor: allowedClusterMinor,
-	}
+	minV, maxV := decideAllowedVersionRange(getDowngradableOfCluster(lg, cl, local, rt))
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }
 

@@ -877,6 +877,18 @@ func (s *EtcdServer) LeaseHandler() http.Handler {
 
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
 
+type ServerPeerHTTP interface {
+	ServerPeer
+	ServerDowngradeHTTP
+}
+
+type ServerDowngradeHTTP interface {
+	// DowngradeInfo is the downgrade information of the cluster
+	DowngradeInfo() *membership.Downgrade
+}
+
+func (s *EtcdServer) DowngradeInfo() *membership.Downgrade { return s.cluster.Downgrade() }
+
 // Process takes a raft message and applies it to the server's raft state
 // machine, respecting any timeout of the given context.
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {

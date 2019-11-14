@@ -34,23 +34,18 @@ import (
 const (
 	peerMembersPath         = "/members"
 	peerMemberPromotePrefix = "/members/promote/"
-	downgradeStatusPath     = "/downgrade"
 	downgradeEnabledPath    = "/downgrade/enabled"
 )
 
 // NewPeerHandler generates an http.Handler to handle etcd peer requests.
-func NewPeerHandler(lg *zap.Logger, s etcdserver.ServerPeer) http.Handler {
-	return newPeerHandler(lg, s, s.RaftHandler(), s.LeaseHandler())
+func NewPeerHandler(lg *zap.Logger, s etcdserver.ServerPeerHTTP) http.Handler {
+	return newPeerHandler(lg, s, s.RaftHandler(), s.LeaseHandler(), s)
 }
 
-func newPeerHandler(lg *zap.Logger, s etcdserver.ServerPeer, raftHandler http.Handler, leaseHandler http.Handler) http.Handler {
+func newPeerHandler(lg *zap.Logger, s etcdserver.Server, raftHandler http.Handler, leaseHandler http.Handler, ds etcdserver.ServerDowngradeHTTP) http.Handler {
 	peerMembersHandler := newPeerMembersHandler(lg, s.Cluster())
 	peerMemberPromoteHandler := newPeerMemberPromoteHandler(lg, s)
-	// downgradeStatusHandler handles the request to get the downgrade status in a cluster;
-	// only leader will return its downgrade status
-	downgradeStatusHandler := newDowngradeStatusHandler(lg, s)
-	// downgradeEnabledHandler handles the request to get local downgrade enabled status
-	downgradeEnabledHandler := newDowngradeEnabledHandler(lg, s.Cluster())
+	downgradeEnabledHandler := newDowngradeEnabledHandler(lg, s.Cluster(), ds)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
@@ -58,7 +53,6 @@ func newPeerHandler(lg *zap.Logger, s etcdserver.ServerPeer, raftHandler http.Ha
 	mux.Handle(rafthttp.RaftPrefix+"/", raftHandler)
 	mux.Handle(peerMembersPath, peerMembersHandler)
 	mux.Handle(peerMemberPromotePrefix, peerMemberPromoteHandler)
-	mux.Handle(downgradeStatusPath, downgradeStatusHandler)
 	mux.Handle(downgradeEnabledPath, downgradeEnabledHandler)
 	if leaseHandler != nil {
 		mux.Handle(leasehttp.LeasePrefix, leaseHandler)
@@ -94,30 +88,18 @@ type peerMemberPromoteHandler struct {
 	server  etcdserver.Server
 }
 
-func newDowngradeStatusHandler(lg *zap.Logger, s etcdserver.ServerPeer) http.Handler {
-	return &downgradeStatusHandler{
-		lg:      lg,
-		cluster: s.Cluster(),
-		server:  s,
-	}
-}
-
-type downgradeStatusHandler struct {
-	lg      *zap.Logger
-	cluster api.Cluster
-	server  etcdserver.ServerPeer
-}
-
-func newDowngradeEnabledHandler(lg *zap.Logger, cluster api.Cluster) http.Handler {
+func newDowngradeEnabledHandler(lg *zap.Logger, cluster api.Cluster, s etcdserver.ServerDowngradeHTTP) http.Handler {
 	return &downgradeEnabledHandler{
 		lg:      lg,
 		cluster: cluster,
+		server:  s,
 	}
 }
 
 type downgradeEnabledHandler struct {
 	lg      *zap.Logger
 	cluster api.Cluster
+	server  etcdserver.ServerDowngradeHTTP
 }
 
 func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -193,34 +175,6 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (h *downgradeStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r, "GET") {
-		return
-	}
-	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
-
-	if r.URL.Path != downgradeStatusPath {
-		http.Error(w, "bad path", http.StatusBadRequest)
-		return
-	}
-	downgrade := membership.Downgrade{Enabled: false}
-	// get leader's downgrade status
-	if h.server.Leader() == h.cluster.LocalID() {
-		downgrade = *h.cluster.Downgrade()
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	b, err := json.Marshal(downgrade)
-	if err != nil {
-		if h.lg != nil {
-			h.lg.Warn("failed to marshal downgrade to json", zap.Error(err))
-		} else {
-			plog.Warningf("failed to marshal downgrade to json (%v)", err)
-		}
-	}
-	w.Write(b)
-}
-
 func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, "GET") {
 		return
@@ -232,7 +186,7 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	enabled := h.cluster.Downgrade().Enabled
+	enabled := h.server.DowngradeInfo().Enabled
 	w.Header().Set("Content-Type", "application/json")
 	b, err := json.Marshal(enabled)
 	if err != nil {

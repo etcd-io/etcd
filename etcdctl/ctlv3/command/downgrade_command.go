@@ -38,7 +38,7 @@ func NewDowngradeCommand() *cobra.Command {
 func NewDowngradeValidateCommand() *cobra.Command {
 	cc := &cobra.Command{
 		Use:   "validate <targetVersion>",
-		Short: "Validate the downgrade capability against target version",
+		Short: "Validate if the cluster can be downgraded to target version",
 		Run:   downgradeValidateCommandFunc,
 	}
 	return cc
