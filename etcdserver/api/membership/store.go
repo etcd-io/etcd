@@ -90,34 +90,37 @@ func mustSaveDowngradeToBackend(be backend.Backend, downgrade *Downgrade) {
 
 func downgradeFromBackend(be backend.Backend) *Downgrade {
 	dkey := backendDowngradeKey()
-	tx := be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	_, vs := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+	if be != nil {
+		tx := be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
+		_, vs := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
 
-	if len(vs) != 0 {
-		var d Downgrade
-		if err := json.Unmarshal(vs[0], &d); err != nil {
-			plog.Panicf("fail to unmarshal downgrade: %v", err)
+		if len(vs) != 0 {
+			var d Downgrade
+			if err := json.Unmarshal(vs[0], &d); err != nil {
+				plog.Panicf("fail to unmarshal downgrade: %v", err)
+			}
+			return &d
 		}
-		return &d
 	}
 	return nil
 }
 
 func clusterVersionFromBackend(be backend.Backend) *semver.Version {
 	ckey := backendClusterVersionKey()
+	if be != nil {
+		tx := be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
 
-	tx := be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+		_, vs := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
 
-	_, vs := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
-
-	if len(vs) != 0 {
-		v := string(vs[0])
-		if sv, err := semver.NewVersion(v); err == nil {
-			return sv
+		if len(vs) != 0 {
+			v := string(vs[0])
+			if sv, err := semver.NewVersion(v); err == nil {
+				return sv
+			}
 		}
 	}
 	return nil

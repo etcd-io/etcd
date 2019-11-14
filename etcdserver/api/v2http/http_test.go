@@ -35,7 +35,6 @@ import (
 
 type fakeCluster struct {
 	id         uint64
-	localID    uint64
 	clientURLs []string
 	members    map[uint64]*membership.Member
 }
