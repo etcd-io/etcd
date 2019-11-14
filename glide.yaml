@@ -122,7 +122,7 @@ import:
   subpackages:
   - rate
 - package: google.golang.org/grpc
-  version: v1.23.0
+  version: v1.24.0
   subpackages:
   - balancer
   - codes
