@@ -24,6 +24,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
   - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 
+### Dependency
+
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.24.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.24.0).
+
 <hr>
 
 
