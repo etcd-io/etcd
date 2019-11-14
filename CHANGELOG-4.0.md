@@ -34,7 +34,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and 
   - Use [`etcd --initial-corrupt-check`](TODO) instead.
 - [`etcd --experimental-corrupt-check-time`](TODO) has been  deprecated.
   - Use [`etcd --corrupt-check-time`](TODO) instead.
-- Enable TLS 1.13, deprecate TLS cipher suites.
+- Enable TLS 1.3, deprecate TLS cipher suites.
 
 ### etcd server
 
@@ -42,7 +42,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and 
   - `etcd --initial-corrupt-check=true` by default, to check cluster database hashes before serving client/peer traffic.
 - [`etcd --corrupt-check-time`](TODO) flag is now stable (`etcd --experimental-corrupt-check-time` has been  deprecated).
   - `etcd --corrupt-check-time=12h` by default, to check cluster database hashes for every 12-hour.
-- Enable TLS 1.13, deprecate TLS cipher suites.
+- Enable TLS 1.3, deprecate TLS cipher suites.
 
 ### Go
 
