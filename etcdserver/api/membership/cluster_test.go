@@ -877,15 +877,15 @@ func TestMustDetectDowngrade(t *testing.T) {
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	oneMinorHigher := &semver.Version{Major: lv.Major, Minor: lv.Minor + 1}
 	oneMinorLower := &semver.Version{Major: lv.Major, Minor: lv.Minor - 1}
-	downgradeEnabledHigherVersion := &Downgrade{Enabled: true, TargetVersion: oneMinorHigher}
-	downgradeEnabledEqualVersion := &Downgrade{Enabled: true, TargetVersion: lv}
-	downgradeEnabledLowerVersion := &Downgrade{Enabled: true, TargetVersion: oneMinorLower}
-	downgradeDisabled := &Downgrade{Enabled: false}
+	downgradeEnabledHigherVersion := &DowngradeInfo{Enabled: true, TargetVersion: oneMinorHigher}
+	downgradeEnabledEqualVersion := &DowngradeInfo{Enabled: true, TargetVersion: lv}
+	downgradeEnabledLowerVersion := &DowngradeInfo{Enabled: true, TargetVersion: oneMinorLower}
+	downgradeDisabled := &DowngradeInfo{Enabled: false}
 
 	tests := []struct {
 		name           string
 		clusterVersion *semver.Version
-		downgrade      *Downgrade
+		downgrade      *DowngradeInfo
 		success        bool
 		message        string
 	}{
@@ -983,13 +983,11 @@ func TestMustDetectDowngrade(t *testing.T) {
 
 			data, err := ioutil.ReadFile(logPath)
 			if err == nil {
-				t.Log(len(data))
 				if !bytes.Contains(data, []byte(tt.message)) {
 					t.Errorf("Expected to find %v in log", tt.message)
-					t.Log(string(data))
 				}
 			} else {
-				t.Log(err)
+				t.Fatal(err)
 			}
 
 			if !tt.success {
@@ -1000,7 +998,7 @@ func TestMustDetectDowngrade(t *testing.T) {
 			}
 
 			if tt.success && errCmd != nil {
-				t.Errorf("Expected not failure; Got %v", err)
+				t.Errorf("Expected not failure; Got %v", errCmd)
 			}
 		})
 	}
@@ -1082,19 +1080,19 @@ func TestGetDowngrade(t *testing.T) {
 			nil,
 		},
 		{
-			&RaftCluster{downgradeInfo: &Downgrade{Enabled: false}},
+			&RaftCluster{downgradeInfo: &DowngradeInfo{Enabled: false}},
 			false,
 			nil,
 		},
 		{
-			&RaftCluster{downgradeInfo: &Downgrade{Enabled: true, TargetVersion: semver.Must(semver.NewVersion("3.4.0"))}},
+			&RaftCluster{downgradeInfo: &DowngradeInfo{Enabled: true, TargetVersion: semver.Must(semver.NewVersion("3.4.0"))}},
 			true,
 			semver.Must(semver.NewVersion("3.4.0")),
 		},
 	}
 	for i, tt := range tests {
 		t.Run(string(i), func(t *testing.T) {
-			d := tt.cluster.Downgrade()
+			d := tt.cluster.DowngradeInfo()
 			if d.Enabled != tt.expectedEnabled {
 				t.Errorf("Expected %v; Got %v", tt.expectedEnabled, d.Enabled)
 			}

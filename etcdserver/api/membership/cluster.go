@@ -60,10 +60,10 @@ type RaftCluster struct {
 	// removed id cannot be reused.
 	removed map[types.ID]bool
 
-	downgradeInfo *Downgrade
+	downgradeInfo *DowngradeInfo
 }
 
-type Downgrade struct {
+type DowngradeInfo struct {
 	// TargetVersion is the target downgrade version, if the cluster is not under downgrading,
 	// the targetVersion will be nil
 	TargetVersion *semver.Version
@@ -113,7 +113,7 @@ func NewCluster(lg *zap.Logger, token string) *RaftCluster {
 		token:         token,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
-		downgradeInfo: &Downgrade{Enabled: false},
+		downgradeInfo: &DowngradeInfo{Enabled: false},
 	}
 }
 
@@ -265,11 +265,11 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	}
 
 	c.downgradeInfo = downgradeFromBackend(c.be)
-	var d *Downgrade
+	var d *DowngradeInfo
 	if c.downgradeInfo == nil {
-		d = &Downgrade{Enabled: false}
+		d = &DowngradeInfo{Enabled: false}
 	} else {
-		d = &Downgrade{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+		d = &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
 	}
 	mustDetectDowngrade(c.lg, c.version, d)
 	onSet(c.lg, c.version)
@@ -829,7 +829,7 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	return nil
 }
 
-func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *Downgrade) {
+func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	lv := semver.Must(semver.NewVersion(version.Version))
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
@@ -941,18 +941,18 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	return ids
 }
 
-// Downgrade returns the capability status of the cluster
-func (c *RaftCluster) Downgrade() *Downgrade {
+// DowngradeInfo returns the capability status of the cluster
+func (c *RaftCluster) DowngradeInfo() *DowngradeInfo {
 	c.Lock()
 	defer c.Unlock()
 	if c.downgradeInfo == nil {
-		return &Downgrade{Enabled: false}
+		return &DowngradeInfo{Enabled: false}
 	}
-	d := &Downgrade{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+	d := &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
 	return d
 }
 
-func (c *RaftCluster) UpdateDowngrade(d *Downgrade) {
+func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
 	c.Lock()
 	defer c.Unlock()
 

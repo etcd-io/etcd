@@ -157,7 +157,7 @@ func TestDowngradeEnable(t *testing.T) {
 	}
 
 	if err != nil {
-		expectedErrorMsg := "the cluster has a ongoing downgrade job"
+		expectedErrorMsg := "the cluster has an ongoing downgrade job"
 		if !strings.Contains(err.Error(), expectedErrorMsg) {
 			t.Errorf("expected the error message contains %v; got %v", expectedErrorMsg, err.Error())
 		}

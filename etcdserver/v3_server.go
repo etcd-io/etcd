@@ -822,13 +822,19 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	resp := &pb.DowngradeResponse{}
 	var err error
 
-	cv := s.ClusterVersion()
 	targetVersion, err := semver.NewVersion(v)
 	if err != nil {
 		return nil, fmt.Errorf("wrong version format: %v", err)
 	}
 	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 
+	// do linearized read to avoid using stale downgrade information
+	err = s.linearizableReadNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cv := s.ClusterVersion()
 	resp.Version = cv.String()
 	if cv.LessThan(*targetVersion) {
 		err = errors.New("target version too high")
@@ -847,16 +853,11 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 		return nil, err
 	}
 
-	err = s.linearizableReadNotify(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	downgradeInfo := s.cluster.Downgrade()
+	downgradeInfo := s.cluster.DowngradeInfo()
 
 	if downgradeInfo.Enabled {
 		// Todo: return the downgrade status along with the error msg
-		err = errors.New("the cluster has a ongoing downgrade job")
+		err = errors.New("the cluster has an ongoing downgrade job")
 		return resp, err
 	}
 	return resp, nil
@@ -885,11 +886,12 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest
 }
 
 func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	// do linearized read to avoid using stale downgrade information
 	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
 
-	downgradeInfo := s.cluster.Downgrade()
+	downgradeInfo := s.cluster.DowngradeInfo()
 	if !downgradeInfo.Enabled {
 		return nil, errors.New("the cluster is not downgrading")
 	}

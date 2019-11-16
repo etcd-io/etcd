@@ -104,6 +104,8 @@ const (
 
 	// Todo: need to be decided
 	monitorDowngradeInterval = time.Second
+
+	downgradeHTTPTimeout = 5 * time.Second
 )
 
 var (
@@ -884,10 +886,60 @@ type ServerPeerHTTP interface {
 
 type ServerDowngradeHTTP interface {
 	// DowngradeInfo is the downgrade information of the cluster
-	DowngradeInfo() *membership.Downgrade
+	DowngradeInfo() *membership.DowngradeInfo
+	DowngradeEnabledHandler() http.Handler
 }
 
-func (s *EtcdServer) DowngradeInfo() *membership.Downgrade { return s.cluster.Downgrade() }
+func (s *EtcdServer) DowngradeInfo() *membership.DowngradeInfo { return s.cluster.DowngradeInfo() }
+
+type downgradeEnabledHandler struct {
+	lg      *zap.Logger
+	cluster api.Cluster
+	server  *EtcdServer
+}
+
+func (s *EtcdServer) DowngradeEnabledHandler() http.Handler {
+	return &downgradeEnabledHandler{
+		lg:      s.getLogger(),
+		cluster: s.cluster,
+		server:  s,
+	}
+}
+
+func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.Header().Set("Allow", r.Method)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
+
+	if r.URL.Path != "/downgrade/enabled" {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), downgradeHTTPTimeout)
+	defer cancel()
+
+	// serve with linearized downgrade info
+	if err := h.server.linearizableReadNotify(ctx); err != nil {
+		http.Error(w, "failed linearized read", http.StatusBadRequest)
+		return
+	}
+	enabled := h.server.DowngradeInfo().Enabled
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.Marshal(enabled)
+	if err != nil {
+		if h.lg != nil {
+			h.lg.Warn("failed to marshal downgrade.Enabled to json", zap.Error(err))
+		} else {
+			plog.Warningf("failed to marshal downgrade.Enabled to json (%v)", err)
+		}
+	}
+	w.Write(b)
+}
 
 // Process takes a raft message and applies it to the server's raft state
 // machine, respecting any timeout of the given context.
@@ -2647,13 +2699,13 @@ func (s *EtcdServer) monitorDowngrade() {
 			continue
 		}
 
-		d := s.cluster.Downgrade()
+		d := s.cluster.DowngradeInfo()
 		if !d.Enabled {
 			continue
 		}
 
 		targetVersion := d.TargetVersion
-		if decideDowngradeStatus(s.getLogger(), targetVersion, getVersions(s.getLogger(), s.cluster, s.id, s.peerRt)) {
+		if isDowngradeFinished(s.getLogger(), targetVersion, getVersions(s.getLogger(), s.cluster, s.id, s.peerRt)) {
 			if lg != nil {
 				lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion.String()))
 			} else {
