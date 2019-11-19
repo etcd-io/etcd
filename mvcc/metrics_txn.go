@@ -58,6 +58,6 @@ func (tw *metricsTxnWrite) End() {
 	}
 	rangeCounter.Add(float64(tw.ranges))
 	putCounter.Add(float64(tw.puts))
-	putSizeGauge.Add(float64(tw.putSize))
+	totalPutSizeGauge.Add(float64(tw.putSize))
 	deleteCounter.Add(float64(tw.deletes))
 }

@@ -239,11 +239,11 @@ var (
 	reportCompactRevMu sync.RWMutex
 	reportCompactRev   = func() float64 { return 0 }
 
-	putSizeGauge = prometheus.NewGauge(
+	totalPutSizeGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
-			Name:      "put_size_in_bytes",
+			Name:      "total_put_size_in_bytes",
 			Help:      "The total size of put kv pairs seen by this member.",
 		})
 )
@@ -270,7 +270,7 @@ func init() {
 	prometheus.MustRegister(hashRevDurations)
 	prometheus.MustRegister(currentRev)
 	prometheus.MustRegister(compactRev)
-	prometheus.MustRegister(putSizeGauge)
+	prometheus.MustRegister(totalPutSizeGauge)
 }
 
 // ReportEventReceived reports that an event is received.
