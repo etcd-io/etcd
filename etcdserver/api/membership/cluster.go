@@ -259,12 +259,13 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	if c.be != nil {
-		c.version = clusterVersionFromBackend(c.lg, c.be)
+		// recover cluster version from backend
+		c.version = clusterVersionFromBackend(c.be)
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 	}
 
-	c.downgradeInfo = downgradeFromBackend(c.be)
+	c.downgradeInfo = downgradeFromBackend(c.lg, c.be)
 	var d *DowngradeInfo
 	if c.downgradeInfo == nil {
 		d = &DowngradeInfo{Enabled: false}
@@ -834,26 +835,10 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 
+	// if the cluster enables downgrade, check local version against downgrade target version.
 	if d.Enabled && d.TargetVersion != nil {
-		oneMinorHigher := &semver.Version{Major: d.TargetVersion.Major, Minor: d.TargetVersion.Minor + 1}
-		if !lv.Equal(*d.TargetVersion) && !lv.Equal(*oneMinorHigher) {
-			if lg != nil {
-				lg.Fatal(
-					"invalid downgrade; server version is not allowed to join when downgrade is enabled",
-					zap.String("current-server-version", version.Version),
-					zap.String("target-cluster-version", d.TargetVersion.String()),
-				)
-			} else {
-				plog.Fatalf("invalid downgrade; server version is not allowed to join when downgrade is enabled "+
-					"(current version: %s, target cluster version: %s).", version.Version, d.TargetVersion.String())
-			}
-			return
-		}
-	}
-
-	if cv != nil {
-		if d.Enabled && d.TargetVersion != nil {
-			if lv.Equal(*d.TargetVersion) || lv.Equal(*cv) {
+		if isValidDowngrade(d.TargetVersion, lv) {
+			if cv != nil {
 				if lg != nil {
 					lg.Info(
 						"cluster is downgrading to target version",
@@ -861,28 +846,39 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 						zap.String("determined-cluster-version", version.Cluster(cv.String())),
 						zap.String("current-server-version", version.Version),
 					)
-				} else {
-					plog.Infof("cluster is downgrading to target version: %s, "+
-						"determined cluster version: %s, current-server-version: %s).",
-						d.TargetVersion.String(), version.Cluster(cv.String()), version.Version)
 				}
-				return
 			}
+			return
 		}
-
-		if !d.Enabled && lv.LessThan(*cv) {
-			if lg != nil {
-				lg.Fatal(
-					"invalid downgrade; server version is lower than determined cluster version",
-					zap.String("current-server-version", version.Version),
-					zap.String("determined-cluster-version", version.Cluster(cv.String())),
-				)
-			} else {
-				plog.Fatalf("invalid downgrade; server version is lower than determined cluster version (current version: %s, determined cluster version: %s).",
-					version.Version, version.Cluster(cv.String()))
-			}
+		if lg != nil {
+			lg.Fatal(
+				"invalid downgrade; server version is not allowed to join when downgrade is enabled",
+				zap.String("current-server-version", version.Version),
+				zap.String("target-cluster-version", d.TargetVersion.String()),
+			)
 		}
 	}
+
+	// if the cluster disables downgrade, check local version against determined cluster version.
+	// the validation passes when local version is not less than cluster version
+	if cv != nil && lv.LessThan(*cv) {
+		if lg != nil {
+			lg.Fatal(
+				"invalid downgrade; server version is lower than determined cluster version",
+				zap.String("current-server-version", version.Version),
+				zap.String("determined-cluster-version", version.Cluster(cv.String())),
+			)
+		}
+	}
+}
+
+// isValidDowngrade checks whether joining local server is a valid downgrade when cluster enables downgrade.
+// the validation passes when
+// 1. local version is target version
+// 2. local version is one minor version higher then target version
+func isValidDowngrade(tv *semver.Version, lv *semver.Version) bool {
+	oneMinorHigher := &semver.Version{Major: tv.Major, Minor: tv.Minor + 1}
+	return lv.Equal(*tv) || lv.Equal(*oneMinorHigher)
 }
 
 // IsVersionChangable checks the two scenario when version is changable:
@@ -957,7 +953,7 @@ func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
 	defer c.Unlock()
 
 	if c.be != nil {
-		mustSaveDowngradeToBackend(c.be, d)
+		mustSaveDowngradeToBackend(c.lg, c.be, d)
 	}
 
 	c.downgradeInfo = d
@@ -967,9 +963,6 @@ func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
 			c.lg.Info("The server is ready to downgrade",
 				zap.String("target-version", d.TargetVersion.String()),
 				zap.String("server-version", version.Version))
-		} else {
-			plog.Info("The server is ready to downgrade from current server version %v to target version %v",
-				version.Version, d.TargetVersion.String())
 		}
 	}
 }

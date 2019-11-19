@@ -1012,54 +1012,63 @@ func TestIsVersionChangable(t *testing.T) {
 	v4 := semver.Must(semver.NewVersion("3.6.0"))
 
 	tests := []struct {
+		name           string
 		currentVersion *semver.Version
 		localVersion   *semver.Version
 		expectedResult bool
 	}{
 		{
+			name:           "Fail when local version is one major higher than cluster version",
 			currentVersion: v0,
 			localVersion:   v1,
 			expectedResult: false,
 		},
 		{
+			name:           "Fail when local version is equal to cluster version",
 			currentVersion: v1,
 			localVersion:   v1,
 			expectedResult: false,
 		},
 		{
+			name:           "Succeed when local version is one minor higher than cluster version",
 			currentVersion: v1,
 			localVersion:   v2,
 			expectedResult: true,
 		},
 		{
+			name:           "Succeed when local version is two minor higher than cluster version",
 			currentVersion: v1,
 			localVersion:   v4,
 			expectedResult: true,
 		},
 		{
+			name:           "Fail when local version is one patch higher than cluster version",
 			currentVersion: v2,
 			localVersion:   v3,
 			expectedResult: false,
 		},
 		{
+			name:           "Succeed when local version is one minor lower than cluster version",
 			currentVersion: v2,
 			localVersion:   v1,
 			expectedResult: true,
 		},
 		{
+			name:           "Succeed when local version is one minor and one patch lower than cluster version",
 			currentVersion: v3,
 			localVersion:   v1,
 			expectedResult: true,
 		},
 		{
+			name:           "Fail when local version is two minor lower than cluster version",
 			currentVersion: v4,
 			localVersion:   v1,
 			expectedResult: false,
 		},
 	}
 
-	for i, tt := range tests {
-		t.Run(string(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			if ret := IsVersionChangable(tt.currentVersion, tt.localVersion); ret != tt.expectedResult {
 				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
 			}
@@ -1069,29 +1078,33 @@ func TestIsVersionChangable(t *testing.T) {
 
 func TestGetDowngrade(t *testing.T) {
 	tests := []struct {
+		name                  string
 		cluster               *RaftCluster
 		expectedEnabled       bool
 		expectedTargetVersion *semver.Version
 	}{
 
 		{
+			"When downgradeInfo is empty",
 			&RaftCluster{},
 			false,
 			nil,
 		},
 		{
+			"When downgrade is disabled",
 			&RaftCluster{downgradeInfo: &DowngradeInfo{Enabled: false}},
 			false,
 			nil,
 		},
 		{
+			"When downgrade is enabled",
 			&RaftCluster{downgradeInfo: &DowngradeInfo{Enabled: true, TargetVersion: semver.Must(semver.NewVersion("3.4.0"))}},
 			true,
 			semver.Must(semver.NewVersion("3.4.0")),
 		},
 	}
-	for i, tt := range tests {
-		t.Run(string(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			d := tt.cluster.DowngradeInfo()
 			if d.Enabled != tt.expectedEnabled {
 				t.Errorf("Expected %v; Got %v", tt.expectedEnabled, d.Enabled)
@@ -1105,6 +1118,45 @@ func TestGetDowngrade(t *testing.T) {
 				if !tt.expectedTargetVersion.Equal(*d.TargetVersion) {
 					t.Errorf("Expected %v; Got %v", tt.expectedTargetVersion, d.TargetVersion)
 				}
+			}
+		})
+	}
+}
+
+func TestIsValidDowngrade(t *testing.T) {
+	lv := semver.Must(semver.NewVersion(version.Version))
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+	tv := &semver.Version{Major: lv.Major, Minor: lv.Minor - 1}
+	tests := []struct {
+		name           string
+		targetVersion  *semver.Version
+		localVersion   *semver.Version
+		expectedResult bool
+	}{
+		{
+			name:           "When local version is equal to target version",
+			targetVersion:  tv,
+			localVersion:   lv,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one minor version higher than target version",
+			targetVersion:  tv,
+			localVersion:   lv,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is lower than target version",
+			targetVersion:  tv,
+			localVersion:   &semver.Version{Major: tv.Major, Minor: tv.Minor - 1},
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if ret := isValidDowngrade(tt.targetVersion, tt.localVersion); ret != tt.expectedResult {
+				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
 			}
 		})
 	}

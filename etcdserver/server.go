@@ -934,8 +934,6 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		if h.lg != nil {
 			h.lg.Warn("failed to marshal downgrade.Enabled to json", zap.Error(err))
-		} else {
-			plog.Warningf("failed to marshal downgrade.Enabled to json (%v)", err)
 		}
 	}
 	w.Write(b)
@@ -2708,14 +2706,10 @@ func (s *EtcdServer) monitorDowngrade() {
 		if isDowngradeFinished(s.getLogger(), targetVersion, getVersions(s.getLogger(), s.cluster, s.id, s.peerRt)) {
 			if lg != nil {
 				lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion.String()))
-			} else {
-				plog.Infof("the cluster has been downgraded to version %v", targetVersion.String())
 			}
 			if _, err := s.downgradeCancel(context.Background()); err != nil {
 				if lg != nil {
 					lg.Warn("failed to cancel downgrade", zap.Error(err))
-				} else {
-					plog.Warningf("failed to cancel downgrade %v", err)
 				}
 			}
 			continue

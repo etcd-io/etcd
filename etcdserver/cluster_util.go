@@ -204,8 +204,6 @@ func decideDowngradeEnabled(lg *zap.Logger, cl *membership.RaftCluster, local ty
 		if err != nil {
 			if lg != nil {
 				lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
-			} else {
-				plog.Warningf("cannot get the downgrade enabled status of member %s (%v)", m.ID, err)
 			}
 		} else {
 			// Since the "/downgrade/enabled" serves linearized data,
@@ -238,8 +236,6 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 					zap.String("remote-member-id", m.ID.String()),
 					zap.Error(err),
 				)
-			} else {
-				plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			}
 			continue
 		}
@@ -254,8 +250,6 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 					zap.String("remote-member-id", m.ID.String()),
 					zap.Error(err),
 				)
-			} else {
-				plog.Warningf("failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			}
 			continue
 		}
@@ -268,8 +262,6 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 					zap.String("remote-member-id", m.ID.String()),
 					zap.Error(err),
 				)
-			} else {
-				plog.Warningf("failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			}
 			continue
 		}
@@ -341,8 +333,6 @@ func isDowngradeFinished(lg *zap.Logger, targetVersion *semver.Version, vers map
 					zap.String("remote-member-version", ver.Server),
 					zap.Error(err),
 				)
-			} else {
-				plog.Errorf("cannot understand the version of member %s (%v)", mid, err)
 			}
 			return false
 		}

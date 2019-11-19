@@ -295,9 +295,7 @@ func TestDowngradeThenRestart(t *testing.T) {
 		}
 
 		// check cluster health after restart
-		if err := ctlV3EndpointHealth(cx); err != nil {
-			t.Fatalf("error check endpoints healthy (%v)", err)
-		}
+		testHealth(cx)
 		// cluster version should be updated once there is a downgraded server
 		clusterVersionTest(cx, `"etcdcluster":"`+tv.String())
 	}
@@ -314,11 +312,7 @@ func TestDowngradeThenRestart(t *testing.T) {
 		if err := epc.procs[i].Restart(); err != nil {
 			t.Fatalf("error restarting etcd process (%v)(%d)", err, i)
 		}
-
-		// check cluster health after restart
-		if err := ctlV3EndpointHealth(cx); err != nil {
-			t.Fatalf("error check endpoints healthy (%v)", err)
-		}
+		testHealth(cx)
 		testKVPairs(cx, kvs)
 	}
 }
@@ -384,9 +378,7 @@ func TestCrushRestartWhenDowngrade(t *testing.T) {
 		}
 
 		// check cluster health after restart
-		if err := ctlV3EndpointHealth(cx); err != nil {
-			t.Fatalf("error check endpoints healthy (%v)", err)
-		}
+		testHealth(cx)
 		// cluster version should be updated once there is a downgraded server
 		clusterVersionTest(cx, `"etcdcluster":"`+tv.String())
 	}
@@ -570,6 +562,80 @@ func TestDowngradeFromSnapshot(t *testing.T) {
 		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "false")
 	}
 	clusterVersionTest(cx, `"etcdcluster":"`+tv.String())
+	testKVPairs(cx, kvs)
+}
+
+func TestDowngradeAfterUpgrade(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	cv := semver.Must(semver.NewVersion(version.Version))
+	tv := semver.Version{Major: cv.Major, Minor: cv.Minor - 1}
+	tvBinary := fmt.Sprintf("/downgrade%d%d", tv.Major, tv.Minor)
+	mustFileExist(t, binDir+tvBinary)
+
+	copiedCfg := configDowngrade
+
+	epc := startCluster(t, &copiedCfg, tvBinary)
+
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	os.Setenv("ETCDCTL_API", "3")
+	defer os.Unsetenv("ETCDCTL_API")
+	cx := ctlCtx{
+		t:           t,
+		cfg:         configNoTLS,
+		dialTimeout: 7 * time.Second,
+		quorum:      true,
+		epc:         epc,
+	}
+	clusterVersionTest(cx, `"etcdcluster":"`+version.Cluster(tv.String()))
+	var kvs []kv
+	for i := 0; i < 50; i++ {
+		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
+	}
+	putKVPairs(cx, kvs)
+
+	for i := range epc.procs {
+		if err := epc.procs[i].Stop(); err != nil {
+			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
+		}
+		epc.procs[i].Config().execPath = binDir + "/etcd"
+		epc.procs[i].Config().keepDataDir = true
+
+		if err := epc.procs[i].Restart(); err != nil {
+			t.Fatalf("error restarting etcd process (%v)", err)
+		}
+		testHealth(cx)
+	}
+	clusterVersionTest(cx, `"etcdcluster":"`+version.Cluster(cv.String()))
+	ctlDowngradeEnable(cx, tv.String())
+
+	for i := range epc.procs {
+		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "true")
+	}
+
+	for i := range epc.procs {
+		if err := epc.procs[i].Stop(); err != nil {
+			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
+		}
+		epc.procs[i].Config().execPath = binDir + tvBinary
+		epc.procs[i].Config().keepDataDir = true
+
+		if err := epc.procs[i].Restart(); err != nil {
+			t.Fatalf("error restarting etcd process (%v)(%d)", err, i)
+		}
+		testHealth(cx)
+		// cluster version should be updated once there is a downgraded server
+		clusterVersionTest(cx, `"etcdcluster":"`+tv.String())
+	}
+
+	for i := range epc.procs {
+		testDowngradeEnabled(cx, epc.procs[i].Config().acurl, "false")
+	}
 	testKVPairs(cx, kvs)
 }
 

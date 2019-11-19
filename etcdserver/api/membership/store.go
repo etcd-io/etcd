@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/pkg/types"
+	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
 )
@@ -75,20 +76,21 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
 }
 
-func mustSaveDowngradeToBackend(be backend.Backend, downgrade *DowngradeInfo) {
+func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
 	dkey := backendDowngradeKey()
 	dvalue, err := json.Marshal(downgrade)
 	if err != nil {
-		plog.Panicf("marshal raftAttributes should never fail: %v", err)
+		if lg != nil {
+			lg.Panic("failed to marshal downgrade information", zap.Error(err))
+		}
 	}
-
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 	tx.UnsafePut(clusterBucketName, dkey, dvalue)
 }
 
-func downgradeFromBackend(be backend.Backend) *DowngradeInfo {
+func downgradeFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
 	if be != nil {
 		tx := be.BatchTx()
@@ -99,7 +101,9 @@ func downgradeFromBackend(be backend.Backend) *DowngradeInfo {
 		if len(vs) != 0 {
 			var d DowngradeInfo
 			if err := json.Unmarshal(vs[0], &d); err != nil {
-				plog.Panicf("fail to unmarshal downgrade: %v", err)
+				if lg != nil {
+					lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
+				}
 			}
 			return &d
 		}
@@ -115,12 +119,9 @@ func clusterVersionFromBackend(be backend.Backend) *semver.Version {
 		defer tx.Unlock()
 
 		_, vs := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
-
 		if len(vs) != 0 {
 			v := string(vs[0])
-			if sv, err := semver.NewVersion(v); err == nil {
-				return sv
-			}
+			return semver.Must(semver.NewVersion(v))
 		}
 	}
 	return nil
