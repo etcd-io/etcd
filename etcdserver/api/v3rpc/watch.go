@@ -27,8 +27,11 @@ import (
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
 )
 
 type watchServer struct {
@@ -189,19 +192,25 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		}
 	}()
 
+	defer sws.close()
 	select {
 	case err = <-errc:
 		close(sws.ctrlStream)
 
 	case <-stream.Context().Done():
 		err = stream.Context().Err()
-		// the only server-side cancellation is noleader for now.
 		if err == context.Canceled {
-			err = rpctypes.ErrGRPCNoLeader
+			md, ok := metadata.FromIncomingContext(stream.Context())
+			if ok {
+				if rl := md[rpctypes.MetadataRequireLeaderKey]; len(rl) > 0 && rl[0] == rpctypes.MetadataHasLeader {
+					if sws.sg.Leader() == types.ID(raft.None) {
+						return rpctypes.ErrGRPCNoLeader
+					}
+				}
+			}
+			return rpctypes.ErrGRPCWatchCanceled
 		}
 	}
-
-	sws.close()
 	return err
 }
 
