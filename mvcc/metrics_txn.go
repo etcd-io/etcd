@@ -63,7 +63,7 @@ func (tw *metricsTxnWrite) End() {
 	puts := float64(tw.puts)
 	putCounter.Add(puts)
 	putCounterDebug.Add(puts) // TODO: remove in 3.5 release
-	putSizeGauge.Add(float64(tw.putSize))
+	totalPutSizeGauge.Add(float64(tw.putSize))
 
 	deletes := float64(tw.deletes)
 	deleteCounter.Add(deletes)
