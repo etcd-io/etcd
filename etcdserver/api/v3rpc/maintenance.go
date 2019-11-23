@@ -214,7 +214,7 @@ func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRe
 func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	resp, err := ms.d.Downgrade(ctx, r)
 	if err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	resp.Header = &pb.ResponseHeader{}

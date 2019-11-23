@@ -256,6 +256,19 @@ func TestIssue6361(t *testing.T) {
 
 	prefixArgs = []string{ctlBinPath, "--endpoints", clientURL, "--dial-timeout", dialTimeout.String()}
 
+	for i := 0; i < 7; i++ {
+		cmdArgs := append(prefixArgs, "endpoint", "health")
+		if err = spawnWithExpects(cmdArgs, "is healthy"); err != nil {
+			t.Logf("error check endpoints healthy (%v)", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		t.Fatalf("error check endpoints healthy (%v)", err)
+	}
+
 	// ensure added member has data from incoming snapshot
 	for i := range kvs {
 		if err = spawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {

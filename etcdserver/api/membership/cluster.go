@@ -265,7 +265,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 	}
 
-	c.downgradeInfo = downgradeFromBackend(c.lg, c.be)
+	c.downgradeInfo = downgradeInfoFromBackend(c.lg, c.be)
 	var d *DowngradeInfo
 	if c.downgradeInfo == nil {
 		d = &DowngradeInfo{Enabled: false}

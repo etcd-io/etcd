@@ -708,12 +708,17 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 
 func (a *applierV3backend) Downgrade(dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	var d membership.DowngradeInfo
+	lg := a.s.getLogger()
 	switch dr.Action {
 	case pb.DowngradeRequest_ENABLE:
 		v := dr.Version
 		d = membership.DowngradeInfo{Enabled: true, TargetVersion: semver.Must(semver.NewVersion(v))}
 	case pb.DowngradeRequest_CANCEL:
 		d = membership.DowngradeInfo{Enabled: false}
+	default:
+		if lg != nil {
+			lg.Panic("unknown DowngradeRequest action type", zap.String("type", dr.Action.String()))
+		}
 	}
 	a.s.cluster.SetDowngradeInfo(&d)
 	resp := &pb.DowngradeResponse{Version: a.s.ClusterVersion().String()}

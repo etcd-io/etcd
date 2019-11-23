@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
@@ -62,6 +63,11 @@ func ctlV3DowngradeValidate(cx ctlCtx) {
 			want: "Validate succeeded",
 		},
 		{
+			name: "Success with no patch target version",
+			args: []string{"downgrade", "validate", fmt.Sprintf("%d.%d", oneMinorLower.Major, oneMinorLower.Minor)},
+			want: "Validate succeeded",
+		},
+		{
 			name: "Failed with no target version input",
 			args: []string{"downgrade", "validate"},
 			want: "no target version input",
@@ -74,22 +80,22 @@ func ctlV3DowngradeValidate(cx ctlCtx) {
 		{
 			name: "Failed with target version is current cluster version",
 			args: []string{"downgrade", "validate", cv.String()},
-			want: "target version is current cluster version",
+			want: "invalid target version",
 		},
 		{
 			name: "Failed with wrong version format",
-			args: []string{"downgrade", "validate", "3.4"},
+			args: []string{"downgrade", "validate", ".4"},
 			want: "wrong version format",
 		},
 		{
 			name: "Failed with target version out of range too small",
 			args: []string{"downgrade", "validate", twoMinorLower.String()},
-			want: "target version too small",
+			want: "invalid target version",
 		},
 		{
 			name: "Failed with target version out of range too high",
 			args: []string{"downgrade", "validate", oneMinorHigher.String()},
-			want: "target version too high",
+			want: "invalid target version",
 		},
 	}
 	for i, tt := range tests {
@@ -131,22 +137,22 @@ func ctlV3DowngradeEnable(cx ctlCtx) {
 		{
 			name: "Failed with target version is current cluster version",
 			args: []string{"downgrade", "enable", cv.String()},
-			want: "target version is current cluster version",
+			want: "invalid target version",
 		},
 		{
 			name: "Failed with wrong version format",
-			args: []string{"downgrade", "enable", "3.4"},
+			args: []string{"downgrade", "enable", ".4"},
 			want: "wrong version format",
 		},
 		{
 			name: "Failed with target version out of range too small",
 			args: []string{"downgrade", "enable", twoMinorLower.String()},
-			want: "target version too small",
+			want: "invalid target version",
 		},
 		{
 			name: "Failed with target version out of range too high",
 			args: []string{"downgrade", "enable", oneMinorHigher.String()},
-			want: "target version too high",
+			want: "invalid target version",
 		},
 	}
 	for i, tt := range tests {
@@ -168,7 +174,7 @@ func ctlV3DowngradeCancel(cx ctlCtx) {
 
 	cmdArgsEnable := append(cx.PrefixArgs(), "downgrade", "enable", oneMinorLower.String())
 
-	if err := spawnWithExpects(cmdArgsCancel, "the cluster is not downgrading"); err != nil {
+	if err := spawnWithExpects(cmdArgsCancel, "cluster is not downgrading"); err != nil {
 		cx.t.Fatal(err)
 	}
 

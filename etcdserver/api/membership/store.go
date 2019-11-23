@@ -90,10 +90,10 @@ func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *D
 	tx.UnsafePut(clusterBucketName, dkey, dvalue)
 }
 
-func downgradeFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
+func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
 	if be != nil {
-		tx := be.BatchTx()
+		tx := be.ReadTx()
 		tx.Lock()
 		defer tx.Unlock()
 		_, vs := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
@@ -114,7 +114,7 @@ func downgradeFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 func clusterVersionFromBackend(be backend.Backend) *semver.Version {
 	ckey := backendClusterVersionKey()
 	if be != nil {
-		tx := be.BatchTx()
+		tx := be.ReadTx()
 		tx.Lock()
 		defer tx.Unlock()
 

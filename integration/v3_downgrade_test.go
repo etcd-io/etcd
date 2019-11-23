@@ -47,27 +47,33 @@ func TestDowngradeValidate(t *testing.T) {
 	}{
 		{
 			"validate downgrade against wrong-format version",
-			"3.4",
+			".4",
 			false,
 			"wrong version format",
+		},
+		{
+			"validate downgrade against no patch version",
+			"3.4",
+			true,
+			"",
 		},
 		{
 			"validate downgrade against current server version",
 			serverVersion.String(),
 			false,
-			"target version is current cluster version",
+			"invalid target version",
 		},
 		{
 			"validate downgrade against current server version without patch version",
 			serverVersionWOPatch.String(),
 			false,
-			"target version is current cluster version",
+			"invalid target version",
 		},
 		{
 			"validate downgrade against one minor version higher",
 			oneMinorHigher.String(),
 			false,
-			"target version too high",
+			"invalid target version",
 		},
 		{
 			"validate downgrade against one minor version lower",
@@ -79,7 +85,7 @@ func TestDowngradeValidate(t *testing.T) {
 			"validate downgrade against two minor version lower",
 			twoMinorLower.String(),
 			false,
-			"target version too small",
+			"invalid target version",
 		},
 		{
 			"validate downgrade against one minor version lower with patch version 1",
@@ -157,7 +163,7 @@ func TestDowngradeEnable(t *testing.T) {
 	}
 
 	if err != nil {
-		expectedErrorMsg := "the cluster has an ongoing downgrade job"
+		expectedErrorMsg := "cluster has an ongoing downgrade job"
 		if !strings.Contains(err.Error(), expectedErrorMsg) {
 			t.Errorf("expected the error message contains %v; got %v", expectedErrorMsg, err.Error())
 		}
@@ -189,7 +195,7 @@ func TestDowngradeCancel(t *testing.T) {
 		t.Fatal("expected fail to cancel downgrade; got passed")
 	}
 	if err != nil {
-		expectedErrorMsg := "the cluster is not downgrading"
+		expectedErrorMsg := "cluster is not downgrading"
 		if !strings.Contains(err.Error(), expectedErrorMsg) {
 			t.Errorf("expected the error message contains %v; got %v", expectedErrorMsg, err.Error())
 		}

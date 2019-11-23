@@ -641,7 +641,6 @@ func TestDowngradeAfterUpgrade(t *testing.T) {
 
 func testDowngradeEnabled(cx ctlCtx, endpoint string, expected string) {
 	cmdArgs := []string{"curl", "-L", endpoint + "/downgrade/enabled"}
-	fmt.Println(cmdArgs)
 	var err error
 	for i := 0; i < 7; i++ {
 		time.Sleep(time.Second)
@@ -656,7 +655,16 @@ func testDowngradeEnabled(cx ctlCtx, endpoint string, expected string) {
 	}
 }
 func testHealth(cx ctlCtx) {
-	if err := ctlV3EndpointHealth(cx); err != nil {
+	var err error
+	for i := 0; i < 7; i++ {
+		if err = ctlV3EndpointHealth(cx); err != nil {
+			cx.t.Logf("error check endpoints healthy (%v)", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if err != nil {
 		cx.t.Fatalf("error check endpoints healthy (%v)", err)
 	}
 }

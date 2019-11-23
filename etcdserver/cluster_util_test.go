@@ -161,7 +161,7 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			minV, maxV := decideAllowedVersionRange(tt.downgradeEnabled)
+			minV, maxV := allowedVersionRange(tt.downgradeEnabled)
 			if !minV.Equal(*tt.expectedMinV) {
 				t.Errorf("Expected minV is %v; Got %v", tt.expectedMinV.String(), minV.String())
 			}

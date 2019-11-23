@@ -104,8 +104,6 @@ const (
 
 	// Todo: need to be decided
 	monitorDowngradeInterval = time.Second
-
-	downgradeHTTPTimeout = 5 * time.Second
 )
 
 var (
@@ -885,8 +883,6 @@ type ServerPeerHTTP interface {
 }
 
 type ServerDowngradeHTTP interface {
-	// DowngradeInfo is the downgrade information of the cluster
-	DowngradeInfo() *membership.DowngradeInfo
 	DowngradeEnabledHandler() http.Handler
 }
 
@@ -920,12 +916,13 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), downgradeHTTPTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.server.Cfg.ReqTimeout())
 	defer cancel()
 
 	// serve with linearized downgrade info
 	if err := h.server.linearizableReadNotify(ctx); err != nil {
-		http.Error(w, "failed linearized read", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
+			http.StatusInternalServerError)
 		return
 	}
 	enabled := h.server.DowngradeInfo().Enabled
@@ -2621,9 +2618,6 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		// Original etcd v3.1.26 only update cluster version if the decided version is
-		// greater than the current cluster version, in this patched etcd, we relax the rule
-		// and allow +1 or -1 minor version cluster version change
 		if v != nil && membership.IsVersionChangable(s.cluster.Version(), v) {
 			s.goAttach(func() { s.updateClusterVersion(v.String()) })
 		}

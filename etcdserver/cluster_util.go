@@ -177,10 +177,10 @@ func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt 
 	return vers
 }
 
-// decideAllowedVersionRange decides the available version range of the cluster that local server can join in;
+// allowedVersionRange decides the available version range of the cluster that local server can join in;
 // if the downgrade enabled status is true, the version window is [localVersion, oneMinorHigher]
 // if the downgrade is not enabled, the version window is [MinClusterVersion, localVersion]
-func decideAllowedVersionRange(downgradeEnabled bool) (minV *semver.Version, maxV *semver.Version) {
+func allowedVersionRange(downgradeEnabled bool) (minV *semver.Version, maxV *semver.Version) {
 	minV = semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV = semver.Must(semver.NewVersion(version.Version))
 	maxV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
@@ -192,8 +192,8 @@ func decideAllowedVersionRange(downgradeEnabled bool) (minV *semver.Version, max
 	return minV, maxV
 }
 
-// decideDowngradeEnabled will decide the downgrade enabled status of the cluster.
-func decideDowngradeEnabled(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+// getDowngradeEnabledFromRemotePeers will get the downgrade enabled status of the cluster.
+func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	members := cl.Members()
 
 	for _, m := range members {
@@ -351,7 +351,7 @@ func isDowngradeFinished(lg *zap.Logger, targetVersion *semver.Version, vers map
 // We set this rule since when the local member joins, another member might be offline.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(lg, cl, local, rt)
-	minV, maxV := decideAllowedVersionRange(decideDowngradeEnabled(lg, cl, local, rt))
+	minV, maxV := allowedVersionRange(getDowngradeEnabledFromRemotePeers(lg, cl, local, rt))
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }
 
