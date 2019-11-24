@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sync"
 
+	"golang.org/x/sync/semaphore"
+
 	v3 "go.etcd.io/etcd/clientv3"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
@@ -31,6 +33,7 @@ var ErrLocked = errors.New("mutex: Locked by another session")
 type Mutex struct {
 	s *Session
 
+	w     *semaphore.Weighted
 	pfx   string
 	myKey string
 	myRev int64
@@ -38,13 +41,19 @@ type Mutex struct {
 }
 
 func NewMutex(s *Session, pfx string) *Mutex {
-	return &Mutex{s, pfx + "/", "", -1, nil}
+	w := semaphore.NewWeighted(1)
+	return &Mutex{s, w, pfx + "/", "", -1, nil}
 }
 
 // TryLock locks the mutex if not already locked by another session.
-// If lock is held by another session, return immediately after attempting necessary cleanup
+// If lock is held by another, return immediately after attempting necessary cleanup.
 // The ctx argument is used for the sending/receiving Txn RPC.
 func (m *Mutex) TryLock(ctx context.Context) error {
+	if err := m.w.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer m.w.Release(1)
+
 	resp, err := m.tryAcquire(ctx)
 	if err != nil {
 		return err
@@ -55,19 +64,22 @@ func (m *Mutex) TryLock(ctx context.Context) error {
 		m.hdr = resp.Header
 		return nil
 	}
-	client := m.s.Client()
-	// Cannot lock, so delete the key
-	if _, err := client.Delete(ctx, m.myKey); err != nil {
+
+	// Cannot lock so unlock
+	if err := m.unlock(ctx); err != nil {
 		return err
 	}
-	m.myKey = "\x00"
-	m.myRev = -1
 	return ErrLocked
 }
 
 // Lock locks the mutex with a cancelable context. If the context is canceled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
+	if err := m.w.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer m.w.Release(1)
+
 	resp, err := m.tryAcquire(ctx)
 	if err != nil {
 		return err
@@ -80,14 +92,14 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 	client := m.s.Client()
 	// wait for deletion revisions prior to myKey
-	hdr, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
+	hdr, err := waitDeletes(ctx, client, m.pfx, m.myRev-1)
 	// release lock key if wait failed
-	if werr != nil {
-		m.Unlock(client.Ctx())
-	} else {
-		m.hdr = hdr
+	if err != nil {
+		m.unlock(client.Ctx())
+		return err
 	}
-	return werr
+	m.hdr = hdr
+	return nil
 }
 
 func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
@@ -113,7 +125,7 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 	return resp, nil
 }
 
-func (m *Mutex) Unlock(ctx context.Context) error {
+func (m *Mutex) unlock(ctx context.Context) error {
 	client := m.s.Client()
 	if _, err := client.Delete(ctx, m.myKey); err != nil {
 		return err
@@ -121,6 +133,15 @@ func (m *Mutex) Unlock(ctx context.Context) error {
 	m.myKey = "\x00"
 	m.myRev = -1
 	return nil
+}
+
+// Unlock unlocks m.
+func (m *Mutex) Unlock(ctx context.Context) error {
+	if err := m.w.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer m.w.Release(1)
+	return m.unlock(ctx)
 }
 
 func (m *Mutex) IsOwner() v3.Cmp {

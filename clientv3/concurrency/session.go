@@ -72,9 +72,7 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 }
 
 // Client is the etcd client that is attached to the session.
-func (s *Session) Client() *v3.Client {
-	return s.client
-}
+func (s *Session) Client() *v3.Client { return s.client }
 
 // Lease is the lease ID for keys bound to the session.
 func (s *Session) Lease() v3.LeaseID { return s.id }
