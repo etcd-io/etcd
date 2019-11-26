@@ -23,28 +23,26 @@ func BenchmarkMutex(b *testing.B) {
 
 	b.SetParallelism(64)
 	b.RunParallel(func(pb *testing.PB) {
+		s, err := concurrency.NewSession(cli)
+		if err != nil {
+
+			return
+		}
+		defer once.Do(func() { berr = s.Close() })
+
 		foo := 0
 		for pb.Next() {
-			s, err := concurrency.NewSession(cli)
-			if err != nil {
-				once.Do(func() { berr = err })
-				return
-			}
-
 			m := concurrency.NewMutex(s, "/bench-lock")
 
 			if err := m.Lock(ctx); err != nil {
 				once.Do(func() { berr = err })
-				s.Close()
 				return
 			}
 			foo += 1
 			if err := m.Unlock(ctx); err != nil {
 				once.Do(func() { berr = err })
-				s.Close()
 				return
 			}
-			s.Close()
 		}
 		_ = foo
 	})
@@ -75,7 +73,6 @@ func BenchmarkMutexMulti(b *testing.B) {
 	b.SetParallelism(64)
 	b.RunParallel(func(pb *testing.PB) {
 		foo := 0
-
 		for pb.Next() {
 			m := concurrency.NewMutex(s, "/bench-lock2")
 
