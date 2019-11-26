@@ -17,6 +17,7 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11261) Prometheus metric.
+- Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
 
 ### etcdserver
 
