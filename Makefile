@@ -77,15 +77,11 @@ endif
 
 build-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile
-	docker build \
-	  --tag gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  --file ./tests/Dockerfile .
-	@mv ./tests/Dockerfile.bak ./tests/Dockerfile
+	./scripts/image-builder.sh build etcd-test tests $(GO_VERSION)
 
 push-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-test:go$(GO_VERSION)
+	./scripts/image-builder.sh push etcd-test tests $(GO_VERSION)
 
 pull-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
