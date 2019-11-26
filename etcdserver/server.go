@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/membership/membershippb"
 	"go.etcd.io/etcd/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/etcdserver/api/snap"
 	"go.etcd.io/etcd/etcdserver/api/v2discovery"
@@ -239,7 +240,9 @@ type EtcdServer struct {
 	applyV3 applierV3
 	// applyV3Base is the core applier without auth or quotas
 	applyV3Base applierV3
-	applyWait   wait.WaitTime
+	// applyV3Internal is the applier for internal request
+	applyV3Internal applierV3Internal
+	applyWait       wait.WaitTime
 
 	kv         mvcc.ConsistentWatchableKV
 	lessor     lease.Lessor
@@ -592,6 +595,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	srv.applyV3Base = srv.newApplierV3Backend()
+	srv.applyV3Internal = srv.newApplierV3Internal()
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
@@ -2527,14 +2531,10 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		}
 	}
 
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
+	req := membershippb.ClusterVersionSetRequest{Ver: ver}
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterVersionSet: &req})
 	cancel()
 
 	switch err {
