@@ -22,6 +22,7 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
+- Fix bug where [etcd_debugging_mvcc_db_compaction_keys_total is always 0](https://github.com/etcd-io/etcd/pull/11400).
 
 ## [v3.4.3](https://github.com/etcd-io/etcd/releases/tag/v3.4.3) (2019-10-24)
 
