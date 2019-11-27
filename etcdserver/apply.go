@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/membership/membershippb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
@@ -53,6 +54,7 @@ type applyResult struct {
 // applierV3Internal is the interface for processing internal V3 raft request
 type applierV3Internal interface {
 	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest)
+	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest)
 }
 
 // applierV3 is the interface for processing V3 raft messages
@@ -185,6 +187,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
 	case r.ClusterVersionSet != nil:
 		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
+	case r.ClusterMemberAttrSet != nil:
+		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
 	default:
 		panic("not implemented")
 	}
@@ -850,6 +854,16 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 
 func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest) {
 	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability)
+}
+
+func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest) {
+	a.s.cluster.UpdateAttributes(
+		types.ID(r.Member_ID),
+		membership.Attributes{
+			Name:       r.MemberAttributes.Name,
+			ClientURLs: r.MemberAttributes.ClientUrls,
+		},
+	)
 }
 
 type quotaApplierV3 struct {

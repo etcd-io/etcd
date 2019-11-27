@@ -732,7 +732,7 @@ func (s *EtcdServer) adjustTicks() {
 func (s *EtcdServer) Start() {
 	s.start()
 	s.goAttach(func() { s.adjustTicks() })
-	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
+	s.goAttach(func() { s.publishV3(s.Cfg.ReqTimeout()) })
 	s.goAttach(s.purgeFile)
 	s.goAttach(func() { monitorFileDescriptor(s.getLogger(), s.stopping) })
 	s.goAttach(s.monitorVersions)
@@ -1990,6 +1990,67 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 		s.r.Propose(ctx, data)
 		cancel()
 	})
+}
+
+// publishV3 registers server information into the cluster using v3 request. The
+// information is the JSON representation of this server's member struct, updated
+// with the static clientURLs of the server.
+// The function keeps attempting to register until it succeeds,
+// or its server is stopped.
+func (s *EtcdServer) publishV3(timeout time.Duration) {
+	req := &membershippb.ClusterMemberAttrSetRequest{
+		Member_ID: uint64(s.id),
+		MemberAttributes: &membershippb.Attributes{
+			Name:       s.attributes.Name,
+			ClientUrls: s.attributes.ClientURLs,
+		},
+	}
+
+	for {
+		select {
+		case <-s.stopping:
+			if lg := s.getLogger(); lg != nil {
+				lg.Warn(
+					"stopped publish because server is stopping",
+					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.Duration("publish-timeout", timeout),
+				)
+			}
+			return
+
+		default:
+		}
+
+		ctx, cancel := context.WithTimeout(s.ctx, timeout)
+		_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterMemberAttrSet: req})
+		cancel()
+		switch err {
+		case nil:
+			close(s.readych)
+			if lg := s.getLogger(); lg != nil {
+				lg.Info(
+					"published local member to cluster through raft",
+					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.String("cluster-id", s.cluster.ID().String()),
+					zap.Duration("publish-timeout", timeout),
+				)
+			}
+			return
+
+		default:
+			if lg := s.getLogger(); lg != nil {
+				lg.Warn(
+					"failed to publish local member to cluster through raft",
+					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+					zap.Duration("publish-timeout", timeout),
+					zap.Error(err),
+				)
+			}
+		}
+	}
 }
 
 // publish registers server information into the cluster. The information
