@@ -21,15 +21,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"runtime"
-	"strings"
 
 	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/pkg/flags"
 	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/version"
 
 	"go.uber.org/zap"
@@ -375,14 +372,6 @@ func (cfg *config) configFromFile(path string) error {
 	}
 	if yerr := yaml.Unmarshal(b, &cfg.cp); yerr != nil {
 		return yerr
-	}
-
-	if cfg.ec.ListenMetricsUrlsJSON != "" {
-		us, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
-		if err != nil {
-			log.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
-		}
-		cfg.ec.ListenMetricsUrls = []url.URL(us)
 	}
 
 	if cfg.cp.FallbackJSON != "" {
