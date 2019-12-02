@@ -306,7 +306,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 		return nil, ErrAuthFailed
 	}
 
-	if user.Options.NoPassword {
+	if user.Options != nil && user.Options.NoPassword {
 		return nil, ErrAuthFailed
 	}
 
@@ -344,7 +344,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		return 0, ErrAuthFailed
 	}
 
-	if user.Options.NoPassword {
+	if user.Options != nil && user.Options.NoPassword {
 		return 0, ErrAuthFailed
 	}
 
