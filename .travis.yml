@@ -111,7 +111,8 @@ script:
             && GO_BUILD_FLAGS='-v' GOOS=windows GOARCH=amd64 ./build \
             && GO_BUILD_FLAGS='-v' GOARCH=arm ./build \
             && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build"
+            && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build \
+            && GO_BUILD_FLAGS='-v' GOARCH=s390x ./build"
         ;;
       linux-amd64-grpcproxy)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
