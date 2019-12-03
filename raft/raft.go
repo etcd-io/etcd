@@ -1566,8 +1566,8 @@ func (r *raft) switchToConfig(cfg tracker.Config, prs tracker.ProgressMap) pb.Co
 			r.maybeSendAppend(id, false /* sendIfEmpty */)
 		})
 	}
-	// If the the leadTransferee was removed, abort the leadership transfer.
-	if _, tOK := r.prs.Progress[r.leadTransferee]; !tOK && r.leadTransferee != 0 {
+	// If the the leadTransferee was removed or demoted, abort the leadership transfer.
+	if _, tOK := r.prs.Config.Voters.IDs()[r.leadTransferee]; !tOK && r.leadTransferee != 0 {
 		r.abortLeaderTransfer()
 	}
 
