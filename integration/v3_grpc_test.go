@@ -1898,7 +1898,7 @@ func TestV3LargeRequests(t *testing.T) {
 		expectError     error
 	}{
 		// don't set to 0. use 0 as the default.
-		{1, 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{256, 1024, rpctypes.ErrGRPCRequestTooLarge},
 		{10 * 1024 * 1024, 9 * 1024 * 1024, nil},
 		{10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
 		{10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},
