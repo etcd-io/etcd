@@ -8,7 +8,7 @@ The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.
 <hr>
 
 
-## v3.3.18 (2019-TBD)
+## v3.3.18 (2019-11-26)
 
 ### Metrics, Monitoring
 
