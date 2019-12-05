@@ -732,7 +732,7 @@ func (s *EtcdServer) adjustTicks() {
 func (s *EtcdServer) Start() {
 	s.start()
 	s.goAttach(func() { s.adjustTicks() })
-	s.goAttach(func() { s.publishV3(s.Cfg.ReqTimeout()) })
+	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
 	s.goAttach(s.purgeFile)
 	s.goAttach(func() { monitorFileDescriptor(s.getLogger(), s.stopping) })
 	s.goAttach(s.monitorVersions)
@@ -1997,6 +1997,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // with the static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
+// TODO: replace publish() in 3.6
 func (s *EtcdServer) publishV3(timeout time.Duration) {
 	req := &membershippb.ClusterMemberAttrSetRequest{
 		Member_ID: uint64(s.id),
@@ -2005,18 +2006,16 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 			ClientUrls: s.attributes.ClientURLs,
 		},
 	}
-
+	lg := s.getLogger()
 	for {
 		select {
 		case <-s.stopping:
-			if lg := s.getLogger(); lg != nil {
-				lg.Warn(
-					"stopped publish because server is stopping",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-					zap.Duration("publish-timeout", timeout),
-				)
-			}
+			lg.Warn(
+				"stopped publish because server is stopping",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.Duration("publish-timeout", timeout),
+			)
 			return
 
 		default:
@@ -2028,27 +2027,23 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 		switch err {
 		case nil:
 			close(s.readych)
-			if lg := s.getLogger(); lg != nil {
-				lg.Info(
-					"published local member to cluster through raft",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-					zap.String("cluster-id", s.cluster.ID().String()),
-					zap.Duration("publish-timeout", timeout),
-				)
-			}
+			lg.Info(
+				"published local member to cluster through raft",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.String("cluster-id", s.cluster.ID().String()),
+				zap.Duration("publish-timeout", timeout),
+			)
 			return
 
 		default:
-			if lg := s.getLogger(); lg != nil {
-				lg.Warn(
-					"failed to publish local member to cluster through raft",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-					zap.Duration("publish-timeout", timeout),
-					zap.Error(err),
-				)
-			}
+			lg.Warn(
+				"failed to publish local member to cluster through raft",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.Duration("publish-timeout", timeout),
+				zap.Error(err),
+			)
 		}
 	}
 }
@@ -2063,7 +2058,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 // but does not go through v2 API endpoint, which means even with v2
 // client handler disabled (e.g. --enable-v2=false), cluster can still
 // process publish requests through rafthttp
-// TODO: Deprecate v2 store
+// TODO: Deprecate v2 store in 3.6
 func (s *EtcdServer) publish(timeout time.Duration) {
 	b, err := json.Marshal(s.attributes)
 	if err != nil {

@@ -19,12 +19,10 @@ import (
 	"path"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/pkg/pbutil"
 
-	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 )
 
@@ -91,10 +89,8 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 			// return an empty response since there is no consumer.
 			return Response{}
 		}
+		// remove v2 version set to avoid the conflict between v2 and v3.
 		if r.Path == membership.StoreClusterVersionKey() {
-			if a.cluster != nil {
-				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability)
-			}
 			// return an empty response since there is no consumer.
 			return Response{}
 		}

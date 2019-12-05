@@ -247,7 +247,12 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
-	c.version = clusterVersionFromBackend(c.lg, c.be)
+	if c.be != nil {
+		c.version = clusterVersionFromBackend(c.lg, c.be)
+	} else {
+		c.version = clusterVersionFromStore(c.lg, c.v2store)
+	}
+
 	mustDetectDowngrade(c.lg, c.version)
 	onSet(c.lg, c.version)
 
@@ -766,7 +771,7 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 		if lg != nil {
 			lg.Panic(
 				"unexpected number of keys when getting cluster version from backend",
-				zap.Int("number fo keys", len(keys)),
+				zap.Int("number-of-key", len(keys)),
 			)
 		}
 	}
