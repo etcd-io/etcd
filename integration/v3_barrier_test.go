@@ -47,13 +47,20 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 	}
 
 	donec := make(chan struct{})
+	stopc := make(chan struct{})
+	defer close(stopc)
+
 	for i := 0; i < waiters; i++ {
 		go func() {
 			br := recipe.NewBarrier(chooseClient(), "test-barrier")
 			if err := br.Wait(); err != nil {
 				t.Errorf("could not wait on barrier (%v)", err)
 			}
-			donec <- struct{}{}
+			select {
+			case donec <- struct{}{}:
+			case <-stopc:
+			}
+
 		}()
 	}
 

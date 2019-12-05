@@ -1188,7 +1188,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		recv := make(chan *pb.WatchResponse)
+		recv := make(chan *pb.WatchResponse, 1)
 		go func() {
 			// check received PUT
 			resp, rerr := ws.Recv()

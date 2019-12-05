@@ -97,7 +97,7 @@ func TestV3ElectionObserve(t *testing.T) {
 	lc := toGRPC(clus.Client(0)).Election
 
 	// observe leadership events
-	observec := make(chan struct{})
+	observec := make(chan struct{}, 1)
 	go func() {
 		defer close(observec)
 		s, err := lc.Observe(context.Background(), &epb.LeaderRequest{Name: []byte("foo")})
