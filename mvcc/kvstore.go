@@ -295,7 +295,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 	ch, err := s.updateCompactRev(rev)
-	if nil != err {
+	if err != nil {
 		return ch, err
 	}
 
