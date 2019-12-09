@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/membership/membershippb"
 	"go.etcd.io/etcd/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/etcdserver/api/snap"
 	"go.etcd.io/etcd/etcdserver/api/v2discovery"
@@ -239,7 +240,9 @@ type EtcdServer struct {
 	applyV3 applierV3
 	// applyV3Base is the core applier without auth or quotas
 	applyV3Base applierV3
-	applyWait   wait.WaitTime
+	// applyV3Internal is the applier for internal request
+	applyV3Internal applierV3Internal
+	applyWait       wait.WaitTime
 
 	kv         mvcc.ConsistentWatchableKV
 	lessor     lease.Lessor
@@ -592,6 +595,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	srv.applyV3Base = srv.newApplierV3Backend()
+	srv.applyV3Internal = srv.newApplierV3Internal()
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
@@ -1988,6 +1992,62 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	})
 }
 
+// publishV3 registers server information into the cluster using v3 request. The
+// information is the JSON representation of this server's member struct, updated
+// with the static clientURLs of the server.
+// The function keeps attempting to register until it succeeds,
+// or its server is stopped.
+// TODO: replace publish() in 3.6
+func (s *EtcdServer) publishV3(timeout time.Duration) {
+	req := &membershippb.ClusterMemberAttrSetRequest{
+		Member_ID: uint64(s.id),
+		MemberAttributes: &membershippb.Attributes{
+			Name:       s.attributes.Name,
+			ClientUrls: s.attributes.ClientURLs,
+		},
+	}
+	lg := s.getLogger()
+	for {
+		select {
+		case <-s.stopping:
+			lg.Warn(
+				"stopped publish because server is stopping",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.Duration("publish-timeout", timeout),
+			)
+			return
+
+		default:
+		}
+
+		ctx, cancel := context.WithTimeout(s.ctx, timeout)
+		_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterMemberAttrSet: req})
+		cancel()
+		switch err {
+		case nil:
+			close(s.readych)
+			lg.Info(
+				"published local member to cluster through raft",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.String("cluster-id", s.cluster.ID().String()),
+				zap.Duration("publish-timeout", timeout),
+			)
+			return
+
+		default:
+			lg.Warn(
+				"failed to publish local member to cluster through raft",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
+				zap.Duration("publish-timeout", timeout),
+				zap.Error(err),
+			)
+		}
+	}
+}
+
 // publish registers server information into the cluster. The information
 // is the JSON representation of this server's member struct, updated with the
 // static clientURLs of the server.
@@ -1998,7 +2058,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // but does not go through v2 API endpoint, which means even with v2
 // client handler disabled (e.g. --enable-v2=false), cluster can still
 // process publish requests through rafthttp
-// TODO: Deprecate v2 store
+// TODO: Deprecate v2 store in 3.6
 func (s *EtcdServer) publish(timeout time.Duration) {
 	b, err := json.Marshal(s.attributes)
 	if err != nil {
@@ -2527,14 +2587,10 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		}
 	}
 
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
+	req := membershippb.ClusterVersionSetRequest{Ver: ver}
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterVersionSet: &req})
 	cancel()
 
 	switch err {

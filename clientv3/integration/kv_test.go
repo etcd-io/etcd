@@ -893,7 +893,7 @@ func TestKVLargeRequests(t *testing.T) {
 		expectError error
 	}{
 		{
-			maxRequestBytesServer:  1,
+			maxRequestBytesServer:  256,
 			maxCallSendBytesClient: 0,
 			maxCallRecvBytesClient: 0,
 			valueSize:              1024,

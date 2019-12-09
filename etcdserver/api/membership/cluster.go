@@ -247,7 +247,12 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
-	c.version = clusterVersionFromStore(c.lg, c.v2store)
+	if c.be != nil {
+		c.version = clusterVersionFromBackend(c.lg, c.be)
+	} else {
+		c.version = clusterVersionFromStore(c.lg, c.v2store)
+	}
+
 	mustDetectDowngrade(c.lg, c.version)
 	onSet(c.lg, c.version)
 
@@ -751,6 +756,26 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 		}
 	}
 	return semver.Must(semver.NewVersion(*e.Node.Value))
+}
+
+func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
+	ckey := backendClusterVersionKey()
+	tx := be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
+	keys, vals := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
+	if len(keys) == 0 {
+		return nil
+	}
+	if len(keys) != 1 {
+		if lg != nil {
+			lg.Panic(
+				"unexpected number of keys when getting cluster version from backend",
+				zap.Int("number-of-key", len(keys)),
+			)
+		}
+	}
+	return semver.Must(semver.NewVersion(string(vals[0])))
 }
 
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
