@@ -182,6 +182,9 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 	}
 
 	watcherGauge.Dec()
+	if wa.ch != nil {
+		close(wa.ch)
+	}
 	wa.ch = nil
 	s.mu.Unlock()
 }

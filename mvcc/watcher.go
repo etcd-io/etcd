@@ -172,7 +172,10 @@ func (ws *watchStream) Close() {
 		cancel()
 	}
 	ws.closed = true
-	close(ws.ch)
+	if ws.ch != nil {
+		close(ws.ch)
+	}
+	ws.ch = nil
 	watchStreamGauge.Dec()
 }
 
