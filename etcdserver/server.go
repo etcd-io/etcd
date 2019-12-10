@@ -2243,9 +2243,8 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	var raftReq pb.InternalRaftRequest
 	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
 		var r pb.Request
-		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
+		pbutil.MustUnmarshal(&r, e.Data)
+		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(&r)))
 		return
 	}
 	if raftReq.V2 != nil {
