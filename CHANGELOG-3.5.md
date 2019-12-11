@@ -80,6 +80,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [`etcd --backend-bbolt-freelist-type`] flag is now stable.
   - `etcd --experimental-backend-bbolt-freelist-type` has been deprecated.
 - Support [rollback/downgrade](TODO).
+- Deprecate v2 apply on cluster version. [Use v3 request to set cluster version and recover cluster version from v3 backend](https://github.com/etcd-io/etcd/pull/11427).
 
 ### Package `embed`
 
