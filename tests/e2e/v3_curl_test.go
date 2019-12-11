@@ -186,21 +186,18 @@ func testV3CurlTxn(cx ctlCtx) {
 
 func testV3CurlAuth(cx ctlCtx) {
 	p := cx.apiPrefix
+	usernames := []string{"root", "nonroot", "nooption"}
+	pwds := []string{"toor", "pass", "pass"}
+	options := []*authpb.UserAddOptions{{NoPassword: false}, {NoPassword: false}, nil}
 
-	// create root user
-	rootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor"), Options: &authpb.UserAddOptions{NoPassword: false}})
-	testutil.AssertNil(cx.t, err)
+	// create users
+	for i := 0; i < len(usernames); i++ {
+		user, err := json.Marshal(&pb.AuthUserAddRequest{Name: usernames[i], Password: pwds[i], Options: options[i]})
+		testutil.AssertNil(cx.t, err)
 
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(rootuser), expected: "revision"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth add user with curl (%v)", err)
-	}
-
-	// create non root user
-	nonrootuser, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("example.com"), Password: string("example"), Options: &authpb.UserAddOptions{NoPassword: false}})
-	testutil.AssertNil(cx.t, err)
-
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(nonrootuser), expected: "revision"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth add user with curl (%v)", err)
+		if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/add"), value: string(user), expected: "revision"}); err != nil {
+			cx.t.Fatalf("failed testV3CurlAuth add user %v with curl (%v)", usernames[i], err)
+		}
 	}
 
 	// create root role
@@ -211,20 +208,14 @@ func testV3CurlAuth(cx ctlCtx) {
 		cx.t.Fatalf("failed testV3CurlAuth create role with curl using prefix (%s) (%v)", p, err)
 	}
 
-	// grant root role
-	grantroleroot, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("root"), Role: string("root")})
-	testutil.AssertNil(cx.t, err)
+	//grant root role
+	for i := 0; i < len(usernames); i++ {
+		grantroleroot, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
+		testutil.AssertNil(cx.t, err)
 
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantroleroot), expected: "revision"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth grant role with curl using prefix (%s) (%v)", p, err)
-	}
-
-	// grant non root user root role
-	grantrole, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("example.com"), Role: string("root")})
-	testutil.AssertNil(cx.t, err)
-
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantrole), expected: "revision"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth grant role with curl using prefix (%s) (%v)", p, err)
+		if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/auth/user/grant"), value: string(grantroleroot), expected: "revision"}); err != nil {
+			cx.t.Fatalf("failed testV3CurlAuth grant role with curl using prefix (%s) (%v)", p, err)
+		}
 	}
 
 	// enable auth
@@ -232,45 +223,47 @@ func testV3CurlAuth(cx ctlCtx) {
 		cx.t.Fatalf("failed testV3CurlAuth enable auth with curl using prefix (%s) (%v)", p, err)
 	}
 
-	// put "bar" into "foo"
-	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-	testutil.AssertNil(cx.t, err)
+	for i := 0; i < len(usernames); i++ {
+		// put "bar[i]" into "foo[i]"
+		putreq, err := json.Marshal(&pb.PutRequest{Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte(fmt.Sprintf("bar%d", i))})
+		testutil.AssertNil(cx.t, err)
 
-	// fail put no auth
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), expected: "error"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth no auth put with curl using prefix (%s) (%v)", p, err)
-	}
+		// fail put no auth
+		if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), expected: "error"}); err != nil {
+			cx.t.Fatalf("failed testV3CurlAuth no auth put with curl using prefix (%s) (%v)", p, err)
+		}
 
-	// auth request
-	authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: string("root"), Password: string("toor")})
-	testutil.AssertNil(cx.t, err)
+		// auth request
+		authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: usernames[i], Password: pwds[i]})
+		testutil.AssertNil(cx.t, err)
 
-	var (
-		authHeader string
-		cmdArgs    []string
-		lineFunc   = func(txt string) bool { return true }
-	)
+		var (
+			authHeader string
+			cmdArgs    []string
+			lineFunc   = func(txt string) bool { return true }
+		)
 
-	cmdArgs = cURLPrefixArgs(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
-	proc, err := spawnCmd(cmdArgs)
-	testutil.AssertNil(cx.t, err)
+		cmdArgs = cURLPrefixArgs(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
+		proc, err := spawnCmd(cmdArgs)
+		testutil.AssertNil(cx.t, err)
 
-	cURLRes, err := proc.ExpectFunc(lineFunc)
-	testutil.AssertNil(cx.t, err)
+		cURLRes, err := proc.ExpectFunc(lineFunc)
+		testutil.AssertNil(cx.t, err)
 
-	authRes := make(map[string]interface{})
-	testutil.AssertNil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
+		authRes := make(map[string]interface{})
+		testutil.AssertNil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
 
-	token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
-	if !ok {
-		cx.t.Fatalf("failed invalid token in authenticate response with curl")
-	}
+		token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
+		if !ok {
+			cx.t.Fatalf("failed invalid token in authenticate response with curl using user (%v)", usernames[i])
+		}
 
-	authHeader = "Authorization: " + token
+		authHeader = "Authorization: " + token
 
-	// put with auth
-	if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
-		cx.t.Fatalf("failed testV3CurlAuth auth put with curl using prefix (%s) (%v)", p, err)
+		// put with auth
+		if err = cURLPost(cx.epc, cURLReq{endpoint: path.Join(p, "/kv/put"), value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
+			cx.t.Fatalf("failed testV3CurlAuth auth put with curl using prefix (%s) and user (%v) (%v)", p, usernames[i], err)
+		}
 	}
 }
 
