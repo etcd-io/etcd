@@ -24,6 +24,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
 - Fix bug where [etcd_debugging_mvcc_db_compaction_keys_total is always 0](https://github.com/etcd-io/etcd/pull/11400).
 
+### Auth
+
+- Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
+
 ## [v3.4.3](https://github.com/etcd-io/etcd/releases/tag/v3.4.3) (2019-10-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.2...v3.4.3) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
