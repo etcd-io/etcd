@@ -57,14 +57,14 @@
           {
             alert: 'etcdHighNumberOfLeaderChanges',
             expr: |||
-              rate(etcd_server_leader_changes_seen_total{%(etcd_selector)s}[15m]) > 3
+              increase((max by (job) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 3
             ||| % $._config,
-            'for': '15m',
+            'for': '5m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last 30 minutes.',
+              message: 'etcd cluster "{{ $labels.job }}": {{ $value }} leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.',
             },
           },
           {
