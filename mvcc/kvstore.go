@@ -46,7 +46,6 @@ var (
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled  = errors.New("mvcc: watcher is canceled")
-	ErrClosed    = errors.New("mvcc: closed")
 
 	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc")
 )
@@ -445,7 +444,9 @@ func (s *store) restore() error {
 	tx.Unlock()
 
 	if scheduledCompact != 0 {
-		s.compactLockfree(scheduledCompact)
+		if _, err := s.compactLockfree(scheduledCompact); err != nil {
+			plog.Warningf("compaction encountered: %v", err)
+		}
 
 		if s.lg != nil {
 			s.lg.Info(
@@ -499,7 +500,9 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			currentRev = rev.main
 			if ok {
 				if isTombstone(rkv.key) {
-					ki.tombstone(lg, rev.main, rev.sub)
+					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
+						plog.Warningf("tombstone encountered: %v", err)
+					}
 					continue
 				}
 				ki.put(lg, rev.main, rev.sub)
