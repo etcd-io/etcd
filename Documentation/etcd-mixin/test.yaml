@@ -83,3 +83,33 @@ tests:
               severity: critical
             exp_annotations:
               message: 'etcd cluster "etcd": members are down (1).'
+  - interval: 1m
+    input_series:
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
+        values: '0 0 2 0 0 1 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
+        values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              message: 'etcd cluster "etcd": 3 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+  - interval: 1m
+    input_series:
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
+        values: '0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
+        values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+
