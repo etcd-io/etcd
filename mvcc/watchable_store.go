@@ -379,13 +379,13 @@ func (s *watchableStore) syncWatchers() int {
 		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {
-			if victims == nil {
-				victims = make(watcherBatch)
-			}
 			w.victim = true
 		}
 
 		if w.victim {
+			if victims == nil {
+				victims = make(watcherBatch)
+			}
 			victims[w] = eb
 		} else {
 			if eb.moreRev != 0 {
