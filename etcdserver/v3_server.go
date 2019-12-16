@@ -24,6 +24,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/membership/membershippb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/lease/leasehttp"
@@ -862,13 +863,14 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest
 	if err != nil {
 		return nil, err
 	}
-	r.Version = targetVersion.String()
 
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Downgrade: r})
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: true, Ver: targetVersion.String()}
+	_, err = s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.DowngradeResponse), nil
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
 }
 
 func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
@@ -882,12 +884,13 @@ func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse
 		return nil, ErrIsNotDowngrading
 	}
 
-	resp, err := s.raftRequest(ctx,
-		pb.InternalRaftRequest{Downgrade: &pb.DowngradeRequest{Action: pb.DowngradeRequest_CANCEL}})
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: false}
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.DowngradeResponse), nil
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
 }
 
 func changeToTargetVersion(v string) (*semver.Version, error) {

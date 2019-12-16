@@ -40,7 +40,6 @@ var (
 // upgrade from latest etcd releases.
 func TestReleaseUpgrade(t *testing.T) {
 	defer testutil.AfterTest(t)
-	t.Skip("remove skip after release new 3.4 binary")
 
 	copiedCfg := configUpgrade
 	epc := startCluster(t, &copiedCfg, lastReleasePath)
@@ -104,7 +103,6 @@ func TestReleaseUpgrade(t *testing.T) {
 // with zero consistent index in the backend.
 func TestReleaseUpgradeWithRestart(t *testing.T) {
 	defer testutil.AfterTest(t)
-	t.Skip("remove skip after release new 3.4 binary")
 
 	copiedCfg := configUpgrade
 	epc := startCluster(t, &copiedCfg, lastReleasePath)

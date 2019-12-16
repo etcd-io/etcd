@@ -62,7 +62,7 @@ message InternalRaftRequest {
 
   membershippb.ClusterVersionSetRequest cluster_version_set = 1300;
   membershippb.ClusterMemberAttrSetRequest cluster_member_attr_set = 1301;
-  DowngradeRequest  downgrade = 1302;
+  membershippb.DowngradeInfoSetRequest  downgrade_info_set = 1302;
 }
 
 message EmptyResponse {

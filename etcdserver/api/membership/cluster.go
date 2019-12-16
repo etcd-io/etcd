@@ -21,7 +21,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -260,7 +259,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	if c.be != nil {
 		// recover cluster version from backend
-		c.version = clusterVersionFromBackend(c.be)
+		c.version = clusterVersionFromBackend(c.lg, c.be)
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 	}
@@ -591,7 +590,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-
+	mustDetectDowngrade(c.lg, ver, c.downgradeInfo)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.v2store, ver)
 	}
@@ -710,93 +709,6 @@ func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
 	return true
 }
 
-func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
-	members := make(map[types.ID]*Member)
-	removed := make(map[types.ID]bool)
-	e, err := st.Get(StoreMembersPrefix, true, true)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return members, removed
-		}
-		if lg != nil {
-			lg.Panic("failed to get members from store", zap.String("path", StoreMembersPrefix), zap.Error(err))
-		} else {
-			plog.Panicf("get storeMembers should never fail: %v", err)
-		}
-	}
-	for _, n := range e.Node.Nodes {
-		var m *Member
-		m, err = nodeToMember(n)
-		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to nodeToMember", zap.Error(err))
-			} else {
-				plog.Panicf("nodeToMember should never fail: %v", err)
-			}
-		}
-		members[m.ID] = m
-	}
-
-	e, err = st.Get(storeRemovedMembersPrefix, true, true)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return members, removed
-		}
-		if lg != nil {
-			lg.Panic(
-				"failed to get removed members from store",
-				zap.String("path", storeRemovedMembersPrefix),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("get storeRemovedMembers should never fail: %v", err)
-		}
-	}
-	for _, n := range e.Node.Nodes {
-		removed[MustParseMemberIDFromKey(n.Key)] = true
-	}
-	return members, removed
-}
-
-func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
-	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return nil
-		}
-		if lg != nil {
-			lg.Panic(
-				"failed to get cluster version from store",
-				zap.String("path", path.Join(storePrefix, "version")),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
-		}
-	}
-	return semver.Must(semver.NewVersion(*e.Node.Value))
-}
-
-func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
-	ckey := backendClusterVersionKey()
-	tx := be.ReadTx()
-	tx.RLock()
-	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
-	if len(keys) == 0 {
-		return nil
-	}
-	if len(keys) != 1 {
-		if lg != nil {
-			lg.Panic(
-				"unexpected number of keys when getting cluster version from backend",
-				zap.Int("number-of-key", len(keys)),
-			)
-		}
-	}
-	return semver.Must(semver.NewVersion(string(vals[0])))
-}
-
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
@@ -836,7 +748,7 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 
 	// if the cluster enables downgrade, check local version against downgrade target version.
-	if d.Enabled && d.TargetVersion != nil {
+	if d != nil && d.Enabled && d.TargetVersion != nil {
 		if isValidDowngrade(d.TargetVersion, lv) {
 			if cv != nil {
 				if lg != nil {

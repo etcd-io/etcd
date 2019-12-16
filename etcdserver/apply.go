@@ -55,6 +55,7 @@ type applyResult struct {
 type applierV3Internal interface {
 	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest)
 	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest)
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest)
 }
 
 // applierV3 is the interface for processing V3 raft messages
@@ -92,8 +93,6 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
-
-	Downgrade(dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error)
 }
 
 type checkReqFunc func(mvcc.ReadView, *pb.RequestOp) error
@@ -191,8 +190,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
 	case r.ClusterMemberAttrSet != nil:
 		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
-	case r.Downgrade != nil:
-		ar.resp, ar.err = a.s.applyV3.Downgrade(r.Downgrade)
+	case r.DowngradeInfoSet != nil:
+		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
 	default:
 		panic("not implemented")
 	}
@@ -706,25 +705,6 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 	return resp, nil
 }
 
-func (a *applierV3backend) Downgrade(dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	var d membership.DowngradeInfo
-	lg := a.s.getLogger()
-	switch dr.Action {
-	case pb.DowngradeRequest_ENABLE:
-		v := dr.Version
-		d = membership.DowngradeInfo{Enabled: true, TargetVersion: semver.Must(semver.NewVersion(v))}
-	case pb.DowngradeRequest_CANCEL:
-		d = membership.DowngradeInfo{Enabled: false}
-	default:
-		if lg != nil {
-			lg.Panic("unknown DowngradeRequest action type", zap.String("type", dr.Action.String()))
-		}
-	}
-	a.s.cluster.SetDowngradeInfo(&d)
-	resp := &pb.DowngradeResponse{Version: a.s.ClusterVersion().String()}
-	return resp, nil
-}
-
 type applierV3Capped struct {
 	applierV3
 	q backendQuota
@@ -887,6 +867,17 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 			ClientURLs: r.MemberAttributes.ClientUrls,
 		},
 	)
+}
+
+func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest) {
+	var d membership.DowngradeInfo
+	if r.Enabled {
+		v := r.Ver
+		d = membership.DowngradeInfo{Enabled: true, TargetVersion: semver.Must(semver.NewVersion(v))}
+	} else {
+		d = membership.DowngradeInfo{Enabled: false}
+	}
+	a.s.cluster.SetDowngradeInfo(&d)
 }
 
 type quotaApplierV3 struct {

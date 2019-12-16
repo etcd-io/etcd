@@ -640,6 +640,7 @@ func TestDowngradeAfterUpgrade(t *testing.T) {
 }
 
 func testDowngradeEnabled(cx ctlCtx, endpoint string, expected string) {
+	//TODO: change to use get downgrade status after adding downgrade status api
 	cmdArgs := []string{"curl", "-L", endpoint + "/downgrade/enabled"}
 	var err error
 	for i := 0; i < 7; i++ {
