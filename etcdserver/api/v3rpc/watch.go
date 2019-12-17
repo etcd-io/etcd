@@ -46,6 +46,9 @@ type watchServer struct {
 
 // NewWatchServer returns a new watch server.
 func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
+	if s.Cfg.WatchProgressNotifyInterval > 0 {
+		SetProgressReportInterval(s.Cfg.WatchProgressNotifyInterval)
+	}
 	return &watchServer{
 		lg: s.Cfg.Logger,
 

@@ -157,6 +157,8 @@ type ServerConfig struct {
 	LeaseCheckpointInterval time.Duration
 
 	EnableGRPCGateway bool
+
+	WatchProgressNotifyInterval time.Duration
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
