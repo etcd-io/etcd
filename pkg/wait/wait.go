@@ -62,7 +62,10 @@ func (w *list) Trigger(id uint64, x interface{}) {
 	delete(w.m, id)
 	w.l.Unlock()
 	if ch != nil {
-		ch <- x
+		select {
+		case ch <- x:
+		default:
+		}
 		close(ch)
 	}
 }
