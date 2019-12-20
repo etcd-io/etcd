@@ -40,6 +40,7 @@ var (
 	watchGetTotalStreams  int
 	watchEvents           int
 	firstWatch            sync.Once
+	watchGetJsonPath      string
 )
 
 func init() {
@@ -47,6 +48,7 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchGetTotalWatchers, "watchers", 10000, "Total number of watchers")
 	watchGetCmd.Flags().IntVar(&watchGetTotalStreams, "streams", 1, "Total number of watcher streams")
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
+	watchGetCmd.Flags().StringVar(&watchGetJsonPath, "jsonpath", "", "json file path for benchmark results output")
 }
 
 func watchGetFunc(cmd *cobra.Command, args []string) {
@@ -95,11 +97,28 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
 
-	rc := r.Run()
+	isJsonOutput := len(watchGetJsonPath) > 0
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+	if isJsonOutput {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
+
 	wg.Wait()
 	cancel()
 	bar.Finish()
-	fmt.Printf("Get during watch summary:\n%s", <-rc)
+
+	if isJsonOutput {
+		mustWriteStatsToJsonFile(watchGetJsonPath, <-sc)
+		fmt.Printf("wrote stats to file %s\n", watchGetJsonPath)
+	} else {
+		fmt.Printf("Get during watch summary:\n%s", <-rc)
+	}
 }
 
 func doUnsyncWatch(stream v3.Watcher, rev int64, f func()) {

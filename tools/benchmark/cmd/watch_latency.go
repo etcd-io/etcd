@@ -44,6 +44,8 @@ var (
 	watchLPutRate   int
 	watchLKeySize   int
 	watchLValueSize int
+
+	watchLJsonPath string
 )
 
 func init() {
@@ -52,6 +54,7 @@ func init() {
 	watchLatencyCmd.Flags().IntVar(&watchLPutRate, "put-rate", 100, "Number of keys to put per second")
 	watchLatencyCmd.Flags().IntVar(&watchLKeySize, "key-size", 32, "Key size of watch response")
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
+	watchLatencyCmd.Flags().StringVar(&watchLJsonPath, "jsonpath", "", "json file path for benchmark results output")
 }
 
 func watchLatencyFunc(cmd *cobra.Command, args []string) {
@@ -72,7 +75,17 @@ func watchLatencyFunc(cmd *cobra.Command, args []string) {
 
 	limiter := rate.NewLimiter(rate.Limit(watchLPutRate), watchLPutRate)
 	r := newReport()
-	rc := r.Run()
+	isJsonOutput := len(watchLJsonPath) > 0
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+	if isJsonOutput {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
 
 	for i := 0; i < watchLTotal; i++ {
 		// limit key put as per reqRate
@@ -107,5 +120,10 @@ func watchLatencyFunc(cmd *cobra.Command, args []string) {
 
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+	if isJsonOutput {
+		mustWriteStatsToJsonFile(watchLJsonPath, <-sc)
+		fmt.Printf("wrote stats to file %s\n", watchLJsonPath)
+	} else {
+		fmt.Printf("%s", <-rc)
+	}
 }

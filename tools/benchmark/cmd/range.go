@@ -41,6 +41,7 @@ var (
 	rangeRate        int
 	rangeTotal       int
 	rangeConsistency string
+	rangeJsonPath    string
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
+	rangeCmd.Flags().StringVar(&rangeJsonPath, "jsonpath", "", "json file path for benchmark results output")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -111,9 +113,26 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
-	rc := r.Run()
+	isJsonOutput := len(rangeJsonPath) > 0
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+	if isJsonOutput {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
+
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+
+	if isJsonOutput {
+		mustWriteStatsToJsonFile(rangeJsonPath, <-sc)
+		fmt.Printf("wrote stats to file %s\n", rangeJsonPath)
+	} else {
+		fmt.Printf("%s", <-rc)
+	}
 }

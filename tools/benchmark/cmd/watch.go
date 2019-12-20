@@ -61,6 +61,8 @@ var (
 	watchKeySize      int
 	watchKeySpaceSize int
 	watchSeqKeys      bool
+
+	watchJsonPath string
 )
 
 type watchedKeys struct {
@@ -86,6 +88,7 @@ func init() {
 	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
 	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
+	watchCmd.Flags().StringVar(&watchJsonPath, "jsonpath", "", "json file path for benchmark results output")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {
@@ -150,11 +153,28 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}
 	}()
 
-	rc := r.Run()
+	isJsonOutput := len(watchJsonPath) > 0
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+	if isJsonOutput {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
+
 	wg.Wait()
 	bar.Finish()
 	close(r.Results())
-	fmt.Printf("Watch creation summary:\n%s", <-rc)
+
+	if isJsonOutput {
+		mustWriteStatsToJsonFile(watchJsonPath, <-sc)
+		fmt.Printf("wrote stats to file %s\n", watchJsonPath)
+	} else {
+		fmt.Printf("Watch creation summary:\n%s", <-rc)
+	}
 
 	for i := 0; i < len(streams); i++ {
 		wk.watches = append(wk.watches, (<-wc)...)

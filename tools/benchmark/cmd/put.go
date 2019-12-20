@@ -55,6 +55,8 @@ var (
 	compactIndexDelta int64
 
 	checkHashkv bool
+
+	putJsonPath string
 )
 
 func init() {
@@ -69,6 +71,7 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
+	putCmd.Flags().StringVar(&putJsonPath, "jsonpath", "", "json file path for benchmark results output")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -126,11 +129,28 @@ func putFunc(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	rc := r.Run()
+	isJsonOutput := len(putJsonPath) > 0
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+	if isJsonOutput {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
+
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Println(<-rc)
+
+	if isJsonOutput {
+		mustWriteStatsToJsonFile(putJsonPath, <-sc)
+		fmt.Printf("wrote stats to file %s\n", putJsonPath)
+	} else {
+		fmt.Println(<-rc)
+	}
 
 	if checkHashkv {
 		hashKV(cmd, clients)
