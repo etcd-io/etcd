@@ -123,9 +123,17 @@ func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string
 		zap.String("endpoint", cfg.Endpoints[0]),
 	)
 	if _, err = io.Copy(f, rd); err != nil {
+		if closeerr := f.Close(); closeerr != nil {
+			s.lg.Warn("encountered err when closing",
+				zap.String("path", partpath), zap.String("err", closeerr.Error()))
+		}
 		return err
 	}
 	if err = fileutil.Fsync(f); err != nil {
+		if closeerr := f.Close(); closeerr != nil {
+			s.lg.Warn("encountered err when closing",
+				zap.String("path", partpath), zap.String("err", closeerr.Error()))
+		}
 		return err
 	}
 	if err = f.Close(); err != nil {
