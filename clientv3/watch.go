@@ -23,7 +23,7 @@ import (
 
 	v3rpc "go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -405,10 +405,7 @@ func (w *watcher) RequestProgress(ctx context.Context) (err error) {
 	case reqc <- pr:
 		return nil
 	case <-ctx.Done():
-		if err == nil {
-			return ctx.Err()
-		}
-		return err
+		return ctx.Err()
 	case <-donec:
 		if wgs.closeErr != nil {
 			return wgs.closeErr
