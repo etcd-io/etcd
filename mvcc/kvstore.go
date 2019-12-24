@@ -46,7 +46,6 @@ var (
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled  = errors.New("mvcc: watcher is canceled")
-	ErrClosed    = errors.New("mvcc: closed")
 
 	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc")
 )
@@ -272,15 +271,15 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 }
 
 func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
-	start := time.Now()
-	keep := s.kvindex.Compact(rev)
-	trace.Step("compact in-memory index tree")
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
 		if ctx.Err() != nil {
 			s.compactBarrier(ctx, ch)
 			return
 		}
+		start := time.Now()
+		keep := s.kvindex.Compact(rev)
+		indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 		if !s.scheduleCompaction(rev, keep) {
 			s.compactBarrier(nil, ch)
 			return
@@ -289,15 +288,13 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	}
 
 	s.fifoSched.Schedule(j)
-
-	indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 	trace.Step("schedule compaction")
 	return ch, nil
 }
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 	ch, err := s.updateCompactRev(rev)
-	if nil != err {
+	if err != nil {
 		return ch, err
 	}
 
@@ -427,6 +424,7 @@ func (s *store) restore() error {
 
 	for key, lid := range keyToLease {
 		if s.le == nil {
+			tx.Unlock()
 			panic("no lessor to attach lease")
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
@@ -446,7 +444,9 @@ func (s *store) restore() error {
 	tx.Unlock()
 
 	if scheduledCompact != 0 {
-		s.compactLockfree(scheduledCompact)
+		if _, err := s.compactLockfree(scheduledCompact); err != nil {
+			plog.Warningf("compaction encountered: %v", err)
+		}
 
 		if s.lg != nil {
 			s.lg.Info(
@@ -500,7 +500,9 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			currentRev = rev.main
 			if ok {
 				if isTombstone(rkv.key) {
-					ki.tombstone(lg, rev.main, rev.sub)
+					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
+						plog.Warningf("tombstone encountered: %v", err)
+					}
 					continue
 				}
 				ki.put(lg, rev.main, rev.sub)

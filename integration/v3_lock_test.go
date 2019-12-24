@@ -49,6 +49,9 @@ func TestMutexLockMultiNode(t *testing.T) {
 func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream lock acquisitions
 	lockedC := make(chan *concurrency.Mutex)
+	stopC := make(chan struct{})
+	defer close(stopC)
+
 	for i := 0; i < waiters; i++ {
 		go func() {
 			session, err := concurrency.NewSession(chooseClient())
@@ -59,7 +62,11 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 			if err := m.Lock(context.TODO()); err != nil {
 				t.Errorf("could not wait on lock (%v)", err)
 			}
-			lockedC <- m
+			select {
+			case lockedC <- m:
+			case <-stopC:
+			}
+
 		}()
 	}
 	// unlock locked mutexes
@@ -103,6 +110,8 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
 	lockedC := make(chan *concurrency.Mutex)
 	notlockedC := make(chan *concurrency.Mutex)
+	stopC := make(chan struct{})
+	defer close(stopC)
 	for i := 0; i < lockers; i++ {
 		go func() {
 			session, err := concurrency.NewSession(chooseClient())
@@ -112,9 +121,15 @@ func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.C
 			m := concurrency.NewMutex(session, "test-mutex-try-lock")
 			err = m.TryLock(context.TODO())
 			if err == nil {
-				lockedC <- m
+				select {
+				case lockedC <- m:
+				case <-stopC:
+				}
 			} else if err == concurrency.ErrLocked {
-				notlockedC <- m
+				select {
+				case notlockedC <- m:
+				case <-stopC:
+				}
 			} else {
 				t.Errorf("Unexpected Error %v", err)
 			}

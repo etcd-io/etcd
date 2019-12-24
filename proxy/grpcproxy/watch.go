@@ -254,6 +254,7 @@ func (wps *watchProxyStream) recvLoop() error {
 			}
 			if !w.wr.valid() {
 				w.post(&pb.WatchResponse{WatchId: -1, Created: true, Canceled: true})
+				wps.mu.Unlock()
 				continue
 			}
 			wps.nextWatcherID++

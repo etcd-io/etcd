@@ -28,7 +28,7 @@ var (
 	modkernel32    = syscall.NewLazyDLL("kernel32.dll")
 	procLockFileEx = modkernel32.NewProc("LockFileEx")
 
-	errLocked = errors.New("The process cannot access the file because another process has locked a portion of the file.")
+	errLocked = errors.New("the process cannot access the file because another process has locked a portion of the file")
 )
 
 const (

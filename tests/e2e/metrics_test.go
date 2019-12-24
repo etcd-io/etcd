@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"go.etcd.io/etcd/version"
@@ -40,10 +39,6 @@ func metricsTest(cx ctlCtx) {
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}
-	ver := version.Version
-	if strings.HasSuffix(ver, "-pre") {
-		ver = strings.Replace(ver, "-pre", "", 1)
-	}
 
 	i := 0
 	for _, test := range []struct {
@@ -53,7 +48,7 @@ func metricsTest(cx ctlCtx) {
 		{"/metrics", fmt.Sprintf("etcd_debugging_mvcc_keys_total 1")},
 		{"/metrics", fmt.Sprintf("etcd_mvcc_delete_total 3")},
 		{"/metrics", fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
-		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, ver)},
+		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version))},
 		{"/health", `{"health":"true"}`},
 	} {
 		i++

@@ -185,7 +185,7 @@ func TestSRVDiscover(t *testing.T) {
 			if service == "etcd-client" {
 				return "", tt.withoutSSL, nil
 			}
-			return "", nil, errors.New("Unknown service in mock")
+			return "", nil, errors.New("unknown service in mock")
 		}
 
 		srvs, err := GetClient("etcd-client", "example.com", "")

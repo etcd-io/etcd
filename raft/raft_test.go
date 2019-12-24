@@ -3601,6 +3601,38 @@ func TestLeaderTransferRemoveNode(t *testing.T) {
 	checkLeaderTransferState(t, lead, StateLeader, 1)
 }
 
+func TestLeaderTransferDemoteNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.ignore(pb.MsgTimeoutNow)
+
+	lead := nt.peers[1].(*raft)
+
+	// The leadTransferee is demoted when leadship transferring.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	lead.applyConfChange(pb.ConfChangeV2{
+		Changes: []pb.ConfChangeSingle{
+			{
+				Type:   pb.ConfChangeRemoveNode,
+				NodeID: 3,
+			},
+			{
+				Type:   pb.ConfChangeAddLearnerNode,
+				NodeID: 3,
+			},
+		},
+	})
+
+	// Make the Raft group commit the LeaveJoint entry.
+	lead.applyConfChange(pb.ConfChangeV2{})
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
 // TestLeaderTransferBack verifies leadership can transfer back to self when last transfer is pending.
 func TestLeaderTransferBack(t *testing.T) {
 	nt := newNetwork(nil, nil, nil)

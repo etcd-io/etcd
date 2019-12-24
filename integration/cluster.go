@@ -1019,11 +1019,25 @@ func (m *member) Close() {
 		m.serverClient = nil
 	}
 	if m.grpcServer != nil {
-		m.grpcServer.Stop()
-		m.grpcServer.GracefulStop()
+		ch := make(chan struct{})
+		go func() {
+			defer close(ch)
+			// close listeners to stop accepting new connections,
+			// will block on any existing transports
+			m.grpcServer.GracefulStop()
+		}()
+		// wait until all pending RPCs are finished
+		select {
+		case <-ch:
+		case <-time.After(2 * time.Second):
+			// took too long, manually close open transports
+			// e.g. watch streams
+			m.grpcServer.Stop()
+			<-ch
+		}
 		m.grpcServer = nil
-		m.grpcServerPeer.Stop()
 		m.grpcServerPeer.GracefulStop()
+		m.grpcServerPeer.Stop()
 		m.grpcServerPeer = nil
 	}
 	m.s.HardStop()

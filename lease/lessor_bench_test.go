@@ -201,6 +201,7 @@ func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
 			le.mu.Lock()
 			ls := le.findExpiredLeases(findExpiredLimit)
 			if len(ls) == 0 {
+				le.mu.Unlock()
 				break
 			}
 			le.mu.Unlock()

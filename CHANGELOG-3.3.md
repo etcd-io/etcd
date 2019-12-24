@@ -5,15 +5,59 @@ Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
 
+<hr>
+
+
+## v3.3.18 (2019-11-26)
+
+### Metrics, Monitoring
+
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+Note that any `etcd_debugging_*` metrics are experimental and subject to change.
+
+- Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11261) Prometheus metric.
+- Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
+
+### etcdserver
+
+- Fix [`wait purge file loop during shutdown`](https://github.com/etcd-io/etcd/pull/11308).
+  - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
+  - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 
 <hr>
 
 
-## [v3.3.16](https://github.com/etcd-io/etcd/releases/tag/v3.3.16) (2019-TBD)
+## [v3.3.17](https://github.com/etcd-io/etcd/releases/tag/v3.3.17) (2019-10-11)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.16...v3.3.17) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Release details
+
+This release replaces 3.3.16.
+
+Due to the etcd 3.3.16 release being incorrectly released (see details below), please use this release instead.
+
+
+<hr>
+
+
+## [v3.3.16](https://github.com/etcd-io/etcd/releases/tag/v3.3.16) (2019-10-10)
+
+**WARNING: This is a bad release! Please use etcd 3.3.17 instead. See https://github.com/etcd-io/etcd/issues/11241 for details.**
+
+### Issues with release
+
+- go mod for 'v3.3.16' may return a different hash if retrieved from a go mod proxy than if retrieved directly from github. Depending on this version is unsafe. See https://github.com/etcd-io/etcd/issues/11241 for details.
+- The binaries and docker image for this release have been published and will be left as-is, but will not be signed since this is a bad release.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+
+### Improved
+
+- Add `etcd --experimental-peer-skip-client-san-verification` to [skip verification of peer client address](https://github.com/etcd-io/etcd/pull/11196).
 
 ### Metrics, Monitoring
 

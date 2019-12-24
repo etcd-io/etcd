@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/pkg/flags"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/version"
@@ -28,9 +29,73 @@ import (
 
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
+func TestClusterVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		rollingStart bool
+	}{
+		{
+			name:         "When start servers at the same time",
+			rollingStart: false,
+		},
+		{
+			name:         "When start servers one by one",
+			rollingStart: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			binary := binDir + "/etcd"
+			if !fileutil.Exist(binary) {
+				t.Skipf("%q does not exist", binary)
+			}
+			defer testutil.AfterTest(t)
+			cfg := configNoTLS
+			cfg.execPath = binary
+			cfg.snapshotCount = 3
+			cfg.baseScheme = "unix" // to avoid port conflict
+			cfg.rollingStart = tt.rollingStart
+
+			epc, err := newEtcdProcessCluster(&cfg)
+			if err != nil {
+				t.Fatalf("could not start etcd process cluster (%v)", err)
+			}
+			defer func() {
+				if errC := epc.Close(); errC != nil {
+					t.Fatalf("error closing etcd processes (%v)", errC)
+				}
+			}()
+
+			ctx := ctlCtx{
+				t:   t,
+				cfg: cfg,
+				epc: epc,
+			}
+			cv := version.Cluster(version.Version)
+			clusterVersionTest(ctx, `"etcdcluster":"`+cv)
+		})
+	}
+}
+
 func versionTest(cx ctlCtx) {
 	if err := ctlV3Version(cx); err != nil {
 		cx.t.Fatalf("versionTest ctlV3Version error (%v)", err)
+	}
+}
+
+func clusterVersionTest(cx ctlCtx, expected string) {
+	var err error
+	for i := 0; i < 7; i++ {
+		if err = cURLGet(cx.epc, cURLReq{endpoint: "/version", expected: expected}); err != nil {
+			cx.t.Logf("#%d: v3 is not ready yet (%v)", i, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		cx.t.Fatalf("failed cluster version test expected %v got (%v)", expected, err)
 	}
 }
 
