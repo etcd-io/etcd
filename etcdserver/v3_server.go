@@ -146,8 +146,14 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if isTxnReadonly(r) {
+		trace := traceutil.New("transaction",
+			s.getLogger(),
+			traceutil.Field{Key: "read_only", Value: true},
+		)
+		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 		if !isTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
+			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
 				return nil, err
 			}
@@ -160,15 +166,17 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 
 		defer func(start time.Time) {
 			warnOfExpensiveReadOnlyTxnRequest(s.getLogger(), start, r, resp, err)
+			trace.LogIfLong(traceThreshold)
 		}(time.Now())
 
-		get := func() { resp, err = s.applyV3Base.Txn(r) }
+		get := func() { resp, _, err = s.applyV3Base.Txn(ctx, r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
 		return resp, err
 	}
 
+	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
