@@ -76,6 +76,18 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
 }
 
+func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
+	dkey := backendDowngradeKey()
+	dvalue, err := json.Marshal(downgrade)
+	if err != nil {
+		lg.Panic("failed to marshal downgrade information", zap.Error(err))
+	}
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePut(clusterBucketName, dkey, dvalue)
+}
+
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
@@ -182,6 +194,10 @@ func backendMemberKey(id types.ID) []byte {
 
 func backendClusterVersionKey() []byte {
 	return []byte("clusterVersion")
+}
+
+func backendDowngradeKey() []byte {
+	return []byte("downgrade")
 }
 
 func mustCreateBackendBuckets(be backend.Backend) {

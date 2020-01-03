@@ -59,6 +59,16 @@ type RaftCluster struct {
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
+
+	downgradeInfo *DowngradeInfo
+}
+
+type DowngradeInfo struct {
+	// TargetVersion is the target downgrade version, if the cluster is not under downgrading,
+	// the targetVersion will be nil
+	TargetVersion *semver.Version
+	// Enabled indicates whether the cluster is enabled to downgrade
+	Enabled bool
 }
 
 // ConfigChangeContext represents a context for confChange.
@@ -102,10 +112,11 @@ func NewCluster(lg *zap.Logger, token string) *RaftCluster {
 		lg = zap.NewNop()
 	}
 	return &RaftCluster{
-		lg:      lg,
-		token:   token,
-		members: make(map[types.ID]*Member),
-		removed: make(map[types.ID]bool),
+		lg:            lg,
+		token:         token,
+		members:       make(map[types.ID]*Member),
+		removed:       make(map[types.ID]bool),
+		downgradeInfo: &DowngradeInfo{Enabled: false},
 	}
 }
 
@@ -691,6 +702,36 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 	return semver.Must(semver.NewVersion(string(vals[0])))
 }
 
+func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
+	dkey := backendDowngradeKey()
+	if be != nil {
+		tx := be.ReadTx()
+		tx.Lock()
+		defer tx.Unlock()
+		keys, vals := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+		if len(keys) == 0 {
+			return nil
+		}
+
+		if len(keys) != 1 {
+			if lg != nil {
+				lg.Panic(
+					"unexpected number of keys when getting cluster version from backend",
+					zap.Int("number-of-key", len(keys)),
+				)
+			}
+		}
+		var d DowngradeInfo
+		if err := json.Unmarshal(vals[0], &d); err != nil {
+			if lg != nil {
+				lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
+			}
+		}
+		return &d
+	}
+	return nil
+}
+
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
@@ -750,6 +791,36 @@ func (c *RaftCluster) IsLocalMemberLearner() bool {
 		)
 	}
 	return localMember.IsLearner
+}
+
+// DowngradeInfo returns the capability status of the cluster
+func (c *RaftCluster) DowngradeInfo() *DowngradeInfo {
+	c.Lock()
+	defer c.Unlock()
+	if c.downgradeInfo == nil {
+		return &DowngradeInfo{Enabled: false}
+	}
+	d := &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+	return d
+}
+
+func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.be != nil {
+		mustSaveDowngradeToBackend(c.lg, c.be, d)
+	}
+
+	c.downgradeInfo = d
+
+	if d.Enabled {
+		if c.lg != nil {
+			c.lg.Info("The server is ready to downgrade",
+				zap.String("target-version", d.TargetVersion.String()),
+				zap.String("server-version", version.Version))
+		}
+	}
 }
 
 // IsMemberExist returns if the member with the given id exists in cluster.
