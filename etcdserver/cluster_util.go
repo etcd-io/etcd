@@ -368,5 +368,104 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 
 // getDowngradeEnabledFromRemotePeers will get the downgrade enabled status of the cluster.
 func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+	members := cl.Members()
+
+	for _, m := range members {
+		if m.ID == local {
+			continue
+		}
+		enable, err := getDowngradeEnabled(lg, m, rt)
+		if err != nil {
+			if lg != nil {
+				lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
+			}
+		} else {
+			// Since the "/downgrade/enabled" serves linearized data,
+			// this function can return once it gets a non-error response from the endpoint.
+			return enable
+		}
+	}
 	return false
+}
+
+// getDowngradeEnabled returns the downgrade enabled status of the given member
+// via its peerURLs. Returns the last error if it fails to get it.
+func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (bool, error) {
+	cc := &http.Client{
+		Transport: rt,
+	}
+	var (
+		err  error
+		resp *http.Response
+	)
+
+	for _, u := range m.PeerURLs {
+		addr := u + "/downgrade/enabled"
+		resp, err = cc.Get(addr)
+		if err != nil {
+			if lg != nil {
+				lg.Warn(
+					"failed to reach the peer URL",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			}
+			continue
+		}
+		var b []byte
+		b, err = ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			if lg != nil {
+				lg.Warn(
+					"failed to read body of response",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			}
+			continue
+		}
+		var enable bool
+		if err = json.Unmarshal(b, &enable); err != nil {
+			if lg != nil {
+				lg.Warn(
+					"failed to unmarshal response",
+					zap.String("address", addr),
+					zap.String("remote-member-id", m.ID.String()),
+					zap.Error(err),
+				)
+			}
+			continue
+		}
+		return enable, nil
+	}
+	return false, err
+}
+
+// isDowngradeFinished decides the cluster downgrade status based on versions map.
+// Return true if all servers are downgraded to target version, otherwise return false.
+func isDowngradeFinished(lg *zap.Logger, targetVersion *semver.Version, vers map[string]*version.Versions) bool {
+	for mid, ver := range vers {
+		if ver == nil {
+			return false
+		}
+		v, err := semver.NewVersion(version.Cluster(ver.Server) + ".0")
+		if err != nil {
+			if lg != nil {
+				lg.Warn(
+					"failed to parse server version of remote member",
+					zap.String("remote-member-id", mid),
+					zap.String("remote-member-version", ver.Server),
+					zap.Error(err),
+				)
+			}
+			return false
+		}
+		if !targetVersion.Equal(*v) {
+			return false
+		}
+	}
+	return true
 }

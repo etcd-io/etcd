@@ -41,6 +41,7 @@ type fakeCluster struct {
 	id         uint64
 	clientURLs []string
 	members    map[uint64]*membership.Member
+	downgrade  *membership.DowngradeInfo
 }
 
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
@@ -57,7 +58,7 @@ func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[
 func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 type fakeServer struct {
-	cluster api.Cluster
+	cluster *fakeCluster
 }
 
 func (s *fakeServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
@@ -83,7 +84,7 @@ var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.
 func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -231,7 +232,7 @@ func TestServeMemberPromoteFails(t *testing.T) {
 
 // TestNewPeerHandlerOnMembersPromotePrefix verifies the request with members promote prefix is routed correctly
 func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil)
+	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
