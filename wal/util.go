@@ -59,8 +59,8 @@ func searchIndex(lg *zap.Logger, names []string, index uint64) (int, bool) {
 // names should have been sorted based on sequence number.
 // isValidSeq checks whether seq increases continuously.
 func isValidSeq(lg *zap.Logger, names []string) bool {
-	var lastSeq uint64
-	for _, name := range names {
+	var prevSeq uint64
+	for i, name := range names {
 		curSeq, _, err := parseWALName(name)
 		if err != nil {
 			if lg != nil {
@@ -69,10 +69,10 @@ func isValidSeq(lg *zap.Logger, names []string) bool {
 				plog.Panicf("parse correct name should never fail: %v", err)
 			}
 		}
-		if lastSeq != 0 && lastSeq != curSeq-1 {
+		if i > 0 && curSeq != prevSeq+1 {
 			return false
 		}
-		lastSeq = curSeq
+		prevSeq = curSeq
 	}
 	return true
 }
