@@ -512,6 +512,323 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	}
 }
 
+func TestKeyIndexCompact2(t *testing.T) {
+	tests := []struct {
+		compact int64
+
+		wki          *keyIndex
+		unwanted     map[revision]struct{}
+		unwantedTomb map[revision]struct{}
+	}{
+		{
+			1,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			2,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			3,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			4,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 2}: {},
+			},
+			map[revision]struct{}{},
+		},
+		{
+			5,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			6,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 4}: {},
+			},
+			map[revision]struct{}{
+				{main: 6}: {},
+			},
+		},
+		{
+			7,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			8,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			9,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			10,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 8}: {},
+			},
+			map[revision]struct{}{},
+		},
+		{
+			11,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			12,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 10}: {},
+			},
+			map[revision]struct{}{
+				{main: 12}: {},
+			},
+		},
+		{
+			13,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			14,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 14}: {},
+			},
+			map[revision]struct{}{},
+		},
+		{
+			15,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{},
+			map[revision]struct{}{},
+		},
+		{
+			16,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{16, 0},
+				generations: []generation{
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 14, sub: 1}: {},
+			},
+			map[revision]struct{}{
+				{main: 16}: {},
+			},
+		},
+	}
+
+	// Continuous Compaction
+	ki := newTestKeyIndex()
+
+	for i, tt := range tests {
+		//fmt.Printf("----nimei i:%v %#v\n", i, ki)
+		am := make(map[revision]struct{})
+		am2 := make(map[revision]struct{})
+		ki.compact2(zap.NewExample(), tt.compact, am, am2)
+		if !reflect.DeepEqual(ki, tt.wki) {
+			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
+		}
+		if !reflect.DeepEqual(am, tt.unwanted) {
+			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.unwanted)
+		}
+		if !reflect.DeepEqual(am2, tt.unwantedTomb) {
+			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.unwantedTomb)
+		}
+	}
+
+	// // Jump Compaction and finding Keep
+	// ki = newTestKeyIndex()
+	// for i, tt := range tests {
+	// 	if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
+	// 		am := make(map[revision]struct{})
+	// 		kiclone := cloneKeyIndex(ki)
+	// 		ki.keep(tt.compact, am)
+	// 		if !reflect.DeepEqual(ki, kiclone) {
+	// 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiclone)
+	// 		}
+	// 		if !reflect.DeepEqual(am, tt.wam) {
+	// 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+	// 		}
+	// 		am = make(map[revision]struct{})
+	// 		ki.compact(zap.NewExample(), tt.compact, am)
+	// 		if !reflect.DeepEqual(ki, tt.wki) {
+	// 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
+	// 		}
+	// 		if !reflect.DeepEqual(am, tt.wam) {
+	// 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+	// 		}
+	// 	}
+	// }
+
+	// kiClone := newTestKeyIndex()
+	// // Once Compaction and finding Keep
+	// for i, tt := range tests {
+	// 	ki := newTestKeyIndex()
+	// 	am := make(map[revision]struct{})
+	// 	ki.keep(tt.compact, am)
+	// 	if !reflect.DeepEqual(ki, kiClone) {
+	// 		t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiClone)
+	// 	}
+	// 	if !reflect.DeepEqual(am, tt.wam) {
+	// 		t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+	// 	}
+	// 	am = make(map[revision]struct{})
+	// 	ki.compact(zap.NewExample(), tt.compact, am)
+	// 	if !reflect.DeepEqual(ki, tt.wki) {
+	// 		t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
+	// 	}
+	// 	if !reflect.DeepEqual(am, tt.wam) {
+	// 		t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+	// 	}
+	// }
+}
+
 func cloneKeyIndex(ki *keyIndex) *keyIndex {
 	generations := make([]generation, len(ki.generations))
 	for i, gen := range ki.generations {
@@ -697,4 +1014,97 @@ func newTestKeyIndex() *keyIndex {
 	ki.put(zap.NewExample(), 14, 1)
 	ki.tombstone(zap.NewExample(), 16, 0)
 	return ki
+}
+
+func Test_findFirstSE(t *testing.T) {
+	revs := []revision{{main: 2}, {main: 4}, {main: 6}}
+	type args struct {
+		start     int
+		end       int
+		num       int64
+		revisions []revision
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "test1",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       3,
+				revisions: revs,
+			},
+			want: 0,
+		},
+		{
+			name: "test2",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       2,
+				revisions: revs,
+			},
+			want: 0,
+		},
+		{
+			name: "test3",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       1,
+				revisions: revs,
+			},
+			want: -1,
+		},
+		{
+			name: "test5",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       4,
+				revisions: revs,
+			},
+			want: 1,
+		},
+		{
+			name: "test6",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       5,
+				revisions: revs,
+			},
+			want: 1,
+		},
+		{
+			name: "test7",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       6,
+				revisions: revs,
+			},
+			want: 2,
+		},
+		{
+			name: "test8",
+			args: args{
+				start:     0,
+				end:       3,
+				num:       7,
+				revisions: revs,
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := findFirstSE(tt.args.start, tt.args.end, tt.args.num, tt.args.revisions); got != tt.want {
+				t.Errorf("findFirstSE() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

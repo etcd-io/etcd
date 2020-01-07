@@ -228,6 +228,43 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]
 	ki.generations = ki.generations[genIdx:]
 }
 
+// compact2 compacts a keyIndex by removing the versions with smaller or equal
+// revision than the given atRev except the largest one (If the largest one is
+// a tombstone, it will not be kept).
+// If a generation becomes empty during compaction, it will be removed.
+func (ki *keyIndex) compact2(lg *zap.Logger, atRev int64, unwanted map[revision]struct{}, unwantedTomb map[revision]struct{}) {
+	//fmt.Printf("-----haha %#v\n", ki)
+	if ki.isEmpty() {
+		if lg != nil {
+			lg.Panic(
+				"'compact2' got an unexpected empty keyIndex",
+				zap.String("key", string(ki.key)),
+			)
+		} else {
+			plog.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
+		}
+	}
+
+	genIdx, revIndex := ki.doCompact2(atRev, unwanted, unwantedTomb)
+	fmt.Printf("-----xixi %#v %#v\n", genIdx, revIndex)
+
+	g := &ki.generations[genIdx]
+	if !g.isEmpty() {
+		// remove the previous contents.
+		if revIndex != -1 {
+			g.revs = g.revs[revIndex:]
+		}
+		// remove any tombstone
+		if len(g.revs) == 1 && genIdx != len(ki.generations)-1 {
+			unwanted[g.revs[0]] = struct{}{}
+			genIdx++
+		}
+	}
+
+	// remove the previous generations.
+	ki.generations = ki.generations[genIdx:]
+}
+
 // keep finds the revision to be kept if compact is called at given atRev.
 func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
 	if ki.isEmpty() {
@@ -268,6 +305,48 @@ func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (gen
 	revIndex = g.walk(f)
 
 	return genIdx, revIndex
+}
+
+func (ki *keyIndex) doCompact2(atRev int64, unwanted map[revision]struct{}, unwantedTomb map[revision]struct{}) (genIdx int, revIndex int) {
+	genIdx, g := 0, &ki.generations[0]
+	// find first generation includes atRev or created after atRev
+	for genIdx < len(ki.generations)-1 {
+		idx := findFirstSE(0, len(g.revs), atRev, g.revs)
+		if idx >= 1 {
+			for i := 0; i < idx; i++ {
+				unwanted[g.revs[i]] = struct{}{}
+			}
+		}
+		tomb := g.revs[len(g.revs)-1].main
+		// if tomb version is atRev, we delete it too
+		if tomb == atRev {
+			unwantedTomb[g.revs[len(g.revs)-1]] = struct{}{}
+		}
+		if tomb > atRev {
+			break
+		}
+		genIdx++
+		g = &ki.generations[genIdx]
+	}
+
+	revIndex = findFirstSE(0, len(g.revs), atRev, g.revs)
+
+	return genIdx, revIndex
+}
+
+// find the first index which is smaller or equal to the num
+// if not found, return -1
+func findFirstSE(start, end int, num int64, revisions []revision) int {
+	for start < end {
+		mid := (start + end) / 2
+		if revisions[mid].main > num {
+			end = mid
+		} else {
+			start = mid + 1
+		}
+	}
+
+	return start - 1
 }
 
 func (ki *keyIndex) isEmpty() bool {

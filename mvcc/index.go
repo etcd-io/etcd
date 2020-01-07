@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 
@@ -30,6 +31,7 @@ type index interface {
 	Tombstone(key []byte, rev revision) error
 	RangeSince(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
+	Compact2(rev int64) (map[revision]struct{}, map[revision]struct{})
 	Keep(rev int64) map[revision]struct{}
 	Equal(b index) bool
 
@@ -205,7 +207,44 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 		ti.Unlock()
 		return true
 	})
+	fmt.Printf("------available %#v\n", available)
 	return available
+}
+
+// Compact2 is different from Compact, the return map is the data going to be deleted in backend
+func (ti *treeIndex) Compact2(rev int64) (map[revision]struct{}, map[revision]struct{}) {
+	unwanted := make(map[revision]struct{})
+	unwantedTomb := make(map[revision]struct{})
+	if ti.lg != nil {
+		ti.lg.Info("compact2 tree index", zap.Int64("revision", rev))
+	} else {
+		plog.Printf("store.index: compact %d", rev)
+	}
+	ti.Lock()
+	clone := ti.tree.Clone()
+	ti.Unlock()
+
+	clone.Ascend(func(item btree.Item) bool {
+		keyi := item.(*keyIndex)
+		//Lock is needed here to prevent modification to the keyIndex while
+		//compaction is going on or revision added to empty before deletion
+		ti.Lock()
+		keyi.compact2(ti.lg, rev, unwanted, unwantedTomb)
+		if keyi.isEmpty() {
+			item := ti.tree.Delete(keyi)
+			if item == nil {
+				if ti.lg != nil {
+					ti.lg.Panic("failed to delete during compaction")
+				} else {
+					plog.Panic("store.index: unexpected delete failure during compaction")
+				}
+			}
+		}
+		ti.Unlock()
+		return true
+	})
+	fmt.Printf("------unwanted %#v\n", unwanted)
+	return unwanted, unwantedTomb
 }
 
 // Keep finds all revisions to be kept for a Compaction at the given rev.

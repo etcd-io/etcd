@@ -967,6 +967,10 @@ func (i *fakeIndex) Compact(rev int64) map[revision]struct{} {
 	i.Recorder.Record(testutil.Action{Name: "compact", Params: []interface{}{rev}})
 	return <-i.indexCompactRespc
 }
+func (i *fakeIndex) Compact2(rev int64) (map[revision]struct{}, map[revision]struct{}) {
+	i.Recorder.Record(testutil.Action{Name: "compact2", Params: []interface{}{rev}})
+	return <-i.indexCompactRespc, <-i.indexCompactRespc
+}
 func (i *fakeIndex) Keep(rev int64) map[revision]struct{} {
 	i.Recorder.Record(testutil.Action{Name: "keep", Params: []interface{}{rev}})
 	return <-i.indexCompactRespc

@@ -31,6 +31,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
 	last := make([]byte, 8+1+8)
+	//compactKeys := make([][]byte, 0, s.cfg.CompactionBatchLimit)
 	for {
 		var rev revision
 

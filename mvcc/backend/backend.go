@@ -264,6 +264,20 @@ type IgnoreKey struct {
 	Key    string
 }
 
+func (b *backend) Compact(bucket []byte, keys [][]byte) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucket)
+
+		for _, key := range keys {
+			err := b.Delete(key)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
