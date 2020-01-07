@@ -238,7 +238,7 @@ func (b *backend) Snapshot() Snapshot {
 		defer close(donec)
 		// sendRateBytes is based on transferring snapshot data over a 1 gigabit/s connection
 		// assuming a min tcp throughput of 100MB/s.
-		var sendRateBytes int64 = 100 * 1024 * 1014
+		var sendRateBytes int64 = 100 * 1024 * 1024
 		warningTimeout := time.Duration(int64((float64(dbBytes) / float64(sendRateBytes)) * float64(time.Second)))
 		if warningTimeout < minSnapshotWarningTimeout {
 			warningTimeout = minSnapshotWarningTimeout
