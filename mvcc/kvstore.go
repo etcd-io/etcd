@@ -280,7 +280,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 		start := time.Now()
 		unwanted, unwantedTomb := s.kvindex.Compact2(rev)
 		indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
-		if !s.scheduleCompaction(rev, keep) {
+		if !s.scheduleCompaction(rev, unwanted, unwantedTomb) {
 			s.compactBarrier(nil, ch)
 			return
 		}

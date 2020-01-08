@@ -15,40 +15,50 @@
 package mvcc
 
 import (
-	"encoding/binary"
 	"time"
 
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
+func (s *store) scheduleCompaction(compactMainRev int64, unwanted map[revision]struct{}, unwantedTomb map[revision]struct{}) bool {
 	totalStart := time.Now()
 	defer func() { dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
 	keyCompactions := 0
 	defer func() { dbCompactionKeysCounter.Add(float64(keyCompactions)) }()
 
-	end := make([]byte, 8)
-	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
+	compactKeys := make([][]byte, 0)
+	// aggregate the normal unwanted kv and unwanted tomb kv
+	for rev := range unwanted {
+		rbytes := newRevBytes()
+		revToBytes(rev, rbytes)
+		compactKeys = append(compactKeys, rbytes)
+	}
+	for rev := range unwantedTomb {
+		rbytes := newRevBytes()
+		revToBytes(rev, rbytes)
+		ibytes := appendMarkTombstone(nil, rbytes)
+		compactKeys = append(compactKeys, ibytes)
+	}
 
-	last := make([]byte, 8+1+8)
-	//compactKeys := make([][]byte, 0, s.cfg.CompactionBatchLimit)
+	startIndex := 0
 	for {
-		var rev revision
-
 		start := time.Now()
-
 		tx := s.b.BatchTx()
 		tx.Lock()
-		keys, _ := tx.UnsafeRange(keyBucketName, last, end, int64(s.cfg.CompactionBatchLimit))
-		for _, key := range keys {
-			rev = bytesToRev(key)
-			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(keyBucketName, key)
-				keyCompactions++
+		batchNum := 0
+
+		for i := startIndex; i < len(compactKeys); i++ {
+			tx.UnsafeDelete(keyBucketName, compactKeys[i])
+			keyCompactions++
+			batchNum++
+
+			if batchNum == s.cfg.CompactionBatchLimit {
+				startIndex = i + 1
+				break
 			}
 		}
 
-		if len(keys) < s.cfg.CompactionBatchLimit {
+		if batchNum < s.cfg.CompactionBatchLimit {
 			rbytes := make([]byte, 8+1+8)
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
@@ -61,8 +71,6 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			return true
 		}
 
-		// update last
-		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
 		tx.Unlock()
 		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
 		s.b.ForceCommit()

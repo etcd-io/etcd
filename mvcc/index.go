@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 
@@ -207,7 +206,6 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 		ti.Unlock()
 		return true
 	})
-	fmt.Printf("------available %#v\n", available)
 	return available
 }
 
@@ -215,11 +213,7 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 func (ti *treeIndex) Compact2(rev int64) (map[revision]struct{}, map[revision]struct{}) {
 	unwanted := make(map[revision]struct{})
 	unwantedTomb := make(map[revision]struct{})
-	if ti.lg != nil {
-		ti.lg.Info("compact2 tree index", zap.Int64("revision", rev))
-	} else {
-		plog.Printf("store.index: compact %d", rev)
-	}
+	ti.lg.Info("compact2 tree index", zap.Int64("revision", rev))
 	ti.Lock()
 	clone := ti.tree.Clone()
 	ti.Unlock()
@@ -233,17 +227,12 @@ func (ti *treeIndex) Compact2(rev int64) (map[revision]struct{}, map[revision]st
 		if keyi.isEmpty() {
 			item := ti.tree.Delete(keyi)
 			if item == nil {
-				if ti.lg != nil {
-					ti.lg.Panic("failed to delete during compaction")
-				} else {
-					plog.Panic("store.index: unexpected delete failure during compaction")
-				}
+				ti.lg.Panic("failed to delete during compaction")
 			}
 		}
 		ti.Unlock()
 		return true
 	})
-	fmt.Printf("------unwanted %#v\n", unwanted)
 	return unwanted, unwantedTomb
 }
 

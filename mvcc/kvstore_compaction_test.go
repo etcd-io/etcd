@@ -30,38 +30,42 @@ func TestScheduleCompaction(t *testing.T) {
 	revs := []revision{{1, 0}, {2, 0}, {3, 0}}
 
 	tests := []struct {
-		rev   int64
-		keep  map[revision]struct{}
-		wrevs []revision
+		rev          int64
+		unwanted     map[revision]struct{}
+		unwantedTomb map[revision]struct{}
+		wrevs        []revision
+		uwrevs       []revision
 	}{
 		// compact at 1 and discard all history
 		{
 			1,
 			nil,
-			revs[1:],
-		},
-		// compact at 3 and discard all history
-		{
-			3,
 			nil,
+			revs,
 			nil,
 		},
-		// compact at 1 and keeps history one step earlier
+		// compact at 2 and keeps history one step earlier
 		{
-			1,
+			2,
 			map[revision]struct{}{
 				{main: 1}: {},
 			},
-			revs,
+			nil,
+			revs[1:],
+			[]revision{{main: 1}},
 		},
 		// compact at 1 and keeps history two steps earlier
 		{
 			3,
 			map[revision]struct{}{
+				{main: 1}: {},
 				{main: 2}: {},
+			},
+			map[revision]struct{}{
 				{main: 3}: {},
 			},
-			revs[1:],
+			nil,
+			[]revision{{main: 1}, {main: 2}, {main: 3}},
 		},
 	}
 	for i, tt := range tests {
@@ -70,23 +74,48 @@ func TestScheduleCompaction(t *testing.T) {
 		tx := s.b.BatchTx()
 
 		tx.Lock()
-		ibytes := newRevBytes()
-		for _, rev := range revs {
+
+		for i, rev := range revs {
+			ibytes := newRevBytes()
 			revToBytes(rev, ibytes)
+			if i == len(revs)-1 {
+				// tomb
+				ibytes = appendMarkTombstone(nil, ibytes)
+			}
 			tx.UnsafePut(keyBucketName, ibytes, []byte("bar"))
 		}
 		tx.Unlock()
 
-		s.scheduleCompaction(tt.rev, tt.keep)
+		s.scheduleCompaction(tt.rev, tt.unwanted, tt.unwantedTomb)
 
 		tx.Lock()
-		for _, rev := range tt.wrevs {
+		// make sure the remain is still available
+		for i, rev := range tt.wrevs {
+			ibytes := newRevBytes()
 			revToBytes(rev, ibytes)
+			if i == len(tt.wrevs)-1 {
+				// tomb
+				ibytes = appendMarkTombstone(nil, ibytes)
+			}
 			keys, _ := tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
 			if len(keys) != 1 {
 				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
 			}
 		}
+		// make sure the unwanted is deleted
+		for _, rev := range tt.uwrevs {
+			ibytes := newRevBytes()
+			revToBytes(rev, ibytes)
+			if i == len(tt.uwrevs)-1 {
+				// tomb
+				ibytes = appendMarkTombstone(nil, ibytes)
+			}
+			keys, _ := tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
+			if len(keys) != 0 {
+				t.Errorf("#%d: range on %v = %d, want 0", i, rev, len(keys))
+			}
+		}
+		ibytes := newRevBytes()
 		_, vals := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 		revToBytes(revision{main: tt.rev}, ibytes)
 		if w := [][]byte{ibytes}; !reflect.DeepEqual(vals, w) {

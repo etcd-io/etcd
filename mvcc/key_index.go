@@ -233,20 +233,14 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]
 // a tombstone, it will not be kept).
 // If a generation becomes empty during compaction, it will be removed.
 func (ki *keyIndex) compact2(lg *zap.Logger, atRev int64, unwanted map[revision]struct{}, unwantedTomb map[revision]struct{}) {
-	//fmt.Printf("-----haha %#v\n", ki)
 	if ki.isEmpty() {
-		if lg != nil {
-			lg.Panic(
-				"'compact2' got an unexpected empty keyIndex",
-				zap.String("key", string(ki.key)),
-			)
-		} else {
-			plog.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
-		}
+		lg.Panic(
+			"'compact' got an unexpected empty keyIndex",
+			zap.String("key", string(ki.key)),
+		)
 	}
 
 	genIdx, revIndex := ki.doCompact2(atRev, unwanted, unwantedTomb)
-	fmt.Printf("-----xixi %#v %#v\n", genIdx, revIndex)
 
 	g := &ki.generations[genIdx]
 	if !g.isEmpty() {
@@ -256,7 +250,7 @@ func (ki *keyIndex) compact2(lg *zap.Logger, atRev int64, unwanted map[revision]
 		}
 		// remove any tombstone
 		if len(g.revs) == 1 && genIdx != len(ki.generations)-1 {
-			unwanted[g.revs[0]] = struct{}{}
+			unwantedTomb[g.revs[0]] = struct{}{}
 			genIdx++
 		}
 	}
@@ -307,22 +301,26 @@ func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (gen
 	return genIdx, revIndex
 }
 
+// doCompact2 find the first generation and revIndex that smaller or equal to the atRev a
+// and delete its previous revisions, set them in the unwanted and unwantedTomb
 func (ki *keyIndex) doCompact2(atRev int64, unwanted map[revision]struct{}, unwantedTomb map[revision]struct{}) (genIdx int, revIndex int) {
 	genIdx, g := 0, &ki.generations[0]
-	// find first generation includes atRev or created after atRev
+
 	for genIdx < len(ki.generations)-1 {
 		idx := findFirstSE(0, len(g.revs), atRev, g.revs)
 		if idx >= 1 {
 			for i := 0; i < idx; i++ {
-				unwanted[g.revs[i]] = struct{}{}
+				if i != len(g.revs)-1 {
+					unwanted[g.revs[i]] = struct{}{}
+				}
 			}
 		}
 		tomb := g.revs[len(g.revs)-1].main
-		// if tomb version is atRev, we delete it too
-		if tomb == atRev {
+		// if tomb version is smaller or equal to atRev, we delete it
+		if tomb <= atRev {
 			unwantedTomb[g.revs[len(g.revs)-1]] = struct{}{}
 		}
-		if tomb > atRev {
+		if tomb >= atRev {
 			break
 		}
 		genIdx++
@@ -330,6 +328,13 @@ func (ki *keyIndex) doCompact2(atRev int64, unwanted map[revision]struct{}, unwa
 	}
 
 	revIndex = findFirstSE(0, len(g.revs), atRev, g.revs)
+	if revIndex >= 1 {
+		for i := 0; i < revIndex; i++ {
+			if i != len(g.revs)-1 {
+				unwanted[g.revs[i]] = struct{}{}
+			}
+		}
+	}
 
 	return genIdx, revIndex
 }
