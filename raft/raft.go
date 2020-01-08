@@ -1079,39 +1079,34 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastAppend()
 		return nil
 	case pb.MsgReadIndex:
-		// If more than the local vote is needed, go through a full broadcast,
-		// otherwise optimize.
-		if !r.prs.IsSingleton() {
-			if r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) != r.Term {
-				// Reject read only request when this leader has not committed any log entry at its term.
-				return nil
+		// only one voting member (the leader) in the cluster
+		if r.prs.IsSingleton() {
+			if resp, internal := r.responseReadIndex(m, r.raftLog.committed); !internal {
+				r.send(resp)
 			}
-
-			// thinking: use an interally defined context instead of the user given context.
-			// We can express this in terms of the term and index instead of a user-supplied value.
-			// This would allow multiple reads to piggyback on the same message.
-			switch r.readOnly.option {
-			case ReadOnlySafe:
-				r.readOnly.addRequest(r.raftLog.committed, m)
-				// The local node automatically acks the request.
-				r.readOnly.recvAck(r.id, m.Entries[0].Data)
-				r.bcastHeartbeatWithCtx(m.Entries[0].Data)
-			case ReadOnlyLeaseBased:
-				ri := r.raftLog.committed
-				if m.From == None || m.From == r.id { // from local member
-					r.readStates = append(r.readStates, ReadState{Index: ri, RequestCtx: m.Entries[0].Data})
-				} else {
-					r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
-				}
-			}
-		} else { // only one voting member (the leader) in the cluster
-			if m.From == None || m.From == r.id { // from leader itself
-				r.readStates = append(r.readStates, ReadState{Index: r.raftLog.committed, RequestCtx: m.Entries[0].Data})
-			} else { // from learner member
-				r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: r.raftLog.committed, Entries: m.Entries})
-			}
+			return nil
 		}
 
+		// Reject read only request when this leader has not committed any log entry at its term.
+		if !r.CommittedEntryInCurrentTerm() {
+			return nil
+		}
+
+		// thinking: use an interally defined context instead of the user given context.
+		// We can express this in terms of the term and index instead of a user-supplied value.
+		// This would allow multiple reads to piggyback on the same message.
+		switch r.readOnly.option {
+		// If more than the local vote is needed, go through a full broadcast.
+		case ReadOnlySafe:
+			r.readOnly.addRequest(r.raftLog.committed, m)
+			// The local node automatically acks the request.
+			r.readOnly.recvAck(r.id, m.Entries[0].Data)
+			r.bcastHeartbeatWithCtx(m.Entries[0].Data)
+		case ReadOnlyLeaseBased:
+			if resp, internal := r.responseReadIndex(m, r.raftLog.committed); !internal {
+				r.send(resp)
+			}
+		}
 		return nil
 	}
 
@@ -1201,11 +1196,8 @@ func stepLeader(r *raft, m pb.Message) error {
 
 		rss := r.readOnly.advance(m)
 		for _, rs := range rss {
-			req := rs.req
-			if req.From == None || req.From == r.id { // from local member
-				r.readStates = append(r.readStates, ReadState{Index: rs.index, RequestCtx: req.Entries[0].Data})
-			} else {
-				r.send(pb.Message{To: req.From, Type: pb.MsgReadIndexResp, Index: rs.index, Entries: req.Entries})
+			if resp, internal := r.responseReadIndex(rs.req, rs.index); !internal {
+				r.send(resp)
 			}
 		}
 	case pb.MsgSnapStatus:
@@ -1600,6 +1592,25 @@ func (r *raft) sendTimeoutNow(to uint64) {
 
 func (r *raft) abortLeaderTransfer() {
 	r.leadTransferee = None
+}
+
+func (r *raft) CommittedEntryInCurrentTerm() bool {
+	return r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) == r.Term
+}
+
+func (r *raft) responseReadIndex(req pb.Message, committed uint64) (resp pb.Message, internal bool) {
+	if req.From == None || req.From == r.id {
+		r.readStates = append(r.readStates, ReadState{
+			Index:      committed,
+			RequestCtx: req.Entries[0].Data,
+		})
+		internal = true
+	}
+	resp.Type = pb.MsgReadIndexResp
+	resp.To = req.From
+	resp.Index = committed
+	resp.Entries = req.Entries
+	return
 }
 
 // increaseUncommittedSize computes the size of the proposed entries and
