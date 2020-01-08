@@ -2361,7 +2361,7 @@ func TestReadOnlyForNewLeader(t *testing.T) {
 		t.Fatalf("state = %s, want %s", sm.state, StateLeader)
 	}
 
-	// Ensure peer a drops read only request.
+	// Ensure peer a can't response read only requests immediately.
 	var windex uint64 = 4
 	wctx := []byte("ctx")
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: wctx}}})
@@ -2376,6 +2376,11 @@ func TestReadOnlyForNewLeader(t *testing.T) {
 		sm.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+	if len(sm.readStates) != 1 {
+		t.Fatalf("len(readStates) = %d, want 1", len(sm.readStates))
+	}
+	sm.readStates = sm.readStates[:0]
+
 	if sm.raftLog.committed != 4 {
 		t.Fatalf("committed = %d, want 4", sm.raftLog.committed)
 	}

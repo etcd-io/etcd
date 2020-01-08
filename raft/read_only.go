@@ -40,12 +40,17 @@ type readOnly struct {
 	option           ReadOnlyOption
 	pendingReadIndex map[string]*readIndexStatus
 	readIndexQueue   []string
+
+	// Items in `readIndexQueue` with index *less* than `waitingForReady`
+	// are pending because the peer hasn't committed to its term.
+	waitingForReady uint64
 }
 
 func newReadOnly(option ReadOnlyOption) *readOnly {
 	return &readOnly{
 		option:           option,
 		pendingReadIndex: make(map[string]*readIndexStatus),
+		waitingForReady:  0,
 	}
 }
 
@@ -78,7 +83,7 @@ func (ro *readOnly) recvAck(id uint64, context []byte) map[uint64]bool {
 // advance advances the read only request queue kept by the readonly struct.
 // It dequeues the requests until it finds the read only request that has
 // the same context as the given `m`.
-func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
+func (ro *readOnly) advance(m pb.Message, ready bool) []*readIndexStatus {
 	var (
 		i     int
 		found bool
@@ -101,6 +106,12 @@ func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 	}
 
 	if found {
+		if !ready {
+			if ro.waitingForReady < uint64(i) {
+				ro.waitingForReady = uint64(i)
+			}
+			return nil
+		}
 		ro.readIndexQueue = ro.readIndexQueue[i:]
 		for _, rs := range rss {
 			delete(ro.pendingReadIndex, string(rs.req.Entries[0].Data))
@@ -109,6 +120,28 @@ func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 	}
 
 	return nil
+}
+
+// advance advances the read only request queue kept by the readonly struct.
+// It dequeues the requests until it finds the read only request that has
+// the same context as the given `m`.
+func (ro *readOnly) advanceByCommit(committed uint64) []*readIndexStatus {
+	var rss = make([]*readIndexStatus, 0, ro.waitingForReady)
+	if ro.waitingForReady > 0 {
+		for _, rs := range ro.readIndexQueue[0:ro.waitingForReady] {
+			status, ok := ro.pendingReadIndex[rs]
+			if !ok {
+				panic("cannot find corresponding read state from pending map")
+			}
+			// Use latest committed index to avoid stale read on follower peers.
+			status.index = committed
+			rss = append(rss, status)
+			delete(ro.pendingReadIndex, rs)
+		}
+		ro.readIndexQueue = ro.readIndexQueue[ro.waitingForReady:]
+		ro.waitingForReady = 0
+	}
+	return rss
 }
 
 // lastPendingRequestCtx returns the context of the last pending read only
