@@ -127,7 +127,8 @@ etcd is now running and serving client requests. For more, please check out:
 
 ### etcd TCP ports
 
-The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication.
+The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. 
+Peer members can send gRPC request to each other's peer port(2380) to get hash of the KV state for corruption check.
 
 [iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 

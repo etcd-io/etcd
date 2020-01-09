@@ -323,6 +323,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 
 	lg := s.getLogger()
 
+	// send RPC request to peer members' peer port to get hash of the KV state
 	for _, p := range pss {
 		if len(p.eps) == 0 {
 			continue
