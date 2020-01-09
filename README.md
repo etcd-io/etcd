@@ -55,6 +55,19 @@ Time:
 - [Sep 19, 2019 11:00 AM video](https://youtu.be/SqfxU9DhBOc)
 - Nov 14, 2019 11:00 AM
 - Dec 12, 2019 11:00 AM
+- Jan 09, 2020 11:00 AM
+- Feb 06, 2020 11:00 AM
+- Mar 05, 2020 11:00 AM
+- Apr 02, 2020 11:00 AM
+- Apr 30, 2020 11:00 AM
+- May 28, 2020 11:00 AM
+- Jun 25, 2020 11:00 AM
+- Jul 23, 2020 11:00 AM
+- Aug 20, 2020 11:00 AM
+- Sep 17, 2020 11:00 AM
+- Oct 15, 2020 11:00 AM
+- Nov 12, 2020 11:00 AM
+- Dec 10, 2020 11:00 AM
 
 Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
 
