@@ -283,6 +283,13 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
 
 // Watch posts a watch request to run() and waits for a new watcher channel
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
+	if len(key) == 0 {
+		ch := make(chan WatchResponse, 1)
+		ch <- WatchResponse{Canceled: true, closeErr: v3rpc.ErrEmptyKey}
+		close(ch)
+		return ch
+	}
+
 	ow := opWatch(key, opts...)
 
 	var filters []pb.WatchCreateRequest_FilterType
