@@ -327,6 +327,37 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 	}
 }
 
+func TestWatchErrEmptyKey(t *testing.T) { runWatchTest(t, testWatchErrEmptyKey) }
+func testWatchErrEmptyKey(t *testing.T, wctx *watchctx) {
+	wctx.ch = wctx.w.Watch(context.TODO(), "")
+	if wctx.ch == nil {
+		t.Fatalf("expected non-nil watcher channel")
+	}
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("took too long to return")
+	case wr, ok := <-wctx.ch:
+		if !ok {
+			t.Fatal("unexpected closed watcher channel")
+		}
+		if !wr.Canceled {
+			t.Fatalf("expected canceled watcher on empty key, got %v", wr.Canceled)
+		}
+		if wr.Err() != rpctypes.ErrEmptyKey {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrEmptyKey, wr.Err())
+		}
+		// got the error; should close next
+		select {
+		case <-time.After(time.Second):
+			t.Fatal("took too long to close")
+		case v, ok2 := <-wctx.ch:
+			if ok2 {
+				t.Fatalf("expected watcher channel to close, got %v", v)
+			}
+		}
+	}
+}
+
 func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 	if _, err := wctx.kv.Put(context.TODO(), key, val); err != nil {
 		t.Fatal(err)
