@@ -95,6 +95,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### etcdctl v3
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
+- Add [`etcdctl watch --progress-notify`](https://github.com/etcd-io/etcd/pull/11462) flag.
 
 ### gRPC gateway
 
