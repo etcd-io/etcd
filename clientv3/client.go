@@ -272,10 +272,10 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 
 func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
-	var auth *authenticator
 
 	eps := c.Endpoints()
 	for _, ep := range eps {
+		var auth *authenticator
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
 		_, host, _ := endpoint.ParseEndpoint(ep)
