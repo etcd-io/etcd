@@ -220,7 +220,7 @@
       id: 6,
       title: 'etcd',
       description: 'etcd sample Grafana dashboard with Prometheus',
-      tags: [],
+      tags: [ 'etcd-mixin' ],
       style: 'dark',
       timezone: 'browser',
       editable: true,
