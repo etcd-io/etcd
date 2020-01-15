@@ -464,6 +464,11 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			tmptx.Rollback()
+		}
+	}()
 
 	// open a tx on old db for read
 	tx, err := odb.Begin(false)
