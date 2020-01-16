@@ -391,7 +391,13 @@ func (b *backend) defrag() error {
 	err = defragdb(b.db, tmpdb, defragLimit)
 	if err != nil {
 		tmpdb.Close()
-		os.RemoveAll(tmpdb.Path())
+		if rmErr := os.RemoveAll(tmpdb.Path()); rmErr != nil {
+			if b.lg != nil {
+				b.lg.Error("failed to remove dirs under tmpdb", zap.Error(rmErr))
+			} else {
+				plog.Errorf("failed to remove dirs under tmpdb (%s)", rmErr)
+			}
+		}
 		return err
 	}
 
