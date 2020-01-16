@@ -492,7 +492,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 		}
 		tmpb.FillPercent = 0.9 // for seq write in for each
 
-		b.ForEach(func(k, v []byte) error {
+		if pErr := b.ForEach(func(k, v []byte) error {
 			count++
 			if count > limit {
 				err = tmptx.Commit()
@@ -509,7 +509,9 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 				count = 0
 			}
 			return tmpb.Put(k, v)
-		})
+		}); pErr != nil {
+			return pErr
+		}
 	}
 
 	return tmptx.Commit()
