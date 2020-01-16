@@ -1095,6 +1095,9 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
+		// thinking: use an interally defined context instead of the user given context.
+		// We can express this in terms of the term and index instead of a user-supplied value.
+		// This would allow multiple reads to piggyback on the same message.
 		switch r.readOnly.option {
 		// If more than the local vote is needed, go through a full broadcast.
 		case ReadOnlySafe:
@@ -1103,7 +1106,7 @@ func stepLeader(r *raft, m pb.Message) error {
 			r.readOnly.recvAck(r.id, m.Entries[0].Data)
 			r.bcastHeartbeatWithCtx(m.Entries[0].Data)
 		case ReadOnlyLeaseBased:
-			if r.readyToReadIndex() {
+			if r.CommittedEntryInCurrentTerm() {
 				if resp, internal := r.responseReadIndex(m, r.raftLog.committed); !internal {
 					r.send(resp)
 				}
@@ -1196,7 +1199,7 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
-		rss := r.readOnly.advance(m, r.readyToReadIndex())
+		rss := r.readOnly.advance(m, r.CommittedEntryInCurrentTerm())
 		for _, rs := range rss {
 			if resp, internal := r.responseReadIndex(rs.req, rs.index); !internal {
 				r.send(resp)
@@ -1596,8 +1599,7 @@ func (r *raft) abortLeaderTransfer() {
 	r.leadTransferee = None
 }
 
-func (r *raft) readyToReadIndex() bool {
-	// Reject read only request when this leader has not committed any log entry at its term.
+func (r *raft) CommittedEntryInCurrentTerm() bool {
 	return r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) == r.Term
 }
 
