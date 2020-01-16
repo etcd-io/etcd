@@ -257,7 +257,7 @@ func (b *backend) Snapshot() Snapshot {
 						zap.String("size", humanize.Bytes(uint64(dbBytes))),
 					)
 				} else {
-					plog.Warningf("snapshotting is taking more than %v seconds to finish transferring %v MB [started at %v]", time.Since(start).Seconds(), float64(dbBytes)/float64(1024*1014), start)
+					plog.Warningf("snapshotting is taking more than %v seconds to finish transferring %v MB [started at %v]", time.Since(start).Seconds(), float64(dbBytes)/float64(1024*1024), start)
 				}
 
 			case <-stopc:
