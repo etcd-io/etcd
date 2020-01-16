@@ -35,6 +35,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/internal"
 	"google.golang.org/grpc/internal/channelz"
 	"google.golang.org/grpc/internal/syscall"
 	"google.golang.org/grpc/keepalive"
@@ -44,8 +45,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// clientConnectionCounter counts the number of connections a client has
+// initiated (equal to the number of http2Clients created). Must be accessed
+// atomically.
+var clientConnectionCounter uint64
+
 // http2Client implements the ClientTransport interface with HTTP2.
 type http2Client struct {
+	lastRead   int64 // Keep this field 64-bit aligned. Accessed atomically.
 	ctx        context.Context
 	cancel     context.CancelFunc
 	ctxDone    <-chan struct{} // Cache the ctx.Done() chan.
@@ -75,9 +82,6 @@ type http2Client struct {
 
 	perRPCCreds []credentials.PerRPCCredentials
 
-	// Boolean to keep track of reading activity on transport.
-	// 1 is true and 0 is false.
-	activity         uint32 // Accessed atomically.
 	kp               keepalive.ClientParameters
 	keepaliveEnabled bool
 
@@ -127,6 +131,8 @@ type http2Client struct {
 	onClose  func()
 
 	bufferPool *bufferPool
+
+	connectionID uint64
 }
 
 func dial(ctx context.Context, fn func(context.Context, string) (net.Conn, error), addr string) (net.Conn, error) {
@@ -330,6 +336,8 @@ func newHTTP2Client(connectCtx, ctx context.Context, addr TargetInfo, opts Conne
 		}
 	}
 
+	t.connectionID = atomic.AddUint64(&clientConnectionCounter, 1)
+
 	if err := t.framer.writer.Flush(); err != nil {
 		return nil, err
 	}
@@ -352,6 +360,7 @@ func newHTTP2Client(connectCtx, ctx context.Context, addr TargetInfo, opts Conne
 func (t *http2Client) newStream(ctx context.Context, callHdr *CallHdr) *Stream {
 	// TODO(zhaoq): Handle uint32 overflow of Stream.id.
 	s := &Stream{
+		ct:             t,
 		done:           make(chan struct{}),
 		method:         callHdr.Method,
 		sendCompress:   callHdr.SendCompress,
@@ -385,23 +394,23 @@ func (t *http2Client) newStream(ctx context.Context, callHdr *CallHdr) *Stream {
 }
 
 func (t *http2Client) getPeer() *peer.Peer {
-	pr := &peer.Peer{
-		Addr: t.remoteAddr,
+	return &peer.Peer{
+		Addr:     t.remoteAddr,
+		AuthInfo: t.authInfo,
 	}
-	// Attach Auth info if there is any.
-	if t.authInfo != nil {
-		pr.AuthInfo = t.authInfo
-	}
-	return pr
 }
 
 func (t *http2Client) createHeaderFields(ctx context.Context, callHdr *CallHdr) ([]hpack.HeaderField, error) {
 	aud := t.createAudience(callHdr)
-	authData, err := t.getTrAuthData(ctx, aud)
+	ri := credentials.RequestInfo{
+		Method: callHdr.Method,
+	}
+	ctxWithRequestInfo := internal.NewRequestInfoContext.(func(context.Context, credentials.RequestInfo) context.Context)(ctx, ri)
+	authData, err := t.getTrAuthData(ctxWithRequestInfo, aud)
 	if err != nil {
 		return nil, err
 	}
-	callAuthData, err := t.getCallAuthData(ctx, aud, callHdr)
+	callAuthData, err := t.getCallAuthData(ctxWithRequestInfo, aud, callHdr)
 	if err != nil {
 		return nil, err
 	}
@@ -424,6 +433,7 @@ func (t *http2Client) createHeaderFields(ctx context.Context, callHdr *CallHdr) 
 
 	if callHdr.SendCompress != "" {
 		headerFields = append(headerFields, hpack.HeaderField{Name: "grpc-encoding", Value: callHdr.SendCompress})
+		headerFields = append(headerFields, hpack.HeaderField{Name: "grpc-accept-encoding", Value: callHdr.SendCompress})
 	}
 	if dl, ok := ctx.Deadline(); ok {
 		// Send out timeout regardless its value. The server can detect timeout context by itself.
@@ -669,12 +679,14 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		}
 	}
 	if t.statsHandler != nil {
+		header, _, _ := metadata.FromOutgoingContextRaw(ctx)
 		outHeader := &stats.OutHeader{
 			Client:      true,
 			FullMethod:  callHdr.Method,
 			RemoteAddr:  t.remoteAddr,
 			LocalAddr:   t.localAddr,
 			Compression: callHdr.SendCompress,
+			Header:      header.Copy(),
 		}
 		t.statsHandler.HandleRPC(s.ctx, outHeader)
 	}
@@ -1177,12 +1189,14 @@ func (t *http2Client) operateHeaders(frame *http2.MetaHeadersFrame) {
 				inHeader := &stats.InHeader{
 					Client:     true,
 					WireLength: int(frame.Header().Length),
+					Header:     s.header.Copy(),
 				}
 				t.statsHandler.HandleRPC(s.ctx, inHeader)
 			} else {
 				inTrailer := &stats.InTrailer{
 					Client:     true,
 					WireLength: int(frame.Header().Length),
+					Trailer:    s.trailer.Copy(),
 				}
 				t.statsHandler.HandleRPC(s.ctx, inTrailer)
 			}
@@ -1191,6 +1205,7 @@ func (t *http2Client) operateHeaders(frame *http2.MetaHeadersFrame) {
 
 	// If headerChan hasn't been closed yet
 	if atomic.CompareAndSwapUint32(&s.headerChanClosed, 0, 1) {
+		s.headerValid = true
 		if !endStream {
 			// HEADERS frame block carries a Response-Headers.
 			isHeader = true
@@ -1233,7 +1248,7 @@ func (t *http2Client) reader() {
 	}
 	t.conn.SetReadDeadline(time.Time{}) // reset deadline once we get the settings frame (we didn't time out, yay!)
 	if t.keepaliveEnabled {
-		atomic.CompareAndSwapUint32(&t.activity, 0, 1)
+		atomic.StoreInt64(&t.lastRead, time.Now().UnixNano())
 	}
 	sf, ok := frame.(*http2.SettingsFrame)
 	if !ok {
@@ -1248,7 +1263,7 @@ func (t *http2Client) reader() {
 		t.controlBuf.throttle()
 		frame, err := t.framer.fr.ReadFrame()
 		if t.keepaliveEnabled {
-			atomic.CompareAndSwapUint32(&t.activity, 0, 1)
+			atomic.StoreInt64(&t.lastRead, time.Now().UnixNano())
 		}
 		if err != nil {
 			// Abort an active stream if the http2.Framer returns a
@@ -1292,16 +1307,40 @@ func (t *http2Client) reader() {
 	}
 }
 
+func minTime(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // keepalive running in a separate goroutune makes sure the connection is alive by sending pings.
 func (t *http2Client) keepalive() {
 	p := &ping{data: [8]byte{}}
+	// True iff a ping has been sent, and no data has been received since then.
+	outstandingPing := false
+	// Amount of time remaining before which we should receive an ACK for the
+	// last sent ping.
+	timeoutLeft := time.Duration(0)
+	// Records the last value of t.lastRead before we go block on the timer.
+	// This is required to check for read activity since then.
+	prevNano := time.Now().UnixNano()
 	timer := time.NewTimer(t.kp.Time)
 	for {
 		select {
 		case <-timer.C:
-			if atomic.CompareAndSwapUint32(&t.activity, 1, 0) {
-				timer.Reset(t.kp.Time)
+			lastRead := atomic.LoadInt64(&t.lastRead)
+			if lastRead > prevNano {
+				// There has been read activity since the last time we were here.
+				outstandingPing = false
+				// Next timer should fire at kp.Time seconds from lastRead time.
+				timer.Reset(time.Duration(lastRead) + t.kp.Time - time.Duration(time.Now().UnixNano()))
+				prevNano = lastRead
 				continue
+			}
+			if outstandingPing && timeoutLeft <= 0 {
+				t.Close()
+				return
 			}
 			t.mu.Lock()
 			if t.state == closing {
@@ -1315,36 +1354,36 @@ func (t *http2Client) keepalive() {
 				return
 			}
 			if len(t.activeStreams) < 1 && !t.kp.PermitWithoutStream {
+				// If a ping was sent out previously (because there were active
+				// streams at that point) which wasn't acked and its timeout
+				// hadn't fired, but we got here and are about to go dormant,
+				// we should make sure that we unconditionally send a ping once
+				// we awaken.
+				outstandingPing = false
 				t.kpDormant = true
 				t.kpDormancyCond.Wait()
 			}
 			t.kpDormant = false
 			t.mu.Unlock()
 
-			if channelz.IsOn() {
-				atomic.AddInt64(&t.czData.kpCount, 1)
-			}
 			// We get here either because we were dormant and a new stream was
 			// created which unblocked the Wait() call, or because the
 			// keepalive timer expired. In both cases, we need to send a ping.
-			t.controlBuf.put(p)
-
-			timer.Reset(t.kp.Timeout)
-			select {
-			case <-timer.C:
-				if atomic.CompareAndSwapUint32(&t.activity, 1, 0) {
-					timer.Reset(t.kp.Time)
-					continue
+			if !outstandingPing {
+				if channelz.IsOn() {
+					atomic.AddInt64(&t.czData.kpCount, 1)
 				}
-				infof("transport: closing client transport due to idleness.")
-				t.Close()
-				return
-			case <-t.ctx.Done():
-				if !timer.Stop() {
-					<-timer.C
-				}
-				return
+				t.controlBuf.put(p)
+				timeoutLeft = t.kp.Timeout
+				outstandingPing = true
 			}
+			// The amount of time to sleep here is the minimum of kp.Time and
+			// timeoutLeft. This will ensure that we wait only for kp.Time
+			// before sending out the next ping (for cases where the ping is
+			// acked).
+			sleepDuration := minTime(t.kp.Time, timeoutLeft)
+			timeoutLeft -= sleepDuration
+			timer.Reset(sleepDuration)
 		case <-t.ctx.Done():
 			if !timer.Stop() {
 				<-timer.C
