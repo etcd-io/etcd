@@ -30,8 +30,33 @@ func NewAuthCommand() *cobra.Command {
 
 	ac.AddCommand(newAuthEnableCommand())
 	ac.AddCommand(newAuthDisableCommand())
+	ac.AddCommand(newAuthStatusCommand())
 
 	return ac
+}
+
+func newAuthStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Returns authentication status",
+		Run:   authStatusCommandFunc,
+	}
+}
+
+// authStatusCommandFunc executes the "auth status" command.
+func authStatusCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("auth status command does not accept any arguments"))
+	}
+
+	ctx, cancel := commandCtx(cmd)
+	result, err := mustClientFromCmd(cmd).Auth.AuthStatus(ctx)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Println("Authentication Status:", result.Enabled)
 }
 
 func newAuthEnableCommand() *cobra.Command {

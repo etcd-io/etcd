@@ -4,10 +4,6 @@
     "title": "etcdserver/api/v3lock/v3lockpb/v3lock.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],

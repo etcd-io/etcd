@@ -96,6 +96,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
 - Add [`etcdctl watch --progress-notify`](https://github.com/etcd-io/etcd/pull/11462) flag.
+- Add [`etcdctl auth status`](https://github.com/etcd-io/etcd/pull/11536) command to check if authentication is enabled
 
 ### gRPC gateway
 
@@ -106,6 +107,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Auth
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
+
+### API
+- Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
+
 
 ### Dependency
 
