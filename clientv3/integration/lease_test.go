@@ -268,16 +268,10 @@ func TestLeaseKeepAliveNotFound(t *testing.T) {
 
 	<-lchs[0].ch
 	if _, ok := <-lchs[0].ch; !ok {
-		t.Fatalf("closed keepalive on wrong lease")
+		t.Fatal("closed keepalive on wrong lease")
 	}
-
-	timec := time.After(5 * time.Second)
-	for range lchs[1].ch {
-		select {
-		case <-timec:
-			t.Fatalf("revoke did not close keep alive")
-		default:
-		}
+	if _, ok := <-lchs[1].ch; ok {
+		t.Fatal("expected closed keepalive")
 	}
 }
 
