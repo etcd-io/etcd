@@ -665,11 +665,22 @@ func TestKVCompact(t *testing.T) {
 
 	wchan := wcli.Watch(ctx, "foo", clientv3.WithRev(3))
 
-	if wr := <-wchan; wr.CompactRevision != 7 {
+	wr := <-wchan
+	if wr.CompactRevision != 7 {
 		t.Fatalf("wchan CompactRevision got %v, want 7", wr.CompactRevision)
 	}
-	if wr, ok := <-wchan; ok {
+	if !wr.Canceled {
+		t.Fatalf("expected canceled watcher on compacted revision, got %v", wr.Canceled)
+	}
+	if wr.Err() != rpctypes.ErrCompacted {
+		t.Fatalf("watch response error expected %v, got %v", rpctypes.ErrCompacted, wr.Err())
+	}
+	wr, ok := <-wchan
+	if ok {
 		t.Fatalf("wchan got %v, expected closed", wr)
+	}
+	if wr.Err() != nil {
+		t.Fatalf("watch response error expected nil, got %v", wr.Err())
 	}
 
 	_, err = kv.Compact(ctx, 1000)
