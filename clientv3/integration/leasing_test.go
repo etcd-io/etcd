@@ -939,6 +939,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Value) != "456" {
 		t.Errorf(`expected value "def", got %+v`, gresp)
 	}
+
 	// check puts were applied and are all in the same revision
 	w := clus.Client(0).Watch(
 		clus.Client(0).Ctx(),
@@ -1738,7 +1739,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 	cmp := clientv3.Compare(clientv3.Version("k").WithPrefix(), "=", 1)
 	tresp, terr := lkv.Txn(context.TODO()).If(cmp).Commit()
 	if terr != nil {
-		t.Fatal(err)
+		t.Fatal(terr)
 	}
 	if tresp.Succeeded {
 		t.Fatalf("expected Succeeded=false, got %+v", tresp)
