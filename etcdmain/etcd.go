@@ -603,7 +603,7 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 
 func checkSupportArch() {
 	// TODO qualify arm64
-	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" {
+	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" || runtime.GOARCH == "s390x" {
 		return
 	}
 	// unsupported arch only configured via environment variable
