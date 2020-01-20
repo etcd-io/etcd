@@ -12,7 +12,7 @@ The easiest way to get etcd is to use one of the pre-built release binaries whic
 
 ## Build the latest version
 
-For those wanting to try the very latest version, build etcd from the `master` branch. [Go](https://golang.org/) version 1.9+ is required to build the latest version of etcd. To ensure etcd is built against well-tested libraries, etcd vendors its dependencies for official release binaries. However, etcd's vendoring is also optional to avoid potential import conflicts when embedding the etcd server or using the etcd client.
+For those wanting to try the very latest version, build etcd from the `master` branch. [Go](https://golang.org/) version 1.13+ is required to build the latest version of etcd. To ensure etcd is built against well-tested libraries, etcd vendors its dependencies for official release binaries. However, etcd's vendoring is also optional to avoid potential import conflicts when embedding the etcd server or using the etcd client.
 
 To build `etcd` from the `master` branch without a `GOPATH` using the official `build` script:
 
