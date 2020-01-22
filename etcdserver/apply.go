@@ -573,7 +573,7 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 		respi := tresp.Responses[i].Response
 		switch tv := req.Request.(type) {
 		case *pb.RequestOp_RequestRange:
-			trace.SubTrace(
+			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
@@ -582,8 +582,9 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 				lg.Panic("unexpected error during txn", zap.Error(err))
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
+			trace.StopSubTrace()
 		case *pb.RequestOp_RequestPut:
-			trace.SubTrace(
+			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
 				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
@@ -592,6 +593,7 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 				lg.Panic("unexpected error during txn", zap.Error(err))
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
+			trace.StopSubTrace()
 		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {

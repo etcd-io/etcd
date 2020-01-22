@@ -28,7 +28,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	traceForTest := &Trace{operation: "test"}
+	traceForTest := &Trace{operation: "Test"}
 	tests := []struct {
 		name        string
 		inputCtx    context.Context
@@ -151,6 +151,51 @@ func TestLog(t *testing.T) {
 				"msg1", "msg2",
 				"traceKey1:traceValue1", "count:1",
 				"stepKey1:stepValue1", "stepKey2:stepValue2",
+				"\"step_count\":2",
+			},
+		},
+		{
+			name: "When trace has subtrace",
+			trace: &Trace{
+				operation: "Test",
+				startTime: time.Now().Add(-100 * time.Millisecond),
+				steps: []step{
+					{
+						time:   time.Now().Add(-80 * time.Millisecond),
+						msg:    "msg1",
+						fields: []Field{{"stepKey1", "stepValue1"}},
+					},
+					{
+						fields:          []Field{{"beginSubTrace", "true"}},
+						isSubTraceStart: true,
+					},
+					{
+						time:   time.Now().Add(-50 * time.Millisecond),
+						msg:    "submsg",
+						fields: []Field{{"subStepKey", "subStepValue"}},
+					},
+					{
+						fields:        []Field{{"endSubTrace", "true"}},
+						isSubTraceEnd: true,
+					},
+					{
+						time:   time.Now().Add(-30 * time.Millisecond),
+						msg:    "msg2",
+						fields: []Field{{"stepKey2", "stepValue2"}},
+					},
+				},
+			},
+			fields: []Field{
+				{"traceKey1", "traceValue1"},
+				{"count", 1},
+			},
+			expectedMsg: []string{
+				"Test",
+				"msg1", "msg2", "submsg",
+				"traceKey1:traceValue1", "count:1",
+				"stepKey1:stepValue1", "stepKey2:stepValue2", "subStepKey:subStepValue",
+				"beginSubTrace:true", "endSubTrace:true",
+				"\"step_count\":3",
 			},
 		},
 	}
