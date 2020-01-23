@@ -80,7 +80,7 @@ For distributed coordination, choosing etcd can help prevent operational headach
 ### Notes on the usage of lock and lease
 etcd provides [lock APIs][etcd-v3lock] which are based on [the lease mechanism][lease] and [its implementation in etcd][etcdlease]. The basic idea of the lease mechanism is: a server grants a token, which is called lease, to a requesting client. When the server grants a lease, it associates TTL with the lease. When the server detects passing of time longer than TTL, it revokes the lease. During the client holds a non revoked lease, it can claim that it owns an access to a resource associated with the lease. In the case of etcd, the resource is a key in the etcd keyspace. etcd provides lock APIs with this scheme. However, the lock APIs cannot be used as mutual exclusion mechanism. The APIs are called lock because of [the historical reason][chubby]. The lock APIs can be used an optimization mechanism of mutual exclusion as described below.
 
-The most important aspect of the lease mechanism is that TTL is defined as a physical time interval. Both of the server and client measures passing of time with their own clocks, which are not synchronized each other. It allows a situation that the server revokes the lease but the client still claims it owns the lease because of clock drift. Note that clock drift is not the only one reason which can cause such a situation. Other factors (e.g. long time pause caused by runtime GC, preemption by OS or VMM, etc) can introduce the problem. Actually, [jepsen][jepsen] can reproduce the situation even on a single machine.
+The most important aspect of the lease mechanism is that TTL is defined as a physical time interval. Both of the server and client measures passing of time with their own clocks. It allows a situation that the server revokes the lease but the client still claims it owns the lease.
 
 Then how the lease mechanism guarantees mutual exclusion of the locking mechanism? Actually, the lease mechanism itself doesn't guarantee mutual exclusion. Owning a lease cannot guarantee the owner holds a lock of the resource.
 
@@ -93,7 +93,9 @@ In distributed locking literature similar designs are described:
 
 Why do etcd and other systems provide lease if they provide mutual exclusion based on version number validation? Well, leases provide an optimization mechanism for reducing a number of aborted requests.
 
-Note that in the case of etcd keys, it can be locked efficiently because of the mechanisms of lease and version number validatin. If users need to protect resources which aren't related to etcd, the resources must provide the version number validation mechanism like keys of etcd. The lock feature of etcd itself cannot be used for protecting external resources.
+Note that in the case of etcd keys, it can be locked efficiently because of the mechanisms of lease and version number validation. If users need to protect resources which aren't related to etcd, the resources must provide the version number validation mechanism and consistency of replicas like keys of etcd. The lock feature of etcd itself cannot be used for protecting external resources.
+
+[lock directory][executable-example] contains an executable example which follows [the scenario described in the article by Martin Kleppmann][fencing]. The example shows how stop the world GC of go runtime can cause false revoking of etcd lock and how version number validation can prevent access to the shared resource from a client which acquires a stale lock.
 
 [production-users]: ../../ADOPTERS.md
 [grpc]: https://www.grpc.io
@@ -141,4 +143,3 @@ Note that in the case of etcd keys, it can be locked efficiently because of the 
 [physicalclock]: http://www.dainf.cefetpr.br/~tacla/SDII/PracticalUseOfClocks.pdf
 [fencing-zk]: https://fpj.me/2016/02/10/note-on-fencing-and-distributed-locks/
 [executable-example]: lock/README.md
-[jepsen]: http://jepsen.io/analyses/etcd-3.4.3
