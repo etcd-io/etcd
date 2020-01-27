@@ -72,7 +72,7 @@ The number of active members needed for consensus to modify the cluster state. e
 
 ## Revision
 
-A 64-bit cluster-wide counter that is incremented each time the keyspace is modified.
+A 64-bit cluster-wide counter that starts at 1 and is incremented each time the keyspace is modified.
 
 ## Role
 
