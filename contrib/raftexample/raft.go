@@ -285,12 +285,10 @@ func (rc *raftNode) startRaft() {
 
 	if oldwal {
 		rc.node = raft.RestartNode(c)
+	} else if rc.join {
+		rc.node = raft.RestartNode(nil)
 	} else {
-		startPeers := rpeers
-		if rc.join {
-			startPeers = nil
-		}
-		rc.node = raft.StartNode(c, startPeers)
+		rc.node = raft.StartNode(c, rpeers)
 	}
 
 	rc.transport = &rafthttp.Transport{
