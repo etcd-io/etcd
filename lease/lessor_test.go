@@ -429,7 +429,7 @@ func TestLessorExpire(t *testing.T) {
 		t.Fatalf("failed to receive expired lease")
 	}
 
-	donec := make(chan struct{})
+	donec := make(chan struct{}, 1)
 	go func() {
 		// expired lease cannot be renewed
 		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
@@ -482,7 +482,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 		t.Fatalf("failed to receive expired lease")
 	}
 
-	donec := make(chan struct{})
+	donec := make(chan struct{}, 1)
 	go func() {
 		// expired lease cannot be renewed
 		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
