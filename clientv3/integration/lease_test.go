@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"sync"
@@ -392,18 +393,22 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	donec := make(chan struct{})
+	errMsgCh := make(chan string, 1)
 	go func() {
 		_, err := cli.Revoke(context.TODO(), leaseID)
 		if !clientv3.IsConnCanceled(err) {
-			t.Fatalf("expected %v or server unavailable, got %v", context.Canceled, err)
+			errMsgCh <- fmt.Sprintf("expected %v or server unavailable, got %v", context.Canceled, err)
+		} else {
+			errMsgCh <- ""
 		}
-		close(donec)
 	}()
 	select {
 	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("le.Revoke took too long")
-	case <-donec:
+	case errMsg := <-errMsgCh:
+		if errMsg != "" {
+			t.Fatalf(errMsg)
+		}
 	}
 }
 
