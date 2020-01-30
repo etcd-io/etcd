@@ -99,7 +99,7 @@ func TestDialTimeout(t *testing.T) {
 	}
 
 	for i, cfg := range testCfgs {
-		donec := make(chan error)
+		donec := make(chan error, 1)
 		go func() {
 			// without timeout, dial continues forever on ipv4 black hole
 			c, err := New(cfg)
