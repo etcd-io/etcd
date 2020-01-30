@@ -838,7 +838,7 @@ func TestSync(t *testing.T) {
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		srv.sync(10 * time.Second)
 		done <- struct{}{}
@@ -883,7 +883,7 @@ func TestSyncTimeout(t *testing.T) {
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		srv.sync(0)
 		done <- struct{}{}
