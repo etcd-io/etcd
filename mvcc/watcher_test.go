@@ -355,7 +355,7 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	}
 
 	w.Watch(0, []byte("foo"), nil, 0, filterPut)
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 
 	go func() {
 		<-w.Chan()

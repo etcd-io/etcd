@@ -710,7 +710,7 @@ func TestKVGetRetry(t *testing.T) {
 
 	clus.Members[fIdx].Stop(t)
 
-	donec := make(chan struct{})
+	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(ctx, "foo")

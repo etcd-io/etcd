@@ -662,7 +662,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	readTx1 := s.Read(traceutil.TODO())
 
 	// write should not be blocked by reads
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		s.Put([]byte("foo"), []byte("newBar"), lease.NoLease) // this is a write Txn
 		done <- struct{}{}
