@@ -1082,6 +1082,12 @@ echo ${transferee_id}
 
 LOCK acquires a distributed mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
 
+#### Example
+
+```bash
+etcdctl role grant-permission my_rw_locks --prefix=true readwrite _locks//my_service_locks/
+```
+
 #### Options
 
 - ttl - time out in seconds of lock session.
