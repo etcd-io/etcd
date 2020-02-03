@@ -290,8 +290,8 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// Logger is logger options: "zap", "capnslog".
-	// WARN: "capnslog" is being deprecated in v3.5.
+	// Logger is logger options: currently only supports "zap".
+	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
 	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
 	LogLevel string `json:"log-level"`
@@ -322,19 +322,6 @@ type Config struct {
 
 	// EnableGRPCGateway is false to disable grpc gateway.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
-
-	// TO BE DEPRECATED
-
-	// DeprecatedLogOutput is to be deprecated in v3.5.
-	// Just here for safe migration in v3.4.
-	DeprecatedLogOutput []string `json:"log-output"`
-	// Debug is true, to enable debug level logging.
-	// WARNING: to be deprecated in 3.5. Use "--log-level=debug" instead.
-	Debug bool `json:"debug"`
-	// LogPkgLevels is being deprecated in v3.5.
-	// Only valid if "logger" option is "capnslog".
-	// WARN: DO NOT USE THIS!
-	LogPkgLevels string `json:"log-package-levels"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -411,14 +398,11 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:            new(sync.RWMutex),
-		logger:              nil,
-		Logger:              "capnslog",
-		DeprecatedLogOutput: []string{DefaultLogOutput},
-		LogOutputs:          []string{DefaultLogOutput},
-		Debug:               false,
-		LogLevel:            logutil.DefaultLogLevel,
-		LogPkgLevels:        "",
+		loggerMu:   new(sync.RWMutex),
+		logger:     nil,
+		Logger:     "zap",
+		LogOutputs: []string{DefaultLogOutput},
+		LogLevel:   logutil.DefaultLogLevel,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

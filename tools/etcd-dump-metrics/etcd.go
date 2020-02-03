@@ -42,7 +42,6 @@ func setupEmbedCfg(cfg *embed.Config, curls, purls, ics []url.URL) {
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
 	// []string{"stderr"} to enable server logging
-	cfg.Debug = false
 
 	var err error
 	cfg.Dir, err = ioutil.TempDir(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))
