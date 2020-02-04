@@ -110,6 +110,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Auth
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
+- Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
 
 ### Dependency
 
