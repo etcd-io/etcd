@@ -15,7 +15,6 @@
 package embed
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -408,19 +407,6 @@ func NewConfig() *Config {
 	return cfg
 }
 
-func logTLSHandshakeFailure(conn *tls.Conn, err error) {
-	state := conn.ConnectionState()
-	remoteAddr := conn.RemoteAddr().String()
-	serverName := state.ServerName
-	if len(state.PeerCertificates) > 0 {
-		cert := state.PeerCertificates[0]
-		ips, dns := cert.IPAddresses, cert.DNSNames
-		plog.Infof("rejected connection from %q (error %q, ServerName %q, IPAddresses %q, DNSNames %q)", remoteAddr, err.Error(), serverName, ips, dns)
-	} else {
-		plog.Infof("rejected connection from %q (error %q, ServerName %q)", remoteAddr, err.Error(), serverName)
-	}
-}
-
 func ConfigFromFile(path string) (*Config, error) {
 	cfg := &configYAML{Config: *NewConfig()}
 	if err := cfg.configFromFile(path); err != nil {
@@ -618,19 +604,11 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
 		lg := cfg.logger
 		if cerr != nil {
-			if lg != nil {
-				lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
-			} else {
-				plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
-			}
+			lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
 			return nil, "", cerr
 		}
 		for _, s := range clusterStrs {
-			if lg != nil {
-				lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
-			} else {
-				plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
-			}
+			lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
 		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.TrustedCAFile == "" {
@@ -671,35 +649,31 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server-ssl SRV",
-			zap.String("service-scheme", "https"),
-			zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(cerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server-ssl SRV",
+		zap.String("service-scheme", "https"),
+		zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(cerr),
+	)
 
 	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if httpCerr != nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server SRV",
-			zap.String("service-scheme", "http"),
-			zap.String("service-name", "etcd-server"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(httpCerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server SRV",
+		zap.String("service-scheme", "http"),
+		zap.String("service-name", "etcd-server"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(httpCerr),
+	)
 
 	return clusterStrs, cerr
 }
@@ -734,11 +708,7 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.ClientTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring client auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring client auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring client auto TLS since certs given")
 		return nil
 	}
 	chosts := make([]string, len(cfg.LCUrls))
@@ -757,11 +727,7 @@ func (cfg *Config) PeerSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.PeerTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring peer auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring peer auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring peer auto TLS since certs given")
 		return nil
 	}
 	phosts := make([]string, len(cfg.LPUrls))
