@@ -201,7 +201,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LoggerConfig:               cfg.loggerConfig,
 		LoggerCore:                 cfg.loggerCore,
 		LoggerWriteSyncer:          cfg.loggerWriteSyncer,
-		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
 		EnableGRPCGateway:          cfg.EnableGRPCGateway,
 		EnableLeaseCheckpoint:      cfg.ExperimentalEnableLeaseCheckpoint,
@@ -691,10 +690,10 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
 		sctx.serviceRegister = cfg.ServiceRegister
-		if cfg.EnablePprof || cfg.Debug {
+		if cfg.EnablePprof || cfg.LogLevel == "debug" {
 			sctx.registerPprof()
 		}
-		if cfg.Debug {
+		if cfg.LogLevel == "debug" {
 			sctx.registerTrace()
 		}
 		sctxs[addr] = sctx
