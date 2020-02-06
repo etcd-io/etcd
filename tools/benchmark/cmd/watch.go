@@ -62,7 +62,7 @@ var (
 	watchKeySpaceSize int
 	watchSeqKeys      bool
 
-	watchJsonPath string
+	watchOutputFormat string
 )
 
 type watchedKeys struct {
@@ -88,10 +88,17 @@ func init() {
 	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
 	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
-	watchCmd.Flags().StringVar(&watchJsonPath, "jsonpath", "", "json file path for benchmark results output")
+	watchCmd.Flags().StringVar(&watchOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {
+	// Only result will be written in the specified output format if it is set.
+	enc, restore, err := shouldEncode(watchOutputFormat)
+	if err != nil {
+		panic(err)
+	}
+	defer restore()
+
 	if watchKeySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", watchKeySpaceSize)
 		os.Exit(1)
@@ -106,11 +113,12 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	}
 	clients := mustCreateClients(totalClients, totalConns)
 	wk := newWatchedKeys()
-	benchMakeWatches(clients, wk)
-	benchPutWatches(clients, wk)
+
+	benchMakeWatches(clients, wk, enc)
+	benchPutWatches(clients, wk, enc)
 }
 
-func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
+func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys, enc encoder) {
 	streams := make([]clientv3.Watcher, watchStreams)
 	for i := range streams {
 		streams[i] = clientv3.NewWatcher(clients[i%len(clients)])
@@ -153,13 +161,15 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}
 	}()
 
-	isJsonOutput := len(watchJsonPath) > 0
 	var sc <-chan report.Stats
 	var rc <-chan string
 
 	// Only one of Stats or Run can be called only one time to get the correct
 	// results since they process results repeatedly.
-	if isJsonOutput {
+	//
+	// TODO: If https://github.com/etcd-io/etcd/issues/11571 is resolved,
+	// simplify the code below.
+	if enc != nil {
 		sc = r.Stats()
 	} else {
 		rc = r.Run()
@@ -169,15 +179,14 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Finish()
 	close(r.Results())
 
-	if isJsonOutput {
-		mustWriteStatsToJsonFile(watchJsonPath, <-sc)
-		fmt.Printf("wrote stats to file %s\n", watchJsonPath)
-	} else {
-		fmt.Printf("Watch creation summary:\n%s", <-rc)
-	}
-
 	for i := 0; i < len(streams); i++ {
 		wk.watches = append(wk.watches, (<-wc)...)
+	}
+
+	if enc != nil {
+		enc.mustWrite(<-sc)
+	} else {
+		fmt.Printf("Watch creation summary:\n%s", <-rc)
 	}
 }
 
@@ -201,7 +210,7 @@ func newWatchedKeys() *watchedKeys {
 	}
 }
 
-func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
+func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys, enc encoder) {
 	eventsTotal := 0
 	for i := 0; i < watchPutTotal; i++ {
 		eventsTotal += wk.numWatchers[wk.watched[i%len(wk.watched)]]
@@ -245,12 +254,29 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}(cc)
 	}
 
-	rc := r.Run()
+	var sc <-chan report.Stats
+	var rc <-chan string
+
+	// Only one of Stats or Run can be called only one time to get the correct
+	// results since they process results repeatedly.
+
+	// TODO(anson): If https://github.com/etcd-io/etcd/issues/11571 is resolved,
+	// simplify the code below.
+	if enc != nil {
+		sc = r.Stats()
+	} else {
+		rc = r.Run()
+	}
+
 	wg.Wait()
 	bar.Finish()
 	close(r.Results())
-	fmt.Printf("Watch events received summary:\n%s", <-rc)
 
+	if enc != nil {
+		enc.mustWrite(<-sc)
+	} else {
+		fmt.Printf("Watch events received summary:\n%s", <-rc)
+	}
 }
 
 func recvWatchChan(wch clientv3.WatchChan, results chan<- report.Result, nrRxed *int32) {

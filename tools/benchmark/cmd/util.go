@@ -17,9 +17,7 @@ package cmd
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -178,16 +176,4 @@ func newWeightedReport() report.Report {
 		return report.NewReportSample(p)
 	}
 	return report.NewWeightedReport(report.NewReport(p), p)
-}
-
-func mustWriteStatsToJsonFile(filepath string, stats report.Stats) {
-	out, err := json.Marshal(stats)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal stats: %v\n", err)
-		os.Exit(1)
-	}
-	if err = ioutil.WriteFile(filepath, out, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write file: %v\n", err)
-		os.Exit(1)
-	}
 }

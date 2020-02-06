@@ -40,7 +40,7 @@ var (
 	watchGetTotalStreams  int
 	watchEvents           int
 	firstWatch            sync.Once
-	watchGetJsonPath      string
+	watchGetOutputFormat  string
 )
 
 func init() {
@@ -48,10 +48,17 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchGetTotalWatchers, "watchers", 10000, "Total number of watchers")
 	watchGetCmd.Flags().IntVar(&watchGetTotalStreams, "streams", 1, "Total number of watcher streams")
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
-	watchGetCmd.Flags().StringVar(&watchGetJsonPath, "jsonpath", "", "json file path for benchmark results output")
+	watchGetCmd.Flags().StringVar(&watchGetOutputFormat, "output", "", "Output format for benchmark results output (only json is currently supported)")
 }
 
 func watchGetFunc(cmd *cobra.Command, args []string) {
+	// Only result will be written in the specified output format if it is set.
+	enc, restore, err := shouldEncode(watchGetOutputFormat)
+	if err != nil {
+		panic(err)
+	}
+	defer restore()
+
 	clients := mustCreateClients(totalClients, totalConns)
 	getClient := mustCreateClients(1, 1)
 
@@ -97,13 +104,15 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
 
-	isJsonOutput := len(watchGetJsonPath) > 0
 	var sc <-chan report.Stats
 	var rc <-chan string
 
 	// Only one of Stats or Run can be called only one time to get the correct
 	// results since they process results repeatedly.
-	if isJsonOutput {
+	//
+	// TODO(anson): If https://github.com/etcd-io/etcd/issues/11571 is resolved,
+	// simplify the code below.
+	if enc != nil {
 		sc = r.Stats()
 	} else {
 		rc = r.Run()
@@ -113,9 +122,8 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 	cancel()
 	bar.Finish()
 
-	if isJsonOutput {
-		mustWriteStatsToJsonFile(watchGetJsonPath, <-sc)
-		fmt.Printf("wrote stats to file %s\n", watchGetJsonPath)
+	if enc != nil {
+		enc.mustWrite(<-sc)
 	} else {
 		fmt.Printf("Get during watch summary:\n%s", <-rc)
 	}

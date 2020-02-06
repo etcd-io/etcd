@@ -56,7 +56,7 @@ var (
 
 	checkHashkv bool
 
-	putJsonPath string
+	putOutputFormat string
 )
 
 func init() {
@@ -71,10 +71,17 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
-	putCmd.Flags().StringVar(&putJsonPath, "jsonpath", "", "json file path for benchmark results output")
+	putCmd.Flags().StringVar(&putOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
+	// Only result will be written in the specified output format if it is set.
+	enc, restore, err := shouldEncode(putOutputFormat)
+	if err != nil {
+		panic(err)
+	}
+	defer restore()
+
 	if keySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
 		os.Exit(1)
@@ -129,13 +136,15 @@ func putFunc(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	isJsonOutput := len(putJsonPath) > 0
 	var sc <-chan report.Stats
 	var rc <-chan string
 
 	// Only one of Stats or Run can be called only one time to get the correct
 	// results since they process results repeatedly.
-	if isJsonOutput {
+	//
+	// TODO(anson): If https://github.com/etcd-io/etcd/issues/11571 is resolved,
+	// simplify the code below.
+	if enc != nil {
 		sc = r.Stats()
 	} else {
 		rc = r.Run()
@@ -145,9 +154,8 @@ func putFunc(cmd *cobra.Command, args []string) {
 	close(r.Results())
 	bar.Finish()
 
-	if isJsonOutput {
-		mustWriteStatsToJsonFile(putJsonPath, <-sc)
-		fmt.Printf("wrote stats to file %s\n", putJsonPath)
+	if enc != nil {
+		enc.mustWrite(<-sc)
 	} else {
 		fmt.Println(<-rc)
 	}

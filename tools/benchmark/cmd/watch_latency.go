@@ -45,7 +45,7 @@ var (
 	watchLKeySize   int
 	watchLValueSize int
 
-	watchLJsonPath string
+	watchLOutputFormat string
 )
 
 func init() {
@@ -54,10 +54,17 @@ func init() {
 	watchLatencyCmd.Flags().IntVar(&watchLPutRate, "put-rate", 100, "Number of keys to put per second")
 	watchLatencyCmd.Flags().IntVar(&watchLKeySize, "key-size", 32, "Key size of watch response")
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
-	watchLatencyCmd.Flags().StringVar(&watchLJsonPath, "jsonpath", "", "json file path for benchmark results output")
+	watchLatencyCmd.Flags().StringVar(&watchLOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func watchLatencyFunc(cmd *cobra.Command, args []string) {
+	// Only result will be written in the specified output format if it is set.
+	enc, restore, err := shouldEncode(watchLOutputFormat)
+	if err != nil {
+		panic(err)
+	}
+	defer restore()
+
 	key := string(mustRandBytes(watchLKeySize))
 	value := string(mustRandBytes(watchLValueSize))
 
@@ -75,13 +82,15 @@ func watchLatencyFunc(cmd *cobra.Command, args []string) {
 
 	limiter := rate.NewLimiter(rate.Limit(watchLPutRate), watchLPutRate)
 	r := newReport()
-	isJsonOutput := len(watchLJsonPath) > 0
 	var sc <-chan report.Stats
 	var rc <-chan string
 
 	// Only one of Stats or Run can be called only one time to get the correct
 	// results since they process results repeatedly.
-	if isJsonOutput {
+	//
+	// TODO(anson): If https://github.com/etcd-io/etcd/issues/11571 is resolved,
+	// simplify the code below.
+	if enc != nil {
 		sc = r.Stats()
 	} else {
 		rc = r.Run()
@@ -120,10 +129,9 @@ func watchLatencyFunc(cmd *cobra.Command, args []string) {
 
 	close(r.Results())
 	bar.Finish()
-	if isJsonOutput {
-		mustWriteStatsToJsonFile(watchLJsonPath, <-sc)
-		fmt.Printf("wrote stats to file %s\n", watchLJsonPath)
+	if enc != nil {
+		enc.mustWrite(<-sc)
 	} else {
-		fmt.Printf("%s", <-rc)
+		fmt.Println(<-rc)
 	}
 }
