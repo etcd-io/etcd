@@ -36,6 +36,10 @@ func (s *as2ac) AuthDisable(ctx context.Context, in *pb.AuthDisableRequest, opts
 	return s.as.AuthDisable(ctx, in)
 }
 
+func (s *as2ac) AuthStatus(ctx context.Context, in *pb.AuthStatusRequest, opts ...grpc.CallOption) (*pb.AuthStatusResponse, error) {
+	return s.as.AuthStatus(ctx, in)
+}
+
 func (s *as2ac) Authenticate(ctx context.Context, in *pb.AuthenticateRequest, opts ...grpc.CallOption) (*pb.AuthenticateResponse, error) {
 	return s.as.Authenticate(ctx, in)
 }

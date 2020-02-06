@@ -78,6 +78,7 @@ type applierV3 interface {
 
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	AuthDisable() (*pb.AuthDisableResponse, error)
+	AuthStatus() (*pb.AuthStatusResponse, error)
 
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
@@ -159,6 +160,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.AuthEnable()
 	case r.AuthDisable != nil:
 		ar.resp, ar.err = a.s.applyV3.AuthDisable()
+	case r.AuthStatus != nil:
+		ar.resp, ar.err = a.s.applyV3.AuthStatus()
 	case r.AuthUserAdd != nil:
 		ar.resp, ar.err = a.s.applyV3.UserAdd(r.AuthUserAdd)
 	case r.AuthUserDelete != nil:
@@ -737,6 +740,11 @@ func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 	a.s.AuthStore().AuthDisable()
 	return &pb.AuthDisableResponse{Header: newHeader(a.s)}, nil
+}
+
+func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
+	enabled := a.s.AuthStore().IsAuthEnabled()
+	return &pb.AuthStatusResponse{Header: newHeader(a.s), Enabled: enabled}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
