@@ -476,7 +476,7 @@ func TestNodeToMemberBad(t *testing.T) {
 		}},
 	}
 	for i, tt := range tests {
-		if _, err := nodeToMember(tt); err == nil {
+		if _, err := nodeToMember(zap.NewExample(), tt); err == nil {
 			t.Errorf("#%d: unexpected nil error", i)
 		}
 	}
@@ -529,15 +529,13 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 }
 
 func TestClusterMembers(t *testing.T) {
-	cls := &RaftCluster{
-		members: map[types.ID]*Member{
-			1:   {ID: 1},
-			20:  {ID: 20},
-			100: {ID: 100},
-			5:   {ID: 5},
-			50:  {ID: 50},
-		},
-	}
+	cls := newTestCluster([]*Member{
+		{ID: 1},
+		{ID: 20},
+		{ID: 100},
+		{ID: 5},
+		{ID: 50},
+	})
 	w := []*Member{
 		{ID: 1},
 		{ID: 5},
@@ -607,7 +605,7 @@ func TestNodeToMember(t *testing.T) {
 		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
-	m, err := nodeToMember(n)
+	m, err := nodeToMember(zap.NewExample(), n)
 	if err != nil {
 		t.Fatalf("unexpected nodeToMember error: %v", err)
 	}
