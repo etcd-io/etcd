@@ -212,7 +212,7 @@ func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool
 	if len(splitted) != 2 {
 		return false
 	}
-	index, err := strconv.Atoi(splitted[1])
+	index, err := strconv.ParseUint(splitted[1], 10, 0)
 	if err != nil {
 		return false
 	}
