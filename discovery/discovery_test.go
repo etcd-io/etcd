@@ -215,7 +215,7 @@ func TestCheckCluster(t *testing.T) {
 			if reflect.DeepEqual(ns, tt.nodes) {
 				t.Errorf("#%d: nodes = %v, want %v", i, ns, tt.nodes)
 			}
-			if size != tt.wsize {
+			if size != uint64(tt.wsize) {
 				t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
 			}
 			if index != tt.index {
@@ -299,7 +299,7 @@ func TestWaitNodes(t *testing.T) {
 					fc.Advance(time.Second * (0x1 << i))
 				}
 			}()
-			g, err := d.waitNodes(tt.nodes, 3, 0) // we do not care about index in this test
+			g, err := d.waitNodes(tt.nodes, uint64(3), 0) // we do not care about index in this test
 			if err != nil {
 				t.Errorf("#%d: err = %v, want %v", i, err, nil)
 			}
@@ -346,7 +346,7 @@ func TestCreateSelf(t *testing.T) {
 func TestNodesToCluster(t *testing.T) {
 	tests := []struct {
 		nodes    []*client.Node
-		size     int
+		size     uint64
 		wcluster string
 		werr     error
 	}{
