@@ -72,29 +72,20 @@ type maintenanceServer struct {
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
 	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s}
+	if srv.lg == nil {
+		srv.lg = zap.NewNop()
+	}
 	return &authMaintenanceServer{srv, s}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
-	if ms.lg != nil {
-		ms.lg.Info("starting defragment")
-	} else {
-		plog.Noticef("starting to defragment the storage backend...")
-	}
+	ms.lg.Info("starting defragment")
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
-		if ms.lg != nil {
-			ms.lg.Warn("failed to defragment", zap.Error(err))
-		} else {
-			plog.Errorf("failed to defragment the storage backend (%v)", err)
-		}
+		ms.lg.Warn("failed to defragment", zap.Error(err))
 		return nil, err
 	}
-	if ms.lg != nil {
-		ms.lg.Info("finished defragment")
-	} else {
-		plog.Noticef("finished defragmenting the storage backend")
-	}
+	ms.lg.Info("finished defragment")
 	return &pb.DefragmentResponse{}, nil
 }
 
@@ -107,11 +98,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	go func() {
 		snap.WriteTo(pw)
 		if err := snap.Close(); err != nil {
-			if ms.lg != nil {
-				ms.lg.Warn("failed to close snapshot", zap.Error(err))
-			} else {
-				plog.Errorf("error closing snapshot (%v)", err)
-			}
+			ms.lg.Warn("failed to close snapshot", zap.Error(err))
 		}
 		pw.Close()
 	}()
