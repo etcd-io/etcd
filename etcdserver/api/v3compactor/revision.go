@@ -83,41 +83,28 @@ func (rc *Revision) Run() {
 			}
 
 			now := time.Now()
-			if rc.lg != nil {
-				rc.lg.Info(
-					"starting auto revision compaction",
-					zap.Int64("revision", rev),
-					zap.Int64("revision-compaction-retention", rc.retention),
-				)
-			} else {
-				plog.Noticef("Starting auto-compaction at revision %d (retention: %d revisions)", rev, rc.retention)
-			}
+			rc.lg.Info(
+				"starting auto revision compaction",
+				zap.Int64("revision", rev),
+				zap.Int64("revision-compaction-retention", rc.retention),
+			)
 			_, err := rc.c.Compact(rc.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
 				prev = rev
-				if rc.lg != nil {
-					rc.lg.Info(
-						"completed auto revision compaction",
-						zap.Int64("revision", rev),
-						zap.Int64("revision-compaction-retention", rc.retention),
-						zap.Duration("took", time.Since(now)),
-					)
-				} else {
-					plog.Noticef("Finished auto-compaction at revision %d", rev)
-				}
+				rc.lg.Info(
+					"completed auto revision compaction",
+					zap.Int64("revision", rev),
+					zap.Int64("revision-compaction-retention", rc.retention),
+					zap.Duration("took", time.Since(now)),
+				)
 			} else {
-				if rc.lg != nil {
-					rc.lg.Warn(
-						"failed auto revision compaction",
-						zap.Int64("revision", rev),
-						zap.Int64("revision-compaction-retention", rc.retention),
-						zap.Duration("retry-interval", revInterval),
-						zap.Error(err),
-					)
-				} else {
-					plog.Noticef("Failed auto-compaction at revision %d (%v)", rev, err)
-					plog.Noticef("Retry after %v", revInterval)
-				}
+				rc.lg.Warn(
+					"failed auto revision compaction",
+					zap.Int64("revision", rev),
+					zap.Int64("revision-compaction-retention", rc.retention),
+					zap.Duration("retry-interval", revInterval),
+					zap.Error(err),
+				)
 			}
 		}
 	}()
