@@ -51,8 +51,6 @@ func notifySystemd(lg *zap.Logger) {
 	if err != nil {
 		if lg != nil {
 			lg.Error("failed to notify systemd for readiness", zap.Error(err))
-		} else {
-			plog.Errorf("failed to notify systemd for readiness: %v", err)
 		}
 	}
 }
