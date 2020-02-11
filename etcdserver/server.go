@@ -465,7 +465,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	sstats := stats.NewServerStats(cfg.Name, id.String())
-	lstats := stats.NewLeaderStats(id.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
@@ -2337,7 +2337,7 @@ func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
 	s.applyV3 = s.newApplierV3()
-	as, err := v3alarm.NewAlarmStore(s)
+	as, err := v3alarm.NewAlarmStore(s.lg, s)
 	if err != nil {
 		return err
 	}

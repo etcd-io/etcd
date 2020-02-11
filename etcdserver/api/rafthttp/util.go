@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 var (
@@ -60,12 +61,14 @@ func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration)
 }
 
 // createPostRequest creates a HTTP POST request that sends raft message.
-func createPostRequest(u url.URL, path string, body io.Reader, ct string, urls types.URLs, from, cid types.ID) *http.Request {
+func createPostRequest(lg *zap.Logger, u url.URL, path string, body io.Reader, ct string, urls types.URLs, from, cid types.ID) *http.Request {
 	uu := u
 	uu.Path = path
 	req, err := http.NewRequest("POST", uu.String(), body)
 	if err != nil {
-		plog.Panicf("unexpected new request error (%v)", err)
+		if lg != nil {
+			lg.Panic("unexpected new request error", zap.Error(err))
+		}
 	}
 	req.Header.Set("Content-Type", ct)
 	req.Header.Set("X-Server-From", from.String())
@@ -79,16 +82,27 @@ func createPostRequest(u url.URL, path string, body io.Reader, ct string, urls t
 
 // checkPostResponse checks the response of the HTTP POST request that sends
 // raft message.
-func checkPostResponse(resp *http.Response, body []byte, req *http.Request, to types.ID) error {
+func checkPostResponse(lg *zap.Logger, resp *http.Response, body []byte, req *http.Request, to types.ID) error {
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
 		switch strings.TrimSuffix(string(body), "\n") {
 		case errIncompatibleVersion.Error():
-			plog.Errorf("request sent was ignored by peer %s (server version incompatible)", to)
+			if lg != nil {
+				lg.Error(
+					"request sent was ignored by peer",
+					zap.String("remote-peer-id", to.String()),
+				)
+			}
 			return errIncompatibleVersion
 		case errClusterIDMismatch.Error():
-			plog.Errorf("request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
-				to, resp.Header.Get("X-Etcd-Cluster-ID"), req.Header.Get("X-Etcd-Cluster-ID"))
+			if lg != nil {
+				lg.Error(
+					"request sent was ignored due to cluster ID mismatch",
+					zap.String("remote-peer-id", to.String()),
+					zap.String("remote-peer-cluster-id", resp.Header.Get("X-Etcd-Cluster-ID")),
+					zap.String("local-member-cluster-id", req.Header.Get("X-Etcd-Cluster-ID")),
+				)
+			}
 			return errClusterIDMismatch
 		default:
 			return fmt.Errorf("unhandled error %q when precondition failed", string(body))

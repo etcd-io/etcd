@@ -15,10 +15,6 @@
 // Package v2stats defines a standard interface for etcd cluster statistics.
 package v2stats
 
-import "github.com/coreos/pkg/capnslog"
-
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/stats")
-
 type Stats interface {
 	// SelfStats returns the struct representing statistics of this server
 	SelfStats() []byte
