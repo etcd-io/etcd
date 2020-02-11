@@ -299,8 +299,6 @@ func (cfg *config) parse(arguments []string) error {
 				"loaded server configuration, other configuration command line flags and environment variables will be ignored if provided",
 				zap.String("path", cfg.configFile),
 			)
-		} else {
-			plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
 		}
 	} else {
 		err = cfg.configFromCmdLine()
@@ -314,7 +312,13 @@ func (cfg *config) configFromCmdLine() error {
 	if verVal := os.Getenv(verKey); verVal != "" {
 		// unset to avoid any possible side-effect.
 		os.Unsetenv(verKey)
-		plog.Warningf("cannot set special environment variable %s=%s", verKey, verVal)
+		if lg := cfg.ec.GetLogger(); lg != nil {
+			lg.Warn(
+				"cannot set special environment variable",
+				zap.String("key", verKey),
+				zap.String("value", verVal),
+			)
+		}
 	}
 
 	err := flags.SetFlagsFromEnv("ETCD", cfg.cf.flagSet)
