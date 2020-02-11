@@ -553,31 +553,19 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPat
 		case *pb.RequestOp_RequestRange:
 			resp, err := a.Range(context.TODO(), txn, tv.RequestRange)
 			if err != nil {
-				if lg != nil {
-					lg.Panic("unexpected error during txn", zap.Error(err))
-				} else {
-					plog.Panicf("unexpected error during txn: %v", err)
-				}
+				lg.Panic("unexpected error during txn", zap.Error(err))
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 		case *pb.RequestOp_RequestPut:
 			resp, _, err := a.Put(txn, tv.RequestPut)
 			if err != nil {
-				if lg != nil {
-					lg.Panic("unexpected error during txn", zap.Error(err))
-				} else {
-					plog.Panicf("unexpected error during txn: %v", err)
-				}
+				lg.Panic("unexpected error during txn", zap.Error(err))
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {
-				if lg != nil {
-					lg.Panic("unexpected error during txn", zap.Error(err))
-				} else {
-					plog.Panicf("unexpected error during txn: %v", err)
-				}
+				lg.Panic("unexpected error during txn", zap.Error(err))
 			}
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
@@ -655,22 +643,14 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 
-		if lg != nil {
-			lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
-		} else {
-			plog.Warningf("alarm %v raised by peer %s", m.Alarm, types.ID(m.MemberID))
-		}
+		lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
 		switch m.Alarm {
 		case pb.AlarmType_CORRUPT:
 			a.s.applyV3 = newApplierV3Corrupt(a)
 		case pb.AlarmType_NOSPACE:
 			a.s.applyV3 = newApplierV3Capped(a)
 		default:
-			if lg != nil {
-				lg.Warn("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
-			} else {
-				plog.Errorf("unimplemented alarm activation (%+v)", m)
-			}
+			lg.Warn("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
 		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
@@ -686,18 +666,10 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		switch m.Alarm {
 		case pb.AlarmType_NOSPACE, pb.AlarmType_CORRUPT:
 			// TODO: check kv hash before deactivating CORRUPT?
-			if lg != nil {
-				lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
-			} else {
-				plog.Infof("alarm disarmed %+v", ar)
-			}
+			lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
 			a.s.applyV3 = a.s.newApplierV3()
 		default:
-			if lg != nil {
-				lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
-			} else {
-				plog.Errorf("unimplemented alarm deactivation (%+v)", m)
-			}
+			lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
 		}
 	default:
 		return nil, nil

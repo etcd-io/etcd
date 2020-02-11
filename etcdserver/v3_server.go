@@ -419,15 +419,11 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
 			if err != auth.ErrAuthNotEnabled {
-				if lg != nil {
-					lg.Warn(
-						"invalid authentication was requested",
-						zap.String("user", r.Name),
-						zap.Error(err),
-					)
-				} else {
-					plog.Errorf("invalid authentication request to user %s was issued", r.Name)
-				}
+				lg.Warn(
+					"invalid authentication was requested",
+					zap.String("user", r.Name),
+					zap.Error(err),
+				)
 			}
 			return nil, err
 		}
@@ -451,11 +447,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			break
 		}
 
-		if lg != nil {
-			lg.Info("revision when password checked became stale; retrying")
-		} else {
-			plog.Infof("revision when password checked is obsolete, retrying")
-		}
+		lg.Info("revision when password checked became stale; retrying")
 	}
 
 	return resp.(*pb.AuthenticateResponse), nil
@@ -707,11 +699,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 			if err == raft.ErrStopped {
 				return
 			}
-			if lg != nil {
-				lg.Warn("failed to get read index from Raft", zap.Error(err))
-			} else {
-				plog.Errorf("failed to get read index from raft: %v", err)
-			}
+			lg.Warn("failed to get read index from Raft", zap.Error(err))
 			readIndexFailed.Inc()
 			nr.notify(err)
 			continue
@@ -733,15 +721,11 @@ func (s *EtcdServer) linearizableReadLoop() {
 					if len(rs.RequestCtx) == 8 {
 						id2 = binary.BigEndian.Uint64(rs.RequestCtx)
 					}
-					if lg != nil {
-						lg.Warn(
-							"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-							zap.Uint64("sent-request-id", id1),
-							zap.Uint64("received-request-id", id2),
-						)
-					} else {
-						plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
-					}
+					lg.Warn(
+						"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
+						zap.Uint64("sent-request-id", id1),
+						zap.Uint64("received-request-id", id2),
+					)
 					slowReadIndex.Inc()
 				}
 			case <-leaderChangedNotifier:
@@ -750,11 +734,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 				// return a retryable error.
 				nr.notify(ErrLeaderChanged)
 			case <-time.After(s.Cfg.ReqTimeout()):
-				if lg != nil {
-					lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
-				} else {
-					plog.Warningf("timed out waiting for read index response (local node might have slow network)")
-				}
+				lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
 				nr.notify(ErrTimeout)
 				timeout = true
 				slowReadIndex.Inc()
