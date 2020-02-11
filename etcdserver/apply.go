@@ -1036,7 +1036,7 @@ func mkGteRange(rangeEnd []byte) []byte {
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil
+	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
 }
 
 func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
