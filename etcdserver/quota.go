@@ -78,15 +78,11 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 	if s.Cfg.QuotaBackendBytes < 0 {
 		// disable quotas if negative
 		quotaLogOnce.Do(func() {
-			if lg != nil {
-				lg.Info(
-					"disabled backend quota",
-					zap.String("quota-name", name),
-					zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
-				)
-			} else {
-				plog.Warningf("disabling backend quota")
-			}
+			lg.Info(
+				"disabled backend quota",
+				zap.String("quota-name", name),
+				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+			)
 		})
 		return &passthroughQuota{}
 	}
@@ -109,27 +105,21 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 
 	quotaLogOnce.Do(func() {
 		if s.Cfg.QuotaBackendBytes > MaxQuotaBytes {
-			if lg != nil {
-				lg.Warn(
-					"quota exceeds the maximum value",
-					zap.String("quota-name", name),
-					zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
-					zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
-					zap.Int64("quota-maximum-size-bytes", MaxQuotaBytes),
-					zap.String("quota-maximum-size", maxQuotaSize),
-				)
-			} else {
-				plog.Warningf("backend quota %v exceeds maximum recommended quota %v", s.Cfg.QuotaBackendBytes, MaxQuotaBytes)
-			}
-		}
-		if lg != nil {
-			lg.Info(
-				"enabled backend quota",
+			lg.Warn(
+				"quota exceeds the maximum value",
 				zap.String("quota-name", name),
 				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
 				zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+				zap.Int64("quota-maximum-size-bytes", MaxQuotaBytes),
+				zap.String("quota-maximum-size", maxQuotaSize),
 			)
 		}
+		lg.Info(
+			"enabled backend quota",
+			zap.String("quota-name", name),
+			zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+			zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+		)
 	})
 	return &backendQuota{s, s.Cfg.QuotaBackendBytes}
 }

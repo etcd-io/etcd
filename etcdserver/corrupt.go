@@ -39,15 +39,11 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 
 	lg := s.getLogger()
 
-	if lg != nil {
-		lg.Info(
-			"starting initial corruption check",
-			zap.String("local-member-id", s.ID().String()),
-			zap.Duration("timeout", s.Cfg.ReqTimeout()),
-		)
-	} else {
-		plog.Infof("%s starting initial corruption check with timeout %v...", s.ID(), s.Cfg.ReqTimeout())
-	}
+	lg.Info(
+		"starting initial corruption check",
+		zap.String("local-member-id", s.ID().String()),
+		zap.Duration("timeout", s.Cfg.ReqTimeout()),
+	)
 
 	h, rev, crev, err := s.kv.HashByRev(0)
 	if err != nil {
@@ -72,18 +68,10 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 
 			if h != p.resp.Hash {
 				if crev == p.resp.CompactRevision {
-					if lg != nil {
-						lg.Warn("found different hash values from remote peer", fields...)
-					} else {
-						plog.Errorf("%s's hash %d != %s's hash %d (revision %d, peer revision %d, compact revision %d)", s.ID(), h, peerID, p.resp.Hash, rev, p.resp.Header.Revision, crev)
-					}
+					lg.Warn("found different hash values from remote peer", fields...)
 					mismatch++
 				} else {
-					if lg != nil {
-						lg.Warn("found different compact revision values from remote peer", fields...)
-					} else {
-						plog.Warningf("%s cannot check hash of peer(%s): peer has a different compact revision %d (revision:%d)", s.ID(), peerID, p.resp.CompactRevision, rev)
-					}
+					lg.Warn("found different compact revision values from remote peer", fields...)
 				}
 			}
 
@@ -93,35 +81,27 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		if p.err != nil {
 			switch p.err {
 			case rpctypes.ErrFutureRev:
-				if lg != nil {
-					lg.Warn(
-						"cannot fetch hash from slow remote peer",
-						zap.String("local-member-id", s.ID().String()),
-						zap.Int64("local-member-revision", rev),
-						zap.Int64("local-member-compact-revision", crev),
-						zap.Uint32("local-member-hash", h),
-						zap.String("remote-peer-id", p.id.String()),
-						zap.Strings("remote-peer-endpoints", p.eps),
-						zap.Error(err),
-					)
-				} else {
-					plog.Warningf("%s cannot check the hash of peer(%q) at revision %d: peer is lagging behind(%q)", s.ID(), p.eps, rev, p.err.Error())
-				}
+				lg.Warn(
+					"cannot fetch hash from slow remote peer",
+					zap.String("local-member-id", s.ID().String()),
+					zap.Int64("local-member-revision", rev),
+					zap.Int64("local-member-compact-revision", crev),
+					zap.Uint32("local-member-hash", h),
+					zap.String("remote-peer-id", p.id.String()),
+					zap.Strings("remote-peer-endpoints", p.eps),
+					zap.Error(err),
+				)
 			case rpctypes.ErrCompacted:
-				if lg != nil {
-					lg.Warn(
-						"cannot fetch hash from remote peer; local member is behind",
-						zap.String("local-member-id", s.ID().String()),
-						zap.Int64("local-member-revision", rev),
-						zap.Int64("local-member-compact-revision", crev),
-						zap.Uint32("local-member-hash", h),
-						zap.String("remote-peer-id", p.id.String()),
-						zap.Strings("remote-peer-endpoints", p.eps),
-						zap.Error(err),
-					)
-				} else {
-					plog.Warningf("%s cannot check the hash of peer(%q) at revision %d: local node is lagging behind(%q)", s.ID(), p.eps, rev, p.err.Error())
-				}
+				lg.Warn(
+					"cannot fetch hash from remote peer; local member is behind",
+					zap.String("local-member-id", s.ID().String()),
+					zap.Int64("local-member-revision", rev),
+					zap.Int64("local-member-compact-revision", crev),
+					zap.Uint32("local-member-hash", h),
+					zap.String("remote-peer-id", p.id.String()),
+					zap.Strings("remote-peer-endpoints", p.eps),
+					zap.Error(err),
+				)
 			}
 		}
 	}
@@ -129,14 +109,10 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		return fmt.Errorf("%s found data inconsistency with peers", s.ID())
 	}
 
-	if lg != nil {
-		lg.Info(
-			"initial corruption checking passed; no corruption",
-			zap.String("local-member-id", s.ID().String()),
-		)
-	} else {
-		plog.Infof("%s succeeded on initial corruption checking: no corruption", s.ID())
-	}
+	lg.Info(
+		"initial corruption checking passed; no corruption",
+		zap.String("local-member-id", s.ID().String()),
+	)
 	return nil
 }
 
@@ -147,15 +123,11 @@ func (s *EtcdServer) monitorKVHash() {
 	}
 
 	lg := s.getLogger()
-	if lg != nil {
-		lg.Info(
-			"enabled corruption checking",
-			zap.String("local-member-id", s.ID().String()),
-			zap.Duration("interval", t),
-		)
-	} else {
-		plog.Infof("enabled corruption checking with %s interval", t)
-	}
+	lg.Info(
+		"enabled corruption checking",
+		zap.String("local-member-id", s.ID().String()),
+		zap.Duration("interval", t),
+	)
 
 	for {
 		select {
@@ -167,11 +139,7 @@ func (s *EtcdServer) monitorKVHash() {
 			continue
 		}
 		if err := s.checkHashKV(); err != nil {
-			if lg != nil {
-				lg.Warn("failed to check hash KV", zap.Error(err))
-			} else {
-				plog.Debugf("check hash kv failed %v", err)
-			}
+			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
 	}
 }
@@ -214,19 +182,15 @@ func (s *EtcdServer) checkHashKV() error {
 	}
 
 	if h2 != h && rev2 == rev && crev == crev2 {
-		if lg != nil {
-			lg.Warn(
-				"found hash mismatch",
-				zap.Int64("revision-1", rev),
-				zap.Int64("compact-revision-1", crev),
-				zap.Uint32("hash-1", h),
-				zap.Int64("revision-2", rev2),
-				zap.Int64("compact-revision-2", crev2),
-				zap.Uint32("hash-2", h2),
-			)
-		} else {
-			plog.Warningf("mismatched hashes %d and %d for revision %d", h, h2, rev)
-		}
+		lg.Warn(
+			"found hash mismatch",
+			zap.Int64("revision-1", rev),
+			zap.Int64("compact-revision-1", crev),
+			zap.Uint32("hash-1", h),
+			zap.Int64("revision-2", rev2),
+			zap.Int64("compact-revision-2", crev2),
+			zap.Uint32("hash-2", h2),
+		)
 		mismatch(uint64(s.ID()))
 	}
 
@@ -238,63 +202,36 @@ func (s *EtcdServer) checkHashKV() error {
 
 		// leader expects follower's latest revision less than or equal to leader's
 		if p.resp.Header.Revision > rev2 {
-			if lg != nil {
-				lg.Warn(
-					"revision from follower must be less than or equal to leader's",
-					zap.Int64("leader-revision", rev2),
-					zap.Int64("follower-revision", p.resp.Header.Revision),
-					zap.String("follower-peer-id", types.ID(id).String()),
-				)
-			} else {
-				plog.Warningf(
-					"revision %d from member %v, expected at most %d",
-					p.resp.Header.Revision,
-					types.ID(id),
-					rev2)
-			}
+			lg.Warn(
+				"revision from follower must be less than or equal to leader's",
+				zap.Int64("leader-revision", rev2),
+				zap.Int64("follower-revision", p.resp.Header.Revision),
+				zap.String("follower-peer-id", types.ID(id).String()),
+			)
 			mismatch(id)
 		}
 
 		// leader expects follower's latest compact revision less than or equal to leader's
 		if p.resp.CompactRevision > crev2 {
-			if lg != nil {
-				lg.Warn(
-					"compact revision from follower must be less than or equal to leader's",
-					zap.Int64("leader-compact-revision", crev2),
-					zap.Int64("follower-compact-revision", p.resp.CompactRevision),
-					zap.String("follower-peer-id", types.ID(id).String()),
-				)
-			} else {
-				plog.Warningf(
-					"compact revision %d from member %v, expected at most %d",
-					p.resp.CompactRevision,
-					types.ID(id),
-					crev2,
-				)
-			}
+			lg.Warn(
+				"compact revision from follower must be less than or equal to leader's",
+				zap.Int64("leader-compact-revision", crev2),
+				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
+				zap.String("follower-peer-id", types.ID(id).String()),
+			)
 			mismatch(id)
 		}
 
 		// follower's compact revision is leader's old one, then hashes must match
 		if p.resp.CompactRevision == crev && p.resp.Hash != h {
-			if lg != nil {
-				lg.Warn(
-					"same compact revision then hashes must match",
-					zap.Int64("leader-compact-revision", crev2),
-					zap.Uint32("leader-hash", h),
-					zap.Int64("follower-compact-revision", p.resp.CompactRevision),
-					zap.Uint32("follower-hash", p.resp.Hash),
-					zap.String("follower-peer-id", types.ID(id).String()),
-				)
-			} else {
-				plog.Warningf(
-					"hash %d at revision %d from member %v, expected hash %d",
-					p.resp.Hash,
-					rev,
-					types.ID(id),
-					h,
-				)
-			}
+			lg.Warn(
+				"same compact revision then hashes must match",
+				zap.Int64("leader-compact-revision", crev2),
+				zap.Uint32("leader-hash", h),
+				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
+				zap.Uint32("follower-hash", p.resp.Hash),
+				zap.String("follower-peer-id", types.ID(id).String()),
+			)
 			mismatch(id)
 		}
 	}
@@ -332,17 +269,13 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 			Endpoints:   p.eps,
 		})
 		if cerr != nil {
-			if lg != nil {
-				lg.Warn(
-					"failed to create client to peer URL",
-					zap.String("local-member-id", s.ID().String()),
-					zap.String("remote-peer-id", p.id.String()),
-					zap.Strings("remote-peer-endpoints", p.eps),
-					zap.Error(cerr),
-				)
-			} else {
-				plog.Warningf("%s failed to create client to peer %q for hash checking (%q)", s.ID(), p.eps, cerr.Error())
-			}
+			lg.Warn(
+				"failed to create client to peer URL",
+				zap.String("local-member-id", s.ID().String()),
+				zap.String("remote-peer-id", p.id.String()),
+				zap.Strings("remote-peer-endpoints", p.eps),
+				zap.Error(cerr),
+			)
 			continue
 		}
 
@@ -356,17 +289,13 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) (resps []*peerHashKVResp) {
 				resps = append(resps, &peerHashKVResp{id: p.id, eps: p.eps, resp: resp, err: nil})
 				break
 			}
-			if lg != nil {
-				lg.Warn(
-					"failed hash kv request",
-					zap.String("local-member-id", s.ID().String()),
-					zap.Int64("requested-revision", rev),
-					zap.String("remote-peer-endpoint", c),
-					zap.Error(cerr),
-				)
-			} else {
-				plog.Warningf("%s hash-kv error %q on peer %q with revision %d", s.ID(), cerr.Error(), c, rev)
-			}
+			lg.Warn(
+				"failed hash kv request",
+				zap.String("local-member-id", s.ID().String()),
+				zap.Int64("requested-revision", rev),
+				zap.String("remote-peer-endpoint", c),
+				zap.Error(cerr),
+			)
 		}
 		cli.Close()
 

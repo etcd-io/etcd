@@ -189,28 +189,16 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 	for {
 		used, err := runtime.FDUsage()
 		if err != nil {
-			if lg != nil {
-				lg.Warn("failed to get file descriptor usage", zap.Error(err))
-			} else {
-				plog.Errorf("cannot monitor file descriptor usage (%v)", err)
-			}
+			lg.Warn("failed to get file descriptor usage", zap.Error(err))
 			return
 		}
 		limit, err := runtime.FDLimit()
 		if err != nil {
-			if lg != nil {
-				lg.Warn("failed to get file descriptor limit", zap.Error(err))
-			} else {
-				plog.Errorf("cannot monitor file descriptor usage (%v)", err)
-			}
+			lg.Warn("failed to get file descriptor limit", zap.Error(err))
 			return
 		}
 		if used >= limit/5*4 {
-			if lg != nil {
-				lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
-			} else {
-				plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
-			}
+			lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
 		}
 		select {
 		case <-ticker.C:
