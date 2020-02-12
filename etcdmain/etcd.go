@@ -364,7 +364,7 @@ func startProxy(cfg *config) error {
 
 		return clientURLs
 	}
-	ph := httpproxy.NewHandler(pt, uf, time.Duration(cfg.cp.ProxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.cp.ProxyRefreshIntervalMs)*time.Millisecond)
+	ph := httpproxy.NewHandler(lg, pt, uf, time.Duration(cfg.cp.ProxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.cp.ProxyRefreshIntervalMs)*time.Millisecond)
 	ph = embed.WrapCORS(cfg.ec.CORS, ph)
 
 	if cfg.isReadonlyProxy() {
