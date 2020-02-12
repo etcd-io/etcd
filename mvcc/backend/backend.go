@@ -307,21 +307,36 @@ func (b *backend) defrag() error {
 	b.batchTx.unsafeCommit(true)
 	b.batchTx.tx = nil
 
-	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)
+	// Create a temporary file to ensure we start with a clean slate.
+	// Snapshotter.cleanupSnapdir cleans up any of these that are found during startup.
+	dir := filepath.Dir(b.db.Path())
+	temp, err := ioutil.TempFile(dir, "db.tmp.*")
+	if err != nil {
+		return err
+	}
+	// bbolt v1.3.1-coreos.5 does not provide options.OpenFile so we
+	// instead close the temp file and then let bolt reopen it.
+	tdbp := temp.Name()
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	tmpdb, err := bolt.Open(tdbp, 0600, boltOpenOptions)
 	if err != nil {
 		return err
 	}
 
+	// gofail: var defragBeforeCopy struct{}
 	err = defragdb(b.db, tmpdb, defragLimit)
 
 	if err != nil {
 		tmpdb.Close()
-		os.RemoveAll(tmpdb.Path())
+		if rmErr := os.RemoveAll(tmpdb.Path()); rmErr != nil {
+			plog.Fatalf("failed to remove db.tmp after defragmentation completed: %v", rmErr)
+		}
 		return err
 	}
 
 	dbp := b.db.Path()
-	tdbp := tmpdb.Path()
 
 	err = b.db.Close()
 	if err != nil {
@@ -331,6 +346,7 @@ func (b *backend) defrag() error {
 	if err != nil {
 		plog.Fatalf("cannot close database (%s)", err)
 	}
+	// gofail: var defragBeforeRename struct{}
 	err = os.Rename(tdbp, dbp)
 	if err != nil {
 		plog.Fatalf("cannot rename database (%s)", err)
