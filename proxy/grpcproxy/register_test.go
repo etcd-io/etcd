@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 
+	"go.uber.org/zap"
 	gnaming "google.golang.org/grpc/naming"
 )
 
@@ -44,7 +45,7 @@ func TestRegister(t *testing.T) {
 		t.Fatalf("len(ups) expected 0, got %d (%v)", len(ups), ups)
 	}
 
-	donec := Register(cli, testPrefix, paddr, 5)
+	donec := Register(zap.NewExample(), cli, testPrefix, paddr, 5)
 
 	ups, err = wa.Next()
 	if err != nil {
