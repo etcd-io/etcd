@@ -308,20 +308,25 @@ func (cfg *config) parse(arguments []string) error {
 }
 
 func (cfg *config) configFromCmdLine() error {
+	// user-specified logger is not setup yet, use this logger during flag parsing
+	lg, err := zap.NewProduction()
+	if err != nil {
+		return err
+	}
+
 	verKey := "ETCD_VERSION"
 	if verVal := os.Getenv(verKey); verVal != "" {
 		// unset to avoid any possible side-effect.
 		os.Unsetenv(verKey)
-		if lg := cfg.ec.GetLogger(); lg != nil {
-			lg.Warn(
-				"cannot set special environment variable",
-				zap.String("key", verKey),
-				zap.String("value", verVal),
-			)
-		}
+
+		lg.Warn(
+			"cannot set special environment variable",
+			zap.String("key", verKey),
+			zap.String("value", verVal),
+		)
 	}
 
-	err := flags.SetFlagsFromEnv("ETCD", cfg.cf.flagSet)
+	err = flags.SetFlagsFromEnv(lg, "ETCD", cfg.cf.flagSet)
 	if err != nil {
 		return err
 	}
