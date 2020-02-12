@@ -206,6 +206,9 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err = s.cleanupSnapdir(names); err != nil {
+		return nil, err
+	}
 	snaps := checkSuffix(s.lg, names)
 	if len(snaps) == 0 {
 		return nil, ErrNoSnapshot
@@ -230,4 +233,20 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 		}
 	}
 	return snaps
+}
+
+// cleanupSnapdir removes any files that should not be in the snapshot directory:
+// - db.tmp prefixed files that can be orphaned by defragmentation
+func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
+	for _, filename := range filenames {
+		if strings.HasPrefix(filename, "db.tmp") {
+			if s.lg != nil {
+				s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
+				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
+					return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
+				}
+			}
+		}
+	}
+	return nil
 }
