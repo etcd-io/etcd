@@ -20,8 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -30,8 +28,6 @@ const (
 	// PrivateDirMode grants owner to make/remove files inside the directory.
 	PrivateDirMode = 0700
 )
-
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/fileutil")
 
 // IsDirWriteable checks if dir is writable by writing and removing a file
 // to dir. It returns nil if dir is writable.

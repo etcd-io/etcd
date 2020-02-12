@@ -16,6 +16,7 @@ package flags
 
 import (
 	"flag"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -60,7 +61,7 @@ func NewUniqueStringsValue(s string) (us *UniqueStringsValue) {
 		return us
 	}
 	if err := us.Set(s); err != nil {
-		plog.Panicf("new UniqueStringsValue should never fail: %v", err)
+		panic(fmt.Sprintf("new UniqueStringsValue should never fail: %v", err))
 	}
 	return us
 }
