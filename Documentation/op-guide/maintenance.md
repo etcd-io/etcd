@@ -170,3 +170,7 @@ $ etcdctl --write-out=table snapshot status backup.db
 | fe01cf57 |       10 |          7 | 2.1 MB     |
 +----------+----------+------------+------------+
 ```
+The revision number got via `snapshot status` is the largest revision number of backup db. It may be different from the global revision number or even smaller than last compaction revision.
+For example, deleting keys in range `[compact_rev-N, compact_rev]` can make db lose the memory of this revision window due to compaction. In that case, the revision we get from snapshot is `compact_rev-N`.
+
+The current revision number of a member restored with `etcdctl snapshot restore` is `max(last_compact_revision, largest_db_revision)`.
