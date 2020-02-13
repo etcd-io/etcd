@@ -131,13 +131,6 @@ func (rn *raftNetwork) delay(from, to uint64, d time.Duration, rate float64) {
 	rn.delaymap[conn{from, to}] = delay{d, rate}
 }
 
-func (rn *raftNetwork) heal() {
-	rn.mu.Lock()
-	defer rn.mu.Unlock()
-	rn.dropmap = make(map[conn]float64)
-	rn.delaymap = make(map[conn]delay)
-}
-
 func (rn *raftNetwork) disconnect(id uint64) {
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
