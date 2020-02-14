@@ -240,11 +240,9 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
 	for _, filename := range filenames {
 		if strings.HasPrefix(filename, "db.tmp") {
-			if s.lg != nil {
-				s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
-				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
-					return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
-				}
+			s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
+			if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
+				return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
 			}
 		}
 	}
