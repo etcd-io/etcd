@@ -1575,12 +1575,16 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	var wgPutters, wgGetters sync.WaitGroup
 	wgPutters.Add(numPutters)
 	wgGetters.Add(numGetters)
+	txnerrCh := make(chan error, 1)
 
 	f := func() {
 		defer wgPutters.Done()
 		for i := 0; i < 10; i++ {
-			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); err != nil {
-				t.Fatal(txnerr)
+			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); txnerr != nil {
+				select {
+				case txnerrCh <- txnerr:
+				default:
+				}
 			}
 		}
 	}
@@ -1619,6 +1623,11 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	}
 
 	wgPutters.Wait()
+	select {
+	case txnerr := <-txnerrCh:
+		t.Fatal(txnerr)
+	default:
+	}
 	close(donec)
 	wgGetters.Wait()
 }
