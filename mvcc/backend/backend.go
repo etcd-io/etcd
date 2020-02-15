@@ -365,7 +365,10 @@ func (b *backend) defrag() error {
 	if err != nil {
 		return err
 	}
-	options := *boltOpenOptions
+	options := bolt.Options{}
+	if boltOpenOptions != nil {
+		options = *boltOpenOptions
+	}
 	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
 		return temp, nil
 	}
