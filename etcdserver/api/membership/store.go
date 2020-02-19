@@ -72,8 +72,8 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 
 	tx := be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
 	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
+	tx.Unlock()
 }
 
 func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
@@ -84,8 +84,8 @@ func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *D
 	}
 	tx := be.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
 	tx.UnsafePut(clusterBucketName, dkey, dvalue)
+	tx.Unlock()
 }
 
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {

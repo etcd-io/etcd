@@ -262,8 +262,9 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 	}
-
-	c.downgradeInfo = downgradeInfoFromBackend(c.lg, c.be)
+	if c.be != nil {
+		c.downgradeInfo = downgradeInfoFromBackend(c.lg, c.be)
+	}
 	var d *DowngradeInfo
 	if c.downgradeInfo == nil {
 		d = &DowngradeInfo{Enabled: false}
@@ -711,32 +712,25 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 
 func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
-	if be != nil {
-		tx := be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
-		keys, vals := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
-		if len(keys) == 0 {
-			return nil
-		}
-
-		if len(keys) != 1 {
-			if lg != nil {
-				lg.Panic(
-					"unexpected number of keys when getting cluster version from backend",
-					zap.Int("number-of-key", len(keys)),
-				)
-			}
-		}
-		var d DowngradeInfo
-		if err := json.Unmarshal(vals[0], &d); err != nil {
-			if lg != nil {
-				lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
-			}
-		}
-		return &d
+	tx := be.ReadTx()
+	tx.Lock()
+	defer tx.Unlock()
+	keys, vals := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+	if len(keys) == 0 {
+		return nil
 	}
-	return nil
+
+	if len(keys) != 1 {
+		lg.Panic(
+			"unexpected number of keys when getting cluster version from backend",
+			zap.Int("number-of-key", len(keys)),
+		)
+	}
+	var d DowngradeInfo
+	if err := json.Unmarshal(vals[0], &d); err != nil {
+		lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
+	}
+	return &d
 }
 
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
@@ -781,20 +775,20 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	if d != nil && d.Enabled && d.TargetVersion != nil {
 		if isValidDowngrade(d.TargetVersion, lv) {
 			if cv != nil {
-					lg.Info(
-						"cluster is downgrading to target version",
-						zap.String("target-cluster-version", d.TargetVersion.String()),
-						zap.String("determined-cluster-version", version.Cluster(cv.String())),
-						zap.String("current-server-version", version.Version),
-					)
+				lg.Info(
+					"cluster is downgrading to target version",
+					zap.String("target-cluster-version", d.TargetVersion.String()),
+					zap.String("determined-cluster-version", version.Cluster(cv.String())),
+					zap.String("current-server-version", version.Version),
+				)
 			}
 			return
 		}
-			lg.Fatal(
-				"invalid downgrade; server version is not allowed to join when downgrade is enabled",
-				zap.String("current-server-version", version.Version),
-				zap.String("target-cluster-version", d.TargetVersion.String()),
-			)
+		lg.Fatal(
+			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
+			zap.String("current-server-version", version.Version),
+			zap.String("target-cluster-version", d.TargetVersion.String()),
+		)
 	}
 
 	// if the cluster disables downgrade, check local version against determined cluster version.
@@ -867,11 +861,11 @@ func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
 	c.downgradeInfo = d
 
 	if d.Enabled {
-		if c.lg != nil {
-			c.lg.Info("The server is ready to downgrade",
-				zap.String("target-version", d.TargetVersion.String()),
-				zap.String("server-version", version.Version))
-		}
+		c.lg.Info(
+			"The server is ready to downgrade",
+			zap.String("target-version", d.TargetVersion.String()),
+			zap.String("server-version", version.Version),
+		)
 	}
 }
 

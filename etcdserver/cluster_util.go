@@ -220,6 +220,9 @@ func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *se
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	vers := getVersions(lg, cl, local, rt)
 	minV, maxV := allowedVersionRange(getDowngradeEnabledFromRemotePeers(lg, cl, local, rt))
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
@@ -376,9 +379,7 @@ func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftClust
 		}
 		enable, err := getDowngradeEnabled(lg, m, rt)
 		if err != nil {
-			if lg != nil {
-				lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
-			}
+			lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
 		} else {
 			// Since the "/downgrade/enabled" serves linearized data,
 			// this function can return once it gets a non-error response from the endpoint.
@@ -403,40 +404,34 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 		addr := u + "/downgrade/enabled"
 		resp, err = cc.Get(addr)
 		if err != nil {
-			if lg != nil {
-				lg.Warn(
-					"failed to reach the peer URL",
-					zap.String("address", addr),
-					zap.String("remote-member-id", m.ID.String()),
-					zap.Error(err),
-				)
-			}
+			lg.Warn(
+				"failed to reach the peer URL",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
 			continue
 		}
 		var b []byte
 		b, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			if lg != nil {
-				lg.Warn(
-					"failed to read body of response",
-					zap.String("address", addr),
-					zap.String("remote-member-id", m.ID.String()),
-					zap.Error(err),
-				)
-			}
+			lg.Warn(
+				"failed to read body of response",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
 			continue
 		}
 		var enable bool
 		if err = json.Unmarshal(b, &enable); err != nil {
-			if lg != nil {
-				lg.Warn(
-					"failed to unmarshal response",
-					zap.String("address", addr),
-					zap.String("remote-member-id", m.ID.String()),
-					zap.Error(err),
-				)
-			}
+			lg.Warn(
+				"failed to unmarshal response",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
 			continue
 		}
 		return enable, nil
@@ -453,14 +448,12 @@ func isDowngradeFinished(lg *zap.Logger, targetVersion *semver.Version, vers map
 		}
 		v, err := semver.NewVersion(version.Cluster(ver.Server) + ".0")
 		if err != nil {
-			if lg != nil {
-				lg.Warn(
-					"failed to parse server version of remote member",
-					zap.String("remote-member-id", mid),
-					zap.String("remote-member-version", ver.Server),
-					zap.Error(err),
-				)
-			}
+			lg.Warn(
+				"failed to parse server version of remote member",
+				zap.String("remote-member-id", mid),
+				zap.String("remote-member-version", ver.Server),
+				zap.Error(err),
+			)
 			return false
 		}
 		if !targetVersion.Equal(*v) {
