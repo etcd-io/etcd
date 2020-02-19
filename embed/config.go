@@ -15,7 +15,6 @@
 package embed
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -290,8 +289,8 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// Logger is logger options: "zap", "capnslog".
-	// WARN: "capnslog" is being deprecated in v3.5.
+	// Logger is logger options: currently only supports "zap".
+	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
 	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
 	LogLevel string `json:"log-level"`
@@ -322,19 +321,6 @@ type Config struct {
 
 	// EnableGRPCGateway is false to disable grpc gateway.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
-
-	// TO BE DEPRECATED
-
-	// DeprecatedLogOutput is to be deprecated in v3.5.
-	// Just here for safe migration in v3.4.
-	DeprecatedLogOutput []string `json:"log-output"`
-	// Debug is true, to enable debug level logging.
-	// WARNING: to be deprecated in 3.5. Use "--log-level=debug" instead.
-	Debug bool `json:"debug"`
-	// LogPkgLevels is being deprecated in v3.5.
-	// Only valid if "logger" option is "capnslog".
-	// WARN: DO NOT USE THIS!
-	LogPkgLevels string `json:"log-package-levels"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -411,30 +397,14 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:            new(sync.RWMutex),
-		logger:              nil,
-		Logger:              "capnslog",
-		DeprecatedLogOutput: []string{DefaultLogOutput},
-		LogOutputs:          []string{DefaultLogOutput},
-		Debug:               false,
-		LogLevel:            logutil.DefaultLogLevel,
-		LogPkgLevels:        "",
+		loggerMu:   new(sync.RWMutex),
+		logger:     nil,
+		Logger:     "zap",
+		LogOutputs: []string{DefaultLogOutput},
+		LogLevel:   logutil.DefaultLogLevel,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
-}
-
-func logTLSHandshakeFailure(conn *tls.Conn, err error) {
-	state := conn.ConnectionState()
-	remoteAddr := conn.RemoteAddr().String()
-	serverName := state.ServerName
-	if len(state.PeerCertificates) > 0 {
-		cert := state.PeerCertificates[0]
-		ips, dns := cert.IPAddresses, cert.DNSNames
-		plog.Infof("rejected connection from %q (error %q, ServerName %q, IPAddresses %q, DNSNames %q)", remoteAddr, err.Error(), serverName, ips, dns)
-	} else {
-		plog.Infof("rejected connection from %q (error %q, ServerName %q)", remoteAddr, err.Error(), serverName)
-	}
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -591,10 +561,10 @@ func (cfg *Config) Validate() error {
 		return ErrConflictBootstrapFlags
 	}
 
-	if cfg.TickMs <= 0 {
+	if cfg.TickMs == 0 {
 		return fmt.Errorf("--heartbeat-interval must be >0 (set to %dms)", cfg.TickMs)
 	}
-	if cfg.ElectionMs <= 0 {
+	if cfg.ElectionMs == 0 {
 		return fmt.Errorf("--election-timeout must be >0 (set to %dms)", cfg.ElectionMs)
 	}
 	if 5*cfg.TickMs > cfg.ElectionMs {
@@ -634,19 +604,11 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
 		lg := cfg.logger
 		if cerr != nil {
-			if lg != nil {
-				lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
-			} else {
-				plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
-			}
+			lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
 			return nil, "", cerr
 		}
 		for _, s := range clusterStrs {
-			if lg != nil {
-				lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
-			} else {
-				plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
-			}
+			lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
 		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.TrustedCAFile == "" {
@@ -687,35 +649,31 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server-ssl SRV",
-			zap.String("service-scheme", "https"),
-			zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(cerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server-ssl SRV",
+		zap.String("service-scheme", "https"),
+		zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(cerr),
+	)
 
 	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if httpCerr != nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server SRV",
-			zap.String("service-scheme", "http"),
-			zap.String("service-name", "etcd-server"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(httpCerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server SRV",
+		zap.String("service-scheme", "http"),
+		zap.String("service-name", "etcd-server"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(httpCerr),
+	)
 
 	return clusterStrs, cerr
 }
@@ -750,11 +708,7 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.ClientTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring client auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring client auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring client auto TLS since certs given")
 		return nil
 	}
 	chosts := make([]string, len(cfg.LCUrls))
@@ -773,11 +727,7 @@ func (cfg *Config) PeerSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.PeerTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring peer auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring peer auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring peer auto TLS since certs given")
 		return nil
 	}
 	phosts := make([]string, len(cfg.LPUrls))

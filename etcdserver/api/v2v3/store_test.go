@@ -15,7 +15,6 @@
 package v2v3_test
 
 import (
-	"log"
 	"strings"
 	"testing"
 
@@ -44,7 +43,7 @@ func TestCreateKV(t *testing.T) {
 
 	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer cli.Close()
 	v2 := v2v3.NewStore(cli, "")
@@ -66,6 +65,10 @@ func TestCreateKV(t *testing.T) {
 		}
 
 		evg, err := v2.Get(tc.key, false, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		if evg.Node.CreatedIndex != ev.Node.CreatedIndex {
 			t.Skipf("%d: %v != %v", ti, evg.Node.CreatedIndex, ev.Node.CreatedIndex)
 		}
@@ -87,7 +90,7 @@ func TestSetKV(t *testing.T) {
 
 	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer cli.Close()
 	v2 := v2v3.NewStore(cli, "")
@@ -120,7 +123,7 @@ func TestCreateSetDir(t *testing.T) {
 
 	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer cli.Close()
 	v2 := v2v3.NewStore(cli, "")

@@ -257,6 +257,10 @@ func (rac *retryAuthClient) AuthDisable(ctx context.Context, in *pb.AuthDisableR
 	return rac.ac.AuthDisable(ctx, in, opts...)
 }
 
+func (rac *retryAuthClient) AuthStatus(ctx context.Context, in *pb.AuthStatusRequest, opts ...grpc.CallOption) (resp *pb.AuthStatusResponse, err error) {
+	return rac.ac.AuthStatus(ctx, in, opts...)
+}
+
 func (rac *retryAuthClient) UserAdd(ctx context.Context, in *pb.AuthUserAddRequest, opts ...grpc.CallOption) (resp *pb.AuthUserAddResponse, err error) {
 	return rac.ac.UserAdd(ctx, in, opts...)
 }

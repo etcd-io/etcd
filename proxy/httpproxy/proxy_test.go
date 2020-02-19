@@ -21,6 +21,8 @@ import (
 	"net/url"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func TestReadonlyHandler(t *testing.T) {
@@ -71,12 +73,15 @@ func TestConfigHandlerGET(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	lg := zap.NewExample()
 	rp := reverseProxy{
+		lg: lg,
 		director: &director{
+			lg: lg,
 			ep: []*endpoint{
-				newEndpoint(*us[0], 1*time.Second),
-				newEndpoint(*us[1], 1*time.Second),
-				newEndpoint(*us[2], 1*time.Second),
+				newEndpoint(lg, *us[0], 1*time.Second),
+				newEndpoint(lg, *us[1], 1*time.Second),
+				newEndpoint(lg, *us[2], 1*time.Second),
 			},
 		},
 	}

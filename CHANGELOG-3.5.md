@@ -49,6 +49,13 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - Deprecated `etcd_debugging_mvcc_txn_total` Prometheus metric. Use `etcd_mvcc_txn_total` instead.
 - Deprecated `etcd_debugging_mvcc_range_total` Prometheus metric. Use `etcd_mvcc_range_total` instead.
 - Master branch `/version` outputs `3.5.0-pre`, instead of `3.4.0+git`.
+- Changed `proxy` package function signature to [support structured logger](https://github.com/etcd-io/etcd/pull/11614).
+  - Previously, `NewClusterProxy(c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{})`, now `NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{})`.
+  - Previously, `Register(c *clientv3.Client, prefix string, addr string, ttl int)`, now `Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{}`.
+  - Previously, `NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler`, now `NewHandler(lg *zap.Logger, t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler`.
+- Changed `pkg/flags` function signature to [support structured logger](https://github.com/etcd-io/etcd/pull/11616).
+  - Previously, `SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error`, now `SetFlagsFromEnv(lg *zap.Logger, prefix string, fs *flag.FlagSet) error`.
+  - Previously, `SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error`, now `SetPflagsFromEnv(lg *zap.Logger, prefix string, fs *pflag.FlagSet) error`.
 
 ### Metrics, Monitoring
 
@@ -81,6 +88,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --experimental-backend-bbolt-freelist-type` has been deprecated.
 - Support [rollback/downgrade](TODO).
 - Deprecate v2 apply on cluster version. [Use v3 request to set cluster version and recover cluster version from v3 backend](https://github.com/etcd-io/etcd/pull/11427).
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 
 ### Package `embed`
 
@@ -96,11 +104,13 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
   - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 - Fix [errors caused by grpc changing balancer/resolver API](https://github.com/etcd-io/etcd/pull/11564). This change is compatible with grpc> = 1.27.0 and is no longer compatible with grpc < 1.27.0.
+- Use [ServerName as the authority](https://github.com/etcd-io/etcd/pull/11574) after bumping to grpc v1.26.0. Remove workaround in [#11184](https://github.com/etcd-io/etcd/pull/11184).
 
 ### etcdctl v3
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
 - Add [`etcdctl watch --progress-notify`](https://github.com/etcd-io/etcd/pull/11462) flag.
+- Add [`etcdctl auth status`](https://github.com/etcd-io/etcd/pull/11536) command to check if authentication is enabled
 
 ### gRPC gateway
 
@@ -111,6 +121,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Auth
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
+- Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
+
+### API
+- Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
+
 
 ### Dependency
 

@@ -256,6 +256,14 @@ service Auth {
     };
   }
 
+  // AuthStatus displays authentication status.
+  rpc AuthStatus(AuthStatusRequest) returns (AuthStatusResponse) {
+      option (google.api.http) = {
+        post: "/v3/auth/status"
+        body: "*"
+    };
+  }
+
   // Authenticate processes an authenticate request.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
       option (google.api.http) = {
@@ -1000,6 +1008,9 @@ message AuthEnableRequest {
 message AuthDisableRequest {
 }
 
+message AuthStatusRequest {
+}
+
 message AuthenticateRequest {
   string name = 1;
   string password = 2;
@@ -1077,6 +1088,11 @@ message AuthEnableResponse {
 
 message AuthDisableResponse {
   ResponseHeader header = 1;
+}
+
+message AuthStatusResponse {
+  ResponseHeader header = 1;
+  bool enabled = 2;
 }
 
 message AuthenticateResponse {

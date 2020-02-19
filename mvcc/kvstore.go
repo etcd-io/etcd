@@ -31,7 +31,6 @@ import (
 	"go.etcd.io/etcd/pkg/schedule"
 	"go.etcd.io/etcd/pkg/traceutil"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
 
@@ -46,8 +45,6 @@ var (
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled  = errors.New("mvcc: watcher is canceled")
-
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc")
 )
 
 const (
@@ -116,6 +113,9 @@ type store struct {
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
 func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *store {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	if cfg.CompactionBatchLimit == 0 {
 		cfg.CompactionBatchLimit = defaultCompactBatchLimit
 	}
@@ -372,16 +372,12 @@ func (s *store) restore() error {
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
-		if s.lg != nil {
-			s.lg.Info(
-				"restored last compact revision",
-				zap.String("meta-bucket-name", string(metaBucketName)),
-				zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
-				zap.Int64("restored-compact-revision", s.compactMainRev),
-			)
-		} else {
-			plog.Printf("restore compact to %d", s.compactMainRev)
-		}
+		s.lg.Info(
+			"restored last compact revision",
+			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
+			zap.Int64("restored-compact-revision", s.compactMainRev),
+		)
 	}
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
@@ -429,15 +425,11 @@ func (s *store) restore() error {
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
 		if err != nil {
-			if s.lg != nil {
-				s.lg.Warn(
-					"failed to attach a lease",
-					zap.String("lease-id", fmt.Sprintf("%016x", lid)),
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("unexpected Attach error: %v", err)
-			}
+			s.lg.Error(
+				"failed to attach a lease",
+				zap.String("lease-id", fmt.Sprintf("%016x", lid)),
+				zap.Error(err),
+			)
 		}
 	}
 
@@ -445,19 +437,15 @@ func (s *store) restore() error {
 
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {
-			plog.Warningf("compaction encountered: %v", err)
+			s.lg.Warn("compaction encountered error", zap.Error(err))
 		}
 
-		if s.lg != nil {
-			s.lg.Info(
-				"resume scheduled compaction",
-				zap.String("meta-bucket-name", string(metaBucketName)),
-				zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
-				zap.Int64("scheduled-compact-revision", scheduledCompact),
-			)
-		} else {
-			plog.Printf("resume scheduled compaction at %d", scheduledCompact)
-		}
+		s.lg.Info(
+			"resume scheduled compaction",
+			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
+			zap.Int64("scheduled-compact-revision", scheduledCompact),
+		)
 	}
 
 	return nil
@@ -501,7 +489,7 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			if ok {
 				if isTombstone(rkv.key) {
 					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
-						plog.Warningf("tombstone encountered: %v", err)
+						lg.Warn("tombstone encountered error", zap.Error(err))
 					}
 					continue
 				}
@@ -520,11 +508,7 @@ func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, k
 	for i, key := range keys {
 		rkv := revKeyValue{key: key}
 		if err := rkv.kv.Unmarshal(vals[i]); err != nil {
-			if lg != nil {
-				lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
-			} else {
-				plog.Fatalf("cannot unmarshal event: %v", err)
-			}
+			lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 		rkv.kstr = string(rkv.kv.Key)
 		if isTombstone(key) {
@@ -606,15 +590,11 @@ func (s *store) setupMetricsReporter() {
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
 func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
 	if len(b) != revBytesLen {
-		if lg != nil {
-			lg.Panic(
-				"cannot append tombstone mark to non-normal revision bytes",
-				zap.Int("expected-revision-bytes-size", revBytesLen),
-				zap.Int("given-revision-bytes-size", len(b)),
-			)
-		} else {
-			plog.Panicf("cannot append mark to non normal revision bytes")
-		}
+		lg.Panic(
+			"cannot append tombstone mark to non-normal revision bytes",
+			zap.Int("expected-revision-bytes-size", revBytesLen),
+			zap.Int("given-revision-bytes-size", len(b)),
+		)
 	}
 	return append(b, markTombstone)
 }

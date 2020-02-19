@@ -621,6 +621,30 @@ func TestAuthDisable(t *testing.T) {
 	}
 }
 
+func TestIsAuthEnabled(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// enable authentication to test the first possible condition
+	as.AuthEnable()
+
+	status := as.IsAuthEnabled()
+	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, _ = as.Authenticate(ctx, "foo", "bar")
+	if status != true {
+		t.Errorf("expected %v, got %v", true, false)
+	}
+
+	// Disabling disabled auth to test the other condition that can be return
+	as.AuthDisable()
+
+	status = as.IsAuthEnabled()
+	_, _ = as.Authenticate(ctx, "foo", "bar")
+	if status != false {
+		t.Errorf("expected %v, got %v", false, true)
+	}
+}
+
 // TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()

@@ -47,7 +47,6 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	cfg := embed.NewConfig()
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Debug = false
 	cfg.Name = "s1"
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
@@ -200,7 +199,6 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	cfg := embed.NewConfig()
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Debug = false
 	cfg.Name = "default"
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
@@ -267,7 +265,6 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfg := embed.NewConfig()
 		cfg.Logger = "zap"
 		cfg.LogOutputs = []string{"/dev/null"}
-		cfg.Debug = false
 		cfg.Name = fmt.Sprintf("%d", i)
 		cfg.InitialClusterToken = testClusterTkn
 		cfg.ClusterState = "existing"

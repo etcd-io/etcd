@@ -75,22 +75,15 @@ func openBackend(cfg ServerConfig) backend.Backend {
 
 	select {
 	case be := <-beOpened:
-		if cfg.Logger != nil {
-			cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
-		}
+		cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
 		return be
 
 	case <-time.After(10 * time.Second):
-		if cfg.Logger != nil {
-			cfg.Logger.Info(
-				"db file is flocked by another process, or taking too long",
-				zap.String("path", fn),
-				zap.Duration("took", time.Since(now)),
-			)
-		} else {
-			plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
-			plog.Warningf("waiting for it to exit before starting...")
-		}
+		cfg.Logger.Info(
+			"db file is flocked by another process, or taking too long",
+			zap.String("path", fn),
+			zap.Duration("took", time.Since(now)),
+		)
 	}
 
 	return <-beOpened

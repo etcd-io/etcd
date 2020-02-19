@@ -10,6 +10,7 @@ This is a generated documentation. Please read the proto files for more.
 | ------ | ------------ | ------------- | ----------- |
 | AuthEnable | AuthEnableRequest | AuthEnableResponse | AuthEnable enables authentication. |
 | AuthDisable | AuthDisableRequest | AuthDisableResponse | AuthDisable disables authentication. |
+| AuthStatus | AuthStatusRequest | AuthStatusResponse | AuthStatus displays authentication status. |
 | Authenticate | AuthenticateRequest | AuthenticateResponse | Authenticate processes an authenticate request. |
 | UserAdd | AuthUserAddRequest | AuthUserAddResponse | UserAdd adds a new user. User name cannot be empty. |
 | UserGet | AuthUserGetRequest | AuthUserGetResponse | UserGet gets detailed user information. |
@@ -237,6 +238,21 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+
+
+
+##### message `AuthStatusRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Empty field.
+
+
+
+##### message `AuthStatusResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| enabled |  | bool |
 
 
 
