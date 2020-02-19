@@ -2365,7 +2365,13 @@
       }
     },
     "etcdserverpbMemberListRequest": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "linearizable": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
     },
     "etcdserverpbMemberListResponse": {
       "type": "object",

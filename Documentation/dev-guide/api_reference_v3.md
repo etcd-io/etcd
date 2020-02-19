@@ -670,7 +670,9 @@ Empty field.
 
 ##### message `MemberListRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| linearizable |  | bool |
 
 
 
