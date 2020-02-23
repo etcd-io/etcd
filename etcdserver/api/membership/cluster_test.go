@@ -859,3 +859,90 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 		}
 	}
 }
+
+func TestIsReadyToPromoteMember(t *testing.T) {
+	tests := []struct {
+		members   []*Member
+		promoteID uint64
+		want      bool
+	}{
+		{
+			// 1/1 members ready, should succeed (quorum = 1, new quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 0/1 members ready, should fail (quorum = 1)
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			false,
+		},
+		{
+			// 2/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/3 members ready, should fail (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			false,
+		},
+		{
+			// 2/3 members ready, should succeed (quorum = 2, new quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			true,
+		},
+		{
+			// 2/4 members ready, should succeed (quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMember(4, nil, "", nil),
+				newTestMemberAsLearner(5, nil, "5", nil),
+			},
+			5,
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
+			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
