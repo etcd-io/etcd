@@ -26,7 +26,7 @@ import (
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
+	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
 
 	defer cleanup(watchable, be, tmpPath)
 
