@@ -1068,6 +1068,8 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 		as.saveConsistentIndex(tx)
 	}
 
+	as.setupMetricsReporter()
+
 	tx.Unlock()
 	be.ForceCommit()
 
@@ -1317,4 +1319,12 @@ func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
 	} else {
 		as.lg.Error("failed to save consistentIndex,syncConsistentIndex is nil")
 	}
+}
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
 }
