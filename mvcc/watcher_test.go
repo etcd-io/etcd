@@ -32,7 +32,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -82,7 +82,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 func TestWatcherRequestsCustomID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -119,7 +119,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -193,7 +193,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -213,7 +213,7 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 
 func TestWatchDeleteRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -252,7 +252,7 @@ func TestWatchDeleteRange(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -344,7 +344,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 func TestWatcherWatchWithFilter(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
