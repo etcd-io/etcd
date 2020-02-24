@@ -966,6 +966,8 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 		as.saveConsistentIndex(tx)
 	}
 
+	as.setupMetricsReporter()
+
 	tx.Unlock()
 	be.ForceCommit()
 
@@ -1174,4 +1176,12 @@ func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
 	} else {
 		plog.Errorf("failed to save consistentIndex,syncConsistentIndex is nil")
 	}
+}
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
 }
