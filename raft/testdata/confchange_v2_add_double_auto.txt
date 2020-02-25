@@ -403,5 +403,6 @@ stabilize
   INFO 3 switched to configuration voters=(1)
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/9
-  raft: cannot step as peer not found3->1 MsgAppResp Term:1 Log:0/9
+  raft: cannot step as peer not found
+  3->1 MsgAppResp Term:1 Log:0/9
   raft: cannot step as peer not found

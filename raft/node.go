@@ -168,7 +168,9 @@ type Node interface {
 	Advance()
 	// ApplyConfChange applies a config change (previously passed to
 	// ProposeConfChange) to the node. This must be called whenever a config
-	// change is observed in Ready.CommittedEntries.
+	// change is observed in Ready.CommittedEntries, except when the app decides
+	// to reject the configuration change (i.e. treats it as a noop instead), in
+	// which case it must not be called.
 	//
 	// Returns an opaque non-nil ConfState protobuf which must be recorded in
 	// snapshots.

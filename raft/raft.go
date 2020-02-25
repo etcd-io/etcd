@@ -1606,7 +1606,9 @@ func (r *raft) abortLeaderTransfer() {
 // If the new entries would exceed the limit, the method returns false. If not,
 // the increase in uncommitted entry size is recorded and the method returns
 // true.
-// Configuration changes are never refused.
+//
+// Empty payloads are never refused. This is used both for appending an empty
+// entry at a new leader's term, as well as leaving a joint configuration.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
 	var s uint64
 	for _, e := range ents {
