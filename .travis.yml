@@ -63,7 +63,12 @@ matrix:
       env: TARGET=linux-386-unit
 
 before_install:
-  - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
+  - >
+    if [[ $TRAVIS_GO_VERSION == 1.* ]]; then
+        if ! docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; then
+                GO_VERSION=${TRAVIS_GO_VERSION} make build-docker-test
+        fi
+    fi
 
 install:
   - go get -t -v -d ./...
