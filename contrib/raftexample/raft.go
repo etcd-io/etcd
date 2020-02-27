@@ -287,9 +287,6 @@ func (rc *raftNode) startRaft() {
 		rc.node = raft.RestartNode(c)
 	} else {
 		startPeers := rpeers
-		if rc.join {
-			startPeers = nil
-		}
 		rc.node = raft.StartNode(c, startPeers)
 	}
 
