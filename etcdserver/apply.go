@@ -716,7 +716,8 @@ func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 
 func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
 	enabled := a.s.AuthStore().IsAuthEnabled()
-	return &pb.AuthStatusResponse{Header: newHeader(a.s), Enabled: enabled}, nil
+	authRevision := a.s.AuthStore().Revision()
+	return &pb.AuthStatusResponse{Header: newHeader(a.s), Enabled: enabled, AuthRevision: authRevision}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {

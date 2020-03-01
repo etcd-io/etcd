@@ -253,6 +253,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | enabled |  | bool |
+| authRevision | authRevision is the current revision of auth store | uint64 |
 
 
 

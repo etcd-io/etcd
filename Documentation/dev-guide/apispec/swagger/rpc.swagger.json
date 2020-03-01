@@ -1731,6 +1731,11 @@
     "etcdserverpbAuthStatusResponse": {
       "type": "object",
       "properties": {
+        "authRevision": {
+          "type": "string",
+          "format": "uint64",
+          "title": "authRevision is the current revision of auth store"
+        },
         "enabled": {
           "type": "boolean",
           "format": "boolean"
