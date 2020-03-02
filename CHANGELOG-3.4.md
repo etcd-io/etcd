@@ -18,6 +18,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.3...v3.4.4) and 
 ### etcd server
 
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
+- Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
+- Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
 
 ### Metrics, Monitoring
 
@@ -515,7 +517,6 @@ See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-
 - Fix [server crash from creating an empty role](https://github.com/etcd-io/etcd/pull/10907).
   - Previously, creating a role with an empty name crashed etcd server with an error code `Unavailable`.
   - Now, creating a role with an empty name is not allowed with an error code `InvalidArgument`.
-- Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
 
 ### API
 
