@@ -293,10 +293,11 @@ func TestNodeReadIndexToOldLeader(t *testing.T) {
 	if len(r1.msgs) != 2 {
 		t.Fatalf("len(r1.msgs) expected 1, got %d", len(r1.msgs))
 	}
-	readIndxMsg3 := raftpb.Message{From: 1, To: 3, Type: raftpb.MsgReadIndex, Entries: testEntries}
+	readIndxMsg3 := raftpb.Message{From: 2, To: 3, Type: raftpb.MsgReadIndex, Entries: testEntries}
 	if !reflect.DeepEqual(r1.msgs[0], readIndxMsg3) {
 		t.Fatalf("r1.msgs[0] expected %+v, got %+v", readIndxMsg3, r1.msgs[0])
 	}
+	readIndxMsg3 = raftpb.Message{From: 3, To: 3, Type: raftpb.MsgReadIndex, Entries: testEntries}
 	if !reflect.DeepEqual(r1.msgs[1], readIndxMsg3) {
 		t.Fatalf("r1.msgs[1] expected %+v, got %+v", readIndxMsg3, r1.msgs[1])
 	}

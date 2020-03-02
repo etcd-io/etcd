@@ -632,7 +632,6 @@ func TestLogReplication(t *testing.T) {
 		for _, m := range tt.msgs {
 			tt.send(m)
 		}
-
 		for j, x := range tt.network.peers {
 			sm := x.(*raft)
 

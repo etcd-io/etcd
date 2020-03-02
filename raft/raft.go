@@ -207,6 +207,10 @@ type Config struct {
 	// logical clock from assigning the timestamp and then forwarding the data
 	// to the leader.
 	DisableProposalForwarding bool
+
+	// GroupID is the ID for a group. Every group can pick a delegate to do log replication
+	// to the other peers in the same group.
+	GroupID uint64
 }
 
 func (c *Config) validate() error {
@@ -317,7 +321,10 @@ type raft struct {
 	tick func()
 	step stepFunc
 
-	logger Logger
+	groups     Groups
+	groupID    uint64
+	isDelegate bool
+	logger     Logger
 }
 
 func newRaft(c *Config) *raft {
@@ -387,6 +394,8 @@ func newRaft(c *Config) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
+func (r *raft) isLeader() bool { return r.state == StateLeader }
+
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 
 func (r *raft) hardState() pb.HardState {
@@ -399,7 +408,10 @@ func (r *raft) hardState() pb.HardState {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
-	m.From = r.id
+	m.GroupID = r.groupID
+	if m.From == None {
+		m.From = r.id
+	}
 	if m.Type == pb.MsgVote || m.Type == pb.MsgVoteResp || m.Type == pb.MsgPreVote || m.Type == pb.MsgPreVoteResp {
 		if m.Term == 0 {
 			// All {pre-,}campaign messages need to have the term set when
@@ -449,7 +461,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 	}
 	m := pb.Message{}
 	m.To = to
-
+	r.attachGroupInfo(&m)
 	term, errt := r.raftLog.term(pr.Next - 1)
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
 	if len(ents) == 0 && !sendIfEmpty {
@@ -526,11 +538,16 @@ func (r *raft) sendHeartbeat(to uint64, ctx []byte) {
 // bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
+	// Pick delegates for all peers first
+	r.groups.ResolveDelegates(r.prs.Progress)
 	r.prs.Visit(func(id uint64, _ *tracker.Progress) {
 		if id == r.id {
 			return
 		}
-		r.sendAppend(id)
+		d := r.groups.GetDelegate(id)
+		if d == None || d == id {
+			r.sendAppend(id)
+		}
 	})
 }
 
@@ -675,7 +692,7 @@ func (r *raft) tickHeartbeat() {
 			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
-		if r.state == StateLeader && r.leadTransferee != None {
+		if r.isLeader() && r.leadTransferee != None {
 			r.abortLeaderTransfer()
 		}
 	}
@@ -701,7 +718,7 @@ func (r *raft) becomeFollower(term uint64, lead uint64) {
 
 func (r *raft) becomeCandidate() {
 	// TODO(xiangli) remove the panic when the raft implementation is stable
-	if r.state == StateLeader {
+	if r.isLeader() {
 		panic("invalid transition [leader -> candidate]")
 	}
 	r.step = stepCandidate
@@ -714,7 +731,7 @@ func (r *raft) becomeCandidate() {
 
 func (r *raft) becomePreCandidate() {
 	// TODO(xiangli) remove the panic when the raft implementation is stable
-	if r.state == StateLeader {
+	if r.isLeader() {
 		panic("invalid transition [leader -> pre-candidate]")
 	}
 	// Becoming a pre-candidate changes our step functions and state,
@@ -738,6 +755,8 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
+	r.groups.LeaderGroupID = r.groupID
+	r.isDelegate = false
 	// Followers enter replicate mode when they've been successfully probed
 	// (perhaps after having received a snapshot as a result). The leader is
 	// trivially in this state. Note that r.reset() has initialized this
@@ -829,6 +848,9 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int, rejected 
 }
 
 func (r *raft) Step(m pb.Message) error {
+	if m.Term != 0 && m.GroupID != None && r.groups.UpdateGroup(m.From, m.GroupID) {
+		r.groups.ResolveDelegates(r.prs.Progress)
+	}
 	// Handle the message term, which may result in our stepping down to a follower.
 	switch {
 	case m.Term == 0:
@@ -1014,6 +1036,9 @@ func stepLeader(r *raft, m pb.Message) error {
 		// CheckQuorum.
 		r.prs.Visit(func(id uint64, pr *tracker.Progress) {
 			if id != r.id {
+				if !pr.RecentActive {
+					r.groups.RemoveDelegate(id)
+				}
 				pr.RecentActive = false
 			}
 		})
@@ -1122,62 +1147,17 @@ func stepLeader(r *raft, m pb.Message) error {
 	}
 	switch m.Type {
 	case pb.MsgAppResp:
-		pr.RecentActive = true
-
-		if m.Reject {
-			r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, lastindex: %d) from %x for index %d",
-				r.id, m.RejectHint, m.From, m.Index)
-			if pr.MaybeDecrTo(m.Index, m.RejectHint) {
-				r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
-				if pr.State == tracker.StateReplicate {
-					pr.BecomeProbe()
-				}
+		sendAppend, aggressiveAppend := r.handleAppendResponse(pr, m)
+		if !r.groups.IsDelegated(m.From) {
+			if sendAppend {
 				r.sendAppend(m.From)
 			}
-		} else {
-			oldPaused := pr.IsPaused()
-			if pr.MaybeUpdate(m.Index) {
-				switch {
-				case pr.State == tracker.StateProbe:
-					pr.BecomeReplicate()
-				case pr.State == tracker.StateSnapshot && pr.Match >= pr.PendingSnapshot:
-					// TODO(tbg): we should also enter this branch if a snapshot is
-					// received that is below pr.PendingSnapshot but which makes it
-					// possible to use the log again.
-					r.logger.Debugf("%x recovered from needing snapshot, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
-					// Transition back to replicating state via probing state
-					// (which takes the snapshot into account). If we didn't
-					// move to replicating state, that would only happen with
-					// the next round of appends (but there may not be a next
-					// round for a while, exposing an inconsistent RaftStatus).
-					pr.BecomeProbe()
-					pr.BecomeReplicate()
-				case pr.State == tracker.StateReplicate:
-					pr.Inflights.FreeLE(m.Index)
-				}
-
-				if r.maybeCommit() {
-					r.bcastAppend()
-				} else if oldPaused {
-					// If we were paused before, this node may be missing the
-					// latest commit index, so send it.
-					r.sendAppend(m.From)
-				}
-				// We've updated flow control information above, which may
-				// allow us to send multiple (size-limited) in-flight messages
-				// at once (such as when transitioning from probe to
-				// replicate, or when freeTo() covers multiple messages). If
-				// we have more entries to send, send as many messages as we
-				// can (without sending empty messages for the commit index)
+			if aggressiveAppend {
 				for r.maybeSendAppend(m.From, false) {
-				}
-				// Transfer leadership is in progress.
-				if m.From == r.leadTransferee && pr.Match == r.raftLog.lastIndex() {
-					r.logger.Infof("%x sent MsgTimeoutNow to %x after received MsgAppResp", r.id, m.From)
-					r.sendTimeoutNow(m.From)
 				}
 			}
 		}
+
 	case pb.MsgHeartbeatResp:
 		pr.RecentActive = true
 		pr.ProbeSent = false
@@ -1289,7 +1269,7 @@ func stepCandidate(r *raft, m pb.Message) error {
 		return ErrProposalDropped
 	case pb.MsgApp:
 		r.becomeFollower(m.Term, m.From) // always m.Term == r.Term
-		r.handleAppendEntries(m)
+		r.handleAppendMessage(m)
 	case pb.MsgHeartbeat:
 		r.becomeFollower(m.Term, m.From) // always m.Term == r.Term
 		r.handleHeartbeat(m)
@@ -1333,7 +1313,7 @@ func stepFollower(r *raft, m pb.Message) error {
 	case pb.MsgApp:
 		r.electionElapsed = 0
 		r.lead = m.From
-		r.handleAppendEntries(m)
+		r.handleAppendMessage(m)
 	case pb.MsgHeartbeat:
 		r.electionElapsed = 0
 		r.lead = m.From
@@ -1372,22 +1352,143 @@ func stepFollower(r *raft, m pb.Message) error {
 			return nil
 		}
 		r.readStates = append(r.readStates, ReadState{Index: m.Index, RequestCtx: m.Entries[0].Data})
+	case pb.MsgAppResp:
+		pr := r.prs.Progress[m.From]
+		if pr == nil {
+			r.logger.Debugf("%x no progress available for %x", r.id, m.From)
+			return nil
+		}
+		sendAppend, aggressiveAppend := r.handleAppendResponse(pr, m)
+		if sendAppend {
+			r.sendAppend(m.From)
+		}
+		if aggressiveAppend {
+			for r.maybeSendAppend(m.From, false) {
+			}
+		}
 	}
 	return nil
 }
 
-func (r *raft) handleAppendEntries(m pb.Message) {
+func (r *raft) handleAppendMessage(m pb.Message) {
+	isDelegateBefore := r.isDelegate
+	r.isDelegate = len(m.BcastTargets) > 0
+	if r.handleAppendEntries(m) {
+		// If self is a delegate, try to broadcast Append msg
+		for _, target := range m.BcastTargets {
+			if pr, ok := r.prs.Progress[target]; ok {
+				if !isDelegateBefore && r.isDelegate {
+					// The delegate could be unable to send any messages
+					pr.BecomeProbe()
+					pr.OptimisticUpdate(r.raftLog.lastIndex())
+				}
+				r.sendAppend(target)
+			}
+		}
+	}
+}
+
+// A Follower receives a `MsgApp` and handles it:
+// If the append msg comes from the leader, send response to the leader as origin algo
+// If the append msg comes from a delegate:
+//     - If the append msg is stall, only send response to the delegate
+//     - If the append msg can be appended, send responses both to the delegate and leader
+//     - If rejecting the append msg, send response to the delegate
+// And return false if rejecting the msg
+func (r *raft) handleAppendEntries(m pb.Message) bool {
+	toSend := pb.Message{
+		Type:  pb.MsgAppResp,
+		To:    m.From,
+		Index: m.Index,
+	}
 	if m.Index < r.raftLog.committed {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
-		return
+		toSend.Index = r.raftLog.committed
+		if msgFromDelegate(&m) {
+			toSend.To = m.Delegate
+		}
+		r.send(toSend)
+		return true
 	}
 
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
+		toSend.Index = mlastIndex
+		r.send(toSend)
+		if msgFromDelegate(&m) {
+			toSend.To = m.Delegate
+			r.send(toSend)
+		}
+		return true
+	}
+	r.logger.Debugf("%x [logterm: %d, index: %d] rejected MsgApp [logterm: %d, index: %d] from %x",
+		r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
+	toSend.Reject = true
+	toSend.RejectHint = r.raftLog.lastIndex()
+	if msgFromDelegate(&m) {
+		toSend.To = m.Delegate
+	}
+	r.send(toSend)
+	return false
+}
+
+func (r *raft) handleAppendResponse(pr *tracker.Progress, m pb.Message) (bool, bool) {
+	sendAppend, aggressiveAppend := false, false
+	pr.RecentActive = true
+	if m.Reject {
+		r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, lastindex: %d) from %x for index %d",
+			r.id, m.RejectHint, m.From, m.Index)
+		if pr.MaybeDecrTo(m.Index, m.RejectHint) {
+			r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
+			if pr.State == tracker.StateReplicate {
+				pr.BecomeProbe()
+			}
+			sendAppend = true
+		}
 	} else {
-		r.logger.Debugf("%x [logterm: %d, index: %d] rejected MsgApp [logterm: %d, index: %d] from %x",
-			r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+		oldPaused := pr.IsPaused()
+		if pr.MaybeUpdate(m.Index) {
+			switch {
+			case pr.State == tracker.StateProbe:
+				pr.BecomeReplicate()
+			case pr.State == tracker.StateSnapshot && pr.Match >= pr.PendingSnapshot:
+				// TODO(tbg): we should also enter this branch if a snapshot is
+				// received that is below pr.PendingSnapshot but which makes it
+				// possible to use the log again.
+				r.logger.Debugf("%x recovered from needing snapshot, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+				// Transition back to replicating state via probing state
+				// (which takes the snapshot into account). If we didn't
+				// move to replicating state, that would only happen with
+				// the next round of appends (but there may not be a next
+				// round for a while, exposing an inconsistent RaftStatus).
+				pr.BecomeProbe()
+				pr.BecomeReplicate()
+			case pr.State == tracker.StateReplicate:
+				pr.Inflights.FreeLE(m.Index)
+			}
+			if r.isLeader() && r.maybeCommit() {
+				r.bcastAppend()
+			} else if oldPaused {
+				// If we were paused before, this node may be missing the
+				// latest commit index, so send it.
+				sendAppend = true
+			}
+			// We've updated flow control information above, which may
+			// allow us to send multiple (size-limited) in-flight messages
+			// at once (such as when transitioning from probe to
+			// replicate, or when freeTo() covers multiple messages). If
+			// we have more entries to send, send as many messages as we
+			// can (without sending empty messages for the commit index)
+			aggressiveAppend = true
+			// Transfer leadership is in progress.
+			r.processLeaderTransfer(m.From, pr.Match)
+		}
+	}
+	return sendAppend, aggressiveAppend
+}
+
+func (r *raft) processLeaderTransfer(from uint64, match uint64) {
+	if from == r.leadTransferee && match == r.raftLog.lastIndex() {
+		r.logger.Infof("%x sent MsgTimeoutNow to %x after received MsgAppResp", r.id, from)
+		r.sendTimeoutNow(from)
 	}
 }
 
@@ -1401,11 +1502,26 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
 		r.logger.Infof("%x [commit: %d] restored snapshot [index: %d, term: %d]",
 			r.id, r.raftLog.committed, sindex, sterm)
+		if msgFromDelegate(&m) {
+			// Send both to the leader and the delegate
+			r.send(pb.Message{To: m.Delegate, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
+		} else if len(m.BcastTargets) > 0 {
+			for _, target := range m.BcastTargets {
+				if pr, ok := r.prs.Progress[target]; ok && pr.Match < sindex {
+					pr.BecomeSnapshot(sindex)
+					r.send(pb.Message{From: m.From, To: target, Type: pb.MsgSnap, Snapshot: m.Snapshot})
+				}
+			}
+		}
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
 		r.logger.Infof("%x [commit: %d] ignored snapshot [index: %d, term: %d]",
 			r.id, r.raftLog.committed, sindex, sterm)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
+		to := m.From
+		if msgFromDelegate(&m) {
+			to = m.Delegate
+		}
+		r.send(pb.Message{To: to, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
 }
 
@@ -1534,7 +1650,7 @@ func (r *raft) switchToConfig(cfg tracker.Config, prs tracker.ProgressMap) pb.Co
 	// node is removed.
 	r.isLearner = ok && pr.IsLearner
 
-	if (!ok || r.isLearner) && r.state == StateLeader {
+	if (!ok || r.isLearner) && r.isLeader() {
 		// This node is leader and was removed or demoted. We prevent demotions
 		// at the time writing but hypothetically we handle them the same way as
 		// removing the leader: stepping down into the next Term.
@@ -1659,4 +1775,18 @@ func numOfPendingConf(ents []pb.Entry) int {
 		}
 	}
 	return n
+}
+
+// Attach group info to `m` before it's sent out. It can be called by the leader or delegates.
+func (r *raft) attachGroupInfo(m *pb.Message) {
+	if r.isDelegate {
+		m.From = r.lead
+		m.Delegate = r.id
+	} else {
+		m.BcastTargets = r.groups.BcastTargets[m.To]
+	}
+}
+
+func msgFromDelegate(m *pb.Message) bool {
+	return m.Delegate != None
 }

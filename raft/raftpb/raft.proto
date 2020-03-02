@@ -68,6 +68,12 @@ message Message {
 	optional bool        reject      = 10 [(gogoproto.nullable) = false];
 	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
 	optional bytes       context     = 12;
+	// The targets to send raft logs through the delegate
+	repeated uint64  bcastTargets = 13;
+	// The group id of the `from`
+	optional uint64  groupID = 14 [(gogoproto.nullable) = false];
+	// Whether the message comes from a delegate actually
+	optional uint64 delegate = 16 [(gogoproto.nullable) = false];
 }
 
 message HardState {
