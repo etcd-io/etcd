@@ -968,7 +968,6 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
-		as.saveConsistentIndex(tx)
 	}
 
 	as.setupMetricsReporter()
