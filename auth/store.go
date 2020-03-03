@@ -1070,7 +1070,6 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
-		as.saveConsistentIndex(tx)
 	}
 
 	as.setupMetricsReporter()
