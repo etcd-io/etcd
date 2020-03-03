@@ -56,7 +56,7 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 
 ### Granting, attaching and revoking leases
 
-etcd provides [the lease mechanism][lease]. The primary use case of lease is implementing distributed coordination mechanisms like distributed locks. The lease mechanism itself is simple: a lease can be created with the grant API, attached to a key with the put API, revoked with the revoke API, and will be expired by the wall clock time to live (TTL). However, users need to be aware about [the important properties of the APIs and usage][why] for implementing correct distributed coordination mechanisms.
+etcd provides [a lease mechanism][lease]. The primary use case of a lease is implementing distributed coordination mechanisms like distributed locks. The lease mechanism itself is simple: a lease can be created with the grant API, attached to a key with the put API, revoked with the revoke API, and will be expired by the wall clock time to live (TTL). However, users need to be aware about [the important properties of the APIs and usage][why] for implementing correct distributed coordination mechanisms.
 
 [txn]: api.md#transactions
 [linearizability]: https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf
