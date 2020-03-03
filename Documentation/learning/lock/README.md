@@ -1,7 +1,7 @@
 # What is this?
 This directory provides an executable example of the scenarios described in [the article by Martin Kleppmann][fencing].
 
-Generally speaking, a lease based lock service cannot provide mutual exclusion to processes. This is because lease mechanism depends on physical clock of the lock service and client processes. Many factors (e.g. stop the world GC pause of language runtime) can cause false expiration of a granted lease as depicted in the below figure: ![unsafe lock][unsafe-lock]
+Generally speaking, a lease-based lock service cannot provide mutual exclusion to processes. This is because such a lease mechanism depends on the physical clock of both the lock service and client processes. Many factors (e.g. stop-the-world GC pause of a language runtime) can cause false expiration of a granted lease as depicted in the below figure: ![unsafe lock][unsafe-lock]
 
 As discussed in [notes on the usage of lock and lease][why.md], such a problem can be solved with a technique called version number validation or fencing tokens. With this technique a shared resource (storage in the figures) needs to validate requests from clients based on their tokens like this: ![fencing tokens][fencing-tokens]
 
