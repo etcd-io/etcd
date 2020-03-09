@@ -186,6 +186,10 @@ func TestUncommittedEntryLimit(t *testing.T) {
 	testEntry := pb.Entry{Data: []byte("testdata")}
 	maxEntrySize := maxEntries * PayloadSize(testEntry)
 
+	if n := PayloadSize(pb.Entry{Data: nil}); n != 0 {
+		t.Fatal("entry with no Data must have zero payload size")
+	}
+
 	cfg := newTestConfig(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 	cfg.MaxUncommittedEntriesSize = uint64(maxEntrySize)
 	cfg.MaxInflightMsgs = 2 * 1024 // avoid interference
@@ -244,10 +248,19 @@ func TestUncommittedEntryLimit(t *testing.T) {
 		t.Fatalf("proposal not dropped: %v", err)
 	}
 
+	// But we can always append an entry with no Data. This is used both for the
+	// leader's first empty entry and for auto-transitioning out of joint config
+	// states.
+	if err := r.Step(
+		pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}},
+	); err != nil {
+		t.Fatal(err)
+	}
+
 	// Read messages and reduce the uncommitted size as if we had committed
 	// these entries.
 	ms = r.readMessages()
-	if e := 1 * numFollowers; len(ms) != e {
+	if e := 2 * numFollowers; len(ms) != e {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
 	r.reduceUncommittedSize(propEnts)

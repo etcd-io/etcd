@@ -41,6 +41,9 @@ type filePipeline struct {
 }
 
 func newFilePipeline(lg *zap.Logger, dir string, fileSize int64) *filePipeline {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	fp := &filePipeline{
 		lg:    lg,
 		dir:   dir,
@@ -75,11 +78,7 @@ func (fp *filePipeline) alloc() (f *fileutil.LockedFile, err error) {
 		return nil, err
 	}
 	if err = fileutil.Preallocate(f.File, fp.size, true); err != nil {
-		if fp.lg != nil {
-			fp.lg.Warn("failed to preallocate space when creating a new WAL", zap.Int64("size", fp.size), zap.Error(err))
-		} else {
-			plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
-		}
+		fp.lg.Error("failed to preallocate space when creating a new WAL", zap.Int64("size", fp.size), zap.Error(err))
 		f.Close()
 		return nil, err
 	}

@@ -9,6 +9,9 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 ## [v3.2.29](https://github.com/etcd-io/etcd/releases/tag/v3.2.29) (2019-TBD)
 
+### etcd server
+
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 
 <hr>
 

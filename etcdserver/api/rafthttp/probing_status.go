@@ -49,9 +49,7 @@ func addPeerToProber(lg *zap.Logger, p probing.Prober, id string, us []string, r
 	s, err := p.Status(id)
 	if err != nil {
 		if lg != nil {
-			lg.Warn("failed to add peer into prober", zap.String("remote-peer-id", id))
-		} else {
-			plog.Errorf("failed to add peer %s into prober", id)
+			lg.Warn("failed to add peer into prober", zap.String("remote-peer-id", id), zap.Error(err))
 		}
 		return
 	}
@@ -74,8 +72,6 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string, roundTrip
 						zap.Duration("rtt", s.SRTT()),
 						zap.Error(s.Err()),
 					)
-				} else {
-					plog.Warningf("health check for peer %s could not connect: %v", id, s.Err())
 				}
 				interval = statusErrorInterval
 			} else {
@@ -91,8 +87,6 @@ func monitorProbingStatus(lg *zap.Logger, s probing.Status, id string, roundTrip
 						zap.Duration("rtt", s.SRTT()),
 						zap.Error(s.Err()),
 					)
-				} else {
-					plog.Warningf("the clock difference against peer %s is too high [%v > %v]", id, s.ClockDiff(), time.Second)
 				}
 			}
 			rttSecProm.WithLabelValues(id).Observe(s.SRTT().Seconds())

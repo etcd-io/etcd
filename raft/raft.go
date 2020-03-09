@@ -554,35 +554,34 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 }
 
 func (r *raft) advance(rd Ready) {
+	r.reduceUncommittedSize(rd.CommittedEntries)
+
 	// If entries were applied (or a snapshot), update our cursor for
 	// the next Ready. Note that if the current HardState contains a
 	// new Commit index, this does not mean that we're also applying
 	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		r.raftLog.appliedTo(index)
-		if r.prs.Config.AutoLeave && index >= r.pendingConfIndex && r.state == StateLeader {
+	if newApplied := rd.appliedCursor(); newApplied > 0 {
+		oldApplied := r.raftLog.applied
+		r.raftLog.appliedTo(newApplied)
+
+		if r.prs.Config.AutoLeave && oldApplied < r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 			// If the current (and most recent, at least for this leader's term)
-			// configuration should be auto-left, initiate that now.
-			ccdata, err := (&pb.ConfChangeV2{}).Marshal()
-			if err != nil {
-				panic(err)
-			}
+			// configuration should be auto-left, initiate that now. We use a
+			// nil Data which unmarshals into an empty ConfChangeV2 and has the
+			// benefit that appendEntry can never refuse it based on its size
+			// (which registers as zero).
 			ent := pb.Entry{
 				Type: pb.EntryConfChangeV2,
-				Data: ccdata,
+				Data: nil,
 			}
+			// There's no way in which this proposal should be able to be rejected.
 			if !r.appendEntry(ent) {
-				// If we could not append the entry, bump the pending conf index
-				// so that we'll try again later.
-				//
-				// TODO(tbg): test this case.
-				r.pendingConfIndex = r.raftLog.lastIndex()
-			} else {
-				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
+				panic("refused un-refusable auto-leaving ConfChangeV2")
 			}
+			r.pendingConfIndex = r.raftLog.lastIndex()
+			r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 		}
 	}
-	r.reduceUncommittedSize(rd.CommittedEntries)
 
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
@@ -600,7 +599,7 @@ func (r *raft) maybeCommit() bool {
 	mci := r.prs.Committed()
 	if r.raftLog.maybeCommit(mci, r.Term) {
 		for _, rs := range r.readOnly.advanceByCommit(r.raftLog.committed) {
-			if resp, internal := r.responseReadIndex(rs.req, rs.index); !internal {
+			if resp := r.responseToReadIndexReq(rs.req, rs.index); resp.To != None {
 				r.send(resp)
 			}
 		}
@@ -1087,9 +1086,9 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastAppend()
 		return nil
 	case pb.MsgReadIndex:
-		// only one voting member (the leader) in the cluster
-		if r.prs.IsSingleton() {
-			if resp, internal := r.responseReadIndex(m, r.raftLog.committed); !internal {
+		// only one voting member (the leader) in the cluster, or it has committed to current term.
+		if r.prs.IsSingleton() || (r.readOnly.option == ReadOnlyLeaseBased && r.committedEntryInCurrentTerm()) {
+			if resp := r.responseToReadIndexReq(m, r.raftLog.committed); resp.To != None {
 				r.send(resp)
 			}
 			return nil
@@ -1106,11 +1105,6 @@ func stepLeader(r *raft, m pb.Message) error {
 			r.readOnly.recvAck(r.id, m.Entries[0].Data)
 			r.bcastHeartbeatWithCtx(m.Entries[0].Data)
 		case ReadOnlyLeaseBased:
-			if r.CommittedEntryInCurrentTerm() {
-				if resp, internal := r.responseReadIndex(m, r.raftLog.committed); !internal {
-					r.send(resp)
-				}
-			}
 		}
 		return nil
 	}
@@ -1199,9 +1193,9 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
-		rss := r.readOnly.advance(m, r.CommittedEntryInCurrentTerm())
+		rss := r.readOnly.advance(m, r.committedEntryInCurrentTerm())
 		for _, rs := range rss {
-			if resp, internal := r.responseReadIndex(rs.req, rs.index); !internal {
+			if resp := r.responseToReadIndexReq(rs.req, rs.index); resp.To != None {
 				r.send(resp)
 			}
 		}
@@ -1599,23 +1593,27 @@ func (r *raft) abortLeaderTransfer() {
 	r.leadTransferee = None
 }
 
-func (r *raft) CommittedEntryInCurrentTerm() bool {
+// committedEntryInCurrentTerm return true if the peer has committed an entry in its term.
+func (r *raft) committedEntryInCurrentTerm() bool {
 	return r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) == r.Term
 }
 
-func (r *raft) responseReadIndex(req pb.Message, committed uint64) (resp pb.Message, internal bool) {
+// responseToReadIndexReq constructs a response for `req`. If `req` comes from the peer
+// itself, a blank value will be returned.
+func (r *raft) responseToReadIndexReq(req pb.Message, readIndex uint64) pb.Message {
 	if req.From == None || req.From == r.id {
 		r.readStates = append(r.readStates, ReadState{
-			Index:      committed,
+			Index:      readIndex,
 			RequestCtx: req.Entries[0].Data,
 		})
-		internal = true
+		return pb.Message{}
 	}
-	resp.Type = pb.MsgReadIndexResp
-	resp.To = req.From
-	resp.Index = committed
-	resp.Entries = req.Entries
-	return
+	return pb.Message{
+		Type:    pb.MsgReadIndexResp,
+		To:      req.From,
+		Index:   readIndex,
+		Entries: req.Entries,
+	}
 }
 
 // increaseUncommittedSize computes the size of the proposed entries and
@@ -1623,16 +1621,23 @@ func (r *raft) responseReadIndex(req pb.Message, committed uint64) (resp pb.Mess
 // If the new entries would exceed the limit, the method returns false. If not,
 // the increase in uncommitted entry size is recorded and the method returns
 // true.
+//
+// Empty payloads are never refused. This is used both for appending an empty
+// entry at a new leader's term, as well as leaving a joint configuration.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
 	var s uint64
 	for _, e := range ents {
 		s += uint64(PayloadSize(e))
 	}
 
-	if r.uncommittedSize > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
+	if r.uncommittedSize > 0 && s > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
 		// If the uncommitted tail of the Raft log is empty, allow any size
 		// proposal. Otherwise, limit the size of the uncommitted tail of the
 		// log and drop any proposal that would push the size over the limit.
+		// Note the added requirement s>0 which is used to make sure that
+		// appending single empty entries to the log always succeeds, used both
+		// for replicating a new leader's initial empty entry, and for
+		// auto-leaving joint configurations.
 		return false
 	}
 	r.uncommittedSize += s

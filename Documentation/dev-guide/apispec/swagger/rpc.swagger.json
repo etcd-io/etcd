@@ -5,10 +5,6 @@
   "produces": [
     "application/json"
   ],
-  "schemes": [
-    "http",
-    "https"
-  ],
   "swagger": "2.0",
   "info": {
     "title": "etcdserver/etcdserverpb/rpc.proto",
@@ -253,6 +249,33 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v3/auth/status": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "AuthStatus displays authentication status.",
+        "operationId": "AuthStatus",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthStatusRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthStatusResponse"
             }
           }
         }
@@ -847,7 +870,16 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/etcdserverpbLeaseKeepAliveResponse"
+              "type": "object",
+              "title": "Stream result of etcdserverpbLeaseKeepAliveResponse",
+              "properties": {
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                },
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+                }
+              }
             }
           }
         }
@@ -1036,7 +1068,16 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/etcdserverpbSnapshotResponse"
+              "type": "object",
+              "title": "Stream result of etcdserverpbSnapshotResponse",
+              "properties": {
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                },
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+                }
+              }
             }
           }
         }
@@ -1118,7 +1159,16 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/etcdserverpbWatchResponse"
+              "type": "object",
+              "title": "Stream result of etcdserverpbWatchResponse",
+              "properties": {
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                },
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbWatchResponse"
+                }
+              }
             }
           }
         }
@@ -1418,6 +1468,21 @@
     "etcdserverpbAuthRoleRevokePermissionResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthStatusRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthStatusResponse": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "format": "boolean"
+        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
@@ -2637,43 +2702,5 @@
     {
       "ApiKey": []
     }
-  ],
-  "x-stream-definitions": {
-    "etcdserverpbLeaseKeepAliveResponse": {
-      "properties": {
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        },
-        "result": {
-          "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
-        }
-      },
-      "title": "Stream result of etcdserverpbLeaseKeepAliveResponse",
-      "type": "object"
-    },
-    "etcdserverpbSnapshotResponse": {
-      "properties": {
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        },
-        "result": {
-          "$ref": "#/definitions/etcdserverpbSnapshotResponse"
-        }
-      },
-      "title": "Stream result of etcdserverpbSnapshotResponse",
-      "type": "object"
-    },
-    "etcdserverpbWatchResponse": {
-      "properties": {
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        },
-        "result": {
-          "$ref": "#/definitions/etcdserverpbWatchResponse"
-        }
-      },
-      "title": "Stream result of etcdserverpbWatchResponse",
-      "type": "object"
-    }
-  }
+  ]
 }

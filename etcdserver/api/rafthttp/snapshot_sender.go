@@ -76,7 +76,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 	defer body.Close()
 
 	u := s.picker.pick()
-	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
+	req := createPostRequest(s.tr.Logger, u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
 
 	if s.tr.Logger != nil {
 		s.tr.Logger.Info(
@@ -86,8 +86,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 			zap.Int64("bytes", merged.TotalSize),
 			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 		)
-	} else {
-		plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
 	}
 
 	snapshotSendInflights.WithLabelValues(to).Inc()
@@ -107,8 +105,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 				zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 				zap.Error(err),
 			)
-		} else {
-			plog.Warningf("database snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
 		}
 
 		// errMemberRemoved is a critical error since a removed member should
@@ -139,8 +135,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 			zap.Int64("bytes", merged.TotalSize),
 			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 		)
-	} else {
-		plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
 	}
 
 	sentBytes.WithLabelValues(to).Add(float64(merged.TotalSize))
@@ -184,7 +178,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 		if r.err != nil {
 			return r.err
 		}
-		return checkPostResponse(r.resp, r.body, req, s.to)
+		return checkPostResponse(s.tr.Logger, r.resp, r.body, req, s.to)
 	}
 }
 
@@ -195,8 +189,6 @@ func createSnapBody(lg *zap.Logger, merged snap.Message) io.ReadCloser {
 	if err := enc.encode(&merged.Message); err != nil {
 		if lg != nil {
 			lg.Panic("failed to encode message", zap.Error(err))
-		} else {
-			plog.Panicf("encode message error (%v)", err)
 		}
 	}
 

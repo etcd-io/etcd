@@ -43,11 +43,7 @@ func searchIndex(lg *zap.Logger, names []string, index uint64) (int, bool) {
 		name := names[i]
 		_, curIndex, err := parseWALName(name)
 		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
-			} else {
-				plog.Panicf("parse correct name should never fail: %v", err)
-			}
+			lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
 		}
 		if index >= curIndex {
 			return i, true
@@ -63,11 +59,7 @@ func isValidSeq(lg *zap.Logger, names []string) bool {
 	for _, name := range names {
 		curSeq, _, err := parseWALName(name)
 		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
-			} else {
-				plog.Panicf("parse correct name should never fail: %v", err)
-			}
+			lg.Panic("failed to parse WAL file name", zap.String("path", name), zap.Error(err))
 		}
 		if lastSeq != 0 && lastSeq != curSeq-1 {
 			return false
@@ -95,14 +87,10 @@ func checkWalNames(lg *zap.Logger, names []string) []string {
 		if _, _, err := parseWALName(name); err != nil {
 			// don't complain about left over tmp files
 			if !strings.HasSuffix(name, ".tmp") {
-				if lg != nil {
-					lg.Warn(
-						"ignored file in WAL directory",
-						zap.String("path", name),
-					)
-				} else {
-					plog.Warningf("ignored file %v in wal", name)
-				}
+				lg.Warn(
+					"ignored file in WAL directory",
+					zap.String("path", name),
+				)
 			}
 			continue
 		}

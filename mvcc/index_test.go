@@ -131,7 +131,7 @@ func TestIndexTombstone(t *testing.T) {
 
 	_, _, _, err = ti.Get([]byte("foo"), 2)
 	if err != ErrRevisionNotFound {
-		t.Errorf("get error = %v, want nil", err)
+		t.Errorf("get error = %v, want ErrRevisionNotFound", err)
 	}
 	err = ti.Tombstone([]byte("foo"), revision{main: 3})
 	if err != ErrRevisionNotFound {

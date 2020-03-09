@@ -119,7 +119,7 @@ func TestTxnReadRetry(t *testing.T) {
 		clus.Members[0].Stop(t)
 		<-clus.Members[0].StopNotify()
 
-		donec := make(chan struct{})
+		donec := make(chan struct{}, 1)
 		go func() {
 			_, err := kv.Txn(context.TODO()).Then(thenOps[i]...).Commit()
 			if err != nil {

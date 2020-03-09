@@ -80,13 +80,13 @@ Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, and Docker on the [release page][github-release].
 
-For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://github.com/etcd-io/etcd/tree/master/Documentation#operating-etcd-clusters).
+For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
 
 For those wanting to try the very latest version, [build the latest version of etcd][dl-build] from the `master` branch. This first needs [*Go*](https://golang.org/) installed (version 1.13+ is required). All development occurs on `master`, including new features and bug fixes. Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [github-release]: https://github.com/etcd-io/etcd/releases
-[branch-management]: ./Documentation/branch_management.md
-[dl-build]: ./Documentation/dl_build.md#build-the-latest-version
+[branch-management]: https://etcd.io/docs/latest/branch-management
+[dl-build]: https://etcd.io/docs/latest/dl-build#build-the-latest-version
 
 ### Running etcd
 
@@ -123,7 +123,7 @@ etcdctl get mykey
 etcd is now running and serving client requests. For more, please check out:
 
 - [Interactive etcd playground](http://play.etcd.io)
-- [Animated quick demo](./Documentation/demo.md)
+- [Animated quick demo](https://etcd.io/docs/latest/demo)
 
 ### etcd TCP ports
 
@@ -163,13 +163,13 @@ Now it's time to dig into the full etcd API and other guides.
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
 
-[fulldoc]: ./Documentation/docs.md
-[api]: ./Documentation/dev-guide/api_reference_v3.md
-[clustering]: ./Documentation/op-guide/clustering.md
-[configuration]: ./Documentation/op-guide/configuration.md
-[integrations]: ./Documentation/integrations.md
-[security]: ./Documentation/op-guide/security.md
-[tuning]: ./Documentation/tuning.md
+[fulldoc]: https://etcd.io/docs/latest
+[api]: https://etcd.io/docs/latest/learning/api
+[clustering]: https://etcd.io/docs/latest/op-guide/clustering
+[configuration]: https://etcd.io/docs/latest/op-guide/configuration
+[integrations]: https://etcd.io/docs/latest/integrations
+[security]: https://etcd.io/docs/latest/op-guide/security
+[tuning]: https://etcd.io/docs/latest/tuning
 
 ## Contact
 
@@ -184,7 +184,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issues.
+See [reporting bugs](https://etcd.io/docs/latest/reporting-bugs) for details about reporting any issues.
 
 ## Reporting a security vulnerability
 

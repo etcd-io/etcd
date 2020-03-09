@@ -31,7 +31,6 @@ import (
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/types"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,10 +44,6 @@ const (
 
 	// GuestRoleName is the name of the role that defines the privileges of an unauthenticated user.
 	GuestRoleName = "guest"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd/v3", "etcdserver/auth")
 )
 
 var rootRole = Role{
@@ -148,6 +143,9 @@ func authErr(hs int, s string, v ...interface{}) Error {
 }
 
 func NewStore(lg *zap.Logger, server doer, timeout time.Duration) Store {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	s := &store{
 		lg:            lg,
 		server:        server,
@@ -211,11 +209,7 @@ func (s *store) CreateUser(user User) (User, error) {
 	}
 	u, err := s.createUserInternal(user)
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("created a user", zap.String("user-name", user.User))
-		} else {
-			plog.Noticef("created user %s", user.User)
-		}
+		s.lg.Info("created a user", zap.String("user-name", user.User))
 	}
 	return u, err
 }
@@ -254,11 +248,7 @@ func (s *store) DeleteUser(name string) error {
 		}
 		return err
 	}
-	if s.lg != nil {
-		s.lg.Info("deleted a user", zap.String("user-name", name))
-	} else {
-		plog.Noticef("deleted user %s", name)
-	}
+	s.lg.Info("deleted a user", zap.String("user-name", name))
 	return nil
 }
 
@@ -282,11 +272,7 @@ func (s *store) UpdateUser(user User) (User, error) {
 	}
 	_, err = s.updateResource("/users/"+user.User, newUser)
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("updated a user", zap.String("user-name", user.User))
-		} else {
-			plog.Noticef("updated user %s", user.User)
-		}
+		s.lg.Info("updated a user", zap.String("user-name", user.User))
 	}
 	return newUser, err
 }
@@ -325,11 +311,7 @@ func (s *store) CreateRole(role Role) error {
 		}
 	}
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("created a new role", zap.String("role-name", role.Role))
-		} else {
-			plog.Noticef("created new role %s", role.Role)
-		}
+		s.lg.Info("created a new role", zap.String("role-name", role.Role))
 	}
 	return err
 }
@@ -347,11 +329,7 @@ func (s *store) DeleteRole(name string) error {
 		}
 	}
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("delete a new role", zap.String("role-name", name))
-		} else {
-			plog.Noticef("deleted role %s", name)
-		}
+		s.lg.Info("delete a new role", zap.String("role-name", name))
 	}
 	return err
 }
@@ -378,11 +356,7 @@ func (s *store) UpdateRole(role Role) (Role, error) {
 	}
 	_, err = s.updateResource("/roles/"+role.Role, newRole)
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("updated a new role", zap.String("role-name", role.Role))
-		} else {
-			plog.Noticef("updated role %s", role.Role)
-		}
+		s.lg.Info("updated a new role", zap.String("role-name", role.Role))
 	}
 	return newRole, err
 }
@@ -400,42 +374,26 @@ func (s *store) EnableAuth() error {
 		return authErr(http.StatusConflict, "No root user available, please create one")
 	}
 	if _, err := s.getRole(GuestRoleName, true); err != nil {
-		if s.lg != nil {
-			s.lg.Info(
-				"no guest role access found; creating default",
-				zap.String("role-name", GuestRoleName),
-			)
-		} else {
-			plog.Printf("no guest role access found, creating default")
-		}
+		s.lg.Info(
+			"no guest role access found; creating default",
+			zap.String("role-name", GuestRoleName),
+		)
 		if err := s.CreateRole(guestRole); err != nil {
-			if s.lg != nil {
-				s.lg.Warn(
-					"failed to create a guest role; aborting auth enable",
-					zap.String("role-name", GuestRoleName),
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("error creating guest role. aborting auth enable.")
-			}
+			s.lg.Warn(
+				"failed to create a guest role; aborting auth enable",
+				zap.String("role-name", GuestRoleName),
+				zap.Error(err),
+			)
 			return err
 		}
 	}
 
 	if err := s.enableAuth(); err != nil {
-		if s.lg != nil {
-			s.lg.Warn("failed to enable auth", zap.Error(err))
-		} else {
-			plog.Errorf("error enabling auth (%v)", err)
-		}
+		s.lg.Warn("failed to enable auth", zap.Error(err))
 		return err
 	}
 
-	if s.lg != nil {
-		s.lg.Info("enabled auth")
-	} else {
-		plog.Noticef("auth: enabled auth")
-	}
+	s.lg.Info("enabled auth")
 	return nil
 }
 
@@ -446,17 +404,9 @@ func (s *store) DisableAuth() error {
 
 	err := s.disableAuth()
 	if err == nil {
-		if s.lg != nil {
-			s.lg.Info("disabled auth")
-		} else {
-			plog.Noticef("auth: disabled auth")
-		}
+		s.lg.Info("disabled auth")
 	} else {
-		if s.lg != nil {
-			s.lg.Warn("failed to disable auth", zap.Error(err))
-		} else {
-			plog.Errorf("error disabling auth (%v)", err)
-		}
+		s.lg.Warn("failed to disable auth", zap.Error(err))
 	}
 	return err
 }
@@ -483,30 +433,22 @@ func (ou User) merge(lg *zap.Logger, nu User, s PasswordStore) (User, error) {
 	currentRoles := types.NewUnsafeSet(ou.Roles...)
 	for _, g := range nu.Grant {
 		if currentRoles.Contains(g) {
-			if lg != nil {
-				lg.Warn(
-					"attempted to grant a duplicate role for a user",
-					zap.String("user-name", nu.User),
-					zap.String("role-name", g),
-				)
-			} else {
-				plog.Noticef("granting duplicate role %s for user %s", g, nu.User)
-			}
+			lg.Warn(
+				"attempted to grant a duplicate role for a user",
+				zap.String("user-name", nu.User),
+				zap.String("role-name", g),
+			)
 			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Granting duplicate role %s for user %s", g, nu.User))
 		}
 		currentRoles.Add(g)
 	}
 	for _, r := range nu.Revoke {
 		if !currentRoles.Contains(r) {
-			if lg != nil {
-				lg.Warn(
-					"attempted to revoke a ungranted role for a user",
-					zap.String("user-name", nu.User),
-					zap.String("role-name", r),
-				)
-			} else {
-				plog.Noticef("revoking ungranted role %s for user %s", r, nu.User)
-			}
+			lg.Warn(
+				"attempted to revoke a ungranted role for a user",
+				zap.String("user-name", nu.User),
+				zap.String("role-name", r),
+			)
 			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Revoking ungranted role %s for user %s", r, nu.User))
 		}
 		currentRoles.Remove(r)
@@ -603,14 +545,10 @@ func (rw RWPermission) Revoke(lg *zap.Logger, n RWPermission) (RWPermission, err
 	currentRead := types.NewUnsafeSet(rw.Read...)
 	for _, r := range n.Read {
 		if !currentRead.Contains(r) {
-			if lg != nil {
-				lg.Info(
-					"revoking ungranted read permission",
-					zap.String("read-permission", r),
-				)
-			} else {
-				plog.Noticef("revoking ungranted read permission %s", r)
-			}
+			lg.Info(
+				"revoking ungranted read permission",
+				zap.String("read-permission", r),
+			)
 			continue
 		}
 		currentRead.Remove(r)
@@ -618,14 +556,10 @@ func (rw RWPermission) Revoke(lg *zap.Logger, n RWPermission) (RWPermission, err
 	currentWrite := types.NewUnsafeSet(rw.Write...)
 	for _, w := range n.Write {
 		if !currentWrite.Contains(w) {
-			if lg != nil {
-				lg.Info(
-					"revoking ungranted write permission",
-					zap.String("write-permission", w),
-				)
-			} else {
-				plog.Noticef("revoking ungranted write permission %s", w)
-			}
+			lg.Info(
+				"revoking ungranted write permission",
+				zap.String("write-permission", w),
+			)
 			continue
 		}
 		currentWrite.Remove(w)

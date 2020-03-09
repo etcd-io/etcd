@@ -45,6 +45,14 @@ func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest)
 	return resp, nil
 }
 
+func (as *AuthServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
+	resp, err := as.authenticator.AuthStatus(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
 func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
 	resp, err := as.authenticator.Authenticate(ctx, r)
 	if err != nil {

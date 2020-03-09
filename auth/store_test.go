@@ -414,6 +414,55 @@ func TestListUsers(t *testing.T) {
 	}
 }
 
+func TestRoleGrantPermissionRevision(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(perm, r.Perm[0]) {
+		t.Errorf("expected %v, got %v", perm, r.Perm[0])
+	}
+
+	oldRevision := as.Revision()
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+	newRevision := as.Revision()
+
+	if oldRevision != newRevision {
+		t.Errorf("expected revision diff is 0, got %d", newRevision-oldRevision)
+	}
+}
+
 func TestRoleGrantPermission(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
@@ -618,6 +667,30 @@ func TestAuthDisable(t *testing.T) {
 	_, err = as.Authenticate(ctx, "foo", "bar")
 	if err != ErrAuthNotEnabled {
 		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
+	}
+}
+
+func TestIsAuthEnabled(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// enable authentication to test the first possible condition
+	as.AuthEnable()
+
+	status := as.IsAuthEnabled()
+	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, _ = as.Authenticate(ctx, "foo", "bar")
+	if status != true {
+		t.Errorf("expected %v, got %v", true, false)
+	}
+
+	// Disabling disabled auth to test the other condition that can be return
+	as.AuthDisable()
+
+	status = as.IsAuthEnabled()
+	_, _ = as.Authenticate(ctx, "foo", "bar")
+	if status != false {
+		t.Errorf("expected %v, got %v", false, true)
 	}
 }
 
