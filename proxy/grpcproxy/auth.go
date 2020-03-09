@@ -39,6 +39,11 @@ func (ap *AuthProxy) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 	return pb.NewAuthClient(conn).AuthDisable(ctx, r)
 }
 
+func (ap *AuthProxy) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).AuthStatus(ctx, r)
+}
+
 func (ap *AuthProxy) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
 	conn := ap.client.ActiveConnection()
 	return pb.NewAuthClient(conn).Authenticate(ctx, r)

@@ -16,16 +16,11 @@ package embed
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"reflect"
 	"sync"
 
 	"go.etcd.io/etcd/pkg/logutil"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -46,91 +41,9 @@ var grpcLogOnce = new(sync.Once)
 // setupLogging initializes etcd logging.
 // Must be called after flag parsing or finishing configuring embed.Config.
 func (cfg *Config) setupLogging() error {
-	// handle "DeprecatedLogOutput" in v3.4
-	// TODO: remove "DeprecatedLogOutput" in v3.5
-	len1 := len(cfg.DeprecatedLogOutput)
-	len2 := len(cfg.LogOutputs)
-	if len1 != len2 {
-		switch {
-		case len1 > len2: // deprecate "log-output" flag is used
-			fmt.Fprintln(os.Stderr, "'--log-output' flag has been deprecated! Please use '--log-outputs'!")
-			cfg.LogOutputs = cfg.DeprecatedLogOutput
-		case len1 < len2: // "--log-outputs" flag has been set with multiple writers
-			cfg.DeprecatedLogOutput = []string{}
-		}
-	} else {
-		if len1 > 1 {
-			return errors.New("both '--log-output' and '--log-outputs' are set; only set '--log-outputs'")
-		}
-		if len1 < 1 {
-			return errors.New("either '--log-output' or '--log-outputs' flag must be set")
-		}
-		if reflect.DeepEqual(cfg.DeprecatedLogOutput, cfg.LogOutputs) && cfg.DeprecatedLogOutput[0] != DefaultLogOutput {
-			return fmt.Errorf("'--log-output=%q' and '--log-outputs=%q' are incompatible; only set --log-outputs", cfg.DeprecatedLogOutput, cfg.LogOutputs)
-		}
-		if !reflect.DeepEqual(cfg.DeprecatedLogOutput, []string{DefaultLogOutput}) {
-			fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--log-output' flag is set to %q\n", cfg.DeprecatedLogOutput)
-			fmt.Fprintln(os.Stderr, "Please use '--log-outputs' flag")
-		}
-	}
-
-	// TODO: remove after deprecating log related flags in v3.5
-	if cfg.Debug {
-		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--debug' flag is set to %v (use '--log-level=debug' instead\n", cfg.Debug)
-	}
-	if cfg.Debug && cfg.LogLevel != "debug" {
-		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--debug' flag is set to %v with inconsistent '--log-level=%s' flag\n", cfg.Debug, cfg.LogLevel)
-	}
-	if cfg.Logger == "capnslog" {
-		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--logger=%s' flag is set; use '--logger=zap' flag instead\n", cfg.Logger)
-	}
-	if cfg.LogPkgLevels != "" {
-		fmt.Fprintf(os.Stderr, "[WARNING] Deprecated '--log-package-levels=%s' flag is set; use '--logger=zap' flag instead\n", cfg.LogPkgLevels)
-	}
-
 	switch cfg.Logger {
-	case "capnslog": // TODO: deprecate this in v3.5
-		cfg.ClientTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-		cfg.PeerTLSInfo.HandshakeFailure = logTLSHandshakeFailure
-
-		if cfg.Debug {
-			capnslog.SetGlobalLogLevel(capnslog.DEBUG)
-			grpc.EnableTracing = true
-			// enable info, warning, error
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
-		} else {
-			capnslog.SetGlobalLogLevel(logutil.ConvertToCapnslogLogLevel(cfg.LogLevel))
-			// only discard info
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
-		}
-
-		// TODO: deprecate with "capnslog"
-		if cfg.LogPkgLevels != "" {
-			repoLog := capnslog.MustRepoLogger("go.etcd.io/etcd")
-			settings, err := repoLog.ParseLogLevelConfig(cfg.LogPkgLevels)
-			if err != nil {
-				plog.Warningf("couldn't parse log level string: %s, continuing with default levels", err.Error())
-				return nil
-			}
-			repoLog.SetLogLevel(settings)
-		}
-
-		if len(cfg.LogOutputs) != 1 {
-			return fmt.Errorf("--logger=capnslog supports only 1 value in '--log-outputs', got %q", cfg.LogOutputs)
-		}
-		// capnslog initially SetFormatter(NewDefaultFormatter(os.Stderr))
-		// where NewDefaultFormatter returns NewJournaldFormatter when syscall.Getppid() == 1
-		// specify 'stdout' or 'stderr' to skip journald logging even when running under systemd
-		output := cfg.LogOutputs[0]
-		switch output {
-		case StdErrLogOutput:
-			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
-		case StdOutLogOutput:
-			capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
-		case DefaultLogOutput:
-		default:
-			return fmt.Errorf("unknown log-output %q (only supports %q, %q, %q)", output, DefaultLogOutput, StdErrLogOutput, StdOutLogOutput)
-		}
+	case "capnslog": // removed in v3.5
+		return fmt.Errorf("--logger=capnslog is removed in v3.5")
 
 	case "zap":
 		if len(cfg.LogOutputs) == 0 {
@@ -175,10 +88,7 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
-			if cfg.Debug || cfg.LogLevel == "debug" {
-				// enable tracing even when "--debug --log-level info"
-				// in order to keep backward compatibility with <= v3.3
-				// TODO: remove "Debug" check in v3.5
+			if cfg.LogLevel == "debug" {
 				grpc.EnableTracing = true
 			}
 			if cfg.ZapLoggerBuilder == nil {
@@ -221,10 +131,7 @@ func (cfg *Config) setupLogging() error {
 			}
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
-			if cfg.Debug || cfg.LogLevel == "debug" {
-				// enable tracing even when "--debug --log-level info"
-				// in order to keep backward compatibility with <= v3.3
-				// TODO: remove "Debug" check in v3.5
+			if cfg.LogLevel == "debug" {
 				grpc.EnableTracing = true
 			}
 

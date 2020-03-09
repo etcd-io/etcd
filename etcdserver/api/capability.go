@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/pkg/capnslog"
 )
 
 type Capability string
@@ -32,8 +31,6 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/api")
-
 	// capabilityMaps is a static map of version to capability map.
 	capabilityMaps = map[string]map[Capability]bool{
 		"3.0.0": {AuthCapability: true, V3rpcCapability: true},
@@ -78,8 +75,6 @@ func UpdateCapability(lg *zap.Logger, v *semver.Version) {
 			"enabled capabilities for version",
 			zap.String("cluster-version", version.Cluster(v.String())),
 		)
-	} else {
-		plog.Infof("enabled capabilities for version %s", version.Cluster(v.String()))
 	}
 }
 

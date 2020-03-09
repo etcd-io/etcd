@@ -3,12 +3,15 @@
 Previous change logs can be found at [CHANGELOG-3.1](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.1.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
 <hr>
 
 ## [v3.2.29](https://github.com/etcd-io/etcd/releases/tag/v3.2.29) (2019-TBD)
 
+### etcd server
+
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 
 <hr>
 

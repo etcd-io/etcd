@@ -220,7 +220,7 @@ See [issue #6336](https://github.com/etcd-io/etcd/issues/6336) for more contexts
 
 #### Upgrade requirements
 
-To upgrade an existing etcd deployment to 3.2, the running cluster must be 3.1 or greater. If it's before 3.1, please [upgrade to 3.1](upgrade_3_1.md) before upgrading to 3.2.
+To upgrade an existing etcd deployment to 3.2, the running cluster must be 3.1 or greater. If it's before 3.1, please [upgrade to 3.1](../upgrade_3_1) before upgrading to 3.2.
 
 Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. Check the health of the cluster by using the `etcdctl endpoint health` command before proceeding.
 
@@ -228,7 +228,7 @@ Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. C
 
 Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment.
 
-Before beginning, [backup the etcd data](../op-guide/maintenance.md#snapshot-backup). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version. Please note that the `snapshot` command only backs up the v3 data. For v2 data, see [backing up v2 datastore](../v2/admin_guide.md#backing-up-the-datastore).
+Before beginning, [backup the etcd data](../op-guide/maintenance.md#snapshot-backup). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version. Please note that the `snapshot` command only backs up the v3 data. For v2 data, see [backing up v2 datastore](/docs/v2/admin_guide#backing-up-the-datastore).
 
 #### Mixed versions
 

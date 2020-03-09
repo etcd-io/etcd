@@ -456,12 +456,14 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		// Concurrently put a key with a txn comparing on it.
 		revc := make(chan int64, 1)
+		errCh := make(chan error, 1)
 		go func() {
 			defer close(revc)
 			pr := &pb.PutRequest{Key: []byte("k"), Value: []byte("v")}
 			presp, err := kvc.Put(context.TODO(), pr)
+			errCh <- err
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			revc <- presp.Header.Revision
 		}()
@@ -485,6 +487,9 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 		}
 
 		prev := <-revc
+		if err := <-errCh; err != nil {
+			t.Fatal(err)
+		}
 		// put followed txn; should eval to false
 		if prev > tresp.Header.Revision && !tresp.Succeeded {
 			t.Errorf("#%d: got else but put rev %d followed txn rev (%+v)", i, prev, tresp)

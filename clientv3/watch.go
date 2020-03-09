@@ -48,6 +48,8 @@ type Watcher interface {
 	// through the returned channel. If revisions waiting to be sent over the
 	// watch are compacted, then the watch will be canceled by the server, the
 	// client will post a compacted error watch response, and the channel will close.
+	// If the requested revision is 0 or unspecified, the returned channel will
+	// return watch events that happen after the server receives the watch request.
 	// If the context "ctx" is canceled or timed out, returned "WatchChan" is closed,
 	// and "WatchResponse" from this closed channel has zero events and nil "Err()".
 	// The context "ctx" MUST be canceled, as soon as watcher is no longer being used,

@@ -3,10 +3,17 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
 <hr>
 
+## v3.3.19 (TDB)
+
+### etcd server
+
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
+
+<hr>
 
 ## v3.3.18 (2019-11-26)
 
@@ -79,6 +86,13 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Go
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+
+### client v3
+
+- Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
+  - Fix ["kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch" (kubernetes#83028)](https://github.com/kubernetes/kubernetes/issues/83028).
+- Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
+  - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 
 
 <hr>

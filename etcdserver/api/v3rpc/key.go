@@ -22,12 +22,6 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/adt"
-
-	"github.com/coreos/pkg/capnslog"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/api/v3rpc")
 )
 
 type kvServer struct {

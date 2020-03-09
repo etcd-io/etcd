@@ -285,3 +285,8 @@ func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
 		fmt.Printf("%s\n", user)
 	}
 }
+
+func (s *simplePrinter) AuthStatus(r v3.AuthStatusResponse) {
+	fmt.Println("Authentication Status:", r.Enabled)
+	fmt.Println("AuthRevision:", r.AuthRevision)
+}

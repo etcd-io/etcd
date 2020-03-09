@@ -6,7 +6,7 @@ etcd is designed to withstand machine failures. An etcd cluster automatically re
 
 To recover from disastrous failure, etcd v3 provides snapshot and restore facilities to recreate the cluster without v3 key data loss. To recover v2 keys, refer to the [v2 admin guide][v2_recover].
 
-[v2_recover]: ../v2/admin_guide.md#disaster-recovery
+[v2_recover]: /docs/v2/admin_guide#disaster-recovery
 
 ## Snapshotting the keyspace
 

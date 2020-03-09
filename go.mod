@@ -4,10 +4,8 @@ require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
 	github.com/coreos/go-semver v0.2.0
-	github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7 // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e // indirect
-	github.com/coreos/pkg v0.0.0-20160727233714-3ac0863d7acf
 	github.com/creack/pty v1.1.7
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
@@ -30,7 +28,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
 	github.com/prometheus/client_golang v1.0.0
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v0.0.3
@@ -46,7 +44,7 @@ require (
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
-	google.golang.org/grpc v1.24.0
+	google.golang.org/grpc v1.26.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
 	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0

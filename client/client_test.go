@@ -285,7 +285,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 	tr.finishCancel <- struct{}{}
 	c := &simpleHTTPClient{transport: tr, headerTimeout: time.Millisecond}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		_, _, err := c.Do(context.Background(), &fakeAction{})
 		errc <- err
@@ -452,7 +452,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 		endpoints:     []url.URL{fakeURL},
 	}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 		defer cancel()
@@ -502,7 +502,7 @@ func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
 		endpoints:     []url.URL{fakeURL},
 	}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		ctx, cancel := withTimeout(fakeCancelContext{}, time.Millisecond)
 		cancel()

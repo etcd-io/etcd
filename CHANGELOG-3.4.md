@@ -3,17 +3,23 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
 
 <hr>
 
 
-## [v3.4.4](https://github.com/etcd-io/etcd/releases/tag/v3.4.4) (2020 TBD)
+## [v3.4.4](https://github.com/etcd-io/etcd/releases/tag/v3.4.4) (2020-02-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.3...v3.4.4) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+
+### etcd server
+
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
+- Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
+- Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
 
 ### Metrics, Monitoring
 
@@ -27,6 +33,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Auth
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
+- Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
 
 ## [v3.4.3](https://github.com/etcd-io/etcd/releases/tag/v3.4.3) (2019-10-24)
 
@@ -68,11 +75,16 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.1...v3.4.2) and 
   - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
   - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 
-
-
 ### Go
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+
+### client v3
+
+- Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
+  - Fix ["kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch" (kubernetes#83028)](https://github.com/kubernetes/kubernetes/issues/83028).
+- Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
+  - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 
 
 <hr>
