@@ -1093,6 +1093,8 @@ message AuthDisableResponse {
 message AuthStatusResponse {
   ResponseHeader header = 1;
   bool enabled = 2;
+  // authRevision is the current revision of auth store
+  uint64 authRevision = 3;
 }
 
 message AuthenticateResponse {

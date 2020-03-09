@@ -15,8 +15,10 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -25,6 +27,7 @@ import (
 
 func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
 func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
+func TestCtlV3AuthStatus(t *testing.T)              { testCtl(t, authStatusTest) }
 func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
 func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
@@ -69,6 +72,7 @@ func TestCtlV3AuthJWTExpire(t *testing.T) { testCtl(t, authTestJWTExpire, withCf
 func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(configClientTLSCertAuth))
 }
+func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -139,6 +143,32 @@ func authDisableTest(cx ctlCtx) {
 func ctlV3AuthDisable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "disable")
 	return spawnWithExpect(cmdArgs, "Authentication Disabled")
+}
+
+func authStatusTest(cx ctlCtx) {
+	cmdArgs := append(cx.PrefixArgs(), "auth", "status")
+	if err := spawnWithExpects(cmdArgs, "Authentication Status: false", "AuthRevision:"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	cmdArgs = append(cx.PrefixArgs(), "auth", "status")
+
+	if err := spawnWithExpects(cmdArgs, "Authentication Status: true", "AuthRevision:"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cmdArgs = append(cx.PrefixArgs(), "auth", "status", "--write-out", "json")
+	if err := spawnWithExpect(cmdArgs, "enabled"); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := spawnWithExpect(cmdArgs, "authRevision"); err != nil {
+		cx.t.Fatal(err)
+	}
 }
 
 func authCredWriteKeyTest(cx ctlCtx) {
@@ -1128,5 +1158,54 @@ func authTestJWTExpire(cx ctlCtx) {
 
 	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
 		cx.t.Error(err)
+	}
+}
+
+func authTestRevisionConsistency(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "root", "root"
+
+	// add user
+	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
+		cx.t.Fatal(err)
+	}
+	// delete the same user
+	if err := ctlV3User(cx, []string{"delete", "test-user"}, "User test-user deleted", []string{}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// get node0 auth revision
+	node0 := cx.epc.procs[0]
+	endpoint := node0.EndpointsV3()[0]
+	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, Username: cx.user, Password: cx.pass, DialTimeout: 3 * time.Second})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	defer cli.Close()
+
+	sresp, err := cli.AuthStatus(context.TODO())
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	oldAuthRevision := sresp.AuthRevision
+
+	// restart the node
+	node0.WithStopSignal(syscall.SIGINT)
+	if err := node0.Restart(); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// get node0 auth revision again
+	sresp, err = cli.AuthStatus(context.TODO())
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	newAuthRevision := sresp.AuthRevision
+
+	// assert AuthRevision equal
+	if newAuthRevision != oldAuthRevision {
+		cx.t.Fatalf("auth revison shouldn't change when restarting etcd, expected: %d, got: %d", oldAuthRevision, newAuthRevision)
 	}
 }
