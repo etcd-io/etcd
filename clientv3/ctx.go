@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/version"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -31,5 +32,17 @@ func WithRequireLeader(ctx context.Context) context.Context {
 	}
 	// overwrite/add 'hasleader' key/value
 	md.Set(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	return metadata.NewOutgoingContext(ctx, md)
+}
+
+// embeds client version
+func withVersion(ctx context.Context) context.Context {
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok { // no outgoing metadata ctx key, create one
+		md = metadata.Pairs(rpctypes.MetadataClientAPIVersionKey, version.APIVersion)
+		return metadata.NewOutgoingContext(ctx, md)
+	}
+	// overwrite/add version key/value
+	md.Set(rpctypes.MetadataClientAPIVersionKey, version.APIVersion)
 	return metadata.NewOutgoingContext(ctx, md)
 }
