@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/version"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -42,10 +43,25 @@ func TestMetadataWithRequireLeader(t *testing.T) {
 	if !ok {
 		t.Fatal("expected outgoing metadata ctx key")
 	}
-	if ss := md.Get("hasleader"); !reflect.DeepEqual(ss, []string{"true"}) {
-		t.Fatalf("unexpected metadata for 'hasleader' %v", ss)
+	if ss := md.Get(rpctypes.MetadataRequireLeaderKey); !reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
 	}
 	if ss := md.Get("hello"); !reflect.DeepEqual(ss, []string{"1", "2"}) {
 		t.Fatalf("unexpected metadata for 'hello' %v", ss)
+	}
+}
+
+func TestMetadataWithClientAPIVersion(t *testing.T) {
+	ctx := withVersion(WithRequireLeader(context.TODO()))
+
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		t.Fatal("expected outgoing metadata ctx key")
+	}
+	if ss := md.Get(rpctypes.MetadataRequireLeaderKey); !reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
+	}
+	if ss := md.Get(rpctypes.MetadataClientAPIVersionKey); !reflect.DeepEqual(ss, []string{version.APIVersion}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataClientAPIVersionKey, ss)
 	}
 }
