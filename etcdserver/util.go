@@ -111,6 +111,21 @@ func warnOfExpensiveRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Strin
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "", resp, err)
 }
 
+func warnOfFailedRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
+	var resp string
+	if !isNil(respMsg) {
+		resp = fmt.Sprintf("size:%d", proto.Size(respMsg))
+	}
+	d := time.Since(now)
+	lg.Warn(
+		"failed to apply request",
+		zap.Duration("took", d),
+		zap.String("request", reqStringer.String()),
+		zap.String("response", resp),
+		zap.Error(err),
+	)
+}
+
 func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
 	reqStringer := pb.NewLoggableTxnRequest(r)
 	var resp string
