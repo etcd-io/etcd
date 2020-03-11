@@ -222,6 +222,9 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	// fix: LeaseRevoke may fail to apply when authentication is enabled and upgrading cluster from etcd-3.2 to etcd-3.3
+	// see https://github.com/etcd-io/etcd/issues/11689
+	ctx = s.authStore.WithRoot(ctx)
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
