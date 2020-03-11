@@ -13,6 +13,10 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11638) command to prevent potential timeout.
+
 <hr>
 
 ## v3.3.18 (2019-11-26)
