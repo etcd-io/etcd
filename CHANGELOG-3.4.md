@@ -19,6 +19,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.4...v3.4.5) and 
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11638) command to prevent potential timeout.
 
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
 
 <hr>
 

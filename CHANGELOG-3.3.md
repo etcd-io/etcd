@@ -17,6 +17,10 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 - Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11638) command to prevent potential timeout.
 
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+
 <hr>
 
 ## v3.3.18 (2019-11-26)
