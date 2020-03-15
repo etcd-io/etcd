@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/cindex"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc"
 	"go.etcd.io/etcd/mvcc/backend"
@@ -145,10 +146,6 @@ func TestV3AlarmDeactivate(t *testing.T) {
 	}
 }
 
-type fakeConsistentIndex struct{ rev uint64 }
-
-func (f *fakeConsistentIndex) ConsistentIndex() uint64 { return f.rev }
-
 func TestV3CorruptAlarm(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
@@ -170,7 +167,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 	clus.Members[0].Stop(t)
 	fp := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	be := backend.NewDefaultBackend(fp)
-	s := mvcc.NewStore(zap.NewExample(), be, nil, &fakeConsistentIndex{13}, mvcc.StoreConfig{})
+	s := mvcc.NewStore(zap.NewExample(), be, nil, cindex.NewFakeConsistentIndex(13), mvcc.StoreConfig{})
 	// NOTE: cluster_proxy mode with namespacing won't set 'k', but namespace/'k'.
 	s.Put([]byte("abc"), []byte("def"), 0)
 	s.Put([]byte("xyz"), []byte("123"), 0)

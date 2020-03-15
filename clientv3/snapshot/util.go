@@ -14,7 +14,10 @@
 
 package snapshot
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"go.etcd.io/etcd/mvcc/backend"
+)
 
 type revision struct {
 	main int64
@@ -33,3 +36,4 @@ func bytesToRev(bytes []byte) revision {
 type initIndex int
 
 func (i *initIndex) ConsistentIndex() uint64 { return uint64(*i) }
+func (i *initIndex) Save(backend.BatchTx)    {}
