@@ -40,6 +40,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/etcdserver/cindex"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/lease/leasehttp"
@@ -193,10 +194,8 @@ type EtcdServer struct {
 	term              uint64 // must use atomic operations to access; keep 64-bit aligned.
 	lead              uint64 // must use atomic operations to access; keep 64-bit aligned.
 
-	// consistIndex used to hold the offset of current executing entry
-	// It is initialized to 0 before executing any entry.
-	consistIndex consistentIndex // must use atomic operations to access; keep 64-bit aligned.
-	r            raftNode        // uses 64-bit atomics; keep 64-bit aligned.
+	consistIndex cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
+	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
 
 	readych chan struct{}
 	Cfg     ServerConfig
@@ -522,6 +521,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		reqIDGen:         idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC:    make(chan struct{}),
 		AccessController: &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
+		consistIndex:     cindex.NewConsistentIndex(be.BatchTx()),
 	}
 	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
 
@@ -554,11 +554,11 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 		return nil, err
 	}
-	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, tp, int(cfg.BcryptCost))
-
-	srv.kv = mvcc.New(srv.getLogger(), srv.be, srv.lessor, srv.authStore, &srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+	srv.kv = mvcc.New(srv.getLogger(), srv.be, srv.lessor, srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+	kvindex := srv.consistIndex.ConsistentIndex()
+	srv.lg.Debug("restore consistentIndex",
+		zap.Uint64("index", kvindex))
 	if beExist {
-		kvindex := srv.kv.ConsistentIndex()
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 		// etcd from pre-3.0 release.
 		if snapshot != nil && kvindex < snapshot.Metadata.Index {
@@ -575,6 +575,9 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			}
 		}
 	}
+
+	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, srv.consistIndex, tp, int(cfg.BcryptCost))
+
 	newSrv := srv // since srv == nil in defer if srv is returned as nil
 	defer func() {
 		// closing backend without first closing kv can cause
@@ -584,7 +587,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 	if num := cfg.AutoCompactionRetention; num != 0 {
 		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {
@@ -1214,7 +1216,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		}
 	}
 
-	s.consistIndex.setConsistentIndex(s.kv.ConsistentIndex())
+	s.consistIndex.SetConsistentIndex(s.kv.ConsistentIndex())
 	if lg != nil {
 		lg.Info("restored mvcc store")
 	} else {
@@ -2133,7 +2135,7 @@ func (s *EtcdServer) apply(
 		case raftpb.EntryConfChange:
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.setConsistentIndex(e.Index)
+				s.consistIndex.SetConsistentIndex(e.Index)
 			}
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
@@ -2161,11 +2163,16 @@ func (s *EtcdServer) apply(
 // applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := false
-	if e.Index > s.consistIndex.ConsistentIndex() {
+	index := s.consistIndex.ConsistentIndex()
+	if e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.setConsistentIndex(e.Index)
+		s.consistIndex.SetConsistentIndex(e.Index)
 		shouldApplyV3 = true
 	}
+	s.lg.Debug("apply entry normal",
+		zap.Uint64("consistent-index", index),
+		zap.Uint64("entry-index", e.Index),
+		zap.Bool("should-applyV3", shouldApplyV3))
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
@@ -2195,7 +2202,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.w.Trigger(req.ID, s.applyV2Request(req))
 		return
 	}
-
 	// do not re-apply applied entries.
 	if !shouldApplyV3 {
 		return
