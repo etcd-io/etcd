@@ -851,8 +851,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if revision == 0 {
 		return ErrUserEmpty
 	}
-
-	if revision < as.Revision() {
+	rev := as.Revision()
+	if revision < rev {
+		as.lg.Warn("request auth revision is less than current node auth revision",
+			zap.Uint64("current node auth revision", rev),
+			zap.Uint64("request auth revision", revision),
+			zap.ByteString("request key", key),
+			zap.Error(ErrAuthOldRevision))
 		return ErrAuthOldRevision
 	}
 
@@ -1065,7 +1070,6 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
-		as.saveConsistentIndex(tx)
 	}
 
 	as.setupMetricsReporter()
