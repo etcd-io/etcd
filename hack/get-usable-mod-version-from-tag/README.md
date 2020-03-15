@@ -16,7 +16,7 @@ require go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738
 
 If you're using go get, fetch the package with:
 ```
-go get v0.0.0-20191023171146-3cf2f69b5738
+go get go.etcd.io/etcd@v0.0.0-20191023171146-3cf2f69b5738
 ```
 And when it's done, add this line at the end of go.mod:
 ```
