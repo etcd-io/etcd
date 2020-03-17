@@ -106,6 +106,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
   - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 - Use [ServerName as the authority](https://github.com/etcd-io/etcd/pull/11574) after bumping to grpc v1.26.0. Remove workaround in [#11184](https://github.com/etcd-io/etcd/pull/11184).
+
 ### etcdctl v3
 
 - Fix `etcdctl member add` command to prevent potential timeout. ([PR#11194](https://github.com/etcd-io/etcd/pull/11194) and [PR#11638](https://github.com/etcd-io/etcd/pull/11638))
@@ -117,6 +118,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
+
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
 
 ### Auth
 
