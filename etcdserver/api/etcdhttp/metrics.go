@@ -91,33 +91,33 @@ type Health struct {
 
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
 
-func checkHealth(srv etcdserver.ServerV2) Health {
-	h := Health{Health: "true"}
+func checkHealth(srv etcdserver.ServerV2) (h Health) {
+	h.Health = "true"
+
+	defer func() {
+		if h.Health == "true" {
+			healthSuccess.Inc()
+		} else {
+			healthFailed.Inc()
+		}
+	}()
 
 	as := srv.Alarms()
 	if len(as) > 0 {
 		h.Health = "false"
+		return
 	}
 
-	if h.Health == "true" {
-		if uint64(srv.Leader()) == raft.None {
-			h.Health = "false"
-		}
+	if uint64(srv.Leader()) == raft.None {
+		h.Health = "false"
+		return
 	}
 
-	if h.Health == "true" {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
-		cancel()
-		if err != nil {
-			h.Health = "false"
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+	cancel()
+	if err != nil {
+		h.Health = "false"
 	}
-
-	if h.Health == "true" {
-		healthSuccess.Inc()
-	} else {
-		healthFailed.Inc()
-	}
-	return h
+	return
 }
