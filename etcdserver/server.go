@@ -265,7 +265,7 @@ type EtcdServer struct {
 
 	// wgMu blocks concurrent waitgroup mutation while server stopping
 	wgMu sync.RWMutex
-	// wg is used to wait for the go routines that depends on the server state
+	// wg is used to wait for the goroutines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
 
