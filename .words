@@ -30,6 +30,7 @@ etcd
 gRPC
 goroutine
 goroutines
+hasleader
 healthcheck
 hostname
 iff
