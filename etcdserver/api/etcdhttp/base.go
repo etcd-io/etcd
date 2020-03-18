@@ -82,22 +82,29 @@ func init() {
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r, "GET") {
+			plog.Warningf("/health error (status code %d)", http.StatusMethodNotAllowed)
 			return
 		}
+
 		if uint64(server.Leader()) == raft.None {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			plog.Warningf("/health error; no leader (status code %d)", http.StatusServiceUnavailable)
 			healthFailed.Inc()
 			return
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			plog.Warningf("/health error; QGET failed %v (status code %d)", err, http.StatusServiceUnavailable)
 			healthFailed.Inc()
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"health": "true"}`))
+		plog.Infof("/health OK (status code %d)", http.StatusOK)
 		healthSuccess.Inc()
 	}
 }
