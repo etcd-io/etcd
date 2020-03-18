@@ -57,7 +57,7 @@ func NewClientHandler(lg *zap.Logger, server etcdserver.ServerPeer, timeout time
 		lg = zap.NewNop()
 	}
 	mux := http.NewServeMux()
-	etcdhttp.HandleBasic(mux, server)
+	etcdhttp.HandleBasic(lg, mux, server)
 	handleV2(lg, mux, server, timeout)
 	return requestLogger(lg, mux)
 }

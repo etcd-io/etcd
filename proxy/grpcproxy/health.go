@@ -22,11 +22,15 @@ import (
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.uber.org/zap"
 )
 
 // HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
-	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(func() etcdhttp.Health { return checkHealth(c) }))
+func HandleHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(lg, func() etcdhttp.Health { return checkHealth(c) }))
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {
