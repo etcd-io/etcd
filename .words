@@ -36,6 +36,7 @@ iff
 inflight
 keepalive
 keepalives
+hasleader
 keyspace
 linearization
 liveness
