@@ -32,7 +32,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -269,7 +268,11 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 		}
 		return conn, err
 	}
-	opts = append(opts, grpc.WithDialer(f))
+	opts = append(opts,
+		grpc.WithDialer(f),
+		grpc.WithUnaryInterceptor(newUnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(newStreamClientInterceptor()),
+	)
 
 	creds := c.creds
 	if _, _, scheme := parseEndpoint(endpoint); len(scheme) != 0 {
@@ -282,6 +285,30 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	}
 
 	return opts
+}
+
+func newUnaryClientInterceptor() grpc.UnaryClientInterceptor {
+	return func(ctx context.Context,
+		method string,
+		req, reply interface{},
+		cc *grpc.ClientConn,
+		invoker grpc.UnaryInvoker,
+		opts ...grpc.CallOption) error {
+		ctx = withVersion(ctx)
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+func newStreamClientInterceptor() grpc.StreamClientInterceptor {
+	return func(ctx context.Context,
+		desc *grpc.StreamDesc,
+		cc *grpc.ClientConn,
+		method string,
+		streamer grpc.Streamer,
+		opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		ctx = withVersion(ctx)
+		return streamer(ctx, desc, cc, method, opts...)
+	}
 }
 
 // Dial connects to a single endpoint using the client's config.
@@ -354,13 +381,6 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		return nil, err
 	}
 	return conn, nil
-}
-
-// WithRequireLeader requires client requests to only succeed
-// when the cluster has a leader.
-func WithRequireLeader(ctx context.Context) context.Context {
-	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	return metadata.NewOutgoingContext(ctx, md)
 }
 
 func newClient(cfg *Config) (*Client, error) {
