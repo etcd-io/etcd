@@ -16,7 +16,6 @@ package snapshot
 
 import (
 	"encoding/binary"
-	"go.etcd.io/etcd/mvcc/backend"
 )
 
 type revision struct {
@@ -30,10 +29,3 @@ func bytesToRev(bytes []byte) revision {
 		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
 	}
 }
-
-// initIndex implements ConsistentIndexGetter so the snapshot won't block
-// the new raft instance by waiting for a future raft index.
-type initIndex int
-
-func (i *initIndex) ConsistentIndex() uint64 { return uint64(*i) }
-func (i *initIndex) Save(backend.BatchTx)    {}
