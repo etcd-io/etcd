@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.12.9
+- 1.12.12
 
 env:
 - GO111MODULE=on
@@ -28,7 +28,7 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.12.9
+  - go: 1.12.12
     env: TARGET=linux-386-unit
 
 install:
