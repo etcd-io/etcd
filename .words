@@ -37,6 +37,7 @@ inflight
 keepalive
 keepalives
 hasleader
+racey
 keyspace
 linearization
 liveness
