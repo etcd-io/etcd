@@ -13,8 +13,8 @@ if [ -d "gopath.proto" ]; then
   exit 255
 fi
 
-if [[ $(go version) != "go version go1.13"* ]]; then
-  echo "expect Go 1.13+, got:" "$(go version)"
+if [[ $(go version) != "go version go1.14"* ]]; then
+  echo "expect Go 1.14+, got:" "$(go version)"
   exit 255
 fi
 
