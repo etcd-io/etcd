@@ -222,6 +222,10 @@ func (rmc *retryMaintenanceClient) Defragment(ctx context.Context, in *pb.Defrag
 	return rmc.mc.Defragment(ctx, in, opts...)
 }
 
+func (rmc *retryMaintenanceClient) Downgrade(ctx context.Context, in *pb.DowngradeRequest, opts ...grpc.CallOption) (resp *pb.DowngradeResponse, err error) {
+	return rmc.mc.Downgrade(ctx, in, opts...)
+}
+
 type retryAuthClient struct {
 	ac pb.AuthClient
 }
