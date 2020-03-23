@@ -790,5 +790,8 @@ func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 	}
 	authInfo = s.AuthStore().AuthInfoFromTLS(ctx)
 	return authInfo, nil
+}
 
+func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return nil, nil
 }
