@@ -2336,6 +2336,42 @@ func TestReadOnlyOptionLease(t *testing.T) {
 	}
 }
 
+// TestAdvanceCommitIndexByReadIndexResp ensures that read index response
+// can advance the follower's commit index if it has new enough logs
+func TestAdvanceCommitIndexByReadIndexResp(t *testing.T) {
+	nt := newNetwork(nil, nil, nil, nil, nil)
+	n1 := nt.peers[1].(*raft)
+	n2 := nt.peers[2].(*raft)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// don't commit entries
+	nt.cut(1, 3)
+	nt.cut(1, 4)
+	nt.cut(1, 5)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
+
+	nt.recover()
+	nt.cut(1, 2)
+
+	// commit entries for leader but not node 2
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: []byte("ctx1")}}})
+	if n1.raftLog.committed != 3 {
+		t.Errorf("committed = %d, want %d", n1.raftLog.committed, 3)
+	}
+	if n2.raftLog.committed != 1 {
+		t.Errorf("committed = %d, want %d", n2.raftLog.committed, 1)
+	}
+
+	nt.recover()
+	// use ReadOnlyLeaseBased so leader won't send MsgHeartbeat to advance node 2's commit index
+	n1.readOnly.option = ReadOnlyLeaseBased
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: []byte("ctx2")}}})
+	if n2.raftLog.committed != 3 {
+		t.Errorf("committed = %d, want %d", n2.raftLog.committed, 3)
+	}
+}
+
 // TestReadOnlyForNewLeader ensures that a leader only accepts MsgReadIndex message
 // when it commits at least one log entry at it term.
 func TestReadOnlyForNewLeader(t *testing.T) {

@@ -1364,6 +1364,10 @@ func stepFollower(r *raft, m pb.Message) error {
 			return nil
 		}
 		r.readStates = append(r.readStates, ReadState{Index: m.Index, RequestCtx: m.Entries[0].Data})
+		// `index` and `term` in MsgReadIndexResp is the leader's commit index and its current term,
+		// the log entry in the leader's commit index will always have the leader's current term,
+		// because the leader only handle MsgReadIndex after it has committed log entry in its term.
+		r.raftLog.maybeCommit(m.Index, m.Term)
 	}
 	return nil
 }
