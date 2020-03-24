@@ -46,6 +46,7 @@ mutex
 prefetching
 protobuf
 prometheus
+racey
 rafthttp
 repin
 rpc

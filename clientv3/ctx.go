@@ -30,9 +30,10 @@ func WithRequireLeader(ctx context.Context) context.Context {
 		md = metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
 		return metadata.NewOutgoingContext(ctx, md)
 	}
+	copied := md.Copy() // avoid racey updates
 	// overwrite/add 'hasleader' key/value
-	md.Set(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	return metadata.NewOutgoingContext(ctx, md)
+	copied.Set(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	return metadata.NewOutgoingContext(ctx, copied)
 }
 
 // embeds client version
@@ -42,7 +43,8 @@ func withVersion(ctx context.Context) context.Context {
 		md = metadata.Pairs(rpctypes.MetadataClientAPIVersionKey, version.APIVersion)
 		return metadata.NewOutgoingContext(ctx, md)
 	}
+	copied := md.Copy() // avoid racey updates
 	// overwrite/add version key/value
-	md.Set(rpctypes.MetadataClientAPIVersionKey, version.APIVersion)
-	return metadata.NewOutgoingContext(ctx, md)
+	copied.Set(rpctypes.MetadataClientAPIVersionKey, version.APIVersion)
+	return metadata.NewOutgoingContext(ctx, copied)
 }
