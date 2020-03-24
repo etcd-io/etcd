@@ -779,7 +779,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		}()
 	}
 
-	// wait until go routines finish or timeout
+	// wait until goroutines finish or timeout
 	doneC := make(chan struct{})
 	go func() {
 		wg.Wait()

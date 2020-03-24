@@ -62,7 +62,7 @@ type leaseStresser struct {
 
 type atomicLeases struct {
 	// rwLock is used to protect read/write access of leases map
-	// which are accessed and modified by different go routines.
+	// which are accessed and modified by different goroutines.
 	rwLock sync.RWMutex
 	leases map[int64]time.Time
 }
@@ -217,7 +217,7 @@ func (ls *leaseStresser) createAliveLeases() {
 				return
 			}
 			ls.aliveLeases.add(leaseID, time.Now())
-			// keep track of all the keep lease alive go routines
+			// keep track of all the keep lease alive goroutines
 			ls.aliveWg.Add(1)
 			go ls.keepLeaseAlive(leaseID)
 		}()
