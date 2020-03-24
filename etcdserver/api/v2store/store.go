@@ -763,7 +763,7 @@ func (s *store) Clone() Store {
 // Recovery recovers the store system from a static state
 // It needs to recover the parent field of the nodes.
 // It needs to delete the expired nodes since the saved time and also
-// needs to create monitoring go routines.
+// needs to create monitoring goroutines.
 func (s *store) Recovery(state []byte) error {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
