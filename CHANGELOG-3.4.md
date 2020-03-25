@@ -9,7 +9,44 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
-## [v3.4.4](https://github.com/etcd-io/etcd/releases/tag/v3.4.4) (2020 TBD)
+## [v3.4.5](https://github.com/etcd-io/etcd/releases/tag/v3.4.5) (2020-03-18)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.4...v3.4.5) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md).**
+
+### etcd server
+
+- Log [`[CLIENT-PORT]/health` check in server side](https://github.com/etcd-io/etcd/pull/11704).
+
+### client v3
+
+- Fix [`"hasleader"` metadata embedding](https://github.com/etcd-io/etcd/pull/11687).
+  - Previously, `clientv3.WithRequireLeader(ctx)` was overwriting existing context keys.
+
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11638) command to prevent potential timeout.
+
+### Metrics, Monitoring
+
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+- Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
+
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
+
+## [v3.4.4](https://github.com/etcd-io/etcd/releases/tag/v3.4.4) (2020-02-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.3...v3.4.4) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
@@ -17,7 +54,12 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.3...v3.4.4) and 
 
 ### etcd server
 
+- Fix [`wait purge file loop during shutdown`](https://github.com/etcd-io/etcd/pull/11308).
+  - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
+  - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
+- Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
+- Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
 
 ### Metrics, Monitoring
 
@@ -32,6 +74,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
 - Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
+
+
+<hr>
+
 
 ## [v3.4.3](https://github.com/etcd-io/etcd/releases/tag/v3.4.3) (2019-10-24)
 
@@ -52,6 +98,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.12.12*](https://golang.org/doc/devel/release.html#go1.12).
 
 
+<hr>
+
+
 ## [v3.4.2](https://github.com/etcd-io/etcd/releases/tag/v3.4.2) (2019-10-11)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.1...v3.4.2) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
@@ -69,9 +118,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.1...v3.4.2) and 
 ### etcdserver
 
 - Add [`tracing`](https://github.com/etcd-io/etcd/pull/11179) to range, put and compact requests in etcdserver.
-- Fix [`wait purge file loop during shutdown`](https://github.com/etcd-io/etcd/pull/11308).
-  - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
-  - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 
 ### Go
 

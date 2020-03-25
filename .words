@@ -30,6 +30,7 @@ etcd
 gRPC
 goroutine
 goroutines
+hasleader
 healthcheck
 hostname
 iff
@@ -45,6 +46,7 @@ mutex
 prefetching
 protobuf
 prometheus
+racey
 rafthttp
 repin
 rpc
