@@ -800,16 +800,6 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	})
 
 	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
-		if role.KeyPermission[idx].PermType == r.Perm.PermType {
-			as.lg.Warn(
-				"ignored grant permission request to a role, existing permission",
-				zap.String("role-name", r.Name),
-				zap.ByteString("key", r.Perm.Key),
-				zap.ByteString("range-end", r.Perm.RangeEnd),
-				zap.String("permission-type", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
-			)
-			return &pb.AuthRoleGrantPermissionResponse{}, nil
-		}
 		// update existing permission
 		role.KeyPermission[idx].PermType = r.Perm.PermType
 	} else {
