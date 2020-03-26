@@ -16,15 +16,14 @@ package mvcc
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"go.etcd.io/etcd/etcdserver/cindex"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
@@ -59,13 +58,6 @@ const (
 var restoreChunkKeys = 10000 // non-const for testing
 var defaultCompactBatchLimit = 1000
 
-// ConsistentIndexGetter is an interface that wraps the Get method.
-// Consistent index is the offset of an entry in a consistent replicated log.
-type ConsistentIndexGetter interface {
-	// ConsistentIndex returns the consistent index of current executing entry.
-	ConsistentIndex() uint64
-}
-
 type StoreConfig struct {
 	CompactionBatchLimit int
 }
@@ -74,16 +66,12 @@ type store struct {
 	ReadView
 	WriteView
 
-	// consistentIndex caches the "consistent_index" key's value. Accessed
-	// through atomics so must be 64-bit aligned.
-	consistentIndex uint64
-
 	cfg StoreConfig
 
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
 
-	ig ConsistentIndexGetter
+	ci cindex.ConsistentIndexer
 
 	b       backend.Backend
 	kvindex index
@@ -99,10 +87,6 @@ type store struct {
 	// compactMainRev is the main revision of the last compaction.
 	compactMainRev int64
 
-	// bytesBuf8 is a byte slice of length 8
-	// to avoid a repetitive allocation in saveIndex.
-	bytesBuf8 []byte
-
 	fifoSched schedule.Scheduler
 
 	stopc chan struct{}
@@ -112,7 +96,7 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *store {
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *store {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -122,7 +106,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentI
 	s := &store{
 		cfg:     cfg,
 		b:       b,
-		ig:      ig,
+		ci:      ci,
 		kvindex: newTreeIndex(lg),
 
 		le: le,
@@ -130,7 +114,6 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentI
 		currentRev:     1,
 		compactMainRev: -1,
 
-		bytesBuf8: make([]byte, 8),
 		fifoSched: schedule.NewFIFOScheduler(),
 
 		stopc: make(chan struct{}),
@@ -344,13 +327,14 @@ func (s *store) Restore(b backend.Backend) error {
 	close(s.stopc)
 	s.fifoSched.Stop()
 
-	atomic.StoreUint64(&s.consistentIndex, 0)
 	s.b = b
 	s.kvindex = newTreeIndex(s.lg)
 	s.currentRev = 1
 	s.compactMainRev = -1
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
+	s.ci.SetBatchTx(b.BatchTx())
+	s.ci.SetConsistentIndex(0)
 
 	return s.restore()
 }
@@ -529,32 +513,16 @@ func (s *store) Close() error {
 }
 
 func (s *store) saveIndex(tx backend.BatchTx) {
-	if s.ig == nil {
-		return
+	if s.ci != nil {
+		s.ci.UnsafeSave(tx)
 	}
-	bs := s.bytesBuf8
-	ci := s.ig.ConsistentIndex()
-	binary.BigEndian.PutUint64(bs, ci)
-	// put the index into the underlying backend
-	// tx has been locked in TxnBegin, so there is no need to lock it again
-	tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
-	atomic.StoreUint64(&s.consistentIndex, ci)
 }
 
 func (s *store) ConsistentIndex() uint64 {
-	if ci := atomic.LoadUint64(&s.consistentIndex); ci > 0 {
-		return ci
+	if s.ci != nil {
+		return s.ci.ConsistentIndex()
 	}
-	tx := s.b.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	_, vs := tx.UnsafeRange(metaBucketName, consistentIndexKeyName, nil, 0)
-	if len(vs) == 0 {
-		return 0
-	}
-	v := binary.BigEndian.Uint64(vs[0])
-	atomic.StoreUint64(&s.consistentIndex, v)
-	return v
+	return 0
 }
 
 func (s *store) setupMetricsReporter() {

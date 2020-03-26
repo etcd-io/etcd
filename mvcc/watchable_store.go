@@ -15,14 +15,15 @@
 package mvcc
 
 import (
-	"go.etcd.io/etcd/auth"
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/etcdserver/cindex"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/traceutil"
+
 	"go.uber.org/zap"
 )
 
@@ -70,16 +71,16 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, as, ig, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, ci, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *watchableStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ig, cfg),
+		store:    NewStore(lg, b, le, ci, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -90,10 +91,6 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as au
 	if s.le != nil {
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
-	}
-	if as != nil {
-		// TODO: encapsulating consistentindex into a separate package
-		as.SetConsistentIndexSyncer(s.store.saveIndex)
 	}
 	s.wg.Add(2)
 	go s.syncWatchersLoop()

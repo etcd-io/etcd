@@ -26,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/auth/authpb"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/cindex"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc/backend"
 
@@ -90,9 +91,6 @@ type AuthenticateParamIndex struct{}
 
 // AuthenticateParamSimpleTokenPrefix is used for a key of context in the parameters of Authenticate()
 type AuthenticateParamSimpleTokenPrefix struct{}
-
-// saveConsistentIndexFunc is used to sync consistentIndex to backend, now reusing store.saveIndex
-type saveConsistentIndexFunc func(tx backend.BatchTx)
 
 // AuthStore defines auth storage interface.
 type AuthStore interface {
@@ -186,9 +184,6 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
-
-	// SetConsistentIndexSyncer sets consistentIndex syncer
-	SetConsistentIndexSyncer(syncer saveConsistentIndexFunc)
 }
 
 type TokenProvider interface {
@@ -212,14 +207,11 @@ type authStore struct {
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
-	tokenProvider       TokenProvider
-	syncConsistentIndex saveConsistentIndexFunc
-	bcryptCost          int // the algorithm cost / strength for hashing auth passwords
+	tokenProvider TokenProvider
+	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
+	ci            cindex.ConsistentIndexer
 }
 
-func (as *authStore) SetConsistentIndexSyncer(syncer saveConsistentIndexFunc) {
-	as.syncConsistentIndex = syncer
-}
 func (as *authStore) AuthEnable() error {
 	as.enabledMu.Lock()
 	defer as.enabledMu.Unlock()
@@ -1013,7 +1005,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -1048,6 +1040,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
+		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1308,10 +1301,10 @@ func (as *authStore) BcryptCost() int {
 }
 
 func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
-	if as.syncConsistentIndex != nil {
-		as.syncConsistentIndex(tx)
+	if as.ci != nil {
+		as.ci.UnsafeSave(tx)
 	} else {
-		as.lg.Error("failed to save consistentIndex,syncConsistentIndex is nil")
+		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
 	}
 }
 

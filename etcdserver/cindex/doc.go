@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
-
-import "testing"
-
-func TestConsistentIndex(t *testing.T) {
-	var i consistentIndex
-	i.setConsistentIndex(10)
-	if g := i.ConsistentIndex(); g != 10 {
-		t.Errorf("value = %d, want 10", g)
-	}
-}
+// Package cindex provides an interface and implementation for getting/saving consistentIndex.
+package cindex
