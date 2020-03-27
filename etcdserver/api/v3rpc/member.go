@@ -28,10 +28,10 @@ import (
 
 type ClusterServer struct {
 	cluster api.Cluster
-	server  etcdserver.ServerV3
+	server  *etcdserver.EtcdServer
 }
 
-func NewClusterServer(s etcdserver.ServerV3) *ClusterServer {
+func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
 	return &ClusterServer{
 		cluster: s.Cluster(),
 		server:  s,
@@ -88,6 +88,11 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
+	if r.Linearizable {
+		if err := cs.server.LinearizableReadNotify(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	}
 	membs := membersToProtoMembers(cs.cluster.Members())
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }
