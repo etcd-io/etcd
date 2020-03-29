@@ -115,6 +115,12 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [`"hasleader"` metadata embedding](https://github.com/etcd-io/etcd/pull/11687).
   - Previously, `clientv3.WithRequireLeader(ctx)` was overwriting existing context keys.
 
+### Package `lease`
+
+- Fix [memory leak in follower nodes](https://github.com/etcd-io/etcd/pull/11731).
+  - https://github.com/etcd-io/etcd/issues/11495
+  - https://github.com/etcd-io/etcd/issues/11730
+
 ### etcdctl v3
 
 - Fix `etcdctl member add` command to prevent potential timeout. ([PR#11194](https://github.com/etcd-io/etcd/pull/11194) and [PR#11638](https://github.com/etcd-io/etcd/pull/11638))
