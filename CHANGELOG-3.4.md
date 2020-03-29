@@ -9,7 +9,7 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
-## [v3.4.6](https://github.com/etcd-io/etcd/releases/tag/v3.4.6) (2020)
+## [v3.4.6](https://github.com/etcd-io/etcd/releases/tag/v3.4.6) (2020-03-29)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.5...v3.4.6) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
@@ -18,6 +18,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.5...v3.4.6) and 
 - Fix [memory leak in follower nodes](https://github.com/etcd-io/etcd/pull/11731).
   - https://github.com/etcd-io/etcd/issues/11495
   - https://github.com/etcd-io/etcd/issues/11730
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 
 <hr>
