@@ -581,7 +581,7 @@ function receiver_name_pass {
 }
 
 function commit_title_pass {
-	git log --oneline "$(git merge-base HEAD master)"...HEAD | while read -r l; do
+	git log --oneline "$(git merge-base HEAD "$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}")")"...HEAD | while read -r l; do
 		commitMsg=$(echo "$l" | cut -f2- -d' ')
 		if [[ "$commitMsg" == Merge* ]]; then
 			# ignore "Merge pull" commits
