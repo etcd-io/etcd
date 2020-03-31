@@ -76,6 +76,12 @@ func Exist(name string) bool {
 	return err == nil
 }
 
+// DirEmpty returns true if a directory empty and can access.
+func DirEmpty(name string) bool {
+	ns, err := ReadDir(name)
+	return len(ns) == 0 && err == nil
+}
+
 // ZeroToEnd zeros a file starting from SEEK_CUR to its SEEK_END. May temporarily
 // shorten the length of the file.
 func ZeroToEnd(f *os.File) error {

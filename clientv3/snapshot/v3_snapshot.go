@@ -268,8 +268,8 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	if dataDir == "" {
 		dataDir = cfg.Name + ".etcd"
 	}
-	if fileutil.Exist(dataDir) {
-		return fmt.Errorf("data-dir %q exists", dataDir)
+	if fileutil.Exist(dataDir) && !fileutil.DirEmpty(dataDir) {
+		return fmt.Errorf("data-dir %q not empty or could not be read", dataDir)
 	}
 
 	walDir := cfg.OutputWALDir
