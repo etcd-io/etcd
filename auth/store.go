@@ -319,24 +319,34 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		return 0, ErrAuthNotEnabled
 	}
 
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	var user *authpb.User
+	// CompareHashAndPassword is very expensive, so we use closures
+	// to avoid putting it in the critical section of the tx lock.
+	revision, err := func() (uint64, error) {
+		tx := as.be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
 
-	user := getUser(as.lg, tx, username)
-	if user == nil {
-		return 0, ErrAuthFailed
-	}
+		user = getUser(as.lg, tx, username)
+		if user == nil {
+			return 0, ErrAuthFailed
+		}
 
-	if user.Options != nil && user.Options.NoPassword {
-		return 0, ErrAuthFailed
+		if user.Options != nil && user.Options.NoPassword {
+			return 0, ErrAuthFailed
+		}
+
+		return getRevision(tx), nil
+	}()
+	if err != nil {
+		return 0, err
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
 		as.lg.Info("invalid password", zap.String("user-name", username))
 		return 0, ErrAuthFailed
 	}
-	return getRevision(tx), nil
+	return revision, nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
