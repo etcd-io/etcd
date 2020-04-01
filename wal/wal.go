@@ -147,9 +147,13 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if perr != nil {
 		return nil, perr
 	}
+
+	start := time.Now()
 	if perr = fileutil.Fsync(pdir); perr != nil {
 		return nil, perr
 	}
+	syncDurations.Observe(time.Since(start).Seconds())
+
 	if perr = pdir.Close(); err != nil {
 		return nil, perr
 	}
@@ -409,9 +413,12 @@ func (w *WAL) cut() error {
 	if err = os.Rename(newTail.Name(), fpath); err != nil {
 		return err
 	}
+
+	start := time.Now()
 	if err = fileutil.Fsync(w.dirFile); err != nil {
 		return err
 	}
+	syncDurations.Observe(time.Since(start).Seconds())
 
 	newTail.Close()
 
