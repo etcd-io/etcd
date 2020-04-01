@@ -34,9 +34,9 @@ const (
 )
 
 // HandleMetricsHealth registers metrics and health handlers.
-func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
+func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2, to time.Duration) {
 	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkHealth(lg, srv) }))
+	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkHealth(lg, srv, to) }))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
@@ -94,7 +94,7 @@ type Health struct {
 
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
 
-func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
+func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2, to time.Duration) (h Health) {
 	h.Health = "true"
 
 	defer func() {
@@ -120,7 +120,7 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), to)
 	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
 	cancel()
 	if err != nil {

@@ -19,6 +19,7 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
+	"time"
 
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api"
@@ -36,13 +37,13 @@ const (
 
 // HandleBasic adds handlers to a mux for serving JSON etcd client requests
 // that do not access the v2 store.
-func HandleBasic(lg *zap.Logger, mux *http.ServeMux, server etcdserver.ServerPeer) {
+func HandleBasic(lg *zap.Logger, mux *http.ServeMux, server etcdserver.ServerPeer, to time.Duration) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	mux.HandleFunc(varsPath, serveVars)
 
-	HandleMetricsHealth(lg, mux, server)
+	HandleMetricsHealth(lg, mux, server, to)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 }
 

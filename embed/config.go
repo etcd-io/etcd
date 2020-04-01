@@ -72,6 +72,8 @@ const (
 	// v2 API is disabled by default.
 	DefaultEnableV2 = false
 
+	DefaultHealthcheckTimeout = time.Second
+
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
@@ -301,6 +303,8 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
+
+	HealthcheckTimeout time.Duration `json:"healthcheck-timeout"`
 
 	// ZapLoggerBuilder is used to build the zap logger.
 	ZapLoggerBuilder func(*Config) error
