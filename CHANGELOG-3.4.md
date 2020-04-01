@@ -13,6 +13,10 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.6...v3.4.7) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
+### etcd server
+
+- Improve [compaction performance when latest index is greater than 1-million](https://github.com/etcd-io/etcd/pull/11734).
+
 ### Package `wal`
 
 - Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
