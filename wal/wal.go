@@ -193,6 +193,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, perr
 	}
+	start := time.Now()
 	if perr = fileutil.Fsync(pdir); perr != nil {
 		lg.Warn(
 			"failed to fsync the parent data directory file",
@@ -202,6 +203,8 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, perr
 	}
+	walFsyncSec.Observe(time.Since(start).Seconds())
+
 	if perr = pdir.Close(); perr != nil {
 		lg.Warn(
 			"failed to close the parent data directory file",
@@ -647,9 +650,11 @@ func (w *WAL) cut() error {
 	if err = os.Rename(newTail.Name(), fpath); err != nil {
 		return err
 	}
+	start := time.Now()
 	if err = fileutil.Fsync(w.dirFile); err != nil {
 		return err
 	}
+	walFsyncSec.Observe(time.Since(start).Seconds())
 
 	// reopen newTail with its new path so calls to Name() match the wal filename format
 	newTail.Close()
