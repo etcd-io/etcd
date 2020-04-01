@@ -9,6 +9,26 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
+## [v3.2.30](https://github.com/etcd-io/etcd/releases/tag/v3.2.30) (2020-04-01)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.29...v3.2.30) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Package `wal`
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+
+### Metrics, Monitoring
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
+
 ## [v3.2.29](https://github.com/etcd-io/etcd/releases/tag/v3.2.29) (2020-03-18)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.28...v3.2.29) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
