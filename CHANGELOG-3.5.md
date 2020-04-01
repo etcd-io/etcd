@@ -76,6 +76,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Change [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11254) Prometheus metrics to include only major and minor version.
 - Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
 - Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
 
 ### etcd server
 
@@ -120,6 +121,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [memory leak in follower nodes](https://github.com/etcd-io/etcd/pull/11731).
   - https://github.com/etcd-io/etcd/issues/11495
   - https://github.com/etcd-io/etcd/issues/11730
+
+### Package `wal`
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
 
 ### etcdctl v3
 
