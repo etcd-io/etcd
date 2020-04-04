@@ -105,6 +105,31 @@ func TestExist(t *testing.T) {
 	}
 }
 
+func TestDirEmpty(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "empty_dir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if !DirEmpty(dir) {
+		t.Fatalf("expected DirEmpty true, got %v", DirEmpty(dir))
+	}
+
+	file, err := ioutil.TempFile(dir, "new_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	if DirEmpty(dir) {
+		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(dir))
+	}
+	if DirEmpty(file.Name()) {
+		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(file.Name()))
+	}
+}
+
 func TestZeroToEnd(t *testing.T) {
 	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
 	if err != nil {
