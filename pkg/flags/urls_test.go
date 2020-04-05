@@ -29,9 +29,8 @@ func TestValidateURLsValueBad(t *testing.T) {
 		// bad port specification
 		"127.0.0.1:foo",
 		"127.0.0.1:",
-		// unix sockets not supported
+		// incomplete
 		"unix://",
-		"unix://tmp/etcd.sock",
 		// bad strings
 		"somewhere",
 		"234#$",
@@ -56,6 +55,10 @@ func TestNewURLsValue(t *testing.T) {
 		{s: "http://10.1.1.1:80", exp: []url.URL{{Scheme: "http", Host: "10.1.1.1:80"}}},
 		{s: "http://localhost:80", exp: []url.URL{{Scheme: "http", Host: "localhost:80"}}},
 		{s: "http://:80", exp: []url.URL{{Scheme: "http", Host: ":80"}}},
+		{s: "unix:///tmp/etcd.sock", exp: []url.URL{{Scheme: "unix", Path: "/tmp/etcd.sock"}}},
+		{s: "unix://etcd.sock", exp: []url.URL{{Scheme: "unix", Path: "etcd.sock"}}},
+		{s: "unix://tmp/etcd.sock", exp: []url.URL{{Scheme: "unix", Path: "tmp/etcd.sock"}}},
+		{s: "unixs:///tmp/etcd.sock", exp: []url.URL{{Scheme: "unixs", Path: "/tmp/etcd.sock"}}},
 		{
 			s: "http://localhost:1,https://localhost:2",
 			exp: []url.URL{
