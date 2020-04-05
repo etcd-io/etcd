@@ -9,6 +9,30 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
+## [v3.3.21](https://github.com/etcd-io/etcd/releases/tag/v3.3.21) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### etcd server
+
+- [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
+
+### Package Auth
+
+- [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
+
+### Metrics, Monitoring
+
+- Add [`etcd_debugging_auth_revision`](https://github.com/etcd-io/etcd/commit/f14d2a087f7b0fd6f7980b95b5e0b945109c95f3).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+
+
 ## [v3.3.20](https://github.com/etcd-io/etcd/releases/tag/v3.3.20) (2020-04-01)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
