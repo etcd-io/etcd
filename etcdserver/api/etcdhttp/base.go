@@ -19,22 +19,13 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api"
 	"go.etcd.io/etcd/etcdserver/api/v2error"
 	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
-	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/version"
-
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/api/etcdhttp")
-	mlog = logutil.NewMergeLogger(plog)
 )
 
 const (
@@ -45,13 +36,13 @@ const (
 
 // HandleBasic adds handlers to a mux for serving JSON etcd client requests
 // that do not access the v2 store.
-func HandleBasic(mux *http.ServeMux, server etcdserver.ServerPeer) {
+func HandleBasic(lg *zap.Logger, mux *http.ServeMux, server etcdserver.ServerPeer) {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	mux.HandleFunc(varsPath, serveVars)
 
-	// TODO: deprecate '/config/local/log' in v3.5
-	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
-
-	HandleMetricsHealth(mux, server)
+	HandleMetricsHealth(lg, mux, server)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 }
 
@@ -78,34 +69,9 @@ func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 	w.Header().Set("Content-Type", "application/json")
 	b, err := json.Marshal(&vs)
 	if err != nil {
-		plog.Panicf("cannot marshal versions to json (%v)", err)
+		panic(fmt.Sprintf("cannot marshal versions to json (%v)", err))
 	}
 	w.Write(b)
-}
-
-// TODO: deprecate '/config/local/log' in v3.5
-func logHandleFunc(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r, "PUT") {
-		return
-	}
-
-	in := struct{ Level string }{}
-
-	d := json.NewDecoder(r.Body)
-	if err := d.Decode(&in); err != nil {
-		WriteError(nil, w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid json body"))
-		return
-	}
-
-	logl, err := capnslog.ParseLevel(strings.ToUpper(in.Level))
-	if err != nil {
-		WriteError(nil, w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid log level "+in.Level))
-		return
-	}
-
-	plog.Noticef("globalLogLevel set to %q", logl.String())
-	capnslog.SetGlobalLogLevel(logl)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func serveVars(w http.ResponseWriter, r *http.Request) {
@@ -155,8 +121,6 @@ func WriteError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 					zap.String("internal-server-error", e.Error()),
 					zap.Error(et),
 				)
-			} else {
-				plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 			}
 		}
 
@@ -170,8 +134,6 @@ func WriteError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 					zap.String("remote-addr", r.RemoteAddr),
 					zap.String("internal-server-error", err.Error()),
 				)
-			} else {
-				mlog.MergeError(err)
 			}
 
 		default:
@@ -181,8 +143,6 @@ func WriteError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 					zap.String("remote-addr", r.RemoteAddr),
 					zap.String("internal-server-error", err.Error()),
 				)
-			} else {
-				mlog.MergeErrorf("got unexpected response error (%v)", err)
 			}
 		}
 
@@ -195,8 +155,6 @@ func WriteError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 					zap.String("internal-server-error", err.Error()),
 					zap.Error(et),
 				)
-			} else {
-				plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 			}
 		}
 	}

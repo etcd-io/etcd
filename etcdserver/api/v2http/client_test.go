@@ -1343,6 +1343,7 @@ func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1361,7 +1362,7 @@ func TestServeSelfStats(t *testing.T) {
 
 func TestSelfServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveSelf(
 			rw,
@@ -1377,7 +1378,7 @@ func TestSelfServeStatsBad(t *testing.T) {
 
 func TestLeaderServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveLeader(
 			rw,
@@ -1395,6 +1396,7 @@ func TestServeLeaderStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1415,6 +1417,7 @@ func TestServeStoreStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()

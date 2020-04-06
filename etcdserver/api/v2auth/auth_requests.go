@@ -47,14 +47,10 @@ func (s *store) ensureAuthDirectories() error {
 					continue
 				}
 			}
-			if s.lg != nil {
-				s.lg.Warn(
-					"failed to create auth directories",
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("failed to create auth directories in the store (%v)", err)
-			}
+			s.lg.Warn(
+				"failed to create auth directories",
+				zap.Error(err),
+			)
 			return err
 		}
 	}
@@ -101,28 +97,20 @@ func (s *store) detectAuth() bool {
 				return false
 			}
 		}
-		if s.lg != nil {
-			s.lg.Warn(
-				"failed to detect auth settings",
-				zap.Error(err),
-			)
-		} else {
-			plog.Errorf("failed to detect auth settings (%s)", err)
-		}
+		s.lg.Warn(
+			"failed to detect auth settings",
+			zap.Error(err),
+		)
 		return false
 	}
 
 	var u bool
 	err = json.Unmarshal([]byte(*value.Event.Node.Value), &u)
 	if err != nil {
-		if s.lg != nil {
-			s.lg.Warn(
-				"internal bookkeeping value for enabled isn't valid JSON",
-				zap.Error(err),
-			)
-		} else {
-			plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
-		}
+		s.lg.Warn(
+			"internal bookkeeping value for enabled isn't valid JSON",
+			zap.Error(err),
+		)
 		return false
 	}
 	return u

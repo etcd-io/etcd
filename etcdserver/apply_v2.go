@@ -36,6 +36,9 @@ type ApplierV2 interface {
 }
 
 func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	return &applierV2store{lg: lg, store: s, cluster: c}
 }
 
@@ -74,14 +77,10 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 		return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 	default:
 		if storeMemberAttributeRegexp.MatchString(r.Path) {
-			id := membership.MustParseMemberIDFromKey(path.Dir(r.Path))
+			id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(r.Path))
 			var attr membership.Attributes
 			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-				if a.lg != nil {
-					a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
-				} else {
-					plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
-				}
+				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 			}
 			if a.cluster != nil {
 				a.cluster.UpdateAttributes(id, attr)

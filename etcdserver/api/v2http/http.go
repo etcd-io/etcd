@@ -23,20 +23,13 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/etcdserver/api/v2auth"
 	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
-	"go.etcd.io/etcd/pkg/logutil"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
 
 const (
 	// time to wait for a Watch request
 	defaultWatchTimeout = time.Duration(math.MaxInt64)
-)
-
-var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "etcdserver/api/v2http")
-	mlog = logutil.NewMergeLogger(plog)
 )
 
 func writeError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err error) {
@@ -53,8 +46,6 @@ func writeError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 					zap.String("v2auth-error", e.Error()),
 					zap.Error(et),
 				)
-			} else {
-				plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 			}
 		}
 		return
@@ -85,8 +76,6 @@ func requestLogger(lg *zap.Logger, handler http.Handler) http.Handler {
 				zap.String("request-uri", r.RequestURI),
 				zap.String("remote-addr", r.RemoteAddr),
 			)
-		} else {
-			plog.Debugf("[%s] %s remote:%s", r.Method, r.RequestURI, r.RemoteAddr)
 		}
 		handler.ServeHTTP(w, r)
 	})

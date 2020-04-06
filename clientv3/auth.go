@@ -27,6 +27,7 @@ import (
 type (
 	AuthEnableResponse               pb.AuthEnableResponse
 	AuthDisableResponse              pb.AuthDisableResponse
+	AuthStatusResponse               pb.AuthStatusResponse
 	AuthenticateResponse             pb.AuthenticateResponse
 	AuthUserAddResponse              pb.AuthUserAddResponse
 	AuthUserDeleteResponse           pb.AuthUserDeleteResponse
@@ -60,6 +61,9 @@ type Auth interface {
 
 	// AuthDisable disables auth of an etcd cluster.
 	AuthDisable(ctx context.Context) (*AuthDisableResponse, error)
+
+	// AuthStatus returns the status of auth of an etcd cluster.
+	AuthStatus(ctx context.Context) (*AuthStatusResponse, error)
 
 	// UserAdd adds a new user to an etcd cluster.
 	UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error)
@@ -125,6 +129,11 @@ func (auth *authClient) AuthEnable(ctx context.Context) (*AuthEnableResponse, er
 func (auth *authClient) AuthDisable(ctx context.Context) (*AuthDisableResponse, error) {
 	resp, err := auth.remote.AuthDisable(ctx, &pb.AuthDisableRequest{}, auth.callOpts...)
 	return (*AuthDisableResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *authClient) AuthStatus(ctx context.Context) (*AuthStatusResponse, error) {
+	resp, err := auth.remote.AuthStatus(ctx, &pb.AuthStatusRequest{}, auth.callOpts...)
+	return (*AuthStatusResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *authClient) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {

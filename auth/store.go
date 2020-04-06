@@ -26,10 +26,10 @@ import (
 
 	"go.etcd.io/etcd/auth/authpb"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/etcdserver/cindex"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc/backend"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/credentials"
@@ -47,8 +47,6 @@ var (
 	authBucketName      = []byte("auth")
 	authUsersBucketName = []byte("authUsers")
 	authRolesBucketName = []byte("authRoles")
-
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "auth")
 
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
 	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
@@ -211,17 +209,14 @@ type authStore struct {
 
 	tokenProvider TokenProvider
 	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
+	ci            cindex.ConsistentIndexer
 }
 
 func (as *authStore) AuthEnable() error {
 	as.enabledMu.Lock()
 	defer as.enabledMu.Unlock()
 	if as.enabled {
-		if as.lg != nil {
-			as.lg.Info("authentication is already enabled; ignored auth enable request")
-		} else {
-			plog.Noticef("Authentication already enabled")
-		}
+		as.lg.Info("authentication is already enabled; ignored auth enable request")
 		return nil
 	}
 	b := as.be
@@ -250,11 +245,7 @@ func (as *authStore) AuthEnable() error {
 
 	as.setRevision(getRevision(tx))
 
-	if as.lg != nil {
-		as.lg.Info("enabled authentication")
-	} else {
-		plog.Noticef("Authentication enabled")
-	}
+	as.lg.Info("enabled authentication")
 	return nil
 }
 
@@ -269,17 +260,14 @@ func (as *authStore) AuthDisable() {
 	tx.Lock()
 	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 	tx.Unlock()
 	b.ForceCommit()
 
 	as.enabled = false
 	as.tokenProvider.disable()
 
-	if as.lg != nil {
-		as.lg.Info("disabled authentication")
-	} else {
-		plog.Noticef("Authentication disabled")
-	}
+	as.lg.Info("disabled authentication")
 }
 
 func (as *authStore) Close() error {
@@ -318,15 +306,11 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 		return nil, err
 	}
 
-	if as.lg != nil {
-		as.lg.Debug(
-			"authenticated a user",
-			zap.String("user-name", username),
-			zap.String("token", token),
-		)
-	} else {
-		plog.Debugf("authorized %s, token is %s", username, token)
-	}
+	as.lg.Debug(
+		"authenticated a user",
+		zap.String("user-name", username),
+		zap.String("token", token),
+	)
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
 
@@ -335,28 +319,34 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		return 0, ErrAuthNotEnabled
 	}
 
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	var user *authpb.User
+	// CompareHashAndPassword is very expensive, so we use closures
+	// to avoid putting it in the critical section of the tx lock.
+	revision, err := func() (uint64, error) {
+		tx := as.be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
 
-	user := getUser(as.lg, tx, username)
-	if user == nil {
-		return 0, ErrAuthFailed
-	}
+		user = getUser(as.lg, tx, username)
+		if user == nil {
+			return 0, ErrAuthFailed
+		}
 
-	if user.Options != nil && user.Options.NoPassword {
-		return 0, ErrAuthFailed
+		if user.Options != nil && user.Options.NoPassword {
+			return 0, ErrAuthFailed
+		}
+
+		return getRevision(tx), nil
+	}()
+	if err != nil {
+		return 0, err
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
-		if as.lg != nil {
-			as.lg.Info("invalid password", zap.String("user-name", username))
-		} else {
-			plog.Noticef("authentication failed, invalid password for user %s", username)
-		}
+		as.lg.Info("invalid password", zap.String("user-name", username))
 		return 0, ErrAuthFailed
 	}
-	return getRevision(tx), nil
+	return revision, nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
@@ -392,15 +382,11 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	if !noPassword {
 		hashed, err = bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
 		if err != nil {
-			if as.lg != nil {
-				as.lg.Warn(
-					"failed to bcrypt hash password",
-					zap.String("user-name", r.Name),
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("failed to hash password: %s", err)
-			}
+			as.lg.Error(
+				"failed to bcrypt hash password",
+				zap.String("user-name", r.Name),
+				zap.Error(err),
+			)
 			return nil, err
 		}
 	}
@@ -430,22 +416,15 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	putUser(as.lg, tx, newUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info("added a user", zap.String("user-name", r.Name))
-	} else {
-		plog.Noticef("added a new user: %s", r.Name)
-	}
+	as.lg.Info("added a user", zap.String("user-name", r.Name))
 	return &pb.AuthUserAddResponse{}, nil
 }
 
 func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
 	if as.enabled && r.Name == rootUser {
-		if as.lg != nil {
-			as.lg.Warn("cannot delete 'root' user", zap.String("user-name", r.Name))
-		} else {
-			plog.Errorf("the user root must not be deleted")
-		}
+		as.lg.Error("cannot delete 'root' user", zap.String("user-name", r.Name))
 		return nil, ErrInvalidAuthMgmt
 	}
 
@@ -461,19 +440,16 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	delUser(tx, r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"deleted a user",
-			zap.String("user-name", r.Name),
-			zap.Strings("user-roles", user.Roles),
-		)
-	} else {
-		plog.Noticef("deleted a user: %s", r.Name)
-	}
+	as.lg.Info(
+		"deleted a user",
+		zap.String("user-name", r.Name),
+		zap.Strings("user-roles", user.Roles),
+	)
 	return &pb.AuthUserDeleteResponse{}, nil
 }
 
@@ -482,15 +458,11 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	// If the cost is too high, we should move the encryption to outside of the raft
 	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
 	if err != nil {
-		if as.lg != nil {
-			as.lg.Warn(
-				"failed to bcrypt hash password",
-				zap.String("user-name", r.Name),
-				zap.Error(err),
-			)
-		} else {
-			plog.Errorf("failed to hash password: %s", err)
-		}
+		as.lg.Error(
+			"failed to bcrypt hash password",
+			zap.String("user-name", r.Name),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 
@@ -513,19 +485,16 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	putUser(as.lg, tx, updatedUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"changed a password of a user",
-			zap.String("user-name", r.Name),
-			zap.Strings("user-roles", user.Roles),
-		)
-	} else {
-		plog.Noticef("changed a password of a user: %s", r.Name)
-	}
+	as.lg.Info(
+		"changed a password of a user",
+		zap.String("user-name", r.Name),
+		zap.Strings("user-roles", user.Roles),
+	)
 	return &pb.AuthUserChangePasswordResponse{}, nil
 }
 
@@ -540,7 +509,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	if r.Role != rootRole {
-		role := getRole(tx, r.Role)
+		role := getRole(as.lg, tx, r.Role)
 		if role == nil {
 			return nil, ErrRoleNotFound
 		}
@@ -548,16 +517,12 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 
 	idx := sort.SearchStrings(user.Roles, r.Role)
 	if idx < len(user.Roles) && user.Roles[idx] == r.Role {
-		if as.lg != nil {
-			as.lg.Warn(
-				"ignored grant role request to a user",
-				zap.String("user-name", r.User),
-				zap.Strings("user-roles", user.Roles),
-				zap.String("duplicate-role-name", r.Role),
-			)
-		} else {
-			plog.Warningf("user %s is already granted role %s", r.User, r.Role)
-		}
+		as.lg.Warn(
+			"ignored grant role request to a user",
+			zap.String("user-name", r.User),
+			zap.Strings("user-roles", user.Roles),
+			zap.String("duplicate-role-name", r.Role),
+		)
 		return &pb.AuthUserGrantRoleResponse{}, nil
 	}
 
@@ -569,17 +534,14 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	as.invalidateCachedPerm(r.User)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"granted a role to a user",
-			zap.String("user-name", r.User),
-			zap.Strings("user-roles", user.Roles),
-			zap.String("added-role-name", r.Role),
-		)
-	} else {
-		plog.Noticef("granted role %s to user %s", r.Role, r.User)
-	}
+	as.lg.Info(
+		"granted a role to a user",
+		zap.String("user-name", r.User),
+		zap.Strings("user-roles", user.Roles),
+		zap.String("added-role-name", r.Role),
+	)
 	return &pb.AuthUserGrantRoleResponse{}, nil
 }
 
@@ -613,15 +575,11 @@ func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListRespon
 
 func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
 	if as.enabled && r.Name == rootUser && r.Role == rootRole {
-		if as.lg != nil {
-			as.lg.Warn(
-				"'root' user cannot revoke 'root' role",
-				zap.String("user-name", r.Name),
-				zap.String("role-name", r.Role),
-			)
-		} else {
-			plog.Errorf("the role root must not be revoked from the user root")
-		}
+		as.lg.Error(
+			"'root' user cannot revoke 'root' role",
+			zap.String("user-name", r.Name),
+			zap.String("role-name", r.Role),
+		)
 		return nil, ErrInvalidAuthMgmt
 	}
 
@@ -655,18 +613,15 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	as.invalidateCachedPerm(r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"revoked a role from a user",
-			zap.String("user-name", r.Name),
-			zap.Strings("old-user-roles", user.Roles),
-			zap.Strings("new-user-roles", updatedUser.Roles),
-			zap.String("revoked-role-name", r.Role),
-		)
-	} else {
-		plog.Noticef("revoked role %s from user %s", r.Role, r.Name)
-	}
+	as.lg.Info(
+		"revoked a role from a user",
+		zap.String("user-name", r.Name),
+		zap.Strings("old-user-roles", user.Roles),
+		zap.Strings("new-user-roles", updatedUser.Roles),
+		zap.String("revoked-role-name", r.Role),
+	)
 	return &pb.AuthUserRevokeRoleResponse{}, nil
 }
 
@@ -677,7 +632,7 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 
 	var resp pb.AuthRoleGetResponse
 
-	role := getRole(tx, r.Role)
+	role := getRole(as.lg, tx, r.Role)
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
@@ -703,7 +658,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	tx.Lock()
 	defer tx.Unlock()
 
-	role := getRole(tx, r.Role)
+	role := getRole(as.lg, tx, r.Role)
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
@@ -729,27 +684,20 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"revoked a permission on range",
-			zap.String("role-name", r.Role),
-			zap.String("key", string(r.Key)),
-			zap.String("range-end", string(r.RangeEnd)),
-		)
-	} else {
-		plog.Noticef("revoked key %s from role %s", r.Key, r.Role)
-	}
+	as.lg.Info(
+		"revoked a permission on range",
+		zap.String("role-name", r.Role),
+		zap.String("key", string(r.Key)),
+		zap.String("range-end", string(r.RangeEnd)),
+	)
 	return &pb.AuthRoleRevokePermissionResponse{}, nil
 }
 
 func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
 	if as.enabled && r.Role == rootRole {
-		if as.lg != nil {
-			as.lg.Warn("cannot delete 'root' role", zap.String("role-name", r.Role))
-		} else {
-			plog.Errorf("the role root must not be deleted")
-		}
+		as.lg.Error("cannot delete 'root' role", zap.String("role-name", r.Role))
 		return nil, ErrInvalidAuthMgmt
 	}
 
@@ -757,7 +705,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	tx.Lock()
 	defer tx.Unlock()
 
-	role := getRole(tx, r.Role)
+	role := getRole(as.lg, tx, r.Role)
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
@@ -788,12 +736,9 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info("deleted a role", zap.String("role-name", r.Role))
-	} else {
-		plog.Noticef("deleted role %s", r.Role)
-	}
+	as.lg.Info("deleted a role", zap.String("role-name", r.Role))
 	return &pb.AuthRoleDeleteResponse{}, nil
 }
 
@@ -806,7 +751,7 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
-	role := getRole(tx, r.Name)
+	role := getRole(as.lg, tx, r.Name)
 	if role != nil {
 		return nil, ErrRoleAlreadyExist
 	}
@@ -818,12 +763,9 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	putRole(as.lg, tx, newRole)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info("created a role", zap.String("role-name", r.Name))
-	} else {
-		plog.Noticef("Role %s is created", r.Name)
-	}
+	as.lg.Info("created a role", zap.String("role-name", r.Name))
 	return &pb.AuthRoleAddResponse{}, nil
 }
 
@@ -850,7 +792,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	tx.Lock()
 	defer tx.Unlock()
 
-	role := getRole(tx, r.Name)
+	role := getRole(as.lg, tx, r.Name)
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
@@ -881,16 +823,13 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
-	if as.lg != nil {
-		as.lg.Info(
-			"granted/updated a permission to a user",
-			zap.String("user-name", r.Name),
-			zap.String("permission-name", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
-		)
-	} else {
-		plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
-	}
+	as.lg.Info(
+		"granted/updated a permission to a user",
+		zap.String("user-name", r.Name),
+		zap.String("permission-name", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
+	)
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
@@ -904,8 +843,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if revision == 0 {
 		return ErrUserEmpty
 	}
-
-	if revision < as.Revision() {
+	rev := as.Revision()
+	if revision < rev {
+		as.lg.Warn("request auth revision is less than current node auth revision",
+			zap.Uint64("current node auth revision", rev),
+			zap.Uint64("request auth revision", revision),
+			zap.ByteString("request key", key),
+			zap.Error(ErrAuthOldRevision))
 		return ErrAuthOldRevision
 	}
 
@@ -915,11 +859,7 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 
 	user := getUser(as.lg, tx, userName)
 	if user == nil {
-		if as.lg != nil {
-			as.lg.Warn("cannot find a user for permission check", zap.String("user-name", userName))
-		} else {
-			plog.Errorf("invalid user name %s for permission checking", userName)
-		}
+		as.lg.Error("cannot find a user for permission check", zap.String("user-name", userName))
 		return ErrPermissionDenied
 	}
 
@@ -980,15 +920,11 @@ func getUser(lg *zap.Logger, tx backend.BatchTx, username string) *authpb.User {
 	user := &authpb.User{}
 	err := user.Unmarshal(vs[0])
 	if err != nil {
-		if lg != nil {
-			lg.Panic(
-				"failed to unmarshal 'authpb.User'",
-				zap.String("user-name", username),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("failed to unmarshal user struct (name: %s): %s", username, err)
-		}
+		lg.Panic(
+			"failed to unmarshal 'authpb.User'",
+			zap.String("user-name", username),
+			zap.Error(err),
+		)
 	}
 	return user
 }
@@ -1004,11 +940,7 @@ func getAllUsers(lg *zap.Logger, tx backend.BatchTx) []*authpb.User {
 		user := &authpb.User{}
 		err := user.Unmarshal(vs[i])
 		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
-			} else {
-				plog.Panicf("failed to unmarshal user struct: %s", err)
-			}
+			lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 		}
 		users[i] = user
 	}
@@ -1018,11 +950,7 @@ func getAllUsers(lg *zap.Logger, tx backend.BatchTx) []*authpb.User {
 func putUser(lg *zap.Logger, tx backend.BatchTx, user *authpb.User) {
 	b, err := user.Marshal()
 	if err != nil {
-		if lg != nil {
-			lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
-		} else {
-			plog.Panicf("failed to marshal user struct (name: %s): %s", user.Name, err)
-		}
+		lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 	}
 	tx.UnsafePut(authUsersBucketName, user.Name, b)
 }
@@ -1031,7 +959,7 @@ func delUser(tx backend.BatchTx, username string) {
 	tx.UnsafeDelete(authUsersBucketName, []byte(username))
 }
 
-func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
+func getRole(lg *zap.Logger, tx backend.BatchTx, rolename string) *authpb.Role {
 	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(rolename), nil, 0)
 	if len(vs) == 0 {
 		return nil
@@ -1040,7 +968,7 @@ func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
 	role := &authpb.Role{}
 	err := role.Unmarshal(vs[0])
 	if err != nil {
-		plog.Panicf("failed to unmarshal role struct (name: %s): %s", rolename, err)
+		lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 	}
 	return role
 }
@@ -1056,11 +984,7 @@ func getAllRoles(lg *zap.Logger, tx backend.BatchTx) []*authpb.Role {
 		role := &authpb.Role{}
 		err := role.Unmarshal(vs[i])
 		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
-			} else {
-				plog.Panicf("failed to unmarshal role struct: %s", err)
-			}
+			lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 		}
 		roles[i] = role
 	}
@@ -1070,15 +994,11 @@ func getAllRoles(lg *zap.Logger, tx backend.BatchTx) []*authpb.Role {
 func putRole(lg *zap.Logger, tx backend.BatchTx, role *authpb.Role) {
 	b, err := role.Marshal()
 	if err != nil {
-		if lg != nil {
-			lg.Panic(
-				"failed to marshal 'authpb.Role'",
-				zap.String("role-name", string(role.Name)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("failed to marshal role struct (name: %s): %s", role.Name, err)
-		}
+		lg.Panic(
+			"failed to marshal 'authpb.Role'",
+			zap.String("role-name", string(role.Name)),
+			zap.Error(err),
+		)
 	}
 
 	tx.UnsafePut(authRolesBucketName, role.Name, b)
@@ -1095,20 +1015,19 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
-	if bcryptCost < bcrypt.MinCost || bcryptCost > bcrypt.MaxCost {
-		if lg != nil {
-			lg.Warn(
-				"use default bcrypt cost instead of the invalid given cost",
-				zap.Int("min-cost", bcrypt.MinCost),
-				zap.Int("max-cost", bcrypt.MaxCost),
-				zap.Int("default-cost", bcrypt.DefaultCost),
-				zap.Int("given-cost", bcryptCost))
-		} else {
-			plog.Warningf("Use default bcrypt-cost %d instead of the invalid value %d",
-				bcrypt.DefaultCost, bcryptCost)
-		}
+func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 
+	if bcryptCost < bcrypt.MinCost || bcryptCost > bcrypt.MaxCost {
+		lg.Warn(
+			"use default bcrypt cost instead of the invalid given cost",
+			zap.Int("min-cost", bcrypt.MinCost),
+			zap.Int("max-cost", bcrypt.MaxCost),
+			zap.Int("default-cost", bcrypt.DefaultCost),
+			zap.Int("given-cost", bcryptCost),
+		)
 		bcryptCost = bcrypt.DefaultCost
 	}
 
@@ -1131,6 +1050,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
+		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1144,6 +1064,8 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
 	}
+
+	as.setupMetricsReporter()
 
 	tx.Unlock()
 	be.ForceCommit()
@@ -1205,28 +1127,20 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 		// header. The proxy uses etcd client server certificate. If the certificate
 		// has a CommonName we should never use this for authentication.
 		if gw := md["grpcgateway-accept"]; len(gw) > 0 {
-			if as.lg != nil {
-				as.lg.Warn(
-					"ignoring common name in gRPC-gateway proxy request",
-					zap.String("common-name", ai.Username),
-					zap.String("user-name", ai.Username),
-					zap.Uint64("revision", ai.Revision),
-				)
-			} else {
-				plog.Warningf("ignoring common name in gRPC-gateway proxy request %s", ai.Username)
-			}
-			return nil
-		}
-		if as.lg != nil {
-			as.lg.Debug(
-				"found command name",
+			as.lg.Warn(
+				"ignoring common name in gRPC-gateway proxy request",
 				zap.String("common-name", ai.Username),
 				zap.String("user-name", ai.Username),
 				zap.Uint64("revision", ai.Revision),
 			)
-		} else {
-			plog.Debugf("found common name %s", ai.Username)
+			return nil
 		}
+		as.lg.Debug(
+			"found command name",
+			zap.String("common-name", ai.Username),
+			zap.String("user-name", ai.Username),
+			zap.Uint64("revision", ai.Revision),
+		)
 		break
 	}
 	return ai
@@ -1250,11 +1164,7 @@ func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
 	token := ts[0]
 	authInfo, uok := as.authInfoFromToken(ctx, token)
 	if !uok {
-		if as.lg != nil {
-			as.lg.Warn("invalid auth token", zap.String("token", token))
-		} else {
-			plog.Warningf("invalid auth token: %s", token)
-		}
+		as.lg.Warn("invalid auth token", zap.String("token", token))
 		return nil, ErrInvalidAuthToken
 	}
 
@@ -1275,22 +1185,18 @@ func decomposeOpts(lg *zap.Logger, optstr string) (string, map[string]string, er
 
 		if len(pair) != 2 {
 			if lg != nil {
-				lg.Warn("invalid token option", zap.String("option", optstr))
-			} else {
-				plog.Errorf("invalid token specific option: %s", optstr)
+				lg.Error("invalid token option", zap.String("option", optstr))
 			}
 			return "", nil, ErrInvalidAuthOpts
 		}
 
 		if _, ok := typeSpecificOpts[pair[0]]; ok {
 			if lg != nil {
-				lg.Warn(
+				lg.Error(
 					"invalid token option",
 					zap.String("option", optstr),
 					zap.String("duplicate-parameter", pair[0]),
 				)
-			} else {
-				plog.Errorf("invalid token specific option, duplicated parameters (%s): %s", pair[0], optstr)
 			}
 			return "", nil, ErrInvalidAuthOpts
 		}
@@ -1316,8 +1222,6 @@ func NewTokenProvider(
 	case tokenTypeSimple:
 		if lg != nil {
 			lg.Warn("simple token is not cryptographically signed")
-		} else {
-			plog.Warningf("simple token is not cryptographically signed")
 		}
 		return newTokenProviderSimple(lg, indexWaiter), nil
 
@@ -1334,8 +1238,6 @@ func NewTokenProvider(
 				zap.String("type", tokenType),
 				zap.Error(ErrInvalidAuthOpts),
 			)
-		} else {
-			plog.Errorf("unknown token type: %s", tokenType)
 		}
 		return nil, ErrInvalidAuthOpts
 	}
@@ -1351,14 +1253,10 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		ctx1 := context.WithValue(ctx, AuthenticateParamIndex{}, uint64(0))
 		prefix, err := ts.genTokenPrefix()
 		if err != nil {
-			if as.lg != nil {
-				as.lg.Warn(
-					"failed to generate prefix of internally used token",
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("failed to generate prefix of internally used token")
-			}
+			as.lg.Error(
+				"failed to generate prefix of internally used token",
+				zap.Error(err),
+			)
 			return ctx
 		}
 		ctxForAssign = context.WithValue(ctx1, AuthenticateParamSimpleTokenPrefix{}, prefix)
@@ -1369,14 +1267,10 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision())
 	if err != nil {
 		// this must not happen
-		if as.lg != nil {
-			as.lg.Warn(
-				"failed to assign token for lease revoking",
-				zap.Error(err),
-			)
-		} else {
-			plog.Errorf("failed to assign token for lease revoking: %s", err)
-		}
+		as.lg.Error(
+			"failed to assign token for lease revoking",
+			zap.Error(err),
+		)
 		return ctx
 	}
 
@@ -1396,15 +1290,11 @@ func (as *authStore) HasRole(user, role string) bool {
 	tx.Unlock()
 
 	if u == nil {
-		if as.lg != nil {
-			as.lg.Warn(
-				"'has-role' requested for non-existing user",
-				zap.String("user-name", user),
-				zap.String("role-name", role),
-			)
-		} else {
-			plog.Warningf("tried to check user %s has role %s, but user %s doesn't exist", user, role, user)
-		}
+		as.lg.Warn(
+			"'has-role' requested for non-existing user",
+			zap.String("user-name", user),
+			zap.String("role-name", role),
+		)
 		return false
 	}
 
@@ -1418,4 +1308,20 @@ func (as *authStore) HasRole(user, role string) bool {
 
 func (as *authStore) BcryptCost() int {
 	return as.bcryptCost
+}
+
+func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
+	if as.ci != nil {
+		as.ci.UnsafeSave(tx)
+	} else {
+		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
+	}
+}
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
 }

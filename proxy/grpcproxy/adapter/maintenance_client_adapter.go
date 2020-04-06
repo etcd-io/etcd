@@ -52,6 +52,10 @@ func (s *mts2mtc) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest, opts 
 	return s.mts.MoveLeader(ctx, r)
 }
 
+func (s *mts2mtc) Downgrade(ctx context.Context, r *pb.DowngradeRequest, opts ...grpc.CallOption) (*pb.DowngradeResponse, error) {
+	return s.mts.Downgrade(ctx, r)
+}
+
 func (s *mts2mtc) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (pb.Maintenance_SnapshotClient, error) {
 	cs := newPipeStream(ctx, func(ss chanServerStream) error {
 		return s.mts.Snapshot(in, &ss2scServerStream{ss})

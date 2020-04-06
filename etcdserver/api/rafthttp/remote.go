@@ -65,8 +65,6 @@ func (g *remote) send(m raftpb.Message) {
 					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
-			} else {
-				plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
 			}
 		} else {
 			if g.lg != nil {
@@ -78,8 +76,6 @@ func (g *remote) send(m raftpb.Message) {
 					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
-			} else {
-				plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 			}
 		}
 		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
