@@ -30,11 +30,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -56,11 +52,7 @@ func TestWatch(t *testing.T) {
 
 func TestNewWatcherCancel(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -230,11 +222,7 @@ func TestSyncWatchers(t *testing.T) {
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -271,11 +259,7 @@ func TestWatchCompacted(t *testing.T) {
 
 func TestWatchFutureRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -316,11 +300,7 @@ func TestWatchRestore(t *testing.T) {
 	test := func(delay time.Duration) func(t *testing.T) {
 		return func(t *testing.T) {
 			b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-			s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-			s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+			s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 			defer cleanup(s, b, tmpPath)
 
 			testKey := []byte("foo")
@@ -328,11 +308,7 @@ func TestWatchRestore(t *testing.T) {
 			rev := s.Put(testKey, testValue, lease.NoLease)
 
 			newBackend, newPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-			newStore := newWatchableStore(newBackend, &lease.FakeLessor{}, nil)
-=======
-			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+			newStore := newWatchableStore(newBackend, &lease.FakeLessor{}, nil, nil)
 			defer cleanup(newStore, newBackend, newPath)
 
 			w := newStore.NewWatchStream()
@@ -370,19 +346,11 @@ func TestWatchRestore(t *testing.T) {
 //   5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	b1, b1Path := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s1 := newWatchableStore(b1, &lease.FakeLessor{}, nil)
+	s1 := newWatchableStore(b1, &lease.FakeLessor{}, nil, nil)
 	defer cleanup(s1, b1, b1Path)
 
 	b2, b2Path := backend.NewDefaultTmpBackend()
-	s2 := newWatchableStore(b2, &lease.FakeLessor{}, nil)
-=======
-	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, nil, nil, StoreConfig{})
-	defer cleanup(s1, b1, b1Path)
-
-	b2, b2Path := backend.NewDefaultTmpBackend()
-	s2 := newWatchableStore(zap.NewExample(), b2, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s2 := newWatchableStore(b2, &lease.FakeLessor{}, nil, nil)
 	defer cleanup(s2, b2, b2Path)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
@@ -429,11 +397,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	oldMaxRevs := watchBatchMaxRevs
 	defer func() {
@@ -567,11 +531,7 @@ func TestWatchVictims(t *testing.T) {
 	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -649,11 +609,7 @@ func TestWatchVictims(t *testing.T) {
 // canceling its watches.
 func TestStressWatchCancelClose(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
-=======
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()

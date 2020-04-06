@@ -109,22 +109,16 @@ func warnOfExpensiveRequest(now time.Time, reqStringer fmt.Stringer, respMsg pro
 	warnOfExpensiveGenericRequest(now, reqStringer, "", resp, err)
 }
 
-func warnOfFailedRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
+func warnOfFailedRequest(now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
 	var resp string
 	if !isNil(respMsg) {
 		resp = fmt.Sprintf("size:%d", proto.Size(respMsg))
 	}
 	d := time.Since(now)
-	plog.Warningf(
-		"failed to apply request",
-		zap.Duration("took", d),
-		zap.String("request", reqStringer.String()),
-		zap.String("response", resp),
-		zap.Error(err),
-	)
+	plog.Warningf("failed to apply request,took %v,request %s,resp %s,err is %v", d, reqStringer.String(), resp, err)
 }
 
-func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
+func warnOfExpensiveReadOnlyTxnRequest(now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
 	reqStringer := pb.NewLoggableTxnRequest(r)
 	var resp string
 	if !isNil(txnResponse) {

@@ -24,11 +24,7 @@ import (
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-<<<<<<< HEAD
-	watchable := newWatchableStore(be, &lease.FakeLessor{}, nil)
-=======
-	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
->>>>>>> *: fix auth revision corruption bug
+	watchable := newWatchableStore(be, &lease.FakeLessor{}, nil, nil)
 
 	defer cleanup(watchable, be, tmpPath)
 

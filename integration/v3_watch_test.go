@@ -781,9 +781,11 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 
 type eventsSortByKey []*mvccpb.Event
 
-func (evs eventsSortByKey) Len() int           { return len(evs) }
-func (evs eventsSortByKey) Swap(i, j int)      { evs[i], evs[j] = evs[j], evs[i] }
-func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0 }
+func (evs eventsSortByKey) Len() int      { return len(evs) }
+func (evs eventsSortByKey) Swap(i, j int) { evs[i], evs[j] = evs[j], evs[i] }
+func (evs eventsSortByKey) Less(i, j int) bool {
+	return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0
+}
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	defer testutil.AfterTest(t)

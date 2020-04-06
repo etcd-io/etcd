@@ -15,10 +15,10 @@
 package mvcc
 
 import (
-	"go.etcd.io/etcd/auth"
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -68,11 +68,11 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, as, ig, cfg)
+func New(b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newWatchableStore(b, le, as, ig)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
+func newWatchableStore(b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter) *watchableStore {
 	s := &watchableStore{
 		store:    NewStore(b, le, ig),
 		victimc:  make(chan struct{}, 1),

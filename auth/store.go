@@ -209,7 +209,6 @@ type authStore struct {
 
 	tokenProvider       TokenProvider
 	syncConsistentIndex saveConsistentIndexFunc
-	bcryptCost          int // the algorithm cost / strength for hashing auth passwords
 }
 
 func (as *authStore) SetConsistentIndexSyncer(syncer saveConsistentIndexFunc) {
@@ -767,11 +766,11 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	}
 	rev := as.Revision()
 	if revision < rev {
-		as.lg.Warn("request auth revision is less than current node auth revision",
-			zap.Uint64("current node auth revision", rev),
-			zap.Uint64("request auth revision", revision),
-			zap.ByteString("request key", key),
-			zap.Error(ErrAuthOldRevision))
+		plog.Warningf("request auth revision is less than current node auth revision,"+
+			"current node auth revision is %d,"+
+			"request auth revision is %d,"+
+			"request key is %s, "+
+			"err is %v", rev, revision, key, ErrAuthOldRevision)
 		return ErrAuthOldRevision
 	}
 
