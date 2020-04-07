@@ -8,7 +8,8 @@ MiB
 ResourceExhausted
 RPC
 RPCs
-
+parsedTarget
+SRV
 WithRequireLeader
 InfoLevel
 args
@@ -29,6 +30,7 @@ etcd
 gRPC
 goroutine
 goroutines
+hasleader
 healthcheck
 hostname
 iff
@@ -44,6 +46,7 @@ mutex
 prefetching
 protobuf
 prometheus
+racey
 rafthttp
 repin
 rpc
@@ -94,6 +97,7 @@ jitter
 WithBackoff
 BackoffLinearWithJitter
 jitter
+WithDialer
 WithMax
 ServerStreams
 BidiStreams
@@ -104,3 +108,5 @@ PermitWithoutStream
 __lostleader
 ErrConnClosing
 unfreed
+grpcAddr
+clientURLs

@@ -17,6 +17,7 @@ package raft
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	pb "go.etcd.io/etcd/raft/raftpb"
 )
@@ -24,13 +25,6 @@ import (
 func (st StateType) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", st.String())), nil
 }
-
-// uint64Slice implements sort interface
-type uint64Slice []uint64
-
-func (p uint64Slice) Len() int           { return len(p) }
-func (p uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func min(a, b uint64) uint64 {
 	if a > b {
@@ -67,6 +61,69 @@ func voteRespMsgType(msgt pb.MessageType) pb.MessageType {
 	}
 }
 
+func DescribeHardState(hs pb.HardState) string {
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "Term:%d", hs.Term)
+	if hs.Vote != 0 {
+		fmt.Fprintf(&buf, " Vote:%d", hs.Vote)
+	}
+	fmt.Fprintf(&buf, " Commit:%d", hs.Commit)
+	return buf.String()
+}
+
+func DescribeSoftState(ss SoftState) string {
+	return fmt.Sprintf("Lead:%d State:%s", ss.Lead, ss.RaftState)
+}
+
+func DescribeConfState(state pb.ConfState) string {
+	return fmt.Sprintf(
+		"Voters:%v VotersOutgoing:%v Learners:%v LearnersNext:%v AutoLeave:%v",
+		state.Voters, state.VotersOutgoing, state.Learners, state.LearnersNext, state.AutoLeave,
+	)
+}
+
+func DescribeSnapshot(snap pb.Snapshot) string {
+	m := snap.Metadata
+	return fmt.Sprintf("Index:%d Term:%d ConfState:%s", m.Index, m.Term, DescribeConfState(m.ConfState))
+}
+
+func DescribeReady(rd Ready, f EntryFormatter) string {
+	var buf strings.Builder
+	if rd.SoftState != nil {
+		fmt.Fprint(&buf, DescribeSoftState(*rd.SoftState))
+		buf.WriteByte('\n')
+	}
+	if !IsEmptyHardState(rd.HardState) {
+		fmt.Fprintf(&buf, "HardState %s", DescribeHardState(rd.HardState))
+		buf.WriteByte('\n')
+	}
+	if len(rd.ReadStates) > 0 {
+		fmt.Fprintf(&buf, "ReadStates %v\n", rd.ReadStates)
+	}
+	if len(rd.Entries) > 0 {
+		buf.WriteString("Entries:\n")
+		fmt.Fprint(&buf, DescribeEntries(rd.Entries, f))
+	}
+	if !IsEmptySnap(rd.Snapshot) {
+		fmt.Fprintf(&buf, "Snapshot %s\n", DescribeSnapshot(rd.Snapshot))
+	}
+	if len(rd.CommittedEntries) > 0 {
+		buf.WriteString("CommittedEntries:\n")
+		fmt.Fprint(&buf, DescribeEntries(rd.CommittedEntries, f))
+	}
+	if len(rd.Messages) > 0 {
+		buf.WriteString("Messages:\n")
+		for _, msg := range rd.Messages {
+			fmt.Fprint(&buf, DescribeMessage(msg, f))
+			buf.WriteByte('\n')
+		}
+	}
+	if buf.Len() > 0 {
+		return fmt.Sprintf("Ready MustSync=%t:\n%s", rd.MustSync, buf.String())
+	}
+	return "<empty Ready>"
+}
+
 // EntryFormatter can be implemented by the application to provide human-readable formatting
 // of entry data. Nil is a valid EntryFormatter and will use a default format.
 type EntryFormatter func([]byte) string
@@ -93,7 +150,7 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 		fmt.Fprintf(&buf, "]")
 	}
 	if !IsEmptySnap(m.Snapshot) {
-		fmt.Fprintf(&buf, " Snapshot:%v", m.Snapshot)
+		fmt.Fprintf(&buf, " Snapshot: %s", DescribeSnapshot(m.Snapshot))
 	}
 	return buf.String()
 }
@@ -107,13 +164,39 @@ func PayloadSize(e pb.Entry) int {
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {
-	var formatted string
-	if e.Type == pb.EntryNormal && f != nil {
-		formatted = f(e.Data)
-	} else {
-		formatted = fmt.Sprintf("%q", e.Data)
+	if f == nil {
+		f = func(data []byte) string { return fmt.Sprintf("%q", data) }
 	}
-	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
+
+	formatConfChange := func(cc pb.ConfChangeI) string {
+		// TODO(tbg): give the EntryFormatter a type argument so that it gets
+		// a chance to expose the Context.
+		return pb.ConfChangesToString(cc.AsV2().Changes)
+	}
+
+	var formatted string
+	switch e.Type {
+	case pb.EntryNormal:
+		formatted = f(e.Data)
+	case pb.EntryConfChange:
+		var cc pb.ConfChange
+		if err := cc.Unmarshal(e.Data); err != nil {
+			formatted = err.Error()
+		} else {
+			formatted = formatConfChange(cc)
+		}
+	case pb.EntryConfChangeV2:
+		var cc pb.ConfChangeV2
+		if err := cc.Unmarshal(e.Data); err != nil {
+			formatted = err.Error()
+		} else {
+			formatted = formatConfChange(cc)
+		}
+	}
+	if formatted != "" {
+		formatted = " " + formatted
+	}
+	return fmt.Sprintf("%d/%d %s%s", e.Term, e.Index, e.Type, formatted)
 }
 
 // DescribeEntries calls DescribeEntry for each Entry, adding a newline to
@@ -139,4 +222,12 @@ func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
 		}
 	}
 	return ents[:limit]
+}
+
+func assertConfStatesEquivalent(l Logger, cs1, cs2 pb.ConfState) {
+	err := cs1.Equivalent(cs2)
+	if err == nil {
+		return
+	}
+	l.Panic(err)
 }

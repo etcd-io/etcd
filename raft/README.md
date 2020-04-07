@@ -3,9 +3,9 @@
 Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
 For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
-(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+(https://raft.github.io/raft.pdf) by Diego Ongaro and John Ousterhout.
 
-This Raft library is stable and feature complete. As of 2016, it is **the most widely used** Raft library in production, serving tens of thousands clusters each day. It powers distributed systems such as etcd, Kubernetes, Docker Swarm, Cloud Foundry Diego, CockroachDB, TiDB, Project Calico, Flannel, and more.
+This Raft library is stable and feature complete. As of 2016, it is **the most widely used** Raft library in production, serving tens of thousands clusters each day. It powers distributed systems such as etcd, Kubernetes, Docker Swarm, Cloud Foundry Diego, CockroachDB, TiDB, Project Calico, Flannel, Hyperledger and more.
 
 Most Raft implementations have a monolithic design, including storage handling, messaging serialization, and network transport. This library instead follows a minimalistic design philosophy by only implementing the core raft algorithm. This minimalism buys flexibility, determinism, and performance.
 
@@ -59,7 +59,7 @@ The primary object in raft is a Node. Either start a Node from scratch using raf
 To start a three-node cluster
 ```go
   storage := raft.NewMemoryStorage()
-  c := &Config{
+  c := &raft.Config{
     ID:              0x01,
     ElectionTick:    10,
     HeartbeatTick:   1,
@@ -95,7 +95,7 @@ To restart a node from previous state:
   storage.SetHardState(state)
   storage.Append(entries)
 
-  c := &Config{
+  c := &raft.Config{
     ID:              0x01,
     ElectionTick:    10,
     HeartbeatTick:   1,
@@ -190,7 +190,7 @@ may be reused. Node IDs must be non-zero.
 
 ## Implementation notes
 
-This implementation is up to date with the final Raft thesis (https://ramcloud.stanford.edu/~ongaro/thesis.pdf), although this implementation of the membership change protocol differs somewhat from that described in chapter 4. The key invariant that membership changes happen one node at a time is preserved, but in our implementation the membership change takes effect when its entry is applied, not when it is added to the log (so the entry is committed under the old membership instead of the new). This is equivalent in terms of safety, since the old and new configurations are guaranteed to overlap.
+This implementation is up to date with the final Raft thesis (https://github.com/ongardie/dissertation/blob/master/stanford.pdf), although this implementation of the membership change protocol differs somewhat from that described in chapter 4. The key invariant that membership changes happen one node at a time is preserved, but in our implementation the membership change takes effect when its entry is applied, not when it is added to the log (so the entry is committed under the old membership instead of the new). This is equivalent in terms of safety, since the old and new configurations are guaranteed to overlap.
 
 To ensure there is no attempt to commit two membership changes at once by matching log positions (which would be unsafe since they should have different quorum requirements), any proposed membership change is simply disallowed while any uncommitted change appears in the leader's log.
 

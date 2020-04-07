@@ -40,6 +40,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const maxLearners = 1
+
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
 	lg *zap.Logger
@@ -59,6 +61,17 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 }
 
+// ConfigChangeContext represents a context for confChange.
+type ConfigChangeContext struct {
+	Member
+	// IsPromote indicates if the config change is for promoting a learner member.
+	// This flag is needed because both adding a new member and promoting a learner member
+	// uses the same config change type 'ConfChangeAddNode'.
+	IsPromote bool `json:"isPromote"`
+}
+
+// NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
+// cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
 	c := NewCluster(lg, token)
 	for name, urls := range urlsmap {
@@ -85,6 +98,9 @@ func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*M
 }
 
 func NewCluster(lg *zap.Logger, token string) *RaftCluster {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	return &RaftCluster{
 		lg:      lg,
 		token:   token,
@@ -112,6 +128,19 @@ func (c *RaftCluster) Member(id types.ID) *Member {
 	return c.members[id].Clone()
 }
 
+func (c *RaftCluster) VotingMembers() []*Member {
+	c.Lock()
+	defer c.Unlock()
+	var ms MembersByID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ms = append(ms, m.Clone())
+		}
+	}
+	sort.Sort(ms)
+	return []*Member(ms)
+}
+
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
 func (c *RaftCluster) MemberByName(name string) *Member {
@@ -121,11 +150,7 @@ func (c *RaftCluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				if c.lg != nil {
-					c.lg.Panic("two member with same name found", zap.String("name", name))
-				} else {
-					plog.Panicf("two members with the given name %q exist", name)
-				}
+				c.lg.Panic("two member with same name found", zap.String("name", name))
 			}
 			memb = m
 		}
@@ -221,32 +246,29 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
-	c.version = clusterVersionFromStore(c.lg, c.v2store)
+	if c.be != nil {
+		c.version = clusterVersionFromBackend(c.lg, c.be)
+	} else {
+		c.version = clusterVersionFromStore(c.lg, c.v2store)
+	}
+
 	mustDetectDowngrade(c.lg, c.version)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
-		if c.lg != nil {
-			c.lg.Info(
-				"recovered/added member from store",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("recovered-remote-peer-id", m.ID.String()),
-				zap.Strings("recovered-remote-peer-urls", m.PeerURLs),
-			)
-		} else {
-			plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.cid)
-		}
+		c.lg.Info(
+			"recovered/added member from store",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("recovered-remote-peer-id", m.ID.String()),
+			zap.Strings("recovered-remote-peer-urls", m.PeerURLs),
+		)
 	}
 	if c.version != nil {
-		if c.lg != nil {
-			c.lg.Info(
-				"set cluster version from store",
-				zap.String("cluster-version", version.Cluster(c.version.String())),
-			)
-		} else {
-			plog.Infof("set the cluster version to %v from store", version.Cluster(c.version.String()))
-		}
+		c.lg.Info(
+			"set cluster version from store",
+			zap.String("cluster-version", version.Cluster(c.version.String())),
+		)
 	}
 }
 
@@ -259,30 +281,48 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
-	case raftpb.ConfChangeAddNode:
-		if members[id] != nil {
-			return ErrIDExists
-		}
-		urls := make(map[string]bool)
-		for _, m := range members {
-			for _, u := range m.PeerURLs {
-				urls[u] = true
-			}
-		}
-		m := new(Member)
-		if err := json.Unmarshal(cc.Context, m); err != nil {
-			if c.lg != nil {
-				c.lg.Panic("failed to unmarshal member", zap.Error(err))
-			} else {
-				plog.Panicf("unmarshal member should never fail: %v", err)
-			}
-		}
-		for _, u := range m.PeerURLs {
-			if urls[u] {
-				return ErrPeerURLexists
-			}
+	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
+		confChangeContext := new(ConfigChangeContext)
+		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
+			c.lg.Panic("failed to unmarshal confChangeContext", zap.Error(err))
 		}
 
+		if confChangeContext.IsPromote { // promoting a learner member to voting member
+			if members[id] == nil {
+				return ErrIDNotFound
+			}
+			if !members[id].IsLearner {
+				return ErrMemberNotLearner
+			}
+		} else { // adding a new member
+			if members[id] != nil {
+				return ErrIDExists
+			}
+
+			urls := make(map[string]bool)
+			for _, m := range members {
+				for _, u := range m.PeerURLs {
+					urls[u] = true
+				}
+			}
+			for _, u := range confChangeContext.Member.PeerURLs {
+				if urls[u] {
+					return ErrPeerURLexists
+				}
+			}
+
+			if confChangeContext.Member.IsLearner { // the new member is a learner
+				numLearners := 0
+				for _, m := range members {
+					if m.IsLearner {
+						numLearners++
+					}
+				}
+				if numLearners+1 > maxLearners {
+					return ErrTooManyLearners
+				}
+			}
+		}
 	case raftpb.ConfChangeRemoveNode:
 		if members[id] == nil {
 			return ErrIDNotFound
@@ -303,11 +343,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			if c.lg != nil {
-				c.lg.Panic("failed to unmarshal member", zap.Error(err))
-			} else {
-				plog.Panicf("unmarshal member should never fail: %v", err)
-			}
+			c.lg.Panic("failed to unmarshal member", zap.Error(err))
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -316,11 +352,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 
 	default:
-		if c.lg != nil {
-			c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))
-		} else {
-			plog.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
-		}
+		c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))
 	}
 	return nil
 }
@@ -332,25 +364,21 @@ func (c *RaftCluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
-		mustSaveMemberToStore(c.v2store, m)
+		mustSaveMemberToStore(c.lg, c.v2store, m)
 	}
 	if c.be != nil {
-		mustSaveMemberToBackend(c.be, m)
+		mustSaveMemberToBackend(c.lg, c.be, m)
 	}
 
 	c.members[m.ID] = m
 
-	if c.lg != nil {
-		c.lg.Info(
-			"added member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("added-peer-id", m.ID.String()),
-			zap.Strings("added-peer-peer-urls", m.PeerURLs),
-		)
-	} else {
-		plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.cid)
-	}
+	c.lg.Info(
+		"added member",
+		zap.String("cluster-id", c.cid.String()),
+		zap.String("local-member-id", c.localID.String()),
+		zap.String("added-peer-id", m.ID.String()),
+		zap.Strings("added-peer-peer-urls", m.PeerURLs),
+	)
 }
 
 // RemoveMember removes a member from the store.
@@ -359,7 +387,7 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
-		mustDeleteMemberFromStore(c.v2store, id)
+		mustDeleteMemberFromStore(c.lg, c.v2store, id)
 	}
 	if c.be != nil {
 		mustDeleteMemberFromBackend(c.be, id)
@@ -369,25 +397,21 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	delete(c.members, id)
 	c.removed[id] = true
 
-	if c.lg != nil {
-		if ok {
-			c.lg.Info(
-				"removed member",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("removed-remote-peer-id", id.String()),
-				zap.Strings("removed-remote-peer-urls", m.PeerURLs),
-			)
-		} else {
-			c.lg.Warn(
-				"skipped removing already removed member",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("removed-remote-peer-id", id.String()),
-			)
-		}
+	if ok {
+		c.lg.Info(
+			"removed member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("removed-remote-peer-id", id.String()),
+			zap.Strings("removed-remote-peer-urls", m.PeerURLs),
+		)
 	} else {
-		plog.Infof("removed member %s from cluster %s", id, c.cid)
+		c.lg.Warn(
+			"skipped removing already removed member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("removed-remote-peer-id", id.String()),
+		)
 	}
 }
 
@@ -398,38 +422,50 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
 		if c.v2store != nil {
-			mustUpdateMemberAttrInStore(c.v2store, m)
+			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
 		}
 		if c.be != nil {
-			mustSaveMemberToBackend(c.be, m)
+			mustSaveMemberToBackend(c.lg, c.be, m)
 		}
 		return
 	}
 
 	_, ok := c.removed[id]
 	if !ok {
-		if c.lg != nil {
-			c.lg.Panic(
-				"failed to update; member unknown",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("unknown-remote-peer-id", id.String()),
-			)
-		} else {
-			plog.Panicf("error updating attributes of unknown member %s", id)
-		}
-	}
-
-	if c.lg != nil {
-		c.lg.Warn(
-			"skipped attributes update of removed member",
+		c.lg.Panic(
+			"failed to update; member unknown",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
-			zap.String("updated-peer-id", id.String()),
+			zap.String("unknown-remote-peer-id", id.String()),
 		)
-	} else {
-		plog.Warningf("skipped updating attributes of removed member %s", id)
 	}
+
+	c.lg.Warn(
+		"skipped attributes update of removed member",
+		zap.String("cluster-id", c.cid.String()),
+		zap.String("local-member-id", c.localID.String()),
+		zap.String("updated-peer-id", id.String()),
+	)
+}
+
+// PromoteMember marks the member's IsLearner RaftAttributes to false.
+func (c *RaftCluster) PromoteMember(id types.ID) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.members[id].RaftAttributes.IsLearner = false
+	if c.v2store != nil {
+		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
+	}
+	if c.be != nil {
+		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
+	}
+
+	c.lg.Info(
+		"promote member",
+		zap.String("cluster-id", c.cid.String()),
+		zap.String("local-member-id", c.localID.String()),
+	)
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
@@ -438,23 +474,19 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 
 	c.members[id].RaftAttributes = raftAttr
 	if c.v2store != nil {
-		mustUpdateMemberInStore(c.v2store, c.members[id])
+		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
 	if c.be != nil {
-		mustSaveMemberToBackend(c.be, c.members[id])
+		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
 	}
 
-	if c.lg != nil {
-		c.lg.Info(
-			"updated member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("updated-remote-peer-id", id.String()),
-			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
-		)
-	} else {
-		plog.Noticef("updated member %s %v in cluster %s", id, raftAttr.PeerURLs, c.cid)
-	}
+	c.lg.Info(
+		"updated member",
+		zap.String("cluster-id", c.cid.String()),
+		zap.String("local-member-id", c.localID.String()),
+		zap.String("updated-remote-peer-id", id.String()),
+		zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+	)
 }
 
 func (c *RaftCluster) Version() *semver.Version {
@@ -470,46 +502,42 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
-		if c.lg != nil {
-			c.lg.Info(
-				"updated cluster version",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("from", version.Cluster(c.version.String())),
-				zap.String("from", version.Cluster(ver.String())),
-			)
-		} else {
-			plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
-		}
+		c.lg.Info(
+			"updated cluster version",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("from", version.Cluster(c.version.String())),
+			zap.String("from", version.Cluster(ver.String())),
+		)
 	} else {
-		if c.lg != nil {
-			c.lg.Info(
-				"set initial cluster version",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("cluster-version", version.Cluster(ver.String())),
-			)
-		} else {
-			plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
-		}
+		c.lg.Info(
+			"set initial cluster version",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("cluster-version", version.Cluster(ver.String())),
+		)
 	}
+	oldVer := c.version
 	c.version = ver
 	mustDetectDowngrade(c.lg, c.version)
 	if c.v2store != nil {
-		mustSaveClusterVersionToStore(c.v2store, ver)
+		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
-	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": ver.String()}).Set(1)
+	if oldVer != nil {
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
+	}
+	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
 	onSet(c.lg, ver)
 }
 
-func (c *RaftCluster) IsReadyToAddNewMember() bool {
+func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 	nmembers := 1
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if member.IsStarted() {
 			nstarted++
 		}
@@ -519,38 +547,30 @@ func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
 		// https://github.com/etcd-io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
-		if c.lg != nil {
-			c.lg.Debug("number of started member is 1; can accept add member request")
-		} else {
-			plog.Debugf("The number of started member is 1. This cluster can accept add member request.")
-		}
+		c.lg.Debug("number of started member is 1; can accept add member request")
 		return true
 	}
 
 	nquorum := nmembers/2 + 1
 	if nstarted < nquorum {
-		if c.lg != nil {
-			c.lg.Warn(
-				"rejecting member add; started member will be less than quorum",
-				zap.Int("number-of-started-member", nstarted),
-				zap.Int("quorum", nquorum),
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-			)
-		} else {
-			plog.Warningf("Reject add member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
-		}
+		c.lg.Warn(
+			"rejecting member add; started member will be less than quorum",
+			zap.Int("number-of-started-member", nstarted),
+			zap.Int("quorum", nquorum),
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
 		return false
 	}
 
 	return true
 }
 
-func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	nmembers := 0
 	nstarted := 0
 
-	for _, member := range c.members {
+	for _, member := range c.VotingMembers() {
 		if uint64(member.ID) == id {
 			continue
 		}
@@ -563,17 +583,39 @@ func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 
 	nquorum := nmembers/2 + 1
 	if nstarted < nquorum {
-		if c.lg != nil {
-			c.lg.Warn(
-				"rejecting member remove; started member will be less than quorum",
-				zap.Int("number-of-started-member", nstarted),
-				zap.Int("quorum", nquorum),
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-			)
-		} else {
-			plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		c.lg.Warn(
+			"rejecting member remove; started member will be less than quorum",
+			zap.Int("number-of-started-member", nstarted),
+			zap.Int("quorum", nquorum),
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+		return false
+	}
+
+	return true
+}
+
+func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
+	nmembers := 1 // We count the learner to be promoted for the future quorum
+	nstarted := 1 // and we also count it as started.
+
+	for _, member := range c.VotingMembers() {
+		if member.IsStarted() {
+			nstarted++
 		}
+		nmembers++
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		c.lg.Warn(
+			"rejecting member promote; started member will be less than quorum",
+			zap.Int("number-of-started-member", nstarted),
+			zap.Int("quorum", nquorum),
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
 		return false
 	}
 
@@ -588,21 +630,13 @@ func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, m
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		if lg != nil {
-			lg.Panic("failed to get members from store", zap.String("path", StoreMembersPrefix), zap.Error(err))
-		} else {
-			plog.Panicf("get storeMembers should never fail: %v", err)
-		}
+		lg.Panic("failed to get members from store", zap.String("path", StoreMembersPrefix), zap.Error(err))
 	}
 	for _, n := range e.Node.Nodes {
 		var m *Member
-		m, err = nodeToMember(n)
+		m, err = nodeToMember(lg, n)
 		if err != nil {
-			if lg != nil {
-				lg.Panic("failed to nodeToMember", zap.Error(err))
-			} else {
-				plog.Panicf("nodeToMember should never fail: %v", err)
-			}
+			lg.Panic("failed to nodeToMember", zap.Error(err))
 		}
 		members[m.ID] = m
 	}
@@ -612,18 +646,14 @@ func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, m
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		if lg != nil {
-			lg.Panic(
-				"failed to get removed members from store",
-				zap.String("path", storeRemovedMembersPrefix),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("get storeRemovedMembers should never fail: %v", err)
-		}
+		lg.Panic(
+			"failed to get removed members from store",
+			zap.String("path", storeRemovedMembersPrefix),
+			zap.Error(err),
+		)
 	}
 	for _, n := range e.Node.Nodes {
-		removed[MustParseMemberIDFromKey(n.Key)] = true
+		removed[MustParseMemberIDFromKey(lg, n.Key)] = true
 	}
 	return members, removed
 }
@@ -634,17 +664,31 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 		if isKeyNotFound(err) {
 			return nil
 		}
-		if lg != nil {
-			lg.Panic(
-				"failed to get cluster version from store",
-				zap.String("path", path.Join(storePrefix, "version")),
-				zap.Error(err),
-			)
-		} else {
-			plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
-		}
+		lg.Panic(
+			"failed to get cluster version from store",
+			zap.String("path", path.Join(storePrefix, "version")),
+			zap.Error(err),
+		)
 	}
 	return semver.Must(semver.NewVersion(*e.Node.Value))
+}
+
+func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
+	ckey := backendClusterVersionKey()
+	tx := be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
+	keys, vals := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
+	if len(keys) == 0 {
+		return nil
+	}
+	if len(keys) != 1 {
+		lg.Panic(
+			"unexpected number of keys when getting cluster version from backend",
+			zap.Int("number-of-key", len(keys)),
+		)
+	}
+	return semver.Must(semver.NewVersion(string(vals[0])))
 }
 
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
@@ -657,16 +701,21 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	if len(ems) != len(lms) {
 		return fmt.Errorf("member count is unequal")
 	}
-	sort.Sort(MembersByPeerURLs(ems))
-	sort.Sort(MembersByPeerURLs(lms))
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 	for i := range ems {
-		if ok, err := netutil.URLStringsEqual(ctx, lg, ems[i].PeerURLs, lms[i].PeerURLs); !ok {
-			return fmt.Errorf("unmatched member while checking PeerURLs (%v)", err)
+		var err error
+		ok := false
+		for j := range lms {
+			if ok, err = netutil.URLStringsEqual(ctx, lg, ems[i].PeerURLs, lms[j].PeerURLs); ok {
+				lms[j].ID = ems[i].ID
+				break
+			}
 		}
-		lms[i].ID = ems[i].ID
+		if !ok {
+			return fmt.Errorf("PeerURLs: no match found for existing member (%v, %v), last resolver error (%v)", ems[i].ID, ems[i].PeerURLs, err)
+		}
 	}
 	local.members = make(map[types.ID]*Member)
 	for _, m := range lms {
@@ -680,14 +729,47 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
-		if lg != nil {
-			lg.Fatal(
-				"invalid downgrade; server version is lower than determined cluster version",
-				zap.String("current-server-version", version.Version),
-				zap.String("determined-cluster-version", version.Cluster(cv.String())),
-			)
-		} else {
-			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		lg.Fatal(
+			"invalid downgrade; server version is lower than determined cluster version",
+			zap.String("current-server-version", version.Version),
+			zap.String("determined-cluster-version", version.Cluster(cv.String())),
+		)
+	}
+}
+
+// IsLocalMemberLearner returns if the local member is raft learner
+func (c *RaftCluster) IsLocalMemberLearner() bool {
+	c.Lock()
+	defer c.Unlock()
+	localMember, ok := c.members[c.localID]
+	if !ok {
+		c.lg.Panic(
+			"failed to find local ID in cluster members",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	}
+	return localMember.IsLearner
+}
+
+// IsMemberExist returns if the member with the given id exists in cluster.
+func (c *RaftCluster) IsMemberExist(id types.ID) bool {
+	c.Lock()
+	defer c.Unlock()
+	_, ok := c.members[id]
+	return ok
+}
+
+// VotingMemberIDs returns the ID of voting members in cluster.
+func (c *RaftCluster) VotingMemberIDs() []types.ID {
+	c.Lock()
+	defer c.Unlock()
+	var ids []types.ID
+	for _, m := range c.members {
+		if !m.IsLearner {
+			ids = append(ids, m.ID)
 		}
 	}
+	sort.Sort(types.IDSlice(ids))
+	return ids
 }

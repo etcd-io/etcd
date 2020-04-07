@@ -23,8 +23,9 @@ import (
 
 	v3rpc "go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -47,6 +48,8 @@ type Watcher interface {
 	// through the returned channel. If revisions waiting to be sent over the
 	// watch are compacted, then the watch will be canceled by the server, the
 	// client will post a compacted error watch response, and the channel will close.
+	// If the requested revision is 0 or unspecified, the returned channel will
+	// return watch events that happen after the server receives the watch request.
 	// If the context "ctx" is canceled or timed out, returned "WatchChan" is closed,
 	// and "WatchResponse" from this closed channel has zero events and nil "Err()".
 	// The context "ctx" MUST be canceled, as soon as watcher is no longer being used,
@@ -140,6 +143,7 @@ type watcher struct {
 
 	// streams holds all the active grpc streams keyed by ctx value.
 	streams map[string]*watchGrpcStream
+	lg      *zap.Logger
 }
 
 // watchGrpcStream tracks all watch resources attached to a single grpc stream.
@@ -242,6 +246,7 @@ func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 	}
 	if c != nil {
 		w.callOpts = c.callOpts
+		w.lg = c.lg
 	}
 	return w
 }
@@ -371,6 +376,10 @@ func (w *watcher) Close() (err error) {
 			err = werr
 		}
 	}
+	// Consider context.Canceled as a successful close
+	if err == context.Canceled {
+		err = nil
+	}
 	return err
 }
 
@@ -380,6 +389,7 @@ func (w *watcher) RequestProgress(ctx context.Context) (err error) {
 
 	w.mu.Lock()
 	if w.streams == nil {
+		w.mu.Unlock()
 		return fmt.Errorf("no stream found for context")
 	}
 	wgs := w.streams[ctxKey]
@@ -397,10 +407,7 @@ func (w *watcher) RequestProgress(ctx context.Context) (err error) {
 	case reqc <- pr:
 		return nil
 	case <-ctx.Done():
-		if err == nil {
-			return ctx.Err()
-		}
-		return err
+		return ctx.Err()
 	case <-donec:
 		if wgs.closeErr != nil {
 			return wgs.closeErr
@@ -539,10 +546,14 @@ func (w *watchGrpcStream) run() {
 				w.resuming = append(w.resuming, ws)
 				if len(w.resuming) == 1 {
 					// head of resume queue, can register a new watcher
-					wc.Send(ws.initReq.toPB())
+					if err := wc.Send(ws.initReq.toPB()); err != nil {
+						lg.Warningf("error when sending request: %v", err)
+					}
 				}
 			case *progressRequest:
-				wc.Send(wreq.toPB())
+				if err := wc.Send(wreq.toPB()); err != nil {
+					lg.Warningf("error when sending request: %v", err)
+				}
 			}
 
 		// new events from the watch client
@@ -566,7 +577,9 @@ func (w *watchGrpcStream) run() {
 				}
 
 				if ws := w.nextResume(); ws != nil {
-					wc.Send(ws.initReq.toPB())
+					if err := wc.Send(ws.initReq.toPB()); err != nil {
+						lg.Warningf("error when sending request: %v", err)
+					}
 				}
 
 				// reset for next iteration
@@ -611,7 +624,9 @@ func (w *watchGrpcStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				wc.Send(req)
+				if err := wc.Send(req); err != nil {
+					lg.Warningf("error when sending request: %v", err)
+				}
 			}
 
 		// watch client failed on Recv; spawn another if possible
@@ -624,7 +639,9 @@ func (w *watchGrpcStream) run() {
 				return
 			}
 			if ws := w.nextResume(); ws != nil {
-				wc.Send(ws.initReq.toPB())
+				if err := wc.Send(ws.initReq.toPB()); err != nil {
+					lg.Warningf("error when sending request: %v", err)
+				}
 			}
 			cancelSet = make(map[int64]struct{})
 

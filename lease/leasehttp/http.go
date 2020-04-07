@@ -52,6 +52,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "error reading body", http.StatusBadRequest)

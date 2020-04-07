@@ -15,12 +15,14 @@
 package etcdserver
 
 import (
+	"context"
 	"sync"
 
 	"go.etcd.io/etcd/auth"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/pkg/traceutil"
 )
 
 type authApplierV3 struct {
@@ -61,9 +63,9 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
 	return ret
 }
 
-func (aa *authApplierV3) Put(txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutResponse, error) {
+func (aa *authApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
@@ -71,23 +73,23 @@ func (aa *authApplierV3) Put(txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutRespon
 		// be written by this user. It means the user cannot revoke the
 		// lease so attaching the lease to the newly written key should
 		// be forbidden.
-		return nil, err
+		return nil, nil, err
 	}
 
 	if r.PrevKv {
 		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return aa.applierV3.Put(txn, r)
+	return aa.applierV3.Put(ctx, txn, r)
 }
 
-func (aa *authApplierV3) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (aa *authApplierV3) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
-	return aa.applierV3.Range(txn, r)
+	return aa.applierV3.Range(ctx, txn, r)
 }
 
 func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
@@ -159,11 +161,11 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error
 	return checkTxnReqsPermission(as, ai, rt.Failure)
 }
 
-func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if err := checkTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return aa.applierV3.Txn(rt)
+	return aa.applierV3.Txn(ctx, rt)
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
@@ -213,6 +215,8 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 	case r.AuthEnable != nil:
 		return true
 	case r.AuthDisable != nil:
+		return true
+	case r.AuthStatus != nil:
 		return true
 	case r.AuthUserAdd != nil:
 		return true

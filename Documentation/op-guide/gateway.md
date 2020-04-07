@@ -1,4 +1,6 @@
-# etcd gateway
+---
+title: etcd gateway
+---
 
 ## What is etcd gateway
 

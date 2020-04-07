@@ -25,7 +25,6 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 
-	"github.com/coreos/pkg/capnslog"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -48,8 +47,18 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 			return nil, rpctypes.ErrGRPCNotCapable
 		}
 
+		if s.IsMemberExist(s.ID()) && s.IsLearner() && !isRPCSupportedForLearner(req) {
+			return nil, rpctypes.ErrGPRCNotSupportedForLearner
+		}
+
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
+			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			if len(vs) > 0 {
+				ver = vs[0]
+			}
+			clientRequests.WithLabelValues("unary", ver).Inc()
+
 			if ks := md[rpctypes.MetadataRequireLeaderKey]; len(ks) > 0 && ks[0] == rpctypes.MetadataHasLeader {
 				if s.Leader() == types.ID(raft.None) {
 					return nil, rpctypes.ErrGRPCNoLeader
@@ -66,8 +75,7 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
-		if (lg != nil && lg.Core().Enabled(zap.DebugLevel)) || // using zap logger and debug level is enabled
-			(lg == nil && plog.LevelAt(capnslog.DEBUG)) { // or, using capnslog and debug level is enabled
+		if lg != nil && lg.Core().Enabled(zap.DebugLevel) { // only acquire stats if debug level is enabled
 			defer logUnaryRequestStats(ctx, lg, info, startTime, req, resp)
 		}
 		return resp, err
@@ -155,31 +163,17 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 
 func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
 	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
-	if lg == nil {
-		plog.Debugf("start time = %v, "+
-			"time spent = %v, "+
-			"remote = %s, "+
-			"response type = %s, "+
-			"request count = %d, "+
-			"request size = %d, "+
-			"response count = %d, "+
-			"response size = %d, "+
-			"request content = %s",
-			startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent,
-		)
-	} else {
-		lg.Debug("request stats",
-			zap.Time("start time", startTime),
-			zap.Duration("time spent", duration),
-			zap.String("remote", remote),
-			zap.String("response type", responseType),
-			zap.Int64("request count", reqCount),
-			zap.Int("request size", reqSize),
-			zap.Int64("response count", respCount),
-			zap.Int("response size", respSize),
-			zap.String("request content", reqContent),
-		)
-	}
+	lg.Debug("request stats",
+		zap.Time("start time", startTime),
+		zap.Duration("time spent", duration),
+		zap.String("remote", remote),
+		zap.String("response type", responseType),
+		zap.Int64("request count", reqCount),
+		zap.Int("request size", reqSize),
+		zap.Int64("response count", respCount),
+		zap.Int("response size", respSize),
+		zap.String("request content", reqContent),
+	)
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {
@@ -190,8 +184,18 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 			return rpctypes.ErrGRPCNotCapable
 		}
 
+		if s.IsMemberExist(s.ID()) && s.IsLearner() { // learner does not support stream RPC
+			return rpctypes.ErrGPRCNotSupportedForLearner
+		}
+
 		md, ok := metadata.FromIncomingContext(ss.Context())
 		if ok {
+			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			if len(vs) > 0 {
+				ver = vs[0]
+			}
+			clientRequests.WithLabelValues("stream", ver).Inc()
+
 			if ks := md[rpctypes.MetadataRequireLeaderKey]; len(ks) > 0 && ks[0] == rpctypes.MetadataHasLeader {
 				if s.Leader() == types.ID(raft.None) {
 					return rpctypes.ErrGRPCNoLeader
@@ -210,7 +214,6 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 					smap.mu.Unlock()
 					cancel()
 				}()
-
 			}
 		}
 

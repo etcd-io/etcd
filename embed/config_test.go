@@ -24,7 +24,7 @@ import (
 
 	"go.etcd.io/etcd/pkg/transport"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 func TestConfigFileOtherFields(t *testing.T) {
@@ -159,7 +159,6 @@ func TestAutoCompactionModeInvalid(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Debug = false
 	cfg.AutoCompactionMode = "period"
 	err := cfg.Validate()
 	if err == nil {

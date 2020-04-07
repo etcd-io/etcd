@@ -6,11 +6,11 @@
 package unix
 
 const (
-	sizeofPtr      = 0x4
-	sizeofShort    = 0x2
-	sizeofInt      = 0x4
-	sizeofLong     = 0x4
-	sizeofLongLong = 0x8
+	SizeofPtr      = 0x4
+	SizeofShort    = 0x2
+	SizeofInt      = 0x4
+	SizeofLong     = 0x4
+	SizeofLongLong = 0x8
 	PathMax        = 0x3ff
 )
 
@@ -26,11 +26,6 @@ type off int32
 type Mode_t uint32
 
 type Timespec struct {
-	Sec  int32
-	Nsec int32
-}
-
-type StTimespec struct {
 	Sec  int32
 	Nsec int32
 }
@@ -101,9 +96,9 @@ type Stat_t struct {
 	Gid      uint32
 	Rdev     uint32
 	Size     int32
-	Atim     StTimespec
-	Mtim     StTimespec
-	Ctim     StTimespec
+	Atim     Timespec
+	Mtim     Timespec
+	Ctim     Timespec
 	Blksize  int32
 	Blocks   int32
 	Vfstype  int32
@@ -146,6 +141,17 @@ type RawSockaddrUnix struct {
 	Len    uint8
 	Family uint8
 	Path   [1023]uint8
+}
+
+type RawSockaddrDatalink struct {
+	Len    uint8
+	Family uint8
+	Index  uint16
+	Type   uint8
+	Nlen   uint8
+	Alen   uint8
+	Slen   uint8
+	Data   [120]uint8
 }
 
 type RawSockaddr struct {
@@ -207,17 +213,18 @@ type Msghdr struct {
 }
 
 const (
-	SizeofSockaddrInet4 = 0x10
-	SizeofSockaddrInet6 = 0x1c
-	SizeofSockaddrAny   = 0x404
-	SizeofSockaddrUnix  = 0x401
-	SizeofLinger        = 0x8
-	SizeofIPMreq        = 0x8
-	SizeofIPv6Mreq      = 0x14
-	SizeofIPv6MTUInfo   = 0x20
-	SizeofMsghdr        = 0x1c
-	SizeofCmsghdr       = 0xc
-	SizeofICMPv6Filter  = 0x20
+	SizeofSockaddrInet4    = 0x10
+	SizeofSockaddrInet6    = 0x1c
+	SizeofSockaddrAny      = 0x404
+	SizeofSockaddrUnix     = 0x401
+	SizeofSockaddrDatalink = 0x80
+	SizeofLinger           = 0x8
+	SizeofIPMreq           = 0x8
+	SizeofIPv6Mreq         = 0x14
+	SizeofIPv6MTUInfo      = 0x20
+	SizeofMsghdr           = 0x1c
+	SizeofCmsghdr          = 0xc
+	SizeofICMPv6Filter     = 0x20
 )
 
 const (
@@ -268,9 +275,22 @@ type Termios struct {
 	Cc    [16]uint8
 }
 
-type Termio struct{}
+type Termio struct {
+	Iflag uint16
+	Oflag uint16
+	Cflag uint16
+	Lflag uint16
+	Line  uint8
+	Cc    [8]uint8
+	_     [1]byte
+}
 
-type Winsize struct{}
+type Winsize struct {
+	Row    uint16
+	Col    uint16
+	Xpixel uint16
+	Ypixel uint16
+}
 
 type PollFd struct {
 	Fd      int32
@@ -301,6 +321,32 @@ type Flock_t struct {
 	Len    int64
 }
 
-type Statfs_t struct{}
+type Fsid_t struct {
+	Val [2]uint32
+}
+type Fsid64_t struct {
+	Val [2]uint64
+}
+
+type Statfs_t struct {
+	Version   int32
+	Type      int32
+	Bsize     uint32
+	Blocks    uint32
+	Bfree     uint32
+	Bavail    uint32
+	Files     uint32
+	Ffree     uint32
+	Fsid      Fsid_t
+	Vfstype   int32
+	Fsize     uint32
+	Vfsnumber int32
+	Vfsoff    int32
+	Vfslen    int32
+	Vfsvers   int32
+	Fname     [32]uint8
+	Fpack     [32]uint8
+	Name_max  int32
+}
 
 const RNDGETENTCNT = 0x80045200

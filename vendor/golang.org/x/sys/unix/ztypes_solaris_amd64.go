@@ -6,11 +6,11 @@
 package unix
 
 const (
-	sizeofPtr      = 0x8
-	sizeofShort    = 0x2
-	sizeofInt      = 0x4
-	sizeofLong     = 0x8
-	sizeofLongLong = 0x8
+	SizeofPtr      = 0x8
+	SizeofShort    = 0x2
+	SizeofInt      = 0x4
+	SizeofLong     = 0x8
+	SizeofLongLong = 0x8
 	PathMax        = 0x400
 	MaxHostNameLen = 0x100
 )
@@ -211,6 +211,12 @@ type Cmsghdr struct {
 	Type  int32
 }
 
+type Inet4Pktinfo struct {
+	Ifindex  uint32
+	Spec_dst [4]byte /* in_addr */
+	Addr     [4]byte /* in_addr */
+}
+
 type Inet6Pktinfo struct {
 	Addr    [16]byte /* in6_addr */
 	Ifindex uint32
@@ -236,6 +242,7 @@ const (
 	SizeofIPv6Mreq         = 0x14
 	SizeofMsghdr           = 0x30
 	SizeofCmsghdr          = 0xc
+	SizeofInet4Pktinfo     = 0xc
 	SizeofInet6Pktinfo     = 0x14
 	SizeofIPv6MTUInfo      = 0x24
 	SizeofICMPv6Filter     = 0x20

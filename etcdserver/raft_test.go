@@ -27,7 +27,6 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
-
 	"go.uber.org/zap"
 )
 
@@ -47,17 +46,17 @@ func TestGetIDs(t *testing.T) {
 		widSet []uint64
 	}{
 		{nil, []raftpb.Entry{}, []uint64{}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{}, []uint64{1}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry, updateEntry}, []uint64{1, 2}},
-		{&raftpb.ConfState{Nodes: []uint64{1}},
+		{&raftpb.ConfState{Voters: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
 
@@ -97,7 +96,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			1,
 			1, 1,
 
-			[]raftpb.Entry{},
+			nil,
 		},
 		{
 			[]uint64{1, 2},
@@ -138,9 +137,9 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			2, 2,
 
 			[]raftpb.Entry{
-				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
-				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
-				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
+				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
+				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
+				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
 			},
 		},
 	}
@@ -179,8 +178,8 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-// TestConfgChangeBlocksApply ensures apply blocks if committed entries contain config-change.
-func TestConfgChangeBlocksApply(t *testing.T) {
+// TestConfigChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{

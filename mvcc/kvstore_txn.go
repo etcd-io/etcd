@@ -18,6 +18,7 @@ import (
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -27,16 +28,20 @@ type storeTxnRead struct {
 
 	firstRev int64
 	rev      int64
+
+	trace *traceutil.Trace
 }
 
-func (s *store) Read() TxnRead {
+func (s *store) Read(trace *traceutil.Trace) TxnRead {
 	s.mu.RLock()
-	tx := s.b.ReadTx()
 	s.revMu.RLock()
-	tx.Lock()
+	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
+	// ConcurrentReadTx is created, it will not block write transaction.
+	tx := s.b.ConcurrentReadTx()
+	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev})
+	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, trace})
 }
 
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
@@ -47,7 +52,7 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 }
 
 func (tr *storeTxnRead) End() {
-	tr.tx.Unlock()
+	tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
 	tr.s.mu.RUnlock()
 }
 
@@ -59,12 +64,12 @@ type storeTxnWrite struct {
 	changes  []mvccpb.KeyValue
 }
 
-func (s *store) Write() TxnWrite {
+func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	s.mu.RLock()
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
@@ -122,6 +127,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	}
 
 	revpairs := tr.s.kvindex.Revisions(key, end, rev)
+	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -140,27 +146,20 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		revToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
 		if len(vs) != 1 {
-			if tr.s.lg != nil {
-				tr.s.lg.Fatal(
-					"range failed to find revision pair",
-					zap.Int64("revision-main", revpair.main),
-					zap.Int64("revision-sub", revpair.sub),
-				)
-			} else {
-				plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
-			}
+			tr.s.lg.Fatal(
+				"range failed to find revision pair",
+				zap.Int64("revision-main", revpair.main),
+				zap.Int64("revision-sub", revpair.sub),
+			)
 		}
 		if err := kvs[i].Unmarshal(vs[0]); err != nil {
-			if tr.s.lg != nil {
-				tr.s.lg.Fatal(
-					"failed to unmarshal mvccpb.KeyValue",
-					zap.Error(err),
-				)
-			} else {
-				plog.Fatalf("cannot unmarshal event: %v", err)
-			}
+			tr.s.lg.Fatal(
+				"failed to unmarshal mvccpb.KeyValue",
+				zap.Error(err),
+			)
 		}
 	}
+	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
 }
 
@@ -176,7 +175,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 	}
-
+	tw.trace.Step("get key's previous created_revision and leaseID")
 	ibytes := newRevBytes()
 	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
@@ -193,19 +192,17 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		if tw.storeTxnRead.s.lg != nil {
-			tw.storeTxnRead.s.lg.Fatal(
-				"failed to marshal mvccpb.KeyValue",
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot marshal event: %v", err)
-		}
+		tw.storeTxnRead.s.lg.Fatal(
+			"failed to marshal mvccpb.KeyValue",
+			zap.Error(err),
+		)
 	}
 
+	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
+	tw.trace.Step("store kv pair into bolt db")
 
 	if oldLease != lease.NoLease {
 		if tw.s.le == nil {
@@ -213,14 +210,10 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 		err = tw.s.le.Detach(oldLease, []lease.LeaseItem{{Key: string(key)}})
 		if err != nil {
-			if tw.storeTxnRead.s.lg != nil {
-				tw.storeTxnRead.s.lg.Fatal(
-					"failed to detach old lease from a key",
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("unexpected error from lease detach: %v", err)
-			}
+			tw.storeTxnRead.s.lg.Error(
+				"failed to detach old lease from a key",
+				zap.Error(err),
+			)
 		}
 	}
 	if leaseID != lease.NoLease {
@@ -232,6 +225,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 			panic("unexpected error from lease Attach")
 		}
 	}
+	tw.trace.Step("attach lease to kv pair")
 }
 
 func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
@@ -254,39 +248,26 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
 
-	if tw.storeTxnRead.s != nil && tw.storeTxnRead.s.lg != nil {
-		ibytes = appendMarkTombstone(tw.storeTxnRead.s.lg, ibytes)
-	} else {
-		// TODO: remove this in v3.5
-		ibytes = appendMarkTombstone(nil, ibytes)
-	}
+	ibytes = appendMarkTombstone(tw.storeTxnRead.s.lg, ibytes)
 
 	kv := mvccpb.KeyValue{Key: key}
 
 	d, err := kv.Marshal()
 	if err != nil {
-		if tw.storeTxnRead.s.lg != nil {
-			tw.storeTxnRead.s.lg.Fatal(
-				"failed to marshal mvccpb.KeyValue",
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot marshal event: %v", err)
-		}
+		tw.storeTxnRead.s.lg.Fatal(
+			"failed to marshal mvccpb.KeyValue",
+			zap.Error(err),
+		)
 	}
 
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	err = tw.s.kvindex.Tombstone(key, idxRev)
 	if err != nil {
-		if tw.storeTxnRead.s.lg != nil {
-			tw.storeTxnRead.s.lg.Fatal(
-				"failed to tombstone an existing key",
-				zap.String("key", string(key)),
-				zap.Error(err),
-			)
-		} else {
-			plog.Fatalf("cannot tombstone an existing key (%s): %v", string(key), err)
-		}
+		tw.storeTxnRead.s.lg.Fatal(
+			"failed to tombstone an existing key",
+			zap.String("key", string(key)),
+			zap.Error(err),
+		)
 	}
 	tw.changes = append(tw.changes, kv)
 
@@ -296,14 +277,10 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	if leaseID != lease.NoLease {
 		err = tw.s.le.Detach(leaseID, []lease.LeaseItem{item})
 		if err != nil {
-			if tw.storeTxnRead.s.lg != nil {
-				tw.storeTxnRead.s.lg.Fatal(
-					"failed to detach old lease from a key",
-					zap.Error(err),
-				)
-			} else {
-				plog.Errorf("cannot detach %v", err)
-			}
+			tw.storeTxnRead.s.lg.Error(
+				"failed to detach old lease from a key",
+				zap.Error(err),
+			)
 		}
 	}
 }

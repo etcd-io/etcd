@@ -90,7 +90,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 				return
 			}
 
-			respchan <- (clientv3.GetResponse)(*resp)
+			respchan <- *resp
 
 			if !resp.More {
 				return

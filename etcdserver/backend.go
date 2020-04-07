@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/cindex"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc"
 	"go.etcd.io/etcd/mvcc/backend"
@@ -75,22 +76,15 @@ func openBackend(cfg ServerConfig) backend.Backend {
 
 	select {
 	case be := <-beOpened:
-		if cfg.Logger != nil {
-			cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
-		}
+		cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
 		return be
 
 	case <-time.After(10 * time.Second):
-		if cfg.Logger != nil {
-			cfg.Logger.Info(
-				"db file is flocked by another process, or taking too long",
-				zap.String("path", fn),
-				zap.Duration("took", time.Since(now)),
-			)
-		} else {
-			plog.Warningf("another etcd process is using %q and holds the file lock, or loading backend file is taking >10 seconds", fn)
-			plog.Warningf("waiting for it to exit before starting...")
-		}
+		cfg.Logger.Info(
+			"db file is flocked by another process, or taking too long",
+			zap.String("path", fn),
+			zap.Duration("took", time.Since(now)),
+		)
 	}
 
 	return <-beOpened
@@ -101,8 +95,8 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
 func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
-	var cIndex consistentIndex
-	kv := mvcc.New(cfg.Logger, oldbe, &lease.FakeLessor{}, &cIndex)
+	ci := cindex.NewConsistentIndex(oldbe.BatchTx())
+	kv := mvcc.New(cfg.Logger, oldbe, &lease.FakeLessor{}, ci, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
 	defer kv.Close()
 	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil

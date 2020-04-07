@@ -78,6 +78,12 @@ func userAddTest(cx ctlCtx) {
 			expectedStr: "user name already exists",
 			stdIn:       []string{"password"},
 		},
+		// Adds a user without password.
+		{
+			args:        []string{"add", "userwopasswd", "--no-password"},
+			expectedStr: "User userwopasswd created",
+			stdIn:       []string{},
+		},
 	}
 
 	for i, cmd := range cmdSet {

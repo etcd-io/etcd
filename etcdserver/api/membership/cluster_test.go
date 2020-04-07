@@ -290,6 +290,12 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	ctx1, err := json.Marshal(&Member{ID: types.ID(1), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx5, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
 	if err != nil {
@@ -304,6 +310,16 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx2to5, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx3, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(3), RaftAttributes: attr}, IsPromote: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx6, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(6), RaftAttributes: attr}, IsPromote: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,8 +351,9 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 1,
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  1,
+				Context: ctx1,
 			},
 			ErrIDExists,
 		},
@@ -387,6 +404,22 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 				Context: ctx2to5,
 			},
 			nil,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  3,
+				Context: ctx3,
+			},
+			ErrMemberNotLearner,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  6,
+				Context: ctx6,
+			},
+			ErrIDNotFound,
 		},
 	}
 	for i, tt := range tests {
@@ -443,7 +476,7 @@ func TestNodeToMemberBad(t *testing.T) {
 		}},
 	}
 	for i, tt := range tests {
-		if _, err := nodeToMember(tt); err == nil {
+		if _, err := nodeToMember(zap.NewExample(), tt); err == nil {
 			t.Errorf("#%d: unexpected nil error", i)
 		}
 	}
@@ -472,16 +505,37 @@ func TestClusterAddMember(t *testing.T) {
 	}
 }
 
-func TestClusterMembers(t *testing.T) {
-	cls := &RaftCluster{
-		members: map[types.ID]*Member{
-			1:   {ID: 1},
-			20:  {ID: 20},
-			100: {ID: 100},
-			5:   {ID: 5},
-			50:  {ID: 50},
+func TestClusterAddMemberAsLearner(t *testing.T) {
+	st := mockstore.NewRecorder()
+	c := newTestCluster(nil)
+	c.SetStore(st)
+	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil))
+
+	wactions := []testutil.Action{
+		{
+			Name: "Create",
+			Params: []interface{}{
+				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
+				false,
+				`{"peerURLs":null,"isLearner":true}`,
+				false,
+				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
+			},
 		},
 	}
+	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
+		t.Errorf("actions = %v, want %v", g, wactions)
+	}
+}
+
+func TestClusterMembers(t *testing.T) {
+	cls := newTestCluster([]*Member{
+		{ID: 1},
+		{ID: 20},
+		{ID: 100},
+		{ID: 5},
+		{ID: 50},
+	})
 	w := []*Member{
 		{ID: 1},
 		{ID: 5},
@@ -551,7 +605,7 @@ func TestNodeToMember(t *testing.T) {
 		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
-	m, err := nodeToMember(n)
+	m, err := nodeToMember(zap.NewExample(), n)
 	if err != nil {
 		t.Fatalf("unexpected nodeToMember error: %v", err)
 	}
@@ -570,7 +624,7 @@ func newTestCluster(membs []*Member) *RaftCluster {
 
 func stringp(s string) *string { return &s }
 
-func TestIsReadyToAddNewMember(t *testing.T) {
+func TestIsReadyToAddVotingMember(t *testing.T) {
 	tests := []struct {
 		members []*Member
 		want    bool
@@ -641,16 +695,38 @@ func TestIsReadyToAddNewMember(t *testing.T) {
 			[]*Member{},
 			false,
 		},
+		{
+			// 2 voting members ready in cluster with 2 voting members and 2 unstarted learner member, should succeed
+			// (the status of learner members does not affect the readiness of adding voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "", nil),
+			},
+			true,
+		},
+		{
+			// 1 voting member ready in cluster with 2 voting members and 2 ready learner member, should fail
+			// (the status of learner members does not affect the readiness of adding voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			false,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.IsReadyToAddNewMember(); got != tt.want {
+		if got := c.IsReadyToAddVotingMember(); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
 	}
 }
 
-func TestIsReadyToRemoveMember(t *testing.T) {
+func TestIsReadyToRemoveVotingMember(t *testing.T) {
 	tests := []struct {
 		members  []*Member
 		removeID uint64
@@ -726,11 +802,145 @@ func TestIsReadyToRemoveMember(t *testing.T) {
 			4,
 			true,
 		},
+		{
+			// 1 voting members ready in cluster with 1 voting member and 1 ready learner,
+			// removing voting member should fail
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 ready learner,
+			// removing ready voting member should fail
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 ready learner,
+			// removing unstarted voting member should be fine. (Actual operation will fail)
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 1 voting members ready in cluster with 2 voting member and 1 unstarted learner,
+			// removing not-ready voting member should be fine. (Actual operation will fail)
+			// (the status of learner members does not affect the readiness of removing voting member)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "", nil),
+			},
+			2,
+			true,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.IsReadyToRemoveMember(tt.removeID); got != tt.want {
+		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestIsReadyToPromoteMember(t *testing.T) {
+	tests := []struct {
+		members   []*Member
+		promoteID uint64
+		want      bool
+	}{
+		{
+			// 1/1 members ready, should succeed (quorum = 1, new quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 0/1 members ready, should fail (quorum = 1)
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			false,
+		},
+		{
+			// 2/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/3 members ready, should fail (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			false,
+		},
+		{
+			// 2/3 members ready, should succeed (quorum = 2, new quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			true,
+		},
+		{
+			// 2/4 members ready, should succeed (quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMember(4, nil, "", nil),
+				newTestMemberAsLearner(5, nil, "5", nil),
+			},
+			5,
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
+			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
 	}
 }

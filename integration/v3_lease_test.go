@@ -230,7 +230,11 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 	var ttl int64 = 300
 	leaseInterval := 2 * time.Second
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3, LeaseCheckpointInterval: leaseInterval})
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:                    3,
+		EnableLeaseCheckpoint:   true,
+		LeaseCheckpointInterval: leaseInterval,
+	})
 	defer clus.Terminate(t)
 
 	// create lease
@@ -623,7 +627,7 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 		defer close(donec)
 		resp, err := lac.Recv()
 		if err == nil {
-			t.Fatalf("got response %+v, expected error", resp)
+			t.Errorf("got response %+v, expected error", resp)
 		}
 		if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 			t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)

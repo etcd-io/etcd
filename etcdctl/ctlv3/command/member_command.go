@@ -21,9 +21,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/clientv3"
 )
 
-var memberPeerURLs string
+var (
+	memberPeerURLs string
+	isLearner      bool
+)
 
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
@@ -36,6 +40,7 @@ func NewMemberCommand() *cobra.Command {
 	mc.AddCommand(NewMemberRemoveCommand())
 	mc.AddCommand(NewMemberUpdateCommand())
 	mc.AddCommand(NewMemberListCommand())
+	mc.AddCommand(NewMemberPromoteCommand())
 
 	return mc
 }
@@ -50,6 +55,7 @@ func NewMemberAddCommand() *cobra.Command {
 	}
 
 	cc.Flags().StringVar(&memberPeerURLs, "peer-urls", "", "comma separated peer URLs for the new member.")
+	cc.Flags().BoolVar(&isLearner, "learner", false, "indicates if the new member is raft learner")
 
 	return cc
 }
@@ -86,10 +92,24 @@ func NewMemberListCommand() *cobra.Command {
 		Use:   "list",
 		Short: "Lists all members in the cluster",
 		Long: `When --write-out is set to simple, this command prints out comma-separated member lists for each endpoint.
-The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs.
+The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs, Is Learner.
 `,
 
 		Run: memberListCommandFunc,
+	}
+
+	return cc
+}
+
+// NewMemberPromoteCommand returns the cobra command for "member promote".
+func NewMemberPromoteCommand() *cobra.Command {
+	cc := &cobra.Command{
+		Use:   "promote <memberID>",
+		Short: "Promotes a non-voting member in the cluster",
+		Long: `Promotes a non-voting learner member to a voting one in the cluster.
+`,
+
+		Run: memberPromoteCommandFunc,
 	}
 
 	return cc
@@ -118,7 +138,15 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
-	resp, err := cli.MemberAdd(ctx, urls)
+	var (
+		resp *clientv3.MemberAddResponse
+		err  error
+	)
+	if isLearner {
+		resp, err = cli.MemberAddAsLearner(ctx, urls)
+	} else {
+		resp, err = cli.MemberAdd(ctx, urls)
+	}
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
@@ -128,28 +156,8 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	display.MemberAdd(*resp)
 
 	if _, ok := (display).(*simplePrinter); ok {
-		ctx, cancel = commandCtx(cmd)
-		listResp, err := cli.MemberList(ctx)
-		// get latest member list; if there's failover new member might have outdated list
-		for {
-			if err != nil {
-				ExitWithError(ExitError, err)
-			}
-			if listResp.Header.MemberId == resp.Header.MemberId {
-				break
-			}
-			// quorum get to sync cluster list
-			gresp, gerr := cli.Get(ctx, "_")
-			if gerr != nil {
-				ExitWithError(ExitError, err)
-			}
-			resp.Header.MemberId = gresp.Header.MemberId
-			listResp, err = cli.MemberList(ctx)
-		}
-		cancel()
-
 		conf := []string{}
-		for _, memb := range listResp.Members {
+		for _, memb := range resp.Members {
 			for _, u := range memb.PeerURLs {
 				n := memb.Name
 				if memb.ID == newID {
@@ -224,4 +232,24 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	display.MemberList(*resp)
+}
+
+// memberPromoteCommandFunc executes the "member promote" command.
+func memberPromoteCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("member ID is not provided"))
+	}
+
+	id, err := strconv.ParseUint(args[0], 16, 64)
+	if err != nil {
+		ExitWithError(ExitBadArgs, fmt.Errorf("bad member ID arg (%v), expecting ID in Hex", err))
+	}
+
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberPromote(ctx, id)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	display.MemberPromote(id, *resp)
 }

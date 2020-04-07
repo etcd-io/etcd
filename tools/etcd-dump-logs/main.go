@@ -35,20 +35,24 @@ import (
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/wal"
 	"go.etcd.io/etcd/wal/walpb"
-
 	"go.uber.org/zap"
+)
+
+const (
+	defaultEntryTypes string = "Normal,ConfigChange"
 )
 
 func main() {
 	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
 	index := flag.Uint64("start-index", 0, "The index to start dumping")
-	entrytype := flag.String("entry-type", "", `If set, filters output by entry type. Must be one or more than one of:
-	ConfigChange, Normal, Request, InternalRaftRequest,
-	IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
-	IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`)
+	// Default entry types are Normal and ConfigChange
+	entrytype := flag.String("entry-type", defaultEntryTypes, `If set, filters output by entry type. Must be one or more than one of:
+ConfigChange, Normal, Request, InternalRaftRequest,
+IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
+IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`)
 	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process
-	hex encoded lines of binary input (from etcd-dump-logs)
-	and output a hex encoded line of binary for each input line`)
+hex encoded lines of binary input (from etcd-dump-logs)
+and output a hex encoded line of binary for each input line`)
 
 	flag.Parse()
 
@@ -83,7 +87,7 @@ func main() {
 		switch err {
 		case nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-			nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
+			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
 				walsnap.Term, walsnap.Index, nodes)
 		case snap.ErrNoSnapshot:
@@ -91,7 +95,7 @@ func main() {
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)
 		}
-		fmt.Println("Start dupmping log entries from snapshot.")
+		fmt.Println("Start dumping log entries from snapshot.")
 	}
 
 	w, err := wal.OpenForRead(zap.NewExample(), walDir(dataDir), walsnap)
@@ -280,12 +284,6 @@ func evaluateEntrytypeFlag(entrytype string) []EntryFilter {
 		"IRRLeaseCheckpoint":  {passIRRLeaseCheckpoint},
 	}
 	filters := make([]EntryFilter, 0)
-	if len(entrytypelist) == 0 {
-		filters = append(filters, passInternalRaftRequest)
-		filters = append(filters, passRequest)
-		filters = append(filters, passUnknownNormal)
-		filters = append(filters, passConfChange)
-	}
 	for _, et := range entrytypelist {
 		if f, ok := validRequest[et]; ok {
 			filters = append(filters, f...)
@@ -374,7 +372,7 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 		}
 	}
 
-	fmt.Printf("\nEntry types (%s) count is : %d", entrytype, cnt)
+	fmt.Printf("\nEntry types (%s) count is : %d\n", entrytype, cnt)
 }
 
 func parseDecoderOutput(decoderoutput string) (string, string) {

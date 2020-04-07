@@ -44,6 +44,26 @@ var (
 		Name:      "leader_changes_seen_total",
 		Help:      "The number of leader changes seen.",
 	})
+	isLearner = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "is_learner",
+		Help:      "Whether or not this member is a learner. 1 if is, 0 otherwise.",
+	})
+	learnerPromoteFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "learner_promote_failures",
+		Help:      "The total number of failed learner promotions (likely learner not ready) while this member is leader.",
+	},
+		[]string{"Reason"},
+	)
+	learnerPromoteSucceed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "learner_promote_successes",
+		Help:      "The total number of successful learner promotions while this member is leader.",
+	})
 	heartbeatSendFailures = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -55,6 +75,12 @@ var (
 		Subsystem: "server",
 		Name:      "slow_apply_total",
 		Help:      "The total number of slow apply requests (likely overloaded from slow disk).",
+	})
+	applySnapshotInProgress = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "snapshot_apply_in_progress_total",
+		Help:      "1 if the server is applying the incoming snapshot. 0 if none.",
 	})
 	proposalsCommitted = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
@@ -133,6 +159,7 @@ func init() {
 	prometheus.MustRegister(leaderChanges)
 	prometheus.MustRegister(heartbeatSendFailures)
 	prometheus.MustRegister(slowApplies)
+	prometheus.MustRegister(applySnapshotInProgress)
 	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
@@ -144,6 +171,9 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
+	prometheus.MustRegister(isLearner)
+	prometheus.MustRegister(learnerPromoteSucceed)
+	prometheus.MustRegister(learnerPromoteFailed)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
@@ -159,28 +189,16 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 	for {
 		used, err := runtime.FDUsage()
 		if err != nil {
-			if lg != nil {
-				lg.Warn("failed to get file descriptor usage", zap.Error(err))
-			} else {
-				plog.Errorf("cannot monitor file descriptor usage (%v)", err)
-			}
+			lg.Warn("failed to get file descriptor usage", zap.Error(err))
 			return
 		}
 		limit, err := runtime.FDLimit()
 		if err != nil {
-			if lg != nil {
-				lg.Warn("failed to get file descriptor limit", zap.Error(err))
-			} else {
-				plog.Errorf("cannot monitor file descriptor usage (%v)", err)
-			}
+			lg.Warn("failed to get file descriptor limit", zap.Error(err))
 			return
 		}
 		if used >= limit/5*4 {
-			if lg != nil {
-				lg.Warn("80%% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
-			} else {
-				plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
-			}
+			lg.Warn("80% of file descriptors are used", zap.Uint64("used", used), zap.Uint64("limit", limit))
 		}
 		select {
 		case <-ticker.C:

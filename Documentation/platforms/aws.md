@@ -1,4 +1,6 @@
-# Amazon Web Services
+---
+title: Amazon Web Services
+---
 
 This guide assumes operational knowledge of Amazon Web Services (AWS), specifically Amazon Elastic Compute Cloud (EC2). This guide provides an introduction to design considerations when designing an etcd deployment on AWS EC2 and how AWS specific features may be utilized in that context.
 

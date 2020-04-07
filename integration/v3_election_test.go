@@ -53,7 +53,7 @@ func TestElectionWait(t *testing.T) {
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
 				if !ok {
-					t.Fatalf("could not observe election; channel closed")
+					t.Errorf("could not observe election; channel closed")
 				}
 				electedc <- string(s.Kvs[0].Value)
 				// wait for next election round
@@ -76,7 +76,7 @@ func TestElectionWait(t *testing.T) {
 			e := concurrency.NewElection(session, "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
 			if err := e.Campaign(context.TODO(), ev); err != nil {
-				t.Fatalf("failed volunteer (%v)", err)
+				t.Errorf("failed volunteer (%v)", err)
 			}
 			// wait for followers to accept leadership
 			for j := 0; j < followers; j++ {
@@ -87,7 +87,7 @@ func TestElectionWait(t *testing.T) {
 			}
 			// let next leader take over
 			if err := e.Resign(context.TODO()); err != nil {
-				t.Fatalf("failed resign (%v)", err)
+				t.Errorf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader
 			for j := 0; j < followers; j++ {
@@ -140,13 +140,11 @@ func TestElectionFailover(t *testing.T) {
 	}
 
 	// next leader
-	electedc := make(chan struct{})
+	electedErrC := make(chan error, 1)
 	go func() {
 		ee := concurrency.NewElection(ss[1], "test-election")
-		if eer := ee.Campaign(context.TODO(), "bar"); eer != nil {
-			t.Fatal(eer)
-		}
-		electedc <- struct{}{}
+		eer := ee.Campaign(context.TODO(), "bar")
+		electedErrC <- eer // If eer != nil, the test will fail by calling t.Fatal(eer)
 	}()
 
 	// invoke leader failover
@@ -166,7 +164,10 @@ func TestElectionFailover(t *testing.T) {
 	}
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
-	<-electedc
+	eer := <-electedErrC
+	if eer != nil {
+		t.Fatal(eer)
+	}
 }
 
 // TestElectionSessionRelock ensures that campaigning twice on the same election

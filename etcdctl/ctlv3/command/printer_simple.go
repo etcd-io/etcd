@@ -136,6 +136,10 @@ func (s *simplePrinter) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
 	fmt.Printf("Member %16x updated in cluster %16x\n", id, r.Header.ClusterId)
 }
 
+func (s *simplePrinter) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+	fmt.Printf("Member %16x promoted in cluster %16x\n", id, r.Header.ClusterId)
+}
+
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	_, rows := makeMemberListTable(resp)
 	for _, row := range rows {
@@ -146,9 +150,9 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 func (s *simplePrinter) EndpointHealth(hs []epHealth) {
 	for _, h := range hs {
 		if h.Error == "" {
-			fmt.Fprintf(os.Stderr, "%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
+			fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", h.Ep, h.Took)
 		} else {
-			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v", h.Ep, h.Error)
+			fmt.Fprintf(os.Stderr, "%s is unhealthy: failed to commit proposal: %v\n", h.Ep, h.Error)
 		}
 	}
 }
@@ -280,4 +284,9 @@ func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
 	for _, user := range r.Users {
 		fmt.Printf("%s\n", user)
 	}
+}
+
+func (s *simplePrinter) AuthStatus(r v3.AuthStatusResponse) {
+	fmt.Println("Authentication Status:", r.Enabled)
+	fmt.Println("AuthRevision:", r.AuthRevision)
 }

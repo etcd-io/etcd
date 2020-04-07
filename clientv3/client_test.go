@@ -99,7 +99,7 @@ func TestDialTimeout(t *testing.T) {
 	}
 
 	for i, cfg := range testCfgs {
-		donec := make(chan error)
+		donec := make(chan error, 1)
 		go func() {
 			// without timeout, dial continues forever on ipv4 black hole
 			c, err := New(cfg)
@@ -154,5 +154,15 @@ func TestIsHaltErr(t *testing.T) {
 	cancel()
 	if !isHaltErr(ctx, nil) {
 		t.Errorf("cancel on context should be Halted")
+	}
+}
+
+func TestCloseCtxClient(t *testing.T) {
+	ctx := context.Background()
+	c := NewCtxClient(ctx)
+	err := c.Close()
+	// Close returns ctx.toErr, a nil error means an open Done channel
+	if err == nil {
+		t.Errorf("failed to Close the client. %v", err)
 	}
 }

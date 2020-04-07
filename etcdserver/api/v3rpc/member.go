@@ -28,10 +28,10 @@ import (
 
 type ClusterServer struct {
 	cluster api.Cluster
-	server  etcdserver.ServerV3
+	server  *etcdserver.EtcdServer
 }
 
-func NewClusterServer(s etcdserver.ServerV3) *ClusterServer {
+func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
 	return &ClusterServer{
 		cluster: s.Cluster(),
 		server:  s,
@@ -45,15 +45,24 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	}
 
 	now := time.Now()
-	m := membership.NewMember("", urls, "", &now)
+	var m *membership.Member
+	if r.IsLearner {
+		m = membership.NewMemberAsLearner("", urls, "", &now)
+	} else {
+		m = membership.NewMember("", urls, "", &now)
+	}
 	membs, merr := cs.server.AddMember(ctx, *m)
 	if merr != nil {
 		return nil, togRPCError(merr)
 	}
 
 	return &pb.MemberAddResponse{
-		Header:  cs.header(),
-		Member:  &pb.Member{ID: uint64(m.ID), PeerURLs: m.PeerURLs},
+		Header: cs.header(),
+		Member: &pb.Member{
+			ID:        uint64(m.ID),
+			PeerURLs:  m.PeerURLs,
+			IsLearner: m.IsLearner,
+		},
 		Members: membersToProtoMembers(membs),
 	}, nil
 }
@@ -79,8 +88,21 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
+	if r.Linearizable {
+		if err := cs.server.LinearizableReadNotify(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	}
 	membs := membersToProtoMembers(cs.cluster.Members())
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
+}
+
+func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	membs, err := cs.server.PromoteMember(ctx, r.ID)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
 }
 
 func (cs *ClusterServer) header() *pb.ResponseHeader {
@@ -95,6 +117,7 @@ func membersToProtoMembers(membs []*membership.Member) []*pb.Member {
 			ID:         uint64(membs[i].ID),
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
+			IsLearner:  membs[i].IsLearner,
 		}
 	}
 	return protoMembs

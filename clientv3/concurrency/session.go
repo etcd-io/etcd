@@ -47,7 +47,7 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		id = v3.LeaseID(resp.ID)
+		id = resp.ID
 	}
 
 	ctx, cancel := context.WithCancel(ops.ctx)

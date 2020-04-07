@@ -74,6 +74,9 @@ func (fs *errServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 func (fs *errServer) UpdateMember(ctx context.Context, m membership.Member) ([]*membership.Member, error) {
 	return nil, fs.err
 }
+func (fs *errServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
+	return nil, fs.err
+}
 
 func TestWriteError(t *testing.T) {
 	// nil error should not panic

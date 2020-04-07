@@ -256,7 +256,7 @@ func (lc *leaseCache) clearOldRevokes(ctx context.Context) {
 		case <-time.After(time.Second):
 			lc.mu.Lock()
 			for k, lr := range lc.revokes {
-				if time.Now().Sub(lr.Add(revokeBackoff)) > 0 {
+				if time.Since(lr.Add(revokeBackoff)) > 0 {
 					delete(lc.revokes, k)
 				}
 			}

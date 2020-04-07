@@ -45,7 +45,7 @@ func TestPurgeFile(t *testing.T) {
 	stop, purgec := make(chan struct{}), make(chan string, 10)
 
 	// keep 3 most recent files
-	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec)
+	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec, nil)
 	select {
 	case f := <-purgec:
 		t.Errorf("unexpected purge on %q", f)
@@ -57,7 +57,7 @@ func TestPurgeFile(t *testing.T) {
 		go func(n int) {
 			f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", n)))
 			if ferr != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			f.Close()
 		}(i)
@@ -116,7 +116,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	stop, purgec := make(chan struct{}), make(chan string, 10)
-	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec)
+	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec, nil)
 
 	for i := 0; i < 5; i++ {
 		select {

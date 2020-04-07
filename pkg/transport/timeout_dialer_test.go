@@ -22,6 +22,9 @@ import (
 
 func TestReadWriteTimeoutDialer(t *testing.T) {
 	stop := make(chan struct{})
+	defer func() {
+		stop <- struct{}{}
+	}()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -42,7 +45,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 
 	// fill the socket buffer
 	data := make([]byte, 5*1024*1024)
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		_, err = conn.Write(data)
 		done <- struct{}{}
@@ -81,8 +84,6 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	if operr, ok := err.(*net.OpError); !ok || operr.Op != "read" || !operr.Timeout() {
 		t.Errorf("err = %v, want write i/o timeout error", err)
 	}
-
-	stop <- struct{}{}
 }
 
 type testBlockingServer struct {
@@ -95,7 +96,7 @@ func (ts *testBlockingServer) Start(t *testing.T) {
 	for i := 0; i < ts.n; i++ {
 		conn, err := ts.ln.Accept()
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		defer conn.Close()
 	}

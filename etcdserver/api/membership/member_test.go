@@ -113,3 +113,11 @@ func newTestMember(id uint64, peerURLs []string, name string, clientURLs []strin
 		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}
 }
+
+func newTestMemberAsLearner(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	return &Member{
+		ID:             types.ID(id),
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs, IsLearner: true},
+		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
+	}
+}

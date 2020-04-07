@@ -99,9 +99,8 @@ if [ "${VERBOSE}" == "1" ]; then
 	echo "Running with TEST:" "${TEST[@]}"
 fi
 
-# TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
+STATIC_ANALYSIS_PATHS=$(find . -name \*.go ! -path './vendor/*' ! -path './gopath.proto/*' ! -path '*pb/*' | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS")
 # shellcheck disable=SC2206
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
 if [ "${VERBOSE}" == "1" ]; then
@@ -163,7 +162,7 @@ function integration_pass {
 	# expectation could be different
 	USERTIMEOUT=""
 	if [ -z "${TIMEOUT}" ]; then
-		USERTIMEOUT="20m"
+		USERTIMEOUT="30m"
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
@@ -224,6 +223,18 @@ function functional_pass {
 	kill -s TERM "${agent_pids[@]}" || true
 
 	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
+		tail -1000 /tmp/etcd-functional-1/etcd.log
+
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
+		tail -1000 /tmp/etcd-functional-2/etcd.log
+
+		printf "\n"
+		echo "FAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
+		tail -1000 /tmp/etcd-functional-3/etcd.log
+
 		echo "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
 		exit ${ETCD_TESTER_EXIT_CODE}
 	fi
@@ -252,7 +263,7 @@ function cov_pass {
 	mkdir -p "$COVERDIR"
 
 	# run code coverage for unit and integration tests
-	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 20m"
+	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 30m"
 	# shellcheck disable=SC2206
 	GOCOVFLAGS=($GOCOVFLAGS)
 	failed=""
@@ -310,7 +321,7 @@ function e2e_pass {
 	# expectation could be different
 	USERTIMEOUT=""
 	if [ -z "${TIMEOUT}" ]; then
-		USERTIMEOUT="20m"
+		USERTIMEOUT="30m"
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
@@ -321,9 +332,9 @@ function e2e_pass {
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/tests/e2e" &
+	go test -timeout 30m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/tests/e2e" &
 	e2epid="$!"
-	go test -timeout 20m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration" &
+	go test -timeout 30m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration" &
 	intpid="$!"
 	wait $e2epid
 	wait $intpid
@@ -331,9 +342,9 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
-	go test -timeout 20m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
-	go test -timeout 20m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
+	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 30m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function release_pass {
@@ -380,7 +391,7 @@ function shellcheck_pass {
 
 function markdown_you_pass {
 	# eschew you
-	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/v2/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
+	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
 	if [ -n "$yous" ]; then
 		echo -e "found 'you' in documentation:\\n${yous}"
 		exit 255
@@ -449,37 +460,13 @@ function govet_shadow_pass {
 	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
 	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
-	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	go get -v golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
 	export PATH=${GOPATH}/bin:${PATH}
 	shadow_tool=$(which shadow)
 	vetRes=$(go vet -all -vettool="${shadow_tool}" "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
-		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
+		echo -e "govet -shadow checking failed:\\n${vetRes}"
 		exit 255
-	fi
-}
-
-function gosimple_pass {
-	if command -v gosimple >/dev/null; then
-		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
-		if [ -n "${gosimpleResult}" ]; then
-			echo -e "gosimple checking failed:\\n${gosimpleResult}"
-			exit 255
-		fi
-	else
-		echo "Skipping gosimple..."
-	fi
-}
-
-function unused_pass {
-	if command -v unused >/dev/null; then
-		unusedResult=$(unused "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
-		if [ -n "${unusedResult}" ]; then
-			echo -e "unused checking failed:\\n${unusedResult}"
-			exit 255
-		fi
-	else
-		echo "Skipping unused..."
 	fi
 }
 
@@ -501,7 +488,7 @@ function staticcheck_pass {
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
-			STATIC_CHECK_MASK="SA(1012|1019|2002)"
+			STATIC_CHECK_MASK="S(A|T)(1002|1005|1006|1008|1012|1019|1032|2002|4003|4006)"
 			if echo "${staticcheckResult}" | grep -vE "$STATIC_CHECK_MASK"; then
 				echo -e "staticcheck checking failed:\\n${staticcheckResult}"
 				exit 255
@@ -617,24 +604,19 @@ function commit_title_pass {
 	done
 }
 
+# tools gosimple,unused,staticheck,unconvert,ineffasign,nakedret
+# are not module-aware. See https://github.com/golang/go/issues/24661
+# The module-aware versions need to be used when they become available
 function fmt_pass {
 	toggle_failpoints disable
 
     # TODO: add "unparam"
 	for p in shellcheck \
 			markdown_you \
-			markdown_marker \
 			goword \
 			gofmt \
 			govet \
-			govet_shadow \
-			gosimple \
-			unused \
-			staticcheck \
 			revive \
-			unconvert \
-			ineffassign \
-			nakedret \
 			license_header \
 			receiver_name \
 			commit_title \
@@ -647,6 +629,12 @@ function fmt_pass {
 
 function bom_pass {
 	if ! command -v license-bill-of-materials >/dev/null; then
+		return
+	fi
+	if [ "${GO111MODULE}" == "on" ]; then
+		# license-bill-off-materials calls "go list std cmd" which cannot handle modules
+		# Please see https://github.com/golang/go/issues/26924
+		echo "Skipping license-bill-of-materials with go modules..."
 		return
 	fi
 	echo "Checking bill of materials..."
@@ -694,3 +682,4 @@ for pass in $PASSES; do
 done
 
 echo "Success"
+

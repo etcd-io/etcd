@@ -3,7 +3,9 @@ etcdctl
 
 `etcdctl` is a command line client for [etcd][etcd].
 
-The v3 API is used by default. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
+The v3 API is used by default on master branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
+
+If using released versions earlier than v3.4, set `ETCDCTL_API=3` to use v3 API.
 
 Global flags (e.g., `dial-timeout`, `--cacert`, `--cert`, `--key`) can be set with environment variables:
 
@@ -14,7 +16,7 @@ ETCDCTL_CERT=/tmp/cert.pem
 ETCDCTL_KEY=/tmp/key.pem
 ```
 
-Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`).
+Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`). Note that the environment variables with the prefix `ETCDCTL_` can only be used with the etcdctl global flags. Also, the environment variable `ETCDCTL_API` is a special case variable for etcdctl internal use only.
 
 ## Key-value commands
 
@@ -329,6 +331,27 @@ put key2 "some extra key"
 # OK
 ```
 
+#### Remarks
+
+When using multi-line values within a TXN command, newlines must be represented as `\n`. Literal newlines will cause parsing failures. This differs from other commands (such as PUT) where the shell will convert literal newlines for us. For example:
+
+```bash
+./etcdctl txn <<<'mod("key1") > "0"
+
+put key1 "overwrote-key1"
+
+put key1 "created-key1"
+put key2 "this is\na multi-line\nvalue"
+
+'
+
+# FAILURE
+
+# OK
+
+# OK
+```
+
 ### COMPACTION [options] \<revision\>
 
 COMPACTION discards all etcd event history prior to a given revision. Since etcd uses a multiversion concurrency control
@@ -510,8 +533,8 @@ Prints a message with the granted lease ID.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 ```
 
 ### LEASE REVOKE \<leaseID\>
@@ -586,8 +609,8 @@ Prints a message with a list of active leases.
 #### Example
 
 ```bash
-./etcdctl lease grant 10
-# lease 32695410dcc0ca06 granted with TTL(10s)
+./etcdctl lease grant 60
+# lease 32695410dcc0ca06 granted with TTL(60s)
 
 ./etcdctl lease list
 32695410dcc0ca06

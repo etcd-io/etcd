@@ -36,7 +36,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                 2,
-		GRPCKeepAliveMinTime: 1 * time.Millisecond, // avoid too_many_pings
+		GRPCKeepAliveMinTime: time.Millisecond, // avoid too_many_pings
 	})
 	defer clus.Terminate(t)
 
@@ -44,9 +44,9 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	ccfg := clientv3.Config{
 		Endpoints:            []string{eps[0]},
-		DialTimeout:          1 * time.Second,
+		DialTimeout:          time.Second,
 		DialOptions:          []grpc.DialOption{grpc.WithBlock()},
-		DialKeepAliveTime:    1 * time.Second,
+		DialKeepAliveTime:    time.Second,
 		DialKeepAliveTimeout: 500 * time.Millisecond,
 	}
 
@@ -71,6 +71,9 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	// endpoint can switch to eps[1] when it detects the failure of eps[0]
 	cli.SetEndpoints(eps...)
+
+	// give enough time for balancer resolution
+	time.Sleep(5 * time.Second)
 
 	clus.Members[0].Blackhole()
 

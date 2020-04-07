@@ -285,7 +285,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 	tr.finishCancel <- struct{}{}
 	c := &simpleHTTPClient{transport: tr, headerTimeout: time.Millisecond}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		_, _, err := c.Do(context.Background(), &fakeAction{})
 		errc <- err
@@ -422,7 +422,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			tt.ctx = context.Background()
 		}
 		resp, _, err := tt.client.Do(tt.ctx, nil)
-		if !reflect.DeepEqual(tt.wantErr, err) {
+		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
@@ -452,7 +452,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 		endpoints:     []url.URL{fakeURL},
 	}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 		defer cancel()
@@ -502,7 +502,7 @@ func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
 		endpoints:     []url.URL{fakeURL},
 	}
 
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		ctx, cancel := withTimeout(fakeCancelContext{}, time.Millisecond)
 		cancel()
@@ -691,7 +691,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 					},
 				},
 			},
-			wantErr: errors.New("Location header not set"),
+			wantErr: errors.New("location header not set"),
 		},
 
 		// fail if Location header is invalid
@@ -707,7 +707,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 					},
 				},
 			},
-			wantErr: errors.New("Location header not valid URL: :"),
+			wantErr: errors.New("location header not valid URL: :"),
 		},
 
 		// fail if redirects checked way too many times
@@ -726,7 +726,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 	for i, tt := range tests {
 		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
 		resp, _, err := client.Do(context.Background(), nil)
-		if !reflect.DeepEqual(tt.wantErr, err) {
+		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
@@ -795,7 +795,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 
 	want = []string{"http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"}
 	got = hc.Endpoints()
-	sort.Sort(sort.StringSlice(got))
+	sort.Strings(got)
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
 	}

@@ -1,4 +1,6 @@
-# Discovery service protocol
+---
+title: Discovery service protocol
+---
 
 Discovery service protocol helps new etcd member to discover all other members in cluster bootstrap phase using a shared discovery URL.
 
@@ -107,7 +109,7 @@ The status for this discovery token, including the machines that have been regis
 
 The repository is located at https://github.com/coreos/discovery.etcd.io. It could be used to build a custom discovery service.
 
-[api]: ../v2/api.md#waiting-for-a-change
-[cluster-size]: ../v2/admin_guide.md#optimal-cluster-size
+[api]: /docs/v2/api#waiting-for-a-change
+[cluster-size]: /docs/v2/admin_guide#optimal-cluster-size
 [expected-cluster-size]: #specifying-the-expected-cluster-size
 [new-discovery-token]: #creating-a-new-discovery-token

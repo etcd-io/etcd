@@ -25,13 +25,26 @@ import (
 )
 
 func PurgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}) <-chan error {
-	return purgeFile(lg, dirname, suffix, max, interval, stop, nil)
+	return purgeFile(lg, dirname, suffix, max, interval, stop, nil, nil)
+}
+
+func PurgeFileWithDoneNotify(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}) (<-chan struct{}, <-chan error) {
+	doneC := make(chan struct{})
+	errC := purgeFile(lg, dirname, suffix, max, interval, stop, nil, doneC)
+	return doneC, errC
 }
 
 // purgeFile is the internal implementation for PurgeFile which can post purged files to purgec if non-nil.
-func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}, purgec chan<- string) <-chan error {
+// if donec is non-nil, the function closes it to notify its exit.
+func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}, purgec chan<- string, donec chan<- struct{}) <-chan error {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	errC := make(chan error, 1)
 	go func() {
+		if donec != nil {
+			defer close(donec)
+		}
 		for {
 			fnames, err := ReadDir(dirname)
 			if err != nil {
@@ -57,19 +70,11 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 					return
 				}
 				if err = l.Close(); err != nil {
-					if lg != nil {
-						lg.Warn("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
-					} else {
-						plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
-					}
+					lg.Warn("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
 					errC <- err
 					return
 				}
-				if lg != nil {
-					lg.Info("purged", zap.String("path", f))
-				} else {
-					plog.Infof("purged file %s successfully", f)
-				}
+				lg.Info("purged", zap.String("path", f))
 				newfnames = newfnames[1:]
 			}
 			if purgec != nil {

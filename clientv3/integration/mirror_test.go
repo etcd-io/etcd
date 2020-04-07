@@ -90,7 +90,7 @@ func TestMirrorSyncBase(t *testing.T) {
 
 			for key := range keyCh {
 				if _, err := cli.Put(ctx, key, "test"); err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 			}
 		}()

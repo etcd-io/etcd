@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -25,6 +26,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	gnaming "google.golang.org/grpc/naming"
 )
@@ -33,6 +35,7 @@ import (
 const resolveRetryRate = 1
 
 type clusterProxy struct {
+	lg   *zap.Logger
 	clus clientv3.Cluster
 	ctx  context.Context
 	gr   *naming.GRPCResolver
@@ -48,8 +51,12 @@ type clusterProxy struct {
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.
 // The returned channel is closed when there is grpc-proxy endpoint registered
 // and the client's context is canceled so the 'register' loop returns.
-func NewClusterProxy(c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{}) {
+func NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{}) {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	cp := &clusterProxy{
+		lg:   lg,
 		clus: c.Cluster,
 		ctx:  c.Ctx(),
 		gr:   &naming.GRPCResolver{Client: c},
@@ -77,7 +84,7 @@ func (cp *clusterProxy) resolve(prefix string) {
 	for rm.Wait(cp.ctx) == nil {
 		wa, err := cp.gr.Resolve(prefix)
 		if err != nil {
-			plog.Warningf("failed to resolve %q (%v)", prefix, err)
+			cp.lg.Warn("failed to resolve prefix", zap.String("prefix", prefix), zap.Error(err))
 			continue
 		}
 		cp.monitor(wa)
@@ -88,7 +95,7 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 	for cp.ctx.Err() == nil {
 		ups, err := wa.Next()
 		if err != nil {
-			plog.Warningf("clusterProxy watcher error (%v)", err)
+			cp.lg.Warn("clusterProxy watcher error", zap.Error(err))
 			if rpctypes.ErrorDesc(err) == naming.ErrWatcherClosed.Error() {
 				return
 			}
@@ -108,7 +115,23 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 }
 
 func (cp *clusterProxy) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
-	mresp, err := cp.clus.MemberAdd(ctx, r.PeerURLs)
+	if r.IsLearner {
+		return cp.memberAddAsLearner(ctx, r.PeerURLs)
+	}
+	return cp.memberAdd(ctx, r.PeerURLs)
+}
+
+func (cp *clusterProxy) memberAdd(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAdd(ctx, peerURLs)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberAddResponse)(*mresp)
+	return &resp, err
+}
+
+func (cp *clusterProxy) memberAddAsLearner(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAddAsLearner(ctx, peerURLs)
 	if err != nil {
 		return nil, err
 	}
@@ -174,4 +197,9 @@ func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest)
 	}
 	resp := (pb.MemberListResponse)(*mresp)
 	return &resp, err
+}
+
+func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {
+	// TODO: implement
+	return nil, errors.New("not implemented")
 }

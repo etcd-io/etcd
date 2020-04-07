@@ -1,4 +1,6 @@
-## Upgrade etcd from 3.2 to 3.3
+---
+title: Upgrade etcd from 3.2 to 3.3
+---
 
 In the general case, upgrading from etcd 3.2 to 3.3 can be a zero-downtime, rolling upgrade:
  - one by one, stop the etcd v3.2 processes and replace them with etcd v3.3 processes
@@ -9,6 +11,9 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 ### Upgrade checklists
 
 **NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
+
+**NOTE:** if you enable auth and use lease(lease ttl is small),it has a high probability to encounter [issue](https://github.com/etcd-io/etcd/issues/11689) that will result in data inconsistency. It is strongly recommended to upgrade to the latest version of 3.2 to fix this problem, and then upgrade to 3.3. The latest version is not yet available, please pay attention to [changelog](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md).
+
 
 Highlighted breaking changes in 3.3.
 
@@ -366,6 +371,52 @@ After
 ```bash
 docker pull gcr.io/etcd-development/etcd:v3.3.0
 ```
+
+### Upgrades to >= v3.3.14
+
+[v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) had to include some features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
+
+`grpc.ErrClientConnClosing` has been [deprecated in gRPC >= 1.10](https://github.com/grpc/grpc-go/pull/1854).
+
+```diff
+import (
++	"go.etcd.io/etcd/clientv3"
+
+	"google.golang.org/grpc"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/status"
+)
+
+_, err := kvc.Get(ctx, "a")
+-if err == grpc.ErrClientConnClosing {
++if clientv3.IsConnCanceled(err) {
+
+// or
++s, ok := status.FromError(err)
++if ok {
++  if s.Code() == codes.Canceled
+```
+
+[The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. As a result, [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) or later requires `grpc.WithBlock` dial option to wait until the underlying connection is up.
+
+```diff
+import (
+	"time"
+	"go.etcd.io/etcd/clientv3"
++	"google.golang.org/grpc"
+)
+
++// "grpc.WithBlock()" to block until the underlying connection is up
+ccfg := clientv3.Config{
+  Endpoints:            []string{"localhost:2379"},
+  DialTimeout:          time.Second,
++ DialOptions:          []grpc.DialOption{grpc.WithBlock()},
+  DialKeepAliveTime:    time.Second,
+  DialKeepAliveTimeout: 500 * time.Millisecond,
+}
+```
+
+Please see [CHANGELOG](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md) for a full list of changes.
 
 ### Server upgrade checklists
 

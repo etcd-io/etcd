@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc"
 
@@ -34,7 +35,10 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrIDNotFound:              rpctypes.ErrGRPCMemberNotFound,
 	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
 	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
+	membership.ErrMemberNotLearner:        rpctypes.ErrGRPCMemberNotLearner,
+	membership.ErrTooManyLearners:         rpctypes.ErrGRPCTooManyLearners,
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
+	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
 	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
@@ -52,6 +56,7 @@ var toGRPCErrorMap = map[error]error{
 	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
 	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
 	etcdserver.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
+	etcdserver.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
 
 	lease.ErrLeaseNotFound:    rpctypes.ErrGRPCLeaseNotFound,
 	lease.ErrLeaseExists:      rpctypes.ErrGRPCLeaseExist,
@@ -64,6 +69,7 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrUserNotFound:         rpctypes.ErrGRPCUserNotFound,
 	auth.ErrRoleAlreadyExist:     rpctypes.ErrGRPCRoleAlreadyExist,
 	auth.ErrRoleNotFound:         rpctypes.ErrGRPCRoleNotFound,
+	auth.ErrRoleEmpty:            rpctypes.ErrGRPCRoleEmpty,
 	auth.ErrAuthFailed:           rpctypes.ErrGRPCAuthFailed,
 	auth.ErrPermissionDenied:     rpctypes.ErrGRPCPermissionDenied,
 	auth.ErrRoleNotGranted:       rpctypes.ErrGRPCRoleNotGranted,
@@ -115,4 +121,16 @@ func isClientCtxErr(ctxErr error, err error) bool {
 		}
 	}
 	return false
+}
+
+// in v3.4, learner is allowed to serve serializable read and endpoint status
+func isRPCSupportedForLearner(req interface{}) bool {
+	switch r := req.(type) {
+	case *pb.StatusRequest:
+		return true
+	case *pb.RangeRequest:
+		return r.Serializable
+	default:
+		return false
+	}
 }

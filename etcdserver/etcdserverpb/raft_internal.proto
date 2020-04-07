@@ -4,6 +4,7 @@ package etcdserverpb;
 import "gogoproto/gogo.proto";
 import "etcdserver.proto";
 import "rpc.proto";
+import "etcd/etcdserver/api/membership/membershippb/membership.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
@@ -41,6 +42,7 @@ message InternalRaftRequest {
 
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
+  AuthStatusRequest auth_status = 1013;
 
   InternalAuthenticateRequest authenticate = 1012;
 
@@ -58,6 +60,10 @@ message InternalRaftRequest {
   AuthRoleGetRequest auth_role_get = 1202;
   AuthRoleGrantPermissionRequest auth_role_grant_permission = 1203;
   AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1204;
+
+  membershippb.ClusterVersionSetRequest cluster_version_set = 1300;
+  membershippb.ClusterMemberAttrSetRequest cluster_member_attr_set = 1301;
+  membershippb.DowngradeInfoSetRequest  downgrade_info_set = 1302;
 }
 
 message EmptyResponse {

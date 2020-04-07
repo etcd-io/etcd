@@ -61,6 +61,12 @@ func txnPutFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if txnPutOpsPerTxn > keySpaceSize {
+		fmt.Fprintf(os.Stderr, "expected --txn-ops no larger than --key-space-size, "+
+			"got txn-ops(%v) key-space-size(%v)\n", txnPutOpsPerTxn, keySpaceSize)
+		os.Exit(1)
+	}
+
 	requests := make(chan []v3.Op, totalClients)
 	if txnPutRate == 0 {
 		txnPutRate = math.MaxInt32

@@ -96,7 +96,7 @@ func TestV3AuthRevision(t *testing.T) {
 	rev := presp.Header.Revision
 
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	aresp, aerr := api.Auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123"})
+	aresp, aerr := api.Auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}})
 	cancel()
 	if aerr != nil {
 		t.Fatal(aerr)
@@ -294,7 +294,7 @@ func TestV3AuthWithLeaseAttach(t *testing.T) {
 
 func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 	for _, user := range users {
-		if _, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: user.name, Password: user.password}); err != nil {
+		if _, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: user.name, Password: user.password, Options: &authpb.UserAddOptions{NoPassword: false}}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := auth.RoleAdd(context.TODO(), &pb.AuthRoleAddRequest{Name: user.role}); err != nil {
@@ -357,6 +357,7 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 }
 
 func TestV3AuthOldRevConcurrent(t *testing.T) {
+	t.Skip() // TODO(jingyih): re-enable the test when #10408 is fixed.
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

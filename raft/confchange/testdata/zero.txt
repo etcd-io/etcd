@@ -1,0 +1,6 @@
+# NodeID zero is ignored.
+simple
+v1 r0 v0 l0
+----
+voters=(1)
+1: StateProbe match=0 next=0

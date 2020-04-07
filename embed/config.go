@@ -15,7 +15,6 @@
 package embed
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -30,18 +29,19 @@ import (
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/pkg/flags"
+	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/pkg/netutil"
 	"go.etcd.io/etcd/pkg/srv"
 	"go.etcd.io/etcd/pkg/tlsutil"
 	"go.etcd.io/etcd/pkg/transport"
 	"go.etcd.io/etcd/pkg/types"
 
-	"github.com/ghodss/yaml"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -69,15 +69,14 @@ const (
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
 	// DefaultEnableV2 is the default value for "--enable-v2" flag.
-	// v2 is enabled by default.
-	// TODO: disable v2 when deprecated.
-	DefaultEnableV2 = true
+	// v2 API is disabled by default.
+	DefaultEnableV2 = false
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
 	maxElectionMs = 50000
 	// backend freelist map type
-	freelistMapType = "map"
+	freelistArrayType = "array"
 )
 
 var (
@@ -171,10 +170,12 @@ type Config struct {
 	// BackendBatchInterval is the maximum time before commit the backend transaction.
 	BackendBatchInterval time.Duration `json:"backend-batch-interval"`
 	// BackendBatchLimit is the maximum operations before commit the backend transaction.
-	BackendBatchLimit int   `json:"backend-batch-limit"`
-	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
-	MaxTxnOps         uint  `json:"max-txn-ops"`
-	MaxRequestBytes   uint  `json:"max-request-bytes"`
+	BackendBatchLimit int `json:"backend-batch-limit"`
+	// BackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
+	BackendFreelistType string `json:"backend-bbolt-freelist-type"`
+	QuotaBackendBytes   int64  `json:"quota-backend-bytes"`
+	MaxTxnOps           uint   `json:"max-txn-ops"`
+	MaxRequestBytes     uint   `json:"max-request-bytes"`
 
 	LPUrls, LCUrls []url.URL
 	APUrls, ACUrls []url.URL
@@ -276,8 +277,9 @@ type Config struct {
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
-	// ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses (array and map are supported types).
-	ExperimentalBackendFreelistType string `json:"experimental-backend-bbolt-freelist-type"`
+	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
+	ExperimentalCompactionBatchLimit  int  `json:"experimental-compaction-batch-limit"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -287,14 +289,11 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// Logger is logger options: "zap", "capnslog".
-	// WARN: "capnslog" is being deprecated in v3.5.
+	// Logger is logger options: currently only supports "zap".
+	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
-
-	// DeprecatedLogOutput is to be deprecated in v3.5.
-	// Just here for safe migration in v3.4.
-	DeprecatedLogOutput []string `json:"log-output"`
-
+	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
+	LogLevel string `json:"log-level"`
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
@@ -302,9 +301,6 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
-
-	// Debug is true, to enable debug level logging.
-	Debug bool `json:"debug"`
 
 	// ZapLoggerBuilder is used to build the zap logger.
 	ZapLoggerBuilder func(*Config) error
@@ -325,13 +321,6 @@ type Config struct {
 
 	// EnableGRPCGateway is false to disable grpc gateway.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
-
-	// TO BE DEPRECATED
-
-	// LogPkgLevels is being deprecated in v3.5.
-	// Only valid if "logger" option is "capnslog".
-	// WARN: DO NOT USE THIS!
-	LogPkgLevels string `json:"log-package-levels"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -408,29 +397,14 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:            new(sync.RWMutex),
-		logger:              nil,
-		Logger:              "capnslog",
-		DeprecatedLogOutput: []string{DefaultLogOutput},
-		LogOutputs:          []string{DefaultLogOutput},
-		Debug:               false,
-		LogPkgLevels:        "",
+		loggerMu:   new(sync.RWMutex),
+		logger:     nil,
+		Logger:     "zap",
+		LogOutputs: []string{DefaultLogOutput},
+		LogLevel:   logutil.DefaultLogLevel,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
-}
-
-func logTLSHandshakeFailure(conn *tls.Conn, err error) {
-	state := conn.ConnectionState()
-	remoteAddr := conn.RemoteAddr().String()
-	serverName := state.ServerName
-	if len(state.PeerCertificates) > 0 {
-		cert := state.PeerCertificates[0]
-		ips, dns := cert.IPAddresses, cert.DNSNames
-		plog.Infof("rejected connection from %q (error %q, ServerName %q, IPAddresses %q, DNSNames %q)", remoteAddr, err.Error(), serverName, ips, dns)
-	} else {
-		plog.Infof("rejected connection from %q (error %q, ServerName %q)", remoteAddr, err.Error(), serverName)
-	}
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -587,10 +561,10 @@ func (cfg *Config) Validate() error {
 		return ErrConflictBootstrapFlags
 	}
 
-	if cfg.TickMs <= 0 {
+	if cfg.TickMs == 0 {
 		return fmt.Errorf("--heartbeat-interval must be >0 (set to %dms)", cfg.TickMs)
 	}
-	if cfg.ElectionMs <= 0 {
+	if cfg.ElectionMs == 0 {
 		return fmt.Errorf("--election-timeout must be >0 (set to %dms)", cfg.ElectionMs)
 	}
 	if 5*cfg.TickMs > cfg.ElectionMs {
@@ -630,19 +604,11 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
 		lg := cfg.logger
 		if cerr != nil {
-			if lg != nil {
-				lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
-			} else {
-				plog.Errorf("couldn't resolve during SRV discovery (%v)", cerr)
-			}
+			lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
 			return nil, "", cerr
 		}
 		for _, s := range clusterStrs {
-			if lg != nil {
-				lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
-			} else {
-				plog.Noticef("got bootstrap from DNS for etcd-server at %s", s)
-			}
+			lg.Info("got bootstrap from DNS for etcd-server", zap.String("node", s))
 		}
 		clusterStr := strings.Join(clusterStrs, ",")
 		if strings.Contains(clusterStr, "https://") && cfg.PeerTLSInfo.TrustedCAFile == "" {
@@ -683,35 +649,31 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server-ssl SRV",
-			zap.String("service-scheme", "https"),
-			zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(cerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server-ssl SRV",
+		zap.String("service-scheme", "https"),
+		zap.String("service-name", "etcd-server-ssl"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(cerr),
+	)
 
 	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if httpCerr != nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
-	if lg != nil {
-		lg.Info(
-			"get cluster for etcd-server SRV",
-			zap.String("service-scheme", "http"),
-			zap.String("service-name", "etcd-server"+serviceNameSuffix),
-			zap.String("server-name", cfg.Name),
-			zap.String("discovery-srv", cfg.DNSCluster),
-			zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
-			zap.Strings("found-cluster", clusterStrs),
-			zap.Error(httpCerr),
-		)
-	}
+	lg.Info(
+		"get cluster for etcd-server SRV",
+		zap.String("service-scheme", "http"),
+		zap.String("service-name", "etcd-server"+serviceNameSuffix),
+		zap.String("server-name", cfg.Name),
+		zap.String("discovery-srv", cfg.DNSCluster),
+		zap.Strings("advertise-peer-urls", cfg.getAPURLs()),
+		zap.Strings("found-cluster", clusterStrs),
+		zap.Error(httpCerr),
+	)
 
 	return clusterStrs, cerr
 }
@@ -746,11 +708,7 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.ClientTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring client auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring client auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring client auto TLS since certs given")
 		return nil
 	}
 	chosts := make([]string, len(cfg.LCUrls))
@@ -769,11 +727,7 @@ func (cfg *Config) PeerSelfCert() (err error) {
 		return nil
 	}
 	if !cfg.PeerTLSInfo.Empty() {
-		if cfg.logger != nil {
-			cfg.logger.Warn("ignoring peer auto TLS since certs given")
-		} else {
-			plog.Warningf("ignoring peer auto TLS since certs given")
-		}
+		cfg.logger.Warn("ignoring peer auto TLS since certs given")
 		return nil
 	}
 	phosts := make([]string, len(cfg.LPUrls))
@@ -903,9 +857,9 @@ func (cfg *Config) getMetricsURLs() (ss []string) {
 }
 
 func parseBackendFreelistType(freelistType string) bolt.FreelistType {
-	if freelistType == freelistMapType {
-		return bolt.FreelistMapType
+	if freelistType == freelistArrayType {
+		return bolt.FreelistArrayType
 	}
 
-	return bolt.FreelistArrayType
+	return bolt.FreelistMapType
 }

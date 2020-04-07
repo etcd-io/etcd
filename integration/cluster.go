@@ -150,6 +150,7 @@ type ClusterConfig struct {
 	// UseIP is true to use only IP for gRPC requests.
 	UseIP bool
 
+	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
 }
 
@@ -293,6 +294,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
 			useIP:                    c.cfg.UseIP,
+			enableLeaseCheckpoint:    c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:  c.cfg.LeaseCheckpointInterval,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
@@ -559,6 +561,8 @@ type member struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+
+	isLearner bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -579,6 +583,7 @@ type memberConfig struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+	enableLeaseCheckpoint    bool
 	leaseCheckpointInterval  time.Duration
 }
 
@@ -670,6 +675,7 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
+	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
 
 	m.InitialCorruptCheck = true
@@ -1013,11 +1019,25 @@ func (m *member) Close() {
 		m.serverClient = nil
 	}
 	if m.grpcServer != nil {
-		m.grpcServer.Stop()
-		m.grpcServer.GracefulStop()
+		ch := make(chan struct{})
+		go func() {
+			defer close(ch)
+			// close listeners to stop accepting new connections,
+			// will block on any existing transports
+			m.grpcServer.GracefulStop()
+		}()
+		// wait until all pending RPCs are finished
+		select {
+		case <-ch:
+		case <-time.After(2 * time.Second):
+			// took too long, manually close open transports
+			// e.g. watch streams
+			m.grpcServer.Stop()
+			<-ch
+		}
 		m.grpcServer = nil
-		m.grpcServerPeer.Stop()
 		m.grpcServerPeer.GracefulStop()
+		m.grpcServerPeer.Stop()
 		m.grpcServerPeer = nil
 	}
 	m.s.HardStop()
@@ -1123,7 +1143,7 @@ func (m *member) Terminate(t testing.TB) {
 }
 
 // Metric gets the metric value for a member
-func (m *member) Metric(metricName string) (string, error) {
+func (m *member) Metric(metricName string, expectLabels ...string) (string, error) {
 	cfgtls := transport.TLSInfo{}
 	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
 	if err != nil {
@@ -1141,9 +1161,20 @@ func (m *member) Metric(metricName string) (string, error) {
 	}
 	lines := strings.Split(string(b), "\n")
 	for _, l := range lines {
-		if strings.HasPrefix(l, metricName) {
-			return strings.Split(l, " ")[1], nil
+		if !strings.HasPrefix(l, metricName) {
+			continue
 		}
+		ok := true
+		for _, lv := range expectLabels {
+			if !strings.Contains(l, lv) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		return strings.Split(l, " ")[1], nil
 	}
 	return "", nil
 }
@@ -1162,6 +1193,10 @@ func (m *member) RecoverPartition(t testing.TB, others ...*member) {
 		m.s.MendPeer(other.s.ID())
 		other.s.MendPeer(m.s.ID())
 	}
+}
+
+func (m *member) ReadyNotify() <-chan struct{} {
+	return m.s.ReadyNotify()
 }
 
 func MustNewHTTPClient(t testing.TB, eps []string, tls *transport.TLSInfo) client.Client {
@@ -1271,4 +1306,137 @@ type grpcAPI struct {
 	Lock lockpb.LockClient
 	// Election is the election API for the client's connection.
 	Election epb.ElectionClient
+}
+
+// GetLearnerMembers returns the list of learner members in cluster using MemberList API.
+func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
+	cli := c.Client(0)
+	resp, err := cli.MemberList(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list member %v", err)
+	}
+	var learners []*pb.Member
+	for _, m := range resp.Members {
+		if m.IsLearner {
+			learners = append(learners, m)
+		}
+	}
+	return learners, nil
+}
+
+// AddAndLaunchLearnerMember creates a leaner member, adds it to cluster
+// via v3 MemberAdd API, and then launches the new member.
+func (c *ClusterV3) AddAndLaunchLearnerMember(t testing.TB) {
+	m := c.mustNewMember(t)
+	m.isLearner = true
+
+	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
+	peerURLs := []string{scheme + "://" + m.PeerListeners[0].Addr().String()}
+
+	cli := c.Client(0)
+	_, err := cli.MemberAddAsLearner(context.Background(), peerURLs)
+	if err != nil {
+		t.Fatalf("failed to add learner member %v", err)
+	}
+
+	m.InitialPeerURLsMap = types.URLsMap{}
+	for _, mm := range c.Members {
+		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
+	}
+	m.InitialPeerURLsMap[m.Name] = m.PeerURLs
+	m.NewCluster = false
+
+	if err := m.Launch(); err != nil {
+		t.Fatal(err)
+	}
+
+	c.Members = append(c.Members, m)
+
+	c.waitMembersMatch(t)
+}
+
+// getMembers returns a list of members in cluster, in format of etcdserverpb.Member
+func (c *ClusterV3) getMembers() []*pb.Member {
+	var mems []*pb.Member
+	for _, m := range c.Members {
+		mem := &pb.Member{
+			Name:       m.Name,
+			PeerURLs:   m.PeerURLs.StringSlice(),
+			ClientURLs: m.ClientURLs.StringSlice(),
+			IsLearner:  m.isLearner,
+		}
+		mems = append(mems, mem)
+	}
+	return mems
+}
+
+// waitMembersMatch waits until v3rpc MemberList returns the 'same' members info as the
+// local 'c.Members', which is the local recording of members in the testing cluster. With
+// the exception that the local recording c.Members does not have info on Member.ID, which
+// is generated when the member is been added to cluster.
+//
+// Note:
+// A successful match means the Member.clientURLs are matched. This means member has already
+// finished publishing its server attributes to cluster. Publishing attributes is a cluster-wide
+// write request (in v2 server). Therefore, at this point, any raft log entries prior to this
+// would have already been applied.
+//
+// If a new member was added to an existing cluster, at this point, it has finished publishing
+// its own server attributes to the cluster. And therefore by the same argument, it has already
+// applied the raft log entries (especially those of type raftpb.ConfChangeType). At this point,
+// the new member has the correct view of the cluster configuration.
+//
+// Special note on learner member:
+// Learner member is only added to a cluster via v3rpc MemberAdd API (as of v3.4). When starting
+// the learner member, its initial view of the cluster created by peerURLs map does not have info
+// on whether or not the new member itself is learner. But at this point, a successful match does
+// indicate that the new learner member has applied the raftpb.ConfChangeAddLearnerNode entry
+// which was used to add the learner itself to the cluster, and therefore it has the correct info
+// on learner.
+func (c *ClusterV3) waitMembersMatch(t testing.TB) {
+	wMembers := c.getMembers()
+	sort.Sort(SortableProtoMemberSliceByPeerURLs(wMembers))
+	cli := c.Client(0)
+	for {
+		resp, err := cli.MemberList(context.Background())
+		if err != nil {
+			t.Fatalf("failed to list member %v", err)
+		}
+
+		if len(resp.Members) != len(wMembers) {
+			continue
+		}
+		sort.Sort(SortableProtoMemberSliceByPeerURLs(resp.Members))
+		for _, m := range resp.Members {
+			m.ID = 0
+		}
+		if reflect.DeepEqual(resp.Members, wMembers) {
+			return
+		}
+
+		time.Sleep(tickDuration)
+	}
+}
+
+type SortableProtoMemberSliceByPeerURLs []*pb.Member
+
+func (p SortableProtoMemberSliceByPeerURLs) Len() int { return len(p) }
+func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
+	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
+}
+func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// MustNewMember creates a new member instance based on the response of V3 Member Add API.
+func (c *ClusterV3) MustNewMember(t testing.TB, resp *clientv3.MemberAddResponse) *member {
+	m := c.mustNewMember(t)
+	m.isLearner = resp.Member.IsLearner
+	m.NewCluster = false
+
+	m.InitialPeerURLsMap = types.URLsMap{}
+	for _, mm := range c.Members {
+		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
+	}
+	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
+
+	return m
 }

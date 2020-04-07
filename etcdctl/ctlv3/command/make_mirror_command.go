@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bgentry/speakeasy"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,8 @@ var (
 	mmcacert           string
 	mmprefix           string
 	mmdestprefix       string
+  mmuser             string
+	mmpassword         string
 	mmnodestprefix     bool
 )
 
@@ -63,6 +66,8 @@ func NewMakeMirrorCommand() *cobra.Command {
 	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "Verify certificates of TLS enabled secure servers using this CA bundle")
 	// TODO: secure by default when etcd enables secure gRPC by default.
 	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "Disable transport security for client connections")
+	c.Flags().StringVar(&mmuser, "dest-user", "", "Destination username[:password] for authentication (prompt if password is not supplied)")
+	c.Flags().StringVar(&mmpassword, "dest-password", "", "Destination password for authentication (if this option is used, --user option shouldn't include password)")
 
 	return c
 }
@@ -81,6 +86,34 @@ func destinationEndpoints() ([]string, error) {
 		return srvs.Endpoints, nil
 	}
 	return mmendpoints, nil
+}
+
+func authDestCfg() *authCfg {
+	if mmuser == "" {
+		return nil
+	}
+
+	var cfg authCfg
+
+	if mmpassword == "" {
+		splitted := strings.SplitN(mmuser, ":", 2)
+		if len(splitted) < 2 {
+			var err error
+			cfg.username = mmuser
+			cfg.password, err = speakeasy.Ask("Destination Password: ")
+			if err != nil {
+				ExitWithError(ExitError, err)
+			}
+		} else {
+			cfg.username = splitted[0]
+			cfg.password = splitted[1]
+		}
+	} else {
+		cfg.username = mmuser
+		cfg.password = mmpassword
+	}
+
+	return &cfg
 }
 
 func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
@@ -114,6 +147,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		cacert:            mmcacert,
 		insecureTransport: mminsecureTr,
 	}
+  auth := authDestCfg()
 
 	eps, err := destinationEndpoints()
 	if err != nil {
@@ -126,7 +160,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		keepAliveTime:    keepAliveTime,
 		keepAliveTimeout: keepAliveTimeout,
 		scfg:             sec,
-		acfg:             nil,
+		acfg:             auth,
 	}
 	dc := cc.mustClient()
 	c := mustClientFromCmd(cmd)

@@ -14,21 +14,17 @@
 
 package client
 
-//go:generate codecgen -d 1819 -r "Node|Response|Nodes" -o keys.generated.go keys.go
-
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.etcd.io/etcd/pkg/pathutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ugorji/go/codec"
-	"go.etcd.io/etcd/pkg/pathutil"
 )
 
 const (
@@ -66,7 +62,7 @@ func (e Error) Error() string {
 }
 
 var (
-	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint")
 	ErrEmptyBody   = errors.New("client: response body is empty")
 )
 
@@ -656,9 +652,11 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 	return res, err
 }
 
+var jsonIterator = caseSensitiveJsonIterator()
+
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	err := codec.NewDecoderBytes(body, new(codec.JsonHandle)).Decode(&res)
+	err := jsonIterator.Unmarshal(body, &res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}

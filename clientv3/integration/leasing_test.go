@@ -114,7 +114,7 @@ func TestLeasingInterval(t *testing.T) {
 	}
 
 	// load into cache
-	if resp, err = lkv.Get(context.TODO(), "abc/a"); err != nil {
+	if _, err = lkv.Get(context.TODO(), "abc/a"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -310,7 +310,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "abc" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 	// check current revision
 	getResp, gerr = lkv.Get(context.TODO(), "k")
@@ -318,7 +318,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "def" {
-		t.Fatalf(`expeted "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"def" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 }
 
@@ -389,7 +389,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 		go func() {
 			resp, perr := lkv.Put(context.TODO(), "k", "abc")
 			if perr != nil {
-				t.Fatal(perr)
+				t.Error(perr)
 			}
 			putc <- resp
 		}()
@@ -559,7 +559,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
 		t.Fatal(err)
 	}
-	gresp, gerr := lkv.Get(context.TODO(), "k")
+	_, gerr := lkv.Get(context.TODO(), "k")
 	if gerr != nil {
 		t.Fatal(gerr)
 	}
@@ -573,7 +573,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 
 	clus.Members[0].Stop(t)
 
-	gresp, gerr = lkv.Get(context.TODO(), "k")
+	gresp, gerr := lkv.Get(context.TODO(), "k")
 	if gerr != nil {
 		t.Fatal(gerr)
 	}
@@ -939,6 +939,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Value) != "456" {
 		t.Errorf(`expected value "def", got %+v`, gresp)
 	}
+
 	// check puts were applied and are all in the same revision
 	w := clus.Client(0).Watch(
 		clus.Client(0).Ctx(),
@@ -992,7 +993,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 		for i := 0; i < keyCount/2; i++ {
 			k := fmt.Sprintf("k-%d", rand.Intn(keyCount))
 			if _, err := kv.Get(context.TODO(), k); err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			getc <- struct{}{}
 		}
@@ -1399,10 +1400,10 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 		// blocks until lkv1 connection comes back
 		resp, err := lkv1.Get(cctx, "k")
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		if string(resp.Kvs[0].Value) != "v" {
-			t.Fatalf(`expected "v" value, got %+v`, resp)
+			t.Errorf(`expected "v" value, got %+v`, resp)
 		}
 	}()
 	select {
@@ -1440,11 +1441,11 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	clus.WaitLeader(t)
 
 	// put some more revisions for compaction
-	presp, err := clus.Client(1).Put(context.TODO(), "a", "123")
+	_, err := clus.Client(1).Put(context.TODO(), "a", "123")
 	if err != nil {
 		t.Fatal(err)
 	}
-	presp, err = clus.Client(1).Put(context.TODO(), "a", "123")
+	presp, err := clus.Client(1).Put(context.TODO(), "a", "123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1574,12 +1575,16 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	var wgPutters, wgGetters sync.WaitGroup
 	wgPutters.Add(numPutters)
 	wgGetters.Add(numGetters)
+	txnerrCh := make(chan error, 1)
 
 	f := func() {
 		defer wgPutters.Done()
 		for i := 0; i < 10; i++ {
-			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); err != nil {
-				t.Fatal(txnerr)
+			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); txnerr != nil {
+				select {
+				case txnerrCh <- txnerr:
+				default:
+				}
 			}
 		}
 	}
@@ -1595,7 +1600,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 			}
 			tresp, err := lkv.Txn(context.TODO()).Then(gets...).Commit()
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			revs := make([]int64, len(gets))
 			for i, resp := range tresp.Responses {
@@ -1604,7 +1609,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 			}
 			for i := 1; i < len(revs); i++ {
 				if revs[i] != revs[i-1] {
-					t.Fatalf("expected matching revisions, got %+v", revs)
+					t.Errorf("expected matching revisions, got %+v", revs)
 				}
 			}
 		}
@@ -1618,6 +1623,11 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	}
 
 	wgPutters.Wait()
+	select {
+	case txnerr := <-txnerrCh:
+		t.Fatal(txnerr)
+	default:
+	}
 	close(donec)
 	wgGetters.Wait()
 }
@@ -1738,7 +1748,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 	cmp := clientv3.Compare(clientv3.Version("k").WithPrefix(), "=", 1)
 	tresp, terr := lkv.Txn(context.TODO()).If(cmp).Commit()
 	if terr != nil {
-		t.Fatal(err)
+		t.Fatal(terr)
 	}
 	if tresp.Succeeded {
 		t.Fatalf("expected Succeeded=false, got %+v", tresp)

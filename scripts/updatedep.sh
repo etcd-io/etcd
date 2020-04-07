@@ -6,8 +6,15 @@ if ! [[ "$0" =~ scripts/updatedep.sh ]]; then
   exit 255
 fi
 
-if [[ $(go version) != "go version go1.11"* ]]; then
-  echo "expect Go 1.11+, got:" "$(go version)"
+if [ -d "gopath.proto" ]; then
+  # gopath.proto is created by genproto.sh and it thoroughly messes
+  # with go mod.
+  echo "Remove gopath.proto before running this script"
+  exit 255
+fi
+
+if [[ $(go version) != "go version go1.14"* ]]; then
+  echo "expect Go 1.14+, got:" "$(go version)"
   exit 255
 fi
 

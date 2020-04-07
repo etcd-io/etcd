@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/pkg/flags"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var epClusterEndpoints bool
@@ -60,7 +61,7 @@ func newEpStatusCommand() *cobra.Command {
 		Use:   "status",
 		Short: "Prints out the status of endpoints specified in `--endpoints` flag",
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
-The items in the lists are endpoint, ID, version, db size, is leader, raft term, raft index.
+The items in the lists are endpoint, ID, version, db size, is leader, is learner, raft term, raft index, raft applied index, errors.
 `,
 		Run: epStatusCommandFunc,
 	}
@@ -85,7 +86,11 @@ type epHealth struct {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+	lg, err := zap.NewProduction()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	flags.SetPflagsFromEnv(lg, "ETCDCTL", cmd.InheritedFlags())
 	initDisplayFromCmd(cmd)
 
 	sec := secureCfgFromCmd(cmd)

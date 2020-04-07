@@ -43,3 +43,7 @@ func (s *cls2clc) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequest, o
 func (s *cls2clc) MemberRemove(ctx context.Context, r *pb.MemberRemoveRequest, opts ...grpc.CallOption) (*pb.MemberRemoveResponse, error) {
 	return s.cls.MemberRemove(ctx, r)
 }
+
+func (s *cls2clc) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest, opts ...grpc.CallOption) (*pb.MemberPromoteResponse, error) {
+	return s.cls.MemberPromote(ctx, r)
+}

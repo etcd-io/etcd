@@ -22,11 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
-
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "proxy/tcpproxy")
 
 type remote struct {
 	mu       sync.Mutex
@@ -88,8 +85,6 @@ func (tp *TCPProxy) Run() error {
 	}
 	if tp.Logger != nil {
 		tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))
-	} else {
-		plog.Printf("ready to proxy client requests to %+v", eps)
 	}
 
 	go tp.runMonitor()
@@ -117,7 +112,7 @@ func (tp *TCPProxy) pick() *remote {
 			bestPr = r.srv.Priority
 			w = 0
 			weighted = nil
-			unweighted = []*remote{r}
+			unweighted = nil
 			fallthrough
 		case r.srv.Priority == bestPr:
 			if r.srv.Weight > 0 {
@@ -181,8 +176,6 @@ func (tp *TCPProxy) serve(in net.Conn) {
 		remote.inactivate()
 		if tp.Logger != nil {
 			tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-		} else {
-			plog.Warningf("deactivated endpoint [%s] due to %v for %v", remote.addr, err, tp.MonitorInterval)
 		}
 	}
 
@@ -215,14 +208,10 @@ func (tp *TCPProxy) runMonitor() {
 					if err := r.tryReactivate(); err != nil {
 						if tp.Logger != nil {
 							tp.Logger.Warn("failed to activate endpoint (stay inactive for another interval)", zap.String("address", r.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-						} else {
-							plog.Warningf("failed to activate endpoint [%s] due to %v (stay inactive for another %v)", r.addr, err, tp.MonitorInterval)
 						}
 					} else {
 						if tp.Logger != nil {
 							tp.Logger.Info("activated", zap.String("address", r.addr))
-						} else {
-							plog.Printf("activated %s", r.addr)
 						}
 					}
 				}(rem)

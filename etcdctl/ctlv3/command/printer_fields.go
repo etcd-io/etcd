@@ -137,6 +137,7 @@ func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
 		for _, u := range m.ClientURLs {
 			fmt.Printf("\"ClientURL\" : %q\n", u)
 		}
+		fmt.Println(`"IsLearner" :`, m.IsLearner)
 		fmt.Println()
 	}
 }
@@ -157,6 +158,7 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 		fmt.Printf("\"Version\" : %q\n", ep.Resp.Version)
 		fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
 		fmt.Println(`"Leader" :`, ep.Resp.Leader)
+		fmt.Println(`"IsLearner" :`, ep.Resp.IsLearner)
 		fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)
 		fmt.Println(`"RaftTerm" :`, ep.Resp.RaftTerm)
 		fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)

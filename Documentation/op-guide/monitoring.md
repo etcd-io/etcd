@@ -1,4 +1,6 @@
-# Monitoring etcd
+---
+title: Monitoring etcd
+---
 
 Each etcd server provides local monitoring information on its client port through http endpoints. The monitoring data is useful for both system health checking and cluster debugging.
 

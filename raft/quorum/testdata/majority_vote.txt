@@ -1,0 +1,97 @@
+# The empty config always announces a won vote.
+vote
+----
+VoteWon
+
+vote cfg=(1) votes=(_)
+----
+VotePending
+
+vote cfg=(1) votes=(n)
+----
+VoteLost
+
+vote cfg=(123) votes=(y)
+----
+VoteWon
+
+
+
+
+vote cfg=(4,8) votes=(_,_)
+----
+VotePending
+
+# With two voters, a single rejection loses the vote.
+vote cfg=(4,8) votes=(n,_)
+----
+VoteLost
+
+vote cfg=(4,8) votes=(y,_)
+----
+VotePending
+
+vote cfg=(4,8) votes=(n,y)
+----
+VoteLost
+
+vote cfg=(4,8) votes=(y,y)
+----
+VoteWon
+
+
+
+vote cfg=(2,4,7) votes=(_,_,_)
+----
+VotePending
+
+vote cfg=(2,4,7) votes=(n,_,_)
+----
+VotePending
+
+vote cfg=(2,4,7) votes=(y,_,_)
+----
+VotePending
+
+vote cfg=(2,4,7) votes=(n,n,_)
+----
+VoteLost
+
+vote cfg=(2,4,7) votes=(y,n,_)
+----
+VotePending
+
+vote cfg=(2,4,7) votes=(y,y,_)
+----
+VoteWon
+
+vote cfg=(2,4,7) votes=(y,y,n)
+----
+VoteWon
+
+vote cfg=(2,4,7) votes=(n,y,n)
+----
+VoteLost
+
+
+
+# Test some random example with seven nodes (why not).
+vote cfg=(1,2,3,4,5,6,7) votes=(y,y,n,y,_,_,_)
+----
+VotePending
+
+vote cfg=(1,2,3,4,5,6,7) votes=(_,y,y,_,n,y,n)
+----
+VotePending
+
+vote cfg=(1,2,3,4,5,6,7) votes=(y,y,n,y,_,n,y)
+----
+VoteWon
+
+vote cfg=(1,2,3,4,5,6,7) votes=(y,y,_,n,y,n,n)
+----
+VotePending
+
+vote cfg=(1,2,3,4,5,6,7) votes=(y,y,n,y,n,n,n)
+----
+VoteLost

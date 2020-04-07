@@ -1,4 +1,4 @@
-FROM ubuntu:17.10
+FROM ubuntu:18.04
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -20,6 +20,7 @@ RUN apt-get -y update \
   netcat \
   bind9 \
   dnsutils \
+  lsof \
   && apt-get -y update \
   && apt-get -y upgrade \
   && apt-get -y autoremove \

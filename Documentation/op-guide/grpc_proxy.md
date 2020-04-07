@@ -1,4 +1,6 @@
-# gRPC proxy
+---
+title: gRPC proxy
+---
 
 The gRPC proxy is a stateless etcd reverse proxy operating at the gRPC layer (L7). The proxy is designed to reduce the total processing load on the core etcd cluster. For horizontal scalability, it coalesces watch and lease API requests. To protect the cluster against abusive clients, it caches key range requests.
 
@@ -222,4 +224,29 @@ Finally, test the TLS termination by putting a key into the proxy over http:
 ```sh
 $ ETCDCTL_API=3 etcdctl --endpoints=http://localhost:12379 put abc def
 # OK
+```
+
+## Metrics and Health
+
+The gRPC proxy exposes `/health` and Prometheus `/metrics` endpoints for the etcd members defined by `--endpoints`. An alternative define an additional URL that will respond to both the `/metrics` and `/health` endpoints with the `--metrics-addr` flag.
+
+```bash
+$ etcd grpc-proxy start \
+  --endpoints https://localhost:2379 \
+  --metrics-addr https://0.0.0.0:4443 \
+  --listen-addr 127.0.0.1:23790 \
+  --key client.key \
+  --key-file proxy-server.key \
+  --cert client.crt \
+  --cert-file proxy-server.crt \
+  --cacert ca.pem \
+  --trusted-ca-file proxy-ca.pem
+ ```
+
+### Known issue
+
+The main interface of the proxy serves both HTTP2 and HTTP/1.1. If proxy is setup with TLS as show in the above example, when using a client such as cURL against the listening interface will require explicitly setting the protocol to HTTP/1.1 on the request to return `/metrics` or `/health`. By using the `--metrics-addr` flag the secondary interface will not have this requirement.
+
+```bash
+ $ curl --cacert proxy-ca.pem --key proxy-client.key --cert proxy-client.crt https://127.0.0.1:23790/metrics --http1.1
 ```

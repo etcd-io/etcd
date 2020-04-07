@@ -61,7 +61,7 @@ func benchmarkResponseUnmarshalling(b *testing.B, children, size int) {
 	newResponse := new(Response)
 	for i := 0; i < b.N; i++ {
 		if newResponse, err = unmarshalSuccessfulKeysResponse(header, body); err != nil {
-			b.Errorf("error unmarshaling response (%v)", err)
+			b.Errorf("error unmarshalling response (%v)", err)
 		}
 
 	}

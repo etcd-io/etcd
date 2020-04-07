@@ -18,27 +18,26 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/wal/walpb"
-
 	"go.uber.org/zap"
 )
 
 // Repair tries to repair ErrUnexpectedEOF in the
 // last wal file by truncating.
 func Repair(lg *zap.Logger, dirpath string) bool {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	f, err := openLast(lg, dirpath)
 	if err != nil {
 		return false
 	}
 	defer f.Close()
 
-	if lg != nil {
-		lg.Info("repairing", zap.String("path", f.Name()))
-	} else {
-		plog.Noticef("repairing %v", f.Name())
-	}
+	lg.Info("repairing", zap.String("path", f.Name()))
 
 	rec := &walpb.Record{}
 	decoder := newDecoder(f)
@@ -61,70 +60,44 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 			continue
 
 		case io.EOF:
-			if lg != nil {
-				lg.Info("repaired", zap.String("path", f.Name()), zap.Error(io.EOF))
-			}
+			lg.Info("repaired", zap.String("path", f.Name()), zap.Error(io.EOF))
 			return true
 
 		case io.ErrUnexpectedEOF:
 			bf, bferr := os.Create(f.Name() + ".broken")
 			if bferr != nil {
-				if lg != nil {
-					lg.Warn("failed to create backup file", zap.String("path", f.Name()+".broken"), zap.Error(bferr))
-				} else {
-					plog.Errorf("could not repair %v, failed to create backup file", f.Name())
-				}
+				lg.Warn("failed to create backup file", zap.String("path", f.Name()+".broken"), zap.Error(bferr))
 				return false
 			}
 			defer bf.Close()
 
 			if _, err = f.Seek(0, io.SeekStart); err != nil {
-				if lg != nil {
-					lg.Warn("failed to read file", zap.String("path", f.Name()), zap.Error(err))
-				} else {
-					plog.Errorf("could not repair %v, failed to read file", f.Name())
-				}
+				lg.Warn("failed to read file", zap.String("path", f.Name()), zap.Error(err))
 				return false
 			}
 
 			if _, err = io.Copy(bf, f); err != nil {
-				if lg != nil {
-					lg.Warn("failed to copy", zap.String("from", f.Name()+".broken"), zap.String("to", f.Name()), zap.Error(err))
-				} else {
-					plog.Errorf("could not repair %v, failed to copy file", f.Name())
-				}
+				lg.Warn("failed to copy", zap.String("from", f.Name()+".broken"), zap.String("to", f.Name()), zap.Error(err))
 				return false
 			}
 
 			if err = f.Truncate(lastOffset); err != nil {
-				if lg != nil {
-					lg.Warn("failed to truncate", zap.String("path", f.Name()), zap.Error(err))
-				} else {
-					plog.Errorf("could not repair %v, failed to truncate file", f.Name())
-				}
+				lg.Warn("failed to truncate", zap.String("path", f.Name()), zap.Error(err))
 				return false
 			}
 
+			start := time.Now()
 			if err = fileutil.Fsync(f.File); err != nil {
-				if lg != nil {
-					lg.Warn("failed to fsync", zap.String("path", f.Name()), zap.Error(err))
-				} else {
-					plog.Errorf("could not repair %v, failed to sync file", f.Name())
-				}
+				lg.Warn("failed to fsync", zap.String("path", f.Name()), zap.Error(err))
 				return false
 			}
+			walFsyncSec.Observe(time.Since(start).Seconds())
 
-			if lg != nil {
-				lg.Info("repaired", zap.String("path", f.Name()), zap.Error(io.ErrUnexpectedEOF))
-			}
+			lg.Info("repaired", zap.String("path", f.Name()), zap.Error(io.ErrUnexpectedEOF))
 			return true
 
 		default:
-			if lg != nil {
-				lg.Warn("failed to repair", zap.String("path", f.Name()), zap.Error(err))
-			} else {
-				plog.Errorf("could not repair error (%v)", err)
-			}
+			lg.Warn("failed to repair", zap.String("path", f.Name()), zap.Error(err))
 			return false
 		}
 	}

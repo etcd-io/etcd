@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// NewRaftLogger converts "*zap.Logger" to "raft.Logger".
+// NewRaftLogger builds "raft.Logger" from "*zap.Config".
 func NewRaftLogger(lcfg *zap.Config) (raft.Logger, error) {
 	if lcfg == nil {
 		return nil, errors.New("nil zap.Config")
@@ -33,6 +33,11 @@ func NewRaftLogger(lcfg *zap.Config) (raft.Logger, error) {
 		return nil, err
 	}
 	return &zapRaftLogger{lg: lg, sugar: lg.Sugar()}, nil
+}
+
+// NewRaftLoggerZap converts "*zap.Logger" to "raft.Logger".
+func NewRaftLoggerZap(lg *zap.Logger) raft.Logger {
+	return &zapRaftLogger{lg: lg, sugar: lg.Sugar()}
 }
 
 // NewRaftLoggerFromZapCore creates "raft.Logger" from "zap.Core"

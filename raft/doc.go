@@ -19,7 +19,7 @@ defined in the raftpb package.
 Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
 For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
-(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+(https://raft.github.io/raft.pdf) by Diego Ongaro and John Ousterhout.
 
 A simple example application, _raftexample_, is also available to help illustrate
 how to use this package in practice:
@@ -172,7 +172,7 @@ may be reused. Node IDs must be non-zero.
 Implementation notes
 
 This implementation is up to date with the final Raft thesis
-(https://ramcloud.stanford.edu/~ongaro/thesis.pdf), although our
+(https://github.com/ongardie/dissertation/blob/master/stanford.pdf), although our
 implementation of the membership change protocol differs somewhat from
 that described in chapter 4. The key invariant that membership changes
 happen one node at a time is preserved, but in our implementation the

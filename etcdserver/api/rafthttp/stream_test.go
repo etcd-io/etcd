@@ -127,7 +127,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
+		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint(zap.NewExample()) + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
@@ -377,6 +377,14 @@ func TestCheckStreamSupport(t *testing.T) {
 		if g := checkStreamSupport(tt.v, tt.t); g != tt.w {
 			t.Errorf("#%d: check = %v, want %v", i, g, tt.w)
 		}
+	}
+}
+
+func TestStreamSupportCurrentVersion(t *testing.T) {
+	cv := version.Cluster(version.Version)
+	cv = cv + ".0"
+	if _, ok := supportedStream[cv]; !ok {
+		t.Errorf("Current version does not have stream support.")
 	}
 }
 

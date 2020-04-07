@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -22,6 +23,8 @@ import (
 	mrand "math/rand"
 	"os"
 	"reflect"
+	"sort"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -31,13 +34,14 @@ import (
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/schedule"
 	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
 
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer s.Close()
 	defer os.Remove(tmpPath)
 
@@ -328,7 +332,7 @@ func TestStoreCompact(t *testing.T) {
 	key2 := newTestKeyBytes(revision{2, 0}, false)
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
-	s.Compact(3)
+	s.Compact(traceutil.TODO(), 3)
 	s.fifoSched.WaitFinish(1)
 
 	if s.compactMainRev != 3 {
@@ -387,7 +391,7 @@ func TestStoreRestore(t *testing.T) {
 	s.restore()
 
 	if s.compactMainRev != 3 {
-		t.Errorf("compact rev = %d, want 5", s.compactMainRev)
+		t.Errorf("compact rev = %d, want 3", s.compactMainRev)
 	}
 	if s.currentRev != 5 {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
@@ -421,7 +425,7 @@ func TestRestoreDelete(t *testing.T) {
 	defer func() { restoreChunkKeys = oldChunk }()
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	keys := make(map[string]struct{})
@@ -447,7 +451,7 @@ func TestRestoreDelete(t *testing.T) {
 	}
 	s.Close()
 
-	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer s.Close()
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
@@ -469,7 +473,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 		defer os.Remove(tmpPath)
 
 		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -489,7 +493,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		var s *store
 		switch test {
 		case "recreate":
-			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 		case "restore":
 			s0.Restore(b)
 			s = s0
@@ -531,7 +535,7 @@ type hashKVResult struct {
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -550,7 +554,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 			for {
 				hash, _, compactRev, err := s.HashByRev(int64(rev))
 				if err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 				select {
 				case <-donec:
@@ -570,7 +574,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 				revHash[r.compactRev] = r.hash
 			}
 			if r.hash != revHash[r.compactRev] {
-				t.Fatalf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
+				t.Errorf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
 			}
 		}
 	}()
@@ -579,9 +583,9 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 100; i >= 0; i-- {
-			_, err := s.Compact(int64(rev - 1 - i))
+			_, err := s.Compact(traceutil.TODO(), int64(rev-1-i))
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -599,14 +603,14 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
-	rev := 1000
+	rev := 10000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
-	if _, err := s.Compact(int64(rev / 2)); err != nil {
+	if _, err := s.Compact(traceutil.TODO(), int64(rev/2)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -632,11 +636,11 @@ func TestTxnPut(t *testing.T) {
 	vals := createBytesSlice(bytesN, sliceN)
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
-		txn := s.Write()
+		txn := s.Write(traceutil.TODO())
 		base := int64(i + 2)
 		if rev := txn.Put(keys[i], vals[i], lease.NoLease); rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
@@ -645,30 +649,173 @@ func TestTxnPut(t *testing.T) {
 	}
 }
 
-func TestTxnBlockBackendForceCommit(t *testing.T) {
+// TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
+func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
-	txn := s.Read()
+	// write something to read later
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
-	done := make(chan struct{})
+	// readTx simulates a long read request
+	readTx1 := s.Read(traceutil.TODO())
+
+	// write should not be blocked by reads
+	done := make(chan struct{}, 1)
 	go func() {
-		s.b.ForceCommit()
+		s.Put([]byte("foo"), []byte("newBar"), lease.NoLease) // this is a write Txn
 		done <- struct{}{}
 	}()
 	select {
 	case <-done:
-		t.Fatalf("failed to block ForceCommit")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1 * time.Second):
+		t.Fatalf("write should not be blocked by read")
 	}
 
-	txn.End()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second): // wait 5 seconds for CI with slow IO
-		testutil.FatalStack(t, "failed to execute ForceCommit")
+	// readTx2 simulates a short read request
+	readTx2 := s.Read(traceutil.TODO())
+	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
+	ret, err := readTx2.Range([]byte("foo"), nil, ro)
+	if err != nil {
+		t.Fatalf("failed to range: %v", err)
 	}
+	// readTx2 should see the result of new write
+	w := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("newBar"),
+		CreateRevision: 2,
+		ModRevision:    3,
+		Version:        2,
+	}
+	if !reflect.DeepEqual(ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	}
+	readTx2.End()
+
+	ret, err = readTx1.Range([]byte("foo"), nil, ro)
+	if err != nil {
+		t.Fatalf("failed to range: %v", err)
+	}
+	// readTx1 should not see the result of new write
+	w = mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 2,
+		ModRevision:    2,
+		Version:        1,
+	}
+	if !reflect.DeepEqual(ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	}
+	readTx1.End()
+}
+
+// TestConcurrentReadTxAndWrite creates random concurrent Reads and Writes, and ensures Reads always see latest Writes
+func TestConcurrentReadTxAndWrite(t *testing.T) {
+	var (
+		numOfReads           = 100
+		numOfWrites          = 100
+		maxNumOfPutsPerWrite = 10
+		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
+		mu                   sync.Mutex // mu protectes committedKVs
+	)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	defer os.Remove(tmpPath)
+
+	var wg sync.WaitGroup
+	wg.Add(numOfWrites)
+	for i := 0; i < numOfWrites; i++ {
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond) // random starting time
+
+			tx := s.Write(traceutil.TODO())
+			numOfPuts := mrand.Intn(maxNumOfPutsPerWrite) + 1
+			var pendingKvs kvs
+			for j := 0; j < numOfPuts; j++ {
+				k := []byte(strconv.Itoa(mrand.Int()))
+				v := []byte(strconv.Itoa(mrand.Int()))
+				tx.Put(k, v, lease.NoLease)
+				pendingKvs = append(pendingKvs, kv{k, v})
+			}
+			// reads should not see above Puts until write is finished
+			mu.Lock()
+			committedKVs = merge(committedKVs, pendingKvs) // update shared data structure
+			tx.End()
+			mu.Unlock()
+		}()
+	}
+
+	wg.Add(numOfReads)
+	for i := 0; i < numOfReads; i++ {
+		go func() {
+			defer wg.Done()
+			time.Sleep(time.Duration(mrand.Intn(100)) * time.Millisecond) // random starting time
+
+			mu.Lock()
+			wKVs := make(kvs, len(committedKVs))
+			copy(wKVs, committedKVs)
+			tx := s.Read(traceutil.TODO())
+			mu.Unlock()
+			// get all keys in backend store, and compare with wKVs
+			ret, err := tx.Range([]byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})
+			tx.End()
+			if err != nil {
+				t.Errorf("failed to range keys: %v", err)
+				return
+			}
+			if len(wKVs) == 0 && len(ret.KVs) == 0 { // no committed KVs yet
+				return
+			}
+			var result kvs
+			for _, keyValue := range ret.KVs {
+				result = append(result, kv{keyValue.Key, keyValue.Value})
+			}
+			if !reflect.DeepEqual(wKVs, result) {
+				t.Errorf("unexpected range result") // too many key value pairs, skip printing them
+			}
+		}()
+	}
+
+	// wait until goroutines finish or timeout
+	doneC := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(doneC)
+	}()
+	select {
+	case <-doneC:
+	case <-time.After(5 * time.Minute):
+		testutil.FatalStack(t, "timeout")
+	}
+}
+
+type kv struct {
+	key []byte
+	val []byte
+}
+
+type kvs []kv
+
+func (kvs kvs) Len() int           { return len(kvs) }
+func (kvs kvs) Less(i, j int) bool { return bytes.Compare(kvs[i].key, kvs[j].key) < 0 }
+func (kvs kvs) Swap(i, j int)      { kvs[i], kvs[j] = kvs[j], kvs[i] }
+
+func merge(dst, src kvs) kvs {
+	dst = append(dst, src...)
+	sort.Stable(dst)
+	// remove duplicates, using only the newest value
+	// ref: tx_buffer.go
+	widx := 0
+	for ridx := 1; ridx < len(dst); ridx++ {
+		if !bytes.Equal(dst[widx].key, dst[ridx].key) {
+			widx++
+		}
+		dst[widx] = dst[ridx]
+	}
+	return dst[:widx+1]
 }
 
 // TODO: test attach key to lessor
@@ -700,6 +847,7 @@ func newFakeStore() *store {
 		indexCompactRespc:     make(chan map[revision]struct{}, 1),
 	}
 	s := &store{
+		cfg:            StoreConfig{CompactionBatchLimit: 10000},
 		b:              b,
 		le:             &lease.FakeLessor{},
 		kvindex:        fi,
@@ -725,6 +873,8 @@ type fakeBatchTx struct {
 
 func (b *fakeBatchTx) Lock()                          {}
 func (b *fakeBatchTx) Unlock()                        {}
+func (b *fakeBatchTx) RLock()                         {}
+func (b *fakeBatchTx) RUnlock()                       {}
 func (b *fakeBatchTx) UnsafeCreateBucket(name []byte) {}
 func (b *fakeBatchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucketName, key, value}})
@@ -752,9 +902,11 @@ type fakeBackend struct {
 
 func (b *fakeBackend) BatchTx() backend.BatchTx                                    { return b.tx }
 func (b *fakeBackend) ReadTx() backend.ReadTx                                      { return b.tx }
+func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                            { return b.tx }
 func (b *fakeBackend) Hash(ignores map[backend.IgnoreKey]struct{}) (uint32, error) { return 0, nil }
 func (b *fakeBackend) Size() int64                                                 { return 0 }
 func (b *fakeBackend) SizeInUse() int64                                            { return 0 }
+func (b *fakeBackend) OpenReadTxN() int64                                          { return 0 }
 func (b *fakeBackend) Snapshot() backend.Snapshot                                  { return nil }
 func (b *fakeBackend) ForceCommit()                                                {}
 func (b *fakeBackend) Defrag() error                                               { return nil }

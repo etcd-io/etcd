@@ -98,6 +98,8 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 		case etcd.EventTypeDelete:
 			err = json.Unmarshal(e.PrevKv.Value, &jupdate)
 			jupdate.Op = naming.Delete
+		default:
+			continue
 		}
 		if err == nil {
 			updates = append(updates, &jupdate)

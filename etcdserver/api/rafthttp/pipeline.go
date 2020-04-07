@@ -73,8 +73,6 @@ func (p *pipeline) start() {
 			zap.String("local-member-id", p.tr.ID.String()),
 			zap.String("remote-peer-id", p.peerID.String()),
 		)
-	} else {
-		plog.Infof("started HTTP pipelining with peer %s", p.peerID)
 	}
 }
 
@@ -88,8 +86,6 @@ func (p *pipeline) stop() {
 			zap.String("local-member-id", p.tr.ID.String()),
 			zap.String("remote-peer-id", p.peerID.String()),
 		)
-	} else {
-		plog.Infof("stopped HTTP pipelining with peer %s", p.peerID)
 	}
 }
 
@@ -135,7 +131,7 @@ func (p *pipeline) handle() {
 // error on any failure.
 func (p *pipeline) post(data []byte) (err error) {
 	u := p.picker.pick()
-	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.tr.ID, p.tr.ClusterID)
+	req := createPostRequest(p.tr.Logger, u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.tr.ID, p.tr.ClusterID)
 
 	done := make(chan struct{}, 1)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -155,14 +151,14 @@ func (p *pipeline) post(data []byte) (err error) {
 		p.picker.unreachable(u)
 		return err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		p.picker.unreachable(u)
 		return err
 	}
-	resp.Body.Close()
 
-	err = checkPostResponse(resp, b, req, p.peerID)
+	err = checkPostResponse(p.tr.Logger, resp, b, req, p.peerID)
 	if err != nil {
 		p.picker.unreachable(u)
 		// errMemberRemoved is a critical error since a removed member should

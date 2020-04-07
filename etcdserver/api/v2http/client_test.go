@@ -132,6 +132,11 @@ func (s *serverRecorder) UpdateMember(_ context.Context, m membership.Member) ([
 	return nil, nil
 }
 
+func (s *serverRecorder) PromoteMember(_ context.Context, id uint64) ([]*membership.Member, error) {
+	s.actions = append(s.actions, action{name: "PromoteMember", params: []interface{}{id}})
+	return nil, nil
+}
+
 type action struct {
 	name   string
 	params []interface{}
@@ -166,6 +171,9 @@ func (rs *resServer) RemoveMember(_ context.Context, _ uint64) ([]*membership.Me
 	return nil, nil
 }
 func (rs *resServer) UpdateMember(_ context.Context, _ membership.Member) ([]*membership.Member, error) {
+	return nil, nil
+}
+func (rs *resServer) PromoteMember(_ context.Context, _ uint64) ([]*membership.Member, error) {
 	return nil, nil
 }
 
@@ -1335,6 +1343,7 @@ func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1353,7 +1362,7 @@ func TestServeSelfStats(t *testing.T) {
 
 func TestSelfServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveSelf(
 			rw,
@@ -1369,7 +1378,7 @@ func TestSelfServeStatsBad(t *testing.T) {
 
 func TestLeaderServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveLeader(
 			rw,
@@ -1387,6 +1396,7 @@ func TestServeLeaderStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1407,6 +1417,7 @@ func TestServeStoreStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
