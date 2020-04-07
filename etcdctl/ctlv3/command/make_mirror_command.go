@@ -42,7 +42,7 @@ var (
 	mmcacert           string
 	mmprefix           string
 	mmdestprefix       string
-  mmuser             string
+	mmuser             string
 	mmpassword         string
 	mmnodestprefix     bool
 )
