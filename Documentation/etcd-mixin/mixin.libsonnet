@@ -516,7 +516,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'etcd_debugging_mvcc_db_total_size_in_bytes{job="$cluster"}',
+                expr: 'etcd_mvcc_db_total_size_in_bytes{job="$cluster"}',
                 hide: false,
                 interval: '',
                 intervalFactor: 2,
