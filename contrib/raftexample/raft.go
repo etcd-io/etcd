@@ -358,7 +358,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	if err != nil {
 		log.Panic(err)
 	}
-	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, data)
+	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex-1, &rc.confState, data)
 	if err != nil {
 		panic(err)
 	}
