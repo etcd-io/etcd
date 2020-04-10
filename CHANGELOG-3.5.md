@@ -98,6 +98,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
 - Log [`[CLIENT-PORT]/health` check in server side](https://github.com/etcd-io/etcd/pull/11704).
 - Improve [compaction performance when latest index is greater than 1-million](https://github.com/etcd-io/etcd/pull/11734).
+- Improve [count-only range performance](https://github.com/etcd-io/etcd/pull/11771).
 
 ### Package `embed`
 
