@@ -77,6 +77,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
 - Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
 - Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+- Add [`etcd_debugging_auth_revision`](https://github.com/etcd-io/etcd/commit/f14d2a087f7b0fd6f7980b95b5e0b945109c95f3).
 
 ### etcd server
 
@@ -98,7 +99,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
 - Log [`[CLIENT-PORT]/health` check in server side](https://github.com/etcd-io/etcd/pull/11704).
 - Improve [compaction performance when latest index is greater than 1-million](https://github.com/etcd-io/etcd/pull/11734).
+- [Refactor consistentindex](https://github.com/etcd-io/etcd/pull/11699).
+- [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
 - Improve [count-only range performance](https://github.com/etcd-io/etcd/pull/11771).
+
 
 ### Package `embed`
 
@@ -149,6 +153,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
 - Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
+- [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
+- [Improve checkPassword performance](https://github.com/etcd-io/etcd/pull/11735).
+- [Add authRevision field in AuthStatus](https://github.com/etcd-io/etcd/pull/11659).
 
 ### API
 
