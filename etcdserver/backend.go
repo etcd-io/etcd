@@ -71,7 +71,7 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // case, replace the db with the snapshot db sent by the leader.
 func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
 	var cIndex consistentIndex
-	kv := mvcc.New(oldbe, &lease.FakeLessor{}, &cIndex)
+	kv := mvcc.New(oldbe, &lease.FakeLessor{}, nil, &cIndex)
 	defer kv.Close()
 	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil

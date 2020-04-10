@@ -90,6 +90,10 @@ type AuthenticateParamIndex struct{}
 // AuthenticateParamSimpleTokenPrefix is used for a key of context in the parameters of Authenticate()
 type AuthenticateParamSimpleTokenPrefix struct{}
 
+// saveConsistentIndexFunc is used to sync consistentIndex to backend, now reusing store.saveIndex
+type saveConsistentIndexFunc func(tx backend.BatchTx)
+
+// AuthStore defines auth storage interface.
 type AuthStore interface {
 	// AuthEnable turns on the authentication feature
 	AuthEnable() error
@@ -178,6 +182,9 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
+
+	// SetConsistentIndexSyncer sets consistentIndex syncer
+	SetConsistentIndexSyncer(syncer saveConsistentIndexFunc)
 }
 
 type TokenProvider interface {
@@ -200,9 +207,13 @@ type authStore struct {
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
-	tokenProvider TokenProvider
+	tokenProvider       TokenProvider
+	syncConsistentIndex saveConsistentIndexFunc
 }
 
+func (as *authStore) SetConsistentIndexSyncer(syncer saveConsistentIndexFunc) {
+	as.syncConsistentIndex = syncer
+}
 func (as *authStore) AuthEnable() error {
 	as.enabledMu.Lock()
 	defer as.enabledMu.Unlock()
@@ -252,6 +263,7 @@ func (as *authStore) AuthDisable() {
 	tx.Lock()
 	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -368,6 +380,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	putUser(tx, newUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("added a new user: %s", r.Name)
 
@@ -392,6 +405,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	delUser(tx, r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -428,6 +442,7 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	putUser(tx, updatedUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -468,6 +483,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	as.invalidateCachedPerm(r.User)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("granted role %s to user %s", r.Role, r.User)
 	return &pb.AuthUserGrantRoleResponse{}, nil
@@ -536,6 +552,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	as.invalidateCachedPerm(r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("revoked role %s from user %s", r.Role, r.Name)
 	return &pb.AuthUserRevokeRoleResponse{}, nil
@@ -600,6 +617,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("revoked key %s from role %s", r.Key, r.Role)
 	return &pb.AuthRoleRevokePermissionResponse{}, nil
@@ -645,6 +663,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("deleted role %s", r.Role)
 	return &pb.AuthRoleDeleteResponse{}, nil
@@ -667,6 +686,7 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	putRole(tx, newRole)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("Role %s is created", r.Name)
 
@@ -727,6 +747,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
 
@@ -743,8 +764,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if revision == 0 {
 		return ErrUserEmpty
 	}
-
-	if revision < as.Revision() {
+	rev := as.Revision()
+	if revision < rev {
+		plog.Warningf("request auth revision is less than current node auth revision,"+
+			"current node auth revision is %d,"+
+			"request auth revision is %d,"+
+			"request key is %s, "+
+			"err is %v", rev, revision, key, ErrAuthOldRevision)
 		return ErrAuthOldRevision
 	}
 
@@ -932,6 +958,8 @@ func NewAuthStore(be backend.Backend, tp TokenProvider) *authStore {
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
 	}
+
+	as.setupMetricsReporter()
 
 	tx.Unlock()
 	be.ForceCommit()
@@ -1133,4 +1161,20 @@ func (as *authStore) HasRole(user, role string) bool {
 	}
 
 	return false
+}
+
+func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
+	if as.syncConsistentIndex != nil {
+		as.syncConsistentIndex(tx)
+	} else {
+		plog.Errorf("failed to save consistentIndex,syncConsistentIndex is nil")
+	}
+}
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
 }

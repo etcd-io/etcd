@@ -710,7 +710,7 @@ func TestKVSnapshot(t *testing.T) {
 
 func TestWatchableKVWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

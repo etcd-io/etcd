@@ -448,7 +448,19 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	srv.lessor = lease.NewLessor(srv.be, int64(math.Ceil(minTTL.Seconds())))
-	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex)
+
+	tp, err := auth.NewTokenProvider(cfg.AuthToken,
+		func(index uint64) <-chan struct{} {
+			return srv.applyWait.Wait(index)
+		},
+	)
+	if err != nil {
+		plog.Warningf("failed to create token provider,err is %v", err)
+		return nil, err
+	}
+	srv.authStore = auth.NewAuthStore(srv.be, tp)
+
+	srv.kv = mvcc.New(srv.be, srv.lessor, srv.authStore, &srv.consistIndex)
 	if beExist {
 		kvindex := srv.kv.ConsistentIndex()
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
@@ -470,16 +482,6 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}()
 
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
-	tp, err := auth.NewTokenProvider(cfg.AuthToken,
-		func(index uint64) <-chan struct{} {
-			return srv.applyWait.Wait(index)
-		},
-	)
-	if err != nil {
-		plog.Errorf("failed to create token provider: %s", err)
-		return nil, err
-	}
-	srv.authStore = auth.NewAuthStore(srv.be, tp)
 	if num := cfg.AutoCompactionRetention; num != 0 {
 		srv.compactor, err = compactor.New(cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {

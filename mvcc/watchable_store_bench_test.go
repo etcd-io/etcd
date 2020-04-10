@@ -25,7 +25,7 @@ import (
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(be, &lease.FakeLessor{}, nil)
+	s := New(be, &lease.FakeLessor{}, nil, nil)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -46,7 +46,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(be, &lease.FakeLessor{}, &i)
+	s := New(be, &lease.FakeLessor{}, nil, &i)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -67,7 +67,7 @@ func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 // many synced watchers receiving a Put notification.
 func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(be, &lease.FakeLessor{}, nil, nil)
 	defer cleanup(s, be, tmpPath)
 
 	k := []byte("testkey")
@@ -162,7 +162,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(be, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(be, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()

@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -67,11 +68,11 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) ConsistentWatchableKV {
-	return newWatchableStore(b, le, ig)
+func New(b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newWatchableStore(b, le, as, ig)
 }
 
-func newWatchableStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *watchableStore {
+func newWatchableStore(b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter) *watchableStore {
 	s := &watchableStore{
 		store:    NewStore(b, le, ig),
 		victimc:  make(chan struct{}, 1),
@@ -84,6 +85,10 @@ func newWatchableStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGet
 	if s.le != nil {
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write() })
+	}
+	if as != nil {
+		// TODO: encapsulating consistentindex into a separate package
+		as.SetConsistentIndexSyncer(s.store.saveIndex)
 	}
 	s.wg.Add(2)
 	go s.syncWatchersLoop()

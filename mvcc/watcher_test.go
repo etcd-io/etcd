@@ -31,7 +31,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -83,7 +83,7 @@ func TestWatcherWatchID(t *testing.T) {
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -157,7 +157,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -177,7 +177,7 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 
 func TestWatchDeleteRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil, nil)
 
 	defer func() {
 		s.store.Close()
@@ -216,7 +216,7 @@ func TestWatchDeleteRange(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -308,7 +308,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 func TestWatcherWatchWithFilter(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
