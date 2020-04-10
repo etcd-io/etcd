@@ -101,6 +101,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [compaction performance when latest index is greater than 1-million](https://github.com/etcd-io/etcd/pull/11734).
 - [Refactor consistentindex](https://github.com/etcd-io/etcd/pull/11699).
 - [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
+- Improve [count-only range performance](https://github.com/etcd-io/etcd/pull/11771).
+
 
 ### Package `embed`
 
