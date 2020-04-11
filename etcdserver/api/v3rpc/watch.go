@@ -214,6 +214,7 @@ func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) bool 
 }
 
 func (sws *serverWatchStream) recvLoop() error {
+	outer:
 	for {
 		req, err := sws.gRPCStream.Recv()
 		if err == io.EOF {
@@ -255,7 +256,7 @@ func (sws *serverWatchStream) recvLoop() error {
 
 				select {
 				case sws.ctrlStream <- wr:
-					continue
+					continue outer
 				case <-sws.closec:
 					return nil
 				}
