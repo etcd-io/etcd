@@ -167,6 +167,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
 
+### Release
+
+- Add s390x build support ([PR#11548](https://github.com/etcd-io/etcd/pull/11548) and [PR#11358](https://github.com/etcd-io/etcd/pull/11358))
+
 ### Go
 
 - Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
