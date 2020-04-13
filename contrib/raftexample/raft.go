@@ -39,10 +39,10 @@ import (
 
 // A key-value stream backed by raft
 type raftNode struct {
-	proposeC    <-chan string            // proposed messages (k,v)
-	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	commitC     chan<- *string           // entries committed to log (k,v)
-	errorC      chan<- error             // errors from raft session
+	proposeC    <-chan string              // proposed messages (k,v)
+	confChangeC <-chan raftpb.ConfChangeV2 // proposed cluster config changes
+	commitC     chan<- *string             // entries committed to log (k,v)
+	errorC      chan<- error               // errors from raft session
 
 	id          int      // client ID for raft session
 	peers       []string // raft peer URLs
@@ -79,7 +79,7 @@ var defaultSnapshotCount uint64 = 10000
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange) (<-chan *string, <-chan error, <-chan *snap.Snapshotter) {
+	confChangeC <-chan raftpb.ConfChangeV2) (<-chan *string, <-chan error, <-chan *snap.Snapshotter) {
 
 	commitC := make(chan *string)
 	errorC := make(chan error)
@@ -170,6 +170,25 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 					return false
 				}
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
+			}
+
+		case raftpb.EntryConfChangeV2:
+			var cc raftpb.ConfChangeV2
+			cc.Unmarshal(ents[i].Data)
+			rc.confState = *rc.node.ApplyConfChange(cc)
+			for _, ccc := range cc.Changes {
+				switch ccc.Type {
+				case raftpb.ConfChangeAddNode:
+					if len(cc.Context) > 0 {
+						rc.transport.AddPeer(types.ID(ccc.NodeID), []string{string(cc.Context)})
+					}
+				case raftpb.ConfChangeRemoveNode:
+					if ccc.NodeID == uint64(rc.id) {
+						log.Println("I've been removed from the cluster! Shutting down.")
+						return false
+					}
+					rc.transport.RemovePeer(types.ID(ccc.NodeID))
+				}
 			}
 		}
 
@@ -394,8 +413,6 @@ func (rc *raftNode) serveChannels() {
 
 	// send proposals over raft
 	go func() {
-		confChangeCount := uint64(0)
-
 		for rc.proposeC != nil && rc.confChangeC != nil {
 			select {
 			case prop, ok := <-rc.proposeC:
@@ -410,8 +427,6 @@ func (rc *raftNode) serveChannels() {
 				if !ok {
 					rc.confChangeC = nil
 				} else {
-					confChangeCount++
-					cc.ID = confChangeCount
 					rc.node.ProposeConfChange(context.TODO(), cc)
 				}
 			}

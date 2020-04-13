@@ -26,7 +26,7 @@ import (
 // Handler for a http based key-value store backed by raft
 type httpKVAPI struct {
 	store       *kvstore
-	confChangeC chan<- raftpb.ConfChange
+	confChangeC chan<- raftpb.ConfChangeV2
 }
 
 func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Type:    raftpb.ConfChangeAddNode,
 			NodeID:  nodeId,
 			Context: url,
-		}
+		}.AsV2()
 		h.confChangeC <- cc
 
 		// As above, optimistic that raft will apply the conf change
@@ -87,7 +87,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		cc := raftpb.ConfChange{
 			Type:   raftpb.ConfChangeRemoveNode,
 			NodeID: nodeId,
-		}
+		}.AsV2()
 		h.confChangeC <- cc
 
 		// As above, optimistic that raft will apply the conf change
@@ -102,7 +102,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveHttpKVAPI starts a key-value server with a GET/PUT API and listens.
-func serveHttpKVAPI(kv *kvstore, port int, confChangeC chan<- raftpb.ConfChange, errorC <-chan error) {
+func serveHttpKVAPI(kv *kvstore, port int, confChangeC chan<- raftpb.ConfChangeV2, errorC <-chan error) {
 	srv := http.Server{
 		Addr: ":" + strconv.Itoa(port),
 		Handler: &httpKVAPI{

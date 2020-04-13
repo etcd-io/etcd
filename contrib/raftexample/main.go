@@ -30,7 +30,7 @@ func main() {
 
 	proposeC := make(chan string)
 	defer close(proposeC)
-	confChangeC := make(chan raftpb.ConfChange)
+	confChangeC := make(chan raftpb.ConfChangeV2)
 	defer close(confChangeC)
 
 	// raft provides a commit stream for the proposals from the http api

@@ -32,7 +32,7 @@ type cluster struct {
 	commitC     []<-chan *string
 	errorC      []<-chan error
 	proposeC    []chan string
-	confChangeC []chan raftpb.ConfChange
+	confChangeC []chan raftpb.ConfChangeV2
 }
 
 // newCluster creates a cluster of n nodes
@@ -47,14 +47,14 @@ func newCluster(n int) *cluster {
 		commitC:     make([]<-chan *string, len(peers)),
 		errorC:      make([]<-chan error, len(peers)),
 		proposeC:    make([]chan string, len(peers)),
-		confChangeC: make([]chan raftpb.ConfChange, len(peers)),
+		confChangeC: make([]chan raftpb.ConfChangeV2, len(peers)),
 	}
 
 	for i := range clus.peers {
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
 		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 		clus.proposeC[i] = make(chan string, 1)
-		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
+		clus.confChangeC[i] = make(chan raftpb.ConfChangeV2, 1)
 		clus.commitC[i], clus.errorC[i], _ = newRaftNode(i+1, clus.peers, false, nil, clus.proposeC[i], clus.confChangeC[i])
 	}
 
@@ -169,7 +169,7 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	proposeC := make(chan string)
 	defer close(proposeC)
 
-	confChangeC := make(chan raftpb.ConfChange)
+	confChangeC := make(chan raftpb.ConfChangeV2)
 	defer close(confChangeC)
 
 	var kvs *kvstore
