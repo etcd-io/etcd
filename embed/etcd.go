@@ -564,7 +564,7 @@ func (e *Etcd) errHandler(err error) {
 
 func parseCompactionRetention(mode, retention string) (ret time.Duration, err error) {
 	h, err := strconv.Atoi(retention)
-	if err == nil {
+	if err == nil && h >= 0 {
 		switch mode {
 		case compactor.ModeRevision:
 			ret = time.Duration(int64(h))
