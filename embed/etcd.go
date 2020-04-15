@@ -710,7 +710,7 @@ func (e *Etcd) GetLogger() *zap.Logger {
 
 func parseCompactionRetention(mode, retention string) (ret time.Duration, err error) {
 	h, err := strconv.Atoi(retention)
-	if err == nil {
+	if err == nil && h >= 0 {
 		switch mode {
 		case CompactorModeRevision:
 			ret = time.Duration(int64(h))
