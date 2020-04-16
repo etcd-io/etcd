@@ -105,7 +105,6 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Remove [redundant storage restore operation to shorten the startup time](https://github.com/etcd-io/etcd/pull/11779).
   - With 40 million key test data,it can shorten the startup time from 5 min to 2.5 min.
 
-
 ### Package `embed`
 
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
@@ -133,6 +132,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Package `wal`
 
 - Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+- Handle [out-of-range slice bound in `ReadAll` and entry limit in `decodeRecord`](https://github.com/etcd-io/etcd/pull/11793).
 
 ### etcdctl v3
 
