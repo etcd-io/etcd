@@ -148,6 +148,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### gRPC Proxy
 
 - Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+- Add [gRPC keepalive related flags](https://github.com/etcd-io/etcd/pull/11711) `grpc-keepalive-min-time`, `grpc-keepalive-interval` and `grpc-keepalive-timeout`.
 
 ### Auth
 
