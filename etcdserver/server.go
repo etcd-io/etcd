@@ -428,7 +428,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
 			)
 
-			if be, err = recoverSnapshotBackend(cfg, be, *snapshot); err != nil {
+			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist); err != nil {
 				cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 			}
 			s1, s2 := be.Size(), be.SizeInUse()

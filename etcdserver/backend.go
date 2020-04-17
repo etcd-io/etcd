@@ -92,9 +92,13 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
-func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
-	ci := cindex.NewConsistentIndex(oldbe.BatchTx())
-	if snapshot.Metadata.Index <= ci.ConsistentIndex() {
+func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool) (backend.Backend, error) {
+	consistentIndex := uint64(0)
+	if beExist {
+		ci := cindex.NewConsistentIndex(oldbe.BatchTx())
+		consistentIndex = ci.ConsistentIndex()
+	}
+	if snapshot.Metadata.Index <= consistentIndex {
 		return oldbe, nil
 	}
 	oldbe.Close()
