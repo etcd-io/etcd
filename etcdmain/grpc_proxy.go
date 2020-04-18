@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/clientv3/leasing"
 	"go.etcd.io/etcd/clientv3/namespace"
 	"go.etcd.io/etcd/clientv3/ordering"
+	"go.etcd.io/etcd/embed"
 	"go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
@@ -47,6 +48,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -86,6 +88,11 @@ var (
 	grpcProxyEnableOrdering bool
 
 	grpcProxyDebug bool
+
+	// GRPC keep alive related options.
+	grpcKeepAliveMinTime  time.Duration
+	grpcKeepAliveTimeout  time.Duration
+	grpcKeepAliveInterval time.Duration
 )
 
 const defaultGRPCMaxCallSendMsgSize = 1.5 * 1024 * 1024
@@ -126,6 +133,9 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
 	cmd.Flags().IntVar(&grpcMaxCallSendMsgSize, "max-send-bytes", defaultGRPCMaxCallSendMsgSize, "message send limits in bytes (default value is 1.5 MiB)")
 	cmd.Flags().IntVar(&grpcMaxCallRecvMsgSize, "max-recv-bytes", math.MaxInt32, "message receive limits in bytes (default value is math.MaxInt32)")
+	cmd.Flags().DurationVar(&grpcKeepAliveMinTime, "grpc-keepalive-min-time", embed.DefaultGRPCKeepAliveMinTime, "Minimum interval duration that a client should wait before pinging proxy.")
+	cmd.Flags().DurationVar(&grpcKeepAliveInterval, "grpc-keepalive-interval", embed.DefaultGRPCKeepAliveInterval, "Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).")
+	cmd.Flags().DurationVar(&grpcKeepAliveTimeout, "grpc-keepalive-timeout", embed.DefaultGRPCKeepAliveTimeout, "Additional duration of wait before closing a non-responsive connection (0 to disable).")
 
 	// client TLS for connecting to server
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
@@ -358,11 +368,26 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
-	server := grpc.NewServer(
+	gopts := []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
-	)
+	}
+	if grpcKeepAliveMinTime > time.Duration(0) {
+		gopts = append(gopts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             grpcKeepAliveMinTime,
+			PermitWithoutStream: false,
+		}))
+	}
+	if grpcKeepAliveInterval > time.Duration(0) ||
+		grpcKeepAliveTimeout > time.Duration(0) {
+		gopts = append(gopts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    grpcKeepAliveInterval,
+			Timeout: grpcKeepAliveTimeout,
+		}))
+	}
+
+	server := grpc.NewServer(gopts...)
 
 	pb.RegisterKVServer(server, kvp)
 	pb.RegisterWatchServer(server, watchp)
