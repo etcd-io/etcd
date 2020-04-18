@@ -166,6 +166,9 @@ func (c *RaftCluster) MemberByName(name string) *Member {
 			memb = m
 		}
 	}
+	if memb == nil {
+		return nil
+	}
 	return memb.Clone()
 }
 

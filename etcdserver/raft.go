@@ -400,6 +400,9 @@ func (r *raftNode) advanceTicks(ticks int) {
 func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cl.MemberByName(cfg.Name)
+	if member == nil {
+		cfg.Logger.Panic("failed to retrieve member")
+	}
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
 			NodeID:    uint64(member.ID),

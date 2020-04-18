@@ -39,7 +39,11 @@ func isMemberBootstrapped(lg *zap.Logger, cl *membership.RaftCluster, member str
 	if err != nil {
 		return false
 	}
-	id := cl.MemberByName(member).ID
+	mbr := cl.MemberByName(member)
+	if mbr == nil {
+		return false
+	}
+	id := mbr.ID
 	m := rcl.Member(id)
 	if m == nil {
 		return false

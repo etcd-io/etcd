@@ -425,6 +425,9 @@ func (s *v3Manager) saveWALAndSnap() error {
 	}
 
 	m := s.cl.MemberByName(s.name)
+	if m == nil {
+		return fmt.Errorf("unable to retrieve member for %q", s.name)
+	}
 	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
 	metadata, merr := md.Marshal()
 	if merr != nil {

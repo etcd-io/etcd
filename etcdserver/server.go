@@ -352,7 +352,11 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
+		mbr := cl.MemberByName(cfg.Name)
+		if mbr == nil {
+			return nil, fmt.Errorf("unable to retrieve member for %q", cfg.Name)
+		}
+		if !isCompatibleWithCluster(cfg.Logger, cl, mbr.ID, prt) {
 			return nil, fmt.Errorf("incompatible with current running cluster")
 		}
 
@@ -372,6 +376,9 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			return nil, err
 		}
 		m := cl.MemberByName(cfg.Name)
+		if m == nil {
+			return nil, fmt.Errorf("unable to retrieve member for %q", cfg.Name)
+		}
 		if isMemberBootstrapped(cfg.Logger, cl, cfg.Name, prt, cfg.bootstrapTimeout()) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
