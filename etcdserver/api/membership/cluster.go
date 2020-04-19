@@ -607,7 +607,7 @@ func (c *RaftCluster) IsReadyToRemoveVotingMember(id uint64) bool {
 	return true
 }
 
-func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToPromoteMember() bool {
 	nmembers := 1 // We count the learner to be promoted for the future quorum
 	nstarted := 1 // and we also count it as started.
 

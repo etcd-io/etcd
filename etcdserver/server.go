@@ -1532,7 +1532,7 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 	if !s.Cfg.StrictReconfigCheck {
 		return nil
 	}
-	if !s.cluster.IsReadyToPromoteMember(uint64(id)) {
+	if !s.cluster.IsReadyToPromoteMember() {
 		lg.Warn(
 			"rejecting member promote request; not enough healthy members",
 			zap.String("local-member-id", s.ID().String()),

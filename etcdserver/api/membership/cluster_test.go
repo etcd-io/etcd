@@ -939,7 +939,7 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
+		if got := c.IsReadyToPromoteMember(); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
 	}
