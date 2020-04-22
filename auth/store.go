@@ -57,6 +57,7 @@ var (
 	ErrRoleNotFound         = errors.New("auth: role not found")
 	ErrRoleEmpty            = errors.New("auth: role name is empty")
 	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrNoPasswordUser       = errors.New("auth: authentication failed, password was given for no password user")
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
@@ -333,7 +334,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		}
 
 		if user.Options != nil && user.Options.NoPassword {
-			return 0, ErrAuthFailed
+			return 0, ErrNoPasswordUser
 		}
 
 		return getRevision(tx), nil
