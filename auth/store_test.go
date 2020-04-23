@@ -17,7 +17,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"reflect"
 	"strings"
@@ -72,28 +71,6 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	if old != new {
 		t.Fatalf("expected revision %d, got %d", old, new)
 	}
-}
-
-// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
-func TestNewAuthStoreBcryptCost(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer os.Remove(tPath)
-
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
-	for _, invalidCost := range invalidCosts {
-		as := NewAuthStore(b, nil, tp, invalidCost)
-		if as.BcryptCost() != bcrypt.DefaultCost {
-			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
-		}
-		as.Close()
-	}
-
-	b.Close()
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
@@ -608,11 +585,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-<<<<<<< HEAD
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
-=======
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
->>>>>>> auth: Customize simpleTokenTTL settings.
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
