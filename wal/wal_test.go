@@ -1059,3 +1059,24 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestReadAllFail ensure ReadAll error if used without opening the WAL
+func TestReadAllFail(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	// create initial WAL
+	f, err := Create(zap.NewExample(), dir, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	// try to read without opening the WAL
+	_, _, _, err = f.ReadAll()
+	if err == nil || err != ErrDecoderNotFound {
+		t.Fatalf("err = %v, want ErrDecoderNotFound", err)
+	}
+}
