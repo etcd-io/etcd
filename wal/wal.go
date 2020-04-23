@@ -60,6 +60,7 @@ var (
 	ErrSnapshotNotFound             = errors.New("wal: snapshot not found")
 	ErrSliceOutOfRange              = errors.New("wal: slice bounds out of range")
 	ErrMaxWALEntrySizeLimitExceeded = errors.New("wal: max entry size limit exceeded")
+	ErrDecoderNotFound              = errors.New("wal: decoder not found")
 	crcTable                        = crc32.MakeTable(crc32.Castagnoli)
 )
 
@@ -92,7 +93,8 @@ type WAL struct {
 }
 
 // Create creates a WAL ready for appending records. The given metadata is
-// recorded at the head of each WAL file, and can be retrieved with ReadAll.
+// recorded at the head of each WAL file, and can be retrieved with ReadAll
+// after the file is Open.
 func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
@@ -406,6 +408,10 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	defer w.mu.Unlock()
 
 	rec := &walpb.Record{}
+
+	if w.decoder == nil {
+		return nil, state, nil, ErrDecoderNotFound
+	}
 	decoder := w.decoder
 
 	var match bool
