@@ -169,11 +169,12 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, err
 	}
 
+	logDirPath := w.dir
 	if w, err = w.renameWAL(tmpdirpath); err != nil {
 		lg.Warn(
 			"failed to rename the temporary WAL directory",
 			zap.String("tmp-dir-path", tmpdirpath),
-			zap.String("dir-path", w.dir),
+			zap.String("dir-path", logDirPath),
 			zap.Error(err),
 		)
 		return nil, err
