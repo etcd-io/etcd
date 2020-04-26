@@ -104,6 +104,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [count-only range performance](https://github.com/etcd-io/etcd/pull/11771).
 - Remove [redundant storage restore operation to shorten the startup time](https://github.com/etcd-io/etcd/pull/11779).
   - With 40 million key test data,it can shorten the startup time from 5 min to 2.5 min.
+- [Fix deadlock bug in mvcc](https://github.com/etcd-io/etcd/pull/11817).
 
 
 ### Package `embed`
