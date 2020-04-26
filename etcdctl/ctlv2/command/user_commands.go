@@ -21,7 +21,7 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/urfave/cli"
-	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/v3/client"
 )
 
 func NewUserCommands() cli.Command {

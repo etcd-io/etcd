@@ -21,7 +21,7 @@ CheckLeakedGoroutine verifies tests do not leave any leaky
 goroutines. It returns true when there are goroutines still
 running(leaking) after all tests.
 
-	import "go.etcd.io/etcd/pkg/testutil"
+	import "go.etcd.io/etcd/v3/pkg/testutil"
 
 	func TestMain(m *testing.M) {
 		v := m.Run()
