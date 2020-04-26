@@ -410,10 +410,11 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 		func() { s.DeleteRange([]byte("foo"), nil) },
 	}
 	for i, tt := range tests {
+		tf := tt
 		txn := s.Write(traceutil.TODO())
 		done := make(chan struct{}, 1)
 		go func() {
-			tt()
+			tf()
 			done <- struct{}{}
 		}()
 		select {
