@@ -18,7 +18,7 @@ fi
 # directories containing protos to be built
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb ./etcdserver/api/membership/membershippb"
 
-# disable go mod
+# disable go mod - this is for the go get/install invocations
 export GO111MODULE=off
 
 # exact version of packages to build
@@ -81,6 +81,8 @@ for dir in ${DIRS}; do
 		sed -i.bak -E 's/import _ \"go\.etcd\.io\/google\/api\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
+		# shellcheck disable=SC1117
+		sed -i.bak -E "s/go.etcd.io\/etcd\//go.etcd.io\/etcd\/v3\//" ./*.pb.go
 		rm -f ./*.bak
 		goimports -w ./*.pb.go
 	popd
@@ -110,7 +112,9 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	sed -i.bak -E "s/New[A-Za-z]*Client/${pkg}.&/" ${gwfile}
 	# darwin doesn't like newlines in sed...
 	# shellcheck disable=SC1117
-	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/${pkgpath}\"|" ${gwfile}
+	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/v3/${pkgpath}\"|" ${gwfile}
+	# shellcheck disable=SC1117
+	sed -i.bak -E "s/go.etcd.io\etcd\//go.etcd.io\/etcd\/v3/" ${gwfile}
 	mkdir -p  "${pkgpath}"/gw/
 	go fmt ${gwfile}
 	mv ${gwfile} "${pkgpath}/gw/"
