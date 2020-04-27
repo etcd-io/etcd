@@ -640,7 +640,7 @@ function bom_pass {
 	echo "Checking bill of materials..."
 	license-bill-of-materials \
 		--override-file bill-of-materials.override.json \
-		go.etcd.io/etcd go.etcd.io/etcd/etcdctl >bom-now.json || true
+		go.etcd.io/etcd/v3 go.etcd.io/etcd/v3/etcdctl >bom-now.json || true
 	if ! diff bill-of-materials.json bom-now.json; then
 		echo "vendored licenses do not match given bill of materials"
 		exit 255
