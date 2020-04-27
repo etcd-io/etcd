@@ -125,8 +125,8 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by testing.RunTests") ||
 			strings.Contains(stack, "testing.Main(") ||
 			strings.Contains(stack, "runtime.goexit") ||
-			strings.Contains(stack, "go.etcd.io/etcd/pkg/testutil.interestingGoroutines") ||
-			strings.Contains(stack, "go.etcd.io/etcd/pkg/logutil.(*MergeLogger).outputLoop") ||
+			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/testutil.interestingGoroutines") ||
+			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/logutil.(*MergeLogger).outputLoop") ||
 			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
 			strings.Contains(stack, "created by runtime.gc") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") {
