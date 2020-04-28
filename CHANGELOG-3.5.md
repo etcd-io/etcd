@@ -21,6 +21,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 
 ### Breaking Changes
 
+- `go.etcd.io/etcd` Go packages have moved to `go.etcd.io/etcd/v3` to follow the [Go modules](https://github.com/golang/go/wiki/Modules) conventions
 - Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
   - Previously, it is directly served with server's local data, which could be stale.
   - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.

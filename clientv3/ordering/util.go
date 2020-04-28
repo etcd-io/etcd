@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/v3/clientv3"
 )
 
 type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error
