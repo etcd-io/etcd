@@ -9,7 +9,7 @@ For full compatibility, it is recommended to vendor builds using etcd's vendored
 ## Install
 
 ```bash
-go get go.etcd.io/etcd/client
+go get go.etcd.io/etcd/v3/client
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ import (
 	"time"
 	"context"
 
-	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/v3/client"
 )
 
 func main() {
