@@ -100,14 +100,14 @@ func TestDialTimeout(t *testing.T) {
 
 	for i, cfg := range testCfgs {
 		donec := make(chan error, 1)
-		go func() {
+		go func(cfg Config) {
 			// without timeout, dial continues forever on ipv4 black hole
 			c, err := New(cfg)
 			if c != nil || err == nil {
 				t.Errorf("#%d: new client should fail", i)
 			}
 			donec <- err
-		}()
+		}(cfg)
 
 		time.Sleep(10 * time.Millisecond)
 
