@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -372,7 +373,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		if write {
 			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
 			if err != nil {
-				closeAll(rcs...)
+				closeAll(lg, rcs...)
 				return nil, nil, nil, err
 			}
 			ls = append(ls, l)
@@ -380,7 +381,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		} else {
 			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
 			if err != nil {
-				closeAll(rcs...)
+				closeAll(lg, rcs...)
 				return nil, nil, nil, err
 			}
 			ls = append(ls, nil)
@@ -389,7 +390,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		rs = append(rs, rcs[len(rcs)-1])
 	}
 
-	closer := func() error { return closeAll(rcs...) }
+	closer := func() error { return closeAll(lg, rcs...) }
 
 	return rs, ls, closer, nil
 }
@@ -886,11 +887,16 @@ func (w *WAL) seq() uint64 {
 	return seq
 }
 
-func closeAll(rcs ...io.ReadCloser) error {
+func closeAll(lg *zap.Logger, rcs ...io.ReadCloser) error {
+	stringArr := make([]string, 0)
 	for _, f := range rcs {
 		if err := f.Close(); err != nil {
-			return err
+			lg.Warn("failed to close: ", zap.Error(err))
+			stringArr = append(stringArr, err.Error())
 		}
 	}
-	return nil
+	if len(stringArr) == 0 {
+		return nil
+	}
+	return errors.New(strings.Join(stringArr, ", "))
 }
