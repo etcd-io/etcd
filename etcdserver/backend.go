@@ -19,10 +19,10 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	"go.etcd.io/etcd/etcdserver/cindex"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"go.uber.org/zap"
 )

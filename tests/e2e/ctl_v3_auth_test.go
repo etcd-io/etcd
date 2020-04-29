@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/v3/clientv3"
 )
 
 func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
@@ -47,9 +47,11 @@ func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPer
 func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 func TestCtlV3AuthAndWatchJWT(t *testing.T)      { testCtl(t, authTestWatch, withCfg(configJWT)) }
 
-func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T)         { testCtl(t, authLeaseTestKeepAlive) }
-func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, authLeaseTestTimeToLiveExpired) }
-func TestCtlV3AuthLeaseGrantLeases(t *testing.T)           { testCtl(t, authLeaseTestLeaseGrantLeases) }
+func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T) { testCtl(t, authLeaseTestKeepAlive) }
+func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) {
+	testCtl(t, authLeaseTestTimeToLiveExpired)
+}
+func TestCtlV3AuthLeaseGrantLeases(t *testing.T) { testCtl(t, authLeaseTestLeaseGrantLeases) }
 func TestCtlV3AuthLeaseGrantLeasesJWT(t *testing.T) {
 	testCtl(t, authLeaseTestLeaseGrantLeases, withCfg(configJWT))
 }

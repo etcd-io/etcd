@@ -21,6 +21,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 
 ### Breaking Changes
 
+- `go.etcd.io/etcd` Go packages have moved to `go.etcd.io/etcd/v3` to follow the [Go modules](https://github.com/golang/go/wiki/Modules) conventions
 - Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
   - Previously, it is directly served with server's local data, which could be stale.
   - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.
@@ -105,7 +106,6 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Remove [redundant storage restore operation to shorten the startup time](https://github.com/etcd-io/etcd/pull/11779).
   - With 40 million key test data,it can shorten the startup time from 5 min to 2.5 min.
 
-
 ### Package `embed`
 
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
@@ -133,6 +133,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Package `wal`
 
 - Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+- Handle [out-of-range slice bound in `ReadAll` and entry limit in `decodeRecord`](https://github.com/etcd-io/etcd/pull/11793).
 
 ### etcdctl v3
 
@@ -151,6 +152,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### gRPC Proxy
 
 - Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+- Add [gRPC keepalive related flags](https://github.com/etcd-io/etcd/pull/11711) `grpc-keepalive-min-time`, `grpc-keepalive-interval` and `grpc-keepalive-timeout`.
 
 ### Auth
 
@@ -169,6 +171,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
+
+### Release
+
+- Add s390x build support ([PR#11548](https://github.com/etcd-io/etcd/pull/11548) and [PR#11358](https://github.com/etcd-io/etcd/pull/11358))
 
 ### Go
 

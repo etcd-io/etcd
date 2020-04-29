@@ -25,9 +25,9 @@ import (
 	"syscall"
 	"time"
 
-	"go.etcd.io/etcd/functional/rpcpb"
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/proxy"
+	"go.etcd.io/etcd/v3/functional/rpcpb"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/proxy"
 
 	"go.uber.org/zap"
 )

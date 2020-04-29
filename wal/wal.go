@@ -22,14 +22,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/pbutil"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal/walpb"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/pbutil"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -53,12 +54,15 @@ var (
 	// so that tests can set a different segment size.
 	SegmentSizeBytes int64 = 64 * 1000 * 1000 // 64MB
 
-	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
-	ErrFileNotFound     = errors.New("wal: file not found")
-	ErrCRCMismatch      = errors.New("wal: crc mismatch")
-	ErrSnapshotMismatch = errors.New("wal: snapshot mismatch")
-	ErrSnapshotNotFound = errors.New("wal: snapshot not found")
-	crcTable            = crc32.MakeTable(crc32.Castagnoli)
+	ErrMetadataConflict             = errors.New("wal: conflicting metadata found")
+	ErrFileNotFound                 = errors.New("wal: file not found")
+	ErrCRCMismatch                  = errors.New("wal: crc mismatch")
+	ErrSnapshotMismatch             = errors.New("wal: snapshot mismatch")
+	ErrSnapshotNotFound             = errors.New("wal: snapshot not found")
+	ErrSliceOutOfRange              = errors.New("wal: slice bounds out of range")
+	ErrMaxWALEntrySizeLimitExceeded = errors.New("wal: max entry size limit exceeded")
+	ErrDecoderNotFound              = errors.New("wal: decoder not found")
+	crcTable                        = crc32.MakeTable(crc32.Castagnoli)
 )
 
 // WAL is a logical representation of the stable storage.
@@ -90,7 +94,8 @@ type WAL struct {
 }
 
 // Create creates a WAL ready for appending records. The given metadata is
-// recorded at the head of each WAL file, and can be retrieved with ReadAll.
+// recorded at the head of each WAL file, and can be retrieved with ReadAll
+// after the file is Open.
 func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
@@ -165,11 +170,12 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, err
 	}
 
+	logDirPath := w.dir
 	if w, err = w.renameWAL(tmpdirpath); err != nil {
 		lg.Warn(
 			"failed to rename the temporary WAL directory",
 			zap.String("tmp-dir-path", tmpdirpath),
-			zap.String("dir-path", w.dir),
+			zap.String("dir-path", logDirPath),
 			zap.Error(err),
 		)
 		return nil, err
@@ -193,8 +199,21 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, perr
 	}
+	dirCloser := func() error {
+		if perr = pdir.Close(); perr != nil {
+			lg.Warn(
+				"failed to close the parent data directory file",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+			return perr
+		}
+		return nil
+	}
 	start := time.Now()
 	if perr = fileutil.Fsync(pdir); perr != nil {
+		dirCloser()
 		lg.Warn(
 			"failed to fsync the parent data directory file",
 			zap.String("parent-dir-path", filepath.Dir(w.dir)),
@@ -204,15 +223,8 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, perr
 	}
 	walFsyncSec.Observe(time.Since(start).Seconds())
-
-	if perr = pdir.Close(); perr != nil {
-		lg.Warn(
-			"failed to close the parent data directory file",
-			zap.String("parent-dir-path", filepath.Dir(w.dir)),
-			zap.String("dir-path", w.dir),
-			zap.Error(perr),
-		)
-		return nil, perr
+	if err = dirCloser(); err != nil {
+		return nil, err
 	}
 
 	return w, nil
@@ -367,7 +379,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		if write {
 			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
 			if err != nil {
-				closeAll(rcs...)
+				closeAll(lg, rcs...)
 				return nil, nil, nil, err
 			}
 			ls = append(ls, l)
@@ -375,7 +387,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		} else {
 			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
 			if err != nil {
-				closeAll(rcs...)
+				closeAll(lg, rcs...)
 				return nil, nil, nil, err
 			}
 			ls = append(ls, nil)
@@ -384,7 +396,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 		rs = append(rs, rcs[len(rcs)-1])
 	}
 
-	closer := func() error { return closeAll(rcs...) }
+	closer := func() error { return closeAll(lg, rcs...) }
 
 	return rs, ls, closer, nil
 }
@@ -404,6 +416,10 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	defer w.mu.Unlock()
 
 	rec := &walpb.Record{}
+
+	if w.decoder == nil {
+		return nil, state, nil, ErrDecoderNotFound
+	}
 	decoder := w.decoder
 
 	var match bool
@@ -411,8 +427,15 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		switch rec.Type {
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
+			// 0 <= e.Index-w.start.Index - 1 < len(ents)
 			if e.Index > w.start.Index {
-				ents = append(ents[:e.Index-w.start.Index-1], e)
+				// prevent "panic: runtime error: slice bounds out of range [:13038096702221461992] with capacity 0"
+				up := e.Index - w.start.Index - 1
+				if up > uint64(len(ents)) {
+					// return error before append call causes runtime panic
+					return nil, state, nil, ErrSliceOutOfRange
+				}
+				ents = append(ents[:up], e)
 			}
 			w.enti = e.Index
 
@@ -870,11 +893,16 @@ func (w *WAL) seq() uint64 {
 	return seq
 }
 
-func closeAll(rcs ...io.ReadCloser) error {
+func closeAll(lg *zap.Logger, rcs ...io.ReadCloser) error {
+	stringArr := make([]string, 0)
 	for _, f := range rcs {
 		if err := f.Close(); err != nil {
-			return err
+			lg.Warn("failed to close: ", zap.Error(err))
+			stringArr = append(stringArr, err.Error())
 		}
 	}
-	return nil
+	if len(stringArr) == 0 {
+		return nil
+	}
+	return errors.New(strings.Join(stringArr, ", "))
 }
