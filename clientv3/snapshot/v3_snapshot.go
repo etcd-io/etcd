@@ -338,6 +338,13 @@ func (s *v3Manager) saveDB() error {
 	if dberr != nil {
 		return dberr
 	}
+	dbClosed := false
+	defer func() {
+		if !dbClosed {
+			db.Close()
+			dbClosed = true
+		}
+	}()
 	if _, err := io.Copy(db, f); err != nil {
 		return err
 	}
@@ -375,6 +382,7 @@ func (s *v3Manager) saveDB() error {
 
 	// db hash is OK, can now modify DB so it can be part of a new cluster
 	db.Close()
+	dbClosed = true
 
 	commit := len(s.cl.Members())
 
