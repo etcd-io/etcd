@@ -10,8 +10,8 @@ The PSC is responsible for organizing the entire response including internal com
 
 The initial PSC will consist of volunteers who have been involved in the initial discussion:
 
-- Brandon Philips (**[@philips](https://github.com/philips)**) `<bphilips@redhat.com>` [4096R/154343260542DF34]
-- Sahdev Zala (**[@spzala](https://github.com/spzala)**) `<spzala@us.ibm.com>`
+- Brandon Philips (**[@philips](https://github.com/philips)**) [4096R/154343260542DF34]
+- Sahdev Zala (**[@spzala](https://github.com/spzala)**)
 
 The PSC members will share various tasks as listed below:
 
