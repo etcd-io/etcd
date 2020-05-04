@@ -2,6 +2,10 @@ package runtime
 
 import (
 	"strconv"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // String just returns the given string.
@@ -55,4 +59,18 @@ func Uint32(val string) (uint32, error) {
 		return 0, err
 	}
 	return uint32(i), nil
+}
+
+// Timestamp converts the given RFC3339 formatted string into a timestamp.Timestamp.
+func Timestamp(val string) (*timestamp.Timestamp, error) {
+	var r *timestamp.Timestamp
+	err := jsonpb.UnmarshalString(val, r)
+	return r, err
+}
+
+// Duration converts the given string into a timestamp.Duration.
+func Duration(val string) (*duration.Duration, error) {
+	var r *duration.Duration
+	err := jsonpb.UnmarshalString(val, r)
+	return r, err
 }

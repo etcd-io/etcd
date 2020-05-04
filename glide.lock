@@ -1,5 +1,5 @@
-hash: 3fece95d13153dbb91034bd2708f8f7a39510c682dfda4c3ff691f09a61a2fc1
-updated: 2019-08-19T20:45:29.93927922-07:00
+hash: 87224cbe021ea625798ac508c8963f49ff4ceb852d99da50db9d6b7fe95282f4
+updated: 2020-05-04T21:27:57.570766+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 37c8de3658fcb183f997c4e13e8337516ab753e6
@@ -66,7 +66,7 @@ imports:
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 0dafe0d496ea71181bf2dd039e7e3f44b6bd11a7
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 8cc3a55af3bcf171a1c23a90c4df9cf591706104
+  version: 07f5e79768022f9a3265235f0db4ac8c3f675fec
   subpackages:
   - runtime
   - runtime/internal
@@ -135,9 +135,9 @@ imports:
 - name: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - name: go.uber.org/atomic
-  version: df976f2515e274675050de7b3f42545de80594fd
+  version: 845920076a298bdb984fb0f1b86052e4ca0a281c
 - name: go.uber.org/multierr
-  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+  version: b587143a48b62b01d337824eab43700af6ffe222
 - name: go.uber.org/zap
   version: 27376062155ad36be76b0f12cf1572a221d3a48c
   subpackages:
