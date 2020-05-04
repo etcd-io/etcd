@@ -42,6 +42,9 @@ const (
 	// throughput bottleneck as well as small enough
 	// for not causing a read timeout.
 	connReadLimitByte = 64 * 1024
+
+	// snapshotLimitByte limits the snapshot size to 1TB
+	snapshotLimitByte = 1 * 1024 * 1024 * 1024 * 1024
 )
 
 var (
@@ -215,7 +218,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dec := &messageDecoder{r: r.Body}
 	// let snapshots be very large since they can exceed 512MB for large installations
-	m, err := dec.decodeLimit(uint64(1 << 63))
+	m, err := dec.decodeLimit(snapshotLimitByte)
 	from := types.ID(m.From).String()
 	if err != nil {
 		msg := fmt.Sprintf("failed to decode raft message (%v)", err)
