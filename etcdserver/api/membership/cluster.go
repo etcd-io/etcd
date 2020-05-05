@@ -245,9 +245,15 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.cid = cid
 }
 
-func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
+func (c *RaftCluster) SetStore(st v2store.Store) {
+	c.Lock()
+	defer c.Unlock()
+	c.v2store = st
+}
 
 func (c *RaftCluster) SetBackend(be backend.Backend) {
+	c.Lock()
+	defer c.Unlock()
 	c.be = be
 	mustCreateBackendBuckets(c.be)
 }
@@ -286,6 +292,9 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+	c.Lock()
+	defer c.Unlock()
+
 	members, removed := membersFromStore(c.lg, c.v2store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
