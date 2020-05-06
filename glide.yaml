@@ -49,11 +49,7 @@ import:
 - package: github.com/google/uuid
   version: v1.0.0
 - package: github.com/grpc-ecosystem/grpc-gateway
-  version: v1.3.0
-  subpackages:
-  - runtime
-  - runtime/internal
-  - utilities
+  version: v1.3.1
 - package: github.com/jonboulle/clockwork
   version: v0.1.0
 - package: github.com/kr/pty
