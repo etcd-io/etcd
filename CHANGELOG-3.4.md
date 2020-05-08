@@ -16,6 +16,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.7...v3.4.8) and 
 ### etcd server
 
 - [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
+- [Fix deadlock bug in mvcc](https://github.com/etcd-io/etcd/pull/11817).
 
 ### Package Auth
 
