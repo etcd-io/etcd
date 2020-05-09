@@ -804,17 +804,16 @@ func (r *raft) campaign(t CampaignType) {
 		}
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	}
+	var ctx []byte
+	if t == campaignTransfer {
+		ctx = []byte(t)
+	}
 	for _, id := range ids {
 		if id == r.id {
 			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, id, r.Term)
-
-		var ctx []byte
-		if t == campaignTransfer {
-			ctx = []byte(t)
-		}
 		r.send(pb.Message{Term: term, To: id, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
 	}
 }
