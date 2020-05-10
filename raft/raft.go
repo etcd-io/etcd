@@ -702,9 +702,9 @@ func (r *raft) becomeFollower(term uint64, lead uint64) {
 }
 
 func (r *raft) becomeCandidate() {
-	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateLeader {
-		panic("invalid transition [leader -> candidate]")
+		r.logger.Warning("invalid transition [leader -> candidate]")
+		return
 	}
 	r.step = stepCandidate
 	r.reset(r.Term + 1)
@@ -715,9 +715,9 @@ func (r *raft) becomeCandidate() {
 }
 
 func (r *raft) becomePreCandidate() {
-	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateLeader {
-		panic("invalid transition [leader -> pre-candidate]")
+		r.logger.Warning("invalid transition [leader -> pre-candidate]")
+		return
 	}
 	// Becoming a pre-candidate changes our step functions and state,
 	// but doesn't change anything else. In particular it does not increase
@@ -731,9 +731,9 @@ func (r *raft) becomePreCandidate() {
 }
 
 func (r *raft) becomeLeader() {
-	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateFollower {
-		panic("invalid transition [follower -> leader]")
+		r.logger.Warning("invalid transition [follower -> leader]")
+		return
 	}
 	r.step = stepLeader
 	r.reset(r.Term)
