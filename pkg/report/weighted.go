@@ -73,23 +73,24 @@ func (wr *weightedReport) processResults() {
 	defer close(wr.report.results)
 	defer close(wr.baseReport.Results())
 	for res := range wr.results {
-		wr.processResult(res)
+		wr.processResult(&res)
 		wr.baseReport.Results() <- res
 	}
 }
 
-func (wr *weightedReport) processResult(res Result) {
+func (wr *weightedReport) processResult(res *Result) {
 	if res.Err != nil {
-		wr.report.results <- res
+		wr.report.results <- *res
 		return
 	}
 	if res.Weight == 0 {
 		res.Weight = 1.0
 	}
+
 	wr.weightTotal += res.Weight
 	res.End = res.Start.Add(time.Duration(float64(res.End.Sub(res.Start)) / res.Weight))
 	res.Weight = 1.0
-	wr.report.results <- res
+	wr.report.results <- *res
 }
 
 func (wr *weightedReport) reweighStat(s Stats) Stats {
