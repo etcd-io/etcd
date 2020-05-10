@@ -104,7 +104,8 @@ const (
 )
 
 var (
-	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
+	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
+	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
 
 func init() {
@@ -298,7 +299,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			zap.Uint("max-request-bytes", cfg.MaxRequestBytes),
 			zap.String("max-request-size", humanize.Bytes(uint64(cfg.MaxRequestBytes))),
 			zap.Int("recommended-request-bytes", recommendedMaxRequestBytes),
-			zap.String("recommended-request-size", humanize.Bytes(uint64(recommendedMaxRequestBytes))),
+			zap.String("recommended-request-size", recommendedMaxRequestBytesString),
 		)
 	}
 
