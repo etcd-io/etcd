@@ -448,7 +448,7 @@ function gofmt_pass {
 }
 
 function govet_pass {
-	vetRes=$(go vet "${TEST[@]}")
+	vetRes=$(go vet -mod=mod "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet checking failed:\\n${vetRes}"
 		exit 255
