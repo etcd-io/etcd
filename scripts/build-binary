@@ -70,6 +70,7 @@ function main {
 		if [ ${GOOS} == "linux" ]; then
 			TARGET_ARCHS+=("arm64")
 			TARGET_ARCHS+=("ppc64le")
+			TARGET_ARCHS+=("s390x")
 		fi
 
 		for TARGET_ARCH in "${TARGET_ARCHS[@]}"; do

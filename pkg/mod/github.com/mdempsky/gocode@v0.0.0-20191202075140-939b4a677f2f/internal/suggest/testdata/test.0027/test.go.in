@@ -1,0 +1,14 @@
+package main
+
+type file struct {
+	name string
+}
+
+func (file *file) String() {
+	file.@
+	return file.name
+}
+
+func main() {
+	
+}

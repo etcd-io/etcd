@@ -1,0 +1,10 @@
+Found 9 candidates:
+  func main()
+  var a int
+  var arro bool
+  var b bool
+  var c chan bool
+  var uadd int
+  var unot bool
+  var usub int
+  var uxor invalid type

@@ -25,11 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -456,12 +456,14 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		// Concurrently put a key with a txn comparing on it.
 		revc := make(chan int64, 1)
+		errCh := make(chan error, 1)
 		go func() {
 			defer close(revc)
 			pr := &pb.PutRequest{Key: []byte("k"), Value: []byte("v")}
 			presp, err := kvc.Put(context.TODO(), pr)
+			errCh <- err
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			revc <- presp.Header.Revision
 		}()
@@ -485,6 +487,9 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 		}
 
 		prev := <-revc
+		if err := <-errCh; err != nil {
+			t.Fatal(err)
+		}
 		// put followed txn; should eval to false
 		if prev > tresp.Header.Revision && !tresp.Succeeded {
 			t.Errorf("#%d: got else but put rev %d followed txn rev (%+v)", i, prev, tresp)
@@ -1898,7 +1903,7 @@ func TestV3LargeRequests(t *testing.T) {
 		expectError     error
 	}{
 		// don't set to 0. use 0 as the default.
-		{1, 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{256, 1024, rpctypes.ErrGRPCRequestTooLarge},
 		{10 * 1024 * 1024, 9 * 1024 * 1024, nil},
 		{10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
 		{10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},

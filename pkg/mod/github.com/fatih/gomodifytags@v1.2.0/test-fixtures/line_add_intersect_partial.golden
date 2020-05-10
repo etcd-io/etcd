@@ -1,0 +1,13 @@
+package foo
+
+type foo struct {
+	bar string
+	t   bool `json:"t"`
+	qux int  `json:"qux"`
+}
+
+type bar struct {
+	foo string `json:"foo"`
+	s   bool   `json:"s"`
+	mut int
+}

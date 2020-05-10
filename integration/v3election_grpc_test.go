@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 // TestV3ElectionCampaign checks that Campaign will not give
@@ -97,7 +97,7 @@ func TestV3ElectionObserve(t *testing.T) {
 	lc := toGRPC(clus.Client(0)).Election
 
 	// observe leadership events
-	observec := make(chan struct{})
+	observec := make(chan struct{}, 1)
 	go func() {
 		defer close(observec)
 		s, err := lc.Observe(context.Background(), &epb.LeaderRequest{Name: []byte("foo")})

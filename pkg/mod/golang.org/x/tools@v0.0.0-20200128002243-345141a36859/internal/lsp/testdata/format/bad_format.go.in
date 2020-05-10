@@ -1,0 +1,22 @@
+package format //@format("package")
+
+import (
+	"runtime"
+	"fmt"
+	"log"
+)
+
+func hello() {
+
+
+
+
+	var x int //@diag("x", "compiler", "x declared but not used")
+}
+
+func hi() {
+	runtime.GOROOT()
+	fmt.Printf("")
+
+	log.Printf("")
+}

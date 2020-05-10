@@ -1,0 +1,29 @@
+package main
+
+import (
+	"fmt"
+)
+
+// just a dummy example
+type Dog struct {
+	Legs int
+}
+
+func (d *Dog) Bark() {
+	fmt.Printf("Bark!\n")
+}
+
+// another one
+type Test struct {
+	// map of slices of pointer to a *Dog
+	MoreTests map[string][]**Dog
+}
+
+func (t *Test) GetMe() *Test {
+	return t
+}
+
+func main() {
+	t := new(Test)
+	(*t.GetMe().MoreTests["blabla"][10]).@
+}

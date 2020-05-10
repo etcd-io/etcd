@@ -1,0 +1,23 @@
+switch s := s.(type) {
+case *ast.AssignStmt:
+case *ast.BadStmt:
+case *ast.BlockStmt:
+case *ast.BranchStmt:
+case *ast.CaseClause:
+case *ast.CommClause:
+case *ast.DeclStmt:
+case *ast.DeferStmt:
+case *ast.EmptyStmt:
+case *ast.ExprStmt:
+case *ast.ForStmt:
+case *ast.GoStmt:
+case *ast.IfStmt:
+case *ast.IncDecStmt:
+case *ast.LabeledStmt:
+case *ast.RangeStmt:
+case *ast.ReturnStmt:
+case *ast.SelectStmt:
+case *ast.SendStmt:
+case *ast.SwitchStmt:
+case *ast.TypeSwitchStmt:
+}

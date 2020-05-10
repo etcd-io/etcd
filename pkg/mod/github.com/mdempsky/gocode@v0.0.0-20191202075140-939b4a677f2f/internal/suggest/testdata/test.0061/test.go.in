@@ -1,0 +1,10 @@
+package p
+
+import "bytes"
+
+type S struct { buf int }
+type T struct { S; bytes.Buffer }
+
+func _(t T) {
+	_ = t.b@
+}

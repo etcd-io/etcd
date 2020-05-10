@@ -1,0 +1,14 @@
+package main
+
+import "fmt"
+
+func main() {
+	num := run()
+	fmt.Println(num)
+}
+
+func run() int {
+	fmt.Println("works")
+	newVar := 1 + 2
+	return newVar // <<<<< var,12,8,12,13,newVar,pass
+}

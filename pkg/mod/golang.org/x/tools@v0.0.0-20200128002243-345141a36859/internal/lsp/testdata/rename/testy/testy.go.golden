@@ -1,0 +1,18 @@
+-- bar-rename --
+package testy
+
+type tt int //@rename("tt", "testyType")
+
+func a() {
+	bar := 42 //@rename("foo", "bar")
+}
+
+-- testyType-rename --
+package testy
+
+type testyType int //@rename("tt", "testyType")
+
+func a() {
+	foo := 42 //@rename("foo", "bar")
+}
+

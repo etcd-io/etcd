@@ -73,10 +73,13 @@
 		AlarmRequest
 		AlarmMember
 		AlarmResponse
+		DowngradeRequest
+		DowngradeResponse
 		StatusRequest
 		StatusResponse
 		AuthEnableRequest
 		AuthDisableRequest
+		AuthStatusRequest
 		AuthenticateRequest
 		AuthUserAddRequest
 		AuthUserGetRequest
@@ -93,6 +96,7 @@
 		AuthRoleRevokePermissionRequest
 		AuthEnableResponse
 		AuthDisableResponse
+		AuthStatusResponse
 		AuthenticateResponse
 		AuthUserAddResponse
 		AuthUserGetResponse

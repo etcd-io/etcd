@@ -1,0 +1,56 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+
+trigger:
+- master
+
+variables:
+  GOVERSION: 1.12
+
+jobs:
+  - job: Linux
+    pool:
+      vmImage: 'Ubuntu-16.04'
+
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go $(GOVERSION)'
+        inputs:
+          version: $(GOVERSION)
+      - task: Go@0
+        inputs:
+          command: test
+          arguments: -race -v ./...
+        displayName: 'Execute Tests'
+
+  - job: Mac
+    pool:
+      vmImage: 'macos-10.13'
+
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go $(GOVERSION)'
+        inputs:
+          version: $(GOVERSION)
+      - task: Go@0
+        inputs:
+          command: test
+          arguments: -race -v ./...
+        displayName: 'Execute Tests'
+
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
+
+    steps:
+      - task: GoTool@0
+        displayName: 'Use Go $(GOVERSION)'
+        inputs:
+          version: $(GOVERSION)
+      - task: Go@0
+        inputs:
+          command: test
+          arguments: -race -v ./...
+        displayName: 'Execute Tests'

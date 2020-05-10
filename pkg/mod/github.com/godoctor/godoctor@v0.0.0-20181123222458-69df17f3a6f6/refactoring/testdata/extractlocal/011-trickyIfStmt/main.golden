@@ -1,0 +1,14 @@
+package main
+
+import "fmt"
+
+func main() {
+	x := 5.0
+	newVar := false
+	if i, err := x, newVar; i < 10 { // <<<<< var,7,24,7,30,newVar,pass
+		if err == true {
+			fmt.Println(err)
+		}
+		fmt.Println("divisible by 5:")
+	}
+}

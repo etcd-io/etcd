@@ -1,0 +1,5 @@
+package main
+
+var out struct {
+	Foo string `json:"foo"`
+}

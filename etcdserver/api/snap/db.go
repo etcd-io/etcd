@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -63,16 +63,12 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 		return n, err
 	}
 
-	if s.lg != nil {
-		s.lg.Info(
-			"saved database snapshot to disk",
-			zap.String("path", fn),
-			zap.Int64("bytes", n),
-			zap.String("size", humanize.Bytes(uint64(n))),
-		)
-	} else {
-		plog.Infof("saved database snapshot to disk [total bytes: %d]", n)
-	}
+	s.lg.Info(
+		"saved database snapshot to disk",
+		zap.String("path", fn),
+		zap.Int64("bytes", n),
+		zap.String("size", humanize.Bytes(uint64(n))),
+	)
 
 	snapDBSaveSec.Observe(time.Since(start).Seconds())
 	return n, nil

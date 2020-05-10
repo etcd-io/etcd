@@ -1,0 +1,9 @@
+package p
+
+type S1 struct { *S2 }
+type S2 struct { *S1 }
+
+func (*S1) M1() {}
+func (*S2) M2() {}
+
+var _ = (S1).@

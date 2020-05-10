@@ -1,0 +1,25 @@
+package badstmt
+
+import (
+	"golang.org/x/tools/internal/lsp/foo"
+)
+
+func _() {
+	defer foo.F //@complete(" //", Foo),diag(" //", "syntax", "function must be invoked in defer statement")
+	y := 1
+	defer foo.F //@complete(" //", Foo)
+}
+
+func _() {
+	switch true {
+	case true:
+		go foo.F //@complete(" //", Foo)
+	}
+}
+
+func _() {
+	defer func() {
+		foo.F //@complete(" //", Foo),snippet(" //", Foo, "Foo()", "Foo()")
+		foo. //@complete(" //", Foo, IntFoo, StructFoo)
+	}
+}

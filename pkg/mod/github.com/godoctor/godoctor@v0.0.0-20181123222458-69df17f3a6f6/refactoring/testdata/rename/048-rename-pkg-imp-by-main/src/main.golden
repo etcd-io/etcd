@@ -1,0 +1,8 @@
+package main
+
+import "fmt"
+import "Xyz"
+//Test for renaming an imported package
+func main() {                               
+	fmt.Println(Xyz.MyFunction(5))    
+}

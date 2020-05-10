@@ -1,0 +1,18 @@
+package main
+
+type X struct {
+	Xa int
+	Xb int
+	Xy Y
+}
+
+type Y struct {
+	Ya int
+	Yb int
+}
+
+func main() {
+	x := X{
+		Xy: Y{
+			
+@}

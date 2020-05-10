@@ -1,0 +1,22 @@
+Found 21 candidates:
+  func Close() error
+  func DWARF() (*dwarf.Data, error)
+  func DynString(tag elf.DynTag) ([]string, error)
+  func DynamicSymbols() ([]elf.Symbol, error)
+  func ImportedLibraries() ([]string, error)
+  func ImportedSymbols() ([]elf.ImportedSymbol, error)
+  func Section(name string) *elf.Section
+  func SectionByType(typ elf.SectionType) *elf.Section
+  func Symbols() ([]elf.Symbol, error)
+  var ABIVersion uint8
+  var ByteOrder binary.ByteOrder
+  var Class elf.Class
+  var Data elf.Data
+  var Entry uint64
+  var FileHeader elf.FileHeader
+  var Machine elf.Machine
+  var OSABI elf.OSABI
+  var Progs []*elf.Prog
+  var Sections []*elf.Section
+  var Type elf.Type
+  var Version elf.Version

@@ -1,0 +1,22 @@
+package main
+
+import "sync"
+
+type Dummy struct {
+	sync.Mutex
+}
+
+type Bar struct {
+	Dummy
+}
+
+func (b *Bar) Lock() {
+}
+
+func (b *Bar) Unlock() {
+}
+
+func main() {
+	var b Bar
+	b.@
+}

@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
-	"go.etcd.io/etcd/clientv3/leasing"
-	"go.etcd.io/etcd/integration"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/clientv3/concurrency"
+	"go.etcd.io/etcd/v3/clientv3/leasing"
+	"go.etcd.io/etcd/v3/integration"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -318,7 +318,7 @@ func TestLeasingRevGet(t *testing.T) {
 		t.Fatal(gerr)
 	}
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "def" {
-		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
+		t.Fatalf(`expected "k"->"def" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 }
 
@@ -939,6 +939,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Value) != "456" {
 		t.Errorf(`expected value "def", got %+v`, gresp)
 	}
+
 	// check puts were applied and are all in the same revision
 	w := clus.Client(0).Watch(
 		clus.Client(0).Ctx(),
@@ -1574,12 +1575,16 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	var wgPutters, wgGetters sync.WaitGroup
 	wgPutters.Add(numPutters)
 	wgGetters.Add(numGetters)
+	txnerrCh := make(chan error, 1)
 
 	f := func() {
 		defer wgPutters.Done()
 		for i := 0; i < 10; i++ {
-			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); err != nil {
-				t.Fatal(txnerr)
+			if _, txnerr := lkv.Txn(context.TODO()).Then(puts...).Commit(); txnerr != nil {
+				select {
+				case txnerrCh <- txnerr:
+				default:
+				}
 			}
 		}
 	}
@@ -1618,6 +1623,11 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	}
 
 	wgPutters.Wait()
+	select {
+	case txnerr := <-txnerrCh:
+		t.Fatal(txnerr)
+	default:
+	}
 	close(donec)
 	wgGetters.Wait()
 }
@@ -1738,7 +1748,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 	cmp := clientv3.Compare(clientv3.Version("k").WithPrefix(), "=", 1)
 	tresp, terr := lkv.Txn(context.TODO()).If(cmp).Commit()
 	if terr != nil {
-		t.Fatal(err)
+		t.Fatal(terr)
 	}
 	if tresp.Succeeded {
 		t.Fatalf("expected Succeeded=false, got %+v", tresp)

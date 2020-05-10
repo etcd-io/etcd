@@ -1,0 +1,9 @@
+package mypackage
+
+func xyz(n int) int { // <<<<< rename,3,6,3,6,xyz,pass
+	if n == 0 {
+		return 1
+	} else {
+		return n + xyz(n-1)
+	}
+}

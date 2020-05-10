@@ -31,7 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/tlsutil"
 
 	"go.uber.org/zap"
 )
@@ -114,8 +115,15 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
-	if err = os.MkdirAll(dirpath, 0700); err != nil {
-		return
+	if fileutil.Exist(dirpath) {
+		err = fileutil.CheckDirPermission(dirpath, fileutil.PrivateDirMode)
+		if err != nil {
+			return
+		}
+	} else {
+		if err = os.MkdirAll(dirpath, fileutil.PrivateDirMode); err != nil {
+			return
+		}
 	}
 	info.Logger = lg
 

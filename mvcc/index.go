@@ -26,6 +26,7 @@ type index interface {
 	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []revision)
 	Revisions(key, end []byte, atRev int64) []revision
+	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
 	RangeSince(key, end []byte, rev int64) []revision
@@ -119,6 +120,23 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
 	return revs
 }
 
+func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
+	if end == nil {
+		_, _, _, err := ti.Get(key, atRev)
+		if err != nil {
+			return 0
+		}
+		return 1
+	}
+	total := 0
+	ti.visit(key, end, func(ki *keyIndex) {
+		if _, _, _, err := ki.get(ti.lg, atRev); err == nil {
+			total++
+		}
+	})
+	return total
+}
+
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
 	if end == nil {
 		rev, _, _, err := ti.Get(key, atRev)
@@ -185,11 +203,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
-	if ti.lg != nil {
-		ti.lg.Info("compact tree index", zap.Int64("revision", rev))
-	} else {
-		plog.Printf("store.index: compact %d", rev)
-	}
+	ti.lg.Info("compact tree index", zap.Int64("revision", rev))
 	ti.Lock()
 	clone := ti.tree.Clone()
 	ti.Unlock()
@@ -203,11 +217,7 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 		if keyi.isEmpty() {
 			item := ti.tree.Delete(keyi)
 			if item == nil {
-				if ti.lg != nil {
-					ti.lg.Panic("failed to delete during compaction")
-				} else {
-					plog.Panic("store.index: unexpected delete failure during compaction")
-				}
+				ti.lg.Panic("failed to delete during compaction")
 			}
 		}
 		ti.Unlock()

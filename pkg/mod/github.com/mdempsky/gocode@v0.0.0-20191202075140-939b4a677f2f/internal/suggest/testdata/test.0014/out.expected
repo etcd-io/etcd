@@ -1,0 +1,12 @@
+Found 11 candidates:
+  func main()
+  type MyPtrInt *int
+  var a *int
+  var aa int
+  var b int
+  var bb *MyPtrInt
+  var c *int
+  var d **int
+  var megaptr **int
+  var superint int
+  var typeptr MyPtrInt

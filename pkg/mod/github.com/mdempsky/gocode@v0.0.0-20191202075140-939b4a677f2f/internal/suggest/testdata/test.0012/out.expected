@@ -1,0 +1,7 @@
+Found 6 candidates:
+  func main()
+  type MyMap map[string]int
+  var key string
+  var m MyMap
+  var value int
+  var z int

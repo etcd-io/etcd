@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
 )
 
 var (
@@ -89,6 +89,7 @@ func HandleMetrics(mux *http.ServeMux, c *http.Client, eps []string) {
 		resp, err := c.Get(target)
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")

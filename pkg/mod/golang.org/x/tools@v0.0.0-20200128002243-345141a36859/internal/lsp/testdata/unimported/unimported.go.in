@@ -1,0 +1,20 @@
+package unimported
+
+func _() {
+	//@unimported("", hashslashadler32, goslashast, encodingslashbase64, bytes)
+	pkg //@unimported("g", externalpackage)
+	// container/ring is extremely unlikely to be imported by anything, so shouldn't have type information.
+	ring.Ring //@unimported("Ring", ringring)
+	signature.Foo //@unimported("Foo", signaturefoo)
+}
+
+// Create markers for unimported std lib packages. Only for use by this test.
+/* adler32 */ //@item(hashslashadler32, "adler32", "\"hash/adler32\"", "package")
+/* ast */ //@item(goslashast, "ast", "\"go/ast\"", "package")
+/* base64 */ //@item(encodingslashbase64, "base64", "\"encoding/base64\"", "package")
+/* bytes */ //@item(bytes, "bytes", "\"bytes\"", "package")
+/* pkg */ //@item(externalpackage, "pkg", "\"example.com/extramodule/pkg\"", "package")
+
+/* ring.Ring */ //@item(ringring, "Ring", "(from \"container/ring\")", "var")
+
+/* signature.Foo */ //@item(signaturefoo, "Foo", "func(a string, b int) (c bool) (from \"golang.org/x/tools/internal/lsp/signature\")", "func")

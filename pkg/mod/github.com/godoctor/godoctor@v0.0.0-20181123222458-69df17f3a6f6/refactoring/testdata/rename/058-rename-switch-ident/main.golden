@@ -1,0 +1,17 @@
+package main
+
+import "fmt"
+
+
+// Test for renaming the switch variable
+func main() {
+
+	switch renamed := 5; { 		// <<<<< rename,9,9,9,9,renamed,pass
+	 case renamed < 0:  fmt.Println(-renamed)
+         case renamed==0 :  fmt.Println(renamed)
+         case renamed > 0 :  fmt.Println(renamed)
+	 default:  fmt.Println(renamed)
+       }
+
+ 
+}

@@ -3,12 +3,94 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.1.11+, 3.2.26+, and 3.3.11+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
+
 
 <hr>
 
 
-## v3.3.18 (2019-TBD)
+## [v3.3.21](https://github.com/etcd-io/etcd/releases/tag/v3.3.21) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### etcd server
+
+- [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
+- [Fix deadlock bug in mvcc](https://github.com/etcd-io/etcd/pull/11817).
+
+### Package Auth
+
+- [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
+
+### Metrics, Monitoring
+
+- Add [`etcd_debugging_auth_revision`](https://github.com/etcd-io/etcd/commit/f14d2a087f7b0fd6f7980b95b5e0b945109c95f3).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+
+
+## [v3.3.20](https://github.com/etcd-io/etcd/releases/tag/v3.3.20) (2020-04-01)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Package `wal`
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+
+### Metrics, Monitoring
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
+
+## [v3.3.19](https://github.com/etcd-io/etcd/releases/tag/v3.3.19) (2020-03-18)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.18...v3.3.19) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### client v3
+
+- Fix [`"hasleader"` metadata embedding](https://github.com/etcd-io/etcd/pull/11687).
+  - Previously, `clientv3.WithRequireLeader(ctx)` was overwriting existing context keys.
+
+### etcd server
+
+- [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
+- Log [`[CLIENT-PORT]/health` check in server side](https://github.com/etcd-io/etcd/pull/11704).
+
+### etcdctl v3
+
+- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11638) command to prevent potential timeout.
+
+### Metrics, Monitoring
+
+See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+
+- Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
+
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
+
+## [v3.3.18](https://github.com/etcd-io/etcd/releases/tag/v3.3.18) (2019-11-26)
 
 ### Metrics, Monitoring
 
@@ -17,12 +99,14 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11261) Prometheus metric.
+- Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
 
 ### etcdserver
 
 - Fix [`wait purge file loop during shutdown`](https://github.com/etcd-io/etcd/pull/11308).
   - Previously, during shutdown etcd could accidentally remove needed wal files, resulting in catastrophic error `etcdserver: open wal error: wal: file not found.` during startup.
   - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
+
 
 <hr>
 
@@ -78,6 +162,13 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Go
 
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
+
+### client v3
+
+- Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
+  - Fix ["kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch" (kubernetes#83028)](https://github.com/kubernetes/kubernetes/issues/83028).
+- Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
+  - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 
 
 <hr>

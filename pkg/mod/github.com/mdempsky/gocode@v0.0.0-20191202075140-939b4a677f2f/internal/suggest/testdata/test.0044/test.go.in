@@ -1,0 +1,15 @@
+package main
+
+type X struct {
+	Xa int
+	Xb int
+}
+
+func (x X) foo() {
+	return
+}
+
+func main() {
+	x := X{
+		
+@}

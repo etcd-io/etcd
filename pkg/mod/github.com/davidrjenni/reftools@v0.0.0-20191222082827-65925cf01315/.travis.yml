@@ -1,0 +1,29 @@
+language: go
+
+go:
+  - 1.12.x
+  - 1.13.x
+  - tip
+
+git:
+  depth: 1
+
+os:
+  - linux
+  - osx
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+before_install:
+  - go get github.com/mattn/goveralls
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.21.0
+
+install: true
+
+script:
+  - golangci-lint run --enable-all -D funlen,gocognit,gocyclo,godox,lll,scopelint,wsl
+  - go test -race -v -covermode=atomic -coverprofile=coverage.out ./...
+  - goveralls -coverprofile=coverage.out -service=travis-ci

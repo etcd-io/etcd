@@ -1,0 +1,3 @@
+package p
+
+var _ = (*[]int).@

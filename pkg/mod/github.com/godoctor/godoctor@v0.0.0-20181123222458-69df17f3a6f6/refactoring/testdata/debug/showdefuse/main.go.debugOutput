@@ -1,0 +1,33 @@
+// Def-use information for main
+digraph mgraph {
+mode="heir";
+splines="ortho";
+
+	s1 [label="ENTRY"];
+	s2 [label="EXIT"];
+	s3 [label="type declaration statement (line 6)\ntype Fraction struct {     ..."];
+	s4 [label="assignment (line 10)\none, two := 1, 9999"];
+	s5 [label="assignment (line 11)\ntwo = 2"];
+	s6 [label="assignment (line 12)\nfrac := Fraction{one, two}"];
+	s7 [label="assignment (line 13)\nfrac.Denominator = 4"];
+	s8 [label="if statement (line 14)\nif 1 < 5"];
+	s9 [label="assignment (line 14)\ntwo = 222"];
+	s10 [label="assignment (line 15)\nfrac.Numerator = 3"];
+	s11 [label="expression statement (line 17)\nfmt.Println(frac)"];
+	s1 -> s3
+	s3 -> s4
+	s4 -> s5
+	s5 -> s6
+	s5 -> s6 [xlabel="two",style=dotted,fontcolor=red,color=red]
+	s6 -> s7
+	s6 -> s7 [xlabel="frac",style=dotted,fontcolor=red,color=red]
+	s7 -> s9
+	s7 -> s10 [xlabel="frac",style=dotted,fontcolor=red,color=red]
+	s7 -> s11 [xlabel="frac",style=dotted,fontcolor=red,color=red]
+	s8 -> s10
+	s8 -> s11
+	s9 -> s8
+	s10 -> s11
+	s10 -> s11 [xlabel="frac",style=dotted,fontcolor=red,color=red]
+	s11 -> s2
+}

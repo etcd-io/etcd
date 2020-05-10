@@ -1,0 +1,22 @@
+package main
+
+type foo struct {
+	bar       string
+	MyExample bool
+	MyAnother []string
+}
+
+const exampleVar = "foo"
+
+type bar struct {
+	// loose comment
+
+	// home
+	ankara string
+	yeap   bool // just a boolean
+
+	// great cities
+	cities []string
+
+	// seconed loose comment
+}

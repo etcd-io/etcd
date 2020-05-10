@@ -1,0 +1,9 @@
+{
+  "start": 4,
+  "end": 6,
+  "lines": [
+    "\tbar       string   `json:\"bar\"`",
+    "\tMyExample bool     `json:\"myExample\"`",
+    "\tMyAnother []string `json:\"myAnother\"`"
+  ]
+}

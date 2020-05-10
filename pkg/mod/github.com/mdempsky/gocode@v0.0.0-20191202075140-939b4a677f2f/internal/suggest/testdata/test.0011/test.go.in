@@ -1,0 +1,8 @@
+package main
+
+import "reflect"
+
+func main() {
+	var test reflect.ValueError
+	test.@
+}

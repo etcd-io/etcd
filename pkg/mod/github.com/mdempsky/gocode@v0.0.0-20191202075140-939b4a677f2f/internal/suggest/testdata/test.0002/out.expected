@@ -1,0 +1,6 @@
+Found 5 candidates:
+  func main()
+  package os 
+  var key string
+  var test map[string]invalid type
+  var value invalid type

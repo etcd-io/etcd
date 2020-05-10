@@ -1,0 +1,5 @@
+Found 4 candidates:
+  func Lock()
+  func Unlock()
+  var Dummy Dummy
+  var Mutex sync.Mutex

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/pkg/netutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/pkg/netutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -146,8 +146,6 @@ type ServerConfig struct {
 	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
 	LoggerCore        zapcore.Core
 	LoggerWriteSyncer zapcore.WriteSyncer
-
-	Debug bool
 
 	ForceNewCluster bool
 

@@ -22,7 +22,7 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"go.etcd.io/etcd/client"
+	"go.etcd.io/etcd/v3/client"
 
 	"github.com/urfave/cli"
 )
@@ -76,10 +76,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		cmdArgs = args[:argslen-1]
 	}
 
-	index := 0
-	if c.Int("after-index") != 0 {
-		index = c.Int("after-index")
-	}
+	index := c.Uint64("after-index")
 
 	recursive := c.Bool("recursive")
 

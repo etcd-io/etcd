@@ -27,13 +27,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
-	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http/httptypes"
+
+	"go.uber.org/zap"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "proxy/httpproxy")
-
 	// Hop-by-hop headers. These are removed when sent to the backend.
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
 	// This list of headers borrowed from stdlib httputil.ReverseProxy
@@ -56,6 +55,7 @@ func removeSingleHopHeaders(hdrs *http.Header) {
 }
 
 type reverseProxy struct {
+	lg        *zap.Logger
 	director  *director
 	transport http.RoundTripper
 }
@@ -75,10 +75,14 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		proxybody, err = ioutil.ReadAll(clientreq.Body)
 		if err != nil {
 			msg := fmt.Sprintf("failed to read request body: %v", err)
-			plog.Println(msg)
+			p.lg.Info("failed to read request body", zap.Error(err))
 			e := httptypes.NewHTTPError(http.StatusInternalServerError, "httpproxy: "+msg)
 			if we := e.WriteTo(rw); we != nil {
-				plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+				p.lg.Debug(
+					"error writing HTTPError to remote addr",
+					zap.String("remote-addr", clientreq.RemoteAddr),
+					zap.Error(we),
+				)
 			}
 			return
 		}
@@ -98,10 +102,14 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		reportRequestDropped(clientreq, zeroEndpoints)
 
 		// TODO: limit the rate of the error logging.
-		plog.Println(msg)
+		p.lg.Info(msg)
 		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
-			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+			p.lg.Debug(
+				"error writing HTTPError to remote addr",
+				zap.String("remote-addr", clientreq.RemoteAddr),
+				zap.Error(we),
+			)
 		}
 		return
 	}
@@ -118,7 +126,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			select {
 			case <-closeCh:
 				atomic.StoreInt32(&requestClosed, 1)
-				plog.Printf("client %v closed request prematurely", clientreq.RemoteAddr)
+				p.lg.Info(
+					"client closed request prematurely",
+					zap.String("remote-addr", clientreq.RemoteAddr),
+				)
 				cancel()
 			case <-completeCh:
 			}
@@ -143,7 +154,11 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		}
 		if err != nil {
 			reportRequestDropped(clientreq, failedSendingRequest)
-			plog.Printf("failed to direct request to %s: %v", ep.URL.String(), err)
+			p.lg.Info(
+				"failed to direct request",
+				zap.String("url", ep.URL.String()),
+				zap.Error(err),
+			)
 			ep.Failed()
 			continue
 		}
@@ -155,10 +170,14 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		// TODO: limit the rate of the error logging.
 		msg := fmt.Sprintf("unable to get response from %d endpoint(s)", len(endpoints))
 		reportRequestDropped(clientreq, failedGettingResponse)
-		plog.Println(msg)
+		p.lg.Info(msg)
 		e := httptypes.NewHTTPError(http.StatusBadGateway, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
-			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+			p.lg.Debug(
+				"error writing HTTPError to remote addr",
+				zap.String("remote-addr", clientreq.RemoteAddr),
+				zap.Error(we),
+			)
 		}
 		return
 	}

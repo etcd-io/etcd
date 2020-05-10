@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/raft/confchange"
-	"go.etcd.io/etcd/raft/quorum"
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	"go.etcd.io/etcd/v3/raft/confchange"
+	"go.etcd.io/etcd/v3/raft/quorum"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft/tracker"
 )
 
 // None is a placeholder node ID used when there is no leader.
@@ -398,7 +398,9 @@ func (r *raft) hardState() pb.HardState {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
-	m.From = r.id
+	if m.From == None {
+		m.From = r.id
+	}
 	if m.Type == pb.MsgVote || m.Type == pb.MsgVoteResp || m.Type == pb.MsgPreVote || m.Type == pb.MsgPreVoteResp {
 		if m.Term == 0 {
 			// All {pre-,}campaign messages need to have the term set when
@@ -553,35 +555,34 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 }
 
 func (r *raft) advance(rd Ready) {
+	r.reduceUncommittedSize(rd.CommittedEntries)
+
 	// If entries were applied (or a snapshot), update our cursor for
 	// the next Ready. Note that if the current HardState contains a
 	// new Commit index, this does not mean that we're also applying
 	// all of the new entries due to commit pagination by size.
-	if index := rd.appliedCursor(); index > 0 {
-		r.raftLog.appliedTo(index)
-		if r.prs.Config.AutoLeave && index >= r.pendingConfIndex && r.state == StateLeader {
+	if newApplied := rd.appliedCursor(); newApplied > 0 {
+		oldApplied := r.raftLog.applied
+		r.raftLog.appliedTo(newApplied)
+
+		if r.prs.Config.AutoLeave && oldApplied < r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 			// If the current (and most recent, at least for this leader's term)
-			// configuration should be auto-left, initiate that now.
-			ccdata, err := (&pb.ConfChangeV2{}).Marshal()
-			if err != nil {
-				panic(err)
-			}
+			// configuration should be auto-left, initiate that now. We use a
+			// nil Data which unmarshals into an empty ConfChangeV2 and has the
+			// benefit that appendEntry can never refuse it based on its size
+			// (which registers as zero).
 			ent := pb.Entry{
 				Type: pb.EntryConfChangeV2,
-				Data: ccdata,
+				Data: nil,
 			}
+			// There's no way in which this proposal should be able to be rejected.
 			if !r.appendEntry(ent) {
-				// If we could not append the entry, bump the pending conf index
-				// so that we'll try again later.
-				//
-				// TODO(tbg): test this case.
-				r.pendingConfIndex = r.raftLog.lastIndex()
-			} else {
-				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
+				panic("refused un-refusable auto-leaving ConfChangeV2")
 			}
+			r.pendingConfIndex = r.raftLog.lastIndex()
+			r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 		}
 	}
-	r.reduceUncommittedSize(rd.CommittedEntries)
 
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
@@ -1069,39 +1070,52 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastAppend()
 		return nil
 	case pb.MsgReadIndex:
-		// If more than the local vote is needed, go through a full broadcast,
-		// otherwise optimize.
-		if !r.prs.IsSingleton() {
-			if r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) != r.Term {
-				// Reject read only request when this leader has not committed any log entry at its term.
-				return nil
+		// only one voting member (the leader) in the cluster
+		if r.prs.IsSingleton() {
+			if resp := r.responseToReadIndexReq(m, r.raftLog.committed); resp.To != None {
+				r.send(resp)
 			}
+			return nil
+		}
 
-			// thinking: use an interally defined context instead of the user given context.
-			// We can express this in terms of the term and index instead of a user-supplied value.
-			// This would allow multiple reads to piggyback on the same message.
-			switch r.readOnly.option {
-			case ReadOnlySafe:
-				r.readOnly.addRequest(r.raftLog.committed, m)
-				// The local node automatically acks the request.
-				r.readOnly.recvAck(r.id, m.Entries[0].Data)
-				r.bcastHeartbeatWithCtx(m.Entries[0].Data)
-			case ReadOnlyLeaseBased:
-				ri := r.raftLog.committed
-				if m.From == None || m.From == r.id { // from local member
-					r.readStates = append(r.readStates, ReadState{Index: ri, RequestCtx: m.Entries[0].Data})
-				} else {
-					r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
-				}
-			}
-		} else {                                  // only one voting member (the leader) in the cluster
-			if m.From == None || m.From == r.id { // from leader itself
-				r.readStates = append(r.readStates, ReadState{Index: r.raftLog.committed, RequestCtx: m.Entries[0].Data})
-			} else { // from learner member
-				r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: r.raftLog.committed, Entries: m.Entries})
+		// thinking: use an interally defined context instead of the user given context.
+		// We can express this in terms of the term and index instead of a user-supplied value.
+		// This would allow multiple reads to piggyback on the same message.
+		switch r.readOnly.option {
+		case ReadOnlySafe:
+			r.readOnly.addRequest(r.raftLog.committed, m)
+			// The local node automatically acks the request.
+			r.readOnly.recvAck(r.id, m.Entries[0].Data)
+			r.bcastHeartbeatWithCtx(m.Entries[0].Data)
+		case ReadOnlyLeaseBased:
+			ri := r.raftLog.committed
+			if m.From == None || m.From == r.id { // from local member
+				r.readStates = append(r.readStates, ReadState{Index: ri, RequestCtx: m.Entries[0].Data})
+			} else {
+				r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
 			}
 		}
 
+		// Reject read only request when this leader has not committed any log entry at its term.
+		if !r.committedEntryInCurrentTerm() {
+			return nil
+		}
+
+		// thinking: use an interally defined context instead of the user given context.
+		// We can express this in terms of the term and index instead of a user-supplied value.
+		// This would allow multiple reads to piggyback on the same message.
+		switch r.readOnly.option {
+		// If more than the local vote is needed, go through a full broadcast.
+		case ReadOnlySafe:
+			r.readOnly.addRequest(r.raftLog.committed, m)
+			// The local node automatically acks the request.
+			r.readOnly.recvAck(r.id, m.Entries[0].Data)
+			r.bcastHeartbeatWithCtx(m.Entries[0].Data)
+		case ReadOnlyLeaseBased:
+			if resp := r.responseToReadIndexReq(m, r.raftLog.committed); resp.To != None {
+				r.send(resp)
+			}
+		}
 		return nil
 	}
 
@@ -1191,11 +1205,8 @@ func stepLeader(r *raft, m pb.Message) error {
 
 		rss := r.readOnly.advance(m)
 		for _, rs := range rss {
-			req := rs.req
-			if req.From == None || req.From == r.id { // from local member
-				r.readStates = append(r.readStates, ReadState{Index: rs.index, RequestCtx: req.Entries[0].Data})
-			} else {
-				r.send(pb.Message{To: req.From, Type: pb.MsgReadIndexResp, Index: rs.index, Entries: req.Entries})
+			if resp := r.responseToReadIndexReq(rs.req, rs.index); resp.To != None {
+				r.send(resp)
 			}
 		}
 	case pb.MsgSnapStatus:
@@ -1556,8 +1567,8 @@ func (r *raft) switchToConfig(cfg tracker.Config, prs tracker.ProgressMap) pb.Co
 			r.maybeSendAppend(id, false /* sendIfEmpty */)
 		})
 	}
-	// If the the leadTransferee was removed, abort the leadership transfer.
-	if _, tOK := r.prs.Progress[r.leadTransferee]; !tOK && r.leadTransferee != 0 {
+	// If the the leadTransferee was removed or demoted, abort the leadership transfer.
+	if _, tOK := r.prs.Config.Voters.IDs()[r.leadTransferee]; !tOK && r.leadTransferee != 0 {
 		r.abortLeaderTransfer()
 	}
 
@@ -1592,21 +1603,51 @@ func (r *raft) abortLeaderTransfer() {
 	r.leadTransferee = None
 }
 
+// committedEntryInCurrentTerm return true if the peer has committed an entry in its term.
+func (r *raft) committedEntryInCurrentTerm() bool {
+	return r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) == r.Term
+}
+
+// responseToReadIndexReq constructs a response for `req`. If `req` comes from the peer
+// itself, a blank value will be returned.
+func (r *raft) responseToReadIndexReq(req pb.Message, readIndex uint64) pb.Message {
+	if req.From == None || req.From == r.id {
+		r.readStates = append(r.readStates, ReadState{
+			Index:      readIndex,
+			RequestCtx: req.Entries[0].Data,
+		})
+		return pb.Message{}
+	}
+	return pb.Message{
+		Type:    pb.MsgReadIndexResp,
+		To:      req.From,
+		Index:   readIndex,
+		Entries: req.Entries,
+	}
+}
+
 // increaseUncommittedSize computes the size of the proposed entries and
 // determines whether they would push leader over its maxUncommittedSize limit.
 // If the new entries would exceed the limit, the method returns false. If not,
 // the increase in uncommitted entry size is recorded and the method returns
 // true.
+//
+// Empty payloads are never refused. This is used both for appending an empty
+// entry at a new leader's term, as well as leaving a joint configuration.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
 	var s uint64
 	for _, e := range ents {
 		s += uint64(PayloadSize(e))
 	}
 
-	if r.uncommittedSize > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
+	if r.uncommittedSize > 0 && s > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
 		// If the uncommitted tail of the Raft log is empty, allow any size
 		// proposal. Otherwise, limit the size of the uncommitted tail of the
 		// log and drop any proposal that would push the size over the limit.
+		// Note the added requirement s>0 which is used to make sure that
+		// appending single empty entries to the log always succeeds, used both
+		// for replicating a new leader's initial empty entry, and for
+		// auto-leaving joint configurations.
 		return false
 	}
 	r.uncommittedSize += s

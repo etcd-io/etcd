@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/version"
+	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -127,7 +127,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
+		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint(zap.NewExample()) + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}

@@ -1,0 +1,10 @@
+package main
+
+type X struct {
+	a,b,c int
+}
+
+func main() {
+	var X *X
+	X.@
+}

@@ -1,0 +1,12 @@
+package a
+
+type x struct {
+
+
+
+
+
+	Foo int
+	bar string
+
+}

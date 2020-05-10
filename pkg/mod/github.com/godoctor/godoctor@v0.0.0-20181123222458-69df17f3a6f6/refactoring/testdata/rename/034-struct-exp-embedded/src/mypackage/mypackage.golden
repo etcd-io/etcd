@@ -1,0 +1,25 @@
+package mypackage 
+
+
+type Renamed struct {
+
+Myvar string
+
+}
+
+type Parent struct {
+
+Renamed
+Myfiled string
+ 
+}
+
+func (mystructvar *Renamed)Mymethod() string {
+
+
+return mystructvar.Myvar
+
+
+}
+
+

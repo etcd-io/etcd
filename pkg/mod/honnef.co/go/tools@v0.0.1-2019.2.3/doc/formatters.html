@@ -1,0 +1,82 @@
+<!--(
+     "Title": "Output formatters"
+)-->
+
+<h2>Text</h2>
+
+<p>
+  <em>Text</em> is the default output formatter.
+  It formats problems using the following format: <code>file:line:col: message</code>.
+  This format is commonly used by compilers and linters,
+  and is understood by most editors.
+</p>
+
+<h3>Example output</h3>
+<pre><code>go/src/fmt/print.go:1069:15: this value of afterIndex is never used (SA4006)</code></pre>
+
+<h2>Stylish</h2>
+
+<p>
+  <em>Stylish</em> is a formatter designed for human consumption.
+  It groups results by file name
+  and breaks up the various pieces of information into columns.
+  Additionally, it displays a final summary.
+</p>
+
+<p>
+  This output format is not suited for automatic consumption by tools
+  and may change between versions.
+</p>
+
+<pre><code>go/src/fmt/fmt_test.go
+  (43, 2)     S1021   should merge variable declaration with assignment on next line
+  (1185, 10)  SA9003  empty branch
+
+go/src/fmt/print.go
+  (77, 18)    ST1006  methods on the same type should have the same receiver name (seen 3x "b", 1x "bp")
+  (1069, 15)  SA4006  this value of afterIndex is never used
+
+go/src/fmt/scan.go
+  (465, 5)  ST1012  error var complexError should have name of the form errFoo
+  (466, 5)  ST1012  error var boolError should have name of the form errFoo
+
+ ✖ 6 problems (6 errors, 0 warnings)
+</code></pre>
+
+<h2>JSON</h2>
+
+<p>
+  The JSON formatter emits one JSON object per problem found –
+  that is, it is a stream of objects, not an array.
+  Most fields should be self-explanatory.
+</p>
+
+<p>
+  The <code>severity</code> field may be one of
+  <code>"error"</code>, <code>"warning"</code> or <code>"ignored"</code>.
+  Whether a problem is an error or a warning is determined by the <code>-fail</code> flag.
+  The value <code>"ignored"</code> is used for problems that were ignored,
+  if the <code>-show-ignored</code> flag was provided.
+</p>
+
+<h3>Example output</h3>
+<p>
+  Note that actual output is not formatted nicely.
+  The example has been formatted to improve readability.
+</p>
+
+<pre><code>{
+  "code": "SA4006",
+  "severity": "error",
+  "location": {
+    "file": "/usr/lib/go/src/fmt/print.go",
+    "line": 1082,
+    "column": 15
+  },
+  "end": {
+    "file": "/usr/lib/go/src/fmt/print.go",
+    "line": 1082,
+    "column": 25
+  },
+  "message": "this value of afterIndex is never used"
+}</code></pre>

@@ -1,0 +1,1 @@
+setlocal omnifunc=gocomplete#Complete

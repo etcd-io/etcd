@@ -1,0 +1,23 @@
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+func main() {
+	x := 5
+	j := 5.0
+	y := 0
+	z := 10
+	for x < 10 {
+		x++
+		newVar := z + y
+		if x > newVar { // <<<<< var,15,9,15,12,newVar,pass
+			fmt.Println("big")
+		}
+	}
+	if math.Mod(j, 5) == 0 {
+		fmt.Println("divisible by 5:")
+	}
+}

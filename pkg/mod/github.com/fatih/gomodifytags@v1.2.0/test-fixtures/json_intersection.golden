@@ -1,0 +1,18 @@
+{
+  "start": 5,
+  "end": 16,
+  "lines": [
+    "\tMyExample bool     `json:\"myExample\"`",
+    "\tMyAnother []string `json:\"myAnother\"`",
+    "}",
+    "",
+    "const exampleVar = \"foo\"",
+    "",
+    "type bar struct {",
+    "\t// loose comment",
+    "",
+    "\t// home",
+    "\tankara string `json:\"ankara\"`",
+    "\tyeap   bool   `json:\"yeap\"` // just a boolean"
+  ]
+}

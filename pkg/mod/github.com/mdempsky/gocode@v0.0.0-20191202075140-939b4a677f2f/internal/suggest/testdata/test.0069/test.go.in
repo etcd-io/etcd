@@ -1,0 +1,7 @@
+package p
+
+var x int
+
+func _() {
+    10.@
+}

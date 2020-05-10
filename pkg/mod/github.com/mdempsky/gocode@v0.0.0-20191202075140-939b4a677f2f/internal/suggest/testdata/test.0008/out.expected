@@ -1,0 +1,7 @@
+Found 6 candidates:
+  func Lock()
+  func Unlock()
+  var Mutex sync.Mutex
+  var data map[string][]string
+  var path string
+  var time int64

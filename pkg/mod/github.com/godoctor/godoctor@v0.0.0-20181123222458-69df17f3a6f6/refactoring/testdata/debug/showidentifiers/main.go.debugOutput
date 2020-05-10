@@ -1,0 +1,11 @@
+=====testdata/debug/showidentifiers/main.go=====
+main	(Line 1) does not reference an object
+S	(Line 3) is a reference to S (./testdata/debug/showidentifiers/main.go:3:6)
+s	(Line 4) is a reference to main.s (./testdata/debug/showidentifiers/main.go:4:7)
+S	(Line 4) is a reference to S (./testdata/debug/showidentifiers/main.go:3:6)
+String	(Line 4) is a reference to String (./testdata/debug/showidentifiers/main.go:4:13)
+string	(Line 4) is a reference to _.string (-)
+foo	(Line 6) is a reference to main.foo (./testdata/debug/showidentifiers/main.go:6:6)
+string	(Line 6) is a reference to _.string (-)
+S	(Line 6) is a reference to S (./testdata/debug/showidentifiers/main.go:3:6)
+String	(Line 6) is a reference to String (./testdata/debug/showidentifiers/main.go:4:13)

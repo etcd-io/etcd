@@ -1,0 +1,11 @@
+package main
+
+type Dummy struct {
+	a, b, c int
+}
+
+func testEllipsis(dummies ...*Dummy) {
+	for _, d := range dummies {
+		d.@
+	}
+}

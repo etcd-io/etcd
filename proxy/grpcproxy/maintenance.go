@@ -18,8 +18,8 @@ import (
 	"context"
 	"io"
 
-	"go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/clientv3"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 type maintenanceProxy struct {
@@ -87,4 +87,9 @@ func (mp *maintenanceProxy) Status(ctx context.Context, r *pb.StatusRequest) (*p
 func (mp *maintenanceProxy) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
 	conn := mp.client.ActiveConnection()
 	return pb.NewMaintenanceClient(conn).MoveLeader(ctx, r)
+}
+
+func (mp *maintenanceProxy) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	conn := mp.client.ActiveConnection()
+	return pb.NewMaintenanceClient(conn).Downgrade(ctx, r)
 }

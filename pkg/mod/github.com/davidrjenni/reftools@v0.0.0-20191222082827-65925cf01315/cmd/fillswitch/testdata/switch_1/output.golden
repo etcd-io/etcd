@@ -1,0 +1,9 @@
+switch kind {
+case ast.Bad:
+case ast.Con:
+case ast.Fun:
+case ast.Lbl:
+case ast.Pkg:
+case ast.Typ:
+case ast.Var:
+}

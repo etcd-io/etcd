@@ -1,0 +1,20 @@
+//<<<<<extract,8,2,14,2,FOO,pass
+package main
+
+import "fmt"
+
+func main() {
+	i := 0 + 0
+	FOO(i)
+	fmt.Println("after loop")
+}
+
+func FOO(i int) {
+	for i <= 5 {
+		if i == 3 {
+			break
+		}
+		fmt.Println(i)
+		i++
+	}
+}

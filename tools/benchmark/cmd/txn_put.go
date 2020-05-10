@@ -22,8 +22,8 @@ import (
 	"os"
 	"time"
 
-	v3 "go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/pkg/report"
+	v3 "go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/pkg/report"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
@@ -58,6 +58,12 @@ func init() {
 func txnPutFunc(cmd *cobra.Command, args []string) {
 	if keySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
+		os.Exit(1)
+	}
+
+	if txnPutOpsPerTxn > keySpaceSize {
+		fmt.Fprintf(os.Stderr, "expected --txn-ops no larger than --key-space-size, "+
+			"got txn-ops(%v) key-space-size(%v)\n", txnPutOpsPerTxn, keySpaceSize)
 		os.Exit(1)
 	}
 

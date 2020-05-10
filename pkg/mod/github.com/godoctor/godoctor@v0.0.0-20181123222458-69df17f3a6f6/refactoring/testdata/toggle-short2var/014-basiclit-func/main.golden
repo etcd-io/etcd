@@ -1,0 +1,13 @@
+// <<<<<toggle,10,1,10,12,pass
+package main
+
+import "fmt"
+
+func f() string {
+	return "hello"
+}
+func main() {
+	var a int = 3
+	var b string = f()
+	fmt.Println("The values of a and b are : ", a, b)
+}

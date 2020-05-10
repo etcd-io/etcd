@@ -29,16 +29,16 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api"
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http/httptypes"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/jonboulle/clockwork"
@@ -1343,6 +1343,7 @@ func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1361,7 +1362,7 @@ func TestServeSelfStats(t *testing.T) {
 
 func TestSelfServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveSelf(
 			rw,
@@ -1377,7 +1378,7 @@ func TestSelfServeStatsBad(t *testing.T) {
 
 func TestLeaderServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &statsHandler{}
+		sh := &statsHandler{lg: zap.NewExample()}
 		rw := httptest.NewRecorder()
 		sh.serveLeader(
 			rw,
@@ -1395,6 +1396,7 @@ func TestServeLeaderStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
@@ -1415,6 +1417,7 @@ func TestServeStoreStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
 	sh := &statsHandler{
+		lg:    zap.NewExample(),
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()

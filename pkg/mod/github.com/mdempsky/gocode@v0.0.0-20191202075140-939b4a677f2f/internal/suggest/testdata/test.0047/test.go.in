@@ -1,0 +1,5 @@
+package p
+
+type T struct{ X }
+
+var _ = T.x.@

@@ -1,0 +1,8 @@
+Found 7 candidates:
+  func main()
+  type Array [5]int
+  var a Array
+  var s []string
+  var s1 []string
+  var s2 []int
+  var s3 invalid type

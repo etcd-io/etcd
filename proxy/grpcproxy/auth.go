@@ -17,8 +17,8 @@ package grpcproxy
 import (
 	"context"
 
-	"go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/clientv3"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 type AuthProxy struct {
@@ -37,6 +37,11 @@ func (ap *AuthProxy) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 func (ap *AuthProxy) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
 	conn := ap.client.ActiveConnection()
 	return pb.NewAuthClient(conn).AuthDisable(ctx, r)
+}
+
+func (ap *AuthProxy) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
+	conn := ap.client.ActiveConnection()
+	return pb.NewAuthClient(conn).AuthStatus(ctx, r)
 }
 
 func (ap *AuthProxy) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {

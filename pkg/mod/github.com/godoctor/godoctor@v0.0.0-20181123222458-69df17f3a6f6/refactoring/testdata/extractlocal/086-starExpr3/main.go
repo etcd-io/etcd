@@ -1,0 +1,29 @@
+package main
+
+import "fmt"
+
+func zeroval(ival int) {
+	ival = 0
+}
+
+func zeroptr(iptr *int) {
+	*iptr = 0
+}
+
+func newVal(oldVal *int, oldVal2 *int32) {
+	*oldVal = *oldVal + 100 // <<<<< var,14,12,14,18,newVar,pass
+	*oldVal2 = *oldVal2 + 2
+}
+
+func main() {
+	i := 1
+	fmt.Println("initial:", i)
+
+	zeroval(i)
+	fmt.Println("zeroval:", i)
+
+	zeroptr(&i)
+	fmt.Println("zeroptr:", i)
+
+	fmt.Println("pointer:", &i)
+}

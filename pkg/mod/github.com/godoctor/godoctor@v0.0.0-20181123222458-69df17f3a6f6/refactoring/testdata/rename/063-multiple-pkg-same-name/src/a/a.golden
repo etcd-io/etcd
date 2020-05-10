@@ -1,0 +1,10 @@
+package a
+
+type I interface {
+	xyz()
+}
+
+type T int
+
+func (T) xyz() { //<<<<<rename,9,10,9,10,xyz,pass
+}

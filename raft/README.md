@@ -59,7 +59,7 @@ The primary object in raft is a Node. Either start a Node from scratch using raf
 To start a three-node cluster
 ```go
   storage := raft.NewMemoryStorage()
-  c := &Config{
+  c := &raft.Config{
     ID:              0x01,
     ElectionTick:    10,
     HeartbeatTick:   1,
@@ -95,7 +95,7 @@ To restart a node from previous state:
   storage.SetHardState(state)
   storage.Append(entries)
 
-  c := &Config{
+  c := &raft.Config{
     ID:              0x01,
     ElectionTick:    10,
     HeartbeatTick:   1,

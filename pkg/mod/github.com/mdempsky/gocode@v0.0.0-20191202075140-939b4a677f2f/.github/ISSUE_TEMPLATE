@@ -1,0 +1,20 @@
+Please answer these questions before submitting your issue. Thanks!
+Also, remember that to restart gocode, you have to run `gocode close`.
+
+
+### What version of Go are you using (`go version`)?
+
+
+### What operating system and processor architecture are you using (`go env`)?
+
+
+### What is the debug output of `gocode`?
+
+Run `gocode close` and then run `gocode -s -debug` to restart gocode in debug mode. 
+Try to complete once again from your editor, and paste the output printed by gocode here.
+
+### What (client-side) flags are you passing into `gocode`?
+
+Please note here if you are using `-source`, `-builtin`, `-ignore-case`, `-unimported-packages`, or `-fallback-to-source`.
+
+### What editor are using?

@@ -1,0 +1,227 @@
+<h2>Big restructuring</h2>
+
+<p>
+  At the core of the 2019.1 release lies the grand restructuring of all of the staticcheck tools.
+  All of the individual checkers, as well as megacheck, have been merged into a single tool,
+  which is simply called <em>staticcheck</em>.
+  From this point forward, staticcheck will be <em>the</em> static analyzer for Go code.
+  It will cover all of the existing categories of checks – bugs, simplifications, performance –
+  as well as future categories, such as the new style checks.
+</p>
+
+<p>
+  This change makes a series of simplifications possible.
+  Per-tool command line flags in megacheck have been replaced with unified flags
+  (<code>-checks</code> and <code>-fail</code>)
+  that operate on arbitrary subsets of checks.
+  Consumers of the JSON output no longer need to know about different checker names
+  and can instead rely solely on user-controllable severities.
+  And not to be neglected: gone is the silly name of <em>megacheck</em>.
+</p>
+
+<p>
+  This change will require some changes to your pipelines.
+  Even though the gosimple, unused, and megacheck tools still exist, they have been deprecated
+  and will be removed in the next release of staticcheck.
+  Additionally, megacheck's <code>-&lt;tool&gt;.exit-non-zero</code> flags have been rendered inoperable.
+  Instead, you will have to use the <code>-fail</code> flag.
+  Furthermore,, <code>-fail</code> defaults to <code>all</code>, meaning all checks will cause non-zero exiting.
+  Previous versions of megacheck had different defaults for different checkers, trying to guess the user's intention.
+  Instead of guessing, staticcheck expects you to provide the correct flags.
+</p>
+
+<p>
+  Since all of the tools have been merged into staticcheck, it will no longer run just one group of checks.
+  This may lead to additional problems being reported.
+  To restore the old behavior, you can use the new <code>-checks</code> flag.
+  <code>-checks "SA*"</code> will run the same set of checks that the old staticcheck tool did.
+  The same flag should be used in place of megacheck's – now deprecated – <code>-&lt;tool&gt;.enabled</code> flags.
+</p>
+
+<p>
+  Details on all of the command-line flags can be found <a href="/docs/#cli">in the documentation.</a>
+</p>
+
+<h2>Configuration files</h2>
+
+<p>
+  Staticcheck 2019.1 adds support for per-project configuration files.
+  With these it will be possible to standardize and codify linter settings, the set of enabled checks, and more.
+  Please see the <a href="/docs/#configuration">documentation page on configuration</a> for all the details!
+</p>
+
+<h2>Build system integration</h2>
+
+<p>
+  Beginning with this release, staticcheck calls out to the tools of the underlying build system
+  (<code>go</code> for most people) to determine the list of Go files to process.
+  This change should not affect most people.
+  It does, however, have some implications:
+  the system that staticcheck runs on needs access to a full Go toolchain –
+  just the source code of the standard library no longer suffices.
+  Furthermore, setting <code>GOROOT</code> to use a different Go installation no longer works as expected.
+  Instead, <code>PATH</code> has to be modified so that <code>go</code> resolves to the desired Go command.
+</p>
+
+<p>
+  This change has been necessary to support Go modules.
+  Additionally, it will allow us to support alternative build systems such as Bazel in the future.
+</p>
+
+<h2>Handling of broken packages</h2>
+
+<p>
+  We have redesigned the way staticcheck handles broken packages.
+  Previously, if you ran <code>staticcheck ...</code> and any package wouldn't compile,
+  staticcheck would refuse to check any packages whatsoever.
+  Now, it will skip broken packages, as well as any of their dependents, and check only the remaining packages.
+  Any build errors that are encountered will be reported as problems.
+</p>
+
+<h2>Checks</h2>
+
+<h3>New checks</h3>
+<p>
+  Staticcheck 2019.1 adds a new category of checks, ST1.
+  ST1 contains checks for common style violations – poor variable naming, incorrectly formatted comments and the like.
+  It brings the good parts of <a href="https://github.com/golang/lint">golint</a> to staticcheck,
+  and adds some checks of its own.
+</p>
+
+<p>
+  In addition, some other checks have been added.
+</p>
+
+<p>
+  {{ check "S1032" }} recommends replacing <code>sort.Sort(sort.StringSlice(...))</code> with <code>sort.Strings(...)</code>;
+  similarly for other types that have helpers for sorting.
+</p>
+
+<p>
+  {{ check "SA9004" }} flags groups of constants where only the first one is given an explicit type.
+</p>
+
+<p>
+  {{ check "SA1025" }} checks for incorrect uses of <code>(*time.Timer).Reset</code>.
+</p>
+
+<h3>Changed checks</h3>
+
+<p>
+  Several checks have been tweaked, either making them more accurate or finding more issues.
+</p>
+
+<p>
+  {{ check "S1002" }} no longer applies to code in tests.
+  While <code>if aBool == true</code> is usually an anti-pattern,
+  it can feel more natural in unit tests,
+  as it mirrors the <code>if got != want</code> pattern.
+</p>
+
+<p>
+  {{ check "S1005" }} now flags <code>for x, _ := range</code> because of the unnecessary blank assignment.
+</p>
+
+<p>
+  {{ check "S1007" }} no longer suggests using raw strings for regular expressions containing backquotes.
+</p>
+
+<p>
+  {{ check "S1016" }} now considers the targeted Go version.
+  It will no longer suggest type conversions between struct types with different field tags
+  unless Go 1.8 or later is being targeted.
+</p>
+
+<p>
+  {{ check "SA1000" }} now checks arguments passed to the <code>regexp.Match</code> class of functions.
+</p>
+
+<p>
+  {{ check "SA1014" }} now checks arguments passed to <code>(*encoding/xml.Decoder).DecodeElement</code>.
+</p>
+
+<p>
+  {{ check "SA6002" }} now realizes that unsafe.Pointer is a pointer.
+</p>
+
+<p>
+  {{ check "U1000" }} has fewer false positives in the presence of embedding.
+</p>
+
+<h3>Removed checks</h3>
+<p>
+  {{ check "S1013" }} has been removed,
+  no longer suggesting replacing <code>if err != nil { return err }; return nil</code> with <code>return err</code>.
+  This check has been the source of contention and more often than not, it reduced the consistency of the surrounding code.
+</p>
+
+<h2>Deprecation notices</h2>
+
+<p>
+  This release deprecates various features of staticcheck.
+  These features will be removed in the next release.
+</p>
+
+<p>
+  As already explained earlier, the <em>unused</em>, <em>gosimple</em>, and <em>megacheck</em> tools
+  have been replaced by <em>staticcheck</em>.
+  Similarly, the flags <code>-&lt;tool&gt;.enabled</code> and <code>-&lt;tool&gt;.exit-non-zero</code>
+  have been replaced by <code>-checks</code> and <code>-fail</code>.
+  Finally, the <code>-ignore</code> flag has been replaced
+  by <a href="/docs/#ignoring-problems">linter directives</a>.
+</p>
+
+<h2>Binary releases</h2>
+
+<p>
+  Beginning with this release, we're publishing
+  <a href="https://github.com/dominikh/go-tools/releases">prebuilt binaries to GitHub</a>.
+  These releases still require a functioning Go installation in order to operate, however.
+</p>
+
+<h2>Other changes</h2>
+
+<p>
+  We've removed the <code>-min_confidence</code> flag.
+  This flag hasn't been doing anything for years.
+</p>
+
+<p>
+  A new formatter called <a href="/docs/formatters">Stylish</a>
+  (usable with <code>-f stylish</code>)
+  provides output that is designed for easier consumption by humans.
+</p>
+
+<p>
+  Due to the restructuring of checkers, the <code>checker</code> field in JSON output has been replaced
+  with the <code>severity</code> field.
+</p>
+
+<h2 id="2019.1.1">Staticcheck 2019.1.1 Release Notes</h2>
+
+<p>
+  The 2019.1.1 release of Staticcheck is the first bug fix release, fixing several bugs and improving performance.
+</p>
+
+<h3>Changes</h3>
+<ul>
+  <li>
+    The ST category of checks no longer flag style issues of
+    aliased types when the aliased type exists in a package
+    we aren't explicitly checking. This avoids crashes and
+    erratic error reports.
+  </li>
+  <li>
+    Compiler errors now have correct position information.
+  </li>
+  <li>
+    A crash in the Stylish reporter has been fixed.
+  </li>
+  <li>
+    We no longer flag unused objects that belong to cgo internals.
+  </li>
+  <li>
+    The {{ check "U1000" }} check has been optimized, reducing its memory
+    usage and runtime.
+  </li>
+</ul>

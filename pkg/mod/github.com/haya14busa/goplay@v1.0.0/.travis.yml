@@ -1,0 +1,35 @@
+language: go
+
+go:
+  - 1.7
+  - tip
+
+os:
+  - linux
+  - osx
+
+before_install:
+  - make deps
+
+script:
+  - uname
+  - make lint
+  - go test -v -race ./...
+  - goveralls -service=travis-ci
+
+before_deploy: make release
+deploy:
+  provider: releases
+  api_key:
+    secure: pMpSqWsjmn1p7+mJB3XcDlvkD+Kldlho16Inqhl4JEPjM+MYg+L1lT91ZShgOldtgk6YY9e126cAKNOhwDhah4941euhng/PryVeDnxqaYJIlU6yL/60NasvAcp2dybSWvyTov549bjBTy0b4tz6vzAd244q39Z5Fg8NllUvGmNMKgKZHAC2GBLejP01+Xpd1Tj++//JfpD/kjef/Ck004pT64/xcZBh40Yj8QGNi08+wTeU1EuJcHdMnAcd011sVhDNIaQHfRkjVMahVuUApApguHZmodw0hlFhFIy7IKiQOHe52gMDpo549jGBKq2oQAHea/uPV7+EsPEv/YwlYfjb4mLD5pyM9oCK8LGjSeEKWj8BXVWQcLQZfp4Nid0A4oC5hyAaZD7MvWc8Gd4RPzu3h51m0K4cRQ2c6V7gRpkJWi1VfjNu//N0ZAWeDa1xQ72CAd0ddRNfRbNIFRxFkhwTIPNsjAG7GvGYdVYN1xT3LmnXLmbAuP+A48GGlBLBmPBPnfdcuQeNGlimegiOFcC3PzYN0H3HyMdIZ0c1UxXlt/TUiSK07rdfWjtdP9vvtMLfq67SLLhS8bamDUGBfSgJImSDcHqYUfgyz3YtNrf5n6Ubc59HF1ONxxdFJpBxoqqDnoojiUsQ9rzjSZ2xW83K5KajoedoMmXKTSpt9MM=
+  file:
+    - release/goplay-linux-amd64
+    - release/goplay-linux-386
+    - release/goplay-linux-arm
+    - release/goplay-windows-amd64.exe
+    - release/goplay-windows-386.exe
+    - release/goplay-darwin-amd64
+    - release/goplay-darwin-386
+  skip_cleanup: true
+  on:
+    tags: true

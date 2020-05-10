@@ -19,14 +19,14 @@ import (
 	"crypto/sha256"
 	"io"
 
-	"go.etcd.io/etcd/auth"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/auth"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/version"
 
 	"go.uber.org/zap"
 )
@@ -44,6 +44,10 @@ type Alarmer interface {
 	// It returns a list of alarms present in the AlarmStore
 	Alarms() []*pb.AlarmMember
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
+}
+
+type Downgrader interface {
+	Downgrade(ctx context.Context, dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error)
 }
 
 type LeaderTransferrer interface {
@@ -68,33 +72,25 @@ type maintenanceServer struct {
 	lt  LeaderTransferrer
 	hdr header
 	cs  ClusterStatusGetter
+	d   Downgrader
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s}
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s}
+	if srv.lg == nil {
+		srv.lg = zap.NewNop()
+	}
 	return &authMaintenanceServer{srv, s}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
-	if ms.lg != nil {
-		ms.lg.Info("starting defragment")
-	} else {
-		plog.Noticef("starting to defragment the storage backend...")
-	}
+	ms.lg.Info("starting defragment")
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
-		if ms.lg != nil {
-			ms.lg.Warn("failed to defragment", zap.Error(err))
-		} else {
-			plog.Errorf("failed to defragment the storage backend (%v)", err)
-		}
+		ms.lg.Warn("failed to defragment", zap.Error(err))
 		return nil, err
 	}
-	if ms.lg != nil {
-		ms.lg.Info("finished defragment")
-	} else {
-		plog.Noticef("finished defragmenting the storage backend")
-	}
+	ms.lg.Info("finished defragment")
 	return &pb.DefragmentResponse{}, nil
 }
 
@@ -107,11 +103,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	go func() {
 		snap.WriteTo(pw)
 		if err := snap.Close(); err != nil {
-			if ms.lg != nil {
-				ms.lg.Warn("failed to close snapshot", zap.Error(err))
-			} else {
-				plog.Errorf("error closing snapshot (%v)", err)
-			}
+			ms.lg.Warn("failed to close snapshot", zap.Error(err))
 		}
 		pw.Close()
 	}()
@@ -169,7 +161,15 @@ func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*
 }
 
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	return ms.a.Alarm(ctx, ar)
+	resp, err := ms.a.Alarm(ctx, ar)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	if resp.Header == nil {
+		resp.Header = &pb.ResponseHeader{}
+	}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
@@ -204,6 +204,16 @@ func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRe
 		return nil, togRPCError(err)
 	}
 	return &pb.MoveLeaderResponse{}, nil
+}
+
+func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	resp, err := ms.d.Downgrade(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	resp.Header = &pb.ResponseHeader{}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 type authMaintenanceServer struct {
@@ -257,4 +267,8 @@ func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusReque
 
 func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
 	return ams.maintenanceServer.MoveLeader(ctx, tr)
+}
+
+func (ams *authMaintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	return ams.maintenanceServer.Downgrade(ctx, r)
 }

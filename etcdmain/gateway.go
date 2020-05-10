@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/proxy/tcpproxy"
+	"go.etcd.io/etcd/v3/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -33,7 +33,7 @@ var (
 	gatewayDNSCluster            string
 	gatewayDNSClusterServiceName string
 	gatewayInsecureDiscovery     bool
-	getewayRetryDelay            time.Duration
+	gatewayRetryDelay            time.Duration
 	gatewayCA                    string
 )
 
@@ -75,7 +75,7 @@ func newGatewayStartCommand() *cobra.Command {
 
 	cmd.Flags().StringSliceVar(&gatewayEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 
-	cmd.Flags().DurationVar(&getewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
+	cmd.Flags().DurationVar(&gatewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
 
 	return &cmd
 }
@@ -135,7 +135,7 @@ func startGateway(cmd *cobra.Command, args []string) {
 		Logger:          lg,
 		Listener:        l,
 		Endpoints:       srvs.SRVs,
-		MonitorInterval: getewayRetryDelay,
+		MonitorInterval: gatewayRetryDelay,
 	}
 
 	// At this point, etcd gateway listener is initialized

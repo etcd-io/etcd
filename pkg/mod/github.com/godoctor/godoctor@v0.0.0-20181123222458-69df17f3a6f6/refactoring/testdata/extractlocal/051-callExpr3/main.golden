@@ -1,0 +1,8 @@
+package main
+
+import "fmt"
+
+func main() {
+	newVar := "Hello, 世界"
+	fmt.Println(newVar) // <<<<< var,6,14,6,28,newVar,pass
+}

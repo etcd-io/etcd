@@ -21,16 +21,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"runtime"
-	"strings"
 
-	"go.etcd.io/etcd/embed"
-	"go.etcd.io/etcd/pkg/flags"
-	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/pkg/flags"
+	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.etcd.io/etcd/v3/version"
 
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"
@@ -224,12 +221,9 @@ func newConfig() *config {
 	fs.Var(flags.NewUniqueStringsValue("*"), "host-whitelist", "Comma-separated acceptable hostnames from HTTP client requests, if server is not secure (empty means allow all).")
 
 	// logging
-	fs.StringVar(&cfg.ec.Logger, "logger", "capnslog", "Specify 'zap' for structured logging or 'capnslog'. WARN: 'capnslog' is being deprecated in v3.5.")
-	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-output", "[TO BE DEPRECATED IN v3.5] use '--log-outputs'.")
+	fs.StringVar(&cfg.ec.Logger, "logger", "zap", "Currently only supports 'zap' for structured logging.")
 	fs.Var(flags.NewUniqueStringsValue(embed.DefaultLogOutput), "log-outputs", "Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.")
-	fs.BoolVar(&cfg.ec.Debug, "debug", false, "[TO BE DEPRECATED IN v3.5] Enable debug-level logging for etcd. Use '--log-level=debug' instead.")
 	fs.StringVar(&cfg.ec.LogLevel, "log-level", logutil.DefaultLogLevel, "Configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.")
-	fs.StringVar(&cfg.ec.LogPkgLevels, "log-package-levels", "", "[TO BE DEPRECATED IN v3.5] Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
 
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
@@ -305,8 +299,6 @@ func (cfg *config) parse(arguments []string) error {
 				"loaded server configuration, other configuration command line flags and environment variables will be ignored if provided",
 				zap.String("path", cfg.configFile),
 			)
-		} else {
-			plog.Infof("Loading server configuration from %q. Other configuration command line flags and environment variables will be ignored if provided.", cfg.configFile)
 		}
 	} else {
 		err = cfg.configFromCmdLine()
@@ -316,14 +308,25 @@ func (cfg *config) parse(arguments []string) error {
 }
 
 func (cfg *config) configFromCmdLine() error {
+	// user-specified logger is not setup yet, use this logger during flag parsing
+	lg, err := zap.NewProduction()
+	if err != nil {
+		return err
+	}
+
 	verKey := "ETCD_VERSION"
 	if verVal := os.Getenv(verKey); verVal != "" {
 		// unset to avoid any possible side-effect.
 		os.Unsetenv(verKey)
-		plog.Warningf("cannot set special environment variable %s=%s", verKey, verVal)
+
+		lg.Warn(
+			"cannot set special environment variable",
+			zap.String("key", verKey),
+			zap.String("value", verVal),
+		)
 	}
 
-	err := flags.SetFlagsFromEnv("ETCD", cfg.cf.flagSet)
+	err = flags.SetFlagsFromEnv(lg, "ETCD", cfg.cf.flagSet)
 	if err != nil {
 		return err
 	}
@@ -339,8 +342,6 @@ func (cfg *config) configFromCmdLine() error {
 
 	cfg.ec.CipherSuites = flags.StringsFromFlag(cfg.cf.flagSet, "cipher-suites")
 
-	// TODO: remove this in v3.5
-	cfg.ec.DeprecatedLogOutput = flags.UniqueStringsFromFlag(cfg.cf.flagSet, "log-output")
 	cfg.ec.LogOutputs = flags.UniqueStringsFromFlag(cfg.cf.flagSet, "log-outputs")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
@@ -375,14 +376,6 @@ func (cfg *config) configFromFile(path string) error {
 	}
 	if yerr := yaml.Unmarshal(b, &cfg.cp); yerr != nil {
 		return yerr
-	}
-
-	if cfg.ec.ListenMetricsUrlsJSON != "" {
-		us, err := types.NewURLs(strings.Split(cfg.ec.ListenMetricsUrlsJSON, ","))
-		if err != nil {
-			log.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
-		}
-		cfg.ec.ListenMetricsUrls = []url.URL(us)
 	}
 
 	if cfg.cp.FallbackJSON != "" {

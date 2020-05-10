@@ -16,11 +16,12 @@ package flags
 
 import (
 	"flag"
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
 
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/pkg/types"
 )
 
 // UniqueURLs contains unique URLs
@@ -76,7 +77,7 @@ func NewUniqueURLsWithExceptions(s string, exceptions ...string) *UniqueURLs {
 		return us
 	}
 	if err := us.Set(s); err != nil {
-		plog.Panicf("new UniqueURLs should never fail: %v", err)
+		panic(fmt.Sprintf("new UniqueURLs should never fail: %v", err))
 	}
 	return us
 }

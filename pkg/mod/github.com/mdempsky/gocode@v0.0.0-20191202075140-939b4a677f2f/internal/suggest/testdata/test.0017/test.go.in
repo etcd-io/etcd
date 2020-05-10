@@ -1,0 +1,14 @@
+package main
+
+func a(a, b, c int) int {
+	return 123
+}
+
+func main() {
+	@
+}
+
+func b(a, b, c string) string {
+	return "abc"
+}
+

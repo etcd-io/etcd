@@ -1,0 +1,207 @@
+{
+	"comment": "Based on work from github.com/frou/GoFeather and github.com/DisposaBoy/GoSublime",
+	"fileTypes": [
+		"go"
+	],
+	"firstLineMatch": "-[*]-( Mode:)? Go -[*]-",
+	"keyEquivalent": "^~G",
+	"name": "GoSublime: Go",
+	"patterns": [
+		{
+			"begin": "/\\*",
+			"end": "\\*/",
+			"name": "comment.block.go"
+		},
+		{
+			"begin": "//",
+			"end": "\\z",
+			"name": "comment.line.double-slash.go"
+		},
+		{
+			"begin": "\"",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.go"
+				}
+			},
+			"end": "\"",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.end.go"
+				}
+			},
+			"name": "string.quoted.double.go",
+			"patterns": [
+				{
+					"include": "#string_placeholder"
+				},
+				{
+					"include": "#string_escaped_char"
+				}
+			]
+		},
+		{
+			"begin": "`",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.go"
+				}
+			},
+			"end": "`",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.end.go"
+				}
+			},
+			"name": "string.quoted.raw.go",
+			"patterns": [
+				{
+					"include": "#string_placeholder"
+				},
+				{
+					"include": "source.gotemplate"
+				}
+			]
+		},
+		{
+			"match": "\\b(true|false|nil|iota)\\b",
+			"name": "constant.language.go"
+		},
+		{
+			"match": "\\b((\\d+\\.(\\d+)?([eE][+-]?\\d+)?|\\d+[eE][+-]?\\d+|\\.\\d+([eE][+-]?\\d+)?)i?)\\b",
+			"name": "constant.numeric.floating-point.go"
+		},
+		{
+			"match": "\\b(\\d+i|0[xX][0-9A-Fa-f]+|0[0-7]*|[1-9][0-9]*)\\b",
+			"name": "constant.numeric.integer.go"
+		},
+		{
+			"name": "constant.other.rune.go",
+			"match": "'(?:[^'\\\\]|\\\\(?:\\\\|[abfnrtv']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3}))'"
+		},
+		{
+			"match": "\\b(bool|byte|complex(64|128)|error|float(32|64)|rune|string|u?int(8|16|32|64)?|uintptr)\\b",
+			"name": "storage.type.go"
+		},
+		{
+			"comment": "A subset of keyword.other.go for flow control keywords.",
+			"match": "\\b(break|case|continue|default|defer|else|for|go|goto|if|range|return|select|switch)\\b",
+			"name": "keyword.control.go"
+		},
+		{
+			"match": "\\b(break|case|chan|const|continue|default|defer|else|fallthrough|for|func|go|goto|if|import|interface|map|package|range|return|select|struct|switch|type|var)\\b",
+			"name": "keyword.other.go"
+		},
+		{
+			"captures": {
+				"0": {
+					"name": "variable.other.go"
+				},
+				"1": {
+					"name": "keyword.operator.initialize.go"
+				}
+			},
+			"comment": "This matches the 'x := 0' style of variable declaration.",
+			"match": "(?:[[:alpha:]_][[:alnum:]_]*)(?:,\\s+[[:alpha:]_][[:alnum:]_]*)*\\s*(:=)",
+			"name": "meta.initialization.short.go"
+		},
+		{
+			"match": "(?<=(\\Afunc|...\\))\\s)\\b(\\w+)\\b(?=\\()",
+			"name": "entity.name.function.go"
+		},
+		{
+			"match": "(?<=(\\sfunc|....\\))\\s)\\b(\\w+)\\b(?=\\()",
+			"name": "entity.name.function.go"
+		},
+		{
+			"match": "(?<=\\Atype\\s)\\b(\\w+)\\b",
+			"name": "entity.name.type.go"
+		},
+		{
+			"match": "(?<=\\stype\\s)\\b(\\w+)\\b",
+			"name": "entity.name.type.go"
+		},
+		{
+			"match": "\\b(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)\\b",
+			"name": "support.function.builtin.go"
+		},
+		{
+			"match": "\\b(\\w+)\\b(?=\\()",
+			"name": "support.function.go"
+		},
+		{
+			"match": "(<-)",
+			"name": "keyword.operator.channel.go"
+		},
+		{
+			"match": "(==|!=|<|<=|>|>=)",
+			"name": "keyword.operator.comparison.go"
+		},
+		{
+			"match": "(&&|[|]{2}|!)",
+			"name": "keyword.operator.logical.go"
+		},
+		{
+			"match": "([+]{2})",
+			"name": "keyword.operator.increment.go"
+		},
+		{
+			"match": "(--)",
+			"name": "keyword.decrement.go"
+		},
+		{
+			"match": "(=|(?:[+]|-|[|]|^|[*]|/|%|<<|>>|&|&^)=)",
+			"name": "keyword.operator.assignment.go"
+		},
+		{
+			"match": "([+]|-|[*]|/|%|&|[|]|^|&^|<<|>>)",
+			"name": "keyword.operator.arithmetic.go"
+		},
+		{
+			"match": "(;)",
+			"name": "keyword.operator.semi-colon.go"
+		},
+		{
+			"match": "(,)",
+			"name": "punctuation.definition.comma.go"
+		},
+		{
+			"match": "([.])",
+			"name": "punctuation.definition.dot.go"
+		},
+		{
+			"match": "(:)",
+			"name": "punctuation.definition.colon.go"
+		},
+		{
+			"match": "(\\[|\\]|{|}|\\(|\\))",
+			"name": "punctuation.definition.bracket.go"
+		}
+	],
+	// note: keep this in sync with GoTemplate
+	"repository": {
+		"string_escaped_char": {
+			"patterns": [
+				{
+					// note: keep this in sync with constant.other.rune.go
+					"match": "\\\\(\\\\|[abfnrtv'\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3})",
+					"name": "constant.character.escape.go"
+				},
+				{
+					"match": "\\\\.",
+					"name": "invalid.illegal.unknown-escape.go"
+				}
+			]
+		},
+		"string_placeholder": {
+			"patterns": [
+				{
+					"match": "(?x)%\n                        (\\d+\\$)?                                    # field (argument #)\n                        [#0\\- +']*                                  # flags\n                        [,;:_]?                                     # separator character (AltiVec)\n                        ((-?\\d+)|\\*(-?\\d+\\$)?)?                     # minimum field width\n                        (\\.((-?\\d+)|\\*(-?\\d+\\$)?)?)?                # precision\n                        [diouxXDOUeEfFgGaAcCsSqpnvtTbyYhHmMzZ%]     # conversion type\n                    ",
+					"name": "constant.other.placeholder.go"
+				}
+			]
+		}
+	},
+	"scopeName": "source.go",
+	"uuid": "1caaa75c-b61d-11e2-ba93-138feb5db969"
+}

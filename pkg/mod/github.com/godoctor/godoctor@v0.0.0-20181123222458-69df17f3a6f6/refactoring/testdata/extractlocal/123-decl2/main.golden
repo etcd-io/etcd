@@ -1,0 +1,10 @@
+package main
+
+import "fmt"
+
+func main() {
+	// This should be extractable but is currently not allowed
+	newVar := 1 + 2
+	var x []int = []int{newVar, 4, 5} //<<<<< var,6,22,6,26,newVar,pass
+	fmt.Println(x)
+}

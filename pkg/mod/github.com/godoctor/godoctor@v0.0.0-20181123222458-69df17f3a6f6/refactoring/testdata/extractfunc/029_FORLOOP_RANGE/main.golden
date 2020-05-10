@@ -1,0 +1,18 @@
+//<<<<<extract,9,2,11,2,Foo,pass
+package main
+
+import "fmt"
+
+func main() {
+	xs := []float64{98, 93, 77, 82, 83}
+	total := 0.0 + 0
+	total = Foo(total, xs)
+	fmt.Println(total / float64(len(xs)))
+}
+
+func Foo(total float64, xs []float64) float64 {
+	for _, v := range xs {
+		total += v
+	}
+	return total
+}

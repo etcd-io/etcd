@@ -23,10 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
 	"go.uber.org/zap"
 )
 
@@ -302,7 +303,7 @@ func TestWatchRestore(t *testing.T) {
 	test := func(delay time.Duration) func(t *testing.T) {
 		return func(t *testing.T) {
 			b, tmpPath := backend.NewDefaultTmpBackend()
-			s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+			s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, cindex.NewConsistentIndex(b.BatchTx()), StoreConfig{})
 			defer cleanup(s, b, tmpPath)
 
 			testKey := []byte("foo")
@@ -310,7 +311,7 @@ func TestWatchRestore(t *testing.T) {
 			rev := s.Put(testKey, testValue, lease.NoLease)
 
 			newBackend, newPath := backend.NewDefaultTmpBackend()
-			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, nil, StoreConfig{})
+			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, cindex.NewConsistentIndex(newBackend.BatchTx()), StoreConfig{})
 			defer cleanup(newStore, newBackend, newPath)
 
 			w := newStore.NewWatchStream()
@@ -348,11 +349,11 @@ func TestWatchRestore(t *testing.T) {
 //   5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	b1, b1Path := backend.NewDefaultTmpBackend()
-	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, nil, StoreConfig{})
+	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, cindex.NewConsistentIndex(b1.BatchTx()), StoreConfig{})
 	defer cleanup(s1, b1, b1Path)
 
 	b2, b2Path := backend.NewDefaultTmpBackend()
-	s2 := newWatchableStore(zap.NewExample(), b2, &lease.FakeLessor{}, nil, StoreConfig{})
+	s2 := newWatchableStore(zap.NewExample(), b2, &lease.FakeLessor{}, cindex.NewConsistentIndex(b2.BatchTx()), StoreConfig{})
 	defer cleanup(s2, b2, b2Path)
 
 	testKey, testValue := []byte("foo"), []byte("bar")

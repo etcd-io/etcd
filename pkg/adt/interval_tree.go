@@ -42,7 +42,7 @@ func (c rbcolor) String() string {
 	case black:
 		return "black"
 	case red:
-		return "black"
+		return "red"
 	default:
 		panic(fmt.Errorf("unknown color %d", c))
 	}

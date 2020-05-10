@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/embed"
 )
 
 func TestEmbedEtcd(t *testing.T) {
@@ -58,7 +58,6 @@ func TestEmbedEtcd(t *testing.T) {
 		tests[i].cfg = *embed.NewConfig()
 		tests[i].cfg.Logger = "zap"
 		tests[i].cfg.LogOutputs = []string{"/dev/null"}
-		tests[i].cfg.Debug = false
 	}
 
 	tests[0].cfg.Durl = "abc"
@@ -184,7 +183,6 @@ func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Debug = false
 
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = curls, curls

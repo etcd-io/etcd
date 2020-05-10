@@ -1,0 +1,12 @@
+switch r := r.(type) {
+case *os.File:
+	println("file")
+case *io.LimitedReader:
+case *io.PipeReader:
+case *io.SectionReader:
+case io.ReadCloser:
+case io.ReadSeeker:
+case io.ReadWriteCloser:
+case io.ReadWriteSeeker:
+case io.ReadWriter:
+}

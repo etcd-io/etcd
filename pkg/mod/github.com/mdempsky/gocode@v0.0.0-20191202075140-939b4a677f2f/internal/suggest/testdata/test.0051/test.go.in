@@ -1,0 +1,32 @@
+package main
+
+type Item struct {
+	Quantity int
+	Name string
+}
+
+type Config struct {
+	NumApples int
+	NumOranges int
+	NumBananas int
+}
+
+func main() {
+	var cfg Config
+	items := []Item{
+		{cfg.NumApples, "apple"},
+		{cfg.NumOranges, "orange"},
+		{cfg.@NumApples, "banana"},
+	}
+
+	var a int
+	var b int
+	var c int
+	var d int
+	var e int
+	var f int
+	var g int
+	var h int
+	var i int
+	var j int
+}

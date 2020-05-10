@@ -1,0 +1,339 @@
+-- foldingRange-0 --
+package folding //@fold("package")
+
+import (<>)
+
+import _ "os"
+
+// bar is a function.<>
+func bar(<>) string {<>}
+
+-- foldingRange-1 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {<>}
+	// This is a multiline comment<>
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-2 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:<>
+	case false:<>
+	default:<>
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-3 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:
+		if true {<>} else {<>}
+	case false:
+		fmt.Println(<>)
+	default:
+		fmt.Println(<>)
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-4 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:
+		if true {
+			fmt.Println(<>)
+		} else {
+			fmt.Println(<>)
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-cmd --
+3:9-6:0
+10:22-11:32
+12:10-12:9
+12:20-30:0
+13:10-24:1
+14:12-19:3
+15:12-17:2
+16:16-16:21
+17:11-19:2
+18:16-18:22
+20:13-21:22
+21:15-21:21
+22:10-23:24
+23:15-23:23
+25:32-26:30
+
+-- foldingRange-comment-0 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.<>
+func bar() string {
+	switch {
+	case true:
+		if true {
+			fmt.Println("true")
+		} else {
+			fmt.Println("false")
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment<>
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-imports-0 --
+package folding //@fold("package")
+
+import (<>)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:
+		if true {
+			fmt.Println("true")
+		} else {
+			fmt.Println("false")
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-lineFolding-0 --
+package folding //@fold("package")
+
+import (<>
+)
+
+import _ "os"
+
+// bar is a function.<>
+func bar() string {<>
+}
+
+-- foldingRange-lineFolding-1 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {<>
+	}
+	// This is a multiline comment<>
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-lineFolding-2 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:<>
+	case false:<>
+	default:<>
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-lineFolding-3 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:
+		if true {<>
+		} else {<>
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-lineFolding-comment-0 --
+package folding //@fold("package")
+
+import (
+	"fmt"
+	_ "log"
+)
+
+import _ "os"
+
+// bar is a function.<>
+func bar() string {
+	switch {
+	case true:
+		if true {
+			fmt.Println("true")
+		} else {
+			fmt.Println("false")
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment<>
+	return `
+this string
+is not indented`
+}
+
+-- foldingRange-lineFolding-imports-0 --
+package folding //@fold("package")
+
+import (<>
+)
+
+import _ "os"
+
+// bar is a function.
+// With a multiline doc comment.
+func bar() string {
+	switch {
+	case true:
+		if true {
+			fmt.Println("true")
+		} else {
+			fmt.Println("false")
+		}
+	case false:
+		fmt.Println("false")
+	default:
+		fmt.Println("default")
+	}
+	// This is a multiline comment
+	// that is not a doc comment.
+	return `
+this string
+is not indented`
+}
+

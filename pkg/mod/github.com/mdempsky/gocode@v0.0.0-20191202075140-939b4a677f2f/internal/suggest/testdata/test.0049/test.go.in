@@ -1,0 +1,7 @@
+package p
+
+func t(a struct {
+	i int
+}) {
+	a.@
+}

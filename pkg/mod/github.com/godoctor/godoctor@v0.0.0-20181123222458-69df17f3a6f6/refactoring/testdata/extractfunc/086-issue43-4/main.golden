@@ -1,0 +1,28 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	inputString := "bob" + ""
+	var hasSuffix bool
+	// <<<<< extract,12,2,14,2,check,pass
+	hasSuffix = check(inputString)
+
+	fmt.Print("string:", inputString)
+	if hasSuffix {
+		fmt.Println(" has Suffix")
+	} else {
+		fmt.Println(" is missing Suffix")
+	}
+}
+
+func check(inputString string) bool {
+	var hasSuffix bool
+	if strings.Contains(inputString, "Suffix") {
+		hasSuffix = true
+	}
+	return hasSuffix
+}

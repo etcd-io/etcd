@@ -1,0 +1,12 @@
+package p
+
+type myint int
+
+func (i myint) String() string {
+	return "int"
+}
+
+func main() {
+	str := myint.String
+	st@
+}

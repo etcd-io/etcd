@@ -1,0 +1,25 @@
+--- filename
++++ filename
+@@ -1,9 +1,8 @@
+ Line 1
+-Line 2
+ Line 3
+ Line 4
+ Line 5
+-Line 6
++Line 6 has been changed
+ Line 7
+ Line 8
+ Line 9
+@@ -11,9 +10,9 @@
+ Line 11
+ Line 12
+ Line 13
+-Line 14
++Line 14 has been changed
+ Line 15
+-Line 16
++Line 16 has been changed
+ Line 17
+ Line 18
+ Line 19

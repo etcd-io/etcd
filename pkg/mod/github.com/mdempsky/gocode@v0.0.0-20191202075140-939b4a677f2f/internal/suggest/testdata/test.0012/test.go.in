@@ -1,0 +1,11 @@
+package main
+
+type MyMap map[string]int
+
+func main() {
+	var m MyMap
+	for key, value := range m {
+		z := m["15"]
+		@
+	}
+}

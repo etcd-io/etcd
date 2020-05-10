@@ -1,0 +1,28 @@
+package main
+
+func main() {
+	var a, b int
+	add := a + b
+	sub := a - b
+	mul := a * b
+	div := a / b
+	or  := a | b
+	xor := a ^ b
+	rem := a % b
+	shr := a >> uint(b)
+	shl := a << uint(b)
+	and := a & b
+	andnot := a &^ b
+
+	eq := a == b
+	neq := a != b
+	less := a < b
+	leq := a <= b
+	greater := a > b
+	geq := a >= b
+
+	var c, d bool
+	logor := c || d
+	logand := c && d
+	@
+}

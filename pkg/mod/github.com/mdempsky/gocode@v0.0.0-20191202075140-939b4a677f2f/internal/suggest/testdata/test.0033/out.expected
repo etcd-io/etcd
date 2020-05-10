@@ -1,0 +1,7 @@
+Found 6 candidates:
+  func testEllipsis(dummies ...*Dummy)
+  type Dummy struct
+  var d *Dummy
+  var dummies []*Dummy
+  var i int
+  var x *Dummy

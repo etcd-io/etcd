@@ -1,0 +1,18 @@
+version: '{build}'
+
+clone_folder: c:\gopath\src\github.com\haya14busa\goplay
+
+environment:
+  GOPATH: c:\gopath
+
+install:
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - go version
+  - go env
+  - go get -t -d -v ./...
+
+build_script:
+  - go build -v
+
+test_script:
+  - go test -v -race ./...

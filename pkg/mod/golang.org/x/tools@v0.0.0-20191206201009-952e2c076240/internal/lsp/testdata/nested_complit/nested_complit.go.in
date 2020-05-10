@@ -1,0 +1,14 @@
+package nested_complit
+
+type ncFoo struct {} //@item(structNCFoo, "ncFoo", "struct{...}", "struct")
+
+type ncBar struct { //@item(structNCBar, "ncBar", "struct{...}", "struct")
+	baz []ncFoo
+}
+
+func _() {
+	[]ncFoo{} //@item(litNCFoo, "[]ncFoo{}", "", "var")
+	_ := ncBar{
+		baz: [] //@complete(" //", structNCFoo, structNCBar)
+	}
+}

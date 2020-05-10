@@ -1,0 +1,46 @@
+// +build go1.11
+
+package bar
+
+import (
+	"golang.org/x/tools/internal/lsp/foo" //@item(foo, "foo", "\"golang.org/x/tools/internal/lsp/foo\"", "package")
+)
+
+func helper(i foo.IntFoo) {} //@item(helper, "helper(i foo.IntFoo)", "", "func")
+
+func _() {
+	help //@complete("l", helper)
+	_ = foo.StructFoo{} //@complete("S", Foo, IntFoo, StructFoo)
+}
+
+func Bar() { //@item(Bar, "Bar()", "", "func")
+	foo.Foo()        //@complete("F", Foo, IntFoo, StructFoo)
+	var _ foo.IntFoo //@complete("I", Foo, IntFoo, StructFoo)
+	foo.()           //@complete("(", Foo, IntFoo, StructFoo)
+}
+
+func _() {
+	var Valentine int //@item(Valentine, "Valentine", "int", "var")
+
+	_ = foo.StructFoo{
+		Val       //@complete("l", Value)
+	}
+  	_ = foo.StructFoo{
+		Va        //@complete("a", Value)
+	}
+	_ = foo.StructFoo{
+		Value: 5, //@complete("a", Value)
+	}
+	_ = foo.StructFoo{
+		//@complete("", Value)
+	}
+	_ = foo.StructFoo{
+		Value: Valen //@complete("le", Valentine)
+	}
+	_ = foo.StructFoo{
+		Value:       //@complete(re"$", Valentine, foo, Bar, helper)
+	}
+	_ = foo.StructFoo{
+		Value:       //@complete(" ", Valentine, foo, Bar, helper)
+	}
+}

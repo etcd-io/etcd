@@ -1,0 +1,5 @@
+Found 4 candidates:
+  func Alignof(x Type) uintptr
+  func Offsetof(x Type) uintptr
+  func Sizeof(x Type) uintptr
+  type Pointer unsafe.Pointer

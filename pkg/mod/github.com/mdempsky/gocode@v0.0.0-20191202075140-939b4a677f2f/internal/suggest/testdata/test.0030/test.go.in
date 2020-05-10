@@ -1,0 +1,12 @@
+package main
+
+type A struct {
+	F1, F2, F3 int
+}
+
+type B A
+
+func main() {
+	var b B
+	b.@
+}

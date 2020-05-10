@@ -1,0 +1,13 @@
+package main
+
+import "fmt"
+
+func main() {
+	a := 1
+	b := 2
+	c := 2
+	newVar := b
+	fmt.Println(a + newVar + c) // <<<<< var,9,18,9,18,newVar,pass
+	d := a + b
+	fmt.Println(d)
+}

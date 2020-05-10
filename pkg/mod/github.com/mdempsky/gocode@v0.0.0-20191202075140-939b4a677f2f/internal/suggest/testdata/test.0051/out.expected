@@ -1,0 +1,4 @@
+Found 3 candidates:
+  var NumApples int
+  var NumBananas int
+  var NumOranges int

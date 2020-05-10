@@ -1,0 +1,60 @@
+<!--(
+     "Title": "Options"
+)-->
+
+<h2 id="checks">checks</h2>
+
+<p>
+  This option sets which <a href="/docs/checks">checks</a> should be enabled.
+  By default, most checks will be enabled, except for those that are too opinionated or that only apply to packages in certain domains.
+</p>
+
+<p>
+  All supported checks can be enabled with <code>"all"</code>.
+  Subsets of checks can be enabled via prefixes and the <code>*</code> glob; for example, <code>"S*"</code>, <code>"SA*"</code> and <code>"SA1*"</code> will
+  enable all checks in the S, SA and SA1 subgroups respectively.
+  Individual checks can be enabled by their full IDs.
+  To disable checks, prefix them with a minus sign. This works on all of the previously mentioned values.
+</p>
+
+<p>
+  Default value: <code>["all", "-<a href="/docs/checks#ST1003">ST1003</a>"]</code>
+</p>
+
+<h2 id="initialisms">initialisms</h2>
+
+<p>
+  <a href="/docs/checks#ST1003">ST1003</a> checks, among other
+  things, for the correct capitalization of initialisms. The
+  set of known initialisms can be configured with this option.
+</p>
+
+<p>
+  Default value: <code>["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "QPS", "RAM", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "GID", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]</code>
+</p>
+
+<h2 id="dot_import_whitelist">dot_import_whitelist</h2>
+
+<p>
+  By default, <a href="/docs/checks#ST1001">ST1001</a> forbids
+  all uses of dot imports in non-test packages. This
+  setting allows setting a whitelist of import paths that can
+  be dot-imported anywhere.
+</p>
+
+<p>
+  Default value: <code>[]</code>
+</p>
+
+<h2 id="http_status_code_whitelist">http_status_code_whitelist</h2>
+
+<p>
+  <a href="/docs/checks#ST1013">ST1013</a> recommends using constants from the <code>net/http</code> package
+  instead of hard-coding numeric HTTP status codes. This
+  setting specifies a list of numeric status codes that this
+  check does not complain about.
+</p>
+
+<p>
+  Default value: <code>["200", "400", "404", "500"]</code>
+</p>

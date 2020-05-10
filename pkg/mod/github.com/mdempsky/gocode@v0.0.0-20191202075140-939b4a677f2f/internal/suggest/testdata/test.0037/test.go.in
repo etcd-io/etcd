@@ -1,0 +1,12 @@
+package main
+
+type Array [5]int
+
+func main() {
+	var s []string
+	var a Array
+	s1 := append(s[:], "123")
+	s2 := a[0:100500]
+	s3 := append()
+	@
+}

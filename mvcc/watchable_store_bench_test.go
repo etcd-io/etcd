@@ -19,9 +19,10 @@ import (
 	"os"
 	"testing"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
@@ -47,9 +48,8 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes

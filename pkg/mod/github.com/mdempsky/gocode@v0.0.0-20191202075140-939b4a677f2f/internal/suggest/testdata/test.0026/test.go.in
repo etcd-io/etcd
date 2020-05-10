@@ -1,0 +1,13 @@
+package main
+
+var A = struct { a, b, c int }{1,2,3}
+var B struct { d, e, f int }
+
+func main() {
+	C := struct { g, h, i int }{1,2,3}
+
+	a := A.a
+	d := B.d
+	g := C.g
+	@
+}

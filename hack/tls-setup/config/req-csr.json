@@ -1,11 +1,15 @@
 {
   "CN": "etcd",
   "hosts": [
-    "localhost"
+    "localhost",
+    "127.0.0.1",
+    "9.145.89.120",
+    "9.145.89.173",
+    "9.145.89.225"
   ],
   "key": {
-    "algo": "ecdsa",
-    "size": 384
+    "algo": "rsa",
+    "size": 2048
   },
   "names": [
     {

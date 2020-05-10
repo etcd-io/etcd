@@ -1,0 +1,8 @@
+package p
+
+var _ = struct {
+	x int
+	y int
+}{
+	@
+}

@@ -1,0 +1,28 @@
+package main
+
+import "fmt"
+import "mypackage"
+
+//Test for renaming an imported interface
+
+func main() {
+
+mystructvar  :=   mypackage.Mystruct {"helloo" }
+												
+otherstructvar :=  mypackage.Otherstruct {"Hiii"} 
+	
+structsArr    :=   [...]mypackage.Sample{mystructvar,otherstructvar}  // <<<<< rename,14,35,14,35,Renamed,pass
+
+for i,_ := range structsArr {
+
+ fmt.Println("string is",structsArr[i].Mymethod())
+
+
+}
+
+
+}
+
+
+
+

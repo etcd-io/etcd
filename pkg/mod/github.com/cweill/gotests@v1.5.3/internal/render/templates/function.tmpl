@@ -1,0 +1,86 @@
+{{define "function"}}
+{{- $f := .}}
+
+func {{.TestName}}(t *testing.T) {
+	{{- with .Receiver}}
+		{{- if .IsStruct}}
+			{{- if .Fields}}
+				type fields struct {
+				{{- range .Fields}}
+					{{Field .}} {{.Type}}
+				{{- end}}
+				}
+			{{- end}}
+		{{- end}}
+	{{- end}}
+	{{- if .TestParameters}}
+	type args struct {
+		{{- range .TestParameters}}
+				{{Param .}} {{.Type}}
+		{{- end}}
+	}
+	{{- end}}
+	tests := []struct {
+		name string
+		{{- with .Receiver}}
+			{{- if and .IsStruct .Fields}}
+				fields fields
+			{{- else}}
+				{{Receiver .}} {{.Type}}
+			{{- end}}
+		{{- end}}
+		{{- if .TestParameters}}
+			args args
+		{{- end}}
+		{{- range .TestResults}}
+			{{Want .}} {{.Type}}
+		{{- end}}
+		{{- if .ReturnsError}}
+			wantErr bool
+		{{- end}}
+	}{
+		// TODO: Add test cases.
+	}
+	for {{if (or .Subtests (not .IsNaked))}} _, tt := {{end}} range tests {
+        {{- if .Subtests }}t.Run(tt.name, func(t *testing.T) { {{- end -}}
+			{{- with .Receiver}}
+				{{- if .IsStruct}}
+					{{Receiver .}} := {{if .Type.IsStar}}&{{end}}{{.Type.Value}}{
+					{{- range .Fields}}
+						{{.Name}}: tt.fields.{{Field .}},
+					{{- end}}
+					}
+				{{- end}}
+			{{- end}}
+			{{- range .Parameters}}
+				{{- if .IsWriter}}
+					{{Param .}} := &bytes.Buffer{}
+				{{- end}}
+			{{- end}}
+			{{- if and (not .OnlyReturnsError) (not .OnlyReturnsOneValue) }}
+				{{template "results" $f}} {{template "call" $f}}
+			{{- end}}
+			{{- if .ReturnsError}}
+				if {{if .OnlyReturnsError}} err := {{template "call" $f}}; {{end}} (err != nil) != tt.wantErr {
+					t.Errorf("{{template "message" $f}} error = %v, wantErr %v", {{template "inputs" $f}} err, tt.wantErr)
+					{{- if .TestResults}}
+						{{if .Subtests }}return{{else}}continue{{end}}
+					{{- end}}
+				}
+			{{- end}}
+			{{- range .TestResults}}
+				{{- if .IsWriter}}
+					if {{Got .}} := {{Param .}}.String(); {{Got .}} != tt.{{Want .}} {
+				{{- else if .IsBasicType}}
+					if {{if $f.OnlyReturnsOneValue}}{{Got .}} := {{template "inline" $f}}; {{end}} {{Got .}} != tt.{{Want .}} {
+				{{- else}}
+					if {{if $f.OnlyReturnsOneValue}}{{Got .}} := {{template "inline" $f}}; {{end}} !reflect.DeepEqual({{Got .}}, tt.{{Want .}}) {
+				{{- end}}
+				t.Errorf("{{template "message" $f}} {{if $f.ReturnsMultiple}}{{Got .}} {{end}}= %v, want %v", {{template "inputs" $f}} {{Got .}}, tt.{{Want .}})
+				}
+			{{- end}}
+		{{- if .Subtests }} }) {{- end -}}
+	}
+}
+
+{{end}}

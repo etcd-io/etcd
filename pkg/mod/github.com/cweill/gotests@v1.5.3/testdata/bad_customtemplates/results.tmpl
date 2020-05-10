@@ -1,0 +1,1 @@
+{{define "results"}} {{range $i, $el := .Results}}{{if $i}}, {{end}}{{Got .}}{{end}}{{if .ReturnsError}}, err{{end}} {{if or .Results .ReturnsError}} := {{end}} {{end}} {{end}}

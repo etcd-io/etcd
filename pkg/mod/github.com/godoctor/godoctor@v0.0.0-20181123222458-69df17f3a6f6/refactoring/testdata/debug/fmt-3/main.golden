@@ -1,0 +1,5 @@
+package main
+import "fmt"
+func String ( )string {
+return "" } ; func main() { var i t = 3;fmt.Println(i.String()) }
+//<<<<<debug,4,36,4,36,fmt,pass

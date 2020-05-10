@@ -1,0 +1,34 @@
+// Control flow graph for main
+digraph mgraph {
+mode="heir";
+splines="ortho";
+
+	"ENTRY" -> "assignment - line 6\nDeclares: n"
+	"assignment - line 6\nDeclares: n" -> "if statement - line 7"
+	"if statement - line 7" -> "assignment - line 8\nAssigns: n\nUpdates: n\nUses: n"
+	"if statement - line 7" -> "range loop - line 14\nDeclares: _, v"
+	"assignment - line 8\nAssigns: n\nUpdates: n\nUses: n" -> "expression statement - line 9\nUses: n"
+	"expression statement - line 9\nUses: n" -> "if statement - line 10\nUses: n"
+	"if statement - line 10\nUses: n" -> "return statement - line 11"
+	"if statement - line 10\nUses: n" -> "range loop - line 14\nDeclares: _, v"
+	"return statement - line 11" -> "EXIT"
+	"range loop - line 14\nDeclares: _, v" -> "assignment - line 15\nAssigns: n\nUpdates: n\nUses: n, v"
+	"range loop - line 14\nDeclares: _, v" -> "switch statement - line 24\nUses: n"
+	"assignment - line 15\nAssigns: n\nUpdates: n\nUses: n, v" -> "expression statement - line 16\nUses: n"
+	"expression statement - line 16\nUses: n" -> "if statement - line 17\nUses: n"
+	"if statement - line 17\nUses: n" -> "continue statement - line 18"
+	"if statement - line 17\nUses: n" -> "if statement - line 20\nUses: n"
+	"continue statement - line 18" -> "range loop - line 14\nDeclares: _, v"
+	"if statement - line 20\nUses: n" -> "range loop - line 14\nDeclares: _, v"
+	"if statement - line 20\nUses: n" -> "break statement - line 21"
+	"break statement - line 21" -> "switch statement - line 24\nUses: n"
+	"switch statement - line 24\nUses: n" -> "case clause - line 25"
+	"switch statement - line 24\nUses: n" -> "case clause - line 27"
+	"switch statement - line 24\nUses: n" -> "case clause - line 29"
+	"case clause - line 25" -> "fall-through statement - line 26"
+	"fall-through statement - line 26" -> "expression statement - line 28"
+	"case clause - line 27" -> "expression statement - line 28"
+	"expression statement - line 28" -> "EXIT"
+	"case clause - line 29" -> "expression statement - line 30"
+	"expression statement - line 30" -> "EXIT"
+}

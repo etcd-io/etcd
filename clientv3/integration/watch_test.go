@@ -20,15 +20,17 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/integration"
-	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/integration"
+	mvccpb "go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/version"
 
 	"google.golang.org/grpc/metadata"
 )
@@ -838,6 +840,22 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 	if _, ok := <-chNoLeader; !ok {
 		t.Fatalf("expected response, got closed channel")
+	}
+
+	cnt, err := clus.Members[0].Metric(
+		"etcd_server_client_requests_total",
+		`type="stream"`,
+		fmt.Sprintf(`client_api_version="%v"`, version.APIVersion),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cv, err := strconv.ParseInt(cnt, 10, 32)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cv < 2 { // >2 when retried
+		t.Fatalf("expected at least 2, got %q", cnt)
 	}
 }
 

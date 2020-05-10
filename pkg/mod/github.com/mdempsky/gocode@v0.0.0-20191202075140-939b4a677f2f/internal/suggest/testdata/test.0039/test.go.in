@@ -1,0 +1,10 @@
+package main
+
+func main() {
+	z := 5
+	if y := 20; y == 0 {
+	}
+	if x := 10; x == 0 {
+	}
+	
+@}

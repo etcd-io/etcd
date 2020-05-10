@@ -1,0 +1,5 @@
+package p
+
+type S struct{ x int }
+
+var _ = []S{ @ }

@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/embed"
 
 	"go.uber.org/zap"
 )
@@ -42,7 +42,6 @@ func setupEmbedCfg(cfg *embed.Config, curls, purls, ics []url.URL) {
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/dev/null"}
 	// []string{"stderr"} to enable server logging
-	cfg.Debug = false
 
 	var err error
 	cfg.Dir, err = ioutil.TempDir(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))

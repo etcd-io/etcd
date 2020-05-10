@@ -20,8 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -30,8 +28,6 @@ const (
 	// PrivateDirMode grants owner to make/remove files inside the directory.
 	PrivateDirMode = 0700
 )
-
-var plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/fileutil")
 
 // IsDirWriteable checks if dir is writable by writing and removing a file
 // to dir. It returns nil if dir is writable.
@@ -46,14 +42,22 @@ func IsDirWriteable(dir string) error {
 // TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
 // does not exists. TouchDirAll also ensures the given directory is writable.
 func TouchDirAll(dir string) error {
-	// If path is already a directory, MkdirAll does nothing
-	// and returns nil.
-	err := os.MkdirAll(dir, PrivateDirMode)
-	if err != nil {
-		// if mkdirAll("a/text") and "text" is not
-		// a directory, this will return syscall.ENOTDIR
-		return err
+	// If path is already a directory, MkdirAll does nothing and returns nil, so,
+	// first check if dir exist with an expected permission mode.
+	if Exist(dir) {
+		err := CheckDirPermission(dir, PrivateDirMode)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := os.MkdirAll(dir, PrivateDirMode)
+		if err != nil {
+			// if mkdirAll("a/text") and "text" is not
+			// a directory, this will return syscall.ENOTDIR
+			return err
+		}
 	}
+
 	return IsDirWriteable(dir)
 }
 
@@ -80,6 +84,12 @@ func Exist(name string) bool {
 	return err == nil
 }
 
+// DirEmpty returns true if a directory empty and can access.
+func DirEmpty(name string) bool {
+	ns, err := ReadDir(name)
+	return len(ns) == 0 && err == nil
+}
+
 // ZeroToEnd zeros a file starting from SEEK_CUR to its SEEK_END. May temporarily
 // shorten the length of the file.
 func ZeroToEnd(f *os.File) error {
@@ -101,4 +111,23 @@ func ZeroToEnd(f *os.File) error {
 	}
 	_, err = f.Seek(off, io.SeekStart)
 	return err
+}
+
+// CheckDirPermission checks permission on an existing dir.
+// Returns error if dir is empty or exist with a different permission than specified.
+func CheckDirPermission(dir string, perm os.FileMode) error {
+	if !Exist(dir) {
+		return fmt.Errorf("directory %q empty, cannot check permission.", dir)
+	}
+	//check the existing permission on the directory
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	dirMode := dirInfo.Mode().Perm()
+	if dirMode != perm {
+		err = fmt.Errorf("directory %q exist without desired file permission. %q", dir, dirInfo.Mode())
+		return err
+	}
+	return nil
 }

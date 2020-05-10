@@ -1,0 +1,25 @@
+package main // <<<<< godoc,1,1,1,1,pass
+
+type (
+	// A is a type
+	A int
+	// B TODO: NEEDS COMMENT INFO
+	B int
+	c string
+)
+
+const (
+	// StatusOk TODO: NEEDS COMMENT INFO
+	StatusOk = 1
+	// StatusBad is bad
+	StatusBad = 2
+)
+
+//  TODO: NEEDS COMMENT INFO
+var (
+	Foo = "Foo"
+	Bar = "Bar"
+)
+
+func main() {
+}

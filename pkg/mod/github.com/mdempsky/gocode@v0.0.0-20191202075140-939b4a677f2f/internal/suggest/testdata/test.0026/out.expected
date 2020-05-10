@@ -1,0 +1,8 @@
+Found 7 candidates:
+  func main()
+  var A struct
+  var B struct
+  var C struct
+  var a int
+  var d int
+  var g int

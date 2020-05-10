@@ -1,0 +1,12 @@
+package p
+
+type A int
+type B []A
+
+func (A) A() {}
+func (B) B() {}
+
+func test(x B) {
+	for _, x := range x.@ {
+	}
+}

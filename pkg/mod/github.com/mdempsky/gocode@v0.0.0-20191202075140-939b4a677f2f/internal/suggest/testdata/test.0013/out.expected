@@ -1,0 +1,25 @@
+Found 24 candidates:
+  func main()
+  var a int
+  var add int
+  var and int
+  var andnot int
+  var b int
+  var c bool
+  var d bool
+  var div int
+  var eq bool
+  var geq bool
+  var greater bool
+  var leq bool
+  var less bool
+  var logand bool
+  var logor bool
+  var mul int
+  var neq bool
+  var or int
+  var rem int
+  var shl int
+  var shr int
+  var sub int
+  var xor int

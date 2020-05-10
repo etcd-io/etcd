@@ -1,0 +1,26 @@
+package mypackage 
+
+
+
+type Simple interface {
+
+Renamed() string
+
+} 
+
+
+type Mystruct struct {
+
+Myvar string
+
+}
+
+func (mystructvar *Mystruct)Renamed() string {
+
+
+return mystructvar.Myvar
+
+
+}
+
+

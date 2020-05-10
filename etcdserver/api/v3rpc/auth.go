@@ -17,8 +17,8 @@ package v3rpc
 import (
 	"context"
 
-	"go.etcd.io/etcd/etcdserver"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/etcdserver"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 type AuthServer struct {
@@ -39,6 +39,14 @@ func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (
 
 func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
 	resp, err := as.authenticator.AuthDisable(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
+	resp, err := as.authenticator.AuthStatus(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}

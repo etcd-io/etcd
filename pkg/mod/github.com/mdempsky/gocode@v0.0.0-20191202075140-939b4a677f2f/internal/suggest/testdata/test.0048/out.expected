@@ -1,0 +1,8 @@
+Found 7 candidates:
+  func Fprint(w io.Writer, a ...interface{}) (n int, err error)
+  func Fprintf(w io.Writer, format string, a ...interface{}) (n int, err error)
+  func Fprintln(w io.Writer, a ...interface{}) (n int, err error)
+  func Fscan(r io.Reader, a ...interface{}) (n int, err error)
+  func Fscanf(r io.Reader, format string, a ...interface{}) (n int, err error)
+  func Fscanln(r io.Reader, a ...interface{}) (n int, err error)
+  type Formatter interface

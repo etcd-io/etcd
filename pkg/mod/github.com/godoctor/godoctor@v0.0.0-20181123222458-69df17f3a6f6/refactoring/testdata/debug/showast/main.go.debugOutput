@@ -1,0 +1,26 @@
+     0  *ast.File {
+     1  .  Doc: nil
+     2  .  Package: ./testdata/debug/showast/main.go:1:1
+     3  .  Name: *ast.Ident {
+     4  .  .  NamePos: ./testdata/debug/showast/main.go:1:9
+     5  .  .  Name: "main"
+     6  .  .  Obj: nil
+     7  .  }
+     8  .  Decls: nil
+     9  .  Scope: *ast.Scope {
+    10  .  .  Outer: nil
+    11  .  .  Objects: map[string]*ast.Object (len = 0) {}
+    12  .  }
+    13  .  Imports: nil
+    14  .  Unresolved: nil
+    15  .  Comments: []*ast.CommentGroup (len = 1) {
+    16  .  .  0: *ast.CommentGroup {
+    17  .  .  .  List: []*ast.Comment (len = 1) {
+    18  .  .  .  .  0: *ast.Comment {
+    19  .  .  .  .  .  Slash: ./testdata/debug/showast/main.go:1:14
+    20  .  .  .  .  .  Text: "//<<<<<debug,1,1,1,1,showast,pass"
+    21  .  .  .  .  }
+    22  .  .  .  }
+    23  .  .  }
+    24  .  }
+    25  }

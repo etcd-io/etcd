@@ -1,0 +1,54 @@
+package main
+
+type x struct {
+	Foo int
+	bar string
+
+
+
+
+
+
+
+}
+
+func main() {
+
+
+
+
+	fmt.Println("---")
+	fmt.Println("---")
+	fmt.Println("---")
+	fmt.Println("zeynep")
+	fmt.Println("alper")
+	fmt.Println("miray")
+	fmt.Println("---")
+	fmt.Println("---")
+	fmt.Println("---")
+
+
+
+}
+
+type b struct {
+	Foo int
+	bar string
+
+}
+
+type b struct {
+
+
+
+
+
+
+
+
+
+
+	Foo int
+	bar string
+
+}

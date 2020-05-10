@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
@@ -39,10 +39,16 @@ func testMoveLeader(t *testing.T, auto bool) {
 
 	// ensure followers go through leader transition while learship transfer
 	idc := make(chan uint64)
+	stopc := make(chan struct{})
+	defer close(stopc)
+
 	for i := range clus.Members {
 		if oldLeadIdx != i {
 			go func(m *member) {
-				idc <- checkLeaderTransition(m, oldLeadID)
+				select {
+				case idc <- checkLeaderTransition(m, oldLeadID):
+				case <-stopc:
+				}
 			}(clus.Members[i])
 		}
 	}

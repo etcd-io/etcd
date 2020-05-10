@@ -1,0 +1,16 @@
+--- filename
++++ filename
+@@ -1,10 +1,10 @@
+-Line 1
+ Line 2
+ Line 3
+ Line 4
+ Line 5
+-Line 6
+-Line 7
++Line 6 has changed
++Line 7 has also changed
++This is line 7.5
+ Line 8
+ Line 9
+ Line 10

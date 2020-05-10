@@ -2,7 +2,7 @@
 title: Transport security model
 ---
 
-etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication.
+etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication. **Note that etcd doesn't enable [RBAC based authentication][auth] or the authentication feature in the transport layer by default to reduce friction for users getting started with the database. Further, changing this default would be a breaking change for the project which was established since 2013. An etcd cluster which doesn't enable security features can expose its data to any clients.**
 
 To get up and running, first have a CA certificate and a signed key pair for one member. It is recommended to create and sign a new key pair for every member in a cluster.
 

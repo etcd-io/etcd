@@ -1,0 +1,8 @@
+Found 7 candidates:
+  func End() token.Pos
+  func Pos() token.Pos
+  var Comment *ast.CommentGroup
+  var Doc *ast.CommentGroup
+  var Names []*ast.Ident
+  var Type ast.Expr
+  var Values []ast.Expr

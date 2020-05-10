@@ -21,11 +21,11 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/pkg/mock/mockstore"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/pkg/mock/mockstore"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"go.uber.org/zap"
 )
@@ -476,7 +476,7 @@ func TestNodeToMemberBad(t *testing.T) {
 		}},
 	}
 	for i, tt := range tests {
-		if _, err := nodeToMember(tt); err == nil {
+		if _, err := nodeToMember(zap.NewExample(), tt); err == nil {
 			t.Errorf("#%d: unexpected nil error", i)
 		}
 	}
@@ -529,15 +529,13 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 }
 
 func TestClusterMembers(t *testing.T) {
-	cls := &RaftCluster{
-		members: map[types.ID]*Member{
-			1:   {ID: 1},
-			20:  {ID: 20},
-			100: {ID: 100},
-			5:   {ID: 5},
-			50:  {ID: 50},
-		},
-	}
+	cls := newTestCluster([]*Member{
+		{ID: 1},
+		{ID: 20},
+		{ID: 100},
+		{ID: 5},
+		{ID: 50},
+	})
 	w := []*Member{
 		{ID: 1},
 		{ID: 5},
@@ -607,7 +605,7 @@ func TestNodeToMember(t *testing.T) {
 		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
-	m, err := nodeToMember(n)
+	m, err := nodeToMember(zap.NewExample(), n)
 	if err != nil {
 		t.Fatalf("unexpected nodeToMember error: %v", err)
 	}
@@ -856,6 +854,93 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 		c := newTestCluster(tt.members)
 		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestIsReadyToPromoteMember(t *testing.T) {
+	tests := []struct {
+		members   []*Member
+		promoteID uint64
+		want      bool
+	}{
+		{
+			// 1/1 members ready, should succeed (quorum = 1, new quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 0/1 members ready, should fail (quorum = 1)
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			false,
+		},
+		{
+			// 2/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/3 members ready, should fail (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			false,
+		},
+		{
+			// 2/3 members ready, should succeed (quorum = 2, new quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			true,
+		},
+		{
+			// 2/4 members ready, should succeed (quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMember(4, nil, "", nil),
+				newTestMemberAsLearner(5, nil, "5", nil),
+			},
+			5,
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
+			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
 	}
 }

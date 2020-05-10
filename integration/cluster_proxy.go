@@ -19,10 +19,12 @@ package integration
 import (
 	"sync"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/namespace"
-	"go.etcd.io/etcd/proxy/grpcproxy"
-	"go.etcd.io/etcd/proxy/grpcproxy/adapter"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/clientv3/namespace"
+	"go.etcd.io/etcd/v3/proxy/grpcproxy"
+	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -56,7 +58,7 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	wp, wpch := grpcproxy.NewWatchProxy(c)
 	lp, lpch := grpcproxy.NewLeaseProxy(c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
-	clp, _ := grpcproxy.NewClusterProxy(c, "", "") // without registering proxy URLs
+	clp, _ := grpcproxy.NewClusterProxy(zap.NewExample(), c, "", "") // without registering proxy URLs
 	authp := grpcproxy.NewAuthProxy(c)
 	lockp := grpcproxy.NewLockProxy(c)
 	electp := grpcproxy.NewElectionProxy(c)

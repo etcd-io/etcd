@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 	"go.uber.org/zap"
 )
 
@@ -355,7 +355,7 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	}
 
 	w.Watch(0, []byte("foo"), nil, 0, filterPut)
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 
 	go func() {
 		<-w.Chan()

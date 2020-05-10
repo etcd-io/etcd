@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 func (env *InteractionEnv) handleDeliverMsgs(t *testing.T, d datadriven.TestData) error {
@@ -86,7 +86,7 @@ func (env *InteractionEnv) DeliverMsgs(rs ...Recipient) int {
 			}
 			toIdx := int(msg.To - 1)
 			if err := env.Nodes[toIdx].Step(msg); err != nil {
-				env.Output.WriteString(err.Error())
+				fmt.Fprintln(env.Output, err)
 			}
 		}
 	}

@@ -1,0 +1,9 @@
+package a
+
+// xyz
+func M() {
+}
+
+// xyz
+func xyz() { //<<<<<rename,8,6,8,6,xyz,pass
+}

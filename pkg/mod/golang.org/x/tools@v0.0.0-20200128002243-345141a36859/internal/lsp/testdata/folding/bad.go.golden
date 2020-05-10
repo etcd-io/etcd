@@ -1,0 +1,91 @@
+-- foldingRange-0 --
+package folding //@fold("package")
+
+import (<>)
+
+import (<>)
+	
+// badBar is a function.
+func badBar(<>) string {<>}
+
+-- foldingRange-1 --
+package folding //@fold("package")
+
+import ( "fmt"
+	_ "log"
+)
+
+import ( 
+	_ "os" )
+	
+// badBar is a function.
+func badBar() string { x := true
+	if x {<>} else {<>}
+	return
+}
+
+-- foldingRange-2 --
+package folding //@fold("package")
+
+import ( "fmt"
+	_ "log"
+)
+
+import ( 
+	_ "os" )
+	
+// badBar is a function.
+func badBar() string { x := true
+	if x { 
+		// This is the only foldable thing in this file when lineFoldingOnly
+		fmt.Println(<>)
+	} else {
+		fmt.Println(<>) }
+	return
+}
+
+-- foldingRange-cmd --
+3:9-5:0
+7:9-8:8
+11:13-11:12
+11:23-18:0
+12:8-15:1
+14:15-14:20
+15:10-16:23
+16:15-16:21
+
+-- foldingRange-imports-0 --
+package folding //@fold("package")
+
+import (<>)
+
+import (<>)
+	
+// badBar is a function.
+func badBar() string { x := true
+	if x { 
+		// This is the only foldable thing in this file when lineFoldingOnly
+		fmt.Println("true")
+	} else {
+		fmt.Println("false") }
+	return
+}
+
+-- foldingRange-lineFolding-0 --
+package folding //@fold("package")
+
+import ( "fmt"
+	_ "log"
+)
+
+import ( 
+	_ "os" )
+	
+// badBar is a function.
+func badBar() string { x := true
+	if x {<>
+	} else {
+		fmt.Println("false") }
+	return
+}
+

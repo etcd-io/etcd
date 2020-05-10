@@ -1,0 +1,15 @@
+package main
+
+import "sync"
+
+var hosts struct {
+	sync.Mutex
+	data map[string][]string
+	time int64
+	path string
+}
+
+hosts.Mutex.@
+
+func main() {
+}

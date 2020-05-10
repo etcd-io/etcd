@@ -1,0 +1,6 @@
+Found 5 candidates:
+  func main()
+  var err error
+  var offset int
+  var r rune
+  var s string

@@ -1,0 +1,8 @@
+package main
+
+import "fmt"
+import "mypackage"
+
+func main() {
+	fmt.Println(mypackage.xyz(5))
+}

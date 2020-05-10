@@ -1,0 +1,15 @@
+{
+	"name": "GoSublime: HTML",
+	"uuid": "78c486ec-0101-11e2-a85a-00262d996a67",
+	"scopeName": "text.html.gohtml",
+	"fileTypes": ["gohtml"],
+
+	"patterns": [
+		{
+			"include": "text.html.basic",
+		},
+		{
+			"include": "source.gotemplate",
+		},
+	]
+}

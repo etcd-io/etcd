@@ -1,0 +1,20 @@
+//<<<<<extract,9,2,12,34,Foo,fail
+package main
+
+import "fmt"
+
+func main() {
+	i := 0
+	for {
+		Foo(i)
+		i++
+	}
+	fmt.Println("A statement just after for loop.")
+}
+
+func Foo(i int) {
+	if i == 3 {
+		continue
+	}
+	fmt.Println("Value of i is:", i)
+}

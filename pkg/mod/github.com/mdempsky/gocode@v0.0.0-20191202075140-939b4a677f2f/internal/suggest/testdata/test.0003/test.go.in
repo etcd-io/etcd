@@ -1,0 +1,58 @@
+package main
+
+import (
+	"go/ast"
+	"io"
+)
+
+func PrettyPrintTypeExpr(out io.Writer, e ast.Expr) {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		fmt.Fprintf(out, "*")
+		PrettyPrintTypeExpr(out, t.X)
+	case *ast.Ident:
+		// ast.Ident type decl as a reminder (note embedded type):
+		//
+		// type Ident struct {
+		//     token.Position         // identifier position
+		//     Obj            *Object // denoted object
+		// }
+		//
+		// Correct type inference in complex type switch statements +
+		// support for type embedding
+		fmt.Fprintf(out, t.Name())
+		t.@
+	case *ast.ArrayType:
+		fmt.Fprintf(out, "[]")
+		PrettyPrintTypeExpr(out, t.Elt)
+	case *ast.SelectorExpr:
+		PrettyPrintTypeExpr(out, t.X)
+		fmt.Fprintf(out, ".%s", t.Sel.Name())
+	case *ast.FuncType:
+		// SKIP THIS FOR DEMO
+	case *ast.MapType:
+		fmt.Fprintf(out, "map[")
+		PrettyPrintTypeExpr(out, t.Key)
+		fmt.Fprintf(out, "]")
+		PrettyPrintTypeExpr(out, t.Value)
+	case *ast.InterfaceType:
+		fmt.Fprintf(out, "interface{}")
+	case *ast.Ellipsis:
+		fmt.Fprintf(out, "...")
+		PrettyPrintTypeExpr(out, t.Elt)
+	case *ast.StructType:
+		fmt.Fprintf(out, "struct")
+	case *ast.ChanType:
+		switch t.Dir {
+		case ast.RECV:
+			fmt.Fprintf(out, "<-chan ")
+		case ast.SEND:
+			fmt.Fprintf(out, "chan<- ")
+		case ast.SEND | ast.RECV:
+			fmt.Fprintf(out, "chan ")
+		}
+		PrettyPrintTypeExpr(out, t.Value)
+	default:
+		panic("OMGWTFBBQ!")
+	}
+}

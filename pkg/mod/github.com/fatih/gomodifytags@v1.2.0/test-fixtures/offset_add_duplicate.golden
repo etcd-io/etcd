@@ -1,0 +1,15 @@
+package foo
+
+// NOTE(arslan): this is a valid Go syntax file, but not a valid compilable
+// file. Even in that case we should allow things to be modified as we just
+// care about the AST.
+
+type foo struct {
+	bar string `json:"bar"`
+	t   bool   `json:"t"`
+}
+
+type foo struct {
+	bar string
+	t   bool
+}

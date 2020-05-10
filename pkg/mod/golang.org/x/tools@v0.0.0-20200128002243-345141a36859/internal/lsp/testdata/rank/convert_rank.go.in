@@ -1,0 +1,42 @@
+package rank
+
+func _() {
+	type strList []string
+	wantsStrList := func(strList) {}
+
+	var (
+		convA string   //@item(convertA, "convA", "string", "var")
+		convB []string //@item(convertB, "convB", "[]string", "var")
+	)
+	wantsStrList(strList(conv)) //@complete("))", convertB, convertA)
+}
+
+func _() {
+
+	type myInt int
+
+	const (
+		convC        = "hi"    //@item(convertC, "convC", "string", "const")
+		convD        = 123     //@item(convertD, "convD", "int", "const")
+		convE int    = 123     //@item(convertE, "convE", "int", "const")
+		convF string = "there" //@item(convertF, "convF", "string", "const")
+		convG myInt  = 123     //@item(convertG, "convG", "myInt", "const")
+	)
+
+	var foo int
+	foo = conv //@rank(" //", convertE, convertD)
+
+	var mi myInt
+	mi = conv //@rank(" //", convertG, convertD, convertE)
+	mi + conv //@rank(" //", convertG, convertD, convertE)
+
+	1 + conv //@rank(" //", convertD, convertC),rank(" //", convertE, convertC),rank(" //", convertG, convertC)
+
+	type myString string
+	var ms myString
+	ms = conv //@rank(" //", convertC, convertF)
+
+	type myUint uint32
+	var mu myUint
+	mu = conv //@rank(" //", convertD, convertE)
+}

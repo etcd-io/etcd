@@ -1,0 +1,11 @@
+package main
+
+func main() {
+	var c chan int
+	select {
+	case c := <-c:
+		_ = c
+		@
+	default:
+	}
+}

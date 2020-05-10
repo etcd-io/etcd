@@ -1,0 +1,9 @@
+// <<<<< toggle,7,1,7,44,pass
+package main
+
+import "fmt"
+
+func main() {
+var b [2]string = [2]string{"hello","world"}
+fmt.Println("The value of slice b is :",b)
+}

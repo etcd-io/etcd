@@ -1,0 +1,14 @@
+package main
+
+func main() {
+	var a int
+	for {
+		var b string
+		if a == len(b) {
+			var c bool
+		} else {
+			var d bool
+			@
+		}
+	}
+}

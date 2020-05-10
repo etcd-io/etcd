@@ -1,0 +1,21 @@
+Mon Feb 19 10:11:14 EST 2018
+
+./github.com/cheggaaa/pb
+origin	https://github.com/cheggaaa/pb.git (fetch)
+521e54ab5f0d0e5260964d094a414759c65fcbb3  (HEAD -> master, origin/master, origin/HEAD) go1.5 for a travis
+
+./github.com/mattn/go-runewidth
+origin	https://github.com/mattn/go-runewidth.git (fetch)
+97311d9f7767e3d6f422ea06661bc2c7a19e8a5d  (HEAD -> master, origin/master, origin/HEAD) Merge pull request #13 from joshuarubin/master
+
+./github.com/willf/bitset
+origin	https://github.com/willf/bitset.git (fetch)
+1a37ad96e8c1a11b20900a232874843b5174221f  (HEAD -> master, origin/master, origin/HEAD) Cleaning a couple of comments.
+
+./golang.org/x/sys
+origin	https://github.com/golang/sys.git (fetch)
+37707fdb30a5b38865cfb95e5aab41707daec7fd  (HEAD -> master, origin/master, origin/HEAD) unix: move gccgo redeclared *SyscallNoError functions to a separate file
+
+./golang.org/x/tools
+origin	https://github.com/golang/tools.git (fetch)
+ce871d178848e3eea1e8795e5cfb74053dde4bb9  (HEAD -> master, origin/master, origin/HEAD) godoc: allow line numbers to be searched by ctrl+f

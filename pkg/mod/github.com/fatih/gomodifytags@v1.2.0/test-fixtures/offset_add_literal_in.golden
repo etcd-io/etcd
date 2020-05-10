@@ -1,0 +1,7 @@
+package main
+
+func main() {
+	var in struct {
+		Foo string `json:"foo"`
+	}
+}

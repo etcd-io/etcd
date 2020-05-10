@@ -1,0 +1,6 @@
+package foo
+
+type foo struct {
+	Bar    string
+	t, Baz bool
+}

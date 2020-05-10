@@ -1,0 +1,11 @@
+package foo
+
+type foo struct {
+	// a comment about b
+
+	bar string `json:"bar"`
+	t   bool   `json:"t"`
+
+	// a comment about b
+	// b []string
+}

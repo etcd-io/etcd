@@ -1,0 +1,6 @@
+package foo
+
+type foo struct {
+	bar       string
+	timestamp time.Time `json:"@timestamp"`
+}

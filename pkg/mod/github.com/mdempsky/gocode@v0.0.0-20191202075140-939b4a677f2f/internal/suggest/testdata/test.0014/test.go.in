@@ -1,0 +1,18 @@
+package main
+
+type MyPtrInt *int
+
+func main() {
+	var megaptr **int
+	a := *megaptr
+	b := *a
+
+	var superint int
+	c := &superint
+	d := &c
+
+	var typeptr MyPtrInt
+	aa := *typeptr
+	bb := &typeptr
+	@
+}

@@ -1,0 +1,9 @@
+package foo
+
+type foo struct {
+	bar string `json:"bar" hcl:"bar"`
+	t   bool   `hcl:"t"`
+	t   bool   `hcl:"t"`
+	qux string `json:"qux" hcl:"qux"`
+	yoo string `json:"yoo"`
+}

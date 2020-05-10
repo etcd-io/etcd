@@ -1,0 +1,13 @@
+package main
+
+import "fmt"
+
+func fn() {
+}
+
+func main() {
+	var1 := 1
+	fn := 2
+	var2 := fn // <<<<< var,10,10,10,10,fn,pass
+	fmt.Printf("%d %d\n", var1, var2)
+}

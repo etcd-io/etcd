@@ -24,15 +24,15 @@ import (
 	"strconv"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal"
-	"go.etcd.io/etcd/wal/walpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap"
+	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -299,7 +299,7 @@ func (rc *raftNode) startRaft() {
 		ClusterID:   0x1000,
 		Raft:        rc,
 		ServerStats: stats.NewServerStats("", ""),
-		LeaderStats: stats.NewLeaderStats(strconv.Itoa(rc.id)),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
 		ErrorC:      make(chan error),
 	}
 

@@ -1,0 +1,7 @@
+{
+  "start": 5,
+  "end": 5,
+  "lines": [
+    "\tMyExample bool `json:\"myExample\"`"
+  ]
+}

@@ -1,0 +1,10 @@
+package mypackage 
+
+import "fmt"
+
+func SecondFunction() {             
+	
+    x := Xyz(10)
+
+    fmt.Println(x)
+}

@@ -1,0 +1,32 @@
+// Live variables in main
+digraph mgraph {
+mode="heir";
+splines="ortho";
+
+	s1 [label="ENTRY\nLiveIn: {}\nLiveOut: {}"];
+	s2 [label="EXIT\nLiveIn: {}\nLiveOut: {}"];
+	s3 [label="type declaration statement (line 6)\ntype Fraction struct {     ...\nLiveIn: {}\nLiveOut: {}"];
+	s4 [label="assignment (line 10)\none, two := 1, 9999\nLiveIn: {}\nLiveOut: {one}"];
+	s5 [label="assignment (line 11)\ntwo = 2\nLiveIn: {one}\nLiveOut: {one, two}"];
+	s6 [label="assignment (line 12)\nfrac := Fraction{one, two}\nLiveIn: {one, two}\nLiveOut: {frac}"];
+	s7 [label="assignment (line 13)\nfrac.Denominator = 4\nLiveIn: {frac}\nLiveOut: {frac}"];
+	s8 [label="for loop (line 14)\nfor 1 > 5\nLiveIn: {frac}\nLiveOut: {frac}"];
+	s9 [label="assignment (line 15)\nfrac.Numerator = 3\nLiveIn: {frac}\nLiveOut: {frac}"];
+	s10 [label="select statement (line 17)\nselect\nLiveIn: {frac}\nLiveOut: {frac}"];
+	s11 [label="switch statement (line 18)\nswitch one\nLiveIn: {frac, one}\nLiveOut: {frac}"];
+	s12 [label="assignment (line 18)\none = 111\nLiveIn: {frac}\nLiveOut: {frac, one}"];
+	s13 [label="expression statement (line 20)\nfmt.Println(frac)\nLiveIn: {frac}\nLiveOut: {}"];
+	s1 -> s3
+	s3 -> s4
+	s4 -> s5
+	s5 -> s6
+	s6 -> s7
+	s7 -> s8
+	s8 -> s9
+	s8 -> s10
+	s9 -> s8
+	s10 -> s12
+	s11 -> s13
+	s12 -> s11
+	s13 -> s2
+}

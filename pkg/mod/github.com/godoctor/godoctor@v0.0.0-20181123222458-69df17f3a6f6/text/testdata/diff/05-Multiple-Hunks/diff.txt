@@ -1,0 +1,17 @@
+--- filename
++++ filename
+@@ -1,5 +1,4 @@
+ Line 1
+-Line 2
+ Line 3
+ Line 4
+ Line 5
+@@ -7,4 +6,6 @@
+ Line 7
+ Line 8
+ Line 9
+-Line 10
++Line 9.5
++Line 9.75
++Line 10
+\ No newline at end of file

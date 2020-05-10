@@ -1,0 +1,17 @@
+package main
+
+import "fmt"
+
+func main() {
+	var s struct {
+		member int
+	}
+	s.member = 1
+	s = extracted(s) //<<<<<extract,10,1,11,1,extracted,pass
+	fmt.Println(s.member)
+}
+
+func extracted(s struct{ member int }) struct{ member int } {
+	s.member = 3
+	return s
+}

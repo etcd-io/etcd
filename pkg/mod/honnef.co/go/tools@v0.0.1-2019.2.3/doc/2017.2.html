@@ -1,0 +1,182 @@
+<h2>Introduction to staticcheck 2017.2</h2>
+
+<p>
+  The 2017.2 release of the staticcheck suite of tools focuses on
+  reducing friction – fewer false positives, more tools for suppressing
+  unwanted output, and JSON output for easier integration with other
+  tools.
+</p>
+
+<h2>New features</h2>
+
+<h3>Linter directives for ignoring problems</h3>
+
+<p>
+  In the past, the only ways to ignore reported problems was by using
+  the <code>-ignore</code> flag. This led to overreaching ignore rules
+  which weren't maintained regularly. Now, <code>//lint:ignore</code> and
+  <code>//lint:file-ignore</code> comments can be used to ignore
+  problems, either on specific lines or file-wide. A full description of
+  these directives, their syntax and their behavior can be found
+  <a href="/docs#ignoring-problems">in the documentation.</a>
+</p>
+
+<p>
+  A related change adds the <code>-show-ignored</code> command line
+  flag, which outputs problems that would otherwise be ignored by
+  directives. This is primarily of use with the JSON output format,
+  for custom front ends.
+</p>
+
+<h3>Output formats</h3>
+
+<p>
+  All staticcheck tools now support multiple output formats, selectable
+  with the <code>-f</code> flag.
+</p>
+
+<p>
+  Currently, two formats are supported. The first format is
+  <code>text</code>, which is the default and uses the existing terminal
+  output format. The other is <code>json</code>, which emits JSON. The
+  output is a stream of objects, allowing for a future streaming output
+  mode. Each object uses the following example schema:
+</p>
+
+<pre><code>{
+  "checker": "staticcheck",
+  "code": "SA4006",
+  "location": {
+    "file": "/usr/lib/go/src/database/sql/sql_test.go",
+    "line": 2701,
+    "column": 5
+  },
+  "message": "this value of err is never used",
+  "ignored": false
+}</code></pre>
+
+<h3>Control over the exit code of megacheck</h3>
+
+<p>
+  Megacheck, the tool for running multiple checkers at once, now has
+  per checker flags for controlling the overall exit code. Previously,
+  megacheck would exit non-zero if any checker found a problem. Now it
+  is possible to configure for each checker whether it should cause a
+  non-zero exit, by using the <code>-&lt;checker&gt;.exit-non-zero</code>
+  flags. This flag defaults to false for <em>gosimple</em> and to true for
+  the other checkers.
+</p>
+
+<h2>Changes to checks</h2>
+
+<h3>Support for <code>NoCopy</code> in <em>unused</em></h3>
+
+<p>
+  The <em>unused</em> tool now understands <code>NoCopy</code> sentinel types. The
+  <code>NoCopy</code> type, which is canonically a struct with no fields and only a
+  single, empty <code>Lock</code> method, can be used to mark structs as not safe
+  for copying. By declaring a field of this type, <em>go vet</em> will complain
+  when it sees instances of the struct being copied.
+</p>
+
+<p>
+  In the past, <em>unused</em> marked these fields as unused, now it ignores
+  them.
+</p>
+
+<h3>Detection of deprecated identifiers</h3>
+
+<p>
+  <span class="check-name" title="Using a deprecated function, variable, constant or field">SA1019</span> now
+  correctly identifies deprecated methods, in addition to fields and
+  package-level objects. Additionally, staticcheck now keeps track of
+  when each identifier in the Go standard library was deprecated, so
+  that using <code>-go &lt;version&gt;</code> can correctly
+  ignore deprecation warnings that don't apply to the targeted Go
+  version.
+</p>
+
+<h3>Other</h3>
+
+<ul>
+  <li>
+    {{ check "SA4017" }} no
+    longer reports pure functions that are stubs – functions that
+    immediately panic or return a constant.
+  </li>
+  <li>
+    {{ check "SA5007" }} no
+    longer flags infinite recursion when the function call is spawned
+    as a new goroutine.
+  </li>
+  <li>
+    {{ check "SA6002" }}
+    now recognizes that <code>unsafe.Pointer</code> is
+    a pointer type.
+  </li>
+  <li>
+    {{ check "S1005" }}
+    no longer suggests <code>for range</code> when targeting a version
+    older than Go 1.4.
+  </li>
+  <li>
+    {{ check "S1026" }} has been
+    removed. In some rare instances, copying a string is necessary, and
+    all common ways of doing this were incorrectly flagged by the check.
+  </li>
+</ul>
+
+
+<h2>Other changes</h2>
+
+<ul>
+  <li>
+    The <code>-ignore</code> flag now supports ignoring checks in all packages,
+    by using <code>*</code> as the path.
+  </li>
+  <li>
+    <code>//line</code> directives are now being ignored when
+    reporting problems. That is, problems will always be reported for
+    the actual position in the Go files they occur.
+  </li>
+  <li>
+    From now on, only the first compilation error encountered will be
+    reported. The tools expect to be run on valid Go code and there
+    was little (if any) value in reporting all compilation errors
+    encountered, especially because simple errors can lead to many
+    follow-up errors.
+  </li>
+</ul>
+
+<h2 id="2017.2.1">Staticcheck 2017.2.1 Release Notes</h2>
+
+<p>
+  The 2017.2.1 release of the staticcheck suite of tools is the first
+  bug fix release, fixing one bug.
+</p>
+
+<h3>Fixed bugs</h3>
+
+<ul>
+  <li>
+    Staticcheck 2017.2 made the detection of deprecated objects
+    Go-version aware. Unfortunately, this only worked correctly for
+    fields and methods, but not package-level objects. This release
+    fixes that.
+  </li>
+</ul>
+
+<h2 id="2017.2.2">Staticcheck 2017.2.2 Release Notes</h2>
+
+<p>
+  The 2017.2.2 release of the staticcheck suite of tools is the second
+  bug fix release, fixing several bugs.
+</p>
+
+<h3>Fixed bugs</h3>
+
+<ul>
+  <li><em>unused</em>: correctly apply the NoCopy exemption when using the <code>-exported</code> flag.</li>
+  <li><em>keyify</em>: support external test packages (<code>package foo_test</code>)</li>
+  <li><em>staticcheck</em>: disable {{ check "SA4005" }} – the check, in its current form, is prone to false positives and will be reimplemented in a future release.</li>
+</ul>

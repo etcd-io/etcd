@@ -1,0 +1,24 @@
+-- summary --
+CompletionsCount = 225
+CompletionSnippetCount = 66
+UnimportedCompletionsCount = 9
+DeepCompletionsCount = 5
+FuzzyCompletionsCount = 8
+RankedCompletionsCount = 66
+CaseSensitiveCompletionsCount = 4
+DiagnosticsCount = 37
+FoldingRangesCount = 2
+FormatCount = 6
+ImportCount = 7
+SuggestedFixCount = 1
+DefinitionsCount = 43
+TypeDefinitionsCount = 2
+HighlightsCount = 52
+ReferencesCount = 8
+RenamesCount = 23
+PrepareRenamesCount = 8
+SymbolsCount = 1
+SignaturesCount = 23
+LinksCount = 8
+ImplementationsCount = 5
+

@@ -1,0 +1,7 @@
+// Control flow graph for foo
+digraph mgraph {
+mode="heir";
+splines="ortho";
+
+	"ENTRY" -> "EXIT"
+}

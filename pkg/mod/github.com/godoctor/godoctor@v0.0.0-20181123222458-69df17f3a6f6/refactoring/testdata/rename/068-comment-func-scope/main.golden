@@ -1,0 +1,18 @@
+package main
+
+import "fmt"
+
+// hello
+
+func main() {
+	// hello
+	hello := "hello"
+	// hello
+	x := func(xxx string) { // <<<<<rename,11,12,11,12,xxx,pass
+		// xxx
+		fmt.Println(xxx)
+		// xxx
+	}
+	// hello
+	x(hello)
+}

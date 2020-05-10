@@ -31,9 +31,7 @@ clean:
 	rm -rf ./release
 	rm -f ./snapshot/localhost:*
 	rm -f ./tools/etcd-dump-metrics/localhost:*
-	rm -f ./integration/127.0.0.1:* ./integration/localhost:*
-	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
-	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
+	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -delete
 
 docker-clean:
 	docker images

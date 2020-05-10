@@ -1,0 +1,27 @@
+language: go
+
+sudo: false
+
+go:
+  - 1.8.x
+  - 1.9.x
+  - 1.10.x
+  - 1.11.x
+  - tip
+
+os:
+  - linux
+  - osx
+
+before_install:
+  - make vendor-prepare
+
+install:
+  - make vendor
+
+before_script:
+  - if [[ "$(go version)" =~ "go version go1.8" ]]; then echo Skipping golangci-lint; else make lint-prepare; fi
+
+script:
+  - if [[ "$(go version)" =~ "go version go1.8" ]]; then echo Skipping golangci-lint; else make lint; fi
+  - make test

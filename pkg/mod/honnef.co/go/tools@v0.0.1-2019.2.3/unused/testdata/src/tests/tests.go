@@ -1,0 +1,3 @@
+package pkg
+
+func fn() {}

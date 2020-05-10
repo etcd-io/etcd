@@ -1,0 +1,11 @@
+package mypackage
+
+type Mystruct struct {
+	Myvar string
+}
+
+func (mystructvar *Mystruct) renamed() string {
+
+	return mystructvar.Myvar
+
+}

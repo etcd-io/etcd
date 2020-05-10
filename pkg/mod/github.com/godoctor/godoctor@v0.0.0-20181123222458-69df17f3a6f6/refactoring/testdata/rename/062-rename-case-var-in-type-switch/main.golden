@@ -1,0 +1,22 @@
+package main
+
+import "fmt"
+
+// Test for renaming the type switch variable
+func main() {
+	var renamed interface{}
+	renamed = bool(true)
+	switch renamed.(type) {
+	case bool:
+		fmt.Printf("boolean %t\n", renamed)
+	case int:
+		fmt.Printf("integer %d\n", renamed) //<<<<<rename,13,30,13,30,renamed,pass
+	case *bool:
+		fmt.Printf("pointer to boolean %t\n", *renamed)
+	case *int:
+		fmt.Printf("pointer to integer %d\n", *renamed)
+	default:
+		fmt.Printf("unexpected type %T", renamed)
+	}
+
+}

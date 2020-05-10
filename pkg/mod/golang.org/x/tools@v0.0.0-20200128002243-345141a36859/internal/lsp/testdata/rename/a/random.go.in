@@ -1,0 +1,42 @@
+package a
+
+import (
+	lg "log"
+	"fmt" //@rename("fmt", "fmty")
+	f2 "fmt" //@rename("f2", "f2name"),rename("fmt","f2y")
+)
+
+func Random() int {
+	y := 6 + 7
+	return y
+}
+
+func Random2(y int) int { //@rename("y", "z")
+	return y
+}
+
+type Pos struct {
+	x, y int
+}
+
+func (p *Pos) Sum() int {
+	return p.x + p.y //@rename("x", "myX")
+}
+
+func _() {
+	var p Pos   //@rename("p", "pos")
+	_ = p.Sum() //@rename("Sum", "GetSum")
+}
+
+func sw() {
+	var x interface{}
+
+	switch y := x.(type) { //@rename("y", "y0")
+	case int:
+		fmt.Printf("%d", y) //@rename("y", "y1"),rename("fmt", "format")
+	case string:
+		lg.Printf("%s", y) //@rename("y", "y2"),rename("lg","log")
+	default:
+		f2.Printf("%v", y) //@rename("y", "y3"),rename("f2","fmt2")
+	}
+}

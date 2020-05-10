@@ -1,0 +1,9 @@
+package main
+
+import "fmt"
+
+func main() {
+	newVar := 1 + 2
+	x := []int{newVar, 4, 5} //<<<<< var,6,13,6,17,newVar,pass
+	fmt.Println(x)
+}

@@ -1,0 +1,322 @@
+
+
+                      INFORMATION FOR GO DOCTOR DEVELOPERS
+
+
+OVERVIEW OF PACKAGES-----------------------------------------------------------
+
+    analysis/       Static analyses
+        cfg             Control flow graph (with AST nodes as blocks)
+        dataflow        Data flow analysis (live variables and reaching defs)
+        names           Find references/conflicts/etc. for a given name
+    cmd/
+        godoctor    Command-line tool (invokes cli package below)
+    doc             Documentation: user's guide, installation guide, Vimdoc
+    engine/
+        cli         Command-line driver
+        protocol    Implementation of the OpenRefactory JSON protocol
+    filesystem      File system abstraction (*)
+    internal        Vendored third-party dependencies
+    refactoring     Refactorings (and supporting infrastructure)
+    text            Text selection, text editing, and unified diff support
+
+    (*) The filesystem package is used for two purposes: (1) the Web demo
+        (supported by the engine/protocol package) needs to refactor files that
+        do not exist on disk, and (2) some refactorings re-load and re-parse
+        the code after it has been refactored in order to detect errors
+        introduced by the refactoring.
+
+
+CREATING A NEW REFACTORING-----------------------------------------------------
+
+    The project at
+
+                        https://github.com/godoctor/demo
+
+    shows how to create a simple refactoring, including test cases.  Check out
+    that code before delving into the internals of the Go Doctor.
+
+
+RUN TESTS----------------------------------------------------------------------
+
+The following commands assume your working directory is
+$GOPATH/src/github.com/godoctor/godoctor
+
+To run all tests for all packages:
+    go test ./...               # Be patient!  It may take a while
+
+To run tests for refactorings only:
+    cd refactoring
+    go test                     # To run all tests for all refactorings
+    go test -filter=rename      # E.g., to test a specific refactoring
+    go test -filter=rename/023  # E.g., to run a particular test
+
+
+CHECK CODE COVERAGE FOR A TEST-------------------------------------------------
+
+See http://blog.golang.org/cover
+
+To display just the percentage of code covered:
+    go test -cover
+
+To open a Web browser showing individual lines covered/not covered:
+    go test -coverprofile=coverage.out && go tool cover -html=coverage.out
+
+
+INSTALL THE GO DOCTOR BINARY---------------------------------------------------
+
+Assuming that you have checked out the Go Doctor sources (as described below),
+all the tests pass (also described below), and your working directory is
+$GOPATH/src/github.com/godoctor/godoctor, run this command:
+
+    go install github.com/godoctor/godoctor
+
+
+VIEW GODOC IN YOUR BROWSER-----------------------------------------------------
+
+Viewing the Go Doctor's GoDoc is a good way to check that a package's API is
+sane, since it lets you see each package as a third-party developer would.
+
+In a shell, start the godoc server in the background:
+    godoc -http :8080 &
+Wait a minute for it to load (if your workspace is huge)
+Browse to http://localhost:8080/pkg/github.com/godoctor
+When you don't need it anymore, shut down the godoc server:
+    killall godoc
+
+If you have Go 1.3 or later, you can add type analysis:
+    godoc -analysis type -http :8080 &
+
+
+UPDATE THIRD-PARTY VENDORED DEPENDENCIES--------------------------------------- 
+
+    cd $GOPATH/src/github.com/godoctor/godoctor/internal
+    ./vendor.sh
+
+
+RELEASE PROCEDURE-------------------------------------------------------------- 
+
+    1. godoctor/gopatient - Should not require any changes
+
+    2. godoctor/demo - Make sure it still works
+
+    3. godoctor/godoctor.vim - Make sure it still works
+
+    4. godoctor/godoctor:
+       a. Merge relevant commits into master
+       b. Update version number (e.g., 0.5) in main.go
+       b. git tag -a v0.5    # Annotated tag
+          - Run "git show v0.2" to see an example of a commit message
+       c. git push origin v0.5
+
+    5. godoctor/www:
+       a. Make sure the home page has all refactorings listed
+       b. Follow instructions in README to update version number and docs
+       c. git tag v0.5    # Lightweight tag
+       d. git push origin v0.5
+       e. Publish web site (gcloud app deploy)
+
+
+GIT STUFF----------------------------------------------------------------------
+
+    A nice idea from http://fredkschott.com/post/2014/02/git-log-is-so-2005/
+    is to configure a "git lg" command that displays the git log in a more
+    compact, readable form that better illustrates branching structure:
+
+        $ git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit"
+
+
+CLONING THE GO DOCTOR GIT REPOSITORY
+
+    The source code for the Go Doctor should be stored in
+    $GOPATH/src/github.com/godoctor.  To set up a development workspace:
+
+        $ git clone https://github.com/godoctor/godoctor.git $GOPATH/src/github.com/godoctor
+
+    The following lines will cause "git pull" to rebase rather than merge:
+
+        $ git config branch.autosetuprebase always
+        $ git config branch.master.rebase true
+
+    If you have your own fork of the GitHub repository, you will want to store
+    it locally in $GOPATH/src/github.com/godoctor so that you do not have to
+    manually change all of the import paths.  Instead of the "git clone" line
+    above, use this:
+
+        $ git clone git@github.com:your_github_username/godoctor.git $GOPATH/src/github.com/godoctor
+
+
+DEVELOPING A NEW FEATURE OR BUG FIX
+
+    If you are planning to develop a new feature or fix a bug, fork the
+    Go Doctor repository at GitHub, develop the feature or bug fix in your
+    fork, and submit a pull request.
+
+
+EDITOR INTEGRATION-------------------------------------------------------------
+
+There are two ways to integrate the Go Doctor into a text editor or IDE: using
+the OpenRefactory JSON protocol, or by invoking the godoctor directly and
+parsing standard output and error.
+
+Currently, the Vim plug-in uses the latter approach, and the online
+demonstration at gorefactor.org uses the OpenRefactory protocol.
+
+
+               INTEGRATION USING THE OPENREFACTORY JSON PROTOCOL
+
+
+When the OpenRefactory JSON protocol is used, a text editor or IDE (the
+"client") engages in a dialog with the Go Doctor (the "server").  The client
+sends a command, and the server replies; the client sends another command, and
+the server replies.  Both commands and replies are in JSON format.
+
+The OpenRefactory protocol is documented at FIXME: URL
+
+When the Go Doctor is invoked with the --json command-line argument, it acts as
+an OpenRefactory protocol server, reading commands from standard input (one per
+line) and writing replies to standard output.  It continues reading commands
+until it reaches the end of input, an error occurs, or the close command is
+issued.
+
+An example dialog follows:
+
+    $ godoctor --json
+    stdin>    { "command": "open", "version": 0.1 }
+    stdout>   {"reply":"OK"}
+    stdin>    {"command": "list", "quality": "in_testing"}
+    stdout>   {"reply":"OK","transformations":[{"name":"Rename","shortName":"rename"},{"name":"Toggle var \u003c-\u003e :=","shortName":"toggle"},{"name":"Add GoDoc","shortName":"godoc"}]}
+    stdin>    {"command":"close"}
+
+Unfortunately, some clients cannot reasonably operate in this way -- writing a
+command, reading a reply, then writing another command, and reading another
+reply.  Vim is one such example.  Its ability to perform interprocess
+communication is extremely limited: it can execute a shell command and read its
+output.
+
+To accommodate clients like this, the --json flag can be followed by a JSON
+array containing a list of commands (excluding open and close commands, which
+are implied).  For example:
+
+    $ godoctor --json '[ {"command": "setdir", "mode": "local", "directory": "/temp"}, {"command": "list", "quality": "in_testing" } ]'
+
+Equivalently, the --json flag can be followed by "-", and the JSON array can be
+provided on standard input:
+
+    $ godoctor --json -
+    stdin>    [ {"command": "setdir", "mode": "local", "directory": "/temp"}, {"command": "list", "quality": "in_testing" } ]
+
+When an array of commands is given, the commands are executed in order.  If one
+of the commands fails, an error or failure reply is returned, and the server
+terminates.  If no commands fail, the reply to the last command is returned,
+and the server terminates.
+
+For more details, see the OpenRefactory Protocol Specification.
+
+
+          AD HOC INTEGRATION USING THE GODOCTOR COMMAND LINE INTERFACE
+
+
+The Vim integration supplied with the Go Doctor does not use the OpenRefactory
+JSON protocol, in order to avoid the need for a JSON parser.  Instead, it runs
+the godoctor executable directly.  The godoctor writes to standard output and
+standard error in a reasonably regular format; the Vim plug-in parses this
+output to provide "good enough" editor integration.
+
+The following describes, at a high level, how the Vim plug-in executes the
+godoctor binary and interprets its output.
+
+(1) List available refactorings
+
+    $ godoctor --list
+Refactoring    Description                                           Multifile?
+--------------------------------------------------------------------------------
+rename         Changes the name of an identifier                     true
+toggle         Toggles between a var declaration and := statement    false
+godoc          Adds stub GoDoc comments where they are missing       false
+
+    The output of this command has two header lines.  Each subsequent line
+    contains three tab-separated fields.  The first is a short name for a
+    refactoring.  The second is a brief synopsis (≤ 50 characters).  The third
+    field is "false" if the refactoring is guaranteed to affect only the file
+    containing the selection; if other files may be affected as well, this
+    field is "true".
+
+(2) Display usage information for a refactoring (e.g., rename)
+
+    $ godoctor rename
+Usage: rename <new_name>
+
+    The output of this command should be a single line containing a brief
+    synopsis of the refactoring's arguments, suitable for display to the user.
+
+(3) Perform a refactoring
+
+    There are several options for performing a refactoring.
+
+    (A) Input: Files vs. Standard Input
+
+        Usually, the file to refactor and the text selection in that file are
+        provided by passing -file and -pos flags to the godoctor executable.
+
+        $ godoctor -file main.go -pos 1,9:1,9 rename foo
+
+        (Note that the -pos flag can provide either a line/column selection or
+        an offset/length selection; see godoctor --help for details.)
+
+        If the -file flag is omitted, or if "-" is passed as the filename, then
+        the Go Doctor will read source code from standard input and refactor
+        that source code.  For example:
+
+        $ echo "package main" | godoctor -file - -pos 1,9:1,12 rename foo
+Defaulting to file scope for refactoring (provide an explicit scope to change this)
+<stdin>:1:9: Error: cannot rename main function inside main package: it will eliminate the program entrypoint
+    
+    (B) Output: Diff vs. Complete Files
+
+        When a refactoring is run, the Go Doctor's output is as follows:
+            1. An error log is written to standard error.  Errors, warnings,
+               and informational messages are written in a GCC-like format.
+               Note that some messages may have an associated filename and line
+               number, while others may not.
+            2. The output of the refactoring (a diff, or a list of the affected
+               files' modified contents) is written to standard output.
+
+        By default, the Go Doctor will output a patch file that can be applied
+        using GNU patch or a similar program.
+
+        $ echo "package main; var n int = 3" | godoctor -pos 18,1 rename nnn
+Defaulting to package scope example for refactoring (provide an explicit scope to change this)
+diff -u /dev/stdin /dev/stdout
+--- /dev/stdin
++++ /dev/stdout
+@@ -1,1 +1,1 @@
+-package main; var n int = 3
++package main; var nnn int = 3
+
+        Alternatively, if the -complete flag is given, the Go Doctor will
+        output the entire contents of all files affected by the refactoring.
+
+        $ echo "package main; var n int = 3" | godoctor -complete -pos 18,1 rename nnn
+Defaulting to package scope example for refactoring (provide an explicit scope to change this)
+@@@@@ /dev/stdin @@@@@ 30 @@@@@
+package main; var nnn int = 3
+
+        When the -complete flag is given, each line of the form
+            @@@@@@ filename @@@@@ bytes_in_modified_file @@@@@
+        marks the start of a file.  The subsequent lines, up to the next such
+        line or the end of input, are the refactored contents of that file.
+
+        When standard output and error are combined, as in
+
+            $ echo "package main; var n int = 3" | \
+              godoctor -complete -pos 18,1 rename nnn 2>&1
+
+        the error log is output first, and the first @@@@@ line marks the
+        beginning of the modifications made by the refactoring.  No error
+        messages should follow the first @@@@@ line.
+
+        Note that, when files are parsed from the -complete output, there is no
+        way to determine whether the file contained a newline at the end of the
+        file.  The Vim plug-in assumes that all files should end with a
+        trailing newline.

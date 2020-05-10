@@ -1,0 +1,16 @@
+Found 15 candidates:
+  const BestCompression untyped int
+  const BestSpeed untyped int
+  const DefaultCompression untyped int
+  const HuffmanOnly untyped int
+  const NoCompression untyped int
+  func NewReader(r io.Reader) (io.ReadCloser, error)
+  func NewReaderDict(r io.Reader, dict []byte) (io.ReadCloser, error)
+  func NewWriter(w io.Writer) *zlib.Writer
+  func NewWriterLevel(w io.Writer, level int) (*zlib.Writer, error)
+  func NewWriterLevelDict(w io.Writer, level int, dict []byte) (*zlib.Writer, error)
+  type Resetter interface
+  type Writer struct
+  var ErrChecksum error
+  var ErrDictionary error
+  var ErrHeader error

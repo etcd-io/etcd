@@ -1,0 +1,4 @@
+References to String:
+  ./testdata/debug/showreferences/main.go: offset 217, length 6
+  ./testdata/debug/showreferences/main.go: offset 33, length 6
+  ./testdata/debug/showreferences/main.go: offset 80, length 6

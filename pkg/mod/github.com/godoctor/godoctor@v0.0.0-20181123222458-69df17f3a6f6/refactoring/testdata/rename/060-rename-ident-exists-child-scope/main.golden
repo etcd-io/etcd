@@ -1,0 +1,21 @@
+package main
+
+import "fmt"
+
+var hello = ":-(" // This is a different renamed
+
+// Test for renaming the local variable renamed
+func main() {
+	hello = ":-)"  // Don't change this
+
+	var renamed string = "Hello"	// <<<<< rename,11,6,11,6,renamed,fail
+          if true {
+           renamed := "good"
+           fmt.Println(renamed)
+           fmt.Println(renamed)         
+           }  
+	var world string = "world"	
+	renamed = renamed + ", " + world
+	renamed += "!"
+	fmt.Println(renamed)
+}

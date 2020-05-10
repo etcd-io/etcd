@@ -1,0 +1,11 @@
+package main
+
+import "os"
+
+var test map[string]os.Error
+
+func main() {
+	for key, value := range test {
+		@
+	}
+}

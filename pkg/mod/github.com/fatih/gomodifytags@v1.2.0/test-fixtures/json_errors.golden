@@ -1,0 +1,13 @@
+{
+  "start": 4,
+  "end": 7,
+  "lines": [
+    "\tbar string   `json:\"bar\"`",
+    "\tt   bool     `json`",
+    "\ta   []string `json:\"a\"`",
+    "\tb   bool     `json:\"b\"`"
+  ],
+  "errors": [
+    "test-fixtures/json_errors.input:5:2:bad syntax for struct tag pair"
+  ]
+}

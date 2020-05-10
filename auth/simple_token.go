@@ -127,15 +127,11 @@ func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 
 	_, ok := t.simpleTokens[token]
 	if ok {
-		if t.lg != nil {
-			t.lg.Panic(
-				"failed to assign already-used simple token to a user",
-				zap.String("user-name", username),
-				zap.String("token", token),
-			)
-		} else {
-			plog.Panicf("token %s is already used", token)
-		}
+		t.lg.Panic(
+			"failed to assign already-used simple token to a user",
+			zap.String("user-name", username),
+			zap.String("token", token),
+		)
 	}
 
 	t.simpleTokens[token] = username
@@ -159,15 +155,11 @@ func (t *tokenSimple) invalidateUser(username string) {
 func (t *tokenSimple) enable() {
 	delf := func(tk string) {
 		if username, ok := t.simpleTokens[tk]; ok {
-			if t.lg != nil {
-				t.lg.Info(
-					"deleted a simple token",
-					zap.String("user-name", username),
-					zap.String("token", tk),
-				)
-			} else {
-				plog.Infof("deleting token %s for user %s", tk, username)
-			}
+			t.lg.Info(
+				"deleted a simple token",
+				zap.String("user-name", username),
+				zap.String("token", tk),
+			)
 			delete(t.simpleTokens, tk)
 		}
 	}
@@ -220,7 +212,7 @@ func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool
 	if len(splitted) != 2 {
 		return false
 	}
-	index, err := strconv.Atoi(splitted[1])
+	index, err := strconv.ParseUint(splitted[1], 10, 0)
 	if err != nil {
 		return false
 	}
@@ -235,6 +227,9 @@ func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool
 }
 
 func newTokenProviderSimple(lg *zap.Logger, indexWaiter func(uint64) <-chan struct{}) *tokenSimple {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	return &tokenSimple{
 		lg:           lg,
 		simpleTokens: make(map[string]string),

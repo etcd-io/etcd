@@ -1,0 +1,22 @@
+//<<<<<extract,14,2,15,8,foo,pass
+package main
+
+import "fmt"
+
+type Pt struct {
+	x, y int
+}
+
+func main() {
+	p := Pt{3, 4}
+	fmt.Println("Old Pt", p)
+	p.x = 5
+	p = foo(p)
+	fmt.Print("New Pt", p)
+}
+
+func foo(p Pt) Pt {
+	fmt.Println("The value of x is ", p.x)
+	p.y = 6
+	return p
+}

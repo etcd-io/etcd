@@ -1,0 +1,13 @@
+package main
+
+func main() {
+	var a int
+	var b bool
+	var c chan bool
+	uadd := +a
+	usub := -a
+	unot := !b
+	uxor := ^b
+	arro := <-c
+	@
+}

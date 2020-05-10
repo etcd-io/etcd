@@ -1,0 +1,8 @@
+Found 7 candidates:
+  func End() token.Pos
+  func IsExported() bool
+  func Pos() token.Pos
+  func String() string
+  var Name string
+  var NamePos token.Pos
+  var Obj *ast.Object

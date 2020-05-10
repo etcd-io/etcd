@@ -1,0 +1,382 @@
+<!--(
+     "Title": "Staticcheck"
+)-->
+
+
+<h2 id="overview">Overview</h2>
+
+<p>
+  Staticcheck is a static analysis toolset for the <a href="https://golang.org">Go programming language.</a>
+  It comes with a large number of checks,
+  integrates with various Go build systems
+  and offers enough customizability to fit into your workflows.
+</p>
+
+<h2 id="installation">Installation</h2>
+
+<p>
+  There are various ways in which you can install staticcheck,
+  but they all boil down to obtaining the command located at <code>honnef.co/go/tools/cmd/staticcheck</code>
+</p>
+
+<p>
+  If you use Go modules, you can simply run <code>go get honnef.co/go/tools/cmd/staticcheck</code> to obtain the latest released version.
+  If you're still using a GOPATH-based workflow, then the above command will instead fetch the master branch.
+  It is suggested that you explicitly check out the latest release branch instead, which is currently <code>2019.2</code>.
+  One way of doing so would be as follows:
+</p>
+
+<pre><code>cd $GOPATH/src/honnef.co/go/tools/cmd/staticcheck
+git checkout 2019.2
+go get
+go install
+</code></pre>
+
+<p>
+  Alternatively, you can <a href="https://github.com/dominikh/go-tools/releases">download pre-compiled binaries from GitHub.</a>
+</p>
+
+<p>
+  If you'd like to be notified of new releases, you can use GitHub's
+  <a href="https://help.github.com/en/articles/watching-and-unwatching-releases-for-a-repository"><em>Releases only</em> watches</a>.
+</p>
+
+<h2 id="running-the-tools">Running staticcheck</h2>
+
+<p>
+  Staticcheck can be run on code in several ways,
+  mimicking the way the official Go tools work.
+  At the core, it expects to be run on well-formed Go packages.
+  The most common way of specifying packages is via their import paths.
+  One or more packages can be specified in a single command,
+  and the <code>...</code> glob operator is supported.
+  All of the following examples are valid invocations:
+
+  <pre><code>staticcheck github.com/example/foo
+staticcheck github.com/example/foo github.com/example/bar
+staticcheck github.com/example/...</code></pre>
+</p>
+
+<p>
+  In addition, a single package can be specified as a list of files:
+
+  <pre><code>staticcheck file1.go file2.go file3.go</code></pre>
+
+  Note that <strong>all</strong> files of the package need to be specified,
+  similar to how <code>go build</code> works.
+</p>
+
+<h2 id="configuration">Configuration</h2>
+
+<p>
+  Various aspects of staticcheck can be customized with configuration files.
+</p>
+
+<p>
+  These files are placed in Go packages and apply recursively to the package tree rooted at the containing package.
+  For example, configuration placed in <code>pkg</code> will apply to <code>pkg</code>, <code>pkg/subpkg</code>, <code>pkg/subpkg/subsubpkg</code> and so on.
+</p>
+
+<p>
+  Configuration files in subpackages can override or inherit from settings of configuration files higher up the package tree.
+  Staticcheck's default configuration is represented as the virtual root of the configuration tree and can be inherited from.
+</p>
+
+<h3>Configuration format</h3>
+
+<p>
+  Staticcheck configuration files are named <code>staticcheck.conf</code> and contain <a href="https://github.com/toml-lang/toml">TOML</a>.
+</p>
+
+<p>
+  Any set option will override the same option from further up the package tree,
+  whereas unset options will inherit their values.
+  Additionally, the special value <code>"inherit"</code> can be used to inherit values.
+  This is especially useful for array values, as it allows adding and removing values to the inherited option.
+</p>
+
+<p>
+  The special value <code>"all"</code> matches all possible values.
+  Currently, this is only used when enabling checks.
+</p>
+
+<p>
+  Values prefixed with a minus sign,
+  such as <code>"-S1000"</code>
+  will exclude values from a list.
+  This can be used in combination with <code>"all"</code> to express "all but",
+  or in combination with <code>"inherit"</code> to remove values from the inherited option.
+</p>
+
+<h3>Options</h3>
+
+<p>
+  A list of all options and their explanations can be found on the <a href="/docs/options">Options</a> page.
+</p>
+
+<h3>Example configuration</h3>
+
+<p>
+  The following example configuration is the textual representation of staticcheck's default configuration.
+</p>
+
+<pre><code>{{ option "checks" }} = ["all", "-{{ check "ST1000" }}", "-{{ check "ST1003" }}", "-{{ check "ST1016" }}"]
+{{ option "initialisms" }} = ["ACL", "API", "ASCII", "CPU", "CSS", "DNS",
+	"EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID",
+	"IP", "JSON", "QPS", "RAM", "RPC", "SLA",
+	"SMTP", "SQL", "SSH", "TCP", "TLS", "TTL",
+	"UDP", "UI", "GID", "UID", "UUID", "URI",
+	"URL", "UTF8", "VM", "XML", "XMPP", "XSRF",
+	"XSS"]
+{{ option "dot_import_whitelist" }} = []
+{{ option "http_status_code_whitelist" }} = ["200", "400", "404", "500"]</code></pre>
+
+<h2 id="cli">Command-line flags</h2>
+
+<p>
+  In addition to configuration files, some aspects of staticcheck can be controlled via command-line flags.
+  These are settings that can vary between individual invocations or environments (CI, editors, ...) and shouldn't be stored in configuration files.
+</p>
+
+<table class="table">
+  <tr>
+    <th>Flag</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>-checks</td>
+    <td>
+      Allows overriding the list of checks to run.
+      Has the same syntax as the <a href="/docs/options#checks"><code>checks</code></a> setting
+      in configuration files.
+    </td>
+  </tr>
+  <tr>
+    <td>-explain</td>
+    <td>
+      Print the description of a check.
+    </td>
+  </tr>
+  <tr>
+    <td>-f</td>
+    <td>
+      Select between the different <a href="/docs/formatters">output formats</a>.
+    </td>
+  </tr>
+  <tr>
+    <td>-fail</td>
+    <td>
+      Specify the list of checks which,
+      if they find any issues in your code,
+      should cause staticcheck to exit with a non-zero status.
+      This can be used, for example, to not fail your CI
+      pipeline because of possible code simplifications.
+    </td>
+  </tr>
+  <tr>
+    <td>-go</td>
+    <td>
+      Select the Go version to target.
+      See
+      <a href="#targeting-go-versions">Targeting Go versions</a>
+      for more details.
+    </td>
+  </tr>
+  <tr>
+    <td style="white-space: nowrap">-show-ignored</td>
+    <td>
+      Show all problems found,
+      even those that were ignored by linter directives.
+    </td>
+  </tr>
+  <tr>
+    <td>-tags</td>
+    <td>
+      Similar to <code>go build -tags</code>,
+      allows specifiying the build tags to use.
+    </td>
+  </tr>
+  <tr>
+    <td>-tests</td>
+    <td>
+      Include tests in the analysis.
+    </td>
+  </tr>
+  <tr>
+    <td>-unused.whole-program</td>
+    <td>
+      Run unused in whole program mode.
+    </td>
+  </tr>
+  <tr>
+    <td>-version</td>
+    <td>
+      Display the version of staticcheck and exit.
+    </td>
+  </tr>
+</table>
+
+<h2 id="targeting-go-versions">Targeting Go versions</h2>
+
+<p>
+  By default, staticcheck will make suggestions that are correct for the current version of Go.
+  If you're wishing to support older versions of Go,
+  not all suggestions are applicable –
+  some simplifications are only valid for newer versions of Go
+  and deprecated functions may not have had viable alternatives in older versions.
+</p>
+
+<p>
+  To target a specific Go version you can use the <code>-go</code> command line flag.
+  For example, with <code>-go 1.6</code>, only suggestions that are valid for Go 1.6 will be made.
+</p>
+
+<h2 id="ignoring-problems">Ignoring problems</h2>
+
+<p>
+  In general, you shouldn't have to ignore problems reported by staticcheck.
+  Great care is taken to minimize the number of false positives and subjective suggestions.
+  Dubious code should be rewritten and genuine false positives should be reported so that they can be fixed.
+</p>
+
+<p>
+  The reality of things, however, is that not all corner cases can be taken into consideration.
+  Sometimes code just has to look weird enough to confuse tools,
+  and sometimes suggestions, though well-meant, just aren't applicable.
+  For those rare cases, there are several ways of ignoring unwanted problems.
+</p>
+
+<h3 id="line-based-linter-directives">Line-based linter directives</h3>
+
+<p>
+  The most fine-grained way of ignoring reported problems is to annotate the offending lines of code with linter directives.
+</p>
+
+<p>
+  The <code>//lint:ignore Check1[,Check2,...,CheckN] reason</code> directive
+  ignores one or more checks on the following line of code.
+  The <code>reason</code> is a required field
+  that must describe why the checks should be ignored for that line of code.
+  This field acts as documentation for other people (including future you) reading the code.
+</p>
+
+<p>
+  Let's consider the following example,
+  which intentionally checks that the results of two identical function calls are not equal:
+
+  <pre><code>func TestNewEqual(t *testing.T) {
+  if errors.New("abc") == errors.New("abc") {
+    t.Errorf(`New("abc") == New("abc")`)
+  }
+}</code></pre>
+</p>
+
+<p>
+  {{ check "SA4000" }} of staticcheck
+  will flag this code,
+  pointing out that the left and right side of <code>==</code> are identical –
+  usually indicative of a typo and a bug.
+</p>
+
+<p>
+  To silence this problem, we can use a linter directive:
+
+  <pre><code>func TestNewEqual(t *testing.T) {
+  //lint:ignore SA4000 we want to make sure that no two results of errors.New are ever the same
+  if errors.New("abc") == errors.New("abc") {
+    t.Errorf(`New("abc") == New("abc")`)
+  }
+}</code></pre>
+</p>
+
+<h4>Maintenance of linter directives</h4>
+
+<p>
+  It is crucial to update or remove outdated linter directives when code has been changed.
+  Staticcheck helps you with this by making unnecessary directives a problem of its own.
+  For example, for this (admittedly contrived) snippet of code
+
+  <pre><code>//lint:ignore SA1000 we love invalid regular expressions!
+regexp.Compile(".+")</code></pre>
+
+  staticcheck will report the following:
+
+  <pre><code>tmp.go:1:2: this linter directive didn't match anything; should it be removed?</code></pre>
+</p>
+
+<p>
+  Checks that have been disabled via configuration files
+  will not cause directives to be considered unnecessary.
+</p>
+
+<h3 id="file-based-linter-directives">File-based linter directives</h3>
+
+<p>
+  In some cases, you may want to disable checks for an entire file.
+  For example, code generation may leave behind a lot of unused code,
+  as it simplifies the generation process.
+  Instead of manually annotating every instance of unused code,
+  the code generator can inject a single, file-wide ignore directive to ignore the problem.
+</p>
+
+<p>
+  File-based linter directives look a lot like line-based ones:
+
+  <pre><code>//lint:file-ignore U1000 Ignore all unused code, it's generated</code></pre>
+</p>
+
+<p>
+  The only difference is that these comments aren't associated with any specific line of code.
+  Conventionally, these comments should be placed near the top of the file.
+</p>
+
+<p>
+  Unlike line-based directives, file-based ones will not be flagged for being unnecessary.
+</p>
+
+<h2 id="resource-usage">Resource usage</h2>
+
+<p>
+  Static analysis is a rather resource intensive process,
+  having to apply expensive algorithms to a lot of data.
+  Depending on the complexity of the checked code,
+  this can result in many gigabytes of memory usage and minutes (if not hours) of CPU time.
+</p>
+
+<p>
+  To combat the time complexity of static analysis, staticcheck makes use of caching.
+  It reuses Go's build cache as well as its own facts cache to avoid analysing dependencies whenever possible.
+  In development environments, there is usually nothing to do to benefit from these caches.
+  In CI, however, you have to ensure that the caches persist across successive runs of CI.
+  The build cache and fact cache are stored beneath the <code>os.UserCacheDir()</code> directory, in <code>go-build</code> and <code>staticcheck</code> respectively.
+  On Linux, by default, these directories can be found in <code>~/.cache/go-build</code> and <code>~/.cache/staticcheck</code>.
+</p>
+
+<p>
+  The overall memory consumption of staticcheck is controlled by the degree of parallelism.
+  The more CPU cores a system has available, the more packages will be checked in parallel, increasing the total amount of memory needed.
+  Staticcheck respects the <code>GOMAXPROCS</code> environment variable to control the degree of parallelism.
+</p>
+
+<p>
+  Note that reducing <code>GOMAXPROCS</code> only benefits systems with a lot of cores and code bases with a lot of packages.
+  As <code>GOMAXPROCS</code> approaches 1, peak memory usage will be dominated by the most complex package in the code base.
+  Additionally, smaller code bases may have such interconnected dependencies that peak parallelism is never reached, or there may simply be fewer packages than cores.
+  For example, when checking 10 packages it makes no difference if GOMAXPROCS is set to 32 or 16, at most 10 packages can be processed in parallel.
+</p>
+
+<p>
+  Furthermore, a certain amount of type information per package needs to be retained until the end of the process,
+  which means that overall memory usage grows with the number of checked packages.
+  You can reduce this effect by disabling the U1000 and U1001 checks via the <code>-checks</code> command line flag (e.g. via <code>staticcheck -checks="inherit,-U1000,-U1001"</code>).
+</p>
+
+<p>
+  Finally, you can trade execution time for memory usage by setting the <code>GOGC</code> environment variable to a value less than 100.
+  This will run more frequent garbage collection, potentially lowering peak memory usage, at the cost of spending more CPU.
+</p>
+
+
+<h2>Checks</h2>
+
+A list of all checks can be found on the <a href="/docs/checks">Checks</a> page.

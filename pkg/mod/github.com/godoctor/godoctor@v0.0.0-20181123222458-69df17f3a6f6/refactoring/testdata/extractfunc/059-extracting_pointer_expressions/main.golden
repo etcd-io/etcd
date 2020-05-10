@@ -1,0 +1,16 @@
+// <<<<< extract,10,2,10,13,Square,pass
+package main
+
+import "fmt"
+
+func main() {
+	x := 1.5
+	fmt.Println("x", x)
+	y := &x
+	Square(y)
+	fmt.Println("square(x)", *y)
+}
+
+func Square(y *float64) {
+	*y = *y * *y
+}

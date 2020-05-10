@@ -1,0 +1,11 @@
+package main
+
+import "fmt"
+
+func main() {
+	m := map[int]int{1: 11, 2: 22}
+	newVar := m
+	if v, found := newVar[2]; found { // <<<<< var,7,17,7,17,newVar,pass
+		fmt.Println(v)
+	}
+}

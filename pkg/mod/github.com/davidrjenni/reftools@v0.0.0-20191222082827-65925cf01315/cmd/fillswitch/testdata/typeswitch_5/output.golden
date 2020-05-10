@@ -1,0 +1,14 @@
+switch r := r.(type) {
+case *panicReader:
+case *foo.NopReader1:
+case *io.LimitedReader:
+case *io.PipeReader:
+case *io.SectionReader:
+case myReadWriter:
+case foo.NopReader2:
+case io.ReadCloser:
+case io.ReadSeeker:
+case io.ReadWriteCloser:
+case io.ReadWriteSeeker:
+case io.ReadWriter:
+}

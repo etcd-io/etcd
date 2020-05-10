@@ -17,7 +17,7 @@ package adapter
 import (
 	"context"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
 	grpc "google.golang.org/grpc"
 )
@@ -34,6 +34,10 @@ func (s *as2ac) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts .
 
 func (s *as2ac) AuthDisable(ctx context.Context, in *pb.AuthDisableRequest, opts ...grpc.CallOption) (*pb.AuthDisableResponse, error) {
 	return s.as.AuthDisable(ctx, in)
+}
+
+func (s *as2ac) AuthStatus(ctx context.Context, in *pb.AuthStatusRequest, opts ...grpc.CallOption) (*pb.AuthStatusResponse, error) {
+	return s.as.AuthStatus(ctx, in)
 }
 
 func (s *as2ac) Authenticate(ctx context.Context, in *pb.AuthenticateRequest, opts ...grpc.CallOption) (*pb.AuthenticateResponse, error) {

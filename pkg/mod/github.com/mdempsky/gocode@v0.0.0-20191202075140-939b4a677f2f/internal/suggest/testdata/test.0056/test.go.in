@@ -1,0 +1,5 @@
+package p
+
+import "sync"
+
+var _ = sync.Cond{@

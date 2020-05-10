@@ -1,0 +1,76 @@
+package complit
+
+type position struct { //@item(structPosition, "position", "struct{...}", "struct")
+	X, Y int //@item(fieldX, "X", "int", "field"),item(fieldY, "Y", "int", "field")
+}
+
+func _() {
+	_ = position{
+		//@complete("", fieldX, fieldY, structPosition)
+	}
+	_ = position{
+		X: 1,
+		//@complete("", fieldY)
+	}
+	_ = position{
+		//@complete("", fieldX)
+		Y: 1,
+	}
+	_ = []*position{
+        {
+            //@complete("", fieldX, fieldY, structPosition)
+        },
+	}
+}
+
+func _() {
+	var (
+		aa string //@item(aaVar, "aa", "string", "var")
+		ab int    //@item(abVar, "ab", "int", "var")
+	)
+
+	_ = map[int]int{
+		a: a, //@complete(":", abVar, aaVar),complete(",", abVar, aaVar)
+	}
+
+	_ = map[int]int{
+		//@complete("", abVar, aaVar, structPosition)
+	}
+
+	_ = []string{a: ""} //@complete(":", abVar, aaVar)
+	_ = [1]string{a: ""} //@complete(":", abVar, aaVar)
+
+	_ = position{X: a}   //@complete("}", abVar, aaVar)
+	_ = position{a}      //@complete("}", abVar, aaVar)
+	_ = position{a, }      //@complete("}", abVar, aaVar, structPosition)
+
+	_ = []int{a}  //@complete("a", abVar, aaVar, structPosition)
+	_ = [1]int{a} //@complete("a", abVar, aaVar, structPosition)
+
+	type myStruct struct {
+		AA int    //@item(fieldAA, "AA", "int", "field")
+		AB string //@item(fieldAB, "AB", "string", "field")
+	}
+
+	_ = myStruct{
+		AB: a, //@complete(",", aaVar, abVar)
+	}
+
+	var s myStruct
+
+	_ = map[int]string{1: "" + s.A}                                //@complete("}", fieldAB, fieldAA)
+	_ = map[int]string{1: (func(i int) string { return "" })(s.A)} //@complete(")}", fieldAA, fieldAB)
+	_ = map[int]string{1: func() string { s.A }}                   //@complete(" }", fieldAA, fieldAB)
+
+	_ = position{s.A} //@complete("}", fieldAA, fieldAB)
+
+	var X int //@item(varX, "X", "int", "var")
+	_ = position{X}      //@complete("}", fieldX, varX)
+}
+
+func _() {
+	_ := position{
+		X: 1, //@complete("X", fieldX),complete(" 1", structPosition)
+		Y: ,  //@complete(":", fieldY),complete(" ,", structPosition)
+	}
+}
