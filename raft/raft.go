@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -796,26 +795,17 @@ func (r *raft) campaign(t CampaignType) {
 		}
 		return
 	}
-	var ids []uint64
-	{
-		idMap := r.prs.Voters.IDs()
-		ids = make([]uint64, 0, len(idMap))
-		for id := range idMap {
-			ids = append(ids, id)
-		}
-		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	var ctx []byte
+	if t == campaignTransfer {
+		ctx = []byte(t)
 	}
+	ids := r.prs.VoterNodes()
 	for _, id := range ids {
 		if id == r.id {
-			continue
+			return
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, id, r.Term)
-
-		var ctx []byte
-		if t == campaignTransfer {
-			ctx = []byte(t)
-		}
 		r.send(pb.Message{Term: term, To: id, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
 	}
 }
