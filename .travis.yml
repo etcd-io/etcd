@@ -95,7 +95,7 @@ script:
       linux-amd64-functional)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
+          /bin/bash -c "GO_BUILD_FLAGS='-v -mod=mod' ./build && GOARCH=amd64 PASSES='functional' ./test"
         ;;
       linux-amd64-unit)
         docker run --rm \
@@ -107,12 +107,12 @@ script:
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='build' ./test \
             && GOARCH=386 PASSES='build' ./test \
-            && GO_BUILD_FLAGS='-v' GOOS=darwin GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOOS=windows GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=s390x ./build"
+            && GO_BUILD_FLAGS='-v -mod=mod' GOOS=darwin GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOOS=windows GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=arm ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=arm64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=ppc64le ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=s390x ./build"
         ;;
       linux-amd64-grpcproxy)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test
