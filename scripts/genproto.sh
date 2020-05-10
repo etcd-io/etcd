@@ -84,6 +84,7 @@ for dir in ${DIRS}; do
 		# shellcheck disable=SC1117
 		sed -i.bak -E "s/go.etcd.io\/etcd\//go.etcd.io\/etcd\/v3\//" ./*.pb.go
 		rm -f ./*.bak
+		gofmt -s -w ./*.pb.go
 		goimports -w ./*.pb.go
 	popd
 done
