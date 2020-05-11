@@ -1,0 +1,217 @@
+syntax = "proto3";
+option go_package = "examplepb";
+package grpc.gateway.examples.examplepb;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
+import "examples/sub/message.proto";
+import "examples/sub2/message.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  info: {
+    title: "A Bit of Everything";
+    version: "1.0";
+    contact: {
+      name: "gRPC-Gateway project";
+      url: "https://github.com/grpc-ecosystem/grpc-gateway";
+      email: "none@example.com";
+    };
+  };
+  // Overwriting host entry breaks tests, so this is not done here.
+  external_docs: {
+    url: "https://github.com/grpc-ecosystem/grpc-gateway";
+    description: "More about gRPC-Gateway";
+  }
+  schemes: HTTP;
+  schemes: HTTPS;
+  schemes: WSS;
+  consumes: "application/json";
+  consumes: "application/x-foo-mime";
+  produces: "application/json";
+  produces: "application/x-foo-mime";
+};
+
+
+// Intentionaly complicated message type to cover much features of Protobuf.
+// NEXT ID: 27
+message ABitOfEverything {
+	option (grpc.gateway.protoc_gen_swagger.options.openapiv2_schema) = {
+		external_docs: {
+			url: "https://github.com/grpc-ecosystem/grpc-gateway";
+			description: "Find out more about ABitOfEverything";
+		}
+	};
+
+	// Nested is nested type.
+	message Nested {
+		// name is nested field.
+		string name = 1;
+		uint32 amount = 2;
+		// DeepEnum is one or zero.
+		enum DeepEnum {
+			// FALSE is false.
+			FALSE = 0;
+			// TRUE is true.
+			TRUE = 1;
+		}
+		DeepEnum ok = 3;
+	}
+	Nested single_nested = 25;
+
+	string uuid = 1;
+	repeated Nested nested = 2;
+	float float_value = 3;
+	double double_value = 4;
+	int64 int64_value = 5;
+	uint64 uint64_value = 6;
+	int32 int32_value = 7;
+	fixed64 fixed64_value = 8;
+	fixed32 fixed32_value = 9;
+	bool bool_value = 10;
+	string string_value = 11;
+	// TODO(yugui) add bytes_value
+	uint32 uint32_value = 13;
+	NumericEnum enum_value = 14;
+	sfixed32 sfixed32_value = 15;
+	sfixed64 sfixed64_value = 16;
+	sint32 sint32_value = 17;
+	sint64 sint64_value = 18;
+	repeated string repeated_string_value = 19;
+	oneof oneof_value {
+		google.protobuf.Empty oneof_empty = 20;
+		string oneof_string = 21;
+	}
+
+	map<string, NumericEnum> map_value = 22;
+	map<string, string> mapped_string_value = 23;
+	map<string, Nested> mapped_nested_value = 24;
+
+	string nonConventionalNameValue = 26;
+
+	google.protobuf.Timestamp timestamp_value = 27;
+
+        // repeated enum value. it is comma-separated in query
+	repeated NumericEnum repeated_enum_value = 28;
+}
+
+message Body {
+	string name = 1;
+}
+
+message MessageWithBody {
+	string id = 1;
+	Body data = 2;
+}
+
+
+// NumericEnum is one or zero.
+enum NumericEnum {
+	// ZERO means 0
+	ZERO = 0;
+	// ONE means 1
+	ONE  = 1;
+}
+
+// ABitOfEverything service is used to validate that APIs with complicated
+// proto messages and URL templates are still processed correctly.
+service ABitOfEverythingService {
+
+	option (grpc.gateway.protoc_gen_swagger.options.openapiv2_tag) = {
+		description: "ABitOfEverythingService description -- which should not be used in place of the documentation comment!"
+		external_docs: {
+			url: "https://github.com/grpc-ecosystem/grpc-gateway";
+			description: "Find out more about EchoService";
+		}
+	};
+
+	rpc Create(ABitOfEverything) returns (ABitOfEverything) {
+		// TODO add enum_value
+		option (google.api.http) = {
+			post: "/v1/example/a_bit_of_everything/{float_value}/{double_value}/{int64_value}/separator/{uint64_value}/{int32_value}/{fixed64_value}/{fixed32_value}/{bool_value}/{string_value=strprefix/*}/{uint32_value}/{sfixed32_value}/{sfixed64_value}/{sint32_value}/{sint64_value}/{nonConventionalNameValue}"
+		};
+	}
+	rpc CreateBody(ABitOfEverything) returns (ABitOfEverything) {
+		option (google.api.http) = {
+			post: "/v1/example/a_bit_of_everything"
+			body: "*"
+		};
+	}
+	rpc Lookup(sub2.IdMessage) returns (ABitOfEverything) {
+		option (google.api.http) = {
+			get: "/v1/example/a_bit_of_everything/{uuid}"
+		};
+	}
+	rpc Update(ABitOfEverything) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			put: "/v1/example/a_bit_of_everything/{uuid}"
+			body: "*"
+		};
+	}
+	rpc Delete(sub2.IdMessage) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			delete: "/v1/example/a_bit_of_everything/{uuid}"
+		};
+	}
+	rpc GetQuery(ABitOfEverything) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			get: "/v1/example/a_bit_of_everything/query/{uuid}"
+		};
+		option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+		  deprecated: true // For testing purposes.
+		  external_docs: {
+		    url: "https://github.com/grpc-ecosystem/grpc-gateway";
+		    description: "Find out more about GetQuery";
+		  }
+		};
+	}
+	// Echo allows posting a StringMessage value.
+	//
+	// It also exposes multiple bindings.
+	//
+	// This makes it useful when validating that the OpenAPI v2 API
+	// description exposes documentation correctly on all paths
+	// defined as additional_bindings in the proto.
+	rpc Echo(grpc.gateway.examples.sub.StringMessage) returns (grpc.gateway.examples.sub.StringMessage) {
+		option (google.api.http) = {
+			get: "/v1/example/a_bit_of_everything/echo/{value}"
+			additional_bindings {
+				post: "/v2/example/echo"
+				body: "value"
+			}
+			additional_bindings {
+				get: "/v2/example/echo"
+			}
+		};
+		option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+			external_docs: {
+				url: "https://github.com/grpc-ecosystem/grpc-gateway";
+				description: "Find out more Echo";
+			}
+		};
+	}
+	rpc DeepPathEcho(ABitOfEverything) returns (ABitOfEverything) {
+		option (google.api.http) = {
+			post: "/v1/example/a_bit_of_everything/{single_nested.name}"
+			body: "*"
+		};
+	}
+	rpc NoBindings(google.protobuf.Duration) returns (google.protobuf.Empty) {}
+	rpc Timeout(google.protobuf.Empty) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			get: "/v2/example/timeout",
+		};
+	}
+	rpc GetMessageWithBody(MessageWithBody) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			post: "/v2/example/withbody/{id}",
+			body: "data"
+		};
+	}
+}
+
+service AnotherServiceWithNoBindings {
+	rpc NoBindings(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}

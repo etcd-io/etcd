@@ -1,0 +1,12 @@
+syntax = "proto3";
+package merge;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message A {
+  B B = 1 [(gogoproto.nullable) = false];
+}
+
+message B {
+  int64 c = 1;
+}

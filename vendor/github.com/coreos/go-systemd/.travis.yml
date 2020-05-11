@@ -1,0 +1,45 @@
+dist: trusty
+sudo: required
+services:
+  - docker
+
+language: go
+go:
+  - "1.10.x"
+  - "1.11.x"
+go_import_path: github.com/coreos/go-systemd
+
+env:
+  global:
+    - IMPORTPATH=github.com/coreos/go-systemd
+    - GOPATH=/opt
+    - DEP_BINDIR=/tmp
+    - BUILD_DIR=/opt/src/github.com/coreos/go-systemd
+  matrix:
+    - DOCKER_BASE=ubuntu:16.04
+    - DOCKER_BASE=ubuntu:18.04
+    - DOCKER_BASE=debian:stretch
+
+before_install:
+ - sudo apt-get -qq update
+ - sudo apt-get install -y libsystemd-journal-dev libsystemd-daemon-dev
+ - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | INSTALL_DIRECTORY=${DEP_BINDIR} sh
+ - ${DEP_BINDIR}/dep ensure -v
+ - docker pull ${DOCKER_BASE}
+ - docker run --privileged -e GOPATH=${GOPATH} --cidfile=/tmp/cidfile ${DOCKER_BASE} /bin/bash -c "apt-get update && apt-get install -y sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container"
+ - docker commit `cat /tmp/cidfile` go-systemd/container-tests
+ - rm -f /tmp/cidfile
+
+install:
+ - docker run --shm-size=2gb -d --cidfile=/tmp/cidfile --privileged -e GOPATH=${GOPATH} -v ${PWD}:${BUILD_DIR} go-systemd/container-tests /bin/systemd --system
+
+script:
+ - ./scripts/travis/pr-test.sh go_fmt
+ - ./scripts/travis/pr-test.sh build_source
+ - ./scripts/travis/pr-test.sh build_tests
+ - docker exec --privileged `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/travis/pr-test.sh run_tests"
+ - ./scripts/travis/pr-test.sh go_vet
+ - ./scripts/travis/pr-test.sh license_check
+
+after_script:
+ - docker kill `cat /tmp/cidfile`

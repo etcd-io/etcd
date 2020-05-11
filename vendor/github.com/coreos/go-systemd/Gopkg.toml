@@ -1,0 +1,11 @@
+[[constraint]]
+  name = "github.com/coreos/pkg"
+  version = "4.0.0"
+
+[[constraint]]
+  name = "github.com/godbus/dbus"
+  version = "5.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
