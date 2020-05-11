@@ -98,10 +98,6 @@ func (c Changer) LeaveJoint() (tracker.Config, tracker.ProgressMap, error) {
 		err := errors.New("can't leave a non-joint config")
 		return c.err(err)
 	}
-	if len(outgoing(cfg.Voters)) == 0 {
-		err := fmt.Errorf("configuration is not joint: %v", cfg)
-		return c.err(err)
-	}
 	for id := range cfg.LearnersNext {
 		nilAwareAdd(&cfg.Learners, id)
 		prs[id].IsLearner = true
