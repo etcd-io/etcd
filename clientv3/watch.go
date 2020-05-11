@@ -650,7 +650,11 @@ func (w *watchGrpcStream) run() {
 			return
 
 		case ws := <-w.closingc:
-			if ws.id != -1 {
+			if ws.id == -1 {
+				// this stream hasn't actually started, don't attempt to cancel
+			} else if _, ok := w.substreams[ws.id]; !ok {
+				// this is a duplicate cancellation, the substream no longer exists
+			} else {
 				// client is closing an established watch; close it on the server proactively instead of waiting
 				// to close when the next message arrives
 				cancelSet[ws.id] = struct{}{}
