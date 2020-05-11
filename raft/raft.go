@@ -802,7 +802,7 @@ func (r *raft) campaign(t CampaignType) {
 	ids := r.prs.VoterNodes()
 	for _, id := range ids {
 		if id == r.id {
-			return
+			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, id, r.Term)
