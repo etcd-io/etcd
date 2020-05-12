@@ -42,7 +42,7 @@ the args passed in, such as RPC context, method string, request to be sent, and
 CallOptions configured. With the info, users can even modify the RPC call. For
 instance, in the example, we examine the list of CallOptions and see if call
 credential has been configured. If not, configure it to use oauth2 with token
-"some-secrete-token" as fallback. In our example, we intentionally omit
+"some-secret-token" as fallback. In our example, we intentionally omit
 configuring the per RPC credential to resort to fallback.
 
 After pre-processing is done, use can invoke the RPC call by calling the

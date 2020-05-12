@@ -23,10 +23,8 @@
 package experimental
 
 import (
-	"google.golang.org/grpc/balancer"
-	xdsbalancer "google.golang.org/grpc/xds/internal/balancer"
+	_ "google.golang.org/grpc/xds/internal/balancer"             // Register the xds_balancer
+	_ "google.golang.org/grpc/xds/internal/balancer/cdsbalancer" // Register the cds balancer
+	_ "google.golang.org/grpc/xds/internal/resolver"             // Register the xds_resolver
+	_ "google.golang.org/grpc/xds/internal/resolver/old"         // Register the old xds_resolver
 )
-
-func init() {
-	balancer.Register(xdsbalancer.NewBalancerBuilder())
-}

@@ -11,7 +11,7 @@ To turn on the logs for debugging, run the code with the following environment v
 `GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info`. 
 
 ## Channelz
-We also provides a runtime debugging tool, Channelz, to help users with live debugging.
+We also provide a runtime debugging tool, Channelz, to help users with live debugging.
 
 See the channelz blog post here ([link](https://grpc.io/blog/a_short_introduction_to_channelz)) for
 details about how to use channelz service to debug live program.

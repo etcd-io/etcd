@@ -68,6 +68,10 @@ func timeChange(title string, val1, val2 time.Duration) string {
 		val2.String(), float64(val2-val1)*100/float64(val1))
 }
 
+func strDiff(title, val1, val2 string) string {
+	return fmt.Sprintf("%20s %12s %12s\n", title, val1, val2)
+}
+
 func compareTwoMap(m1, m2 map[string]stats.BenchResults) {
 	for k2, v2 := range m2 {
 		if v1, ok := m1[k2]; ok {
@@ -76,14 +80,16 @@ func compareTwoMap(m1, m2 map[string]stats.BenchResults) {
 			changes += intChange("TotalOps", v1.Data.TotalOps, v2.Data.TotalOps)
 			changes += intChange("SendOps", v1.Data.SendOps, v2.Data.SendOps)
 			changes += intChange("RecvOps", v1.Data.RecvOps, v2.Data.RecvOps)
-			changes += intChange("Bytes/op", v1.Data.AllocedBytes, v2.Data.AllocedBytes)
-			changes += intChange("Allocs/op", v1.Data.Allocs, v2.Data.Allocs)
+			changes += floatChange("Bytes/op", v1.Data.AllocedBytes, v2.Data.AllocedBytes)
+			changes += floatChange("Allocs/op", v1.Data.Allocs, v2.Data.Allocs)
 			changes += floatChange("ReqT/op", v1.Data.ReqT, v2.Data.ReqT)
 			changes += floatChange("RespT/op", v1.Data.RespT, v2.Data.RespT)
 			changes += timeChange("50th-Lat", v1.Data.Fiftieth, v2.Data.Fiftieth)
 			changes += timeChange("90th-Lat", v1.Data.Ninetieth, v2.Data.Ninetieth)
 			changes += timeChange("99th-Lat", v1.Data.NinetyNinth, v2.Data.NinetyNinth)
 			changes += timeChange("Avg-Lat", v1.Data.Average, v2.Data.Average)
+			changes += strDiff("GoVersion", v1.GoVersion, v2.GoVersion)
+			changes += strDiff("GrpcVersion", v1.GrpcVersion, v2.GrpcVersion)
 			fmt.Printf("%s\n", changes)
 		}
 	}
@@ -93,9 +99,16 @@ func compareBenchmark(file1, file2 string) {
 	compareTwoMap(createMap(file1), createMap(file2))
 }
 
-func printline(benchName, total, send, recv, allocB, allocN, reqT, respT, ltc50, ltc90, l99, lAvg interface{}) {
-	fmt.Printf("%-80v%12v%12v%12v%12v%12v%18v%18v%12v%12v%12v%12v\n",
-		benchName, total, send, recv, allocB, allocN, reqT, respT, ltc50, ltc90, l99, lAvg)
+func printHeader() {
+	fmt.Printf("%-80s%12s%12s%12s%18s%18s%18s%18s%12s%12s%12s%12s\n",
+		"Name", "TotalOps", "SendOps", "RecvOps", "Bytes/op (B)", "Allocs/op (#)",
+		"RequestT", "ResponseT", "L-50", "L-90", "L-99", "L-Avg")
+}
+
+func printline(benchName string, d stats.RunData) {
+	fmt.Printf("%-80s%12d%12d%12d%18.2f%18.2f%18.2f%18.2f%12v%12v%12v%12v\n",
+		benchName, d.TotalOps, d.SendOps, d.RecvOps, d.AllocedBytes, d.Allocs,
+		d.ReqT, d.RespT, d.Fiftieth, d.Ninetieth, d.NinetyNinth, d.Average)
 }
 
 func formatBenchmark(fileName string) {
@@ -122,12 +135,9 @@ func formatBenchmark(fileName string) {
 		wantFeatures[i] = !wantFeatures[i]
 	}
 
-	printline("Name", "TotalOps", "SendOps", "RecvOps", "Alloc (B)", "Alloc (#)",
-		"RequestT", "ResponseT", "L-50", "L-90", "L-99", "L-Avg")
+	printHeader()
 	for _, r := range results {
-		d := r.Data
-		printline(r.RunMode+r.Features.PrintableName(wantFeatures), d.TotalOps, d.SendOps, d.RecvOps,
-			d.AllocedBytes, d.Allocs, d.ReqT, d.RespT, d.Fiftieth, d.Ninetieth, d.NinetyNinth, d.Average)
+		printline(r.RunMode+r.Features.PrintableName(wantFeatures), r.Data)
 	}
 }
 

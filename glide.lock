@@ -184,7 +184,7 @@ imports:
   - googleapis/api/annotations
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 6eaf6f47437a6b4e2153a190160ef39a92c7eceb
+  version: f5b0812e6fe574d90da76b205e9eb51f6ddb1919
   subpackages:
   - balancer
   - balancer/base

@@ -143,8 +143,11 @@ var (
 		networkModeWAN:   latency.WAN,
 		networkLongHaul:  latency.Longhaul,
 	}
-	keepaliveTime    = 10 * time.Second // this is the minimum allowed
+	keepaliveTime    = 10 * time.Second
 	keepaliveTimeout = 1 * time.Second
+	// This is 0.8*keepaliveTime to prevent connection issues because of server
+	// keepalive enforcement.
+	keepaliveMinTime = 8 * time.Second
 )
 
 // runModes indicates the workloads to run. This is initialized with a call to
@@ -275,6 +278,16 @@ func makeClient(bf stats.Features) (testpb.BenchmarkServiceClient, func()) {
 		)
 	}
 	if bf.EnableKeepalive {
+		sopts = append(sopts,
+			grpc.KeepaliveParams(keepalive.ServerParameters{
+				Time:    keepaliveTime,
+				Timeout: keepaliveTimeout,
+			}),
+			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+				MinTime:             keepaliveMinTime,
+				PermitWithoutStream: true,
+			}),
+		)
 		opts = append(opts,
 			grpc.WithKeepaliveParams(keepalive.ClientParameters{
 				Time:                keepaliveTime,

@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	serverHost = flag.String("server_host", "127.0.0.1", "The server host name")
+	serverHost = flag.String("server_host", "localhost", "The server host name")
 	serverPort = flag.Int("server_port", 8080, "The server port number")
 	testCase   = flag.String("test_case", "goaway",
 		`Configure different test cases. Valid options are:

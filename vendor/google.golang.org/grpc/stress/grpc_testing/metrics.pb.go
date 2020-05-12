@@ -3,13 +3,14 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-
 import (
-	context "golang.org/x/net/context"
+	context "context"
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // Response message containing the gauge name and value
 type GaugeResponse struct {
@@ -40,16 +41,17 @@ func (m *GaugeResponse) Reset()         { *m = GaugeResponse{} }
 func (m *GaugeResponse) String() string { return proto.CompactTextString(m) }
 func (*GaugeResponse) ProtoMessage()    {}
 func (*GaugeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metrics_c9a45afc44ac5637, []int{0}
+	return fileDescriptor_6039342a2ba47b72, []int{0}
 }
+
 func (m *GaugeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GaugeResponse.Unmarshal(m, b)
 }
 func (m *GaugeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GaugeResponse.Marshal(b, m, deterministic)
 }
-func (dst *GaugeResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GaugeResponse.Merge(dst, src)
+func (m *GaugeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GaugeResponse.Merge(m, src)
 }
 func (m *GaugeResponse) XXX_Size() int {
 	return xxx_messageInfo_GaugeResponse.Size(m)
@@ -117,83 +119,13 @@ func (m *GaugeResponse) GetStringValue() string {
 	return ""
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*GaugeResponse) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _GaugeResponse_OneofMarshaler, _GaugeResponse_OneofUnmarshaler, _GaugeResponse_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*GaugeResponse) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*GaugeResponse_LongValue)(nil),
 		(*GaugeResponse_DoubleValue)(nil),
 		(*GaugeResponse_StringValue)(nil),
 	}
-}
-
-func _GaugeResponse_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*GaugeResponse)
-	// value
-	switch x := m.Value.(type) {
-	case *GaugeResponse_LongValue:
-		b.EncodeVarint(2<<3 | proto.WireVarint)
-		b.EncodeVarint(uint64(x.LongValue))
-	case *GaugeResponse_DoubleValue:
-		b.EncodeVarint(3<<3 | proto.WireFixed64)
-		b.EncodeFixed64(math.Float64bits(x.DoubleValue))
-	case *GaugeResponse_StringValue:
-		b.EncodeVarint(4<<3 | proto.WireBytes)
-		b.EncodeStringBytes(x.StringValue)
-	case nil:
-	default:
-		return fmt.Errorf("GaugeResponse.Value has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _GaugeResponse_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*GaugeResponse)
-	switch tag {
-	case 2: // value.long_value
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Value = &GaugeResponse_LongValue{int64(x)}
-		return true, err
-	case 3: // value.double_value
-		if wire != proto.WireFixed64 {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeFixed64()
-		m.Value = &GaugeResponse_DoubleValue{math.Float64frombits(x)}
-		return true, err
-	case 4: // value.string_value
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Value = &GaugeResponse_StringValue{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _GaugeResponse_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*GaugeResponse)
-	// value
-	switch x := m.Value.(type) {
-	case *GaugeResponse_LongValue:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(x.LongValue))
-	case *GaugeResponse_DoubleValue:
-		n += 1 // tag and wire
-		n += 8
-	case *GaugeResponse_StringValue:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.StringValue)))
-		n += len(x.StringValue)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // Request message containing the gauge name
@@ -208,16 +140,17 @@ func (m *GaugeRequest) Reset()         { *m = GaugeRequest{} }
 func (m *GaugeRequest) String() string { return proto.CompactTextString(m) }
 func (*GaugeRequest) ProtoMessage()    {}
 func (*GaugeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metrics_c9a45afc44ac5637, []int{1}
+	return fileDescriptor_6039342a2ba47b72, []int{1}
 }
+
 func (m *GaugeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GaugeRequest.Unmarshal(m, b)
 }
 func (m *GaugeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GaugeRequest.Marshal(b, m, deterministic)
 }
-func (dst *GaugeRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GaugeRequest.Merge(dst, src)
+func (m *GaugeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GaugeRequest.Merge(m, src)
 }
 func (m *GaugeRequest) XXX_Size() int {
 	return xxx_messageInfo_GaugeRequest.Size(m)
@@ -245,16 +178,17 @@ func (m *EmptyMessage) Reset()         { *m = EmptyMessage{} }
 func (m *EmptyMessage) String() string { return proto.CompactTextString(m) }
 func (*EmptyMessage) ProtoMessage()    {}
 func (*EmptyMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metrics_c9a45afc44ac5637, []int{2}
+	return fileDescriptor_6039342a2ba47b72, []int{2}
 }
+
 func (m *EmptyMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EmptyMessage.Unmarshal(m, b)
 }
 func (m *EmptyMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_EmptyMessage.Marshal(b, m, deterministic)
 }
-func (dst *EmptyMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EmptyMessage.Merge(dst, src)
+func (m *EmptyMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EmptyMessage.Merge(m, src)
 }
 func (m *EmptyMessage) XXX_Size() int {
 	return xxx_messageInfo_EmptyMessage.Size(m)
@@ -269,6 +203,28 @@ func init() {
 	proto.RegisterType((*GaugeResponse)(nil), "grpc.testing.GaugeResponse")
 	proto.RegisterType((*GaugeRequest)(nil), "grpc.testing.GaugeRequest")
 	proto.RegisterType((*EmptyMessage)(nil), "grpc.testing.EmptyMessage")
+}
+
+func init() { proto.RegisterFile("metrics.proto", fileDescriptor_6039342a2ba47b72) }
+
+var fileDescriptor_6039342a2ba47b72 = []byte{
+	// 256 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x91, 0x3f, 0x4f, 0xc3, 0x30,
+	0x10, 0xc5, 0x6b, 0x5a, 0xfe, 0xf4, 0x70, 0x3b, 0x78, 0xaa, 0xca, 0x40, 0x14, 0x96, 0x4c, 0x11,
+	0x82, 0x4f, 0x00, 0x08, 0xa5, 0x0c, 0x5d, 0x82, 0xc4, 0x8a, 0xd2, 0x70, 0xb2, 0x22, 0x39, 0x71,
+	0xf0, 0x5d, 0x2a, 0xf1, 0x49, 0x58, 0xf9, 0xa8, 0xc8, 0x4e, 0x55, 0xa5, 0x08, 0x75, 0xb3, 0x7e,
+	0xf7, 0xfc, 0xfc, 0x9e, 0x0f, 0x66, 0x35, 0xb2, 0xab, 0x4a, 0x4a, 0x5b, 0x67, 0xd9, 0x2a, 0xa9,
+	0x5d, 0x5b, 0xa6, 0x8c, 0xc4, 0x55, 0xa3, 0xe3, 0x6f, 0x01, 0xb3, 0xac, 0xe8, 0x34, 0xe6, 0x48,
+	0xad, 0x6d, 0x08, 0x95, 0x82, 0x49, 0x53, 0xd4, 0xb8, 0x10, 0x91, 0x48, 0xa6, 0x79, 0x38, 0xab,
+	0x6b, 0x00, 0x63, 0x1b, 0xfd, 0xbe, 0x2d, 0x4c, 0x87, 0x8b, 0x93, 0x48, 0x24, 0xe3, 0xd5, 0x28,
+	0x9f, 0x7a, 0xf6, 0xe6, 0x91, 0xba, 0x01, 0xf9, 0x61, 0xbb, 0x8d, 0xc1, 0x9d, 0x64, 0x1c, 0x89,
+	0x44, 0xac, 0x46, 0xf9, 0x65, 0x4f, 0xf7, 0x22, 0x62, 0x57, 0xed, 0x7d, 0x26, 0xfe, 0x05, 0x2f,
+	0xea, 0x69, 0x10, 0x3d, 0x9e, 0xc3, 0x69, 0x98, 0xc6, 0x31, 0xc8, 0x5d, 0xb0, 0xcf, 0x0e, 0x89,
+	0xff, 0xcb, 0x15, 0xcf, 0x41, 0x3e, 0xd7, 0x2d, 0x7f, 0xad, 0x91, 0xa8, 0xd0, 0x78, 0xf7, 0x23,
+	0x60, 0xbe, 0xee, 0xdb, 0xbe, 0xa2, 0xdb, 0x56, 0x25, 0xaa, 0x17, 0x90, 0x19, 0xf2, 0x83, 0x31,
+	0xc1, 0x8c, 0xd4, 0x32, 0x1d, 0xf6, 0x4f, 0x87, 0xd7, 0x97, 0x57, 0x87, 0xb3, 0x83, 0x7f, 0xb9,
+	0x15, 0xea, 0x09, 0x2e, 0x32, 0xe4, 0x40, 0xff, 0xda, 0x0c, 0x93, 0x1e, 0xb5, 0xd9, 0x9c, 0x85,
+	0x2d, 0xdc, 0xff, 0x06, 0x00, 0x00, 0xff, 0xff, 0x5e, 0x7d, 0xb2, 0xc9, 0x96, 0x01, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -348,6 +304,17 @@ type MetricsServiceServer interface {
 	GetGauge(context.Context, *GaugeRequest) (*GaugeResponse, error)
 }
 
+// UnimplementedMetricsServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedMetricsServiceServer struct {
+}
+
+func (*UnimplementedMetricsServiceServer) GetAllGauges(req *EmptyMessage, srv MetricsService_GetAllGaugesServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetAllGauges not implemented")
+}
+func (*UnimplementedMetricsServiceServer) GetGauge(ctx context.Context, req *GaugeRequest) (*GaugeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGauge not implemented")
+}
+
 func RegisterMetricsServiceServer(s *grpc.Server, srv MetricsServiceServer) {
 	s.RegisterService(&_MetricsService_serviceDesc, srv)
 }
@@ -408,26 +375,4 @@ var _MetricsService_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Metadata: "metrics.proto",
-}
-
-func init() { proto.RegisterFile("metrics.proto", fileDescriptor_metrics_c9a45afc44ac5637) }
-
-var fileDescriptor_metrics_c9a45afc44ac5637 = []byte{
-	// 256 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x91, 0x3f, 0x4f, 0xc3, 0x30,
-	0x10, 0xc5, 0x6b, 0x5a, 0xfe, 0xf4, 0x70, 0x3b, 0x78, 0xaa, 0xca, 0x40, 0x14, 0x96, 0x4c, 0x11,
-	0x82, 0x4f, 0x00, 0x08, 0xa5, 0x0c, 0x5d, 0x82, 0xc4, 0x8a, 0xd2, 0x70, 0xb2, 0x22, 0x39, 0x71,
-	0xf0, 0x5d, 0x2a, 0xf1, 0x49, 0x58, 0xf9, 0xa8, 0xc8, 0x4e, 0x55, 0xa5, 0x08, 0x75, 0xb3, 0x7e,
-	0xf7, 0xfc, 0xfc, 0x9e, 0x0f, 0x66, 0x35, 0xb2, 0xab, 0x4a, 0x4a, 0x5b, 0x67, 0xd9, 0x2a, 0xa9,
-	0x5d, 0x5b, 0xa6, 0x8c, 0xc4, 0x55, 0xa3, 0xe3, 0x6f, 0x01, 0xb3, 0xac, 0xe8, 0x34, 0xe6, 0x48,
-	0xad, 0x6d, 0x08, 0x95, 0x82, 0x49, 0x53, 0xd4, 0xb8, 0x10, 0x91, 0x48, 0xa6, 0x79, 0x38, 0xab,
-	0x6b, 0x00, 0x63, 0x1b, 0xfd, 0xbe, 0x2d, 0x4c, 0x87, 0x8b, 0x93, 0x48, 0x24, 0xe3, 0xd5, 0x28,
-	0x9f, 0x7a, 0xf6, 0xe6, 0x91, 0xba, 0x01, 0xf9, 0x61, 0xbb, 0x8d, 0xc1, 0x9d, 0x64, 0x1c, 0x89,
-	0x44, 0xac, 0x46, 0xf9, 0x65, 0x4f, 0xf7, 0x22, 0x62, 0x57, 0xed, 0x7d, 0x26, 0xfe, 0x05, 0x2f,
-	0xea, 0x69, 0x10, 0x3d, 0x9e, 0xc3, 0x69, 0x98, 0xc6, 0x31, 0xc8, 0x5d, 0xb0, 0xcf, 0x0e, 0x89,
-	0xff, 0xcb, 0x15, 0xcf, 0x41, 0x3e, 0xd7, 0x2d, 0x7f, 0xad, 0x91, 0xa8, 0xd0, 0x78, 0xf7, 0x23,
-	0x60, 0xbe, 0xee, 0xdb, 0xbe, 0xa2, 0xdb, 0x56, 0x25, 0xaa, 0x17, 0x90, 0x19, 0xf2, 0x83, 0x31,
-	0xc1, 0x8c, 0xd4, 0x32, 0x1d, 0xf6, 0x4f, 0x87, 0xd7, 0x97, 0x57, 0x87, 0xb3, 0x83, 0x7f, 0xb9,
-	0x15, 0xea, 0x09, 0x2e, 0x32, 0xe4, 0x40, 0xff, 0xda, 0x0c, 0x93, 0x1e, 0xb5, 0xd9, 0x9c, 0x85,
-	0x2d, 0xdc, 0xff, 0x06, 0x00, 0x00, 0xff, 0xff, 0x5e, 0x7d, 0xb2, 0xc9, 0x96, 0x01, 0x00, 0x00,
 }

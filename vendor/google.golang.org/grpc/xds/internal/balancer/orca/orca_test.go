@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/metadata"
-	orcapb "google.golang.org/grpc/xds/internal/proto/udpa/data/orca/v1/orca_load_report"
+	orcapb "google.golang.org/grpc/xds/internal/proto/udpa/data/orca/v1"
 )
 
 var (

@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"net"
 	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/testdata"
@@ -55,18 +56,40 @@ func TestTLSClone(t *testing.T) {
 type serverHandshake func(net.Conn) (AuthInfo, error)
 
 func TestClientHandshakeReturnsAuthInfo(t *testing.T) {
-	done := make(chan AuthInfo, 1)
-	lis := launchServer(t, tlsServerHandshake, done)
-	defer lis.Close()
-	lisAddr := lis.Addr().String()
-	clientAuthInfo := clientHandle(t, gRPCClientHandshake, lisAddr)
-	// wait until server sends serverAuthInfo or fails.
-	serverAuthInfo, ok := <-done
-	if !ok {
-		t.Fatalf("Error at server-side")
+	tcs := []struct {
+		name    string
+		address string
+	}{
+		{
+			name:    "localhost",
+			address: "localhost:0",
+		},
+		{
+			name:    "ipv4",
+			address: "127.0.0.1:0",
+		},
+		{
+			name:    "ipv6",
+			address: "[::1]:0",
+		},
 	}
-	if !compare(clientAuthInfo, serverAuthInfo) {
-		t.Fatalf("c.ClientHandshake(_, %v, _) = %v, want %v.", lisAddr, clientAuthInfo, serverAuthInfo)
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan AuthInfo, 1)
+			lis := launchServerOnListenAddress(t, tlsServerHandshake, done, tc.address)
+			defer lis.Close()
+			lisAddr := lis.Addr().String()
+			clientAuthInfo := clientHandle(t, gRPCClientHandshake, lisAddr)
+			// wait until server sends serverAuthInfo or fails.
+			serverAuthInfo, ok := <-done
+			if !ok {
+				t.Fatalf("Error at server-side")
+			}
+			if !compare(clientAuthInfo, serverAuthInfo) {
+				t.Fatalf("c.ClientHandshake(_, %v, _) = %v, want %v.", lisAddr, clientAuthInfo, serverAuthInfo)
+			}
+		})
 	}
 }
 
@@ -121,8 +144,16 @@ func compare(a1, a2 AuthInfo) bool {
 }
 
 func launchServer(t *testing.T, hs serverHandshake, done chan AuthInfo) net.Listener {
-	lis, err := net.Listen("tcp", "localhost:0")
+	return launchServerOnListenAddress(t, hs, done, "localhost:0")
+}
+
+func launchServerOnListenAddress(t *testing.T, hs serverHandshake, done chan AuthInfo, address string) net.Listener {
+	lis, err := net.Listen("tcp", address)
 	if err != nil {
+		if strings.Contains(err.Error(), "bind: cannot assign requested address") ||
+			strings.Contains(err.Error(), "socket: address family not supported by protocol") {
+			t.Skipf("no support for address %v", address)
+		}
 		t.Fatalf("Failed to listen: %v", err)
 	}
 	go serverHandle(t, hs, done, lis)

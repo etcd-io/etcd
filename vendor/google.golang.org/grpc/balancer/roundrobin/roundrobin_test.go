@@ -39,7 +39,7 @@ import (
 )
 
 type testServer struct {
-	testpb.TestServiceServer
+	testpb.UnimplementedTestServiceServer
 }
 
 func (s *testServer) EmptyCall(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error) {

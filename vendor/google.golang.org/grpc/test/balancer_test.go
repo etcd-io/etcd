@@ -49,7 +49,7 @@ type testBalancer struct {
 	sc balancer.SubConn
 
 	newSubConnOptions balancer.NewSubConnOptions
-	pickOptions       []balancer.PickOptions
+	pickInfos         []balancer.PickInfo
 	doneInfo          []balancer.DoneInfo
 }
 
@@ -70,7 +70,7 @@ func (b *testBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) 
 			grpclog.Errorf("testBalancer: failed to NewSubConn: %v", err)
 			return
 		}
-		b.cc.UpdateBalancerState(connectivity.Connecting, &picker{sc: b.sc, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: connectivity.Connecting, Picker: &picker{sc: b.sc, bal: b}})
 		b.sc.Connect()
 	}
 }
@@ -88,11 +88,11 @@ func (b *testBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connectiv
 
 	switch s {
 	case connectivity.Ready, connectivity.Idle:
-		b.cc.UpdateBalancerState(s, &picker{sc: sc, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{sc: sc, bal: b}})
 	case connectivity.Connecting:
-		b.cc.UpdateBalancerState(s, &picker{err: balancer.ErrNoSubConnAvailable, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{err: balancer.ErrNoSubConnAvailable, bal: b}})
 	case connectivity.TransientFailure:
-		b.cc.UpdateBalancerState(s, &picker{err: balancer.ErrTransientFailure, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{err: balancer.ErrTransientFailure, bal: b}})
 	}
 }
 
@@ -105,12 +105,13 @@ type picker struct {
 	bal *testBalancer
 }
 
-func (p *picker) Pick(ctx context.Context, opts balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
+func (p *picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	if p.err != nil {
-		return nil, nil, p.err
+		return balancer.PickResult{}, p.err
 	}
-	p.bal.pickOptions = append(p.bal.pickOptions, opts)
-	return p.sc, func(d balancer.DoneInfo) { p.bal.doneInfo = append(p.bal.doneInfo, d) }, nil
+	info.Ctx = nil // Do not validate context.
+	p.bal.pickInfos = append(p.bal.pickInfos, info)
+	return balancer.PickResult{SubConn: p.sc, Done: func(d balancer.DoneInfo) { p.bal.doneInfo = append(p.bal.doneInfo, d) }}, nil
 }
 
 func (s) TestCredsBundleFromBalancer(t *testing.T) {
@@ -177,8 +178,8 @@ func testDoneInfo(t *testing.T, e env) {
 	if len(b.doneInfo) < 2 || !reflect.DeepEqual(b.doneInfo[1].Trailer, testTrailerMetadata) {
 		t.Fatalf("b.doneInfo = %v; want b.doneInfo[1].Trailer = %v", b.doneInfo, testTrailerMetadata)
 	}
-	if len(b.pickOptions) != len(b.doneInfo) {
-		t.Fatalf("Got %d picks, but %d doneInfo, want equal amount", len(b.pickOptions), len(b.doneInfo))
+	if len(b.pickInfos) != len(b.doneInfo) {
+		t.Fatalf("Got %d picks, but %d doneInfo, want equal amount", len(b.pickInfos), len(b.doneInfo))
 	}
 	// To test done() is always called, even if it's returned with a non-Ready
 	// SubConn.
@@ -194,8 +195,8 @@ func testDoneInfo(t *testing.T, e env) {
 	}()
 	te.srv.Stop()
 	<-finished
-	if len(b.pickOptions) != len(b.doneInfo) {
-		t.Fatalf("Got %d picks, %d doneInfo, want equal amount", len(b.pickOptions), len(b.doneInfo))
+	if len(b.pickInfos) != len(b.doneInfo) {
+		t.Fatalf("Got %d picks, %d doneInfo, want equal amount", len(b.pickInfos), len(b.doneInfo))
 	}
 }
 
@@ -246,11 +247,11 @@ func testDoneLoads(t *testing.T, e env) {
 		t.Fatalf("TestService/EmptyCall(_, _) = _, %v, want _, %v", err, nil)
 	}
 
-	poWant := []balancer.PickOptions{
+	piWant := []balancer.PickInfo{
 		{FullMethodName: "/grpc.testing.TestService/EmptyCall"},
 	}
-	if !reflect.DeepEqual(b.pickOptions, poWant) {
-		t.Fatalf("b.pickOptions = %v; want %v", b.pickOptions, poWant)
+	if !reflect.DeepEqual(b.pickInfos, piWant) {
+		t.Fatalf("b.pickInfos = %v; want %v", b.pickInfos, piWant)
 	}
 
 	if len(b.doneInfo) < 1 {

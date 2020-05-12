@@ -40,28 +40,17 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/internal"
 	"google.golang.org/grpc/internal/backoff"
+	"google.golang.org/grpc/internal/resolver/dns"
 	"google.golang.org/grpc/resolver"
 )
 
 const (
-	lbTokeyKey             = "lb-token"
+	lbTokenKey             = "lb-token"
 	defaultFallbackTimeout = 10 * time.Second
 	grpclbName             = "grpclb"
 )
 
-var (
-	// defaultBackoffConfig configures the backoff strategy that's used when the
-	// init handshake in the RPC is unsuccessful. It's not for the clientconn
-	// reconnect backoff.
-	//
-	// It has the same value as the default grpc.DefaultBackoffConfig.
-	//
-	// TODO: make backoff configurable.
-	defaultBackoffConfig = backoff.Exponential{
-		MaxDelay: 120 * time.Second,
-	}
-	errServerTerminatedConnection = errors.New("grpclb: failed to recv server list: server terminated connection")
-)
+var errServerTerminatedConnection = errors.New("grpclb: failed to recv server list: server terminated connection")
 
 func convertDuration(d *durationpb.Duration) time.Duration {
 	if d == nil {
@@ -109,6 +98,7 @@ func (x *balanceLoadClientStream) Recv() (*lbpb.LoadBalanceResponse, error) {
 
 func init() {
 	balancer.Register(newLBBuilder())
+	dns.EnableSRVLookups = true
 }
 
 // newLBBuilder creates a builder for grpclb.
@@ -155,7 +145,7 @@ func (b *lbBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) bal
 		scStates:       make(map[balancer.SubConn]connectivity.State),
 		picker:         &errPicker{err: balancer.ErrNoSubConnAvailable},
 		clientStats:    newRPCStats(),
-		backoff:        defaultBackoffConfig, // TODO: make backoff configurable.
+		backoff:        backoff.DefaultExponential, // TODO: make backoff configurable.
 	}
 
 	var err error
@@ -172,6 +162,8 @@ func (b *lbBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) bal
 
 	return lb
 }
+
+var _ balancer.V2Balancer = (*lbBalancer)(nil) // Assert that we implement V2Balancer
 
 type lbBalancer struct {
 	cc     *lbCacheClientConn
@@ -197,7 +189,7 @@ type lbBalancer struct {
 	// send to remote LB ClientConn through this resolver.
 	manualResolver *lbManualResolver
 	// The ClientConn to talk to the remote balancer.
-	ccRemoteLB *grpc.ClientConn
+	ccRemoteLB *remoteBalancerCCWrapper
 	// backoff for calling remote balancer.
 	backoff backoff.Strategy
 
@@ -222,7 +214,7 @@ type lbBalancer struct {
 	state    connectivity.State
 	subConns map[resolver.Address]balancer.SubConn   // Used to new/remove SubConn.
 	scStates map[balancer.SubConn]connectivity.State // Used to filter READY SubConns.
-	picker   balancer.Picker
+	picker   balancer.V2Picker
 	// Support fallback to resolved backend addresses if there's no response
 	// from remote balancer within fallbackTimeout.
 	remoteBalancerConnected bool
@@ -377,7 +369,7 @@ func (lb *lbBalancer) updateStateAndPicker(forceRegeneratePicker bool, resetDrop
 		lb.regeneratePicker(resetDrop)
 	}
 
-	lb.cc.UpdateBalancerState(lb.state, lb.picker)
+	lb.cc.UpdateState(balancer.State{ConnectivityState: lb.state, Picker: lb.picker})
 }
 
 // fallbackToBackendsAfter blocks for fallbackTimeout and falls back to use
@@ -422,7 +414,12 @@ func (lb *lbBalancer) handleServiceConfig(gc *grpclbServiceConfig) {
 	lb.refreshSubConns(lb.backendAddrs, lb.inFallback, newUsePickFirst)
 }
 
-func (lb *lbBalancer) UpdateClientConnState(ccs balancer.ClientConnState) {
+func (lb *lbBalancer) ResolverError(error) {
+	// Ignore resolver errors.  GRPCLB is not selected unless the resolver
+	// works at least once.
+}
+
+func (lb *lbBalancer) UpdateClientConnState(ccs balancer.ClientConnState) error {
 	if grpclog.V(2) {
 		grpclog.Infof("lbBalancer: UpdateClientConnState: %+v", ccs)
 	}
@@ -430,8 +427,10 @@ func (lb *lbBalancer) UpdateClientConnState(ccs balancer.ClientConnState) {
 	lb.handleServiceConfig(gc)
 
 	addrs := ccs.ResolverState.Addresses
-	if len(addrs) <= 0 {
-		return
+	if len(addrs) == 0 {
+		// There should be at least one address, either grpclb server or
+		// fallback. Empty address is not valid.
+		return balancer.ErrBadResolverState
 	}
 
 	var remoteBalancerAddrs, backendAddrs []resolver.Address
@@ -444,31 +443,37 @@ func (lb *lbBalancer) UpdateClientConnState(ccs balancer.ClientConnState) {
 		}
 	}
 
-	if lb.ccRemoteLB == nil {
-		if len(remoteBalancerAddrs) <= 0 {
-			grpclog.Errorf("grpclb: no remote balancer address is available, should never happen")
-			return
+	if len(remoteBalancerAddrs) == 0 {
+		if lb.ccRemoteLB != nil {
+			lb.ccRemoteLB.close()
+			lb.ccRemoteLB = nil
 		}
+	} else if lb.ccRemoteLB == nil {
 		// First time receiving resolved addresses, create a cc to remote
 		// balancers.
-		lb.dialRemoteLB(remoteBalancerAddrs[0].ServerName)
+		lb.newRemoteBalancerCCWrapper()
 		// Start the fallback goroutine.
 		go lb.fallbackToBackendsAfter(lb.fallbackTimeout)
 	}
 
-	// cc to remote balancers uses lb.manualResolver. Send the updated remote
-	// balancer addresses to it through manualResolver.
-	lb.manualResolver.UpdateState(resolver.State{Addresses: remoteBalancerAddrs})
+	if lb.ccRemoteLB != nil {
+		// cc to remote balancers uses lb.manualResolver. Send the updated remote
+		// balancer addresses to it through manualResolver.
+		lb.manualResolver.UpdateState(resolver.State{Addresses: remoteBalancerAddrs})
+	}
 
 	lb.mu.Lock()
 	lb.resolvedBackendAddrs = backendAddrs
-	if lb.inFallback {
-		// This means we received a new list of resolved backends, and we are
-		// still in fallback mode. Need to update the list of backends we are
-		// using to the new list of backends.
+	if len(remoteBalancerAddrs) == 0 || lb.inFallback {
+		// If there's no remote balancer address in ClientConn update, grpclb
+		// enters fallback mode immediately.
+		//
+		// If a new update is received while grpclb is in fallback, update the
+		// list of backends being used to the new fallback backends.
 		lb.refreshSubConns(lb.resolvedBackendAddrs, true, lb.usePickFirst)
 	}
 	lb.mu.Unlock()
+	return nil
 }
 
 func (lb *lbBalancer) Close() {
@@ -479,7 +484,7 @@ func (lb *lbBalancer) Close() {
 	}
 	close(lb.doneCh)
 	if lb.ccRemoteLB != nil {
-		lb.ccRemoteLB.Close()
+		lb.ccRemoteLB.close()
 	}
 	lb.cc.close()
 }

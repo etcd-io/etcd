@@ -3,9 +3,11 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type ServerStats struct {
 	// wall clock time change in seconds since last reset
@@ -35,16 +37,17 @@ func (m *ServerStats) Reset()         { *m = ServerStats{} }
 func (m *ServerStats) String() string { return proto.CompactTextString(m) }
 func (*ServerStats) ProtoMessage()    {}
 func (*ServerStats) Descriptor() ([]byte, []int) {
-	return fileDescriptor_stats_8ba831c0cb3c3440, []int{0}
+	return fileDescriptor_b4756a0aec8b9d44, []int{0}
 }
+
 func (m *ServerStats) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ServerStats.Unmarshal(m, b)
 }
 func (m *ServerStats) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ServerStats.Marshal(b, m, deterministic)
 }
-func (dst *ServerStats) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ServerStats.Merge(dst, src)
+func (m *ServerStats) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ServerStats.Merge(m, src)
 }
 func (m *ServerStats) XXX_Size() int {
 	return xxx_messageInfo_ServerStats.Size(m)
@@ -89,16 +92,17 @@ func (m *HistogramParams) Reset()         { *m = HistogramParams{} }
 func (m *HistogramParams) String() string { return proto.CompactTextString(m) }
 func (*HistogramParams) ProtoMessage()    {}
 func (*HistogramParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_stats_8ba831c0cb3c3440, []int{1}
+	return fileDescriptor_b4756a0aec8b9d44, []int{1}
 }
+
 func (m *HistogramParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HistogramParams.Unmarshal(m, b)
 }
 func (m *HistogramParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_HistogramParams.Marshal(b, m, deterministic)
 }
-func (dst *HistogramParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_HistogramParams.Merge(dst, src)
+func (m *HistogramParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HistogramParams.Merge(m, src)
 }
 func (m *HistogramParams) XXX_Size() int {
 	return xxx_messageInfo_HistogramParams.Size(m)
@@ -140,16 +144,17 @@ func (m *HistogramData) Reset()         { *m = HistogramData{} }
 func (m *HistogramData) String() string { return proto.CompactTextString(m) }
 func (*HistogramData) ProtoMessage()    {}
 func (*HistogramData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_stats_8ba831c0cb3c3440, []int{2}
+	return fileDescriptor_b4756a0aec8b9d44, []int{2}
 }
+
 func (m *HistogramData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HistogramData.Unmarshal(m, b)
 }
 func (m *HistogramData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_HistogramData.Marshal(b, m, deterministic)
 }
-func (dst *HistogramData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_HistogramData.Merge(dst, src)
+func (m *HistogramData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HistogramData.Merge(m, src)
 }
 func (m *HistogramData) XXX_Size() int {
 	return xxx_messageInfo_HistogramData.Size(m)
@@ -218,16 +223,17 @@ func (m *ClientStats) Reset()         { *m = ClientStats{} }
 func (m *ClientStats) String() string { return proto.CompactTextString(m) }
 func (*ClientStats) ProtoMessage()    {}
 func (*ClientStats) Descriptor() ([]byte, []int) {
-	return fileDescriptor_stats_8ba831c0cb3c3440, []int{3}
+	return fileDescriptor_b4756a0aec8b9d44, []int{3}
 }
+
 func (m *ClientStats) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ClientStats.Unmarshal(m, b)
 }
 func (m *ClientStats) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ClientStats.Marshal(b, m, deterministic)
 }
-func (dst *ClientStats) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ClientStats.Merge(dst, src)
+func (m *ClientStats) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClientStats.Merge(m, src)
 }
 func (m *ClientStats) XXX_Size() int {
 	return xxx_messageInfo_ClientStats.Size(m)
@@ -273,9 +279,9 @@ func init() {
 	proto.RegisterType((*ClientStats)(nil), "grpc.testing.ClientStats")
 }
 
-func init() { proto.RegisterFile("stats.proto", fileDescriptor_stats_8ba831c0cb3c3440) }
+func init() { proto.RegisterFile("stats.proto", fileDescriptor_b4756a0aec8b9d44) }
 
-var fileDescriptor_stats_8ba831c0cb3c3440 = []byte{
+var fileDescriptor_b4756a0aec8b9d44 = []byte{
 	// 341 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0xc1, 0x4a, 0xeb, 0x40,
 	0x14, 0x86, 0x49, 0xd3, 0xf6, 0xb6, 0x27, 0xed, 0xbd, 0x97, 0x41, 0x24, 0x52, 0xd0, 0x1a, 0x5c,

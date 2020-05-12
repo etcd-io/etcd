@@ -22,13 +22,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	apb "github.com/golang/protobuf/ptypes/any"
 	dpb "github.com/golang/protobuf/ptypes/duration"
+	"github.com/google/go-cmp/cmp"
 	cpb "google.golang.org/genproto/googleapis/rpc/code"
 	epb "google.golang.org/genproto/googleapis/rpc/errdetails"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -318,10 +318,14 @@ func TestStatus_ErrorDetails_Fail(t *testing.T) {
 	}
 	for _, tc := range tests {
 		got := tc.s.Details()
-		if !reflect.DeepEqual(got, tc.i) {
+		if !cmp.Equal(got, tc.i, cmp.Comparer(proto.Equal), cmp.Comparer(equalError)) {
 			t.Errorf("(%v).Details() = %+v, want %+v", str(tc.s), got, tc.i)
 		}
 	}
+}
+
+func equalError(x, y error) bool {
+	return x == y || (x != nil && y != nil && x.Error() == y.Error())
 }
 
 func str(s *Status) string {

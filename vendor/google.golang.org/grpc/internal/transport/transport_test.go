@@ -38,9 +38,7 @@ import (
 	"golang.org/x/net/http2/hpack"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/internal/leakcheck"
-	"google.golang.org/grpc/internal/syscall"
 	"google.golang.org/grpc/internal/testutils"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 )
 
@@ -403,6 +401,13 @@ func (s *server) stop() {
 	s.mu.Unlock()
 }
 
+func (s *server) addr() string {
+	if s.lis == nil {
+		return ""
+	}
+	return s.lis.Addr().String()
+}
+
 func setUpServerOnly(t *testing.T, port int, serverConfig *ServerConfig, ht hType) *server {
 	server := &server{startedErr: make(chan error, 1), ready: make(chan struct{})}
 	go server.start(t, port, serverConfig, ht)
@@ -429,7 +434,7 @@ func setUpWithOptions(t *testing.T, port int, serverConfig *ServerConfig, ht hTy
 	return server, ct.(*http2Client), cancel
 }
 
-func setUpWithNoPingServer(t *testing.T, copts ConnectOptions, done chan net.Conn) (*http2Client, func()) {
+func setUpWithNoPingServer(t *testing.T, copts ConnectOptions, connCh chan net.Conn) (*http2Client, func()) {
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
@@ -440,10 +445,10 @@ func setUpWithNoPingServer(t *testing.T, copts ConnectOptions, done chan net.Con
 		conn, err := lis.Accept()
 		if err != nil {
 			t.Errorf("Error at server-side while accepting: %v", err)
-			close(done)
+			close(connCh)
 			return
 		}
-		done <- conn
+		connCh <- conn
 	}()
 	connectCtx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
 	tr, err := NewClientTransport(connectCtx, context.Background(), TargetInfo{Addr: lis.Addr().String()}, copts, func() {}, func(GoAwayReason) {}, func() {})
@@ -451,7 +456,7 @@ func setUpWithNoPingServer(t *testing.T, copts ConnectOptions, done chan net.Con
 		cancel() // Do not cancel in success path.
 		// Server clean-up.
 		lis.Close()
-		if conn, ok := <-done; ok {
+		if conn, ok := <-connCh; ok {
 			conn.Close()
 		}
 		t.Fatalf("Failed to dial: %v", err)
@@ -494,387 +499,6 @@ func TestInflightStreamClosing(t *testing.T) {
 		}
 	case <-timeout.C:
 		t.Fatalf("Test timed out, expected a status error.")
-	}
-}
-
-// TestMaxConnectionIdle tests that a server will send GoAway to a idle client.
-// An idle client is one who doesn't make any RPC calls for a duration of
-// MaxConnectionIdle time.
-func TestMaxConnectionIdle(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepaliveParams: keepalive.ServerParameters{
-			MaxConnectionIdle: 2 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, ConnectOptions{})
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-	stream, err := client.NewStream(context.Background(), &CallHdr{})
-	if err != nil {
-		t.Fatalf("Client failed to create RPC request: %v", err)
-	}
-	client.closeStream(stream, io.EOF, true, http2.ErrCodeCancel, nil, nil, false)
-	// wait for server to see that closed stream and max-age logic to send goaway after no new RPCs are mode
-	timeout := time.NewTimer(time.Second * 4)
-	select {
-	case <-client.GoAway():
-		if !timeout.Stop() {
-			<-timeout.C
-		}
-	case <-timeout.C:
-		t.Fatalf("Test timed out, expected a GoAway from the server.")
-	}
-}
-
-// TestMaxConenctionIdleNegative tests that a server will not send GoAway to a non-idle(busy) client.
-func TestMaxConnectionIdleNegative(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepaliveParams: keepalive.ServerParameters{
-			MaxConnectionIdle: 2 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, ConnectOptions{})
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-	_, err := client.NewStream(context.Background(), &CallHdr{})
-	if err != nil {
-		t.Fatalf("Client failed to create RPC request: %v", err)
-	}
-	timeout := time.NewTimer(time.Second * 4)
-	select {
-	case <-client.GoAway():
-		if !timeout.Stop() {
-			<-timeout.C
-		}
-		t.Fatalf("A non-idle client received a GoAway.")
-	case <-timeout.C:
-	}
-
-}
-
-// TestMaxConnectionAge tests that a server will send GoAway after a duration of MaxConnectionAge.
-func TestMaxConnectionAge(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepaliveParams: keepalive.ServerParameters{
-			MaxConnectionAge: 2 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, ConnectOptions{})
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-	_, err := client.NewStream(context.Background(), &CallHdr{})
-	if err != nil {
-		t.Fatalf("Client failed to create stream: %v", err)
-	}
-	// Wait for max-age logic to send GoAway.
-	timeout := time.NewTimer(4 * time.Second)
-	select {
-	case <-client.GoAway():
-		if !timeout.Stop() {
-			<-timeout.C
-		}
-	case <-timeout.C:
-		t.Fatalf("Test timer out, expected a GoAway from the server.")
-	}
-}
-
-const (
-	defaultWriteBufSize = 32 * 1024
-	defaultReadBufSize  = 32 * 1024
-)
-
-// TestKeepaliveServer tests that a server closes connection with a client that doesn't respond to keepalive pings.
-func TestKeepaliveServer(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepaliveParams: keepalive.ServerParameters{
-			Time:    2 * time.Second,
-			Timeout: 1 * time.Second,
-		},
-	}
-	server, c, cancel := setUpWithOptions(t, 0, serverConfig, suspended, ConnectOptions{})
-	defer cancel()
-	defer server.stop()
-	defer c.Close()
-	client, err := net.Dial("tcp", server.lis.Addr().String())
-	if err != nil {
-		t.Fatalf("Failed to dial: %v", err)
-	}
-	defer client.Close()
-
-	// Set read deadline on client conn so that it doesn't block forever in errorsome cases.
-	client.SetDeadline(time.Now().Add(10 * time.Second))
-
-	if n, err := client.Write(clientPreface); err != nil || n != len(clientPreface) {
-		t.Fatalf("Error writing client preface; n=%v, err=%v", n, err)
-	}
-	framer := newFramer(client, defaultWriteBufSize, defaultReadBufSize, 0)
-	if err := framer.fr.WriteSettings(http2.Setting{}); err != nil {
-		t.Fatal("Error writing settings frame:", err)
-	}
-	framer.writer.Flush()
-	// Wait for keepalive logic to close the connection.
-	time.Sleep(4 * time.Second)
-	b := make([]byte, 24)
-	for {
-		_, err = client.Read(b)
-		if err == nil {
-			continue
-		}
-		if err != io.EOF {
-			t.Fatalf("client.Read(_) = _,%v, want io.EOF", err)
-		}
-		break
-	}
-}
-
-// TestKeepaliveServerNegative tests that a server doesn't close connection with a client that responds to keepalive pings.
-func TestKeepaliveServerNegative(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepaliveParams: keepalive.ServerParameters{
-			Time:    2 * time.Second,
-			Timeout: 1 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, ConnectOptions{})
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-	// Give keepalive logic some time by sleeping.
-	time.Sleep(4 * time.Second)
-	// Assert that client is still active.
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	if client.state != reachable {
-		t.Fatalf("Test failed: Expected server-client connection to be healthy.")
-	}
-}
-
-func TestKeepaliveClientClosesIdleTransport(t *testing.T) {
-	done := make(chan net.Conn, 1)
-	tr, cancel := setUpWithNoPingServer(t, ConnectOptions{KeepaliveParams: keepalive.ClientParameters{
-		Time:                2 * time.Second, // Keepalive time = 2 sec.
-		Timeout:             1 * time.Second, // Keepalive timeout = 1 sec.
-		PermitWithoutStream: true,            // Run keepalive even with no RPCs.
-	}}, done)
-	defer cancel()
-	defer tr.Close()
-	conn, ok := <-done
-	if !ok {
-		t.Fatalf("Server didn't return connection object")
-	}
-	defer conn.Close()
-	// Sleep for keepalive to close the connection.
-	time.Sleep(4 * time.Second)
-	// Assert that the connection was closed.
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-	if tr.state == reachable {
-		t.Fatalf("Test Failed: Expected client transport to have closed.")
-	}
-}
-
-func TestKeepaliveClientStaysHealthyOnIdleTransport(t *testing.T) {
-	done := make(chan net.Conn, 1)
-	tr, cancel := setUpWithNoPingServer(t, ConnectOptions{KeepaliveParams: keepalive.ClientParameters{
-		Time:    2 * time.Second, // Keepalive time = 2 sec.
-		Timeout: 1 * time.Second, // Keepalive timeout = 1 sec.
-	}}, done)
-	defer cancel()
-	defer tr.Close()
-	conn, ok := <-done
-	if !ok {
-		t.Fatalf("server didn't reutrn connection object")
-	}
-	defer conn.Close()
-	// Give keepalive some time.
-	time.Sleep(4 * time.Second)
-	// Assert that connections is still healthy.
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-	if tr.state != reachable {
-		t.Fatalf("Test failed: Expected client transport to be healthy.")
-	}
-}
-
-func TestKeepaliveClientClosesWithActiveStreams(t *testing.T) {
-	done := make(chan net.Conn, 1)
-	tr, cancel := setUpWithNoPingServer(t, ConnectOptions{KeepaliveParams: keepalive.ClientParameters{
-		Time:    2 * time.Second, // Keepalive time = 2 sec.
-		Timeout: 1 * time.Second, // Keepalive timeout = 1 sec.
-	}}, done)
-	defer cancel()
-	defer tr.Close()
-	conn, ok := <-done
-	if !ok {
-		t.Fatalf("Server didn't return connection object")
-	}
-	defer conn.Close()
-	// Create a stream.
-	_, err := tr.NewStream(context.Background(), &CallHdr{})
-	if err != nil {
-		t.Fatalf("Failed to create a new stream: %v", err)
-	}
-	// Give keepalive some time.
-	time.Sleep(4 * time.Second)
-	// Assert that transport was closed.
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-	if tr.state == reachable {
-		t.Fatalf("Test failed: Expected client transport to have closed.")
-	}
-}
-
-func TestKeepaliveClientStaysHealthyWithResponsiveServer(t *testing.T) {
-	s, tr, cancel := setUpWithOptions(t, 0, &ServerConfig{MaxStreams: math.MaxUint32}, normal, ConnectOptions{KeepaliveParams: keepalive.ClientParameters{
-		Time:                2 * time.Second, // Keepalive time = 2 sec.
-		Timeout:             1 * time.Second, // Keepalive timeout = 1 sec.
-		PermitWithoutStream: true,            // Run keepalive even with no RPCs.
-	}})
-	defer cancel()
-	defer s.stop()
-	defer tr.Close()
-	// Give keep alive some time.
-	time.Sleep(4 * time.Second)
-	// Assert that transport is healthy.
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
-	if tr.state != reachable {
-		t.Fatalf("Test failed: Expected client transport to be healthy.")
-	}
-}
-
-func TestKeepaliveServerEnforcementWithAbusiveClientNoRPC(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepalivePolicy: keepalive.EnforcementPolicy{
-			MinTime: 2 * time.Second,
-		},
-	}
-	clientOptions := ConnectOptions{
-		KeepaliveParams: keepalive.ClientParameters{
-			Time:                50 * time.Millisecond,
-			Timeout:             1 * time.Second,
-			PermitWithoutStream: true,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, normal, clientOptions)
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-
-	timeout := time.NewTimer(10 * time.Second)
-	select {
-	case <-client.GoAway():
-		if !timeout.Stop() {
-			<-timeout.C
-		}
-	case <-timeout.C:
-		t.Fatalf("Test failed: Expected a GoAway from server.")
-	}
-	time.Sleep(500 * time.Millisecond)
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	if client.state == reachable {
-		t.Fatalf("Test failed: Expected the connection to be closed.")
-	}
-}
-
-func TestKeepaliveServerEnforcementWithAbusiveClientWithRPC(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepalivePolicy: keepalive.EnforcementPolicy{
-			MinTime: 2 * time.Second,
-		},
-	}
-	clientOptions := ConnectOptions{
-		KeepaliveParams: keepalive.ClientParameters{
-			Time:    50 * time.Millisecond,
-			Timeout: 1 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, clientOptions)
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-
-	if _, err := client.NewStream(context.Background(), &CallHdr{}); err != nil {
-		t.Fatalf("Client failed to create stream.")
-	}
-	timeout := time.NewTimer(10 * time.Second)
-	select {
-	case <-client.GoAway():
-		if !timeout.Stop() {
-			<-timeout.C
-		}
-	case <-timeout.C:
-		t.Fatalf("Test failed: Expected a GoAway from server.")
-	}
-	time.Sleep(500 * time.Millisecond)
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	if client.state == reachable {
-		t.Fatalf("Test failed: Expected the connection to be closed.")
-	}
-}
-
-func TestKeepaliveServerEnforcementWithObeyingClientNoRPC(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepalivePolicy: keepalive.EnforcementPolicy{
-			MinTime:             100 * time.Millisecond,
-			PermitWithoutStream: true,
-		},
-	}
-	clientOptions := ConnectOptions{
-		KeepaliveParams: keepalive.ClientParameters{
-			Time:                101 * time.Millisecond,
-			Timeout:             1 * time.Second,
-			PermitWithoutStream: true,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, normal, clientOptions)
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-
-	// Give keepalive enough time.
-	time.Sleep(3 * time.Second)
-	// Assert that connection is healthy.
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	if client.state != reachable {
-		t.Fatalf("Test failed: Expected connection to be healthy.")
-	}
-}
-
-func TestKeepaliveServerEnforcementWithObeyingClientWithRPC(t *testing.T) {
-	serverConfig := &ServerConfig{
-		KeepalivePolicy: keepalive.EnforcementPolicy{
-			MinTime: 100 * time.Millisecond,
-		},
-	}
-	clientOptions := ConnectOptions{
-		KeepaliveParams: keepalive.ClientParameters{
-			Time:    101 * time.Millisecond,
-			Timeout: 1 * time.Second,
-		},
-	}
-	server, client, cancel := setUpWithOptions(t, 0, serverConfig, suspended, clientOptions)
-	defer cancel()
-	defer server.stop()
-	defer client.Close()
-
-	if _, err := client.NewStream(context.Background(), &CallHdr{}); err != nil {
-		t.Fatalf("Client failed to create stream.")
-	}
-
-	// Give keepalive enough time.
-	time.Sleep(3 * time.Second)
-	// Assert that connection is healthy.
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	if client.state != reachable {
-		t.Fatalf("Test failed: Expected connection to be healthy.")
 	}
 }
 
@@ -2183,63 +1807,5 @@ func TestHeaderTblSize(t *testing.T) {
 	}
 	if i == 1000 {
 		t.Fatalf("expected len(limits) = 2 within 10s, got != 2")
-	}
-}
-
-// TestTCPUserTimeout tests that the TCP_USER_TIMEOUT socket option is set to the
-// keepalive timeout, as detailed in proposal A18
-func TestTCPUserTimeout(t *testing.T) {
-	tests := []struct {
-		time    time.Duration
-		timeout time.Duration
-	}{
-		{
-			10 * time.Second,
-			10 * time.Second,
-		},
-		{
-			0,
-			0,
-		},
-	}
-	for _, tt := range tests {
-		server, client, cancel := setUpWithOptions(
-			t,
-			0,
-			&ServerConfig{
-				KeepaliveParams: keepalive.ServerParameters{
-					Time:    tt.timeout,
-					Timeout: tt.timeout,
-				},
-			},
-			normal,
-			ConnectOptions{
-				KeepaliveParams: keepalive.ClientParameters{
-					Time:    tt.time,
-					Timeout: tt.timeout,
-				},
-			},
-		)
-		defer cancel()
-		defer server.stop()
-		defer client.Close()
-
-		stream, err := client.NewStream(context.Background(), &CallHdr{})
-		if err != nil {
-			t.Fatalf("Client failed to create RPC request: %v", err)
-		}
-		client.closeStream(stream, io.EOF, true, http2.ErrCodeCancel, nil, nil, false)
-
-		opt, err := syscall.GetTCPUserTimeout(client.conn)
-		if err != nil {
-			t.Fatalf("GetTCPUserTimeout error: %v", err)
-		}
-		if opt < 0 {
-			t.Skipf("skipping test on unsupported environment")
-		}
-		if timeoutMS := int(tt.timeout / time.Millisecond); timeoutMS != opt {
-			t.Fatalf("wrong TCP_USER_TIMEOUT set on conn. expected %d. got %d",
-				timeoutMS, opt)
-		}
 	}
 }

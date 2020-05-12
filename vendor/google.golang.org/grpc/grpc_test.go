@@ -24,6 +24,8 @@ import (
 
 	"google.golang.org/grpc/internal/grpctest"
 	"google.golang.org/grpc/internal/leakcheck"
+
+	_ "google.golang.org/grpc/grpclog/glogger"
 )
 
 type s struct{}

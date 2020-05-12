@@ -3,9 +3,11 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Extension struct {
 	Whatzit              *int32   `protobuf:"varint,1,opt,name=whatzit" json:"whatzit,omitempty"`
@@ -29,16 +31,17 @@ func (m *Extension) Reset()         { *m = Extension{} }
 func (m *Extension) String() string { return proto.CompactTextString(m) }
 func (*Extension) ProtoMessage()    {}
 func (*Extension) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proto2_ext_4437118420d604f2, []int{0}
+	return fileDescriptor_85b2817ade17959b, []int{0}
 }
+
 func (m *Extension) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Extension.Unmarshal(m, b)
 }
 func (m *Extension) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Extension.Marshal(b, m, deterministic)
 }
-func (dst *Extension) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Extension.Merge(dst, src)
+func (m *Extension) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Extension.Merge(m, src)
 }
 func (m *Extension) XXX_Size() int {
 	return xxx_messageInfo_Extension.Size(m)
@@ -90,9 +93,9 @@ func init() {
 	proto.RegisterExtension(E_Baz)
 }
 
-func init() { proto.RegisterFile("proto2_ext.proto", fileDescriptor_proto2_ext_4437118420d604f2) }
+func init() { proto.RegisterFile("proto2_ext.proto", fileDescriptor_85b2817ade17959b) }
 
-var fileDescriptor_proto2_ext_4437118420d604f2 = []byte{
+var fileDescriptor_85b2817ade17959b = []byte{
 	// 179 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x28, 0x28, 0xca, 0x2f,
 	0xc9, 0x37, 0x8a, 0x4f, 0xad, 0x28, 0xd1, 0x03, 0x33, 0x85, 0x78, 0xd2, 0x8b, 0x0a, 0x92, 0xf5,

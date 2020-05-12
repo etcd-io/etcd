@@ -3,9 +3,11 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // The type of payload that should be returned.
 type PayloadType int32
@@ -35,6 +37,7 @@ var PayloadType_name = map[int32]string{
 	1: "UNCOMPRESSABLE",
 	2: "RANDOM",
 }
+
 var PayloadType_value = map[string]int32{
 	"COMPRESSABLE":   0,
 	"UNCOMPRESSABLE": 1,
@@ -44,8 +47,9 @@ var PayloadType_value = map[string]int32{
 func (x PayloadType) String() string {
 	return proto.EnumName(PayloadType_name, int32(x))
 }
+
 func (PayloadType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{0}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{0}
 }
 
 // Compression algorithms
@@ -63,6 +67,7 @@ var CompressionType_name = map[int32]string{
 	1: "GZIP",
 	2: "DEFLATE",
 }
+
 var CompressionType_value = map[string]int32{
 	"NONE":    0,
 	"GZIP":    1,
@@ -72,8 +77,9 @@ var CompressionType_value = map[string]int32{
 func (x CompressionType) String() string {
 	return proto.EnumName(CompressionType_name, int32(x))
 }
+
 func (CompressionType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{1}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{1}
 }
 
 // A block of data, to simply increase gRPC message size.
@@ -91,16 +97,17 @@ func (m *Payload) Reset()         { *m = Payload{} }
 func (m *Payload) String() string { return proto.CompactTextString(m) }
 func (*Payload) ProtoMessage()    {}
 func (*Payload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{0}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{0}
 }
+
 func (m *Payload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Payload.Unmarshal(m, b)
 }
 func (m *Payload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Payload.Marshal(b, m, deterministic)
 }
-func (dst *Payload) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Payload.Merge(dst, src)
+func (m *Payload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Payload.Merge(m, src)
 }
 func (m *Payload) XXX_Size() int {
 	return xxx_messageInfo_Payload.Size(m)
@@ -139,16 +146,17 @@ func (m *EchoStatus) Reset()         { *m = EchoStatus{} }
 func (m *EchoStatus) String() string { return proto.CompactTextString(m) }
 func (*EchoStatus) ProtoMessage()    {}
 func (*EchoStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{1}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{1}
 }
+
 func (m *EchoStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EchoStatus.Unmarshal(m, b)
 }
 func (m *EchoStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_EchoStatus.Marshal(b, m, deterministic)
 }
-func (dst *EchoStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EchoStatus.Merge(dst, src)
+func (m *EchoStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EchoStatus.Merge(m, src)
 }
 func (m *EchoStatus) XXX_Size() int {
 	return xxx_messageInfo_EchoStatus.Size(m)
@@ -200,16 +208,17 @@ func (m *SimpleRequest) Reset()         { *m = SimpleRequest{} }
 func (m *SimpleRequest) String() string { return proto.CompactTextString(m) }
 func (*SimpleRequest) ProtoMessage()    {}
 func (*SimpleRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{2}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{2}
 }
+
 func (m *SimpleRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleRequest.Unmarshal(m, b)
 }
 func (m *SimpleRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SimpleRequest.Marshal(b, m, deterministic)
 }
-func (dst *SimpleRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SimpleRequest.Merge(dst, src)
+func (m *SimpleRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleRequest.Merge(m, src)
 }
 func (m *SimpleRequest) XXX_Size() int {
 	return xxx_messageInfo_SimpleRequest.Size(m)
@@ -287,16 +296,17 @@ func (m *SimpleResponse) Reset()         { *m = SimpleResponse{} }
 func (m *SimpleResponse) String() string { return proto.CompactTextString(m) }
 func (*SimpleResponse) ProtoMessage()    {}
 func (*SimpleResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{3}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{3}
 }
+
 func (m *SimpleResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleResponse.Unmarshal(m, b)
 }
 func (m *SimpleResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SimpleResponse.Marshal(b, m, deterministic)
 }
-func (dst *SimpleResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SimpleResponse.Merge(dst, src)
+func (m *SimpleResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleResponse.Merge(m, src)
 }
 func (m *SimpleResponse) XXX_Size() int {
 	return xxx_messageInfo_SimpleResponse.Size(m)
@@ -341,16 +351,17 @@ func (m *StreamingInputCallRequest) Reset()         { *m = StreamingInputCallReq
 func (m *StreamingInputCallRequest) String() string { return proto.CompactTextString(m) }
 func (*StreamingInputCallRequest) ProtoMessage()    {}
 func (*StreamingInputCallRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{4}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{4}
 }
+
 func (m *StreamingInputCallRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingInputCallRequest.Unmarshal(m, b)
 }
 func (m *StreamingInputCallRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingInputCallRequest.Marshal(b, m, deterministic)
 }
-func (dst *StreamingInputCallRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingInputCallRequest.Merge(dst, src)
+func (m *StreamingInputCallRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingInputCallRequest.Merge(m, src)
 }
 func (m *StreamingInputCallRequest) XXX_Size() int {
 	return xxx_messageInfo_StreamingInputCallRequest.Size(m)
@@ -381,16 +392,17 @@ func (m *StreamingInputCallResponse) Reset()         { *m = StreamingInputCallRe
 func (m *StreamingInputCallResponse) String() string { return proto.CompactTextString(m) }
 func (*StreamingInputCallResponse) ProtoMessage()    {}
 func (*StreamingInputCallResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{5}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{5}
 }
+
 func (m *StreamingInputCallResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingInputCallResponse.Unmarshal(m, b)
 }
 func (m *StreamingInputCallResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingInputCallResponse.Marshal(b, m, deterministic)
 }
-func (dst *StreamingInputCallResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingInputCallResponse.Merge(dst, src)
+func (m *StreamingInputCallResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingInputCallResponse.Merge(m, src)
 }
 func (m *StreamingInputCallResponse) XXX_Size() int {
 	return xxx_messageInfo_StreamingInputCallResponse.Size(m)
@@ -425,16 +437,17 @@ func (m *ResponseParameters) Reset()         { *m = ResponseParameters{} }
 func (m *ResponseParameters) String() string { return proto.CompactTextString(m) }
 func (*ResponseParameters) ProtoMessage()    {}
 func (*ResponseParameters) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{6}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{6}
 }
+
 func (m *ResponseParameters) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResponseParameters.Unmarshal(m, b)
 }
 func (m *ResponseParameters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ResponseParameters.Marshal(b, m, deterministic)
 }
-func (dst *ResponseParameters) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ResponseParameters.Merge(dst, src)
+func (m *ResponseParameters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseParameters.Merge(m, src)
 }
 func (m *ResponseParameters) XXX_Size() int {
 	return xxx_messageInfo_ResponseParameters.Size(m)
@@ -483,16 +496,17 @@ func (m *StreamingOutputCallRequest) Reset()         { *m = StreamingOutputCallR
 func (m *StreamingOutputCallRequest) String() string { return proto.CompactTextString(m) }
 func (*StreamingOutputCallRequest) ProtoMessage()    {}
 func (*StreamingOutputCallRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{7}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{7}
 }
+
 func (m *StreamingOutputCallRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingOutputCallRequest.Unmarshal(m, b)
 }
 func (m *StreamingOutputCallRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingOutputCallRequest.Marshal(b, m, deterministic)
 }
-func (dst *StreamingOutputCallRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingOutputCallRequest.Merge(dst, src)
+func (m *StreamingOutputCallRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingOutputCallRequest.Merge(m, src)
 }
 func (m *StreamingOutputCallRequest) XXX_Size() int {
 	return xxx_messageInfo_StreamingOutputCallRequest.Size(m)
@@ -551,16 +565,17 @@ func (m *StreamingOutputCallResponse) Reset()         { *m = StreamingOutputCall
 func (m *StreamingOutputCallResponse) String() string { return proto.CompactTextString(m) }
 func (*StreamingOutputCallResponse) ProtoMessage()    {}
 func (*StreamingOutputCallResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{8}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{8}
 }
+
 func (m *StreamingOutputCallResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingOutputCallResponse.Unmarshal(m, b)
 }
 func (m *StreamingOutputCallResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingOutputCallResponse.Marshal(b, m, deterministic)
 }
-func (dst *StreamingOutputCallResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingOutputCallResponse.Merge(dst, src)
+func (m *StreamingOutputCallResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingOutputCallResponse.Merge(m, src)
 }
 func (m *StreamingOutputCallResponse) XXX_Size() int {
 	return xxx_messageInfo_StreamingOutputCallResponse.Size(m)
@@ -591,16 +606,17 @@ func (m *ReconnectParams) Reset()         { *m = ReconnectParams{} }
 func (m *ReconnectParams) String() string { return proto.CompactTextString(m) }
 func (*ReconnectParams) ProtoMessage()    {}
 func (*ReconnectParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{9}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{9}
 }
+
 func (m *ReconnectParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReconnectParams.Unmarshal(m, b)
 }
 func (m *ReconnectParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ReconnectParams.Marshal(b, m, deterministic)
 }
-func (dst *ReconnectParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReconnectParams.Merge(dst, src)
+func (m *ReconnectParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReconnectParams.Merge(m, src)
 }
 func (m *ReconnectParams) XXX_Size() int {
 	return xxx_messageInfo_ReconnectParams.Size(m)
@@ -633,16 +649,17 @@ func (m *ReconnectInfo) Reset()         { *m = ReconnectInfo{} }
 func (m *ReconnectInfo) String() string { return proto.CompactTextString(m) }
 func (*ReconnectInfo) ProtoMessage()    {}
 func (*ReconnectInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_messages_5c70222ad96bf232, []int{10}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{10}
 }
+
 func (m *ReconnectInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReconnectInfo.Unmarshal(m, b)
 }
 func (m *ReconnectInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ReconnectInfo.Marshal(b, m, deterministic)
 }
-func (dst *ReconnectInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReconnectInfo.Merge(dst, src)
+func (m *ReconnectInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReconnectInfo.Merge(m, src)
 }
 func (m *ReconnectInfo) XXX_Size() int {
 	return xxx_messageInfo_ReconnectInfo.Size(m)
@@ -668,6 +685,8 @@ func (m *ReconnectInfo) GetBackoffMs() []int32 {
 }
 
 func init() {
+	proto.RegisterEnum("grpc.testing.PayloadType", PayloadType_name, PayloadType_value)
+	proto.RegisterEnum("grpc.testing.CompressionType", CompressionType_name, CompressionType_value)
 	proto.RegisterType((*Payload)(nil), "grpc.testing.Payload")
 	proto.RegisterType((*EchoStatus)(nil), "grpc.testing.EchoStatus")
 	proto.RegisterType((*SimpleRequest)(nil), "grpc.testing.SimpleRequest")
@@ -679,13 +698,11 @@ func init() {
 	proto.RegisterType((*StreamingOutputCallResponse)(nil), "grpc.testing.StreamingOutputCallResponse")
 	proto.RegisterType((*ReconnectParams)(nil), "grpc.testing.ReconnectParams")
 	proto.RegisterType((*ReconnectInfo)(nil), "grpc.testing.ReconnectInfo")
-	proto.RegisterEnum("grpc.testing.PayloadType", PayloadType_name, PayloadType_value)
-	proto.RegisterEnum("grpc.testing.CompressionType", CompressionType_name, CompressionType_value)
 }
 
-func init() { proto.RegisterFile("messages.proto", fileDescriptor_messages_5c70222ad96bf232) }
+func init() { proto.RegisterFile("messages.proto", fileDescriptor_4dc296cbfe5ffcd5) }
 
-var fileDescriptor_messages_5c70222ad96bf232 = []byte{
+var fileDescriptor_4dc296cbfe5ffcd5 = []byte{
 	// 652 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x55, 0x4d, 0x6f, 0xd3, 0x40,
 	0x10, 0xc5, 0xf9, 0xee, 0x24, 0x4d, 0xa3, 0x85, 0x82, 0x5b, 0x54, 0x11, 0x99, 0x4b, 0x54, 0x89,

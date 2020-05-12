@@ -111,7 +111,7 @@ func check(efer Errorfer, timeout time.Duration) {
 }
 
 // Check looks at the currently-running goroutines and checks if there are any
-// interestring (created by gRPC) goroutines leaked. It waits up to 10 seconds
+// interesting (created by gRPC) goroutines leaked. It waits up to 10 seconds
 // in the error cases.
 func Check(efer Errorfer) {
 	check(efer, 10*time.Second)

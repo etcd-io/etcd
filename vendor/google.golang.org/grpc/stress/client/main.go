@@ -53,7 +53,7 @@ var (
 	useTLS               = flag.Bool("use_tls", false, "Connection uses TLS if true, else plain TCP")
 	testCA               = flag.Bool("use_test_ca", false, "Whether to replace platform root CAs with test CA as the CA root")
 	tlsServerName        = flag.String("server_host_override", "foo.test.google.fr", "The server name use to verify the hostname returned by TLS handshake if it is not empty. Otherwise, --server_host is used.")
-	caFile               = flag.String("ca_file", "", "The file containning the CA root cert file")
+	caFile               = flag.String("ca_file", "", "The file containing the CA root cert file")
 )
 
 // testCaseWithWeight contains the test case type and its weight.

@@ -27,31 +27,20 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	ecpb "google.golang.org/grpc/examples/features/proto/echo"
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/testdata"
+
+	pb "google.golang.org/grpc/examples/features/proto/echo"
 )
 
 var port = flag.Int("port", 50051, "the port to serve on")
 
-type ecServer struct{}
-
-func (s *ecServer) UnaryEcho(ctx context.Context, req *ecpb.EchoRequest) (*ecpb.EchoResponse, error) {
-	return &ecpb.EchoResponse{Message: req.Message}, nil
+type ecServer struct {
+	pb.UnimplementedEchoServer
 }
 
-func (s *ecServer) ServerStreamingEcho(*ecpb.EchoRequest, ecpb.Echo_ServerStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
-}
-
-func (s *ecServer) ClientStreamingEcho(ecpb.Echo_ClientStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
-}
-
-func (s *ecServer) BidirectionalStreamingEcho(ecpb.Echo_BidirectionalStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+func (s *ecServer) UnaryEcho(ctx context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
+	return &pb.EchoResponse{Message: req.Message}, nil
 }
 
 func main() {
@@ -71,7 +60,7 @@ func main() {
 	s := grpc.NewServer(grpc.Creds(creds))
 
 	// Register EchoServer on the server.
-	ecpb.RegisterEchoServer(s, &ecServer{})
+	pb.RegisterEchoServer(s, &ecServer{})
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

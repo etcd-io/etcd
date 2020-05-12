@@ -217,3 +217,46 @@ func TestLBCacheClientConnReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Test that if the timer to remove a SubConn fires at the same time NewSubConn
+// cancels the timer, it doesn't cause deadlock.
+func TestLBCache_RemoveTimer_New_Race(t *testing.T) {
+	mcc := newMockClientConn()
+	if err := checkMockCC(mcc, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	ccc := newLBCacheClientConn(mcc)
+	ccc.timeout = time.Nanosecond
+	if err := checkCacheCC(ccc, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	sc, _ := ccc.NewSubConn([]resolver.Address{{Addr: "address1"}}, balancer.NewSubConnOptions{})
+	// One subconn in MockCC.
+	if err := checkMockCC(mcc, 1); err != nil {
+		t.Fatal(err)
+	}
+	// No subconn being deleted, and one in CacheCC.
+	if err := checkCacheCC(ccc, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{})
+
+	go func() {
+		for i := 0; i < 1000; i++ {
+			// Remove starts a timer with 1 ns timeout, the NewSubConn will race
+			// with with the timer.
+			ccc.RemoveSubConn(sc)
+			sc, _ = ccc.NewSubConn([]resolver.Address{{Addr: "address1"}}, balancer.NewSubConnOptions{})
+		}
+		close(done)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Test didn't finish within 1 second. Deadlock")
+	case <-done:
+	}
+}

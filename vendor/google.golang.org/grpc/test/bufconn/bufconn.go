@@ -37,7 +37,16 @@ type Listener struct {
 	done chan struct{}
 }
 
+// Implementation of net.Error providing timeout
+type netErrorTimeout struct {
+	error
+}
+
+func (e netErrorTimeout) Timeout() bool   { return true }
+func (e netErrorTimeout) Temporary() bool { return false }
+
 var errClosed = fmt.Errorf("closed")
+var errTimeout net.Error = netErrorTimeout{error: fmt.Errorf("i/o timeout")}
 
 // Listen returns a Listener that can only be contacted by its own Dialers and
 // creates buffered connections between the two.
@@ -104,6 +113,13 @@ type pipe struct {
 	wwait sync.Cond
 	rwait sync.Cond
 
+	// Indicate that a write/read timeout has occurred
+	wtimedout bool
+	rtimedout bool
+
+	wtimer *time.Timer
+	rtimer *time.Timer
+
 	closed      bool
 	writeClosed bool
 }
@@ -112,6 +128,9 @@ func newPipe(sz int) *pipe {
 	p := &pipe{buf: make([]byte, 0, sz)}
 	p.wwait.L = &p.mu
 	p.rwait.L = &p.mu
+
+	p.wtimer = time.AfterFunc(0, func() {})
+	p.rtimer = time.AfterFunc(0, func() {})
 	return p
 }
 
@@ -137,6 +156,10 @@ func (p *pipe) Read(b []byte) (n int, err error) {
 		if p.writeClosed {
 			return 0, io.EOF
 		}
+		if p.rtimedout {
+			return 0, errTimeout
+		}
+
 		p.rwait.Wait()
 	}
 	wasFull := p.full()
@@ -171,6 +194,10 @@ func (p *pipe) Write(b []byte) (n int, err error) {
 			if !p.full() {
 				break
 			}
+			if p.wtimedout {
+				return 0, errTimeout
+			}
+
 			p.wwait.Wait()
 		}
 		wasEmpty := p.empty()
@@ -232,11 +259,48 @@ func (c *conn) Close() error {
 	return err2
 }
 
-func (*conn) LocalAddr() net.Addr                  { return addr{} }
-func (*conn) RemoteAddr() net.Addr                 { return addr{} }
-func (c *conn) SetDeadline(t time.Time) error      { return fmt.Errorf("unsupported") }
-func (c *conn) SetReadDeadline(t time.Time) error  { return fmt.Errorf("unsupported") }
-func (c *conn) SetWriteDeadline(t time.Time) error { return fmt.Errorf("unsupported") }
+func (c *conn) SetDeadline(t time.Time) error {
+	c.SetReadDeadline(t)
+	c.SetWriteDeadline(t)
+	return nil
+}
+
+func (c *conn) SetReadDeadline(t time.Time) error {
+	p := c.Reader.(*pipe)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.rtimer.Stop()
+	p.rtimedout = false
+	if !t.IsZero() {
+		p.rtimer = time.AfterFunc(time.Until(t), func() {
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			p.rtimedout = true
+			p.rwait.Broadcast()
+		})
+	}
+	return nil
+}
+
+func (c *conn) SetWriteDeadline(t time.Time) error {
+	p := c.Writer.(*pipe)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.wtimer.Stop()
+	p.wtimedout = false
+	if !t.IsZero() {
+		p.wtimer = time.AfterFunc(time.Until(t), func() {
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			p.wtimedout = true
+			p.wwait.Broadcast()
+		})
+	}
+	return nil
+}
+
+func (*conn) LocalAddr() net.Addr  { return addr{} }
+func (*conn) RemoteAddr() net.Addr { return addr{} }
 
 type addr struct{}
 

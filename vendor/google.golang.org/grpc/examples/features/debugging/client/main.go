@@ -20,17 +20,18 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/channelz/service"
-	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
+
+	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 )
 
 const (

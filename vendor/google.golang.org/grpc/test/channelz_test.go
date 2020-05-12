@@ -230,7 +230,7 @@ func (s) TestCZNestedChannelRegistrationAndDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`)})
+	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)})
 
 	// wait for the shutdown of grpclb balancer
 	if err := verifyResultWithDelay(func() (bool, error) {
@@ -846,21 +846,6 @@ func doServerSideInitiatedFailedStreamWithGoAway(tc testpb.TestServiceClient, t 
 	}
 }
 
-// this func is to be used to test client side counting of failed streams.
-func doServerSideInitiatedFailedStreamWithClientBreakFlowControl(tc testpb.TestServiceClient, t *testing.T, dw *dialerWrapper) {
-	stream, err := tc.FullDuplexCall(context.Background())
-	if err != nil {
-		t.Fatalf("TestService/FullDuplexCall(_) = _, %v, want <nil>", err)
-	}
-	// sleep here to make sure header frame being sent before the data frame we write directly below.
-	time.Sleep(10 * time.Millisecond)
-	payload := make([]byte, 65537)
-	dw.getRawConnWrapper().writeRawFrame(http2.FrameData, 0, tc.(*testServiceClientWrapper).getCurrentStreamID(), payload)
-	if _, err := stream.Recv(); err == nil || status.Code(err) != codes.ResourceExhausted {
-		t.Fatalf("%v.Recv() = %v, want error code: %v", stream, err, codes.ResourceExhausted)
-	}
-}
-
 func doIdleCallToInvokeKeepAlive(tc testpb.TestServiceClient, t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_, err := tc.FullDuplexCall(ctx)
@@ -981,12 +966,35 @@ func (s) TestCZClientAndServerSocketMetricsStreamsCountFlowControlRSTStream(t *t
 	// Avoid overflowing connection level flow control window, which will lead to
 	// transport being closed.
 	te.serverInitialConnWindowSize = 65536 * 2
-	te.startServer(&testServer{security: e.security})
+	ts := &funcServer{fullDuplexCall: func(stream testpb.TestService_FullDuplexCallServer) error {
+		stream.Send(&testpb.StreamingOutputCallResponse{})
+		<-stream.Context().Done()
+		return status.Errorf(codes.DeadlineExceeded, "deadline exceeded or cancelled")
+	}}
+	te.startServer(ts)
 	defer te.tearDown()
 	cc, dw := te.clientConnWithConnControl()
 	tc := &testServiceClientWrapper{TestServiceClient: testpb.NewTestServiceClient(cc)}
 
-	doServerSideInitiatedFailedStreamWithClientBreakFlowControl(tc, t, dw)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	stream, err := tc.FullDuplexCall(ctx)
+	if err != nil {
+		t.Fatalf("TestService/FullDuplexCall(_) = _, %v, want <nil>", err)
+	}
+	if _, err := stream.Recv(); err != nil {
+		t.Fatalf("stream.Recv() = %v, want nil", err)
+	}
+	go func() {
+		payload := make([]byte, 16384)
+		for i := 0; i < 6; i++ {
+			dw.getRawConnWrapper().writeRawFrame(http2.FrameData, 0, tc.getCurrentStreamID(), payload)
+		}
+	}()
+	if _, err := stream.Recv(); status.Code(err) != codes.ResourceExhausted {
+		t.Fatalf("stream.Recv() = %v, want error code: %v", err, codes.ResourceExhausted)
+	}
+	cancel()
+
 	if err := verifyResultWithDelay(func() (bool, error) {
 		tchan, _ := channelz.GetTopChannels(0, 0)
 		if len(tchan) != 1 {
@@ -1265,11 +1273,23 @@ func (s) TestCZServerSocketMetricsKeepAlive(t *testing.T) {
 	defer czCleanupWrapper(czCleanup, t)
 	e := tcpClearRREnv
 	te := newTest(t, e)
-	te.customServerOptions = append(te.customServerOptions, grpc.KeepaliveParams(keepalive.ServerParameters{Time: time.Second, Timeout: 500 * time.Millisecond}))
+	// We setup the server keepalive parameters to send one keepalive every
+	// second, and verify that the actual number of keepalives is very close to
+	// the number of seconds elapsed in the test.  We had a bug wherein the
+	// server was sending one keepalive every [Time+Timeout] instead of every
+	// [Time] period, and since Timeout is configured to a low value here, we
+	// should be able to verify that the fix works with the above mentioned
+	// logic.
+	kpOption := grpc.KeepaliveParams(keepalive.ServerParameters{
+		Time:    time.Second,
+		Timeout: 100 * time.Millisecond,
+	})
+	te.customServerOptions = append(te.customServerOptions, kpOption)
 	te.startServer(&testServer{security: e.security})
 	defer te.tearDown()
 	cc := te.clientConn()
 	tc := testpb.NewTestServiceClient(cc)
+	start := time.Now()
 	doIdleCallToInvokeKeepAlive(tc, t)
 
 	if err := verifyResultWithDelay(func() (bool, error) {
@@ -1281,8 +1301,9 @@ func (s) TestCZServerSocketMetricsKeepAlive(t *testing.T) {
 		if len(ns) != 1 {
 			return false, fmt.Errorf("there should be one server normal socket, not %d", len(ns))
 		}
-		if ns[0].SocketData.KeepAlivesSent != 2 { // doIdleCallToInvokeKeepAlive func is set up to send 2 KeepAlives.
-			return false, fmt.Errorf("there should be 2 KeepAlives sent, not %d", ns[0].SocketData.KeepAlivesSent)
+		wantKeepalivesCount := int64(time.Since(start).Seconds()) - 1
+		if gotKeepalivesCount := ns[0].SocketData.KeepAlivesSent; gotKeepalivesCount != wantKeepalivesCount {
+			return false, fmt.Errorf("got keepalivesCount: %v, want keepalivesCount: %v", gotKeepalivesCount, wantKeepalivesCount)
 		}
 		return true, nil
 	}); err != nil {
@@ -1415,7 +1436,7 @@ func (s) TestCZChannelTraceCreationDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`)})
+	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)})
 
 	// wait for the shutdown of grpclb balancer
 	if err := verifyResultWithDelay(func() (bool, error) {
@@ -1559,7 +1580,7 @@ func (s) TestCZChannelAddressResolutionChange(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	r.UpdateState(resolver.State{Addresses: addrs, ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`)})
+	r.UpdateState(resolver.State{Addresses: addrs, ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)})
 
 	if err := verifyResultWithDelay(func() (bool, error) {
 		cm := channelz.GetChannel(cid)
@@ -1576,7 +1597,7 @@ func (s) TestCZChannelAddressResolutionChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newSC := parseCfg(`{
+	newSC := parseCfg(r, `{
     "methodConfig": [
         {
             "name": [
@@ -1874,7 +1895,7 @@ func (s) TestCZTraceOverwriteChannelDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`)})
+	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "127.0.0.1:0"}}, ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)})
 
 	// wait for the shutdown of grpclb balancer
 	if err := verifyResultWithDelay(func() (bool, error) {

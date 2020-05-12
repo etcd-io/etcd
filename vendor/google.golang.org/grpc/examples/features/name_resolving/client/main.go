@@ -58,6 +58,7 @@ func main() {
 	passthroughConn, err := grpc.Dial(
 		fmt.Sprintf("passthrough:///%s", backendAddr), // Dial to "passthrough:///localhost:50051"
 		grpc.WithInsecure(),
+		grpc.WithBlock(),
 	)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -72,6 +73,7 @@ func main() {
 	exampleConn, err := grpc.Dial(
 		fmt.Sprintf("%s:///%s", exampleScheme, exampleServiceName), // Dial to "example:///resolver.example.grpc.io"
 		grpc.WithInsecure(),
+		grpc.WithBlock(),
 	)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -96,7 +98,7 @@ func main() {
 // ResolverBuilder(https://godoc.org/google.golang.org/grpc/resolver#Builder).
 type exampleResolverBuilder struct{}
 
-func (*exampleResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOption) (resolver.Resolver, error) {
+func (*exampleResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	r := &exampleResolver{
 		target: target,
 		cc:     cc,
@@ -125,8 +127,8 @@ func (r *exampleResolver) start() {
 	}
 	r.cc.UpdateState(resolver.State{Addresses: addrs})
 }
-func (*exampleResolver) ResolveNow(o resolver.ResolveNowOption) {}
-func (*exampleResolver) Close()                                 {}
+func (*exampleResolver) ResolveNow(o resolver.ResolveNowOptions) {}
+func (*exampleResolver) Close()                                  {}
 
 func init() {
 	// Register the example ResolverBuilder. This is usually done in a package's

@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/connectivity"
-	_ "google.golang.org/grpc/grpclog/glogger"
 	"google.golang.org/grpc/internal"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -149,12 +148,12 @@ func (s) TestSwitchBalancer(t *testing.T) {
 		t.Fatalf("check pickfirst returned non-nil error: %v", err)
 	}
 	// Switch to roundrobin.
-	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`), Addresses: addrs})
+	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`), Addresses: addrs}, nil)
 	if err := checkRoundRobin(cc, servers); err != nil {
 		t.Fatalf("check roundrobin returned non-nil error: %v", err)
 	}
 	// Switch to pickfirst.
-	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(`{"loadBalancingPolicy": "pick_first"}`), Addresses: addrs})
+	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "pick_first"}`), Addresses: addrs}, nil)
 	if err := checkPickFirst(cc, servers); err != nil {
 		t.Fatalf("check pickfirst returned non-nil error: %v", err)
 	}
@@ -181,7 +180,7 @@ func (s) TestBalancerDialOption(t *testing.T) {
 		t.Fatalf("check roundrobin returned non-nil error: %v", err)
 	}
 	// Switch to pickfirst.
-	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(`{"loadBalancingPolicy": "pick_first"}`), Addresses: addrs})
+	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "pick_first"}`), Addresses: addrs}, nil)
 	// Balancer is still roundrobin.
 	if err := checkRoundRobin(cc, servers); err != nil {
 		t.Fatalf("check roundrobin returned non-nil error: %v", err)
@@ -337,7 +336,7 @@ func (s) TestSwitchBalancerGRPCLBRoundRobin(t *testing.T) {
 	}
 	defer cc.Close()
 
-	sc := parseCfg(`{"loadBalancingPolicy": "round_robin"}`)
+	sc := parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)
 
 	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: "backend"}}, ServiceConfig: sc})
 	var isRoundRobin bool
@@ -433,7 +432,7 @@ func (s) TestSwitchBalancerGRPCLBServiceConfig(t *testing.T) {
 		t.Fatalf("after 5 second, cc.balancer is of type %v, not grpclb", cc.curBalancerName)
 	}
 
-	sc := parseCfg(`{"loadBalancingPolicy": "round_robin"}`)
+	sc := parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`)
 	r.UpdateState(resolver.State{Addresses: addrs, ServiceConfig: sc})
 	var isRoundRobin bool
 	for i := 0; i < 200; i++ {
@@ -510,16 +509,16 @@ func (s) TestSwitchBalancerGRPCLBWithGRPCLBNotRegistered(t *testing.T) {
 		t.Fatalf("check pickfirst returned non-nil error: %v", err)
 	}
 	// Switch to roundrobin, and check against server[1] and server[2].
-	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(`{"loadBalancingPolicy": "round_robin"}`), Addresses: addrs})
+	cc.updateResolverState(resolver.State{ServiceConfig: parseCfg(r, `{"loadBalancingPolicy": "round_robin"}`), Addresses: addrs}, nil)
 	if err := checkRoundRobin(cc, servers[1:]); err != nil {
 		t.Fatalf("check roundrobin returned non-nil error: %v", err)
 	}
 }
 
-func parseCfg(s string) serviceconfig.Config {
-	c, err := serviceconfig.Parse(s)
-	if err != nil {
-		panic(fmt.Sprintf("Error parsing config %q: %v", s, err))
+func parseCfg(r *manual.Resolver, s string) *serviceconfig.ParseResult {
+	scpr := r.CC.ParseServiceConfig(s)
+	if scpr.Err != nil {
+		panic(fmt.Sprintf("Error parsing config %q: %v", s, scpr.Err))
 	}
-	return c
+	return scpr
 }

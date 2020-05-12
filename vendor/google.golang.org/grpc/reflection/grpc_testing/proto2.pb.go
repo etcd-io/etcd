@@ -3,9 +3,11 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type ToBeExtended struct {
 	Foo                          *int32   `protobuf:"varint,1,req,name=foo" json:"foo,omitempty"`
@@ -30,7 +32,7 @@ func (m *ToBeExtended) Reset()         { *m = ToBeExtended{} }
 func (m *ToBeExtended) String() string { return proto.CompactTextString(m) }
 func (*ToBeExtended) ProtoMessage()    {}
 func (*ToBeExtended) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proto2_b16f7a513d0acdc0, []int{0}
+	return fileDescriptor_1f509089572db8e7, []int{0}
 }
 
 var extRange_ToBeExtended = []proto.ExtensionRange{
@@ -40,14 +42,15 @@ var extRange_ToBeExtended = []proto.ExtensionRange{
 func (*ToBeExtended) ExtensionRangeArray() []proto.ExtensionRange {
 	return extRange_ToBeExtended
 }
+
 func (m *ToBeExtended) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ToBeExtended.Unmarshal(m, b)
 }
 func (m *ToBeExtended) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ToBeExtended.Marshal(b, m, deterministic)
 }
-func (dst *ToBeExtended) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ToBeExtended.Merge(dst, src)
+func (m *ToBeExtended) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ToBeExtended.Merge(m, src)
 }
 func (m *ToBeExtended) XXX_Size() int {
 	return xxx_messageInfo_ToBeExtended.Size(m)
@@ -69,9 +72,9 @@ func init() {
 	proto.RegisterType((*ToBeExtended)(nil), "grpc.testing.ToBeExtended")
 }
 
-func init() { proto.RegisterFile("proto2.proto", fileDescriptor_proto2_b16f7a513d0acdc0) }
+func init() { proto.RegisterFile("proto2.proto", fileDescriptor_1f509089572db8e7) }
 
-var fileDescriptor_proto2_b16f7a513d0acdc0 = []byte{
+var fileDescriptor_1f509089572db8e7 = []byte{
 	// 86 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x29, 0x28, 0xca, 0x2f,
 	0xc9, 0x37, 0xd2, 0x03, 0x53, 0x42, 0x3c, 0xe9, 0x45, 0x05, 0xc9, 0x7a, 0x25, 0xa9, 0xc5, 0x25,

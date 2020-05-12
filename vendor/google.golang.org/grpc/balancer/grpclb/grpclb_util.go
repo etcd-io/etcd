@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -67,7 +66,7 @@ type lbManualResolver struct {
 	ccb balancer.ClientConn
 }
 
-func (r *lbManualResolver) Build(_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOption) (resolver.Resolver, error) {
+func (r *lbManualResolver) Build(_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
 	r.ccr = cc
 	return r, nil
 }
@@ -77,7 +76,7 @@ func (r *lbManualResolver) Scheme() string {
 }
 
 // ResolveNow calls resolveNow on the parent ClientConn.
-func (r *lbManualResolver) ResolveNow(o resolver.ResolveNowOption) {
+func (r *lbManualResolver) ResolveNow(o resolver.ResolveNowOptions) {
 	r.ccb.ResolveNow(o)
 }
 
@@ -173,13 +172,13 @@ func (ccc *lbCacheClientConn) RemoveSubConn(sc balancer.SubConn) {
 
 	timer := time.AfterFunc(ccc.timeout, func() {
 		ccc.mu.Lock()
+		defer ccc.mu.Unlock()
 		if entry.abortDeleting {
 			return
 		}
 		ccc.cc.RemoveSubConn(sc)
 		delete(ccc.subConnToAddr, sc)
 		delete(ccc.subConnCache, addr)
-		ccc.mu.Unlock()
 	})
 	entry.cancel = func() {
 		if !timer.Stop() {
@@ -195,8 +194,8 @@ func (ccc *lbCacheClientConn) RemoveSubConn(sc balancer.SubConn) {
 	}
 }
 
-func (ccc *lbCacheClientConn) UpdateBalancerState(s connectivity.State, p balancer.Picker) {
-	ccc.cc.UpdateBalancerState(s, p)
+func (ccc *lbCacheClientConn) UpdateState(s balancer.State) {
+	ccc.cc.UpdateState(s)
 }
 
 func (ccc *lbCacheClientConn) close() {

@@ -3,9 +3,11 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type ByteBufferParams struct {
 	ReqSize              int32    `protobuf:"varint,1,opt,name=req_size,json=reqSize,proto3" json:"req_size,omitempty"`
@@ -30,16 +32,17 @@ func (m *ByteBufferParams) Reset()         { *m = ByteBufferParams{} }
 func (m *ByteBufferParams) String() string { return proto.CompactTextString(m) }
 func (*ByteBufferParams) ProtoMessage()    {}
 func (*ByteBufferParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_payloads_3abc71de35f06c83, []int{0}
+	return fileDescriptor_3a075f58f70088c8, []int{0}
 }
+
 func (m *ByteBufferParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ByteBufferParams.Unmarshal(m, b)
 }
 func (m *ByteBufferParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ByteBufferParams.Marshal(b, m, deterministic)
 }
-func (dst *ByteBufferParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ByteBufferParams.Merge(dst, src)
+func (m *ByteBufferParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ByteBufferParams.Merge(m, src)
 }
 func (m *ByteBufferParams) XXX_Size() int {
 	return xxx_messageInfo_ByteBufferParams.Size(m)
@@ -76,16 +79,17 @@ func (m *SimpleProtoParams) Reset()         { *m = SimpleProtoParams{} }
 func (m *SimpleProtoParams) String() string { return proto.CompactTextString(m) }
 func (*SimpleProtoParams) ProtoMessage()    {}
 func (*SimpleProtoParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_payloads_3abc71de35f06c83, []int{1}
+	return fileDescriptor_3a075f58f70088c8, []int{1}
 }
+
 func (m *SimpleProtoParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleProtoParams.Unmarshal(m, b)
 }
 func (m *SimpleProtoParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SimpleProtoParams.Marshal(b, m, deterministic)
 }
-func (dst *SimpleProtoParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SimpleProtoParams.Merge(dst, src)
+func (m *SimpleProtoParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleProtoParams.Merge(m, src)
 }
 func (m *SimpleProtoParams) XXX_Size() int {
 	return xxx_messageInfo_SimpleProtoParams.Size(m)
@@ -120,16 +124,17 @@ func (m *ComplexProtoParams) Reset()         { *m = ComplexProtoParams{} }
 func (m *ComplexProtoParams) String() string { return proto.CompactTextString(m) }
 func (*ComplexProtoParams) ProtoMessage()    {}
 func (*ComplexProtoParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_payloads_3abc71de35f06c83, []int{2}
+	return fileDescriptor_3a075f58f70088c8, []int{2}
 }
+
 func (m *ComplexProtoParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ComplexProtoParams.Unmarshal(m, b)
 }
 func (m *ComplexProtoParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ComplexProtoParams.Marshal(b, m, deterministic)
 }
-func (dst *ComplexProtoParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ComplexProtoParams.Merge(dst, src)
+func (m *ComplexProtoParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ComplexProtoParams.Merge(m, src)
 }
 func (m *ComplexProtoParams) XXX_Size() int {
 	return xxx_messageInfo_ComplexProtoParams.Size(m)
@@ -155,16 +160,17 @@ func (m *PayloadConfig) Reset()         { *m = PayloadConfig{} }
 func (m *PayloadConfig) String() string { return proto.CompactTextString(m) }
 func (*PayloadConfig) ProtoMessage()    {}
 func (*PayloadConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_payloads_3abc71de35f06c83, []int{3}
+	return fileDescriptor_3a075f58f70088c8, []int{3}
 }
+
 func (m *PayloadConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PayloadConfig.Unmarshal(m, b)
 }
 func (m *PayloadConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PayloadConfig.Marshal(b, m, deterministic)
 }
-func (dst *PayloadConfig) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PayloadConfig.Merge(dst, src)
+func (m *PayloadConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PayloadConfig.Merge(m, src)
 }
 func (m *PayloadConfig) XXX_Size() int {
 	return xxx_messageInfo_PayloadConfig.Size(m)
@@ -225,97 +231,13 @@ func (m *PayloadConfig) GetComplexParams() *ComplexProtoParams {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*PayloadConfig) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _PayloadConfig_OneofMarshaler, _PayloadConfig_OneofUnmarshaler, _PayloadConfig_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*PayloadConfig) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*PayloadConfig_BytebufParams)(nil),
 		(*PayloadConfig_SimpleParams)(nil),
 		(*PayloadConfig_ComplexParams)(nil),
 	}
-}
-
-func _PayloadConfig_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*PayloadConfig)
-	// payload
-	switch x := m.Payload.(type) {
-	case *PayloadConfig_BytebufParams:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.BytebufParams); err != nil {
-			return err
-		}
-	case *PayloadConfig_SimpleParams:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.SimpleParams); err != nil {
-			return err
-		}
-	case *PayloadConfig_ComplexParams:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.ComplexParams); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("PayloadConfig.Payload has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _PayloadConfig_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*PayloadConfig)
-	switch tag {
-	case 1: // payload.bytebuf_params
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(ByteBufferParams)
-		err := b.DecodeMessage(msg)
-		m.Payload = &PayloadConfig_BytebufParams{msg}
-		return true, err
-	case 2: // payload.simple_params
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(SimpleProtoParams)
-		err := b.DecodeMessage(msg)
-		m.Payload = &PayloadConfig_SimpleParams{msg}
-		return true, err
-	case 3: // payload.complex_params
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(ComplexProtoParams)
-		err := b.DecodeMessage(msg)
-		m.Payload = &PayloadConfig_ComplexParams{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _PayloadConfig_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*PayloadConfig)
-	// payload
-	switch x := m.Payload.(type) {
-	case *PayloadConfig_BytebufParams:
-		s := proto.Size(x.BytebufParams)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *PayloadConfig_SimpleParams:
-		s := proto.Size(x.SimpleParams)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *PayloadConfig_ComplexParams:
-		s := proto.Size(x.ComplexParams)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 func init() {
@@ -325,9 +247,9 @@ func init() {
 	proto.RegisterType((*PayloadConfig)(nil), "grpc.testing.PayloadConfig")
 }
 
-func init() { proto.RegisterFile("payloads.proto", fileDescriptor_payloads_3abc71de35f06c83) }
+func init() { proto.RegisterFile("payloads.proto", fileDescriptor_3a075f58f70088c8) }
 
-var fileDescriptor_payloads_3abc71de35f06c83 = []byte{
+var fileDescriptor_3a075f58f70088c8 = []byte{
 	// 254 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2b, 0x48, 0xac, 0xcc,
 	0xc9, 0x4f, 0x4c, 0x29, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x49, 0x2f, 0x2a, 0x48,

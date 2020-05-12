@@ -19,137 +19,46 @@
 package balancer
 
 import (
-	"io"
-	"sync"
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/proto"
-	durationpb "github.com/golang/protobuf/ptypes/duration"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/google/go-cmp/cmp"
+	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/xds/internal"
-	basepb "google.golang.org/grpc/xds/internal/proto/envoy/api/v2/core/base"
-	lrsgrpc "google.golang.org/grpc/xds/internal/proto/envoy/service/load_stats/v2/lrs"
-	lrspb "google.golang.org/grpc/xds/internal/proto/envoy/service/load_stats/v2/lrs"
+	xdsinternal "google.golang.org/grpc/xds/internal"
+	"google.golang.org/grpc/xds/internal/testutils/fakexds"
 )
 
-type lrsServer struct {
-	mu                sync.Mutex
-	dropTotal         uint64
-	drops             map[string]uint64
-	reportingInterval *durationpb.Duration
-}
-
-func (lrss *lrsServer) StreamLoadStats(stream lrsgrpc.LoadReportingService_StreamLoadStatsServer) error {
-	req, err := stream.Recv()
-	if err != nil {
-		return err
-	}
-	if !proto.Equal(req, &lrspb.LoadStatsRequest{
-		Node: &basepb.Node{
-			Metadata: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					internal.GrpcHostname: {
-						Kind: &structpb.Value_StringValue{StringValue: testServiceName},
-					},
-				},
-			},
-		},
-	}) {
-		return status.Errorf(codes.FailedPrecondition, "unexpected req: %+v", req)
-	}
-	if err := stream.Send(&lrspb.LoadStatsResponse{
-		Clusters:              []string{testServiceName},
-		LoadReportingInterval: lrss.reportingInterval,
-	}); err != nil {
-		return err
-	}
-
-	for {
-		req, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		stats := req.ClusterStats[0]
-		lrss.mu.Lock()
-		lrss.dropTotal += stats.TotalDroppedRequests
-		for _, d := range stats.DroppedRequests {
-			lrss.drops[d.Category] += d.DroppedCount
-		}
-		lrss.mu.Unlock()
-	}
-}
-
-func (s) TestXdsLoadReporting(t *testing.T) {
-	originalNewEDSBalancer := newEDSBalancer
-	newEDSBalancer = newFakeEDSBalancer
-	defer func() {
-		newEDSBalancer = originalNewEDSBalancer
-	}()
-
-	builder := balancer.Get(xdsName)
+// TestXDSLoadReporting verifies that the edsBalancer starts the loadReport
+// stream when the lbConfig passed to it contains a valid value for the LRS
+// server (empty string).
+func (s) TestXDSLoadReporting(t *testing.T) {
+	builder := balancer.Get(edsName)
 	cc := newTestClientConn()
-	lb, ok := builder.Build(cc, balancer.BuildOptions{Target: resolver.Target{Endpoint: testServiceName}}).(*xdsBalancer)
+	edsB, ok := builder.Build(cc, balancer.BuildOptions{Target: resolver.Target{Endpoint: testEDSClusterName}}).(*edsBalancer)
 	if !ok {
-		t.Fatalf("unable to type assert to *xdsBalancer")
+		t.Fatalf("builder.Build(%s) returned type {%T}, want {*edsBalancer}", edsName, edsB)
 	}
-	defer lb.Close()
+	defer edsB.Close()
 
-	addr, td, lrss, cleanup := setupServer(t)
-	defer cleanup()
+	xdsC := fakexds.NewClient()
+	edsB.UpdateClientConnState(balancer.ClientConnState{
+		ResolverState:  resolver.State{Attributes: attributes.New(xdsinternal.XDSClientID, xdsC)},
+		BalancerConfig: &XDSConfig{LrsLoadReportingServerName: new(string)},
+	})
 
-	const intervalNano = 1000 * 1000 * 50
-	lrss.reportingInterval = &durationpb.Duration{
-		Seconds: 0,
-		Nanos:   intervalNano,
+	gotCluster, err := xdsC.WaitForWatchEDS()
+	if err != nil {
+		t.Fatalf("xdsClient.WatchEDS failed with error: %v", err)
 	}
-
-	cfg := &xdsConfig{
-		BalancerName: addr,
-		ChildPolicy:  &loadBalancingConfig{Name: fakeBalancerA}, // Set this to skip cds.
-	}
-	lb.UpdateClientConnState(balancer.ClientConnState{BalancerConfig: cfg})
-	td.sendResp(&response{resp: testEDSRespWithoutEndpoints})
-	var (
-		i     int
-		edsLB *fakeEDSBalancer
-	)
-	for i = 0; i < 10; i++ {
-		edsLB = getLatestEdsBalancer()
-		if edsLB != nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if i == 10 {
-		t.Fatal("edsBalancer instance has not been created and assigned to lb.xdsLB after 1s")
+	if gotCluster != testEDSClusterName {
+		t.Fatalf("xdsClient.WatchEDS() called with cluster: %v, want %v", gotCluster, testEDSClusterName)
 	}
 
-	var dropCategories = []string{"drop_for_real", "drop_for_fun"}
-	drops := map[string]uint64{
-		dropCategories[0]: 31,
-		dropCategories[1]: 41,
+	got, err := xdsC.WaitForReportLoad()
+	if err != nil {
+		t.Fatalf("xdsClient.ReportLoad failed with error: %v", err)
 	}
-
-	for c, d := range drops {
-		for i := 0; i < int(d); i++ {
-			edsLB.loadStore.CallDropped(c)
-			time.Sleep(time.Nanosecond * intervalNano / 10)
-		}
-	}
-	time.Sleep(time.Nanosecond * intervalNano * 2)
-
-	lrss.mu.Lock()
-	defer lrss.mu.Unlock()
-	if !cmp.Equal(lrss.drops, drops) {
-		t.Errorf("different: %v %v %v", lrss.drops, drops, cmp.Diff(lrss.drops, drops))
+	if got.Server != "" || got.Cluster != testEDSClusterName {
+		t.Fatalf("xdsClient.ReportLoad called with {%v, %v}: want {\"\", %v}", got.Server, got.Cluster, testEDSClusterName)
 	}
 }

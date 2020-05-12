@@ -50,7 +50,7 @@ func main() {
 	altsTC := alts.NewClientCreds(alts.DefaultClientOptions())
 
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(altsTC))
+	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(altsTC), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

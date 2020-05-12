@@ -27,17 +27,19 @@ import (
 	"net"
 	"sync"
 
-	epb "google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 	"google.golang.org/grpc/status"
+
+	epb "google.golang.org/genproto/googleapis/rpc/errdetails"
+	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 )
 
 var port = flag.Int("port", 50052, "port number")
 
 // server is used to implement helloworld.GreeterServer.
 type server struct {
+	pb.UnimplementedGreeterServer
 	mu    sync.Mutex
 	count map[string]int
 }

@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 // FeatureIndex is an enum for features that usually differ across individual
@@ -174,6 +176,10 @@ func (f Features) partialString(b *bytes.Buffer, wantFeatures []bool, sep, delim
 // benchmark execution, and could later be read for pretty-printing or
 // comparison with other benchmark results.
 type BenchResults struct {
+	// GoVersion is the version of the compiler the benchmark was compiled with.
+	GoVersion string
+	// GrpcVersion is the gRPC version being benchmarked.
+	GrpcVersion string
 	// RunMode is the workload mode for this benchmark run. This could be unary,
 	// stream or unconstrained.
 	RunMode string
@@ -200,9 +206,9 @@ type RunData struct {
 	// run. Only makes sense for unconstrained workloads.
 	RecvOps uint64
 	// AllocedBytes is the average memory allocation in bytes per operation.
-	AllocedBytes uint64
+	AllocedBytes float64
 	// Allocs is the average number of memory allocations per operation.
-	Allocs uint64
+	Allocs float64
 	// ReqT is the average request throughput associated with this run.
 	ReqT float64
 	// RespT is the average response throughput associated with this run.
@@ -262,7 +268,13 @@ func (s *Stats) StartRun(mode string, f Features, sf []bool) {
 	defer s.mu.Unlock()
 
 	runtime.ReadMemStats(&s.startMS)
-	s.results = append(s.results, BenchResults{RunMode: mode, Features: f, SharedFeatures: sf})
+	s.results = append(s.results, BenchResults{
+		GoVersion:      runtime.Version(),
+		GrpcVersion:    grpc.Version,
+		RunMode:        mode,
+		Features:       f,
+		SharedFeatures: sf,
+	})
 }
 
 // EndRun is to be invoked to indicate the end of the ongoing benchmark run. It
@@ -275,8 +287,8 @@ func (s *Stats) EndRun(count uint64) {
 	r := &s.results[len(s.results)-1]
 	r.Data = RunData{
 		TotalOps:     count,
-		AllocedBytes: s.stopMS.TotalAlloc - s.startMS.TotalAlloc,
-		Allocs:       s.stopMS.Mallocs - s.startMS.Mallocs,
+		AllocedBytes: float64(s.stopMS.TotalAlloc-s.startMS.TotalAlloc) / float64(count),
+		Allocs:       float64(s.stopMS.Mallocs-s.startMS.Mallocs) / float64(count),
 		ReqT:         float64(count) * float64(r.Features.ReqSizeBytes) * 8 / r.Features.BenchTime.Seconds(),
 		RespT:        float64(count) * float64(r.Features.RespSizeBytes) * 8 / r.Features.BenchTime.Seconds(),
 	}
@@ -296,8 +308,8 @@ func (s *Stats) EndUnconstrainedRun(req uint64, resp uint64) {
 	r.Data = RunData{
 		SendOps:      req,
 		RecvOps:      resp,
-		AllocedBytes: (s.stopMS.TotalAlloc - s.startMS.TotalAlloc) / ((req + resp) / 2),
-		Allocs:       (s.stopMS.Mallocs - s.startMS.Mallocs) / ((req + resp) / 2),
+		AllocedBytes: float64(s.stopMS.TotalAlloc-s.startMS.TotalAlloc) / float64((req+resp)/2),
+		Allocs:       float64(s.stopMS.Mallocs-s.startMS.Mallocs) / float64((req+resp)/2),
 		ReqT:         float64(req) * float64(r.Features.ReqSizeBytes) * 8 / r.Features.BenchTime.Seconds(),
 		RespT:        float64(resp) * float64(r.Features.RespSizeBytes) * 8 / r.Features.BenchTime.Seconds(),
 	}
@@ -365,6 +377,10 @@ func (s *Stats) computeLatencies(result *BenchResults) {
 // dump returns a printable version.
 func (s *Stats) dump(result *BenchResults) {
 	var b bytes.Buffer
+
+	// Go and gRPC version information.
+	b.WriteString(fmt.Sprintf("%s/grpc%s\n", result.GoVersion, result.GrpcVersion))
+
 	// This prints the run mode and all features of the bench on a line.
 	b.WriteString(fmt.Sprintf("%s-%s:\n", result.RunMode, result.Features.String()))
 

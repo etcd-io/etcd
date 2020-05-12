@@ -51,6 +51,7 @@ To build gRPC CLI:
 ```sh
 git clone https://github.com/grpc/grpc
 cd grpc
+git submodule update --init
 make grpc_cli
 cd bins/opt # grpc_cli is in directory bins/opt/
 ```

@@ -27,39 +27,30 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
+
 	ecpb "google.golang.org/grpc/examples/features/proto/echo"
 	hwpb "google.golang.org/grpc/examples/helloworld/helloworld"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 var port = flag.Int("port", 50051, "the port to serve on")
 
 // hwServer is used to implement helloworld.GreeterServer.
-type hwServer struct{}
+type hwServer struct {
+	hwpb.UnimplementedGreeterServer
+}
 
 // SayHello implements helloworld.GreeterServer
 func (s *hwServer) SayHello(ctx context.Context, in *hwpb.HelloRequest) (*hwpb.HelloReply, error) {
 	return &hwpb.HelloReply{Message: "Hello " + in.Name}, nil
 }
 
-type ecServer struct{}
+type ecServer struct {
+	ecpb.UnimplementedEchoServer
+}
 
 func (s *ecServer) UnaryEcho(ctx context.Context, req *ecpb.EchoRequest) (*ecpb.EchoResponse, error) {
 	return &ecpb.EchoResponse{Message: req.Message}, nil
-}
-
-func (s *ecServer) ServerStreamingEcho(*ecpb.EchoRequest, ecpb.Echo_ServerStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
-}
-
-func (s *ecServer) ClientStreamingEcho(ecpb.Echo_ClientStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
-}
-
-func (s *ecServer) BidirectionalStreamingEcho(ecpb.Echo_BidirectionalStreamingEchoServer) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func main() {

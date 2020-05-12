@@ -23,16 +23,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	corepb "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	endpointpb "github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
+	lrsgrpc "github.com/envoyproxy/go-control-plane/envoy/service/load_stats/v2"
+	lrspb "github.com/envoyproxy/go-control-plane/envoy/service/load_stats/v2"
 	"github.com/golang/protobuf/ptypes"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/internal/backoff"
 	"google.golang.org/grpc/xds/internal"
-	basepb "google.golang.org/grpc/xds/internal/proto/envoy/api/v2/core/base"
-	loadreportpb "google.golang.org/grpc/xds/internal/proto/envoy/api/v2/endpoint/load_report"
-	lrsgrpc "google.golang.org/grpc/xds/internal/proto/envoy/service/load_stats/v2/lrs"
-	lrspb "google.golang.org/grpc/xds/internal/proto/envoy/service/load_stats/v2/lrs"
 )
 
 const negativeOneUInt64 = ^uint64(0)
@@ -44,7 +43,8 @@ type Store interface {
 	CallStarted(l internal.Locality)
 	CallFinished(l internal.Locality, err error)
 	CallServerLoad(l internal.Locality, name string, d float64)
-	ReportTo(ctx context.Context, cc *grpc.ClientConn)
+	// Report the load of clusterName to cc.
+	ReportTo(ctx context.Context, cc *grpc.ClientConn, clusterName string, node *corepb.Node)
 }
 
 type rpcCountData struct {
@@ -141,7 +141,6 @@ func (rld *rpcLoadData) loadAndClear() (s float64, c uint64) {
 // lrsStore collects loads from xds balancer, and periodically sends load to the
 // server.
 type lrsStore struct {
-	node         *basepb.Node
 	backoff      backoff.Strategy
 	lastReported time.Time
 
@@ -150,20 +149,9 @@ type lrsStore struct {
 }
 
 // NewStore creates a store for load reports.
-func NewStore(serviceName string) Store {
+func NewStore() Store {
 	return &lrsStore{
-		node: &basepb.Node{
-			Metadata: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					internal.GrpcHostname: {
-						Kind: &structpb.Value_StringValue{StringValue: serviceName},
-					},
-				},
-			},
-		},
-		backoff: backoff.Exponential{
-			MaxDelay: 120 * time.Second,
-		},
+		backoff:      backoff.DefaultExponential,
 		lastReported: time.Now(),
 	}
 }
@@ -215,11 +203,11 @@ func (ls *lrsStore) CallServerLoad(l internal.Locality, name string, d float64) 
 	p.(*rpcCountData).addServerLoad(name, d)
 }
 
-func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats {
+func (ls *lrsStore) buildStats(clusterName string) []*endpointpb.ClusterStats {
 	var (
 		totalDropped  uint64
-		droppedReqs   []*loadreportpb.ClusterStats_DroppedRequests
-		localityStats []*loadreportpb.UpstreamLocalityStats
+		droppedReqs   []*endpointpb.ClusterStats_DroppedRequests
+		localityStats []*endpointpb.UpstreamLocalityStats
 	)
 	ls.drops.Range(func(category, countP interface{}) bool {
 		tempCount := atomic.SwapUint64(countP.(*uint64), 0)
@@ -227,7 +215,7 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 			return true
 		}
 		totalDropped += tempCount
-		droppedReqs = append(droppedReqs, &loadreportpb.ClusterStats_DroppedRequests{
+		droppedReqs = append(droppedReqs, &endpointpb.ClusterStats_DroppedRequests{
 			Category:     category.(string),
 			DroppedCount: tempCount,
 		})
@@ -244,7 +232,7 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 			return true
 		}
 
-		var loadMetricStats []*loadreportpb.EndpointLoadMetricStats
+		var loadMetricStats []*endpointpb.EndpointLoadMetricStats
 		tempCount.serverLoads.Range(func(name, data interface{}) bool {
 			tempName := name.(string)
 			tempSum, tempCount := data.(*rpcLoadData).loadAndClear()
@@ -252,7 +240,7 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 				return true
 			}
 			loadMetricStats = append(loadMetricStats,
-				&loadreportpb.EndpointLoadMetricStats{
+				&endpointpb.EndpointLoadMetricStats{
 					MetricName:                    tempName,
 					NumRequestsFinishedWithMetric: tempCount,
 					TotalMetricValue:              tempSum,
@@ -261,8 +249,8 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 			return true
 		})
 
-		localityStats = append(localityStats, &loadreportpb.UpstreamLocalityStats{
-			Locality: &basepb.Locality{
+		localityStats = append(localityStats, &endpointpb.UpstreamLocalityStats{
+			Locality: &corepb.Locality{
 				Region:  tempLocality.Region,
 				Zone:    tempLocality.Zone,
 				SubZone: tempLocality.SubZone,
@@ -279,8 +267,8 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 	dur := time.Since(ls.lastReported)
 	ls.lastReported = time.Now()
 
-	var ret []*loadreportpb.ClusterStats
-	ret = append(ret, &loadreportpb.ClusterStats{
+	var ret []*endpointpb.ClusterStats
+	ret = append(ret, &endpointpb.ClusterStats{
 		ClusterName:           clusterName,
 		UpstreamLocalityStats: localityStats,
 
@@ -295,7 +283,7 @@ func (ls *lrsStore) buildStats(clusterName string) []*loadreportpb.ClusterStats 
 // ReportTo makes a streaming lrs call to cc and blocks.
 //
 // It retries the call (with backoff) until ctx is canceled.
-func (ls *lrsStore) ReportTo(ctx context.Context, cc *grpc.ClientConn) {
+func (ls *lrsStore) ReportTo(ctx context.Context, cc *grpc.ClientConn, clusterName string, node *corepb.Node) {
 	c := lrsgrpc.NewLoadReportingServiceClient(cc)
 	var (
 		retryCount int
@@ -322,39 +310,46 @@ func (ls *lrsStore) ReportTo(ctx context.Context, cc *grpc.ClientConn) {
 		doBackoff = true
 		stream, err := c.StreamLoadStats(ctx)
 		if err != nil {
-			grpclog.Infof("lrs: failed to create stream: %v", err)
+			grpclog.Warningf("lrs: failed to create stream: %v", err)
 			continue
 		}
 		if err := stream.Send(&lrspb.LoadStatsRequest{
-			Node: ls.node,
+			ClusterStats: []*endpointpb.ClusterStats{{
+				ClusterName: clusterName,
+			}},
+			Node: node,
 		}); err != nil {
-			grpclog.Infof("lrs: failed to send first request: %v", err)
+			grpclog.Warningf("lrs: failed to send first request: %v", err)
 			continue
 		}
 		first, err := stream.Recv()
 		if err != nil {
-			grpclog.Infof("lrs: failed to receive first response: %v", err)
+			grpclog.Warningf("lrs: failed to receive first response: %v", err)
 			continue
 		}
 		interval, err := ptypes.Duration(first.LoadReportingInterval)
 		if err != nil {
-			grpclog.Infof("lrs: failed to convert report interval: %v", err)
+			grpclog.Warningf("lrs: failed to convert report interval: %v", err)
 			continue
 		}
 		if len(first.Clusters) != 1 {
-			grpclog.Infof("lrs: received multiple clusters %v, expect one cluster", first.Clusters)
+			grpclog.Warningf("lrs: received multiple clusters %v, expect one cluster", first.Clusters)
+			continue
+		}
+		if first.Clusters[0] != clusterName {
+			grpclog.Warningf("lrs: received cluster is unexpected. Got %v, want %v", first.Clusters[0], clusterName)
 			continue
 		}
 		if first.ReportEndpointGranularity {
 			// TODO: fixme to support per endpoint loads.
-			grpclog.Infof("lrs: endpoint loads requested, but not supported by current implementation")
+			grpclog.Warningf("lrs: endpoint loads requested, but not supported by current implementation")
 			continue
 		}
 
 		// No backoff afterwards.
 		doBackoff = false
 		retryCount = 0
-		ls.sendLoads(ctx, stream, first.Clusters[0], interval)
+		ls.sendLoads(ctx, stream, clusterName, interval)
 	}
 }
 
@@ -368,10 +363,9 @@ func (ls *lrsStore) sendLoads(ctx context.Context, stream lrsgrpc.LoadReportingS
 			return
 		}
 		if err := stream.Send(&lrspb.LoadStatsRequest{
-			Node:         ls.node,
 			ClusterStats: ls.buildStats(clusterName),
 		}); err != nil {
-			grpclog.Infof("lrs: failed to send report: %v", err)
+			grpclog.Warningf("lrs: failed to send report: %v", err)
 			return
 		}
 	}

@@ -162,7 +162,9 @@ func TestAllExtensionNumbersForType(t *testing.T) {
 
 // Do end2end tests.
 
-type server struct{}
+type server struct {
+	pb.UnimplementedSearchServiceServer
+}
 
 func (s *server) Search(ctx context.Context, in *pb.SearchRequest) (*pb.SearchResponse, error) {
 	return &pb.SearchResponse{}, nil

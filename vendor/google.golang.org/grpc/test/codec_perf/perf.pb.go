@@ -3,9 +3,11 @@
 
 package codec_perf
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // Buffer is a message that contains a body of bytes that is used to exercise
 // encoding and decoding overheads.
@@ -31,16 +33,17 @@ func (m *Buffer) Reset()         { *m = Buffer{} }
 func (m *Buffer) String() string { return proto.CompactTextString(m) }
 func (*Buffer) ProtoMessage()    {}
 func (*Buffer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_perf_6cc81a33b24d08e7, []int{0}
+	return fileDescriptor_afad72ea7772fe3a, []int{0}
 }
+
 func (m *Buffer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Buffer.Unmarshal(m, b)
 }
 func (m *Buffer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Buffer.Marshal(b, m, deterministic)
 }
-func (dst *Buffer) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Buffer.Merge(dst, src)
+func (m *Buffer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Buffer.Merge(m, src)
 }
 func (m *Buffer) XXX_Size() int {
 	return xxx_messageInfo_Buffer.Size(m)
@@ -62,9 +65,9 @@ func init() {
 	proto.RegisterType((*Buffer)(nil), "codec.perf.Buffer")
 }
 
-func init() { proto.RegisterFile("codec_perf/perf.proto", fileDescriptor_perf_6cc81a33b24d08e7) }
+func init() { proto.RegisterFile("codec_perf/perf.proto", fileDescriptor_afad72ea7772fe3a) }
 
-var fileDescriptor_perf_6cc81a33b24d08e7 = []byte{
+var fileDescriptor_afad72ea7772fe3a = []byte{
 	// 83 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x4d, 0xce, 0x4f, 0x49,
 	0x4d, 0x8e, 0x2f, 0x48, 0x2d, 0x4a, 0xd3, 0x07, 0x11, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42,

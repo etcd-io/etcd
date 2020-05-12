@@ -4,8 +4,8 @@
 package mock_routeguide
 
 import (
+	context "context"
 	gomock "github.com/golang/mock/gomock"
-	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 	routeguide "google.golang.org/grpc/examples/route_guide/routeguide"
 	metadata "google.golang.org/grpc/metadata"

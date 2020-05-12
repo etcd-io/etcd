@@ -21,12 +21,41 @@ package alts
 import (
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
 	altspb "google.golang.org/grpc/credentials/alts/internal/proto/grpc_gcp"
 	"google.golang.org/grpc/peer"
 )
+
+func setupManufacturerReader(testOS string, reader func() (io.Reader, error)) func() {
+	tmpOS := runningOS
+	tmpReader := manufacturerReader
+
+	// Set test OS and reader function.
+	runningOS = testOS
+	manufacturerReader = reader
+	return func() {
+		runningOS = tmpOS
+		manufacturerReader = tmpReader
+	}
+
+}
+
+func setup(testOS string, testReader io.Reader) func() {
+	reader := func() (io.Reader, error) {
+		return testReader, nil
+	}
+	return setupManufacturerReader(testOS, reader)
+}
+
+func setupError(testOS string, err error) func() {
+	reader := func() (io.Reader, error) {
+		return nil, err
+	}
+	return setupManufacturerReader(testOS, reader)
+}
 
 func TestIsRunningOnGCP(t *testing.T) {
 	for _, tc := range []struct {
@@ -53,20 +82,12 @@ func TestIsRunningOnGCP(t *testing.T) {
 	}
 }
 
-func setup(testOS string, testReader io.Reader) func() {
-	tmpOS := runningOS
-	tmpReader := manufacturerReader
-
-	// Set test OS and reader function.
-	runningOS = testOS
-	manufacturerReader = func() (io.Reader, error) {
-		return testReader, nil
+func TestIsRunningOnGCPNoProductNameFile(t *testing.T) {
+	reverseFunc := setupError("linux", os.ErrNotExist)
+	if isRunningOnGCP() {
+		t.Errorf("ErrNotExist: isRunningOnGCP()=true, want false")
 	}
-
-	return func() {
-		runningOS = tmpOS
-		manufacturerReader = tmpReader
-	}
+	reverseFunc()
 }
 
 func TestAuthInfoFromContext(t *testing.T) {
