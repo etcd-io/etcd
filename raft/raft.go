@@ -1428,6 +1428,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	// code here and there assumes that r.id is in the progress tracker.
 	found := false
 	cs := s.Metadata.ConfState
+
 	for _, set := range [][]uint64{
 		cs.Voters,
 		cs.Learners,
@@ -1437,6 +1438,9 @@ func (r *raft) restore(s pb.Snapshot) bool {
 				found = true
 				break
 			}
+		}
+		if found {
+			break
 		}
 	}
 	if !found {
