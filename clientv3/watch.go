@@ -650,6 +650,12 @@ func (w *watchGrpcStream) run() {
 			return
 
 		case ws := <-w.closingc:
+			w.closeSubstream(ws)
+			delete(closing, ws)
+			// no more watchers on this stream, shutdown, skip cancellation
+			if len(w.substreams)+len(w.resuming) == 0 {
+				return
+			}
 			if ws.id != -1 {
 				// client is closing an established watch; close it on the server proactively instead of waiting
 				// to close when the next message arrives
@@ -664,12 +670,6 @@ func (w *watchGrpcStream) run() {
 				if err := wc.Send(req); err != nil {
 					lg.Warning("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
 				}
-			}
-			w.closeSubstream(ws)
-			delete(closing, ws)
-			// no more watchers on this stream, shutdown
-			if len(w.substreams)+len(w.resuming) == 0 {
-				return
 			}
 		}
 	}

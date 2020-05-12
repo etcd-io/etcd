@@ -1245,3 +1245,32 @@ func TestV3WatchCancellation(t *testing.T) {
 		t.Fatalf("expected one watch, got %s", minWatches)
 	}
 }
+
+// TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
+func TestV3WatchCloseCancelRace(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cli := clus.RandClient()
+
+	for i := 0; i < 1000; i++ {
+		ctx, cancel := context.WithCancel(ctx)
+		cli.Watch(ctx, "/foo")
+		cancel()
+	}
+
+	// Wait a little for cancellations to take hold
+	time.Sleep(3 * time.Second)
+
+	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if minWatches != "0" {
+		t.Fatalf("expected zero watches, got %s", minWatches)
+	}
+}
