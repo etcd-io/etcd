@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-  - 1.13.3
+  - 1.14.2
   - tip
 
 notifications:
@@ -30,13 +30,13 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-    - go: 1.13.3
+    - go: 1.14.2
       env: TARGET=linux-amd64-grpcproxy
-    - go: 1.13.3
+    - go: 1.14.2
       env: TARGET=linux-amd64-coverage
     - go: tip
       env: TARGET=linux-amd64-fmt-unit-go-tip
-    - go: 1.13.3
+    - go: 1.14.2
       env: TARGET=linux-386-unit
   exclude:
     - go: tip
@@ -57,7 +57,7 @@ matrix:
       env: TARGET=linux-amd64-grpcproxy
     - go: tip
       env: TARGET=linux-amd64-coverage
-    - go: 1.13.3
+    - go: 1.14.2
       env: TARGET=linux-amd64-fmt-unit-go-tip
     - go: tip
       env: TARGET=linux-386-unit
@@ -95,7 +95,7 @@ script:
       linux-amd64-functional)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "./build && GOARCH=amd64 PASSES='functional' ./test"
+          /bin/bash -c "GO_BUILD_FLAGS='-v -mod=mod' ./build && GOARCH=amd64 PASSES='functional' ./test"
         ;;
       linux-amd64-unit)
         docker run --rm \
@@ -107,12 +107,12 @@ script:
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 PASSES='build' ./test \
             && GOARCH=386 PASSES='build' ./test \
-            && GO_BUILD_FLAGS='-v' GOOS=darwin GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOOS=windows GOARCH=amd64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=arm64 ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=ppc64le ./build \
-            && GO_BUILD_FLAGS='-v' GOARCH=s390x ./build"
+            && GO_BUILD_FLAGS='-v -mod=mod' GOOS=darwin GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOOS=windows GOARCH=amd64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=arm ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=arm64 ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=ppc64le ./build \
+            && GO_BUILD_FLAGS='-v -mod=mod' GOARCH=s390x ./build"
         ;;
       linux-amd64-grpcproxy)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'" make docker-test

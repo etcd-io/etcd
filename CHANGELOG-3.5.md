@@ -61,6 +61,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
   - Previously, `SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error`, now `SetFlagsFromEnv(lg *zap.Logger, prefix string, fs *flag.FlagSet) error`.
   - Previously, `SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error`, now `SetPflagsFromEnv(lg *zap.Logger, prefix string, fs *pflag.FlagSet) error`.
 
+### Security
+
+- Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
+
 ### Metrics, Monitoring
 
 See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
@@ -89,6 +93,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
   - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
   - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
   - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - [`etcd --backend-bbolt-freelist-type`] flag is now stable.
@@ -168,7 +173,6 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
 - [Add `Linearizable` field to `etcdserverpb.MemberListRequest`](https://github.com/etcd-io/etcd/pull/11639).
 
-
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
@@ -179,8 +183,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Go
 
-- Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
-- Compile with [*Go 1.13*](https://golang.org/doc/devel/release.html#go1.13)
+- Require [*Go 1.14+*](https://github.com/etcd-io/etcd/pull/11110).
+- Compile with [*Go 1.14*](https://golang.org/doc/devel/release.html#go1.14)
 
 ### Project Governance
 
