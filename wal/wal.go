@@ -583,7 +583,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 			n++
 		}
 	}
-	snaps = snaps[:n]
+	snaps = snaps[:n:n]
 
 	return snaps, nil
 }

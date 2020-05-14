@@ -1162,7 +1162,7 @@ func TestTriggerSnap(t *testing.T) {
 		// each operation is recorded as a Save
 		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap + Release
 		if len(gaction) != wcnt {
-			fmt.Println("gaction", gaction)
+			t.Logf("gaction: %v", gaction)
 			t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 		}
 

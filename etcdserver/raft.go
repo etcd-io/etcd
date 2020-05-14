@@ -250,8 +250,9 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// Force WAL to fsync its hard state before Release() releases
 					// old data from the WAL. Otherwise could get an error like:
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
+					// See https://github.com/etcd-io/etcd/issues/10219 for more details.
 					if err := r.storage.Sync(); err != nil {
-						log.Fatal(err)
+						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
 					}
 
 					// etcdserver now claim the snapshot has been persisted onto the disk
@@ -263,7 +264,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftAfterApplySnap struct{}
 
 					if err := r.storage.Release(rd.Snapshot); err != nil {
-						log.Fatal(err)
+						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
 					}
 					// gofail: var raftAfterWALRelease struct{}
 				}
