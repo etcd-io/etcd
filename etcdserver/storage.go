@@ -69,9 +69,14 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return st.WAL.SaveSnapshot(walsnap)
 }
 
-// Release release the locks to the wal files that are older than the provided wal for the given snap.
+// Release releases resources older than the given snap and are no longer needed:
+// - releases the locks to the wal files that are older than the provided wal for the given snap.
+// - deletes any .snap.db files that are older than the given snap.
 func (st *storage) Release(snap raftpb.Snapshot) error {
-	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
+	if err := st.WAL.ReleaseLockTo(snap.Metadata.Index); err != nil {
+		return err
+	}
+	return st.Snapshotter.ReleaseSnapDBs(snap)
 }
 
 // readWAL reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear

@@ -16,6 +16,7 @@ package snap
 
 import (
 	"fmt"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
@@ -264,5 +265,44 @@ func TestAllSnapshotBroken(t *testing.T) {
 	_, err = ss.Load()
 	if err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
+	}
+}
+
+func TestReleaseSnapDBs(t *testing.T) {
+	dir := filepath.Join(os.TempDir(), "snapshot")
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	snapIndices := []uint64{100, 200, 300, 400}
+	for _, index := range snapIndices {
+		filename := filepath.Join(dir, fmt.Sprintf("%016x.snap.db", index))
+		if err := ioutil.WriteFile(filename, []byte("snap file\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ss := New(zap.NewExample(), dir)
+
+	if err := ss.ReleaseSnapDBs(raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 300}}); err != nil {
+		t.Fatal(err)
+	}
+
+	deleted := []uint64{100, 200}
+	for _, index := range deleted {
+		filename := filepath.Join(dir, fmt.Sprintf("%016x.snap.db", index))
+		if fileutil.Exist(filename) {
+			t.Errorf("expected %s (index: %d)  to be deleted, but it still exists", filename, index)
+		}
+	}
+
+	retained := []uint64{300, 400}
+	for _, index := range retained {
+		filename := filepath.Join(dir, fmt.Sprintf("%016x.snap.db", index))
+		if !fileutil.Exist(filename) {
+			t.Errorf("expected %s (index: %d) to be retained, but it no longer exists", filename, index)
+		}
 	}
 }
