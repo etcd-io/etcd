@@ -129,6 +129,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Use [ServerName as the authority](https://github.com/etcd-io/etcd/pull/11574) after bumping to grpc v1.26.0. Remove workaround in [#11184](https://github.com/etcd-io/etcd/pull/11184).
 - Fix [`"hasleader"` metadata embedding](https://github.com/etcd-io/etcd/pull/11687).
   - Previously, `clientv3.WithRequireLeader(ctx)` was overwriting existing context keys.
+- Fix [watch leak caused by lazy cancellation](https://github.com/etcd-io/etcd/pull/11850). When clients cancel their watches, a cancel request will now be immediately sent to the server instead of waiting for the next watch event.
 
 ### Package `lease`
 
