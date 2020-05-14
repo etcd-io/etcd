@@ -552,10 +552,8 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.network = network
 
 		sctx.secure = u.Scheme == "https" || u.Scheme == "unixs"
-		sctx.insecure = !sctx.secure
 		if oldctx := sctxs[addr]; oldctx != nil {
 			oldctx.secure = oldctx.secure || sctx.secure
-			oldctx.insecure = oldctx.insecure || sctx.insecure
 			continue
 		}
 

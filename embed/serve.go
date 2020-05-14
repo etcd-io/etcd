@@ -47,12 +47,11 @@ import (
 )
 
 type serveCtx struct {
-	lg       *zap.Logger
-	l        net.Listener
-	addr     string
-	network  string
-	secure   bool
-	insecure bool
+	lg      *zap.Logger
+	l       net.Listener
+	addr    string
+	network string
+	secure  bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -108,7 +107,7 @@ func (sctx *serveCtx) serve(
 		}
 	}()
 
-	if sctx.insecure {
+	if !sctx.secure {
 		gs = v3rpc.Server(s, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
@@ -140,9 +139,7 @@ func (sctx *serveCtx) serve(
 			"serving client traffic insecurely; this is strongly discouraged!",
 			zap.String("address", sctx.l.Addr().String()),
 		)
-	}
-
-	if sctx.secure {
+	} else {
 		tlscfg, tlsErr := tlsinfo.ServerConfig()
 		if tlsErr != nil {
 			return tlsErr
