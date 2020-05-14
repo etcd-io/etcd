@@ -5,7 +5,7 @@ title: etcd learner design
 etcd Learner
 ============
 
-*Gyuho Lee (github.com/gyuho, Amazon Web Services, Inc.), Joe Betz (github.com/jpbetz, Google Inc.)*
+*Gyuho Lee (github.com/gyuho, Amazon Web Services, Inc.), Joe Betz (github.com/jpbetz, Google Inc.), Max Englander (github.com/maxenglander)*
 
 
 Background
@@ -86,6 +86,8 @@ Learner only serves as a standby node until promoted: Leadership cannot be trans
 
 ![server-learner-figure-13](img/server-learner-figure-13.png)
 
+An operator may mark a learner node for automatic promotion to a voting member. `member add --learner --auto --min-progress 90` command adds a new learner, which will behave the same as a node added with `member add --learner`, except that the leader will automatically promote the learner to a voting member once it has caught up with the leader’s progress.
+
 In addition, etcd limits the total number of learners that a cluster can have, and avoids overloading the leader with log replication. Learner never promotes itself. While etcd provides learner status information and safety checks, cluster operator must make the final decision whether to promote learner or not.
 
 Features in v3.5
@@ -93,7 +95,7 @@ Features in v3.5
 
 *Make learner state only and default*: Defaulting a new member state to learner will greatly improve membership reconfiguration safety, because learner does not change the size of quorum. Misconfiguration will always be reversible without losing the quorum.
 
-*Make voting-member promotion fully automatic*: Once a learner catches up to leader’s logs, a cluster can automatically promote the learner. etcd requires certain thresholds to be defined by the user, and once the requirements are satisfied, learner promotes itself to a voting member. From a user’s perspective, “member add” command would work the same way as today but with greater safety provided by learner feature.
+*Make voting-member promotion fully automatic*: Once a learner catches up to leader’s logs, a cluster can automatically promote the learner. etcd requires certain thresholds to be defined by the user, and once the requirements are satisfied, the leader automatically promotes the learner to a voting member. From a user’s perspective, “member add” command would work the same way as today but with greater safety provided by learner feature.
 
 *Make learner standby failover node*: A learner joins as a standby node, and gets automatically promoted when the cluster availability is affected.
 
@@ -118,6 +120,43 @@ etcd server must not transfer leadership to learner, since it may still lag behi
 *Add "MemberPromote" API.*
 
 Internally in Raft, second `MemberAdd` call to learner node promotes it to a voting member. Leader maintains the progress of each follower and learner. If learner has not completed its snapshot message, reject promote request. Only accept promote request if and only if: The learner node is in a healthy state. The learner is in sync with leader or the delta is within the threshold (e.g. the number of entries to replicate to learner is less than 1/10 of snapshot count, which means it is less likely that even after promotion leader would not need send snapshot to the learner). All these logic are hard-coded in `etcdserver` package and not configurable.
+
+Appendix: Learner Implementation in v3.5
+========================================
+
+*Expose "MemberPromoteRule" object in "MemberAdd" API.*
+
+etcd client adds the ability to supply one or more “MemberPromoteRule” objects to the `MemberAdd` API. A “MemberPromoteRule” governs if and when a learner node may be promoted to a voter, and is only operative when supplied in conjunction with the “IsLearner” flag. It is ignored otherwise.
+
+A learner may be promoted when any one of its “MemberPromoteRule” objects is satisfied. A “MemberPromoteRule” is satisfied when all of its “MemberMonitor” objects are active. A “MemberMonitor” object monitors a metric, such as the learner’s progress towards becoming in-sync with the leader. A “MemberMonitor” becomes active when the metric it measures meets the user-defined “Threshold” for at least “Delay” milliseconds.
+
+*Allow learners to be automatically promoted to voters.*
+
+A “MemberPromoteRule” has an “Auto” flag. When this flag is true, and the rule is satisifed, the leader will attempt to automatically promote the learner.
+
+When this flag is false (the default), the leader will not attempt to automatically promote the learner, regardless of the state of its “MemberPromoteRule” objects. However, an operator may promote the learner once one of its “MemberPromoteRule” objects is satisfied. etcd will reject any request by an operator to promote a learner before at least one of its “MemberPromoteRule” objects are satisfied.
+
+*Default "MemberPromoteRule".*
+
+If no “MemberPromoteRule” is supplied when adding a new learner, etcd will attach the default rule, below:
+
+```
+MemberPromoteRule{
+  Auto: false,
+  Monitors: []*MemberMonitor{
+    {
+      Type:      MemberMonitor_PROGRESS,
+      Op:        MemberMonitor_GREATER_EQUAL,
+      Threshold: 90,
+      Delay:     0,
+    },
+  },
+}
+```
+
+This rule is satisfied when the learner’s progress towards becoming in-sync with the leader is 90% or greater. When the rule is satisfied, the learner will not be automatically promoted. However, an operator may promote the learner.
+
+Internally, the default rule supplants and maintains compability with the v3.4 logic governing the promotion of learner nodes.
 
 Reference
 =========
