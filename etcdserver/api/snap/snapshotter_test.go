@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
+
 	"go.uber.org/zap"
 )
 
@@ -166,12 +168,47 @@ func TestLoadNewestSnap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	g, err := ss.Load()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
+	cases := []struct {
+		name              string
+		availableWalSnaps []walpb.Snapshot
+		expected          *raftpb.Snapshot
+	}{
+		{
+			name:     "load-newest",
+			expected: &newSnap,
+		},
+		{
+			name:              "loadnewestavailable-newest",
+			availableWalSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}, {Index: 5, Term: 1}},
+			expected:          &newSnap,
+		},
+		{
+			name:              "loadnewestavailable-newest-unsorted",
+			availableWalSnaps: []walpb.Snapshot{{Index: 5, Term: 1}, {Index: 1, Term: 1}, {Index: 0, Term: 0}},
+			expected:          &newSnap,
+		},
+		{
+			name:              "loadnewestavailable-previous",
+			availableWalSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}},
+			expected:          testSnap,
+		},
 	}
-	if !reflect.DeepEqual(g, &newSnap) {
-		t.Errorf("snap = %#v, want %#v", g, &newSnap)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var err error
+			var g *raftpb.Snapshot
+			if tc.availableWalSnaps != nil {
+				g, err = ss.LoadNewestAvailable(tc.availableWalSnaps)
+			} else {
+				g, err = ss.Load()
+			}
+			if err != nil {
+				t.Errorf("err = %v, want nil", err)
+			}
+			if !reflect.DeepEqual(g, tc.expected) {
+				t.Errorf("snap = %#v, want %#v", g, tc.expected)
+			}
+		})
 	}
 }
 

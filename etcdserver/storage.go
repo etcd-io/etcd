@@ -36,7 +36,7 @@ type Storage interface {
 	SaveSnap(snap raftpb.Snapshot) error
 	// Close closes the Storage and performs finalization.
 	Close() error
-	// Release release release the locked wal files since they will not be used.
+	// Release releases the locked wal files older than the provided snapshot.
 	Release(snap raftpb.Snapshot) error
 	// Sync WAL
 	Sync() error
@@ -51,51 +51,32 @@ func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
 	return &storage{w, s}
 }
 
-// SaveSnap saves the snapshot to disk and release the locked
-// wal files since they will not be used.
+// SaveSnap saves the snapshot file to disk and writes the WAL snapshot entry.
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	walsnap := walpb.Snapshot{
 		Index: snap.Metadata.Index,
 		Term:  snap.Metadata.Term,
 	}
-	err := st.WAL.SaveSnapshot(walsnap)
+	// save the snapshot file before writing the snapshot to the wal.
+	// This makes it possible for the snapshot file to become orphaned, but prevents
+	// a WAL snapshot entry from having no corresponding snapshot file.
+	err := st.Snapshotter.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
+	// gofail: var raftBeforeWALSaveSnaphot struct{}
 
-	return st.Snapshotter.SaveSnap(snap)
+	return st.WAL.SaveSnapshot(walsnap)
 }
 
+// Release release the locks to the wal files that are older than the provided wal for the given snap.
 func (st *storage) Release(snap raftpb.Snapshot) error {
 	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
 }
 
-func checkWALSnap(lg *zap.Logger, waldir string, snapshot *raftpb.Snapshot) bool {
-	if snapshot == nil {
-		lg.Fatal("checkWALSnap: snapshot is empty")
-	}
-
-	walsnap := walpb.Snapshot{
-		Index: snapshot.Metadata.Index,
-		Term:  snapshot.Metadata.Term,
-	}
-
-	w, _, _, st, _ := readWAL(lg, waldir, walsnap)
-	defer w.Close()
-
-	lg.Info(
-		"checkWALSnap: snapshot and hardstate data",
-		zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-		zap.Uint64("st-commit", st.Commit),
-	)
-
-	if snapshot.Metadata.Index > st.Commit {
-		return false
-	}
-
-	return true
-}
-
+// readWAL reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
+// after the position of the given snap in the WAL.
+// The snap must have been previously saved to the WAL, or this call will panic.
 func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var (
 		err       error

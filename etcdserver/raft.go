@@ -227,6 +227,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.transport.Send(r.processMessages(rd.Messages))
 				}
 
+				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
+				// ensure that recovery after a snapshot restore is possible.
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// gofail: var raftBeforeSaveSnap struct{}
 					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {

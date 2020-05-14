@@ -1000,3 +1000,60 @@ func TestReadAllFail(t *testing.T) {
 		t.Fatalf("err = %v, want ErrDecoderNotFound", err)
 	}
 }
+
+// TestValidSnapshotEntries ensures ValidSnapshotEntries returns all valid wal snapshot entries, accounting
+// for hardstate
+func TestValidSnapshotEntries(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	snap0 := walpb.Snapshot{Index: 0, Term: 0}
+	snap1 := walpb.Snapshot{Index: 1, Term: 1}
+	snap2 := walpb.Snapshot{Index: 2, Term: 1}
+	snap3 := walpb.Snapshot{Index: 3, Term: 2}
+	snap4 := walpb.Snapshot{Index: 4, Term: 2}
+	func() {
+		w, err := Create(zap.NewExample(), p, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer w.Close()
+
+		// snap0 is implicitly created at index 0, term 0
+		if err = w.SaveSnapshot(snap1); err != nil {
+			t.Fatal(err)
+		}
+		state := raftpb.HardState{Commit: 1, Term: 1}
+		if err = w.Save(state, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap2); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap3); err != nil {
+			t.Fatal(err)
+		}
+		state2 := raftpb.HardState{Commit: 3, Term: 2}
+		if err = w.Save(state2, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap4); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	walSnaps, err := ValidSnapshotEntries(zap.NewExample(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []walpb.Snapshot{snap0, snap1, snap2, snap3}
+	if len(walSnaps) != len(expected) {
+		t.Fatalf("expected 4 walSnaps, got %d", len(expected))
+	}
+	for i := 0; i < len(expected); i++ {
+		if walSnaps[i].Index != expected[i].Index || walSnaps[i].Term != expected[i].Term {
+			t.Errorf("expected walSnaps %+v at index %d, got %+v", expected[i], i, walSnaps[i])
+		}
+	}
+}

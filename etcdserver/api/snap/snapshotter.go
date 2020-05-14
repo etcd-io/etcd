@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -38,7 +39,6 @@ const snapSuffix = ".snap"
 
 var (
 	ErrNoSnapshot    = errors.New("snap: no available snapshot")
-	ErrSnapshotIndex = errors.New("snap: no available snapshot index")
 	ErrEmptySnapshot = errors.New("snap: empty snapshot")
 	ErrCRCMismatch   = errors.New("snap: crc mismatch")
 	crcTable         = crc32.MakeTable(crc32.Castagnoli)
@@ -103,38 +103,37 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	return nil
 }
 
+// Load returns the newest snapshot.
 func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
+	return s.loadMatching(func(*raftpb.Snapshot) bool { return true })
+}
+
+// LoadNewestAvailable loads the newest snapshot available that is in walSnaps.
+func (s *Snapshotter) LoadNewestAvailable(walSnaps []walpb.Snapshot) (*raftpb.Snapshot, error) {
+	return s.loadMatching(func(snapshot *raftpb.Snapshot) bool {
+		m := snapshot.Metadata
+		for i := len(walSnaps) - 1; i >= 0; i-- {
+			if m.Term == walSnaps[i].Term && m.Index == walSnaps[i].Index {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// loadMatching returns the newest snapshot where matchFn returns true.
+func (s *Snapshotter) loadMatching(matchFn func(*raftpb.Snapshot) bool) (*raftpb.Snapshot, error) {
 	names, err := s.snapNames()
 	if err != nil {
 		return nil, err
 	}
 	var snap *raftpb.Snapshot
 	for _, name := range names {
-		if snap, err = loadSnap(s.lg, s.dir, name); err == nil {
-			break
+		if snap, err = loadSnap(s.lg, s.dir, name); err == nil && matchFn(snap) {
+			return snap, nil
 		}
 	}
-	if err != nil {
-		return nil, ErrNoSnapshot
-	}
-	return snap, nil
-}
-
-func (s *Snapshotter) LoadIndex(i uint64) (*raftpb.Snapshot, error) {
-	names, err := s.snapNames()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(names) == 0 {
-		return nil, ErrNoSnapshot
-	}
-
-	if i >= uint64(len(names)) {
-		return nil, ErrSnapshotIndex
-	}
-
-	return loadSnap(s.lg, s.dir, names[i])
+	return nil, ErrNoSnapshot
 }
 
 func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
