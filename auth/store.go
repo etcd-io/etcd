@@ -1221,9 +1221,7 @@ func NewTokenProvider(
 
 	switch tokenType {
 	case tokenTypeSimple:
-		if lg != nil {
-			lg.Warn("simple token is not cryptographically signed")
-		}
+		lg.Warn("simple token is not cryptographically signed")
 		return newTokenProviderSimple(lg, indexWaiter), nil
 
 	case tokenTypeJWT:
@@ -1233,13 +1231,11 @@ func NewTokenProvider(
 		return newTokenProviderNop()
 
 	default:
-		if lg != nil {
-			lg.Warn(
-				"unknown token type",
-				zap.String("type", tokenType),
-				zap.Error(ErrInvalidAuthOpts),
-			)
-		}
+		lg.Warn(
+			"unknown token type",
+			zap.String("type", tokenType),
+			zap.Error(ErrInvalidAuthOpts),
+		)
 		return nil, ErrInvalidAuthOpts
 	}
 }
