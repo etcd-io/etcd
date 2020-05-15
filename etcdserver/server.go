@@ -29,6 +29,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+	humanize "github.com/dustin/go-humanize"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
@@ -59,11 +64,6 @@ import (
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/version"
 	"go.etcd.io/etcd/v3/wal"
-
-	"github.com/coreos/go-semver/semver"
-	humanize "github.com/dustin/go-humanize"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 const (
@@ -414,10 +414,19 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 				zap.String("wal-dir", cfg.WALDir()),
 			)
 		}
-		snapshot, err = ss.Load()
+
+		// Find a snapshot to start/restart a raft node
+		walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+		if err != nil {
+			return nil, err
+		}
+		// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
+		// wal log entries
+		snapshot, err := ss.LoadNewestAvailable(walSnaps)
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
+
 		if snapshot != nil {
 			if err = st.Recovery(snapshot.Data); err != nil {
 				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
@@ -2150,11 +2159,14 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			lg.Panic("failed to create snapshot", zap.Error(err))
 		}
-		// SaveSnap saves the snapshot and releases the locked wal files
-		// to the snapshot index.
+		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
 		}
+		if err = s.r.storage.Release(snap); err != nil {
+			lg.Panic("failed to release wal", zap.Error(err))
+		}
+
 		lg.Info(
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),

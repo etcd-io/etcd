@@ -995,14 +995,18 @@ func TestSnapshot(t *testing.T) {
 	ch := make(chan struct{}, 2)
 
 	go func() {
-		gaction, _ := p.Wait(1)
+		gaction, _ := p.Wait(2)
 		defer func() { ch <- struct{}{} }()
 
-		if len(gaction) != 1 {
-			t.Errorf("len(action) = %d, want 1", len(gaction))
+		if len(gaction) != 2 {
+			t.Fatalf("len(action) = %d, want 2", len(gaction))
 		}
 		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[0])
+		}
+
+		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "Release"}) {
+			t.Errorf("action = %s, want Release", gaction[1])
 		}
 	}()
 
@@ -1087,20 +1091,32 @@ func TestSnapshotOrdering(t *testing.T) {
 		n.readyc <- raft.Ready{Snapshot: snapMsg.Snapshot}
 	}()
 
+	ac := <-p.Chan()
+	if ac.Name != "Save" {
+		t.Fatalf("expected Save, got %+v", ac)
+	}
+
+	if ac := <-p.Chan(); ac.Name != "SaveSnap" {
+		t.Fatalf("expected SaveSnap, got %+v", ac)
+	}
+
 	if ac := <-p.Chan(); ac.Name != "Save" {
 		t.Fatalf("expected Save, got %+v", ac)
 	}
-	if ac := <-p.Chan(); ac.Name != "Save" {
-		t.Fatalf("expected Save, got %+v", ac)
-	}
+
 	// confirm snapshot file still present before calling SaveSnap
 	snapPath := filepath.Join(snapdir, fmt.Sprintf("%016x.snap.db", 1))
 	if !fileutil.Exist(snapPath) {
 		t.Fatalf("expected file %q, got missing", snapPath)
 	}
+
 	// unblock SaveSnapshot, etcdserver now permitted to move snapshot file
-	if ac := <-p.Chan(); ac.Name != "SaveSnap" {
-		t.Fatalf("expected SaveSnap, got %+v", ac)
+	if ac := <-p.Chan(); ac.Name != "Sync" {
+		t.Fatalf("expected Sync, got %+v", ac)
+	}
+
+	if ac := <-p.Chan(); ac.Name != "Release" {
+		t.Fatalf("expected Release, got %+v", ac)
 	}
 }
 
@@ -1140,16 +1156,22 @@ func TestTriggerSnap(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		wcnt := 2 + snapc
+		wcnt := 3 + snapc
 		gaction, _ := p.Wait(wcnt)
 
 		// each operation is recorded as a Save
-		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap
+		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap + Release
 		if len(gaction) != wcnt {
-			t.Errorf("len(action) = %d, want %d", len(gaction), wcnt)
+			t.Logf("gaction: %v", gaction)
+			t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 		}
-		if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "SaveSnap"}) {
-			t.Errorf("action = %s, want SaveSnap", gaction[wcnt-1])
+
+		if !reflect.DeepEqual(gaction[wcnt-2], testutil.Action{Name: "SaveSnap"}) {
+			t.Errorf("action = %s, want SaveSnap", gaction[wcnt-2])
+		}
+
+		if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "Release"}) {
+			t.Errorf("action = %s, want Release", gaction[wcnt-1])
 		}
 		close(donec)
 	}()

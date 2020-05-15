@@ -45,4 +45,16 @@ func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
 	return nil
 }
 
+func (p *storageRecorder) Release(st raftpb.Snapshot) error {
+	if !raft.IsEmptySnap(st) {
+		p.Record(testutil.Action{Name: "Release"})
+	}
+	return nil
+}
+
+func (p *storageRecorder) Sync() error {
+	p.Record(testutil.Action{Name: "Sync"})
+	return nil
+}
+
 func (p *storageRecorder) Close() error { return nil }
