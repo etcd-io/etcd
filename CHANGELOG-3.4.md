@@ -13,10 +13,21 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.7...v3.4.8) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
+### `etcdctl`
+
+- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
+
+### Package `clientv3`
+
+- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
+
 ### etcd server
 
 - [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
 - [Fix deadlock bug in mvcc](https://github.com/etcd-io/etcd/pull/11817).
+- Fix [inconsistency between WAL and server snapshot](https://github.com/etcd-io/etcd/pull/11888).
+  - Previously, server restore fails if it had crashed after persisting raft hard state but before saving snapshot.
+  - See https://github.com/etcd-io/etcd/issues/10219 for more.
 
 ### Package Auth
 
