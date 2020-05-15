@@ -133,3 +133,46 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		}
 	}
 }
+
+func TestConvertToClusterVersion(t *testing.T) {
+	tests := []struct {
+		name        string
+		inputVerStr string
+		expectedVer string
+		hasError    bool
+	}{
+		{
+			"Succeeded: Major.Minor.Patch",
+			"3.4.2",
+			"3.4.0",
+			false,
+		},
+		{
+			"Succeeded: Major.Minor",
+			"3.4",
+			"3.4.0",
+			false,
+		},
+		{
+			"Failed: wrong version format",
+			"3*.9",
+			"",
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ver, err := convertToClusterVersion(tt.inputVerStr)
+			hasError := err != nil
+			if hasError != tt.hasError {
+				t.Errorf("Expected error status is %v; Got %v", tt.hasError, err)
+			}
+			if tt.hasError {
+				return
+			}
+			if ver == nil || tt.expectedVer != ver.String() {
+				t.Errorf("Expected output cluster version is %v; Got %v", tt.expectedVer, ver)
+			}
+		})
+	}
+}

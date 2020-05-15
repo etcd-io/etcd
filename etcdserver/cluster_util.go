@@ -355,3 +355,22 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	}
 	return membs, nil
 }
+
+func convertToClusterVersion(v string) (*semver.Version, error) {
+	ver, err := semver.NewVersion(v)
+	if err != nil {
+		// allow input version format Major.Minor
+		ver, err = semver.NewVersion(v + ".0")
+		if err != nil {
+			return nil, ErrWrongDowngradeVersionFormat
+		}
+	}
+	// cluster version only keeps major.minor, remove patch version
+	ver = &semver.Version{Major: ver.Major, Minor: ver.Minor}
+	return ver, nil
+}
+
+// Todo: handle the case that downgrading from higher major version(e.g. downgrade from v4.0 to v3.x)
+func allowedDowngradeVersion(ver *semver.Version) *semver.Version {
+	return &semver.Version{Major: ver.Major, Minor: ver.Minor - 1}
+}
