@@ -75,7 +75,7 @@ WAL
 consistentIndex
 todo
 saveWALAndSnap
-
+SHA
 subconns
 nop
 SubConns
