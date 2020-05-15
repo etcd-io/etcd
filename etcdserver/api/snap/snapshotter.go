@@ -282,7 +282,7 @@ func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
 			hexIndex := strings.TrimSuffix(filepath.Base(filename), ".snap.db")
 			index, err := strconv.ParseUint(hexIndex, 16, 64)
 			if err != nil {
-				return fmt.Errorf("failed to parse index from .snap.db filename '%s': %w", filename, err)
+				return fmt.Errorf("failed to parse index from .snap.db filename %q: %v", filename, err)
 			}
 			if index < snap.Metadata.Index {
 				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
