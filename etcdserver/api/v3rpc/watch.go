@@ -190,6 +190,18 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		close(sws.ctrlStream)
 
 	case <-stream.Context().Done():
+		defer func() {
+			// errc needs to have a reader since the goroutine doing the work 
+			// needs to send to it. This is defered to ensure it runs
+			// even if the post timeout work itself panics.
+			go func() {
+				res := <-errc
+				if res != nil {
+					fmt.Error("%v", res)
+				}
+			}()
+		}()
+
 		err = stream.Context().Err()
 		// the only server-side cancellation is noleader for now.
 		if err == context.Canceled {
