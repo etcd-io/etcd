@@ -243,7 +243,8 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = s.cleanupSnapdir(names); err != nil {
+	names, err = s.cleanupSnapdir(names)
+	if err != nil {
 		return nil, err
 	}
 	snaps := checkSuffix(s.lg, names)
@@ -276,7 +277,7 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 
 // cleanupSnapdir removes any files that should not be in the snapshot directory:
 // - db.tmp prefixed files that can be orphaned by defragmentation
-func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
+func (s *Snapshotter) cleanupSnapdir(filenames []string) (names []string, err error) {
 	for _, filename := range filenames {
 		if strings.HasPrefix(filename, "db.tmp") {
 			if s.lg != nil {
@@ -285,11 +286,13 @@ func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
 				plog.Infof("found orphaned defragmentation file; deleting: %s", filename)
 			}
 			if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
-				return fmt.Errorf("failed to remove orphaned .snap.db file %s: %v", filename, rmErr)
+				return nil, fmt.Errorf("failed to remove orphaned .snap.db file %s: %v", filename, rmErr)
 			}
+			continue
 		}
+		names = append(names, filename)
 	}
-	return nil
+	return names, nil
 }
 
 func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
