@@ -16,8 +16,8 @@ package raft
 
 import (
 	"errors"
-	"sync"
 
+	deadlock "github.com/sasha-s/go-deadlock"
 	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
@@ -77,7 +77,7 @@ type MemoryStorage struct {
 	// Protects access to all fields. Most methods of MemoryStorage are
 	// run on the raft goroutine, but Append() is run on an application
 	// goroutine.
-	sync.Mutex
+	deadlock.Mutex
 
 	hardState pb.HardState
 	snapshot  pb.Snapshot

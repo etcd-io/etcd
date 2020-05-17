@@ -22,9 +22,9 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
+	deadlock "github.com/sasha-s/go-deadlock"
 	"go.etcd.io/etcd/v3/raft/confchange"
 	"go.etcd.io/etcd/v3/raft/quorum"
 	pb "go.etcd.io/etcd/v3/raft/raftpb"
@@ -78,7 +78,7 @@ var ErrProposalDropped = errors.New("raft proposal dropped")
 // synchronization among multiple raft groups. Only the methods needed
 // by the code are exposed (e.g. Intn).
 type lockedRand struct {
-	mu   sync.Mutex
+	mu   deadlock.Mutex
 	rand *rand.Rand
 }
 

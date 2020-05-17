@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"sync"
 	"time"
 
+	deadlock "github.com/sasha-s/go-deadlock"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
@@ -48,7 +48,7 @@ const (
 
 var (
 	// protects raftStatus
-	raftStatusMu sync.Mutex
+	raftStatusMu deadlock.Mutex
 	// indirection for expvar func interface
 	// expvar panics when publishing duplicate name
 	// expvar does not support remove a registered name
@@ -79,7 +79,7 @@ type apply struct {
 type raftNode struct {
 	lg *zap.Logger
 
-	tickMu *sync.Mutex
+	tickMu *deadlock.Mutex
 	raftNodeConfig
 
 	// a chan to send/receive snapshot
@@ -131,7 +131,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 	raft.SetLogger(lg)
 	r := &raftNode{
 		lg:             cfg.lg,
-		tickMu:         new(sync.Mutex),
+		tickMu:         new(deadlock.Mutex),
 		raftNodeConfig: cfg,
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.

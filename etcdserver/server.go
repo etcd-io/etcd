@@ -34,6 +34,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	deadlock "github.com/sasha-s/go-deadlock"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
@@ -199,12 +200,12 @@ type EtcdServer struct {
 	readych chan struct{}
 	Cfg     ServerConfig
 
-	lgMu *sync.RWMutex
+	lgMu *deadlock.RWMutex
 	lg   *zap.Logger
 
 	w wait.Wait
 
-	readMu sync.RWMutex
+	readMu deadlock.RWMutex
 	// read routine notifies etcd server that it waits for reading by sending an empty struct to
 	// readwaitC
 	readwaitc chan struct{}
@@ -220,7 +221,7 @@ type EtcdServer struct {
 	done chan struct{}
 	// leaderChanged is used to notify the linearizable read loop to drop the old read requests.
 	leaderChanged   chan struct{}
-	leaderChangedMu sync.RWMutex
+	leaderChangedMu deadlock.RWMutex
 
 	errorc     chan error
 	id         types.ID
@@ -243,7 +244,7 @@ type EtcdServer struct {
 
 	kv         mvcc.ConsistentWatchableKV
 	lessor     lease.Lessor
-	bemu       sync.Mutex
+	bemu       deadlock.Mutex
 	be         backend.Backend
 	authStore  auth.AuthStore
 	alarmStore *v3alarm.AlarmStore
@@ -264,7 +265,7 @@ type EtcdServer struct {
 	forceVersionC chan struct{}
 
 	// wgMu blocks concurrent waitgroup mutation while server stopping
-	wgMu sync.RWMutex
+	wgMu deadlock.RWMutex
 	// wg is used to wait for the goroutines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
@@ -274,7 +275,7 @@ type EtcdServer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	leadTimeMu      sync.RWMutex
+	leadTimeMu      deadlock.RWMutex
 	leadElectedTime time.Time
 
 	*AccessController
@@ -480,7 +481,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	srv = &EtcdServer{
 		readych:     make(chan struct{}),
 		Cfg:         cfg,
-		lgMu:        new(sync.RWMutex),
+		lgMu:        new(deadlock.RWMutex),
 		lg:          cfg.Logger,
 		errorc:      make(chan error, 1),
 		v2store:     st,
@@ -868,7 +869,7 @@ func (s *EtcdServer) run() {
 	sched := schedule.NewFIFOScheduler()
 
 	var (
-		smu   sync.RWMutex
+		smu   deadlock.RWMutex
 		syncC <-chan time.Time
 	)
 	setSyncC := func(ch <-chan time.Time) {
