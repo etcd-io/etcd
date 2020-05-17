@@ -313,7 +313,7 @@ func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
 				if s.lg != nil {
 					s.lg.Warn("failed to parse index from filename", zap.String("path", filename), zap.String("error", err.Error()))
 				} else {
-					plog.Warnf("failed to parse index from filename: %s (%v)", filename, err)
+					plog.Warningf("failed to parse index from filename: %s (%v)", filename, err)
 				}
 				continue
 			}
@@ -321,13 +321,13 @@ func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
 				if s.lg != nil {
 					s.lg.Warn("found orphaned .snap.db file; deleting", zap.String("path", filename))
 				} else {
-					plog.Warnf("found orphaned .snap.db file; deleting: %s", filename)
+					plog.Warningf("found orphaned .snap.db file; deleting: %s", filename)
 				}
 				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
 					if s.lg != nil {
 						s.lg.Warn("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.Error(rmErr))
 					} else {
-						plog.Warnf("failed to remove orphaned .snap.db file: %s (%v)", filename, rmErr)
+						plog.Warningf("failed to remove orphaned .snap.db file: %s (%v)", filename, rmErr)
 					}
 				}
 			}

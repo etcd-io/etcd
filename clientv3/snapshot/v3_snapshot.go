@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver"
@@ -88,6 +89,14 @@ type v3Manager struct {
 	skipHashCheck bool
 }
 
+// hasChecksum returns "true" if the file size "n"
+// has appended sha256 hash digest.
+func hasChecksum(n int64) bool {
+	// 512 is chosen because it's a minimum disk sector size
+	// smaller than (and multiplies to) OS page size in most systems
+	return (n % 512) == sha256.Size
+}
+
 // Save fetches snapshot from remote etcd server and saves data to target path.
 func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) error {
 	if len(cfg.Endpoints) != 1 {
@@ -107,10 +116,7 @@ func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string
 	if err != nil {
 		return fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
-	s.lg.Info(
-		"created temporary db file",
-		zap.String("path", partpath),
-	)
+	s.lg.Info("created temporary db file", zap.String("path", partpath))
 
 	now := time.Now()
 	var rd io.ReadCloser
@@ -118,12 +124,14 @@ func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string
 	if err != nil {
 		return err
 	}
-	s.lg.Info(
-		"fetching snapshot",
-		zap.String("endpoint", cfg.Endpoints[0]),
-	)
-	if _, err = io.Copy(f, rd); err != nil {
+	s.lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
+	var size int64
+	size, err = io.Copy(f, rd)
+	if err != nil {
 		return err
+	}
+	if !hasChecksum(size) {
+		return fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
 		return err
@@ -134,6 +142,7 @@ func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string
 	s.lg.Info(
 		"fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
+		zap.String("size", humanize.Bytes(uint64(size))),
 		zap.Duration("took", time.Since(now)),
 	)
 
@@ -346,7 +355,7 @@ func (s *v3Manager) saveDB() error {
 	if serr != nil {
 		return serr
 	}
-	hasHash := (off % 512) == sha256.Size
+	hasHash := hasChecksum(off)
 	if hasHash {
 		if err := db.Truncate(off - sha256.Size); err != nil {
 			return err
