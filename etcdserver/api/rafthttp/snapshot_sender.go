@@ -173,6 +173,10 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 
 	select {
 	case <-s.stopc:
+		//result needs to have a reader since the goroutine needs to send to it
+		go func() {
+			<-result
+		}()
 		return errStopped
 	case r := <-result:
 		if r.err != nil {
