@@ -33,7 +33,7 @@ var (
 	// for sending out watched events.
 	// TODO: find a good buf value. 1024 is just a random one that
 	// seems to be reasonable.
-	chanBufLen = 1024
+	chanBufLen = 4
 
 	// maxWatchersPerSync is the number of watchers to sync in a single batch
 	maxWatchersPerSync = 512
