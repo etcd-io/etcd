@@ -305,6 +305,7 @@ type Message struct {
 	Reject           bool        `protobuf:"varint,10,opt,name=reject" json:"reject"`
 	RejectHint       uint64      `protobuf:"varint,11,opt,name=rejectHint" json:"rejectHint"`
 	Context          []byte      `protobuf:"bytes,12,opt,name=context" json:"context,omitempty"`
+	Priority         uint64      `protobuf:"varint,14,opt,name=priority" json:"priority"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -615,6 +616,9 @@ func (m *Message) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintRaft(dAtA, i, uint64(len(m.Context)))
 		i += copy(dAtA[i:], m.Context)
 	}
+	dAtA[i] = 0x68
+	i++
+	i = encodeVarintRaft(dAtA, i, uint64(m.Priority))
 	if m.XXX_unrecognized != nil {
 		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
@@ -890,6 +894,7 @@ func (m *Message) Size() (n int) {
 		l = len(m.Context)
 		n += 1 + l + sovRaft(uint64(l))
 	}
+	n += 1 + sovRaft(uint64(m.Priority))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -1661,6 +1666,25 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 				m.Context = []byte{}
 			}
 			iNdEx = postIndex
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Priority", wireType)
+			}
+			m.Priority = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Priority |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRaft(dAtA[iNdEx:])

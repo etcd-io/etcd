@@ -54,6 +54,11 @@ func NewRawNode(config *Config) (*RawNode, error) {
 	return rn, nil
 }
 
+// SetPriority sets priority of raft.
+func (rn *RawNode) SetPriority(p uint64) {
+	rn.raft.setPriority(p)
+}
+
 // Tick advances the internal logical clock by a single tick.
 func (rn *RawNode) Tick() {
 	rn.raft.tick()

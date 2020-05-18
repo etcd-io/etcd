@@ -68,6 +68,7 @@ message Message {
 	optional bool        reject      = 10 [(gogoproto.nullable) = false];
 	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
 	optional bytes       context     = 12;
+	optional uint64      priority    = 13 [(gogoproto.nullable) = false];
 }
 
 message HardState {

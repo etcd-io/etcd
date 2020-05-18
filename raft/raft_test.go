@@ -4371,3 +4371,107 @@ func newTestRawNode(id uint64, peers []uint64, election, heartbeat int, storage 
 	}
 	return rn
 }
+
+// TestElectionWithPriorityLog varifies the correctness
+// of the election with both priority and log.
+func TestElectionWithPriorityLog(t *testing.T) {
+	tests := []struct {
+		l1      bool        // log is up to date or not
+		l2      bool
+		l3      bool
+		p1      uint64      // priority
+		p2      uint64
+		p3      uint64
+		id      uint64      // candidate for leader
+		state   StateType
+	}{
+		{true, false, false, 3, 1, 1, 1, StateLeader},
+		{true, false, false, 2, 2, 2, 1, StateLeader},
+		{true, false, false, 1, 3, 3, 1, StateLeader},
+		{true, true, true, 3, 1, 1, 1, StateLeader},
+		{true, true, true, 2, 2, 2, 1, StateLeader},
+		{true, true, true, 1, 3, 3, 1, StateFollower},
+		{false, true, true, 3, 1, 1, 1, StateFollower},
+		{false, true, true, 2, 2, 2, 1, StateFollower},
+		{false, true, true, 1, 3, 3, 1, StateFollower},
+		{false, false, true, 1, 3, 1, 1, StateFollower},
+		{false, false, true, 1, 1, 3, 1, StateLeader},
+	}
+
+	for i, test := range tests {
+		n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+		n1.becomeFollower(1, None)
+		n2.becomeFollower(1, None)
+		n3.becomeFollower(1, None)
+		n1.setPriority(test.p1)
+		n2.setPriority(test.p2)
+		n3.setPriority(test.p3)
+		//let entries = vec![new_entry(1, 1, SOME_DATA), new_entry(1, 1, SOME_DATA)];
+		entries := []pb.Entry{{Index: 1, Term: 1}, {Index: 1, Term: 1}}
+		if test.l1 {
+			n1.raftLog.append(entries...)
+		}
+		if test.l2 {
+			n2.raftLog.append(entries...)
+		}
+		if test.l3 {
+			n3.raftLog.append(entries...)
+		}
+
+		network := newNetwork(n1, n2, n3)
+		network.send(pb.Message{From: test.id, To: test.id, Type: pb.MsgHup})
+
+		candidate := network.peers[test.id].(*raft)
+		if candidate.state != test.state {
+			t.Errorf("#%d: peer %d state: %s, want %s", i, test.id, candidate.state, test.state)
+		}
+	}
+}
+
+// TestElectionAfterChangePriority verifies that a peer can win an election
+// by raising its priority and lose election by lowering its priority.
+func TestElectionAfterChangePriority(t *testing.T) {
+	id := uint64(1)
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+	// priority of n1 is 0 in default.
+	n2.setPriority(2)
+	n3.setPriority(3)
+	entries := []pb.Entry{{Index: 1, Term: 1}, {Index: 1, Term: 1}}
+	n1.raftLog.append(entries...)
+	n2.raftLog.append(entries...)
+	n3.raftLog.append(entries...)
+
+	network := newNetwork(n1, n2, n3)
+	network.send(pb.Message{From: id, To: id, Type: pb.MsgHup})
+	candidate := network.peers[id].(*raft)
+	if candidate.state != StateFollower {
+		t.Errorf("#init: peer %d state: %s, want %s", id, candidate.state, StateFollower)
+	}
+
+	tests := []struct {
+		p       uint64      // priority
+		state   StateType
+	}{
+		{1, StateFollower},
+		{2, StateLeader},
+		{3, StateLeader},
+		{1, StateFollower},
+	}
+
+	for i, test := range tests {
+		candidate.becomeFollower(uint64(i+2), None)
+		candidate.setPriority(test.p)
+		network.send(pb.Message{From: id, To: id, Type: pb.MsgHup})
+		if candidate.state != test.state {
+			t.Errorf("#%d: peer %d state: %s, want %s", i, id, candidate.state, test.state)
+		}
+	}
+}

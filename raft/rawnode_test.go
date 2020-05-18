@@ -971,3 +971,15 @@ func TestRawNodeConsumeReady(t *testing.T) {
 		t.Fatalf("expected only m2 in raft.msgs, got %+v", rn.raft.msgs)
 	}
 }
+
+// TestRawNodeSetPriority verifies the correctness of setPriority function.
+func TestRawNodeSetPriority(t *testing.T) {
+	s := NewMemoryStorage()
+	rn := newTestRawNode(1, []uint64{1}, 3, 1, s)
+	for _, p := range []uint64{1, 2, 5, 100} {
+		rn.SetPriority(p);
+		if rn.raft.priority != p {
+			t.Fatalf("set priority failed, set %d, get %d", p, rn.raft.priority)
+		}
+	}
+}

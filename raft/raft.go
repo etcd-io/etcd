@@ -207,6 +207,9 @@ type Config struct {
 	// logical clock from assigning the timestamp and then forwarding the data
 	// to the leader.
 	DisableProposalForwarding bool
+
+	// priority of election
+	Priority uint64
 }
 
 func (c *Config) validate() error {
@@ -318,6 +321,9 @@ type raft struct {
 	step stepFunc
 
 	logger Logger
+
+	// priority of election
+	priority uint64
 }
 
 func newRaft(c *Config) *raft {
@@ -356,6 +362,7 @@ func newRaft(c *Config) *raft {
 		preVote:                   c.PreVote,
 		readOnly:                  newReadOnly(c.ReadOnlyOption),
 		disableProposalForwarding: c.DisableProposalForwarding,
+		priority:                  c.Priority,
 	}
 
 	cfg, prs, err := confchange.Restore(confchange.Changer{
@@ -384,6 +391,9 @@ func newRaft(c *Config) *raft {
 		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.applied, r.raftLog.lastIndex(), r.raftLog.lastTerm())
 	return r
 }
+
+// setPriority sets priority of raft.
+func (r *raft) setPriority(p uint64) { r.priority = p }
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
@@ -429,6 +439,9 @@ func (r *raft) send(m pb.Message) {
 		if m.Type != pb.MsgProp && m.Type != pb.MsgReadIndex {
 			m.Term = r.Term
 		}
+	}
+	if m.Type == pb.MsgVote	|| m.Type == pb.MsgPreVote {
+		m.Priority = r.priority
 	}
 	r.msgs = append(r.msgs, m)
 }
@@ -939,7 +952,8 @@ func (r *raft) Step(m pb.Message) error {
 			// ...or this is a PreVote for a future term...
 			(m.Type == pb.MsgPreVote && m.Term > r.Term)
 		// ...and we believe the candidate is up to date.
-		if canVote && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+		if canVote && r.raftLog.isUpToDate(m.Index, m.LogTerm) &&
+			(m.Index > r.raftLog.lastIndex() || r.priority <= m.Priority) {
 			// Note: it turns out that that learners must be allowed to cast votes.
 			// This seems counter- intuitive but is necessary in the situation in which
 			// a learner has been promoted (i.e. is now a voter) but has not learned
