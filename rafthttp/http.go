@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
+	"github.com/dustin/go-humanize"
 )
 
 const (
@@ -194,7 +195,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	receivedBytes.WithLabelValues(from).Add(float64(m.Size()))
+	msgSizeVal := m.Size()
+	msgSize := humanize.Bytes(uint64(msgSizeVal))
+	receivedBytes.WithLabelValues(from).Add(float64(msgSizeVal))
 
 	if m.Type != raftpb.MsgSnap {
 		plog.Errorf("unexpected raft message type %s on snapshot path", m.Type)
@@ -207,7 +210,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		snapshotReceiveInflights.WithLabelValues(from).Dec()
 	}()
-	plog.Infof("receiving database snapshot [index:%d, from %s] ...", m.Snapshot.Metadata.Index, types.ID(m.From))
+	plog.Infof("receiving database snapshot [index: %d, from: %s, raft message size: %s]", m.Snapshot.Metadata.Index, types.ID(m.From), msgSize)
 	// save incoming database snapshot.
 	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
 	if err != nil {
@@ -217,8 +220,10 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		snapshotReceiveFailures.WithLabelValues(from).Inc()
 		return
 	}
+
+	dbSize := humanize.Bytes(uint64(n))
 	receivedBytes.WithLabelValues(from).Add(float64(n))
-	plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
+	plog.Infof("successfully received and saved database snapshot [index: %d, from: %s, raft message size: %s, db size: %s]", m.Snapshot.Metadata.Index, types.ID(m.From), msgSize, dbSize)
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		switch v := err.(type) {

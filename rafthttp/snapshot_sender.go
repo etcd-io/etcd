@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -75,7 +76,9 @@ func (s *snapshotSender) send(merged snap.Message) {
 	u := s.picker.pick()
 	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
 
-	plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
+	snapshotTotalSizeVal := uint64(merged.TotalSize)
+	snapshotTotalSize := humanize.Bytes(snapshotTotalSizeVal)
+	plog.Infof("start to send database snapshot [index: %d, to %s, size %s]...", m.Snapshot.Metadata.Index, types.ID(m.To), snapshotTotalSize)
 	snapshotSendInflights.WithLabelValues(to).Inc()
 	defer func() {
 		snapshotSendInflights.WithLabelValues(to).Dec()
