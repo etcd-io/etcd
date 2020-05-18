@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/clientv3/credentials"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/logutil"
+	"github.com/coreos/pkg/capnslog"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -45,6 +46,10 @@ var (
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
 
 	roundRobinBalancerName = fmt.Sprintf("etcd-%s", picker.RoundrobinBalanced.String())
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "clientv3")
 )
 
 func init() {

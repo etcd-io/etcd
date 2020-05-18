@@ -193,23 +193,32 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 		return nil, toErr(ctx, err)
 	}
 
+	plog.Info("opened snapshot stream; downloading")
 	pr, pw := io.Pipe()
 	go func() {
 		for {
 			resp, err := ss.Recv()
 			if err != nil {
+				switch err {
+				case io.EOF:
+					plog.Info("completed snapshot read; closing")
+				default:
+					plog.Warningf("failed to receive from snapshot stream; closing (%v)", err)
+				}
 				pw.CloseWithError(err)
 				return
 			}
-			if resp == nil && err == nil {
-				break
-			}
+
+			// can "resp == nil && err == nil"
+			// before we receive snapshot SHA digest?
+			// No, server sends EOF with an empty response
+			// after it sends SHA digest at the end
+
 			if _, werr := pw.Write(resp.Blob); werr != nil {
 				pw.CloseWithError(werr)
 				return
 			}
 		}
-		pw.Close()
 	}()
 	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, nil
 }
