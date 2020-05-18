@@ -95,6 +95,9 @@ message Member {
   string SnapshotPath = 601 [(gogoproto.moretags) = "yaml:\"snapshot-path\""];
   // SnapshotInfo contains last SAVE_SNAPSHOT request results.
   SnapshotInfo SnapshotInfo = 602;
+
+  // Failpoints is the GOFAIL_FAILPOINTS environment variable value to use when starting etcd.
+  string Failpoints = 701  [(gogoproto.moretags) = "yaml:\"failpoints\""];
 }
 
 message Tester {

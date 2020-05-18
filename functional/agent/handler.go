@@ -50,7 +50,7 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	case rpcpb.Operation_INITIAL_START_ETCD:
 		return srv.handle_INITIAL_START_ETCD(req)
 	case rpcpb.Operation_RESTART_ETCD:
-		return srv.handle_RESTART_ETCD()
+		return srv.handle_RESTART_ETCD(req)
 
 	case rpcpb.Operation_SIGTERM_ETCD:
 		return srv.handle_SIGTERM_ETCD()
@@ -60,9 +60,9 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 	case rpcpb.Operation_SAVE_SNAPSHOT:
 		return srv.handle_SAVE_SNAPSHOT()
 	case rpcpb.Operation_RESTORE_RESTART_FROM_SNAPSHOT:
-		return srv.handle_RESTORE_RESTART_FROM_SNAPSHOT()
+		return srv.handle_RESTORE_RESTART_FROM_SNAPSHOT(req)
 	case rpcpb.Operation_RESTART_FROM_SNAPSHOT:
-		return srv.handle_RESTART_FROM_SNAPSHOT()
+		return srv.handle_RESTART_FROM_SNAPSHOT(req)
 
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
@@ -95,7 +95,7 @@ func (srv *Server) createEtcdLogFile() error {
 	return nil
 }
 
-func (srv *Server) creatEtcd(fromSnapshot bool) error {
+func (srv *Server) creatEtcd(fromSnapshot bool, failpoints string) error {
 	if !fileutil.Exist(srv.Member.EtcdExec) {
 		return fmt.Errorf("unknown etcd exec path %q does not exist", srv.Member.EtcdExec)
 	}
@@ -109,11 +109,15 @@ func (srv *Server) creatEtcd(fromSnapshot bool) error {
 		"creating etcd command",
 		zap.String("etcd-exec", etcdPath),
 		zap.Strings("etcd-flags", etcdFlags),
+		zap.String("GOFAIL_FAILPOINTS", failpoints),
 		zap.String("failpoint-http-addr", srv.Member.FailpointHTTPAddr),
 		zap.String("failpoint-addr", u.Host),
 	)
 	srv.etcdCmd = exec.Command(etcdPath, etcdFlags...)
 	srv.etcdCmd.Env = []string{"GOFAIL_HTTP=" + u.Host}
+	if failpoints != "" {
+		srv.etcdCmd.Env = append(srv.etcdCmd.Env, "GOFAIL_FAILPOINTS=" + failpoints)
+	}
 	srv.etcdCmd.Stdout = srv.etcdLogFile
 	srv.etcdCmd.Stderr = srv.etcdLogFile
 	return nil
@@ -484,7 +488,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(false); err != nil {
+	if err = srv.creatEtcd(false, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {
@@ -501,7 +505,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 	}, nil
 }
 
-func (srv *Server) handle_RESTART_ETCD() (*rpcpb.Response, error) {
+func (srv *Server) handle_RESTART_ETCD(req *rpcpb.Request) (*rpcpb.Response, error) {
 	var err error
 	if !fileutil.Exist(srv.Member.BaseDir) {
 		err = fileutil.TouchDirAll(srv.Member.BaseDir)
@@ -513,7 +517,7 @@ func (srv *Server) handle_RESTART_ETCD() (*rpcpb.Response, error) {
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(false); err != nil {
+	if err = srv.creatEtcd(false, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {
@@ -599,23 +603,23 @@ func (srv *Server) handle_SAVE_SNAPSHOT() (*rpcpb.Response, error) {
 	}, nil
 }
 
-func (srv *Server) handle_RESTORE_RESTART_FROM_SNAPSHOT() (resp *rpcpb.Response, err error) {
+func (srv *Server) handle_RESTORE_RESTART_FROM_SNAPSHOT(req *rpcpb.Request) (resp *rpcpb.Response, err error) {
 	err = srv.Member.RestoreSnapshot(srv.lg)
 	if err != nil {
 		return nil, err
 	}
-	resp, err = srv.handle_RESTART_FROM_SNAPSHOT()
+	resp, err = srv.handle_RESTART_FROM_SNAPSHOT(req)
 	if resp != nil && err == nil {
 		resp.Status = "restored snapshot and " + resp.Status
 	}
 	return resp, err
 }
 
-func (srv *Server) handle_RESTART_FROM_SNAPSHOT() (resp *rpcpb.Response, err error) {
+func (srv *Server) handle_RESTART_FROM_SNAPSHOT(req *rpcpb.Request) (resp *rpcpb.Response, err error) {
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(true); err != nil {
+	if err = srv.creatEtcd(true, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {
