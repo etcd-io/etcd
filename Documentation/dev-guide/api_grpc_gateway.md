@@ -118,7 +118,7 @@ Set the `Authorization` header to the authentication token to fetch a key using 
 
 ```bash
 curl -L http://localhost:2379/v3/kv/put \
-  -H 'Authorization : sssvIpwfnLAcWAQH.9' \
+  -H 'Authorization: sssvIpwfnLAcWAQH.9' \
   -X POST -d '{"key": "Zm9v", "value": "YmFy"}'
 # {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"2","raft_term":"2"}}
 ```
