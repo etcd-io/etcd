@@ -55,6 +55,7 @@ type applyResult struct {
 type applierV3Internal interface {
 	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest)
 	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest)
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest)
 }
 
 // applierV3 is the interface for processing V3 raft messages
@@ -195,6 +196,8 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
 	case r.ClusterMemberAttrSet != nil:
 		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
+	case r.DowngradeInfoSet != nil:
+		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
 	default:
 		panic("not implemented")
 	}
@@ -880,6 +883,14 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 			ClientURLs: r.MemberAttributes.ClientUrls,
 		},
 	)
+}
+
+func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest) {
+	d := membership.DowngradeInfo{Enabled: false}
+	if r.Enabled {
+		d = membership.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
+	}
+	a.s.cluster.SetDowngradeInfo(&d)
 }
 
 type quotaApplierV3 struct {

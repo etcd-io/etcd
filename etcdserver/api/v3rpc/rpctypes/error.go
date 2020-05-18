@@ -76,6 +76,12 @@ var (
 	ErrGPRCNotSupportedForLearner     = status.New(codes.Unavailable, "etcdserver: rpc not supported for learner").Err()
 	ErrGRPCBadLeaderTransferee        = status.New(codes.FailedPrecondition, "etcdserver: bad leader transferee").Err()
 
+	ErrGRPCClusterVersionUnavailable     = status.New(codes.Unavailable, "etcdserver: cluster version not found during downgrade").Err()
+	ErrGRPCWrongDowngradeVersionFormat   = status.New(codes.InvalidArgument, "etcdserver: wrong downgrade target version format").Err()
+	ErrGRPCInvalidDowngradeTargetVersion = status.New(codes.InvalidArgument, "etcdserver: invalid downgrade target version").Err()
+	ErrGRPCDowngradeInProcess            = status.New(codes.FailedPrecondition, "etcdserver: cluster has a downgrade job in progress").Err()
+	ErrGRPCNoInflightDowngrade           = status.New(codes.FailedPrecondition, "etcdserver: no inflight downgrade job").Err()
+
 	errStringToError = map[string]error{
 		ErrorDesc(ErrGRPCEmptyKey):      ErrGRPCEmptyKey,
 		ErrorDesc(ErrGRPCKeyNotFound):   ErrGRPCKeyNotFound,
@@ -132,6 +138,12 @@ var (
 		ErrorDesc(ErrGRPCCorrupt):                    ErrGRPCCorrupt,
 		ErrorDesc(ErrGPRCNotSupportedForLearner):     ErrGPRCNotSupportedForLearner,
 		ErrorDesc(ErrGRPCBadLeaderTransferee):        ErrGRPCBadLeaderTransferee,
+
+		ErrorDesc(ErrGRPCClusterVersionUnavailable):     ErrGRPCClusterVersionUnavailable,
+		ErrorDesc(ErrGRPCWrongDowngradeVersionFormat):   ErrGRPCWrongDowngradeVersionFormat,
+		ErrorDesc(ErrGRPCInvalidDowngradeTargetVersion): ErrGRPCInvalidDowngradeTargetVersion,
+		ErrorDesc(ErrGRPCDowngradeInProcess):            ErrGRPCDowngradeInProcess,
+		ErrorDesc(ErrGRPCNoInflightDowngrade):           ErrGRPCNoInflightDowngrade,
 	}
 )
 
@@ -190,6 +202,12 @@ var (
 	ErrUnhealthy                  = Error(ErrGRPCUnhealthy)
 	ErrCorrupt                    = Error(ErrGRPCCorrupt)
 	ErrBadLeaderTransferee        = Error(ErrGRPCBadLeaderTransferee)
+
+	ErrClusterVersionUnavailable     = Error(ErrGRPCClusterVersionUnavailable)
+	ErrWrongDowngradeVersionFormat   = Error(ErrGRPCWrongDowngradeVersionFormat)
+	ErrInvalidDowngradeTargetVersion = Error(ErrGRPCInvalidDowngradeTargetVersion)
+	ErrDowngradeInProcess            = Error(ErrGRPCDowngradeInProcess)
+	ErrNoInflightDowngrade           = Error(ErrGRPCNoInflightDowngrade)
 )
 
 // EtcdError defines gRPC server errors.

@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
@@ -806,5 +807,93 @@ func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 }
 
 func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	return nil, nil
+	switch r.Action {
+	case pb.DowngradeRequest_VALIDATE:
+		return s.downgradeValidate(ctx, r.Version)
+	case pb.DowngradeRequest_ENABLE:
+		return s.downgradeEnable(ctx, r)
+	case pb.DowngradeRequest_CANCEL:
+		return s.downgradeCancel(ctx)
+	default:
+		return nil, ErrUnknownMethod
+	}
+}
+
+func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
+	resp := &pb.DowngradeResponse{}
+
+	targetVersion, err := convertToClusterVersion(v)
+	if err != nil {
+		return nil, err
+	}
+
+	// gets leaders commit index and wait for local store to finish applying that index
+	// to avoid using stale downgrade information
+	err = s.linearizableReadNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cv := s.ClusterVersion()
+	if cv == nil {
+		return nil, ErrClusterVersionUnavailable
+	}
+	resp.Version = cv.String()
+
+	allowedTargetVersion := allowedDowngradeVersion(cv)
+	if !targetVersion.Equal(*allowedTargetVersion) {
+		return nil, ErrInvalidDowngradeTargetVersion
+	}
+
+	downgradeInfo := s.cluster.DowngradeInfo()
+	if downgradeInfo.Enabled {
+		// Todo: return the downgrade status along with the error msg
+		return nil, ErrDowngradeInProcess
+	}
+	return resp, nil
+}
+
+func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	// validate downgrade capability before starting downgrade
+	v := r.Version
+	lg := s.getLogger()
+	if resp, err := s.downgradeValidate(ctx, v); err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return resp, err
+	}
+	targetVersion, err := convertToClusterVersion(v)
+	if err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return nil, err
+	}
+
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: true, Ver: targetVersion.String()}
+	_, err = s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	if err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return nil, err
+	}
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
+}
+
+func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	// gets leaders commit index and wait for local store to finish applying that index
+	// to avoid using stale downgrade information
+	if err := s.linearizableReadNotify(ctx); err != nil {
+		return nil, err
+	}
+
+	downgradeInfo := s.cluster.DowngradeInfo()
+	if !downgradeInfo.Enabled {
+		return nil, ErrNoInflightDowngrade
+	}
+
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: false}
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	if err != nil {
+		return nil, err
+	}
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
 }
