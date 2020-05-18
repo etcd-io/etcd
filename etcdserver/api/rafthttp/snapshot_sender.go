@@ -78,13 +78,15 @@ func (s *snapshotSender) send(merged snap.Message) {
 	u := s.picker.pick()
 	req := createPostRequest(s.tr.Logger, u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
 
+	snapshotSizeVal := uint64(merged.TotalSize)
+	snapshotSize := humanize.Bytes(snapshotSizeVal)
 	if s.tr.Logger != nil {
 		s.tr.Logger.Info(
 			"sending database snapshot",
 			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
 			zap.String("remote-peer-id", to),
-			zap.Int64("bytes", merged.TotalSize),
-			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
+			zap.Uint64("bytes", snapshotSizeVal),
+			zap.String("size", snapshotSize),
 		)
 	}
 
@@ -101,8 +103,8 @@ func (s *snapshotSender) send(merged snap.Message) {
 				"failed to send database snapshot",
 				zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
 				zap.String("remote-peer-id", to),
-				zap.Int64("bytes", merged.TotalSize),
-				zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
+				zap.Uint64("bytes", snapshotSizeVal),
+				zap.String("size", snapshotSize),
 				zap.Error(err),
 			)
 		}
@@ -132,8 +134,8 @@ func (s *snapshotSender) send(merged snap.Message) {
 			"sent database snapshot",
 			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
 			zap.String("remote-peer-id", to),
-			zap.Int64("bytes", merged.TotalSize),
-			zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
+			zap.Uint64("bytes", snapshotSizeVal),
+			zap.String("size", snapshotSize),
 		)
 	}
 
