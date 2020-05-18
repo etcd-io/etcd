@@ -118,6 +118,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [inconsistency between WAL and server snapshot](https://github.com/etcd-io/etcd/pull/11888).
   - Previously, server restore fails if it had crashed after persisting raft hard state but before saving snapshot.
   - See https://github.com/etcd-io/etcd/issues/10219 for more.
+- Improve logging around snapshot send and receive.
 
 ### Package `embed`
 
@@ -127,9 +128,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Package `clientv3`
 
-- Add [TryLock](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
+- Add [`TryLock`](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
 - Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
-  - Fix ["kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch" (kubernetes#83028)](https://github.com/kubernetes/kubernetes/issues/83028).
+  - Fix [`"kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch"`](https://github.com/kubernetes/kubernetes/issues/83028).
 - Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
   - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 - Fix [errors caused by grpc changing balancer/resolver API](https://github.com/etcd-io/etcd/pull/11564). This change is compatible with grpc >= [v1.26.0](https://github.com/grpc/grpc-go/releases/tag/v1.26.0), but is not compatible with < v1.26.0 version.
