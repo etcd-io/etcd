@@ -118,8 +118,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [inconsistency between WAL and server snapshot](https://github.com/etcd-io/etcd/pull/11888).
   - Previously, server restore fails if it had crashed after persisting raft hard state but before saving snapshot.
   - See https://github.com/etcd-io/etcd/issues/10219 for more.
+  - Add [missing CRC checksum check in WAL validate method otherwise causes panic](https://github.com/etcd-io/etcd/pull/11924).
+  - See https://github.com/etcd-io/etcd/issues/11918.
 - Improve logging around snapshot send and receive.
-- Add [missing CRC checksum check in WAL validate method otherwise causes panic](https://github.com/etcd-io/etcd/pull/11924).
 
 ### Package `embed`
 
