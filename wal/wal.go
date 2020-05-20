@@ -456,6 +456,14 @@ func ValidSnapshotEntries(walDir string) ([]walpb.Snapshot, error) {
 			snaps = append(snaps, loadedSnap)
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
+		case crcType:
+			crc := decoder.crc.Sum32()
+			// current crc of decoder must match the crc of the record.
+			// do no need to match 0 crc, since the decoder is a new one at this case.
+			if crc != 0 && rec.Validate(crc) != nil {
+				return nil, ErrCRCMismatch
+			}
+			decoder.updateCRC(rec.Crc)
 		}
 	}
 	// We do not have to read out all the WAL entries
