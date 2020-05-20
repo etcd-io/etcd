@@ -139,7 +139,7 @@ type watcher struct {
 	callOpts []grpc.CallOption
 
 	// mu protects the grpc streams map
-	mu sync.RWMutex
+	mu sync.Mutex
 
 	// streams holds all the active grpc streams keyed by ctx value.
 	streams map[string]*watchGrpcStream
