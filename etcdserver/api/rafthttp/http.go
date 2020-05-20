@@ -300,6 +300,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dbSize := humanize.Bytes(uint64(n))
 	receivedBytes.WithLabelValues(from).Add(float64(n))
 
+	downloadTook := time.Since(start)
 	if h.lg != nil {
 		h.lg.Info(
 			"received and saved database snapshot",
@@ -308,9 +309,10 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 			zap.Int64("incoming-snapshot-size-bytes", n),
 			zap.String("incoming-snapshot-size", dbSize),
+			zap.String("download-took", downloadTook.String()),
 		)
 	} else {
-		plog.Infof("successfully received and saved database snapshot [index: %d, from: %s, raft message size: %s, db size: %s]", m.Snapshot.Metadata.Index, types.ID(m.From), msgSize, dbSize)
+		plog.Infof("successfully received and saved database snapshot [index: %d, from: %s, raft message size: %s, db size: %s, took: %s]", m.Snapshot.Metadata.Index, types.ID(m.From), msgSize, dbSize, downloadTook.String())
 	}
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
