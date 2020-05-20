@@ -264,6 +264,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// save incoming database snapshot.
+
 	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
 	if err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
@@ -281,6 +282,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	receivedBytes.WithLabelValues(from).Add(float64(n))
 
+	downloadTook := time.Since(start)
 	h.lg.Info(
 		"received and saved database snapshot",
 		zap.String("local-member-id", h.localID.String()),
@@ -288,6 +290,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 		zap.Int64("incoming-snapshot-size-bytes", n),
 		zap.String("incoming-snapshot-size", humanize.Bytes(uint64(n))),
+		zap.String("download-took", downloadTook.String()),
 	)
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
