@@ -911,11 +911,31 @@ func (r *raft) Step(m pb.Message) error {
 				r.logger.Warningf("%x is unpromotable and can not campaign; ignoring MsgHup", r.id)
 				return nil
 			}
-			ents, err := r.raftLog.slice(r.raftLog.applied+1, r.raftLog.committed+1, noLimit)
-			if err != nil {
-				r.logger.Panicf("unexpected error getting unapplied entries (%v)", err)
+
+			n := 0
+
+			// Trying to retrieve all entries at once might cause out-of-memory issues in
+			// cases where the raft log is too big to fit into memory. Instead of retrieving
+			// all entries at once, retrieve it in batches of 64MB.
+			for batchFirst := r.raftLog.applied + 1; batchFirst <= r.raftLog.committed; {
+				ents, err := r.raftLog.slice(batchFirst, r.raftLog.committed+1, 64<<20)
+				if err != nil {
+					r.logger.Panicf("unexpected error getting unapplied entries (%v)", err)
+				}
+
+				// Exit early from the loop if no entries were found.
+				if len(ents) == 0 {
+					break
+				}
+
+				n += numOfPendingConf(ents)
+
+				// Store the last entry and set the start of the new batch at the entry following it.
+				lastEntry := ents[len(ents)-1]
+				batchFirst = lastEntry.Index + 1
 			}
-			if n := numOfPendingConf(ents); n != 0 && r.raftLog.committed > r.raftLog.applied {
+
+			if n != 0 && r.raftLog.committed > r.raftLog.applied {
 				r.logger.Warningf("%x cannot campaign at term %d since there are still %d pending configuration changes to apply", r.id, r.Term, n)
 				return nil
 			}
