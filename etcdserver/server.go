@@ -509,7 +509,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
 
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = be
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
