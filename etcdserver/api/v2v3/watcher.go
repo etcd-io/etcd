@@ -97,13 +97,15 @@ func (s *v2v3Store) mkV2Events(wr clientv3.WatchResponse) (evs []*v2store.Event)
 				key = ev
 			}
 		}
-		v2ev := &v2store.Event{
-			Action:    string(act.Kv.Value),
-			Node:      s.mkV2Node(key.Kv),
-			PrevNode:  s.mkV2Node(key.PrevKv),
-			EtcdIndex: mkV2Rev(wr.Header.Revision),
+		if act != nil && act.Kv != nil && key != nil {
+			v2ev := &v2store.Event{
+				Action:    string(act.Kv.Value),
+				Node:      s.mkV2Node(key.Kv),
+				PrevNode:  s.mkV2Node(key.PrevKv),
+				EtcdIndex: mkV2Rev(wr.Header.Revision),
+			}
+			evs = append(evs, v2ev)
 		}
-		evs = append(evs, v2ev)
 	}
 	return evs
 }
