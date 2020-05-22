@@ -523,7 +523,9 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 			CheckpointInterval:         cfg.LeaseCheckpointInterval,
 			ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
-		})
+		},
+		srv.consistIndex,
+	)
 
 	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
 		func(index uint64) <-chan struct{} {

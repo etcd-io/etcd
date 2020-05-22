@@ -406,11 +406,12 @@ func (s *v3Manager) saveDB() error {
 	// having a new raft instance
 	be := backend.NewDefaultBackend(dbpath)
 
-	// a lessor never timeouts leases
-	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
-
 	ci := cindex.NewConsistentIndex(be.BatchTx())
 	ci.SetConsistentIndex(uint64(commit))
+
+	// a lessor never timeouts leases
+	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64}, ci)
+
 	mvs := mvcc.NewStore(s.lg, be, lessor, ci, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	txn := mvs.Write(traceutil.TODO())
 	btx := be.BatchTx()
