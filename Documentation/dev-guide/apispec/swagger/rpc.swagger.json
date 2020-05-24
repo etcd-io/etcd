@@ -17,7 +17,7 @@
           "Auth"
         ],
         "summary": "Authenticate processes an authenticate request.",
-        "operationId": "Authenticate",
+        "operationId": "Auth_Authenticate",
         "parameters": [
           {
             "name": "body",
@@ -50,7 +50,7 @@
           "Auth"
         ],
         "summary": "AuthDisable disables authentication.",
-        "operationId": "AuthDisable",
+        "operationId": "Auth_AuthDisable",
         "parameters": [
           {
             "name": "body",
@@ -83,7 +83,7 @@
           "Auth"
         ],
         "summary": "AuthEnable enables authentication.",
-        "operationId": "AuthEnable",
+        "operationId": "Auth_AuthEnable",
         "parameters": [
           {
             "name": "body",
@@ -116,7 +116,7 @@
           "Auth"
         ],
         "summary": "RoleAdd adds a new role. Role name cannot be empty.",
-        "operationId": "RoleAdd",
+        "operationId": "Auth_RoleAdd",
         "parameters": [
           {
             "name": "body",
@@ -149,7 +149,7 @@
           "Auth"
         ],
         "summary": "RoleDelete deletes a specified role.",
-        "operationId": "RoleDelete",
+        "operationId": "Auth_RoleDelete",
         "parameters": [
           {
             "name": "body",
@@ -182,7 +182,7 @@
           "Auth"
         ],
         "summary": "RoleGet gets detailed role information.",
-        "operationId": "RoleGet",
+        "operationId": "Auth_RoleGet",
         "parameters": [
           {
             "name": "body",
@@ -215,7 +215,7 @@
           "Auth"
         ],
         "summary": "RoleGrantPermission grants a permission of a specified key or range to a specified role.",
-        "operationId": "RoleGrantPermission",
+        "operationId": "Auth_RoleGrantPermission",
         "parameters": [
           {
             "name": "body",
@@ -248,7 +248,7 @@
           "Auth"
         ],
         "summary": "RoleList gets lists of all roles.",
-        "operationId": "RoleList",
+        "operationId": "Auth_RoleList",
         "parameters": [
           {
             "name": "body",
@@ -281,7 +281,7 @@
           "Auth"
         ],
         "summary": "RoleRevokePermission revokes a key or range permission of a specified role.",
-        "operationId": "RoleRevokePermission",
+        "operationId": "Auth_RoleRevokePermission",
         "parameters": [
           {
             "name": "body",
@@ -314,7 +314,7 @@
           "Auth"
         ],
         "summary": "AuthStatus displays authentication status.",
-        "operationId": "AuthStatus",
+        "operationId": "Auth_AuthStatus",
         "parameters": [
           {
             "name": "body",
@@ -347,7 +347,7 @@
           "Auth"
         ],
         "summary": "UserAdd adds a new user. User name cannot be empty.",
-        "operationId": "UserAdd",
+        "operationId": "Auth_UserAdd",
         "parameters": [
           {
             "name": "body",
@@ -380,7 +380,7 @@
           "Auth"
         ],
         "summary": "UserChangePassword changes the password of a specified user.",
-        "operationId": "UserChangePassword",
+        "operationId": "Auth_UserChangePassword",
         "parameters": [
           {
             "name": "body",
@@ -413,7 +413,7 @@
           "Auth"
         ],
         "summary": "UserDelete deletes a specified user.",
-        "operationId": "UserDelete",
+        "operationId": "Auth_UserDelete",
         "parameters": [
           {
             "name": "body",
@@ -446,7 +446,7 @@
           "Auth"
         ],
         "summary": "UserGet gets detailed user information.",
-        "operationId": "UserGet",
+        "operationId": "Auth_UserGet",
         "parameters": [
           {
             "name": "body",
@@ -479,7 +479,7 @@
           "Auth"
         ],
         "summary": "UserGrant grants a role to a specified user.",
-        "operationId": "UserGrantRole",
+        "operationId": "Auth_UserGrantRole",
         "parameters": [
           {
             "name": "body",
@@ -512,7 +512,7 @@
           "Auth"
         ],
         "summary": "UserList gets a list of all users.",
-        "operationId": "UserList",
+        "operationId": "Auth_UserList",
         "parameters": [
           {
             "name": "body",
@@ -545,7 +545,7 @@
           "Auth"
         ],
         "summary": "UserRevokeRole revokes a role of specified user.",
-        "operationId": "UserRevokeRole",
+        "operationId": "Auth_UserRevokeRole",
         "parameters": [
           {
             "name": "body",
@@ -578,7 +578,7 @@
           "Cluster"
         ],
         "summary": "MemberAdd adds a member into the cluster.",
-        "operationId": "MemberAdd",
+        "operationId": "Cluster_MemberAdd",
         "parameters": [
           {
             "name": "body",
@@ -611,7 +611,7 @@
           "Cluster"
         ],
         "summary": "MemberList lists all the members in the cluster.",
-        "operationId": "MemberList",
+        "operationId": "Cluster_MemberList",
         "parameters": [
           {
             "name": "body",
@@ -644,7 +644,7 @@
           "Cluster"
         ],
         "summary": "MemberPromote promotes a member from raft learner (non-voting) to raft voting member.",
-        "operationId": "MemberPromote",
+        "operationId": "Cluster_MemberPromote",
         "parameters": [
           {
             "name": "body",
@@ -677,7 +677,7 @@
           "Cluster"
         ],
         "summary": "MemberRemove removes an existing member from the cluster.",
-        "operationId": "MemberRemove",
+        "operationId": "Cluster_MemberRemove",
         "parameters": [
           {
             "name": "body",
@@ -710,7 +710,7 @@
           "Cluster"
         ],
         "summary": "MemberUpdate updates the member configuration.",
-        "operationId": "MemberUpdate",
+        "operationId": "Cluster_MemberUpdate",
         "parameters": [
           {
             "name": "body",
@@ -743,7 +743,7 @@
           "KV"
         ],
         "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
-        "operationId": "Compact",
+        "operationId": "KV_Compact",
         "parameters": [
           {
             "name": "body",
@@ -776,7 +776,7 @@
           "KV"
         ],
         "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
-        "operationId": "DeleteRange",
+        "operationId": "KV_DeleteRange",
         "parameters": [
           {
             "name": "body",
@@ -809,7 +809,7 @@
           "Lease"
         ],
         "summary": "LeaseLeases lists all existing leases.",
-        "operationId": "LeaseLeases2",
+        "operationId": "Lease_LeaseLeases2",
         "parameters": [
           {
             "name": "body",
@@ -842,7 +842,7 @@
           "Lease"
         ],
         "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
-        "operationId": "LeaseRevoke2",
+        "operationId": "Lease_LeaseRevoke2",
         "parameters": [
           {
             "name": "body",
@@ -875,7 +875,7 @@
           "Lease"
         ],
         "summary": "LeaseTimeToLive retrieves lease information.",
-        "operationId": "LeaseTimeToLive2",
+        "operationId": "Lease_LeaseTimeToLive2",
         "parameters": [
           {
             "name": "body",
@@ -908,7 +908,7 @@
           "KV"
         ],
         "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
-        "operationId": "Put",
+        "operationId": "KV_Put",
         "parameters": [
           {
             "name": "body",
@@ -941,7 +941,7 @@
           "KV"
         ],
         "summary": "Range gets the keys in the range from the key-value store.",
-        "operationId": "Range",
+        "operationId": "KV_Range",
         "parameters": [
           {
             "name": "body",
@@ -974,7 +974,7 @@
           "KV"
         ],
         "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
-        "operationId": "Txn",
+        "operationId": "KV_Txn",
         "parameters": [
           {
             "name": "body",
@@ -1007,7 +1007,7 @@
           "Lease"
         ],
         "summary": "LeaseGrant creates a lease which expires if the server does not receive a keepAlive\nwithin a given time to live period. All keys attached to the lease will be expired and\ndeleted if the lease expires. Each expired key generates a delete event in the event history.",
-        "operationId": "LeaseGrant",
+        "operationId": "Lease_LeaseGrant",
         "parameters": [
           {
             "name": "body",
@@ -1040,7 +1040,7 @@
           "Lease"
         ],
         "summary": "LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client\nto the server and streaming keep alive responses from the server to the client.",
-        "operationId": "LeaseKeepAlive",
+        "operationId": "Lease_LeaseKeepAlive",
         "parameters": [
           {
             "description": " (streaming inputs)",
@@ -1083,7 +1083,7 @@
           "Lease"
         ],
         "summary": "LeaseLeases lists all existing leases.",
-        "operationId": "LeaseLeases",
+        "operationId": "Lease_LeaseLeases",
         "parameters": [
           {
             "name": "body",
@@ -1116,7 +1116,7 @@
           "Lease"
         ],
         "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
-        "operationId": "LeaseRevoke",
+        "operationId": "Lease_LeaseRevoke",
         "parameters": [
           {
             "name": "body",
@@ -1149,7 +1149,7 @@
           "Lease"
         ],
         "summary": "LeaseTimeToLive retrieves lease information.",
-        "operationId": "LeaseTimeToLive",
+        "operationId": "Lease_LeaseTimeToLive",
         "parameters": [
           {
             "name": "body",
@@ -1182,7 +1182,7 @@
           "Maintenance"
         ],
         "summary": "Alarm activates, deactivates, and queries alarms regarding cluster health.",
-        "operationId": "Alarm",
+        "operationId": "Maintenance_Alarm",
         "parameters": [
           {
             "name": "body",
@@ -1215,7 +1215,7 @@
           "Maintenance"
         ],
         "summary": "Defragment defragments a member's backend database to recover storage space.",
-        "operationId": "Defragment",
+        "operationId": "Maintenance_Defragment",
         "parameters": [
           {
             "name": "body",
@@ -1248,7 +1248,7 @@
           "Maintenance"
         ],
         "summary": "Downgrade requests downgrade, cancel downgrade on the cluster version.",
-        "operationId": "Downgrade",
+        "operationId": "Maintenance_Downgrade",
         "parameters": [
           {
             "name": "body",
@@ -1281,7 +1281,7 @@
           "Maintenance"
         ],
         "summary": "HashKV computes the hash of all MVCC keys up to a given revision.\nIt only iterates \"key\" bucket in backend storage.",
-        "operationId": "HashKV",
+        "operationId": "Maintenance_HashKV",
         "parameters": [
           {
             "name": "body",
@@ -1314,7 +1314,7 @@
           "Maintenance"
         ],
         "summary": "Snapshot sends a snapshot of the entire backend from a member over a stream to a client.",
-        "operationId": "Snapshot",
+        "operationId": "Maintenance_Snapshot",
         "parameters": [
           {
             "name": "body",
@@ -1356,7 +1356,7 @@
           "Maintenance"
         ],
         "summary": "Status gets the status of the member.",
-        "operationId": "Status",
+        "operationId": "Maintenance_Status",
         "parameters": [
           {
             "name": "body",
@@ -1389,7 +1389,7 @@
           "Maintenance"
         ],
         "summary": "MoveLeader requests current leader node to transfer its leadership to transferee.",
-        "operationId": "MoveLeader",
+        "operationId": "Maintenance_MoveLeader",
         "parameters": [
           {
             "name": "body",
@@ -1422,7 +1422,7 @@
           "Watch"
         ],
         "summary": "Watch watches for events happening or that have happened. Both input and output\nare streams; the input stream is for creating and canceling watchers and the output\nstream sends events. One watch RPC can watch on multiple key ranges, streaming events\nfor several watches at once. The entire event history can be watched starting from the\nlast compaction revision.",
-        "operationId": "Watch",
+        "operationId": "Watch_Watch",
         "parameters": [
           {
             "description": " (streaming inputs)",
@@ -1790,6 +1790,9 @@
     "etcdserverpbAuthUserAddRequest": {
       "type": "object",
       "properties": {
+        "hashedPassword": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -1812,12 +1815,16 @@
     "etcdserverpbAuthUserChangePasswordRequest": {
       "type": "object",
       "properties": {
+        "hashedPassword": {
+          "description": "hashedPassword is the new password for the user. Note that this field will be initialized in the API layer.",
+          "type": "string"
+        },
         "name": {
           "description": "name is the name of the user whose password is being changed.",
           "type": "string"
         },
         "password": {
-          "description": "password is the new password for the user.",
+          "description": "password is the new password for the user. Note that this field will be removed in the API layer.",
           "type": "string"
         }
       }

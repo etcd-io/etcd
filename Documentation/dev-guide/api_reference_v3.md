@@ -265,6 +265,7 @@ Empty field.
 | name |  | string |
 | password |  | string |
 | options |  | authpb.UserAddOptions |
+| hashedPassword |  | string |
 
 
 
@@ -281,7 +282,8 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | name | name is the name of the user whose password is being changed. | string |
-| password | password is the new password for the user. | string |
+| password | password is the new password for the user. Note that this field will be removed in the API layer. | string |
+| hashedPassword | hashedPassword is the new password for the user. Note that this field will be initialized in the API layer. | string |
 
 
 

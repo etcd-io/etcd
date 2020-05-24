@@ -1050,6 +1050,7 @@ message AuthUserAddRequest {
   string name = 1;
   string password = 2;
   authpb.UserAddOptions options = 3;
+  string hashedPassword = 4;
 }
 
 message AuthUserGetRequest {
@@ -1064,8 +1065,10 @@ message AuthUserDeleteRequest {
 message AuthUserChangePasswordRequest {
   // name is the name of the user whose password is being changed.
   string name = 1;
-  // password is the new password for the user.
+  // password is the new password for the user. Note that this field will be removed in the API layer.
   string password = 2;
+  // hashedPassword is the new password for the user. Note that this field will be initialized in the API layer.
+  string hashedPassword = 3;
 }
 
 message AuthUserGrantRoleRequest {

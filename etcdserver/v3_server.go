@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -464,6 +466,15 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	if r.Options == nil || !r.Options.NoPassword {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(r.Password), s.authStore.BcryptCost())
+		if err != nil {
+			return nil, err
+		}
+		r.HashedPassword = base64.StdEncoding.EncodeToString(hashedPassword)
+		r.Password = ""
+	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
@@ -480,6 +491,15 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	if r.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(r.Password), s.authStore.BcryptCost())
+		if err != nil {
+			return nil, err
+		}
+		r.HashedPassword = base64.StdEncoding.EncodeToString(hashedPassword)
+		r.Password = ""
+	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
 	if err != nil {
 		return nil, err
