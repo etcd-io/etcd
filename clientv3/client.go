@@ -460,7 +460,8 @@ func newClient(cfg *Config) (*Client, error) {
 	client.resolverGroup.SetEndpoints(cfg.Endpoints)
 
 	if len(cfg.Endpoints) < 1 {
-		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
+		client.cancel()
+		return nil, fmt.Errorf("at least one Endpoint is required in client config")
 	}
 	dialEndpoint := cfg.Endpoints[0]
 
