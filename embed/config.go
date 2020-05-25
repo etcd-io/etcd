@@ -335,6 +335,10 @@ type Config struct {
 	// Only valid if "logger" option is "capnslog".
 	// WARN: DO NOT USE THIS!
 	LogPkgLevels string `json:"log-package-levels"`
+
+	// UnsafeNoFsync disables all uses of fsync.
+	// Setting this is unsafe and will cause data loss.
+	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 }
 
 // configYAML holds the config suitable for yaml parsing
