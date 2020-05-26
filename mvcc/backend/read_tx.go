@@ -77,18 +77,25 @@ func (rt *readTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 	rt.txMu.RLock()
 	bucket, ok := rt.buckets[bn]
 	rt.txMu.RUnlock()
+	lockHeld := false
 	if !ok {
 		rt.txMu.Lock()
+		lockHeld = true
 		bucket = rt.tx.Bucket(bucketName)
 		rt.buckets[bn] = bucket
-		rt.txMu.Unlock()
 	}
 
 	// ignore missing bucket since may have been created in this batch
 	if bucket == nil {
+		if lockHeld {
+			rt.txMu.Unlock()
+		}
 		return keys, vals
 	}
-	rt.txMu.Lock()
+	if !lockHeld {
+		rt.txMu.Lock()
+		lockHeld = true
+	}
 	c := bucket.Cursor()
 	rt.txMu.Unlock()
 

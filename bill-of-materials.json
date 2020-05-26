@@ -315,7 +315,7 @@
 		]
 	},
 	{
-		"project": "go.etcd.io/etcd",
+		"project": "go.etcd.io/etcd/v3",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",

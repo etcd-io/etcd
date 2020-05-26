@@ -29,18 +29,18 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/v2http"
-	"go.etcd.io/etcd/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/etcdserver/api/v3client"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/pkg/debugutil"
-	runtimeutil "go.etcd.io/etcd/pkg/runtime"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2v3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/v3/pkg/debugutil"
+	runtimeutil "go.etcd.io/etcd/v3/pkg/runtime"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/version"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -629,7 +629,7 @@ func (e *Etcd) serveClients() (err error) {
 		}
 	} else {
 		mux := http.NewServeMux()
-		etcdhttp.HandleBasic(mux, e.Server)
+		etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
 		h = mux
 	}
 
@@ -664,7 +664,7 @@ func (e *Etcd) serveMetrics() (err error) {
 
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
-		etcdhttp.HandleMetricsHealth(metricsMux, e.Server)
+		etcdhttp.HandleMetricsHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
@@ -710,7 +710,7 @@ func (e *Etcd) GetLogger() *zap.Logger {
 
 func parseCompactionRetention(mode, retention string) (ret time.Duration, err error) {
 	h, err := strconv.Atoi(retention)
-	if err == nil {
+	if err == nil && h >= 0 {
 		switch mode {
 		case CompactorModeRevision:
 			ret = time.Duration(int64(h))

@@ -15,8 +15,8 @@
 package confchange
 
 import (
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft/tracker"
 )
 
 // toConfChangeSingle translates a conf state into 1) a slice of operations creating
@@ -28,7 +28,7 @@ func toConfChangeSingle(cs pb.ConfState) (out []pb.ConfChangeSingle, in []pb.Con
 	// voters=(1 2 3) learners=(5) outgoing=(1 2 4 6) learners_next=(4)
 	//
 	// This means that before entering the joint config, the configuration
-	// had voters (1 2 4) and perhaps some learners that are already gone.
+	// had voters (1 2 4 6) and perhaps some learners that are already gone.
 	// The new set of voters is (1 2 3), i.e. (1 2) were kept around, and (4 6)
 	// are no longer voters; however 4 is poised to become a learner upon leaving
 	// the joint state.

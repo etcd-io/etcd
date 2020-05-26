@@ -24,10 +24,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"go.etcd.io/etcd/auth/authpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/v3/auth/authpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc/backend"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -56,6 +57,7 @@ var (
 	ErrRoleNotFound         = errors.New("auth: role not found")
 	ErrRoleEmpty            = errors.New("auth: role name is empty")
 	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrNoPasswordUser       = errors.New("auth: authentication failed, password was given for no password user")
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
@@ -90,9 +92,6 @@ type AuthenticateParamIndex struct{}
 
 // AuthenticateParamSimpleTokenPrefix is used for a key of context in the parameters of Authenticate()
 type AuthenticateParamSimpleTokenPrefix struct{}
-
-// saveConsistentIndexFunc is used to sync consistentIndex to backend, now reusing store.saveIndex
-type saveConsistentIndexFunc func(tx backend.BatchTx)
 
 // AuthStore defines auth storage interface.
 type AuthStore interface {
@@ -186,9 +185,6 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
-
-	// SetConsistentIndexSyncer sets consistentIndex syncer
-	SetConsistentIndexSyncer(syncer saveConsistentIndexFunc)
 }
 
 type TokenProvider interface {
@@ -212,14 +208,11 @@ type authStore struct {
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
-	tokenProvider       TokenProvider
-	syncConsistentIndex saveConsistentIndexFunc
-	bcryptCost          int // the algorithm cost / strength for hashing auth passwords
+	tokenProvider TokenProvider
+	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
+	ci            cindex.ConsistentIndexer
 }
 
-func (as *authStore) SetConsistentIndexSyncer(syncer saveConsistentIndexFunc) {
-	as.syncConsistentIndex = syncer
-}
 func (as *authStore) AuthEnable() error {
 	as.enabledMu.Lock()
 	defer as.enabledMu.Unlock()
@@ -327,24 +320,34 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		return 0, ErrAuthNotEnabled
 	}
 
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	var user *authpb.User
+	// CompareHashAndPassword is very expensive, so we use closures
+	// to avoid putting it in the critical section of the tx lock.
+	revision, err := func() (uint64, error) {
+		tx := as.be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
 
-	user := getUser(as.lg, tx, username)
-	if user == nil {
-		return 0, ErrAuthFailed
-	}
+		user = getUser(as.lg, tx, username)
+		if user == nil {
+			return 0, ErrAuthFailed
+		}
 
-	if user.Options != nil && user.Options.NoPassword {
-		return 0, ErrAuthFailed
+		if user.Options != nil && user.Options.NoPassword {
+			return 0, ErrNoPasswordUser
+		}
+
+		return getRevision(tx), nil
+	}()
+	if err != nil {
+		return 0, err
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
 		as.lg.Info("invalid password", zap.String("user-name", username))
 		return 0, ErrAuthFailed
 	}
-	return getRevision(tx), nil
+	return revision, nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
@@ -800,16 +803,6 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	})
 
 	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
-		if role.KeyPermission[idx].PermType == r.Perm.PermType {
-			as.lg.Warn(
-				"ignored grant permission request to a role, existing permission",
-				zap.String("role-name", r.Name),
-				zap.ByteString("key", r.Perm.Key),
-				zap.ByteString("range-end", r.Perm.RangeEnd),
-				zap.String("permission-type", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
-			)
-			return &pb.AuthRoleGrantPermissionResponse{}, nil
-		}
 		// update existing permission
 		role.KeyPermission[idx].PermType = r.Perm.PermType
 	} else {
@@ -851,8 +844,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if revision == 0 {
 		return ErrUserEmpty
 	}
-
-	if revision < as.Revision() {
+	rev := as.Revision()
+	if revision < rev {
+		as.lg.Warn("request auth revision is less than current node auth revision",
+			zap.Uint64("current node auth revision", rev),
+			zap.Uint64("request auth revision", revision),
+			zap.ByteString("request key", key),
+			zap.Error(ErrAuthOldRevision))
 		return ErrAuthOldRevision
 	}
 
@@ -1018,7 +1016,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -1053,6 +1051,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
+		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1065,7 +1064,6 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
-		as.saveConsistentIndex(tx)
 	}
 
 	as.setupMetricsReporter()
@@ -1314,10 +1312,10 @@ func (as *authStore) BcryptCost() int {
 }
 
 func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
-	if as.syncConsistentIndex != nil {
-		as.syncConsistentIndex(tx)
+	if as.ci != nil {
+		as.ci.UnsafeSave(tx)
 	} else {
-		as.lg.Error("failed to save consistentIndex,syncConsistentIndex is nil")
+		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
 	}
 }
 

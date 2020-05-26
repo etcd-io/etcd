@@ -26,18 +26,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.etcd.io/etcd/clientv3/balancer"
-	"go.etcd.io/etcd/clientv3/balancer/picker"
-	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
-	"go.etcd.io/etcd/clientv3/credentials"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/v3/clientv3/balancer"
+	"go.etcd.io/etcd/v3/clientv3/balancer/picker"
+	"go.etcd.io/etcd/v3/clientv3/balancer/resolver/endpoint"
+	"go.etcd.io/etcd/v3/clientv3/credentials"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -393,13 +392,6 @@ func (c *Client) dialWithBalancerCreds(ep string) grpccredentials.TransportCrede
 	return creds
 }
 
-// WithRequireLeader requires client requests to only succeed
-// when the cluster has a leader.
-func WithRequireLeader(ctx context.Context) context.Context {
-	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	return metadata.NewOutgoingContext(ctx, md)
-}
-
 func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{}
@@ -468,7 +460,8 @@ func newClient(cfg *Config) (*Client, error) {
 	client.resolverGroup.SetEndpoints(cfg.Endpoints)
 
 	if len(cfg.Endpoints) < 1 {
-		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
+		client.cancel()
+		return nil, fmt.Errorf("at least one Endpoint is required in client config")
 	}
 	dialEndpoint := cfg.Endpoints[0]
 

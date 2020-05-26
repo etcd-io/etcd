@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 type SnapshotStatus int
@@ -367,10 +367,12 @@ func (n *node) run() {
 			// very sound and likely has bugs.
 			if _, okAfter := r.prs.Progress[r.id]; okBefore && !okAfter {
 				var found bool
+			outer:
 				for _, sl := range [][]uint64{cs.Voters, cs.VotersOutgoing} {
 					for _, id := range sl {
 						if id == r.id {
 							found = true
+							break outer
 						}
 					}
 				}

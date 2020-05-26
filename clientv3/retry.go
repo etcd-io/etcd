@@ -17,8 +17,8 @@ package clientv3
 import (
 	"context"
 
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -220,6 +220,10 @@ func (rmc *retryMaintenanceClient) MoveLeader(ctx context.Context, in *pb.MoveLe
 
 func (rmc *retryMaintenanceClient) Defragment(ctx context.Context, in *pb.DefragmentRequest, opts ...grpc.CallOption) (resp *pb.DefragmentResponse, err error) {
 	return rmc.mc.Defragment(ctx, in, opts...)
+}
+
+func (rmc *retryMaintenanceClient) Downgrade(ctx context.Context, in *pb.DowngradeRequest, opts ...grpc.CallOption) (resp *pb.DowngradeResponse, err error) {
+	return rmc.mc.Downgrade(ctx, in, opts...)
 }
 
 type retryAuthClient struct {

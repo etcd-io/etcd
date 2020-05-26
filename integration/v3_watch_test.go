@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
@@ -791,9 +791,11 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 
 type eventsSortByKey []*mvccpb.Event
 
-func (evs eventsSortByKey) Len() int           { return len(evs) }
-func (evs eventsSortByKey) Swap(i, j int)      { evs[i], evs[j] = evs[j], evs[i] }
-func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0 }
+func (evs eventsSortByKey) Len() int      { return len(evs) }
+func (evs eventsSortByKey) Swap(i, j int) { evs[i], evs[j] = evs[j], evs[i] }
+func (evs eventsSortByKey) Less(i, j int) bool {
+	return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0
+}
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -1209,5 +1211,66 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 		case <-time.After(30 * time.Second):
 			t.Error("timeout waiting for watch response")
 		}
+	}
+}
+
+// TestV3WatchCancellation ensures that watch cancellation frees up server resources.
+func TestV3WatchCancellation(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cli := clus.RandClient()
+
+	// increment watcher total count and keep a stream open
+	cli.Watch(ctx, "/foo")
+
+	for i := 0; i < 1000; i++ {
+		ctx, cancel := context.WithCancel(ctx)
+		cli.Watch(ctx, "/foo")
+		cancel()
+	}
+
+	// Wait a little for cancellations to take hold
+	time.Sleep(3 * time.Second)
+
+	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if minWatches != "1" {
+		t.Fatalf("expected one watch, got %s", minWatches)
+	}
+}
+
+// TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
+func TestV3WatchCloseCancelRace(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cli := clus.RandClient()
+
+	for i := 0; i < 1000; i++ {
+		ctx, cancel := context.WithCancel(ctx)
+		cli.Watch(ctx, "/foo")
+		cancel()
+	}
+
+	// Wait a little for cancellations to take hold
+	time.Sleep(3 * time.Second)
+
+	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if minWatches != "0" {
+		t.Fatalf("expected zero watches, got %s", minWatches)
 	}
 }

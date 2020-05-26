@@ -33,25 +33,25 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client"
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/embed"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/v2http"
-	"go.etcd.io/etcd/etcdserver/api/v3client"
-	"go.etcd.io/etcd/etcdserver/api/v3election"
-	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
-	"go.etcd.io/etcd/etcdserver/api/v3lock"
-	lockpb "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/tlsutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/client"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3election"
+	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3lock"
+	lockpb "go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/tlsutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
@@ -1143,7 +1143,7 @@ func (m *member) Terminate(t testing.TB) {
 }
 
 // Metric gets the metric value for a member
-func (m *member) Metric(metricName string) (string, error) {
+func (m *member) Metric(metricName string, expectLabels ...string) (string, error) {
 	cfgtls := transport.TLSInfo{}
 	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
 	if err != nil {
@@ -1161,9 +1161,20 @@ func (m *member) Metric(metricName string) (string, error) {
 	}
 	lines := strings.Split(string(b), "\n")
 	for _, l := range lines {
-		if strings.HasPrefix(l, metricName) {
-			return strings.Split(l, " ")[1], nil
+		if !strings.HasPrefix(l, metricName) {
+			continue
 		}
+		ok := true
+		for _, lv := range expectLabels {
+			if !strings.Contains(l, lv) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		return strings.Split(l, " ")[1], nil
 	}
 	return "", nil
 }

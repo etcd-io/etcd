@@ -18,20 +18,20 @@ import (
 	"context"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api"
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/types"
 )
 
 type ClusterServer struct {
 	cluster api.Cluster
-	server  etcdserver.ServerV3
+	server  *etcdserver.EtcdServer
 }
 
-func NewClusterServer(s etcdserver.ServerV3) *ClusterServer {
+func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
 	return &ClusterServer{
 		cluster: s.Cluster(),
 		server:  s,
@@ -88,6 +88,11 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
+	if r.Linearizable {
+		if err := cs.server.LinearizableReadNotify(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	}
 	membs := membersToProtoMembers(cs.cluster.Members())
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }

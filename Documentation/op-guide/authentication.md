@@ -174,3 +174,5 @@ As of version v3.2 if an etcd server is launched with the option `--client-cert-
 As of version v3.3 if an etcd server is launched with the option `--peer-cert-allowed-cn` or `--peer-cert-allowed-hostname` filtering of inter-peer connections is enabled.  Nodes can only join the etcd cluster if their TLS certificate identity match the allowed one.
 See [etcd security page](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md) for more details.
 
+## Notes on password strength
+`etcdctl` command line interface and etcd API don't check a strength (length, coexistence of numbers and alphabets, etc) of the password during creating a new user or updating password of an existing user. An administrator needs to care about a requirement of password strength by themselves.

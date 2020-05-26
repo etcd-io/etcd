@@ -26,16 +26,16 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/embed"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/v2discovery"
-	"go.etcd.io/etcd/pkg/fileutil"
-	pkgioutil "go.etcd.io/etcd/pkg/ioutil"
-	"go.etcd.io/etcd/pkg/osutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/proxy/httpproxy"
+	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2discovery"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	pkgioutil "go.etcd.io/etcd/v3/pkg/ioutil"
+	"go.etcd.io/etcd/v3/pkg/osutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/proxy/httpproxy"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -260,9 +260,16 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	err = os.MkdirAll(cfg.ec.Dir, fileutil.PrivateDirMode)
-	if err != nil {
-		return err
+	if fileutil.Exist(cfg.ec.Dir) {
+		err := fileutil.CheckDirPermission(cfg.ec.Dir, fileutil.PrivateDirMode)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = os.MkdirAll(cfg.ec.Dir, fileutil.PrivateDirMode)
+		if err != nil {
+			return err
+		}
 	}
 
 	var peerURLs []string

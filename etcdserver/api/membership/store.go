@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"path"
 
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -53,8 +53,8 @@ func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
 
 	tx := be.BatchTx()
 	tx.Lock()
+	defer tx.Unlock()
 	tx.UnsafePut(membersBucketName, mkey, mvalue)
-	tx.Unlock()
 }
 
 func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
@@ -62,9 +62,9 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 
 	tx := be.BatchTx()
 	tx.Lock()
+	defer tx.Unlock()
 	tx.UnsafeDelete(membersBucketName, mkey)
 	tx.UnsafePut(membersRemovedBucketName, mkey, []byte("removed"))
-	tx.Unlock()
 }
 
 func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
@@ -74,6 +74,18 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	tx.Lock()
 	defer tx.Unlock()
 	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
+}
+
+func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
+	dkey := backendDowngradeKey()
+	dvalue, err := json.Marshal(downgrade)
+	if err != nil {
+		lg.Panic("failed to marshal downgrade information", zap.Error(err))
+	}
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePut(clusterBucketName, dkey, dvalue)
 }
 
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
@@ -182,6 +194,10 @@ func backendMemberKey(id types.ID) []byte {
 
 func backendClusterVersionKey() []byte {
 	return []byte("clusterVersion")
+}
+
+func backendDowngradeKey() []byte {
+	return []byte("downgrade")
 }
 
 func mustCreateBackendBuckets(be backend.Backend) {

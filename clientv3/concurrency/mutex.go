@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"sync"
 
-	v3 "go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	v3 "go.etcd.io/etcd/v3/clientv3"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 // ErrLocked is returned by TryLock when Mutex is already locked by another session.
@@ -82,12 +82,11 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	client := m.s.Client()
 	// wait for deletion revisions prior to myKey
 	// TODO: early termination if the session key is deleted before other session keys with smaller revisions.
-	hdr, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
+	_, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
 	// release lock key if wait failed
 	if werr != nil {
 		m.Unlock(client.Ctx())
-	} else {
-		m.hdr = hdr
+		return werr
 	}
 
 	// make sure the session is not expired, and the owner key still exists.

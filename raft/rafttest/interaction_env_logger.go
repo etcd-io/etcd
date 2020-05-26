@@ -18,19 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/v3/raft"
 )
 
 type logLevels [6]string
-
-func (l logLevels) strToLev(s string) int {
-	for i, lvl := range l {
-		if strings.ToUpper(s) == lvl {
-			return i
-		}
-	}
-	panic(fmt.Sprintf("unknown level %q", s))
-}
 
 var lvlNames logLevels = [...]string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"}
 

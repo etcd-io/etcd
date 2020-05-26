@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/raft/confchange"
-	"go.etcd.io/etcd/raft/quorum"
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	"go.etcd.io/etcd/v3/raft/confchange"
+	"go.etcd.io/etcd/v3/raft/quorum"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft/tracker"
 )
 
 // None is a placeholder node ID used when there is no leader.
@@ -399,7 +399,9 @@ func (r *raft) hardState() pb.HardState {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
-	m.From = r.id
+	if m.From == None {
+		m.From = r.id
+	}
 	if m.Type == pb.MsgVote || m.Type == pb.MsgVoteResp || m.Type == pb.MsgPreVote || m.Type == pb.MsgPreVoteResp {
 		if m.Term == 0 {
 			// All {pre-,}campaign messages need to have the term set when
@@ -1426,6 +1428,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	// code here and there assumes that r.id is in the progress tracker.
 	found := false
 	cs := s.Metadata.ConfState
+
 	for _, set := range [][]uint64{
 		cs.Voters,
 		cs.Learners,
@@ -1435,6 +1438,9 @@ func (r *raft) restore(s pb.Snapshot) bool {
 				found = true
 				break
 			}
+		}
+		if found {
+			break
 		}
 	}
 	if !found {

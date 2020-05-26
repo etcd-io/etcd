@@ -15,14 +15,15 @@
 package mvcc
 
 import (
-	"go.etcd.io/etcd/auth"
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
+
 	"go.uber.org/zap"
 )
 
@@ -70,16 +71,16 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, as, ig, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, ci, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *watchableStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ig, cfg),
+		store:    NewStore(lg, b, le, ci, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -90,10 +91,6 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as au
 	if s.le != nil {
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
-	}
-	if as != nil {
-		// TODO: encapsulating consistentindex into a separate package
-		as.SetConsistentIndexSyncer(s.store.saveIndex)
 	}
 	s.wg.Add(2)
 	go s.syncWatchersLoop()
@@ -156,10 +153,13 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		s.mu.Lock()
 		if s.unsynced.delete(wa) {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			break
 		} else if s.synced.delete(wa) {
+			watcherGauge.Dec()
 			break
 		} else if wa.compacted {
+			watcherGauge.Dec()
 			break
 		} else if wa.ch == nil {
 			// already canceled (e.g., cancel/close race)
@@ -180,6 +180,7 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		}
 		if victimBatch != nil {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			delete(victimBatch, wa)
 			break
 		}
@@ -189,7 +190,6 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		time.Sleep(time.Millisecond)
 	}
 
-	watcherGauge.Dec()
 	wa.ch = nil
 	s.mu.Unlock()
 }
@@ -358,9 +358,9 @@ func (s *watchableStore) syncWatchers() int {
 	tx := s.store.b.ReadTx()
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
+	tx.RUnlock()
 	var evs []mvccpb.Event
 	evs = kvsToEvents(s.store.lg, wg, revs, vs)
-	tx.RUnlock()
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)

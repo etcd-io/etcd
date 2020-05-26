@@ -17,7 +17,7 @@ package adapter
 import (
 	"context"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
 )
@@ -50,6 +50,10 @@ func (s *mts2mtc) HashKV(ctx context.Context, r *pb.HashKVRequest, opts ...grpc.
 
 func (s *mts2mtc) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest, opts ...grpc.CallOption) (*pb.MoveLeaderResponse, error) {
 	return s.mts.MoveLeader(ctx, r)
+}
+
+func (s *mts2mtc) Downgrade(ctx context.Context, r *pb.DowngradeRequest, opts ...grpc.CallOption) (*pb.DowngradeResponse, error) {
+	return s.mts.Downgrade(ctx, r)
 }
 
 func (s *mts2mtc) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (pb.Maintenance_SnapshotClient, error) {

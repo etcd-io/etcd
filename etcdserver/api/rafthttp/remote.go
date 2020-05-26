@@ -15,8 +15,8 @@
 package rafthttp
 
 import (
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"go.uber.org/zap"
 )

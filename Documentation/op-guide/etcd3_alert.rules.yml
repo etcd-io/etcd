@@ -2,6 +2,21 @@
 groups:
 - name: etcd
   rules:
+  - alert: etcdMembersDown
+    annotations:
+      message: 'etcd cluster "{{ $labels.job }}": members are down ({{ $value }}).'
+    expr: |
+      max by (job) (
+        sum by (job) (up{job=~".*etcd.*"} == bool 0)
+      or
+        count by (job,endpoint) (
+          sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{job=~".*etcd.*"}[3m])) > 0.01
+        )
+      )
+      > 0
+    for: 3m
+    labels:
+      severity: critical
   - alert: etcdInsufficientMembers
     annotations:
       message: 'etcd cluster "{{ $labels.job }}": insufficient members ({{ $value
@@ -22,11 +37,12 @@ groups:
       severity: critical
   - alert: etcdHighNumberOfLeaderChanges
     annotations:
-      message: 'etcd cluster "{{ $labels.job }}": instance {{ $labels.instance }}
-        has seen {{ $value }} leader changes within the last hour.'
+      message: 'etcd cluster "{{ $labels.job }}": {{ $value }} leader changes within
+        the last 15 minutes. Frequent elections may be a sign of insufficient resources,
+        high network latency, or disruptions by other components and should be investigated.'
     expr: |
-      rate(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}[15m]) > 3
-    for: 15m
+      increase((max by (job) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 3
+    for: 5m
     labels:
       severity: warning
   - alert: etcdHighNumberOfFailedGRPCRequests
@@ -76,7 +92,7 @@ groups:
   - alert: etcdHighNumberOfFailedProposals
     annotations:
       message: 'etcd cluster "{{ $labels.job }}": {{ $value }} proposal failures within
-        the last hour on etcd instance {{ $labels.instance }}.'
+        the last 30 minutes on etcd instance {{ $labels.instance }}.'
     expr: |
       rate(etcd_server_proposals_failed_total{job=~".*etcd.*"}[15m]) > 5
     for: 15m

@@ -18,9 +18,9 @@ import (
 	"context"
 	"strings"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
 )
 
 func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint64) (v2store.Watcher, error) {
@@ -97,13 +97,15 @@ func (s *v2v3Store) mkV2Events(wr clientv3.WatchResponse) (evs []*v2store.Event)
 				key = ev
 			}
 		}
-		v2ev := &v2store.Event{
-			Action:    string(act.Kv.Value),
-			Node:      s.mkV2Node(key.Kv),
-			PrevNode:  s.mkV2Node(key.PrevKv),
-			EtcdIndex: mkV2Rev(wr.Header.Revision),
+		if act != nil && act.Kv != nil && key != nil {
+			v2ev := &v2store.Event{
+				Action:    string(act.Kv.Value),
+				Node:      s.mkV2Node(key.Kv),
+				PrevNode:  s.mkV2Node(key.PrevKv),
+				EtcdIndex: mkV2Rev(wr.Header.Revision),
+			}
+			evs = append(evs, v2ev)
 		}
-		evs = append(evs, v2ev)
 	}
 	return evs
 }

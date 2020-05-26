@@ -21,6 +21,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 
 ### Breaking Changes
 
+- `go.etcd.io/etcd` Go packages have moved to `go.etcd.io/etcd/v3` to follow the [Go modules](https://github.com/golang/go/wiki/Modules) conventions
+- Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
+  - Previously, it is directly served with server's local data, which could be stale.
+  - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
@@ -57,6 +61,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
   - Previously, `SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error`, now `SetFlagsFromEnv(lg *zap.Logger, prefix string, fs *flag.FlagSet) error`.
   - Previously, `SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error`, now `SetPflagsFromEnv(lg *zap.Logger, prefix string, fs *pflag.FlagSet) error`.
 
+### `etcdctl`
+
+- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
+
+### Security
+
+- Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
+
 ### Metrics, Monitoring
 
 See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
@@ -72,6 +84,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd_debugging_mvcc_compact_revision`](https://github.com/etcd-io/etcd/pull/11126) Prometheus metric.
 - Change [`etcd_cluster_version`](https://github.com/etcd-io/etcd/pull/11254) Prometheus metrics to include only major and minor version.
 - Add [`etcd_debugging_mvcc_total_put_size_in_bytes`](https://github.com/etcd-io/etcd/pull/11374) Prometheus metric.
+- Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+- Add [`etcd_debugging_auth_revision`](https://github.com/etcd-io/etcd/commit/f14d2a087f7b0fd6f7980b95b5e0b945109c95f3).
 
 ### etcd server
 
@@ -82,6 +97,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
   - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
   - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
+  - Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
   - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - [`etcd --backend-bbolt-freelist-type`] flag is now stable.
@@ -91,6 +107,20 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 - Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
 - Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
+- Log [`[CLIENT-PORT]/health` check in server side](https://github.com/etcd-io/etcd/pull/11704).
+- Improve [compaction performance when latest index is greater than 1-million](https://github.com/etcd-io/etcd/pull/11734).
+- [Refactor consistentindex](https://github.com/etcd-io/etcd/pull/11699).
+- [Add log when etcdserver failed to apply command](https://github.com/etcd-io/etcd/pull/11670).
+- Improve [count-only range performance](https://github.com/etcd-io/etcd/pull/11771).
+- Remove [redundant storage restore operation to shorten the startup time](https://github.com/etcd-io/etcd/pull/11779).
+  - With 40 million key test data,it can shorten the startup time from 5 min to 2.5 min.
+- [Fix deadlock bug in mvcc](https://github.com/etcd-io/etcd/pull/11817).
+- Fix [inconsistency between WAL and server snapshot](https://github.com/etcd-io/etcd/pull/11888).
+  - Previously, server restore fails if it had crashed after persisting raft hard state but before saving snapshot.
+  - See https://github.com/etcd-io/etcd/issues/10219 for more.
+  - Add [missing CRC checksum check in WAL validate method otherwise causes panic](https://github.com/etcd-io/etcd/pull/11924).
+  - See https://github.com/etcd-io/etcd/issues/11918.
+- Improve logging around snapshot send and receive.
 
 ### Package `embed`
 
@@ -100,17 +130,36 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Package `clientv3`
 
-- Add [TryLock](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
+- Add [`TryLock`](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
 - Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
-  - Fix ["kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch" (kubernetes#83028)](https://github.com/kubernetes/kubernetes/issues/83028).
+  - Fix [`"kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch"`](https://github.com/kubernetes/kubernetes/issues/83028).
 - Fix [IPv6 endpoint parsing in client](https://github.com/etcd-io/etcd/pull/11211).
   - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
+- Fix [errors caused by grpc changing balancer/resolver API](https://github.com/etcd-io/etcd/pull/11564). This change is compatible with grpc >= [v1.26.0](https://github.com/grpc/grpc-go/releases/tag/v1.26.0), but is not compatible with < v1.26.0 version.
 - Use [ServerName as the authority](https://github.com/etcd-io/etcd/pull/11574) after bumping to grpc v1.26.0. Remove workaround in [#11184](https://github.com/etcd-io/etcd/pull/11184).
+- Fix [`"hasleader"` metadata embedding](https://github.com/etcd-io/etcd/pull/11687).
+  - Previously, `clientv3.WithRequireLeader(ctx)` was overwriting existing context keys.
+- Fix [watch leak caused by lazy cancellation](https://github.com/etcd-io/etcd/pull/11850). When clients cancel their watches, a cancel request will now be immediately sent to the server instead of waiting for the next watch event.
+- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
+
+### Package `lease`
+
+- Fix [memory leak in follower nodes](https://github.com/etcd-io/etcd/pull/11731).
+  - https://github.com/etcd-io/etcd/issues/11495
+  - https://github.com/etcd-io/etcd/issues/11730
+
+### Package `wal`
+
+- Add [`etcd_wal_write_bytes_total`](https://github.com/etcd-io/etcd/pull/11738).
+- Handle [out-of-range slice bound in `ReadAll` and entry limit in `decodeRecord`](https://github.com/etcd-io/etcd/pull/11793).
+
 ### etcdctl v3
 
-- Fix [`etcdctl member add`](https://github.com/etcd-io/etcd/pull/11194) command to prevent potential timeout.
+- Fix `etcdctl member add` command to prevent potential timeout. ([PR#11194](https://github.com/etcd-io/etcd/pull/11194) and [PR#11638](https://github.com/etcd-io/etcd/pull/11638))
 - Add [`etcdctl watch --progress-notify`](https://github.com/etcd-io/etcd/pull/11462) flag.
 - Add [`etcdctl auth status`](https://github.com/etcd-io/etcd/pull/11536) command to check if authentication is enabled
+- Add [`etcdctl get --count-only`](https://github.com/etcd-io/etcd/pull/11743) flag for output type `fields`.
+- Add [`etcdctl member list -w=json --hex`](https://github.com/etcd-io/etcd/pull/11812) flag to print memberListResponse in hex format json.
 
 ### gRPC gateway
 
@@ -118,27 +167,41 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 
+### gRPC Proxy
+
+- Fix [`panic on error`](https://github.com/etcd-io/etcd/pull/11694) for metrics handler.
+- Add [gRPC keepalive related flags](https://github.com/etcd-io/etcd/pull/11711) `grpc-keepalive-min-time`, `grpc-keepalive-interval` and `grpc-keepalive-timeout`.
+
 ### Auth
 
 - Fix [NoPassword check when adding user through GRPC gateway](https://github.com/etcd-io/etcd/pull/11418) ([issue#11414](https://github.com/etcd-io/etcd/issues/11414))
 - Fix bug where [some auth related messages are logged at wrong level](https://github.com/etcd-io/etcd/pull/11586)
+- [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
+- [Improve checkPassword performance](https://github.com/etcd-io/etcd/pull/11735).
+- [Add authRevision field in AuthStatus](https://github.com/etcd-io/etcd/pull/11659).
 
 ### API
-- Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
 
+- Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
+- [Add `Linearizable` field to `etcdserverpb.MemberListRequest`](https://github.com/etcd-io/etcd/pull/11639).
 
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
 
+### Release
+
+- Add s390x build support ([PR#11548](https://github.com/etcd-io/etcd/pull/11548) and [PR#11358](https://github.com/etcd-io/etcd/pull/11358))
+
 ### Go
 
-- Require [*Go 1.13+*](https://github.com/etcd-io/etcd/pull/11110).
-- Compile with [*Go 1.13*](https://golang.org/doc/devel/release.html#go1.13)
+- Require [*Go 1.14+*](https://github.com/etcd-io/etcd/pull/11110).
+- Compile with [*Go 1.14*](https://golang.org/doc/devel/release.html#go1.14)
 
 ### Project Governance
 
 - The etcd team has added, a well defined and openly discussed, project [governance](https://github.com/etcd-io/etcd/pull/11175).
+
 
 <hr>
 

@@ -19,11 +19,10 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"go.uber.org/zap"
 )
@@ -93,11 +92,13 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
-func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
-	var cIndex consistentIndex
-	kv := mvcc.New(cfg.Logger, oldbe, &lease.FakeLessor{}, nil, &cIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
-	defer kv.Close()
-	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
+func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool) (backend.Backend, error) {
+	consistentIndex := uint64(0)
+	if beExist {
+		ci := cindex.NewConsistentIndex(oldbe.BatchTx())
+		consistentIndex = ci.ConsistentIndex()
+	}
+	if snapshot.Metadata.Index <= consistentIndex {
 		return oldbe, nil
 	}
 	oldbe.Close()
