@@ -85,6 +85,8 @@ type WAL struct {
 	decoder   *decoder       // decoder to decode records
 	readClose func() error   // closer for decode reader
 
+	unsafeNoSync bool // if set, do not fsync
+
 	mu      sync.Mutex
 	enti    uint64   // index of the last entry saved to the wal
 	encoder *encoder // encoder to encode records
@@ -228,6 +230,10 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	return w, nil
+}
+
+func (w *WAL) SetUnsafeNoFsync() {
+	w.unsafeNoSync = true
 }
 
 func (w *WAL) cleanupWAL(lg *zap.Logger) {
@@ -767,6 +773,9 @@ func (w *WAL) cut() error {
 }
 
 func (w *WAL) sync() error {
+	if w.unsafeNoSync {
+		return nil
+	}
 	if w.encoder != nil {
 		if err := w.encoder.flush(); err != nil {
 			return err
