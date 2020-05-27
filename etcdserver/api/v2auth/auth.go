@@ -236,7 +236,7 @@ func (s *store) createUserInternal(user User) (User, error) {
 }
 
 func (s *store) DeleteUser(name string) error {
-	if s.AuthEnabled() && name == "root" {
+	if s.AuthEnabled() && name == RootRoleName {
 		return authErr(http.StatusForbidden, "Cannot delete root user while auth is enabled.")
 	}
 	err := s.deleteResource("/users/" + name)
