@@ -358,7 +358,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 
 	testKey, testValue := []byte("foo"), []byte("bar")
 	rev := s1.Put(testKey, testValue, lease.NoLease)
-	startRev := rev + 2
+	startRev := rev + 3
 
 	// create a watcher with a future revision
 	// add to "synced" watcher group (startRev > s.store.currentRev)
@@ -379,6 +379,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// trigger events for "startRev"
+	s1.Put(testKey, testValue, lease.NoLease)
 	s1.Put(testKey, testValue, lease.NoLease)
 
 	select {

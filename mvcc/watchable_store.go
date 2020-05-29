@@ -365,7 +365,9 @@ func (s *watchableStore) syncWatchers() int {
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
-		w.minRev = curRev + 1
+		if w.minRev <= curRev {
+			w.minRev = curRev + 1
+		}
 
 		eb, ok := wb[w]
 		if !ok {
