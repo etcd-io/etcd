@@ -119,6 +119,40 @@ func startGateway(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	lhost, lport, err := net.SplitHostPort(gatewayListenAddr)
+	if err != nil {
+		fmt.Println("failed to validate listen address:", gatewayListenAddr)
+		os.Exit(1)
+	}
+
+	laddrs, err := net.LookupHost(lhost)
+	if err != nil {
+		fmt.Println("failed to resolve listen host:", lhost)
+		os.Exit(1)
+	}
+	laddrsMap := make(map[string]bool)
+	for _, addr := range laddrs {
+		laddrsMap[addr] = true
+	}
+
+	for _, srv := range srvs.SRVs {
+		eaddrs, err := net.LookupHost(srv.Target)
+		if err != nil {
+			fmt.Println("failed to resolve endpoint host:", srv.Target)
+			os.Exit(1)
+		}
+		if fmt.Sprintf("%d", srv.Port) != lport {
+			continue
+		}
+
+		for _, ea := range eaddrs {
+			if laddrsMap[ea] {
+				fmt.Printf("SRV or endpoint (%s:%d->%s:%d) should not resolve to the gateway listen addr (%s)\n", srv.Target, srv.Port, ea, srv.Port, gatewayListenAddr)
+				os.Exit(1)
+			}
+		}
+	}
+
 	if len(srvs.Endpoints) == 0 {
 		fmt.Println("no endpoints found")
 		os.Exit(1)
