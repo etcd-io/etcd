@@ -747,7 +747,7 @@ func (s *store) SaveNoCopy() ([]byte, error) {
 }
 
 func (s *store) Clone() Store {
-	s.worldLock.Lock()
+	s.worldLock.RLock()
 
 	clonedStore := newStore()
 	clonedStore.CurrentIndex = s.CurrentIndex
@@ -756,7 +756,7 @@ func (s *store) Clone() Store {
 	clonedStore.Stats = s.Stats.clone()
 	clonedStore.CurrentVersion = s.CurrentVersion
 
-	s.worldLock.Unlock()
+	s.worldLock.RUnlock()
 	return clonedStore
 }
 
