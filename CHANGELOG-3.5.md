@@ -147,6 +147,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [memory leak in follower nodes](https://github.com/etcd-io/etcd/pull/11731).
   - https://github.com/etcd-io/etcd/issues/11495
   - https://github.com/etcd-io/etcd/issues/11730
+- Make sure [grant/revoke won't be applied repeatedly after restarting etcd](https://github.com/etcd-io/etcd/pull/11935).
 
 ### Package `wal`
 
