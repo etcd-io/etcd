@@ -606,7 +606,9 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 			}
 			e.PrevNode = n.Repr(false, false, s.clock)
 
-			n.Remove(false, false, nil)
+			if err := n.Remove(false, false, nil); err != nil {
+				return nil, err
+			}
 		} else {
 			return nil, v2error.NewError(v2error.EcodeNodeExist, nodePath, currIndex)
 		}
@@ -626,7 +628,9 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	}
 
 	// we are sure d is a directory and does not have the children with name n.Name
-	d.Add(n)
+	if err := d.Add(n); err != nil {
+		return nil, err
+	}
 
 	// node with TTL
 	if !n.IsPermanent() {
