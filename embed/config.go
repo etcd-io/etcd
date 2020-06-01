@@ -321,6 +321,10 @@ type Config struct {
 
 	// EnableGRPCGateway is false to disable grpc gateway.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
+
+	// UnsafeNoFsync disables all uses of fsync.
+	// Setting this is unsafe and will cause data loss.
+	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 }
 
 // configYAML holds the config suitable for yaml parsing
