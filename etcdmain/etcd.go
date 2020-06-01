@@ -58,10 +58,18 @@ func startEtcdOrProxyV2() {
 	err := cfg.parse(os.Args[1:])
 	lg := cfg.ec.GetLogger()
 	if err != nil {
-		lg.Warn("failed to verify flags", zap.Error(err))
+		if lg != nil {
+			lg.Warn("failed to verify flags", zap.Error(err))
+		} else {
+			fmt.Println("failed to verify flags: " + err.Error())
+		}
 		switch err {
 		case embed.ErrUnsetAdvertiseClientURLsFlag:
-			lg.Warn("advertise client URLs are not set", zap.Error(err))
+			if lg != nil {
+				lg.Warn("advertise client URLs are not set", zap.Error(err))
+			} else {
+				fmt.Println("advertise client URLs are not set")
+			}
 		}
 		os.Exit(1)
 	}
