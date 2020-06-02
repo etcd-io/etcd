@@ -40,7 +40,6 @@ var (
 	watchGetTotalStreams  int
 	watchEvents           int
 	firstWatch            sync.Once
-	watchGetOutputFormat  string
 )
 
 func init() {
@@ -48,12 +47,11 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchGetTotalWatchers, "watchers", 10000, "Total number of watchers")
 	watchGetCmd.Flags().IntVar(&watchGetTotalStreams, "streams", 1, "Total number of watcher streams")
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
-	watchGetCmd.Flags().StringVar(&watchGetOutputFormat, "output", "", "Output format for benchmark results output (only json is currently supported)")
 }
 
 func watchGetFunc(cmd *cobra.Command, args []string) {
 	// Only result will be written in the specified output format if it is set.
-	enc, restore, err := shouldEncode(watchGetOutputFormat)
+	enc, restore, err := shouldEncode(outputFormat)
 	if err != nil {
 		panic(err)
 	}

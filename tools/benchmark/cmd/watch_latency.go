@@ -44,8 +44,6 @@ var (
 	watchLPutRate   int
 	watchLKeySize   int
 	watchLValueSize int
-
-	watchLOutputFormat string
 )
 
 func init() {
@@ -54,12 +52,11 @@ func init() {
 	watchLatencyCmd.Flags().IntVar(&watchLPutRate, "put-rate", 100, "Number of keys to put per second")
 	watchLatencyCmd.Flags().IntVar(&watchLKeySize, "key-size", 32, "Key size of watch response")
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
-	watchLatencyCmd.Flags().StringVar(&watchLOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func watchLatencyFunc(cmd *cobra.Command, args []string) {
 	// Only result will be written in the specified output format if it is set.
-	enc, restore, err := shouldEncode(watchLOutputFormat)
+	enc, restore, err := shouldEncode(outputFormat)
 	if err != nil {
 		panic(err)
 	}

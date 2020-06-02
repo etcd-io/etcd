@@ -61,8 +61,6 @@ var (
 	watchKeySize      int
 	watchKeySpaceSize int
 	watchSeqKeys      bool
-
-	watchOutputFormat string
 )
 
 type watchedKeys struct {
@@ -88,12 +86,11 @@ func init() {
 	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
 	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
-	watchCmd.Flags().StringVar(&watchOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {
 	// Only result will be written in the specified output format if it is set.
-	enc, restore, err := shouldEncode(watchOutputFormat)
+	enc, restore, err := shouldEncode(outputFormat)
 	if err != nil {
 		panic(err)
 	}

@@ -38,10 +38,9 @@ var rangeCmd = &cobra.Command{
 }
 
 var (
-	rangeRate         int
-	rangeTotal        int
-	rangeConsistency  string
-	rangeOutputFormat string
+	rangeRate        int
+	rangeTotal       int
+	rangeConsistency string
 )
 
 func init() {
@@ -49,12 +48,11 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
-	rangeCmd.Flags().StringVar(&rangeOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
 	// Only result will be written in the specified output format if it is set.
-	enc, restore, err := shouldEncode(rangeOutputFormat)
+	enc, restore, err := shouldEncode(outputFormat)
 	if err != nil {
 		panic(err)
 	}

@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2020 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ func (e jsonEncoder) mustWrite(v interface{}) {
 // returns a restore function for recovering stdout.
 func shouldEncode(format string) (encoder, func(), error) {
 	if len(format) == 0 {
-		return nil, func(){}, nil
+		return nil, func() {}, nil
 	}
 
 	stdout := os.Stdout

@@ -55,8 +55,6 @@ var (
 	compactIndexDelta int64
 
 	checkHashkv bool
-
-	putOutputFormat string
 )
 
 func init() {
@@ -71,12 +69,11 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
-	putCmd.Flags().StringVar(&putOutputFormat, "output", "", "Output format for benchmark results (only json is currently supported)")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
 	// Only result will be written in the specified output format if it is set.
-	enc, restore, err := shouldEncode(putOutputFormat)
+	enc, restore, err := shouldEncode(outputFormat)
 	if err != nil {
 		panic(err)
 	}
