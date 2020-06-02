@@ -488,9 +488,9 @@ stabilize 1 2
   Ready MustSync=false:
   Lead:1 State:StateFollower
   Messages:
-  2->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 19)
+  2->1 MsgAppResp Term:8 Log:6/20 Rejected (Hint: 19)
 > 1 receiving messages
-  2->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 19)
+  2->1 MsgAppResp Term:8 Log:6/20 Rejected (Hint: 19)
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
@@ -527,9 +527,9 @@ stabilize 1 3
   Ready MustSync=false:
   Lead:1 State:StateFollower
   Messages:
-  3->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 14)
+  3->1 MsgAppResp Term:8 Log:4/20 Rejected (Hint: 14)
 > 1 receiving messages
-  3->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 14)
+  3->1 MsgAppResp Term:8 Log:4/20 Rejected (Hint: 14)
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
@@ -617,21 +617,9 @@ stabilize 1 5
   Ready MustSync=false:
   Lead:1 State:StateFollower
   Messages:
-  5->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 22)
+  5->1 MsgAppResp Term:8 Log:6/20 Rejected (Hint: 18)
 > 1 receiving messages
-  5->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 22)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->5 MsgApp Term:8 Log:6/19 Commit:21 Entries:[6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 5 receiving messages
-  1->5 MsgApp Term:8 Log:6/19 Commit:21 Entries:[6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 5 handling Ready
-  Ready MustSync=false:
-  Messages:
-  5->1 MsgAppResp Term:8 Log:0/19 Rejected (Hint: 22)
-> 1 receiving messages
-  5->1 MsgAppResp Term:8 Log:0/19 Rejected (Hint: 22)
+  5->1 MsgAppResp Term:8 Log:6/20 Rejected (Hint: 18)
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
@@ -676,33 +664,9 @@ stabilize 1 6
   Ready MustSync=false:
   Lead:1 State:StateFollower
   Messages:
-  6->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 17)
+  6->1 MsgAppResp Term:8 Log:4/20 Rejected (Hint: 17)
 > 1 receiving messages
-  6->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 17)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->6 MsgApp Term:8 Log:5/17 Commit:21 Entries:[6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 6 receiving messages
-  1->6 MsgApp Term:8 Log:5/17 Commit:21 Entries:[6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 6 handling Ready
-  Ready MustSync=false:
-  Messages:
-  6->1 MsgAppResp Term:8 Log:0/17 Rejected (Hint: 17)
-> 1 receiving messages
-  6->1 MsgAppResp Term:8 Log:0/17 Rejected (Hint: 17)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->6 MsgApp Term:8 Log:5/16 Commit:21 Entries:[5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 6 receiving messages
-  1->6 MsgApp Term:8 Log:5/16 Commit:21 Entries:[5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 6 handling Ready
-  Ready MustSync=false:
-  Messages:
-  6->1 MsgAppResp Term:8 Log:0/16 Rejected (Hint: 17)
-> 1 receiving messages
-  6->1 MsgAppResp Term:8 Log:0/16 Rejected (Hint: 17)
+  6->1 MsgAppResp Term:8 Log:4/20 Rejected (Hint: 17)
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
@@ -753,81 +717,9 @@ stabilize 1 7
   Ready MustSync=false:
   Lead:1 State:StateFollower
   Messages:
-  7->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 21)
+  7->1 MsgAppResp Term:8 Log:3/20 Rejected (Hint: 20)
 > 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/20 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:6/19 Commit:21 Entries:[6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:6/19 Commit:21 Entries:[6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/19 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/19 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:6/18 Commit:21 Entries:[6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:6/18 Commit:21 Entries:[6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/18 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/18 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:5/17 Commit:21 Entries:[6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:5/17 Commit:21 Entries:[6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/17 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/17 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:5/16 Commit:21 Entries:[5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:5/16 Commit:21 Entries:[5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/16 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/16 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:4/15 Commit:21 Entries:[5/16 EntryNormal "", 5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:4/15 Commit:21 Entries:[5/16 EntryNormal "", 5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/15 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/15 Rejected (Hint: 21)
-> 1 handling Ready
-  Ready MustSync=false:
-  Messages:
-  1->7 MsgApp Term:8 Log:4/14 Commit:21 Entries:[4/15 EntryNormal "prop_4_15", 5/16 EntryNormal "", 5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 receiving messages
-  1->7 MsgApp Term:8 Log:4/14 Commit:21 Entries:[4/15 EntryNormal "prop_4_15", 5/16 EntryNormal "", 5/17 EntryNormal "prop_5_17", 6/18 EntryNormal "", 6/19 EntryNormal "prop_6_19", 6/20 EntryNormal "prop_6_20", 8/21 EntryNormal ""]
-> 7 handling Ready
-  Ready MustSync=false:
-  Messages:
-  7->1 MsgAppResp Term:8 Log:0/14 Rejected (Hint: 21)
-> 1 receiving messages
-  7->1 MsgAppResp Term:8 Log:0/14 Rejected (Hint: 21)
+  7->1 MsgAppResp Term:8 Log:3/20 Rejected (Hint: 20)
 > 1 handling Ready
   Ready MustSync=false:
   Messages:

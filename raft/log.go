@@ -123,7 +123,6 @@ func (l *raftLog) append(ents ...pb.Entry) uint64 {
 // entries, the index of the first new entry will be returned.
 // An entry is considered to be conflicting if it has the same index but
 // a different term.
-// The first entry MUST have an index equal to the argument 'from'.
 // The index of the given entries MUST be continuously increasing.
 func (l *raftLog) findConflict(ents []pb.Entry) uint64 {
 	for _, ne := range ents {
@@ -136,6 +135,26 @@ func (l *raftLog) findConflict(ents []pb.Entry) uint64 {
 		}
 	}
 	return 0
+}
+
+// findConflictByTerm takes an (index, term) pair (indicating a conflicting log
+// entry on a leader/follower during an append) and finds the largest index in
+// log l with a term <= `term` and an index <= `index`. If no such index exists
+// in the log, the log's first index is returned.
+// The index provided MUST be equal to or less than l.lastIndex().
+func (l *raftLog) findConflictByTerm(index uint64, term uint64) uint64 {
+	if index > l.lastIndex() {
+		l.logger.Panicf("index(%d) is out of range [lastIndex(%d)] in findConflictByTerm",
+			index, l.lastIndex())
+	}
+	for {
+		logTerm, err := l.term(index)
+		if logTerm <= term || err != nil {
+			break
+		}
+		index--
+	}
+	return index
 }
 
 func (l *raftLog) unstableEntries() []pb.Entry {

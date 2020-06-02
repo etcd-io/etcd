@@ -157,8 +157,8 @@ func (pr *Progress) MaybeUpdate(n uint64) bool {
 func (pr *Progress) OptimisticUpdate(n uint64) { pr.Next = n + 1 }
 
 // MaybeDecrTo adjusts the Progress to the receipt of a MsgApp rejection. The
-// arguments are the index the follower rejected to append to its log, and its
-// last index.
+// arguments are the index of the append message rejected by the follower, and
+// the hint that we want to decrease to.
 //
 // Rejections can happen spuriously as messages are sent out of order or
 // duplicated. In such cases, the rejection pertains to an index that the
@@ -167,7 +167,7 @@ func (pr *Progress) OptimisticUpdate(n uint64) { pr.Next = n + 1 }
 //
 // If the rejection is genuine, Next is lowered sensibly, and the Progress is
 // cleared for sending log entries.
-func (pr *Progress) MaybeDecrTo(rejected, last uint64) bool {
+func (pr *Progress) MaybeDecrTo(rejected, matchHint uint64) bool {
 	if pr.State == StateReplicate {
 		// The rejection must be stale if the progress has matched and "rejected"
 		// is smaller than "match".
@@ -176,7 +176,7 @@ func (pr *Progress) MaybeDecrTo(rejected, last uint64) bool {
 		}
 		// Directly decrease next to match + 1.
 		//
-		// TODO(tbg): why not use last if it's larger?
+		// TODO(tbg): why not use matchHint if it's larger?
 		pr.Next = pr.Match + 1
 		return true
 	}
@@ -187,7 +187,7 @@ func (pr *Progress) MaybeDecrTo(rejected, last uint64) bool {
 		return false
 	}
 
-	pr.Next = max(min(rejected, last+1), 1)
+	pr.Next = max(min(rejected, matchHint+1), 1)
 	pr.ProbeSent = false
 	return true
 }

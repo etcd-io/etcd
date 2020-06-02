@@ -1106,9 +1106,32 @@ func stepLeader(r *raft, m pb.Message) error {
 		pr.RecentActive = true
 
 		if m.Reject {
-			r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, lastindex: %d) from %x for index %d",
-				r.id, m.RejectHint, m.From, m.Index)
-			if pr.MaybeDecrTo(m.Index, m.RejectHint) {
+			r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, hint: %d) from %x for index %d, log term %d",
+				r.id, m.RejectHint, m.From, m.Index, m.LogTerm)
+			// The reject hint is the suggested next base entry for appending,
+			// i.e. hint+1 would be sent as the next append. 'hint' is usually the
+			// last index of the follower, or the base index (m.Index) from the
+			// append being responsed to.
+			hint := m.RejectHint
+			if m.LogTerm > 0 {
+				// LogTerm is the term that the follower has at index RejectHint. If the
+				// follower has an uncommitted log tail, we would end up probing one by
+				// one until we hit the common prefix.
+				//
+				// For example, if the leader has:
+				//   [...] (idx=1,term=2) (idx=2,term=5)[...](idx=9,term=5)
+				// and the follower has:
+				//   [...] (idx=1,term=2) (idx=2,term=4)[...](idx=6,term=4)
+				//
+				// Then, after sending (idx=9,term=5) we would receive a RejectHint of 6
+				// and LogTerm of 4. Without the code below, we would try an append at
+				// 6, 5, 4 ... until hitting idx=1 which succeeds (as 1 matches).
+				// Instead, the code below skips all indexes at terms >4, and reduces
+				// 'hint' to 1 in one term (meaning we'll successfully append 2 next
+				// time).
+				hint = r.raftLog.findConflictByTerm(hint, m.LogTerm)
+			}
+			if pr.MaybeDecrTo(m.Index, hint) {
 				r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
 				if pr.State == tracker.StateReplicate {
 					pr.BecomeProbe()
@@ -1361,7 +1384,37 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	} else {
 		r.logger.Debugf("%x [logterm: %d, index: %d] rejected MsgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+
+		// Return a hint to the leader about the maximum index and term that the
+		// two logs could be divergent at. Do this by searching through the
+		// follower's log for the maximum (index, term) pair with a term <= the
+		// MsgApp's LogTerm and an index <= the MsgApp's Index. This can help
+		// skip all indexes in the follower's uncommitted tail with terms
+		// greater than the MsgApp's LogTerm.
+		//
+		// For example, if the leader has:
+		//   [...] (idx=1,term=2)[...](idx=5,term=2)
+		// and the follower has:
+		//   [...] (idx=1,term=2) (idx=2,term=4)[...](idx=8,term=4)
+		//
+		// Then, after receiving a MsgApp (idx=5,term=2), the follower would
+		// send a rejected MsgAppRsp with a RejectHint of 1 and a LogTerm of 2.
+		//
+		// There is similar logic on the leader.
+		hintIndex := min(m.Index, r.raftLog.lastIndex())
+		hintIndex = r.raftLog.findConflictByTerm(hintIndex, m.LogTerm)
+		hintTerm, err := r.raftLog.term(hintIndex)
+		if err != nil {
+			panic(fmt.Sprintf("term(%d) must be valid, but got %v", hintIndex, err))
+		}
+		r.send(pb.Message{
+			To:         m.From,
+			Type:       pb.MsgAppResp,
+			Index:      m.Index,
+			Reject:     true,
+			RejectHint: hintIndex,
+			LogTerm:    hintTerm,
+		})
 	}
 }
 
