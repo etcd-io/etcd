@@ -120,14 +120,16 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s.clock = fc
 
 	var eidx uint64 = 3
-	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
-	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
-	e, err := s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	_, err := s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	testutil.AssertNil(t, err)
-	testutil.AssertEqual(t, e.Node.Dir, true)
+	_, err = s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
+	testutil.AssertNil(t, err)
+	e, err := s.Update("/foo/bar", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	testutil.AssertNil(t, err)
+	testutil.AssertEqual(t, e.Node.Dir, false)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	e, _ = s.Get("/foo/bar", false, false)
-	testutil.AssertEqual(t, *e.Node.Value, "baz")
+	testutil.AssertEqual(t, *e.Node.Value, "")
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 
 	fc.Advance(600 * time.Millisecond)
@@ -270,13 +272,14 @@ func TestStoreRefresh(t *testing.T) {
 
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	s.Create("/bar", true, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	s.Create("/bar/z", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	_, err := s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
 	testutil.AssertNil(t, err)
 
 	_, err = s.Set("/foo", false, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
 	testutil.AssertNil(t, err)
 
-	_, err = s.Update("/bar", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	_, err = s.Update("/bar/z", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
 	testutil.AssertNil(t, err)
 
 	_, err = s.CompareAndSwap("/foo", "bar", 0, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})

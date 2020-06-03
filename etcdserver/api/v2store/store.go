@@ -311,7 +311,9 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	eNode := e.Node
 
 	// if test succeed, write the value
-	n.Write(value, s.CurrentIndex)
+	if err := n.Write(value, s.CurrentIndex); err != nil {
+		return nil, err
+	}
 	n.UpdateTTL(expireOpts.ExpireTime)
 
 	// copy the value for safety
@@ -532,7 +534,9 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
-	n.Write(newValue, nextIndex)
+	if err := n.Write(newValue, nextIndex); err != nil {
+		return nil, fmt.Errorf("nodePath %v : %v", nodePath, err)
+	}
 
 	if n.IsDir() {
 		eNode.Dir = true
