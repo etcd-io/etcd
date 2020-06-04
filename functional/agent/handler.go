@@ -116,7 +116,7 @@ func (srv *Server) creatEtcd(fromSnapshot bool, failpoints string) error {
 	srv.etcdCmd = exec.Command(etcdPath, etcdFlags...)
 	srv.etcdCmd.Env = []string{"GOFAIL_HTTP=" + u.Host}
 	if failpoints != "" {
-		srv.etcdCmd.Env = append(srv.etcdCmd.Env, "GOFAIL_FAILPOINTS=" + failpoints)
+		srv.etcdCmd.Env = append(srv.etcdCmd.Env, "GOFAIL_FAILPOINTS="+failpoints)
 	}
 	srv.etcdCmd.Stdout = srv.etcdLogFile
 	srv.etcdCmd.Stderr = srv.etcdLogFile
