@@ -135,12 +135,21 @@ func casesFromFailpoint(fp string, failpointCommands []string) (fs []Case) {
 
 func makeInjectFailpoint(fp, val string) injectMemberFunc {
 	return func(clus *Cluster, idx int) (err error) {
+		// Add the failpoint into the member's list of failpoints so that if the member is restarted, the
+		// failpoint state is persisted (via the GOFAIL_FAILPOINTS environment variable)
+		addFailpointToMemberList(clus.Members[idx], idx, fp)
+
+		// Enable the failpoint
 		return putFailpoint(clus.Members[idx].FailpointHTTPAddr, fp, val)
 	}
 }
 
 func makeRecoverFailpoint(fp string) recoverMemberFunc {
 	return func(clus *Cluster, idx int) error {
+		// Remove the failpoint into the member's list of failpoints.
+		removeFailpointFromMemberList(clus.Members[idx], idx, fp)
+
+		// Disable the failpoint
 		if err := delFailpoint(clus.Members[idx].FailpointHTTPAddr, fp); err == nil {
 			return nil
 		}
@@ -150,6 +159,23 @@ func makeRecoverFailpoint(fp string) recoverMemberFunc {
 		fpStats.mu.Unlock()
 		return recover_SIGTERM_ETCD(clus, idx)
 	}
+}
+
+func addFailpointToMemberList(member *rpcpb.Member, idx int, fp string) {
+	failpoints := strings.Split(member.Failpoints, ";")
+	failpoints = append(failpoints, fp)
+	member.Failpoints = strings.Join(failpoints, ";")
+}
+
+func removeFailpointFromMemberList(member *rpcpb.Member, idx int, fp string) {
+	failpoints := strings.Split(member.Failpoints, ";")
+	for i, f := range failpoints {
+		if f == fp {
+			failpoints = append(failpoints[:i], failpoints[i+1:]...)
+			break
+		}
+	}
+	member.Failpoints = strings.Join(failpoints, ";")
 }
 
 func putFailpoint(ep, fp, val string) error {
