@@ -204,6 +204,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		Debug:                      cfg.Debug,
 		ForceNewCluster:            cfg.ForceNewCluster,
 		EnableGRPCGateway:          cfg.EnableGRPCGateway,
+		UnsafeNoFsync:              cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:      cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:       cfg.ExperimentalCompactionBatchLimit,
 	}
