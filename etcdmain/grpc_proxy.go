@@ -372,6 +372,8 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
+		grpc.MaxRecvMsgSize(grpcMaxCallRecvMsgSize),
+		grpc.MaxSendMsgSize(grpcMaxCallSendMsgSize),
 	}
 	if grpcKeepAliveMinTime > time.Duration(0) {
 		gopts = append(gopts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
