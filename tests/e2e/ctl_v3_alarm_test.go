@@ -53,7 +53,7 @@ func alarmTest(cx ctlCtx) {
 	}
 
 	// '/health' handler should return 'false'
-	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health":"false"}`}); err != nil {
+	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health":"false","reason":"ALARM NOSPACE"}`}); err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 
