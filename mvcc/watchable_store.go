@@ -175,13 +175,12 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		for _, wb := range s.victims {
 			if wb[wa] != nil {
 				victimBatch = wb
-				break
+				slowWatcherGauge.Dec()
+				watcherGauge.Dec()
+				delete(victimBatch, wa)
 			}
 		}
 		if victimBatch != nil {
-			slowWatcherGauge.Dec()
-			watcherGauge.Dec()
-			delete(victimBatch, wa)
 			break
 		}
 
