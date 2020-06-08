@@ -22,6 +22,9 @@ github.com/dgrijalva/jwt-go
 # github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 ## explicit
 github.com/dustin/go-humanize
+# github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
+## explicit
+github.com/etcd-io/gofail/runtime
 # github.com/fatih/color v1.7.0
 ## explicit
 # github.com/gogo/protobuf v1.2.1
