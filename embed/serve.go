@@ -324,7 +324,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 				continue
 			}
 			if len(chains[0].Subject.CommonName) != 0 {
-				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", 400)
+				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", http.StatusBadRequest)
 				return
 			}
 		}
