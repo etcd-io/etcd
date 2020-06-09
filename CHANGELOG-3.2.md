@@ -9,6 +9,22 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
+## [v3.2.31](https://github.com/etcd-io/etcd/releases/tag/v3.2.31) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.30...v3.2.31) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### auth, etcdserver
+
+- [attaching a fake root token when calling `LeaseRevoke`](https://github.com/etcd-io/etcd/pull/11691).
+  - fix a data corruption bug caused by lease expiration when authentication is enabled and upgrading cluster from etcd-3.2 to etcd-3.3
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+
 ## [v3.2.30](https://github.com/etcd-io/etcd/releases/tag/v3.2.30) (2020-04-01)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.29...v3.2.30) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
