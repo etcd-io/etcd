@@ -1,5 +1,4 @@
 {
-    "etcd.json": {
         "annotations": {
             "list": [
 
@@ -1221,5 +1220,4 @@
         "title": "etcd",
         "uid": "c2f4e12cdf69feb95caa41a5a1b423d9",
         "version": 215
-    }
 }
