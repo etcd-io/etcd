@@ -57,6 +57,15 @@ func startEtcdOrProxyV2() {
 
 	err := cfg.parse(os.Args[1:])
 	lg := cfg.ec.GetLogger()
+	if lg == nil {
+		var zapError error
+		// use this logger
+		lg, zapError = zap.NewProduction()
+		if zapError != nil {
+			fmt.Printf("error creating zap logger %v", zapError)
+			os.Exit(1)
+		}
+	}
 	if err != nil {
 		lg.Warn("failed to verify flags", zap.Error(err))
 		switch err {
