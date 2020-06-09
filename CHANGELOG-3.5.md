@@ -121,6 +121,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Add [missing CRC checksum check in WAL validate method otherwise causes panic](https://github.com/etcd-io/etcd/pull/11924).
   - See https://github.com/etcd-io/etcd/issues/11918.
 - Improve logging around snapshot send and receive.
+- [Push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/11990).
 
 ### Package `embed`
 
