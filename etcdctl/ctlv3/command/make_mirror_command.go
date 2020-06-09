@@ -41,6 +41,7 @@ var (
 	mmuser         string
 	mmpassword     string
 	mmnodestprefix bool
+	mmonetime      bool
 )
 
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
@@ -61,6 +62,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "Disable transport security for client connections")
 	c.Flags().StringVar(&mmuser, "dest-user", "", "Destination username[:password] for authentication (prompt if password is not supplied)")
 	c.Flags().StringVar(&mmpassword, "dest-password", "", "Destination password for authentication (if this option is used, --user option shouldn't include password)")
+	c.Flags().BoolVar(&mmonetime, "one-time", false, "Mirror the data once and quit")
 
 	return c
 }
@@ -122,7 +124,9 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)
-	ExitWithError(ExitError, err)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
 }
 
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
@@ -162,6 +166,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	err := <-errc
 	if err != nil {
 		return err
+	}
+
+	if mmonetime {
+		return nil
 	}
 
 	wc := s.SyncUpdates(ctx)

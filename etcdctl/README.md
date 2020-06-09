@@ -1481,6 +1481,8 @@ RPC: UserRevokeRole
 
 - dest-insecure-transport -- Disable transport security for client connections
 
+- one-time -- Mirror the data once and quit
+
 #### Output
 
 The approximate total number of keys transferred to the destination cluster, updated every 30 seconds.
