@@ -124,7 +124,7 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	}
 	dirMode := dirInfo.Mode().Perm()
 	if dirMode != perm {
-		err = fmt.Errorf("directory %q exist without desired file permission. %q", dir, dirInfo.Mode())
+		err = fmt.Errorf("directory %q,%q exist without desired file permission %q.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
 		return err
 	}
 	return nil
