@@ -314,9 +314,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 				"rejecting HTTP request to prevent DNS rebinding attacks",
 				zap.String("host", host),
 			)
-			// TODO: use Go's "http.StatusMisdirectedRequest" (421)
-			// https://github.com/golang/go/commit/4b8a7eafef039af1834ef9bfa879257c4a72b7b5
-			http.Error(rw, errCVE20185702(host), 421)
+			http.Error(rw, errCVE20185702(host), http.StatusMisdirectedRequest)
 			return
 		}
 	} else if ac.s.Cfg.ClientCertAuthEnabled && ac.s.Cfg.EnableGRPCGateway &&
@@ -326,7 +324,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 				continue
 			}
 			if len(chains[0].Subject.CommonName) != 0 {
-				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", 400)
+				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", http.StatusBadRequest)
 				return
 			}
 		}
