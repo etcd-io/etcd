@@ -34,6 +34,10 @@ To replace the machine, follow the instructions for [removing the member][remove
 
 If the majority of the cluster is lost or all of the nodes have changed IP addresses, then manual action is necessary to recover safely. The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
 
+### Recover cluster from minority failure
+
+If a specific member is lost, then it is equivalent to replacing a failed machine. The steps are mentioned in [Replace a failed machine](runtime-configuration.md#replace-a-failed-machine).
+
 ## Cluster reconfiguration operations
 
 With these use cases in mind, the involved operations can be described for each.
