@@ -162,4 +162,4 @@ etcd sends a snapshot of its complete key-value store to refresh slow followers 
 [maintenance-defragment]: op-guide/maintenance.md#defragmentation
 [maintenance-disarm]: ../etcdctl/README.md#alarm-disarm
 [fio]: https://github.com/axboe/fio
-[fio-blog-post]: https://www.ibm.com/blogs/bluemix/2019/04/using-fio-to-tell-whether-your-storage-is-fast-enough-for-etcd/
+[fio-blog-post]: https://www.ibm.com/cloud/blog/using-fio-to-tell-whether-your-storage-is-fast-enough-for-etcd
