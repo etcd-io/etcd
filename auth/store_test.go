@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"reflect"
 	"strings"
@@ -48,7 +49,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,10 +74,32 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	}
 }
 
+// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+func TestNewAuthStoreBcryptCost(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
+	for _, invalidCost := range invalidCosts {
+		as := NewAuthStore(b, nil, tp, invalidCost)
+		if as.BcryptCost() != bcrypt.DefaultCost {
+			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
+		}
+		as.Close()
+	}
+
+	b.Close()
+}
+
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +536,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +608,11 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
+<<<<<<< HEAD
 	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
+=======
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
+>>>>>>> auth: Customize simpleTokenTTL settings.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,13 +645,13 @@ func contains(array []string, str string) bool {
 
 func TestHammerSimpleAuthenticate(t *testing.T) {
 	// set TTL values low to try to trigger races
-	oldTTL, oldTTLRes := simpleTokenTTL, simpleTokenTTLResolution
+	oldTTL, oldTTLRes := simpleTokenTTLDefault, simpleTokenTTLResolution
 	defer func() {
-		simpleTokenTTL = oldTTL
+		simpleTokenTTLDefault = oldTTL
 		simpleTokenTTLResolution = oldTTLRes
 	}()
-	simpleTokenTTL = 10 * time.Millisecond
-	simpleTokenTTLResolution = simpleTokenTTL
+	simpleTokenTTLDefault = 10 * time.Millisecond
+	simpleTokenTTLResolution = simpleTokenTTLDefault
 	users := make(map[string]struct{})
 
 	as, tearDown := setupAuthStore(t)
@@ -667,7 +694,7 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -722,7 +749,7 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(opts, dummyIndexWaiter)
+	tp, err := NewTokenProvider(opts, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}

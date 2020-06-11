@@ -171,6 +171,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		StrictReconfigCheck:        cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:      cfg.ClientTLSInfo.ClientCertAuth,
 		AuthToken:                  cfg.AuthToken,
+		TokenTTL:                   cfg.AuthTokenTTL,
 		InitialCorruptCheck:        cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:           cfg.ExperimentalCorruptCheckTime,
 		Debug:                      cfg.Debug,

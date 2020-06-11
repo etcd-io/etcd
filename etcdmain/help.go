@@ -193,6 +193,8 @@ profiling flags:
 auth flags:
 	--auth-token 'simple'
 		Specify a v3 authentication token type and its options ('simple' or 'jwt').
+	--auth-token-ttl 300
+    Time (in seconds) of the auth-token-ttl.
 
 experimental flags:
 	--experimental-initial-corrupt-check 'false'

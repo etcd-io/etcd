@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -1087,7 +1088,11 @@ func decomposeOpts(optstr string) (string, map[string]string, error) {
 
 }
 
-func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+// NewTokenProvider creates a new token provider.
+func NewTokenProvider(
+	tokenOpts string,
+	indexWaiter func(uint64) <-chan struct{},
+	TokenTTL time.Duration) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
@@ -1096,7 +1101,7 @@ func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}
 	switch tokenType {
 	case tokenTypeSimple:
 		plog.Warningf("simple token is not cryptographically signed")
-		return newTokenProviderSimple(indexWaiter), nil
+		return newTokenProviderSimple(indexWaiter, TokenTTL), nil
 
 	case tokenTypeJWT:
 		return newTokenProviderJWT(typeSpecificOpts)

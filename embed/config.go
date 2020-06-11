@@ -222,6 +222,9 @@ type Config struct {
 
 	// Experimental flags
 
+	//The AuthTokenTTL in seconds of the simple token
+	AuthTokenTTL uint `json:"auth-token-ttl"`
+
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
@@ -284,6 +287,7 @@ func NewConfig() *Config {
 		Metrics:                    "basic",
 		EnableV2:                   DefaultEnableV2,
 		AuthToken:                  "simple",
+		AuthTokenTTL: 300,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
