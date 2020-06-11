@@ -531,6 +531,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		func(index uint64) <-chan struct{} {
 			return srv.applyWait.Wait(index)
 		},
+		time.Duration(cfg.TokenTTL)*time.Second,
 	)
 	if err != nil {
 		cfg.Logger.Warn("failed to create token provider", zap.Error(err))

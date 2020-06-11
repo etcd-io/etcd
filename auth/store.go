@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.etcd.io/etcd/v3/auth/authpb"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
@@ -1213,7 +1214,8 @@ func decomposeOpts(lg *zap.Logger, optstr string) (string, map[string]string, er
 func NewTokenProvider(
 	lg *zap.Logger,
 	tokenOpts string,
-	indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+	indexWaiter func(uint64) <-chan struct{},
+	TokenTTL time.Duration) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(lg, tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
@@ -1224,7 +1226,7 @@ func NewTokenProvider(
 		if lg != nil {
 			lg.Warn("simple token is not cryptographically signed")
 		}
-		return newTokenProviderSimple(lg, indexWaiter), nil
+		return newTokenProviderSimple(lg, indexWaiter, TokenTTL), nil
 
 	case tokenTypeJWT:
 		return newTokenProviderJWT(lg, typeSpecificOpts)
