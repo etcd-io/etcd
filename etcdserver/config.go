@@ -126,6 +126,7 @@ type ServerConfig struct {
 
 	AuthToken  string
 	BcryptCost uint
+	TokenTTL   uint
 
 	// InitialCorruptCheck is true to check data corruption on boot
 	// before serving any peer/client traffic.
