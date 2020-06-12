@@ -995,7 +995,7 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	if !as.IsAuthEnabled() {
 		return nil
 	}
-	if authInfo == nil {
+	if authInfo == nil || authInfo.Username == "" {
 		return ErrUserEmpty
 	}
 
