@@ -682,6 +682,12 @@ func TestIsAdminPermitted(t *testing.T) {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
+	// empty user
+	err = as.IsAdminPermitted(&AuthInfo{Username: "", Revision: 1})
+	if err != ErrUserEmpty {
+		t.Errorf("expected %v, got %v", ErrUserEmpty, err)
+	}
+
 	// non-admin user
 	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", Revision: 1})
 	if err != ErrPermissionDenied {
