@@ -93,7 +93,7 @@ func (wbs *watchBroadcasts) add(w *watcher) {
 		}
 	}
 	// no fit; create a bcast
-	wb := newWatchBroadcast(wbs.wp, w, wbs.update)
+	wb := newWatchBroadcast(wbs.wp.lg, wbs.wp, w, wbs.update)
 	wbs.watchers[w] = wb
 	wbs.bcasts[wb] = struct{}{}
 }
