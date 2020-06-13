@@ -698,7 +698,7 @@ func (s *EtcdServer) adjustTicks() {
 func (s *EtcdServer) Start() {
 	s.start()
 	s.goAttach(func() { s.adjustTicks() })
-	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
+	s.goAttach(func() { s.publishV3(s.Cfg.ReqTimeout()) })
 	s.goAttach(s.purgeFile)
 	s.goAttach(func() { monitorFileDescriptor(s.getLogger(), s.stopping) })
 	s.goAttach(s.monitorVersions)
@@ -1777,7 +1777,6 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // with the static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-// TODO: replace publish() in 3.6
 func (s *EtcdServer) publishV3(timeout time.Duration) {
 	req := &membershippb.ClusterMemberAttrSetRequest{
 		Member_ID: uint64(s.id),
@@ -1838,7 +1837,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 // but does not go through v2 API endpoint, which means even with v2
 // client handler disabled (e.g. --enable-v2=false), cluster can still
 // process publish requests through rafthttp
-// TODO: Deprecate v2 store in 3.6
+// publish is deprecated
 func (s *EtcdServer) publish(timeout time.Duration) {
 	lg := s.getLogger()
 	b, err := json.Marshal(s.attributes)
@@ -2331,7 +2330,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		lead := types.ID(s.getLead())
 		switch lead {
 		case types.ID(raft.None):
-			// TODO: return error to specify it happens because the cluster does not have leader now
+			return ErrNoLeader
 		case s.ID():
 			if !isConnectedToQuorumSince(s.r.transport, start, s.ID(), s.cluster.Members()) {
 				return ErrTimeoutDueToConnectionLost

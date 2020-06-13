@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.etcd.io/etcd/v3/auth"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -49,6 +50,14 @@ import (
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.uber.org/zap"
 )
+
+func dummyIndexWaiter(index uint64) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		ch <- struct{}{}
+	}()
+	return ch
+}
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
 // and are served through local data.
@@ -1471,6 +1480,64 @@ func TestPublish(t *testing.T) {
 	}
 }
 
+func TestPublishV3(t *testing.T) {
+	n := newNodeRecorder()
+	ch := make(chan interface{}, 1)
+	// simulate that request has gone through consensus
+	ch <- &applyResult{}
+	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.TODO())
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		readych:    make(chan struct{}),
+		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1.5 * 1024 * 1024},
+		id:         1,
+		r:          *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		cluster:    &membership.RaftCluster{},
+		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	tp, err := auth.NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer func() {
+		os.RemoveAll(tmpPath)
+	}()
+	srv.authStore = auth.NewAuthStore(srv.getLogger(), be, srv.consistIndex, tp, int(srv.Cfg.BcryptCost))
+	defer srv.authStore.Close()
+	srv.publishV3(time.Hour)
+
+	action := n.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0].Name != "Propose" {
+		t.Fatalf("action = %s, want Propose", action[0].Name)
+	}
+	data := action[0].Params[0].([]byte)
+	var r pb.InternalRaftRequest
+	if err := r.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal request error: %v", err)
+	}
+
+	wm := membership.Member{ID: 1, Attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
+	if r.ClusterMemberAttrSet.MemberAttributes.Name != wm.Attributes.Name {
+		t.Errorf("name = %v, want %v", r.ClusterMemberAttrSet.MemberAttributes.Name, wm.Attributes.Name)
+	}
+	if !reflect.DeepEqual(r.ClusterMemberAttrSet.MemberAttributes.ClientUrls, wm.Attributes.ClientURLs) {
+		t.Errorf("urls = %v, want %v", r.ClusterMemberAttrSet.MemberAttributes.ClientUrls, wm.Attributes.ClientURLs)
+	}
+}
+
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
@@ -1497,6 +1564,34 @@ func TestPublishStopped(t *testing.T) {
 	}
 	close(srv.stopping)
 	srv.publish(time.Hour)
+}
+
+// TestPublishV3Stopped tests that publish will be stopped if server is stopped.
+func TestPublishV3Stopped(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	r := newRaftNode(raftNodeConfig{
+		lg:        zap.NewExample(),
+		Node:      newNodeNop(),
+		transport: newNopTransporter(),
+	})
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:          *r,
+		cluster:    &membership.RaftCluster{},
+		w:          mockwait.NewNop(),
+		done:       make(chan struct{}),
+		stopping:   make(chan struct{}),
+		stop:       make(chan struct{}),
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	close(srv.stopping)
+	srv.publishV3(time.Hour)
 }
 
 // TestPublishRetry tests that publish will keep retry until success.
@@ -1534,6 +1629,57 @@ func TestPublishRetry(t *testing.T) {
 		}
 	}()
 	srv.publish(10 * time.Nanosecond)
+	ch <- struct{}{}
+	<-ch
+}
+
+// TestPublishV3Retry tests that publish will keep retry until success.
+func TestPublishV3Retry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	n := newNodeRecorderStream()
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1.5 * 1024 * 1024},
+		r:          *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+		w:          mockwait.NewNop(),
+		stopping:   make(chan struct{}),
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+		ctx:        ctx,
+		cancel:     cancel,
+	}
+	// expect multiple proposals from retrying
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		if action, err := n.Wait(2); err != nil {
+			t.Errorf("len(action) = %d, want >= 2 (%v)", len(action), err)
+		}
+		close(srv.stopping)
+		// drain remaining actions, if any, so publish can terminate
+		for {
+			select {
+			case <-ch:
+				return
+			default:
+				n.Action()
+			}
+		}
+	}()
+
+	tp, err := auth.NewTokenProvider(zap.NewExample(), "simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer func() {
+		os.RemoveAll(tmpPath)
+	}()
+	srv.authStore = auth.NewAuthStore(srv.getLogger(), be, srv.consistIndex, tp, int(srv.Cfg.BcryptCost))
+	defer srv.authStore.Close()
+
+	srv.publishV3(10 * time.Nanosecond)
 	ch <- struct{}{}
 	<-ch
 }
