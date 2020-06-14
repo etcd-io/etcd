@@ -49,7 +49,7 @@ func newReadOnly(option ReadOnlyOption) *readOnly {
 	}
 }
 
-// addRequest adds a read only reuqest into readonly struct.
+// addRequest adds a read only request into readonly struct.
 // `index` is the commit index of the raft state machine when it received
 // the read only request.
 // `m` is the original read only request message from the local or remote node.
