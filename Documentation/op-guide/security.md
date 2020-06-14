@@ -426,8 +426,14 @@ Make sure to sign the certificates with a Subject Name the member's public IP ad
 
 The certificate needs to be signed for the member's FQDN in its Subject Name, use Subject Alternative Names (short IP SANs) to add the IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it][alt-name] too.
 
+### Does etcd encrypt data stored on disk drives?
+No. etcd doesn't encrypt key/value data stored on disk drives. If a user need to encrypt data stored on etcd, there are some options:
+* Let client applications encrypt and decrypt the data
+* Use a feature of underlying storage systems for encrypting stored data like [dm-crypt]
+
 [cfssl]: https://github.com/cloudflare/cfssl
 [tls-setup]: ../../hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
 [auth]: authentication.md
+[dm-crypt]: https://en.wikipedia.org/wiki/Dm-crypt
