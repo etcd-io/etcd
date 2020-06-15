@@ -102,15 +102,9 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
-	if fileutil.Exist(dirpath) {
-		err = fileutil.CheckDirPermission(dirpath, fileutil.PrivateDirMode)
-		if err != nil {
-			return
-		}
-	} else {
-		if err = os.MkdirAll(dirpath, fileutil.PrivateDirMode); err != nil {
-			return
-		}
+	err = fileutil.TouchDirAll(dirpath)
+	if err != nil {
+		return
 	}
 
 	certPath := filepath.Join(dirpath, "cert.pem")
