@@ -115,17 +115,17 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
-	if fileutil.Exist(dirpath) {
-		err = fileutil.CheckDirPermission(dirpath, fileutil.PrivateDirMode)
-		if err != nil {
-			return
-		}
-	} else {
-		if err = os.MkdirAll(dirpath, fileutil.PrivateDirMode); err != nil {
-			return
-		}
-	}
 	info.Logger = lg
+	err = fileutil.TouchDirAll(dirpath)
+	if err != nil {
+		if info.Logger != nil {
+			info.Logger.Warn(
+				"cannot create cert directory",
+				zap.Error(err),
+			)
+		}
+		return
+	}
 
 	certPath := filepath.Join(dirpath, "cert.pem")
 	keyPath := filepath.Join(dirpath, "key.pem")
