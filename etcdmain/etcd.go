@@ -358,16 +358,9 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	if fileutil.Exist(cfg.ec.Dir) {
-		err = fileutil.CheckDirPermission(cfg.ec.Dir, fileutil.PrivateDirMode)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = os.MkdirAll(cfg.ec.Dir, fileutil.PrivateDirMode)
-		if err != nil {
-			return err
-		}
+	err = fileutil.TouchDirAll(cfg.ec.Dir)
+	if err != nil {
+		return err
 	}
 
 	var peerURLs []string
