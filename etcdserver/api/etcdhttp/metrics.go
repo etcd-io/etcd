@@ -90,6 +90,7 @@ func init() {
 // TODO: remove manual parsing in etcdctl cluster-health
 type Health struct {
 	Health string `json:"health"`
+	Reason string `json:"reason"`
 }
 
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
@@ -109,6 +110,14 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 	if len(as) > 0 {
 		h.Health = "false"
 		for _, v := range as {
+			switch v.Alarm {
+			case etcdserverpb.AlarmType_NOSPACE:
+				h.Reason = "ALARM NOSPACE"
+			case etcdserverpb.AlarmType_CORRUPT:
+				h.Reason = "ALARM CORRUPT"
+			default:
+				h.Reason = "ALARM UNKNOWN"
+			}
 			lg.Warn("serving /health false due to an alarm", zap.String("alarm", v.String()))
 		}
 		return
@@ -116,6 +125,7 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 
 	if uint64(srv.Leader()) == raft.None {
 		h.Health = "false"
+		h.Reason = "RAFT NO LEADER"
 		lg.Warn("serving /health false; no leader")
 		return
 	}
@@ -125,6 +135,7 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 	cancel()
 	if err != nil {
 		h.Health = "false"
+		h.Reason = "QGET ERROR"
 		lg.Warn("serving /health false; QGET fails", zap.Error(err))
 	}
 
