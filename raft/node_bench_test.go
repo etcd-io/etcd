@@ -16,36 +16,76 @@ package raft
 
 import (
 	"context"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	"sync"
 	"testing"
 	"time"
 )
+
+type tNode struct {
+	node *node
+	s    *MemoryStorage
+}
 
 func BenchmarkOneNode(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := NewMemoryStorage()
-	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
-	n := newNode(rn)
-	go n.run()
-
-	defer n.Stop()
-
-	n.Campaign(ctx)
-	go func() {
-		for i := 0; i < b.N; i++ {
-			n.Propose(ctx, []byte("foo"))
+	peers := []uint64{1, 2, 3}
+	nodes := make(map[uint64]*tNode)
+	for _, peer := range peers {
+		s := NewMemoryStorage()
+		rn := newTestRawNode(peer, peers, 10, 1, s)
+		n := newNode(rn)
+		nodes[peer] = &tNode{
+			node: &n,
+			s:    s,
+		}
+		go n.run()
+	}
+	defer func() {
+		for _, n := range nodes {
+			n.node.Stop()
 		}
 	}()
 
-	for {
-		rd := <-n.Ready()
-		s.Append(rd.Entries)
-		// a reasonable disk sync latency
-		time.Sleep(1 * time.Millisecond)
-		n.Advance()
-		if rd.HardState.Commit == uint64(b.N+1) {
-			return
+	n1 := nodes[1].node
+	n1.Campaign(ctx)
+	wg := sync.WaitGroup{}
+	for _, n := range nodes {
+		wg.Add(1)
+		go func(n *tNode) {
+			var prevHardSt pb.HardState
+			for {
+				rd := <-n.node.Ready()
+				if isHardStateEqual(prevHardSt, rd.HardState) {
+					n.s.SetHardState(rd.HardState)
+					prevHardSt = rd.HardState
+				}
+				n.s.Append(rd.Entries)
+				// a reasonable disk sync latency
+				time.Sleep(1 * time.Millisecond)
+				n.node.Advance()
+				if rd.HardState.Commit == uint64(b.N+1) {
+					wg.Done()
+				}
+				sendAllMessages(rd.Messages, nodes)
+			}
+		}(n)
+	}
+	go func() {
+		for i := 0; i < b.N; i++ {
+			if err := n1.Propose(ctx, []byte("foo")); err != nil {
+				panic(err)
+			}
 		}
+	}()
+	wg.Wait()
+}
+
+func sendAllMessages(msgs []pb.Message, nodes map[uint64]*tNode) {
+	for _, m := range msgs {
+		n := nodes[m.To]
+		n.node.recvc <- m
 	}
 }
