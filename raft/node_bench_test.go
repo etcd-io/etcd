@@ -65,7 +65,12 @@ func BenchmarkCluster(b *testing.B) {
 	nodes := make(map[uint64]*tNode)
 	for _, peer := range peers {
 		s := NewMemoryStorage()
-		rn := newTestRawNode(peer, peers, 10, 1, s)
+		cfg := newTestConfig(peer, peers, 10, 1, s)
+		cfg.Logger = discardLogger
+		rn, err := NewRawNode(cfg)
+		if err != nil {
+			panic(err)
+		}
 		n := newNode(rn)
 		nodes[peer] = &tNode{
 			node: &n,
@@ -94,7 +99,7 @@ func BenchmarkCluster(b *testing.B) {
 				}
 				n.s.Append(rd.Entries)
 				// a reasonable disk sync latency
-				time.Sleep(1 * time.Millisecond)
+				// time.Sleep(1 * time.Millisecond)
 				n.node.Advance()
 				if rd.HardState.Commit == uint64(b.N+1) {
 					wg.Done()

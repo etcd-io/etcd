@@ -105,7 +105,7 @@ func TestInflightFreeTo(t *testing.T) {
 		in.Add(uint64(i))
 	}
 
-	in.FreeLE(4)
+	in.FreeLE(4, false)
 
 	wantIn := &Inflights{
 		start: 5,
@@ -119,7 +119,7 @@ func TestInflightFreeTo(t *testing.T) {
 		t.Fatalf("in = %+v, want %+v", in, wantIn)
 	}
 
-	in.FreeLE(8)
+	in.FreeLE(8, false)
 
 	wantIn2 := &Inflights{
 		start: 9,
@@ -138,7 +138,7 @@ func TestInflightFreeTo(t *testing.T) {
 		in.Add(uint64(i))
 	}
 
-	in.FreeLE(12)
+	in.FreeLE(12, false)
 
 	wantIn3 := &Inflights{
 		start: 3,
@@ -152,7 +152,7 @@ func TestInflightFreeTo(t *testing.T) {
 		t.Fatalf("in = %+v, want %+v", in, wantIn3)
 	}
 
-	in.FreeLE(14)
+	in.FreeLE(14, false)
 
 	wantIn4 := &Inflights{
 		start: 0,

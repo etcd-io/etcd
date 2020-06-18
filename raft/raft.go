@@ -207,6 +207,8 @@ type Config struct {
 	// logical clock from assigning the timestamp and then forwarding the data
 	// to the leader.
 	DisableProposalForwarding bool
+
+	MergeAppendResp bool
 }
 
 func (c *Config) validate() error {
@@ -313,6 +315,7 @@ type raft struct {
 	// when raft changes its state to follower or candidate.
 	randomizedElectionTimeout int
 	disableProposalForwarding bool
+	mergeAppendResp           bool
 
 	tick func()
 	step stepFunc
@@ -356,6 +359,7 @@ func newRaft(c *Config) *raft {
 		preVote:                   c.PreVote,
 		readOnly:                  newReadOnly(c.ReadOnlyOption),
 		disableProposalForwarding: c.DisableProposalForwarding,
+		mergeAppendResp:           c.MergeAppendResp,
 	}
 
 	cfg, prs, err := confchange.Restore(confchange.Changer{
@@ -1150,7 +1154,8 @@ func stepLeader(r *raft, m pb.Message) error {
 					pr.BecomeProbe()
 					pr.BecomeReplicate()
 				case pr.State == tracker.StateReplicate:
-					pr.Inflights.FreeLE(m.Index)
+					useBinary := r.mergeAppendResp
+					pr.Inflights.FreeLE(m.Index, useBinary)
 				}
 
 				if r.maybeCommit() {
@@ -1377,12 +1382,37 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	}
 
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
+		if r.mergeAppendResp {
+			if !r.tryMergeAppendResp(mlastIndex, false) {
+				r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
+			}
+		} else {
+			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
+		}
 	} else {
 		r.logger.Debugf("%x [logterm: %d, index: %d] rejected MsgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+		if r.mergeAppendResp {
+			if !r.tryMergeAppendResp(m.Index, true) {
+				r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+			}
+		} else {
+			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+		}
 	}
+}
+
+func (r *raft) tryMergeAppendResp(index uint64, reject bool) bool {
+	for i, m := range r.msgs {
+		if m.Type == pb.MsgAppResp && m.Reject == reject && m.From == r.id && index >= m.Index {
+			m.Index = index
+			r.msgs[i] = m
+			if reject {
+				m.RejectHint = r.raftLog.lastIndex()
+			}
+		}
+	}
+	return false
 }
 
 func (r *raft) handleHeartbeat(m pb.Message) {

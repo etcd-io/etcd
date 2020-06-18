@@ -28,6 +28,8 @@ type Inflights struct {
 	// the size of the buffer
 	size int
 
+	pivot int
+
 	// buffer contains the index of the last entry
 	// inside one message.
 	buffer []uint64
@@ -84,38 +86,71 @@ func (in *Inflights) grow() {
 }
 
 // FreeLE frees the inflights smaller or equal to the given `to` flight.
-func (in *Inflights) FreeLE(to uint64) {
+func (in *Inflights) FreeLE(to uint64, useBinary bool) {
 	if in.count == 0 || to < in.buffer[in.start] {
 		// out of the left side of the window
 		return
 	}
-
-	idx := in.start
-	var i int
-	for i = 0; i < in.count; i++ {
-		if to < in.buffer[idx] { // found the first large inflight
-			break
+	if useBinary && to < in.buffer[in.rotate(in.start+in.pivot)] {
+		start, end := in.start, in.start+in.count
+		mid := (start + end) / 2
+		// find the first inflight <= to
+		for start < end {
+			v := in.buffer[in.rotate(mid)]
+			if v > to {
+				end = mid
+			} else if v < to {
+				start = mid + 1
+			} else {
+				break
+			}
+			mid = (start + end) / 2
 		}
+		in.count -= mid + 1 - in.start
+		if in.count == 0 {
+			// inflights is empty, reset the start index so that we don't grow the
+			// buffer unnecessarily.
+			in.start = 0
+		} else {
+			in.start = in.rotate(mid + 1)
+		}
+	} else {
+		idx := in.start
+		var i int
+		for i = 0; i < in.count; i++ {
+			if to < in.buffer[idx] { // found the first large inflight
+				break
+			}
 
-		// increase index and maybe rotate
-		size := in.size
-		if idx++; idx >= size {
-			idx -= size
+			// increase index and maybe rotate
+			size := in.size
+			if idx++; idx >= size {
+				idx -= size
+
+			}
+		}
+		// free i inflights and set new start index
+		in.count -= i
+		in.start = idx
+		if in.count == 0 {
+			// inflights is empty, reset the start index so that we don't grow the
+			// buffer unnecessarily.
+			in.start = 0
 		}
 	}
-	// free i inflights and set new start index
-	in.count -= i
-	in.start = idx
-	if in.count == 0 {
-		// inflights is empty, reset the start index so that we don't grow the
-		// buffer unnecessarily.
-		in.start = 0
+}
+
+func (in *Inflights) rotate(idx int) int {
+	if idx >= in.size {
+		return idx - in.size
+	} else {
+		return idx
 	}
 }
 
 // FreeFirstOne releases the first inflight. This is a no-op if nothing is
 // inflight.
-func (in *Inflights) FreeFirstOne() { in.FreeLE(in.buffer[in.start]) }
+func (in *Inflights) FreeFirstOne() { in.FreeLE(in.buffer[in.start], false) }
 
 // Full returns true if no more messages can be sent at the moment.
 func (in *Inflights) Full() bool {
@@ -129,4 +164,35 @@ func (in *Inflights) Count() int { return in.count }
 func (in *Inflights) reset() {
 	in.count = 0
 	in.start = 0
+}
+
+func (in *Inflights) updatePivot() {
+	if in.count == 0 {
+		in.pivot = 0
+	} else {
+		in.pivot = log2(in.count)
+	}
+}
+
+var tab64 = []int{
+	63, 0, 58, 1, 59, 47, 53, 2,
+	60, 39, 48, 27, 54, 33, 42, 3,
+	61, 51, 37, 40, 49, 18, 28, 20,
+	55, 30, 34, 11, 43, 14, 22, 4,
+	62, 57, 46, 52, 38, 26, 32, 41,
+	50, 36, 17, 19, 29, 10, 13, 21,
+	56, 45, 25, 31, 35, 16, 9, 12,
+	44, 24, 15, 8, 23, 7, 6, 5,
+}
+
+// Only for 64
+// See http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+func log2(n int) int {
+	n |= n >> 1
+	n |= n >> 2
+	n |= n >> 4
+	n |= n >> 8
+	n |= n >> 16
+	n |= n >> 32
+	return tab64[((n-(n>>1))*0x07ED_D5E5_9A4E_28C2)>>58]
 }
