@@ -17,6 +17,7 @@ package grpcproxy
 import (
 	"context"
 	"sync"
+	"time"
 
 	"go.etcd.io/etcd/v3/clientv3"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
@@ -148,5 +149,12 @@ func (wb *watchBroadcast) stop() {
 	}
 
 	wb.cancel()
-	<-wb.donec
+
+	select {
+	case <-wb.donec:
+		// watchProxyStream will hold watchRanges global mutex lock all the time if client failed to cancel etcd watchers.
+		// and it will cause the watch proxy to not work.
+		// please see pr https://github.com/etcd-io/etcd/pull/12030 to get more detail info.
+	case <-time.After(time.Second):
+	}
 }
