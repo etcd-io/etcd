@@ -439,6 +439,11 @@ Follow the instructions when using these flags.
 + default: 10
 + env variable: (not supported)
 
+### --auth-token-ttl
++ Time (in seconds) of the auth-token-ttl. Support `--auth-token=simple` model only.
++ default: 300
++ env variable: (not supported)
+
 ## Experimental flags
 
 ### --experimental-corrupt-check-time

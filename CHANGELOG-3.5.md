@@ -126,6 +126,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve logging around snapshot send and receive.
 - [Push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/11990).
 - Add [reason field for /health response](https://github.com/etcd-io/etcd/pull/11983).
+- Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
+- Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
+- Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 
 ### Package `embed`
 
