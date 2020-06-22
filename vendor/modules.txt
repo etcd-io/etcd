@@ -133,7 +133,7 @@ github.com/urfave/cli
 # github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 ## explicit
 github.com/xiang90/probing
-# go.etcd.io/bbolt v1.3.4
+# go.etcd.io/bbolt v1.3.5
 ## explicit
 go.etcd.io/bbolt
 # go.uber.org/atomic v1.6.0
