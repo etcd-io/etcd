@@ -164,6 +164,8 @@ Auth:
     Specify a v3 authentication token type and its options ('simple' or 'jwt').
   --bcrypt-cost ` + fmt.Sprintf("%d", bcrypt.DefaultCost) + `
     Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between ` + fmt.Sprintf("%d", bcrypt.MinCost) + ` and ` + fmt.Sprintf("%d", bcrypt.MaxCost) + `.
+  --auth-token-ttl 300
+    Time (in seconds) of the auth-token-ttl.
 
 Profiling and Monitoring:
   --enable-pprof 'false'
