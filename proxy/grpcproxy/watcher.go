@@ -123,6 +123,7 @@ func (w *watcher) post(wr *pb.WatchResponse) bool {
 	case w.wps.watchCh <- wr:
 	case <-time.After(50 * time.Millisecond):
 		w.wps.cancel()
+		w.wps.lg.Error("failed to put a watch response on the watcher's proxy stream channel,err is timeout")
 		return false
 	}
 	return true

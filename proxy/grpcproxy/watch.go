@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -44,9 +45,10 @@ type watchProxy struct {
 
 	// kv is used for permission checking
 	kv clientv3.KV
+	lg *zap.Logger
 }
 
-func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
+func NewWatchProxy(lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 	cctx, cancel := context.WithCancel(c.Ctx())
 	wp := &watchProxy{
 		cw:     c.Watcher,
@@ -54,6 +56,7 @@ func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 		leader: newLeader(c.Ctx(), c.Watcher),
 
 		kv: c.KV, // for permission checking
+		lg: lg,
 	}
 	wp.ranges = newWatchRanges(wp)
 	ch := make(chan struct{})
@@ -99,6 +102,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		kv:       wp.kv,
+		lg:       wp.lg,
 	}
 
 	var lostLeaderC <-chan struct{}
@@ -181,6 +185,7 @@ type watchProxyStream struct {
 
 	// kv is used for permission checking
 	kv clientv3.KV
+	lg *zap.Logger
 }
 
 func (wps *watchProxyStream) close() {
@@ -262,8 +267,10 @@ func (wps *watchProxyStream) recvLoop() error {
 			wps.watchers[w.id] = w
 			wps.ranges.add(w)
 			wps.mu.Unlock()
+			wps.lg.Debug("create watcher", zap.String("key", w.wr.key), zap.String("end", w.wr.end), zap.Int64("watcherId", wps.nextWatcherID))
 		case *pb.WatchRequest_CancelRequest:
 			wps.delete(uv.CancelRequest.WatchId)
+			wps.lg.Debug("cancel watcher", zap.Int64("watcherId", uv.CancelRequest.WatchId))
 		default:
 			panic("not implemented")
 		}
