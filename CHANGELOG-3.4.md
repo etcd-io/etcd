@@ -9,6 +9,23 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
+## [v3.4.10](https://github.com/etcd-io/etcd/releases/tag/v3.4.10) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.9...v3.4.10) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+### Package `etcd server`
+
+- Add [`--unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/11946) flag.
+  - Setting the flag disables all uses of fsync, which is unsafe and will cause data loss. This flag makes it possible to run an etcd node for testing and development without placing lots of load on the file system.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
+
 ## [v3.4.9](https://github.com/etcd-io/etcd/releases/tag/v3.4.9) (2020-05-20)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.8...v3.4.9) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.

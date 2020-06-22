@@ -212,6 +212,8 @@ Experimental feature:
 Unsafe feature:
   --force-new-cluster 'false'
     Force to create a new one-member cluster.
+  --unsafe-no-fsync 'false'
+    Disables fsync, unsafe, will cause data loss.
 
 CAUTIOUS with unsafe flag! It may break the guarantees given by the consensus protocol!
 `
