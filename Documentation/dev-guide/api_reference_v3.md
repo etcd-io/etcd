@@ -824,7 +824,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | cluster_id | cluster_id is the ID of the cluster which sent the response. | uint64 |
 | member_id | member_id is the ID of the member which sent the response. | uint64 |
-| revision | revision is the key-value store revision when the request was applied. For watch progress responses, the header.revision indicates progress. All future events recieved in this stream are guaranteed to have a higher revision number than the header.revision number. | int64 |
+| revision | revision is the key-value store revision when the request was applied. For watch progress responses, the header.revision indicates progress. All future events received in this stream are guaranteed to have a higher revision number than the header.revision number. | int64 |
 | raft_term | raft_term is the raft term when the request was applied. | uint64 |
 
 

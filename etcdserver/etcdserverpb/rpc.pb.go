@@ -249,7 +249,7 @@ type ResponseHeader struct {
 	MemberId uint64 `protobuf:"varint,2,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
 	// revision is the key-value store revision when the request was applied.
 	// For watch progress responses, the header.revision indicates progress. All future events
-	// recieved in this stream are guaranteed to have a higher revision number than the
+	// received in this stream are guaranteed to have a higher revision number than the
 	// header.revision number.
 	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	// raft_term is the raft term when the request was applied.
