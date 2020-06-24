@@ -63,14 +63,6 @@ type RaftCluster struct {
 	downgradeInfo *DowngradeInfo
 }
 
-type DowngradeInfo struct {
-	// TargetVersion is the target downgrade version, if the cluster is not under downgrading,
-	// the targetVersion will be an empty string
-	TargetVersion string `json:"target-version"`
-	// Enabled indicates whether the cluster is enabled to downgrade
-	Enabled bool `json:"enabled"`
-}
-
 // ConfigChangeContext represents a context for confChange.
 type ConfigChangeContext struct {
 	Member
@@ -263,7 +255,14 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 	}
 
-	mustDetectDowngrade(c.lg, c.version)
+	if c.be != nil {
+		c.downgradeInfo = downgradeInfoFromBackend(c.lg, c.be)
+	}
+	d := &DowngradeInfo{Enabled: false}
+	if c.downgradeInfo != nil {
+		d = &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+	}
+	mustDetectDowngrade(c.lg, c.version, d)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -530,7 +529,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.lg, c.version)
+	mustDetectDowngrade(c.lg, c.version, c.downgradeInfo)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
@@ -768,17 +767,20 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	return nil
 }
 
-func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
-	lv := semver.Must(semver.NewVersion(version.Version))
-	// only keep major.minor version for comparison against cluster version
+// IsValidVersionChange checks the two scenario when version is valid to change:
+// 1. Downgrade: cluster version is 1 minor version higher than local version,
+// cluster version should change.
+// 2. Cluster start: when not all members version are available, cluster version
+// is set to MinVersion(3.0), when all members are at higher version, cluster version
+// is lower than local version, cluster version should change
+func IsValidVersionChange(cv *semver.Version, lv *semver.Version) bool {
+	cv = &semver.Version{Major: cv.Major, Minor: cv.Minor}
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
-	if cv != nil && lv.LessThan(*cv) {
-		lg.Fatal(
-			"invalid downgrade; server version is lower than determined cluster version",
-			zap.String("current-server-version", version.Version),
-			zap.String("determined-cluster-version", version.Cluster(cv.String())),
-		)
+
+	if isValidDowngrade(cv, lv) || (cv.Major == lv.Major && cv.LessThan(*lv)) {
+		return true
 	}
+	return false
 }
 
 // IsLocalMemberLearner returns if the local member is raft learner

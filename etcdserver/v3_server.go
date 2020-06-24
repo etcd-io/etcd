@@ -840,7 +840,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	}
 	resp.Version = cv.String()
 
-	allowedTargetVersion := allowedDowngradeVersion(cv)
+	allowedTargetVersion := membership.AllowedDowngradeVersion(cv)
 	if !targetVersion.Equal(*allowedTargetVersion) {
 		return nil, ErrInvalidDowngradeTargetVersion
 	}
