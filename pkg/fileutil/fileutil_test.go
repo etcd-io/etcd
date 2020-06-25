@@ -148,3 +148,21 @@ func TestZeroToEnd(t *testing.T) {
 		}
 	}
 }
+
+func TestDirPermission(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	tmpdir2 := filepath.Join(tmpdir, "testpermission")
+	// create a new dir with 0700
+	if err = CreateDirAll(tmpdir2); err != nil {
+		t.Fatal(err)
+	}
+	// check dir permission with mode different than created dir
+	if err = CheckDirPermission(tmpdir2, 0600); err == nil {
+		t.Errorf("expected error, got nil")
+	}
+}
