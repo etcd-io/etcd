@@ -645,6 +645,35 @@ func TestOpenForRead(t *testing.T) {
 	}
 }
 
+func TestOpenWithMaxIndex(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	// create WAL
+	w, err := Create(zap.NewExample(), p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	es := []raftpb.Entry{{Index: uint64(math.MaxInt64)}}
+	if err = w.Save(raftpb.HardState{}, es); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = w.ReadAll()
+	if err == nil || err != ErrSliceOutOfRange {
+		t.Fatalf("err = %v, want ErrSliceOutOfRange", err)
+	}
+}
+
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
