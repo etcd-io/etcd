@@ -1211,3 +1211,35 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 		}
 	}
 }
+
+// TestV3WatchCancellation ensures that watch cancellation frees up server resources.
+func TestV3WatchCancellation(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cli := clus.RandClient()
+
+	// increment watcher total count and keep a stream open
+	cli.Watch(ctx, "/foo")
+
+	for i := 0; i < 1000; i++ {
+		ctx, cancel := context.WithCancel(ctx)
+		cli.Watch(ctx, "/foo")
+		cancel()
+	}
+
+	// Wait a little for cancellations to take hold
+	time.Sleep(3 * time.Second)
+
+	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if minWatches != "1" {
+		t.Fatalf("expected one watch, got %s", minWatches)
+	}
+}
