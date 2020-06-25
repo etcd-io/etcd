@@ -136,7 +136,8 @@ func startGateway(cmd *cobra.Command, args []string) {
 	}
 
 	for _, srv := range srvs.SRVs {
-		eaddrs, err := net.LookupHost(srv.Target)
+		var eaddrs []string
+		eaddrs, err = net.LookupHost(srv.Target)
 		if err != nil {
 			fmt.Println("failed to resolve endpoint host:", srv.Target)
 			os.Exit(1)
