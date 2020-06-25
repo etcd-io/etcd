@@ -17,6 +17,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.9...v3.4.10) and
 
 - Add [`--unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/11946) flag.
   - Setting the flag disables all uses of fsync, which is unsafe and will cause data loss. This flag makes it possible to run an etcd node for testing and development without placing lots of load on the file system.
+- Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
+- Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
+- Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 
 ### Go
 

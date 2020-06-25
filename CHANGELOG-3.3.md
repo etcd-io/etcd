@@ -5,6 +5,29 @@ Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
+<hr>
+
+
+## [v3.3.23](https://github.com/etcd-io/etcd/releases/tag/v3.3.23) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Breaking Changes
+- Fix [incorrect package dependency when etcd clientv3 used as libary](https://github.com/etcd-io/etcd/issues/12068).
+
+### Package `wal`
+
+### etcd server
+- Fix [watch stream got closed if one watch request is not permitted](https://github.com/etcd-io/etcd/pull/11758).
+- Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
+- Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
+- Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
 
 <hr>
 
