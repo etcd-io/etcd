@@ -29,13 +29,13 @@ ANNOTATIONS {
 
 # alert if there are lots of leader changes
 ALERT HighNumberOfLeaderChanges
-IF increase(etcd_server_leader_changes_seen_total{job="etcd"}[1h]) > 3
+IF increase((max by (job) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 4
 LABELS {
   severity = "warning"
 }
 ANNOTATIONS {
   summary = "a high number of leader changes within the etcd cluster are happening",
-  description = "etcd instance {{ $labels.instance }} has seen {{ $value }} leader changes within the last hour",
+  description = "etcd cluster "{{ $labels.job }}": {{ $value }} leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.",
 }
 
 # gRPC request alerts
