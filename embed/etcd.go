@@ -192,6 +192,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ClientCertAuthEnabled:      cfg.ClientTLSInfo.ClientCertAuth,
 		AuthToken:                  cfg.AuthToken,
 		BcryptCost:                 cfg.BcryptCost,
+		TokenTTL:                   cfg.AuthTokenTTL,
 		CORS:                       cfg.CORS,
 		HostWhitelist:              cfg.HostWhitelist,
 		InitialCorruptCheck:        cfg.ExperimentalInitialCorruptCheck,
