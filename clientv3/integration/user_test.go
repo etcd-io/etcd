@@ -65,8 +65,8 @@ func TestUserErrorAuth(t *testing.T) {
 	authSetupRoot(t, authapi.Auth)
 
 	// unauthenticated client
-	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); err != rpctypes.ErrUserNotFound {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
+	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); err != rpctypes.ErrUserEmpty {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrUserEmpty, err)
 	}
 
 	// wrong id or password
