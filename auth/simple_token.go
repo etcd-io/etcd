@@ -35,7 +35,7 @@ const (
 
 // var for testing purposes
 var (
-	simpleTokenTTL           = 5 * time.Minute
+	simpleTokenTTLDefault    = 300 * time.Second
 	simpleTokenTTLResolution = 1 * time.Second
 )
 
@@ -45,6 +45,7 @@ type simpleTokenTTLKeeper struct {
 	stopc           chan struct{}
 	deleteTokenFunc func(string)
 	mu              *sync.Mutex
+	simpleTokenTTL  time.Duration
 }
 
 func (tm *simpleTokenTTLKeeper) stop() {
@@ -56,12 +57,12 @@ func (tm *simpleTokenTTLKeeper) stop() {
 }
 
 func (tm *simpleTokenTTLKeeper) addSimpleToken(token string) {
-	tm.tokens[token] = time.Now().Add(simpleTokenTTL)
+	tm.tokens[token] = time.Now().Add(tm.simpleTokenTTL)
 }
 
 func (tm *simpleTokenTTLKeeper) resetSimpleToken(token string) {
 	if _, ok := tm.tokens[token]; ok {
-		tm.tokens[token] = time.Now().Add(simpleTokenTTL)
+		tm.tokens[token] = time.Now().Add(tm.simpleTokenTTL)
 	}
 }
 
@@ -98,6 +99,7 @@ type tokenSimple struct {
 	simpleTokenKeeper *simpleTokenTTLKeeper
 	simpleTokensMu    sync.Mutex
 	simpleTokens      map[string]string // token -> username
+	simpleTokenTTL    time.Duration
 }
 
 func (t *tokenSimple) genTokenPrefix() (string, error) {
@@ -146,6 +148,10 @@ func (t *tokenSimple) invalidateUser(username string) {
 }
 
 func (t *tokenSimple) enable() {
+	if t.simpleTokenTTL <= 0 {
+		t.simpleTokenTTL = simpleTokenTTLDefault
+	}
+
 	delf := func(tk string) {
 		if username, ok := t.simpleTokens[tk]; ok {
 			plog.Infof("deleting token %s for user %s", tk, username)
@@ -158,6 +164,7 @@ func (t *tokenSimple) enable() {
 		stopc:           make(chan struct{}),
 		deleteTokenFunc: delf,
 		mu:              &t.simpleTokensMu,
+		simpleTokenTTL:  t.simpleTokenTTL,
 	}
 	go t.simpleTokenKeeper.run()
 }
@@ -215,9 +222,10 @@ func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool
 	return false
 }
 
-func newTokenProviderSimple(indexWaiter func(uint64) <-chan struct{}) *tokenSimple {
+func newTokenProviderSimple(indexWaiter func(uint64) <-chan struct{}, TokenTTL time.Duration) *tokenSimple {
 	return &tokenSimple{
-		simpleTokens: make(map[string]string),
-		indexWaiter:  indexWaiter,
+		simpleTokens:   make(map[string]string),
+		indexWaiter:    indexWaiter,
+		simpleTokenTTL: TokenTTL,
 	}
 }

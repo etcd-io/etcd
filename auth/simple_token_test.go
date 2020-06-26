@@ -22,9 +22,9 @@ import (
 // TestSimpleTokenDisabled ensures that TokenProviderSimple behaves correctly when
 // disabled.
 func TestSimpleTokenDisabled(t *testing.T) {
-	initialState := newTokenProviderSimple(dummyIndexWaiter)
+	initialState := newTokenProviderSimple(dummyIndexWaiter, simpleTokenTTLDefault)
 
-	explicitlyDisabled := newTokenProviderSimple(dummyIndexWaiter)
+	explicitlyDisabled := newTokenProviderSimple(dummyIndexWaiter, simpleTokenTTLDefault)
 	explicitlyDisabled.enable()
 	explicitlyDisabled.disable()
 
@@ -46,7 +46,7 @@ func TestSimpleTokenDisabled(t *testing.T) {
 // TestSimpleTokenAssign ensures that TokenProviderSimple can correctly assign a
 // token, look it up with info, and invalidate it by user.
 func TestSimpleTokenAssign(t *testing.T) {
-	tp := newTokenProviderSimple(dummyIndexWaiter)
+	tp := newTokenProviderSimple(dummyIndexWaiter, simpleTokenTTLDefault)
 	tp.enable()
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	token, err := tp.assign(ctx, "user1", 0)
