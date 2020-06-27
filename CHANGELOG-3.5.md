@@ -131,6 +131,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
 - Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
+- Log [expensive request info in UnaryInterceptor](https://github.com/etcd-io/etcd/pull/12086).
 
 ### Package `embed`
 
