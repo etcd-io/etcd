@@ -296,6 +296,9 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 			return nil, err
 		}
 		clientTLS.InsecureSkipVerify = grpcProxyInsecureSkipTLSVerify
+		if clientTLS.InsecureSkipVerify {
+			lg.Warn("--insecure-skip-tls-verify was given, this grpc proxy process skips authentication of etcd server TLS certificates. This option should be enabled only for testing purposes.")
+		}
 		cfg.TLS = clientTLS
 		lg.Info("gRPC proxy client TLS", zap.String("tls-info", fmt.Sprintf("%+v", tls)))
 	}
