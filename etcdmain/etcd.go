@@ -270,7 +270,7 @@ func startProxy(cfg *config) error {
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
 	if fileutil.Exist(cfg.ec.Dir) {
-		err := fileutil.CheckDirPermission(cfg.ec.Dir, fileutil.PrivateDirMode)
+		err = fileutil.CheckDirPermission(cfg.ec.Dir, fileutil.PrivateDirMode)
 		if err != nil {
 			return err
 		}
