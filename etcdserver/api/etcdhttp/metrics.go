@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	PathMetrics = "/metrics"
-	PathHealth  = "/health"
+	PathMetrics      = "/metrics"
+	PathHealth       = "/health"
+	PathProxyMetrics = "/proxy/metrics"
 )
 
 // HandleMetricsHealth registers metrics and health handlers.
