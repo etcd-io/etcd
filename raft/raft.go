@@ -786,32 +786,25 @@ func (r *raft) campaign(t CampaignType) {
 		voteMsg = pb.MsgVote
 		term = r.Term
 	}
-	if _, _, res := r.poll(r.id, voteRespMsgType(voteMsg), true); res == quorum.VoteWon {
-		// We won the election after voting for ourselves (which must mean that
-		// this is a single-node cluster). Advance to the next state.
-		if t == campaignPreElection {
-			r.campaign(campaignElection)
-		} else {
-			r.becomeLeader()
-		}
+	if r.poll(r.id, voteRespMsgType(voteMsg), true) == quorum.VoteWon {
 		return
 	}
 	var ids []uint64
 	{
 		idMap := r.prs.Voters.IDs()
-		ids = make([]uint64, 0, len(idMap))
+		ids = make([]uint64, 0, len(idMap)-1)
 		for id := range idMap {
-			ids = append(ids, id)
+			if id != r.id {
+				ids = append(ids, id)
+			}
 		}
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	}
-	for _, id := range ids {
-		if id == r.id {
-			continue
-		}
-		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, id, r.Term)
 
+	r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
+		r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, ids, r.Term)
+
+	for _, id := range ids {
 		var ctx []byte
 		if t == campaignTransfer {
 			ctx = []byte(t)
@@ -820,14 +813,34 @@ func (r *raft) campaign(t CampaignType) {
 	}
 }
 
-func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int, rejected int, result quorum.VoteResult) {
-	if v {
-		r.logger.Infof("%x received %s from %x at term %d", r.id, t, id, r.Term)
-	} else {
-		r.logger.Infof("%x received %s rejection from %x at term %d", r.id, t, id, r.Term)
-	}
+func (r *raft) poll(id uint64, t pb.MessageType, v bool) quorum.VoteResult {
 	r.prs.RecordVote(id, v)
-	return r.prs.TallyVotes()
+	gr, rj, result := r.prs.TallyVotes()
+	if id != r.id {
+		var comment string
+		if v {
+			comment = ""
+		} else {
+			comment = " rejection"
+		}
+		r.logger.Infof("%x received %s%s from %x at term %d, now has %d votes and %d vote rejections",
+			r.id, t, comment, id, r.Term, gr, rj)
+	}
+	switch result {
+	case quorum.VoteWon:
+		// We won the election after voting for ourselves (which must mean that
+		// this is a single-node cluster). Advance to the next state.
+		if r.state == StatePreCandidate {
+			r.campaign(campaignElection)
+		} else {
+			r.becomeLeader()
+		}
+	case quorum.VoteLost:
+		// pb.MsgPreVoteResp contains future term of pre-candidate
+		// m.Term > r.Term; reuse r.Term
+		r.becomeFollower(r.Term, None)
+	}
+	return result
 }
 
 func (r *raft) Step(m pb.Message) error {
@@ -1291,21 +1304,7 @@ func stepCandidate(r *raft, m pb.Message) error {
 		r.becomeFollower(m.Term, m.From) // always m.Term == r.Term
 		r.handleSnapshot(m)
 	case myVoteRespType:
-		gr, rj, res := r.poll(m.From, m.Type, !m.Reject)
-		r.logger.Infof("%x has received %d %s votes and %d vote rejections", r.id, gr, m.Type, rj)
-		switch res {
-		case quorum.VoteWon:
-			if r.state == StatePreCandidate {
-				r.campaign(campaignElection)
-			} else {
-				r.becomeLeader()
-				r.bcastAppend()
-			}
-		case quorum.VoteLost:
-			// pb.MsgPreVoteResp contains future term of pre-candidate
-			// m.Term > r.Term; reuse r.Term
-			r.becomeFollower(r.Term, None)
-		}
+		r.poll(m.From, m.Type, !m.Reject)
 	case pb.MsgTimeoutNow:
 		r.logger.Debugf("%x [term %d state %v] ignored MsgTimeoutNow from %x", r.id, r.Term, r.state, m.From)
 	}

@@ -13,7 +13,6 @@ campaign 1
 ----
 INFO 1 is starting a new election at term 0
 INFO 1 became candidate at term 1
-INFO 1 received MsgVoteResp from 1 at term 1
 INFO 1 became leader at term 1
 
 # Add v2 with an explicit transition.
