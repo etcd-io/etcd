@@ -26,6 +26,7 @@ import (
 
 func TestCtlV3EndpointHealth(t *testing.T) { testCtl(t, endpointHealthTest, withQuorum()) }
 func TestCtlV3EndpointStatus(t *testing.T) { testCtl(t, endpointStatusTest, withQuorum()) }
+func TestCtlV3EndpointStatusHex(t *testing.T) { testCtl(t, endpointStatusHexTest, withQuorum()) }
 func TestCtlV3EndpointHashKV(t *testing.T) { testCtl(t, endpointHashKVTest, withQuorum()) }
 
 func endpointHealthTest(cx ctlCtx) {
@@ -46,6 +47,18 @@ func ctlV3EndpointHealth(cx ctlCtx) error {
 func endpointStatusTest(cx ctlCtx) {
 	if err := ctlV3EndpointStatus(cx); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointStatus error (%v)", err)
+	}
+}
+
+func endpointStatusHexTest(cx ctlCtx) {
+	if err := endpointStatusTest(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest error (%v)", err)
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "endpoint", "status")
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		cx.t.Fatalf("endpointStatusHexTest error (%v)", err)
 	}
 }
 
