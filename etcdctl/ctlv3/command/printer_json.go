@@ -38,8 +38,15 @@ func newJSONPrinter(isHex bool) printer {
 }
 
 func (p *jsonPrinter) EndpointHealth(r []epHealth) { printJSON(r) }
-func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
 func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
+func (p *jsonPrinter) EndpointStatus(r []epStatus) {
+	if p.isHex {
+		printEndpointStatusWithHexJSON(r)
+		} else {
+		printJSON(r)
+	}
+}
+
 func (p *jsonPrinter) DBStatus(r snapshot.Status)  { printJSON(r) }
 
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
@@ -59,6 +66,60 @@ func printJSON(v interface{}) {
 	fmt.Println(string(b))
 }
 
+func printEndpointStatusWithHexJSON(r []epStatus) {
+	var buffer bytes.Buffer
+	var b []byte
+
+	buffer.WriteString("[")
+	for i := 0; i < len(r); i++ {
+		if i != 0 {
+			buffer.WriteString(",")
+		}
+
+		buffer.WriteString("{\"Endpoint\":\"" + r[i].Ep  + "\",")
+		buffer.WriteString("\"Status\":{ \"header\":{\"cluster_id\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.Header.ClusterId, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"member_id\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.Header.MemberId, 16)
+		buffer.Write(b)
+
+		buffer.WriteString("\",\"revision\":\"")
+		b = strconv.AppendInt(nil, r[i].Resp.Header.Revision, 16)
+		buffer.Write(b)
+
+		buffer.WriteString("\",\"raft_term\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.Header.RaftTerm, 16)
+		buffer.Write(b)
+		buffer.WriteString("\"}")
+
+		buffer.WriteString(",\"version\":\"" + r[i].Resp.Version  + "\"")
+		buffer.WriteString(",\"dbSize\":\"")
+		b = strconv.AppendInt(nil, r[i].Resp.DbSize, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"leader\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.Leader, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"raftIndex\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.RaftIndex, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"raftTerm\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.RaftTerm, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"raftAppliedIndex\":\"")
+		b = strconv.AppendUint(nil, r[i].Resp.RaftAppliedIndex, 16)
+		buffer.Write(b)
+		buffer.WriteString("\",\"dbSizeInUse\":\"")
+		b = strconv.AppendInt(nil, r[i].Resp.DbSizeInUse, 16)
+		buffer.Write(b)
+
+		buffer.WriteString("\"}}")
+	}
+
+	buffer.WriteString("]")
+	fmt.Println(string(buffer.Bytes()))
+}
+
 func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
 	var buffer bytes.Buffer
 	var b []byte
@@ -68,10 +129,10 @@ func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
 	buffer.WriteString("\",\"member_id\":\"")
 	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
 	buffer.Write(b)
-	buffer.WriteString("\",\"raft_term\":")
+	buffer.WriteString("\",\"raft_term\":\"")
 	b = strconv.AppendUint(nil, r.Header.RaftTerm, 16)
 	buffer.Write(b)
-	buffer.WriteByte('}')
+	buffer.WriteString("\"}")
 	for i := 0; i < len(r.Members); i++ {
 		if i == 0 {
 			buffer.WriteString(",\"members\":[{\"ID\":\"")
