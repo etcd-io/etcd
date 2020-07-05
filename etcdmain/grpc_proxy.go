@@ -268,7 +268,7 @@ func newClientCfg(eps []string) (*clientv3.Config, error) {
 		}
 		clientTLS.InsecureSkipVerify = grpcProxyInsecureSkipTLSVerify
 		if clientTLS.InsecureSkipVerify {
-			lg.Warn("--insecure-skip-tls-verify was given, this grpc proxy process skips authentication of etcd server TLS certificates. This option should be enabled only for testing purposes.")
+			plog.Warningf("--insecure-skip-tls-verify was given, this grpc proxy process skips authentication of etcd server TLS certificates. This option should be enabled only for testing purposes.")
 		}
 		cfg.TLS = clientTLS
 		plog.Infof("ClientTLS: %s", tls)
