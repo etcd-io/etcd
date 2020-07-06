@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
 )
 
@@ -96,6 +97,11 @@ func HandleMetrics(mux *http.ServeMux, c *http.Client, eps []string) {
 		body, _ := ioutil.ReadAll(resp.Body)
 		fmt.Fprintf(w, "%s", body)
 	})
+}
+
+// HandleProxyMetrics registers metrics handler on '/proxy/metrics'.
+func HandleProxyMetrics(mux *http.ServeMux) {
+	mux.Handle(etcdhttp.PathProxyMetrics, promhttp.Handler())
 }
 
 func shuffleEndpoints(r *rand.Rand, eps []string) []string {
