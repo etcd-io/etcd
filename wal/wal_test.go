@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -583,7 +584,7 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 	// create WAL
-	w, err := Create(zap.NewExample(), p, nil)
+	w, err := Create(p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,7 +596,7 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	w, err = Open(p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -988,5 +989,26 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	_, err = ValidSnapshotEntries(p)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestReadAllFail ensure ReadAll error if used without opening the WAL
+func TestReadAllFail(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	// create initial WAL
+	f, err := Create(dir, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	// try to read without opening the WAL
+	_, _, _, err = f.ReadAll()
+	if err == nil || err != ErrDecoderNotFound {
+		t.Fatalf("err = %v, want ErrDecoderNotFound", err)
 	}
 }
