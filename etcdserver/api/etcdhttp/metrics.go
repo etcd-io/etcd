@@ -32,6 +32,7 @@ const (
 	PathMetrics      = "/metrics"
 	PathHealth       = "/health"
 	PathProxyMetrics = "/proxy/metrics"
+	PathProxyHealth  = "/proxy/health"
 )
 
 // HandleMetricsHealth registers metrics and health handlers.

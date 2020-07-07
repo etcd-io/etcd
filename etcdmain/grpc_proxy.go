@@ -202,9 +202,10 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 
 	client := mustNewClient(lg)
+	proxyClient := mustNewProxyClient(lg, tlsinfo)
 	httpClient := mustNewHTTPClient(lg)
 
-	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client)
+	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
 	errc := make(chan error)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
@@ -216,6 +217,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 			grpcproxy.HandleMetrics(mux, httpClient, client.Endpoints())
 			grpcproxy.HandleHealth(lg, mux, client)
 			grpcproxy.HandleProxyMetrics(mux)
+			grpcproxy.HandleProxyHealth(lg, mux, proxyClient)
 			lg.Info("gRPC proxy server metrics URL serving")
 			herr := http.Serve(mhttpl, mux)
 			if herr != nil {
@@ -271,6 +273,37 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 		os.Exit(1)
 	}
 	return client
+}
+
+func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client {
+	eps := []string{grpcProxyAdvertiseClientURL}
+	cfg, err := newProxyClientCfg(lg, eps, tls)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	client, err := clientv3.New(*cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	lg.Info("create proxy client", zap.String("grpcProxyAdvertiseClientURL", grpcProxyAdvertiseClientURL))
+	return client
+}
+
+func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*clientv3.Config, error) {
+	cfg := clientv3.Config{
+		Endpoints:   eps,
+		DialTimeout: 5 * time.Second,
+	}
+	if tls != nil {
+		clientTLS, err := tls.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		cfg.TLS = clientTLS
+	}
+	return &cfg, nil
 }
 
 func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
@@ -405,13 +438,14 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	return server
 }
 
-func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client) (*http.Server, net.Listener) {
+func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
 	httpClient := mustNewHTTPClient(lg)
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
 	grpcproxy.HandleHealth(lg, httpmux, c)
 	grpcproxy.HandleProxyMetrics(httpmux)
+	grpcproxy.HandleProxyHealth(lg, httpmux, proxy)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
 			httpmux.Handle(p, h)
