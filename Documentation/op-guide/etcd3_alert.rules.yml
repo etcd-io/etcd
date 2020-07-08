@@ -41,7 +41,7 @@ groups:
         the last 15 minutes. Frequent elections may be a sign of insufficient resources,
         high network latency, or disruptions by other components and should be investigated.'
     expr: |
-      increase((max by (job) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 3
+      increase((max by (job) (etcd_server_leader_changes_seen_total{job=~".*etcd.*"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~".*etcd.*"}))[15m:1m]) >= 4
     for: 5m
     labels:
       severity: warning

@@ -99,7 +99,7 @@ tests:
               job: etcd
               severity: warning
             exp_annotations:
-              message: 'etcd cluster "etcd": 3 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              message: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
   - interval: 1m
     input_series:
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
