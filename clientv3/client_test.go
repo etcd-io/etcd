@@ -166,3 +166,16 @@ func TestCloseCtxClient(t *testing.T) {
 		t.Errorf("failed to Close the client. %v", err)
 	}
 }
+
+func TestWithLogger(t *testing.T) {
+	ctx := context.Background()
+	c := NewCtxClient(ctx)
+	if c.lg == nil {
+		t.Errorf("unexpected nil in *zap.Logger")
+	}
+
+	c.WithLogger(nil)
+	if c.lg != nil {
+		t.Errorf("WithLogger should modify *zap.Logger")
+	}
+}

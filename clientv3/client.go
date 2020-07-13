@@ -112,7 +112,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	return &Client{ctx: cctx, cancel: cancel}
+	return &Client{ctx: cctx, cancel: cancel, lg: zap.NewNop()}
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
@@ -123,6 +123,12 @@ func NewFromURL(url string) (*Client, error) {
 // NewFromURLs creates a new etcdv3 client from URLs.
 func NewFromURLs(urls []string) (*Client, error) {
 	return New(Config{Endpoints: urls})
+}
+
+// WithLogger sets a logger
+func (c *Client) WithLogger(lg *zap.Logger) *Client {
+	c.lg = lg
+	return c
 }
 
 // Close shuts down the client's etcd connections.

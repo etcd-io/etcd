@@ -29,6 +29,10 @@ import (
 // to the etcd server through its api/v3rpc function interfaces.
 func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	c := clientv3.NewCtxClient(context.Background())
+	lg := s.Logger()
+	if lg != nil {
+		c.WithLogger(lg)
+	}
 
 	kvc := adapter.KvServerToKvClient(v3rpc.NewQuotaKVServer(s))
 	c.KV = clientv3.NewKVFromKVClient(kvc, c)
