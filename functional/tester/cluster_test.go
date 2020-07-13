@@ -58,12 +58,13 @@ func Test_read(t *testing.T) {
 					InitialCluster:      "s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381",
 					InitialClusterState: "new",
 					InitialClusterToken: "tkn",
-					SnapshotCount:       10000,
+					SnapshotCount:       2000,
 					QuotaBackendBytes:   10740000000,
 					PreVote:             true,
 					InitialCorruptCheck: true,
 					Logger:              "zap",
 					LogOutputs:          []string{"/tmp/etcd-functional-1/etcd.log"},
+					LogLevel:            "info",
 				},
 				ClientCertData:      "",
 				ClientCertPath:      "",
@@ -110,12 +111,13 @@ func Test_read(t *testing.T) {
 					InitialCluster:      "s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381",
 					InitialClusterState: "new",
 					InitialClusterToken: "tkn",
-					SnapshotCount:       10000,
+					SnapshotCount:       2000,
 					QuotaBackendBytes:   10740000000,
 					PreVote:             true,
 					InitialCorruptCheck: true,
 					Logger:              "zap",
 					LogOutputs:          []string{"/tmp/etcd-functional-2/etcd.log"},
+					LogLevel:            "info",
 				},
 				ClientCertData:      "",
 				ClientCertPath:      "",
@@ -162,12 +164,13 @@ func Test_read(t *testing.T) {
 					InitialCluster:      "s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381",
 					InitialClusterState: "new",
 					InitialClusterToken: "tkn",
-					SnapshotCount:       10000,
+					SnapshotCount:       2000,
 					QuotaBackendBytes:   10740000000,
 					PreVote:             true,
 					InitialCorruptCheck: true,
 					Logger:              "zap",
 					LogOutputs:          []string{"/tmp/etcd-functional-3/etcd.log"},
+					LogLevel:            "info",
 				},
 				ClientCertData:      "",
 				ClientCertPath:      "",
@@ -266,7 +269,9 @@ func Test_read(t *testing.T) {
 	cfg.lg = nil
 
 	if !reflect.DeepEqual(exp, cfg) {
-		t.Fatalf("expected %+v, got %+v", exp, cfg)
+		t.Fatalf(`exp != cfg:
+  expected %+v    
+       got %+v`, exp, cfg)
 	}
 
 	cfg.lg = logger
