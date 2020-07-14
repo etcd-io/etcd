@@ -121,6 +121,14 @@ func NewAuth(c *Client) Auth {
 	return api
 }
 
+func NewAuthFromAuthClient(remote pb.AuthClient, c *Client) Auth {
+	api := &authClient{remote: remote}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api
+}
+
 func (auth *authClient) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
 	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{}, auth.callOpts...)
 	return (*AuthEnableResponse)(resp), toErr(ctx, err)
