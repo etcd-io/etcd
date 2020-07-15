@@ -132,6 +132,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 - Log [expensive request info in UnaryInterceptor](https://github.com/etcd-io/etcd/pull/12086).
+- [Fix invalid Go type in etcdserverpb](https://github.com/etcd-io/etcd/pull/12000).
 
 ### Package `embed`
 
