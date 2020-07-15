@@ -15,7 +15,7 @@
                 sum by (job) (up{%(etcd_selector)s} == bool 0)
               or
                 count by (job,endpoint) (
-                  sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[3m])) > 0.01
+                  sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
                 )
               )
               > 0
