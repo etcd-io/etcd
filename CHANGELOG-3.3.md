@@ -8,11 +8,12 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
-## [v3.3.23](https://github.com/etcd-io/etcd/releases/tag/v3.3.23) (TBD)
+## [v3.3.23](https://github.com/etcd-io/etcd/releases/tag/v3.3.23) (2020-07-16)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
 
 ### Breaking Changes
+
 - Fix [incorrect package dependency when etcd clientv3 used as libary](https://github.com/etcd-io/etcd/issues/12068).
 
 ### Package `wal`
