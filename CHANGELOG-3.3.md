@@ -15,7 +15,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) an
 ### Breaking Changes
 
 - Fix [incorrect package dependency when etcd clientv3 used as libary](https://github.com/etcd-io/etcd/issues/12068).
-
+- Changed behavior on [existing dir permission](https://github.com/etcd-io/etcd/pull/11798).
+  - Previously, the permission was not checked on existing data directory and the directory used for automatically generating self-signed certificates for TLS connections with clients. Now a check is added to make sure those directories, if already exist, has a desired permission of 700 on Linux and 777 on Windows.
+  
 ### Package `wal`
 
 ### etcd server
@@ -23,6 +25,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) an
 - Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
 - Improve [runtime.FDUsage objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
+
 
 ### Go
 

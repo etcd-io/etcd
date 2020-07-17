@@ -22,6 +22,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.9...v3.4.10) and
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 - [Fix invalid Go type in etcdserverpb](https://github.com/etcd-io/etcd/pull/12000).
 
+### Breaking Changes
+- Changed behavior on [existing dir permission](https://github.com/etcd-io/etcd/pull/11798).
+  - Previously, the permission was not checked on existing data directory and the directory used for automatically generating self-signed certificates for TLS connections with clients. Now a check is added to make sure those directories, if already exist, has a desired permission of 700 on Linux and 777 on Windows.
+  
 ### Go
 
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
