@@ -20,16 +20,28 @@ package clientv3
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+var (
+	specificCSBuilder map[string]func(*Client, *options) clientStreamBuilder
+)
+
+func init() {
+	specificCSBuilder = map[string]func(*Client, *options) clientStreamBuilder{
+		"/etcdserverpb.Watch/Watch": newWatchCSBuilder,
+	}
+}
 
 // unaryClientInterceptor returns a new retrying unary client interceptor.
 //
@@ -104,32 +116,149 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOption) grpc.StreamClientInterceptor {
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		ctx = withVersion(ctx)
 		grpcOpts, retryOpts := filterCallOptions(opts)
 		callOpts := reuseOrNewWithCallOptions(intOpts, retryOpts)
-		// short circuit for simplicity, and avoiding allocations.
-		if callOpts.max == 0 {
-			return streamer(ctx, desc, cc, method, grpcOpts...)
-		}
-		if desc.ClientStreams {
-			return nil, status.Errorf(codes.Unimplemented, "clientv3/retry_interceptor: cannot retry on ClientStreams, set Disable()")
-		}
-		newStreamer, err := streamer(ctx, desc, cc, method, grpcOpts...)
-		if err != nil {
-			logger.Error("streamer failed to create ClientStream", zap.Error(err))
-			return nil, err // TODO(mwitkow): Maybe dial and transport errors should be retriable?
-		}
-		retryingStreamer := &serverStreamingRetryingStream{
-			client:       c,
-			ClientStream: newStreamer,
-			callOpts:     callOpts,
-			ctx:          ctx,
-			streamerCall: func(ctx context.Context) (grpc.ClientStream, error) {
+
+		newCSBuilder, ok := specificCSBuilder[method]
+		if !ok {
+			if callOpts.max == 0 {
 				return streamer(ctx, desc, cc, method, grpcOpts...)
-			},
+			}
+			if desc.ClientStreams {
+				return nil, status.Errorf(codes.Unimplemented, "clientv3/retry_interceptor: cannot retry on ClientStreams without specific interceptor")
+			}
+			newCSBuilder = newGeneralServerCSBuilder
 		}
-		return retryingStreamer, nil
+		return newCSBuilder(c, callOpts).Build(ctx, desc, cc, method, streamer, grpcOpts...)
 	}
+}
+
+type watchCSBuilder struct {
+	client *Client
+}
+
+func newWatchCSBuilder(client *Client, opts *options) clientStreamBuilder {
+	return &watchCSBuilder{
+		client: client,
+	}
+}
+
+type watchReauthStream struct {
+	ctx context.Context
+	grpc.ClientStream
+	client   *Client
+	streamer func() (grpc.ClientStream, error)
+	lastSent interface{}
+	mux      sync.RWMutex
+}
+
+func (b *watchCSBuilder) Build(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	newStream, err := streamer(ctx, desc, cc, method, opts...)
+	if err != nil {
+		b.client.lg.Error("streamer failed to create ClientStream", zap.Error(err))
+		return nil, err
+	}
+	return &watchReauthStream{
+		ctx:          ctx,
+		ClientStream: newStream,
+		client:       b.client,
+		streamer: func() (grpc.ClientStream, error) {
+			return streamer(ctx, desc, cc, method, opts...)
+		},
+	}, nil
+}
+
+func (s *watchReauthStream) SendMsg(m interface{}) error {
+	s.mux.Lock()
+	s.lastSent = m
+	s.mux.Unlock()
+	return s.ClientStream.SendMsg(m)
+}
+
+func (s *watchReauthStream) RecvMsg(m interface{}) (err error) {
+	if err = s.ClientStream.RecvMsg(m); err != nil {
+		return
+	}
+	// as of 3.4.9 the last sent prior to created response is guaranteed to be corresponding create request
+	if !(s.isLastSentCreateRequest() && s.isAuthInvalidResponse(m)) {
+		return
+	}
+	s.client.lg.Info("refresh auth token and resend watch request")
+	if err = s.client.getToken(s.ctx); err != nil {
+		s.client.lg.Warn("retry of watch client stream failed to fetch new auth token", zap.Error(err))
+		return
+	}
+
+	if err = s.reestablishAndResendCreateRequest(); err != nil {
+		s.client.lg.Error("failed to resend watch create request with refreshed auth token", zap.Error(err))
+		return
+	}
+	return s.ClientStream.RecvMsg(m)
+}
+
+func (s *watchReauthStream) isLastSentCreateRequest() bool {
+	s.mux.RLock()
+	watchRequest, ok := s.lastSent.(*pb.WatchRequest)
+	s.mux.RUnlock()
+	if !ok {
+		return false
+	}
+	return watchRequest.GetCreateRequest() != nil
+}
+
+func (s *watchReauthStream) isAuthInvalidResponse(m interface{}) bool {
+	watchResponse, ok := m.(*pb.WatchResponse)
+	if ok && watchResponse.GetCanceled() && watchResponse.GetCreated() && strings.Contains(watchResponse.GetCancelReason(), "PermissionDenied") {
+		return true
+	}
+	return false
+}
+
+func (s *watchReauthStream) reestablishAndResendCreateRequest() error {
+	newStream, err := s.streamer()
+	if err != nil {
+		s.client.lg.Error("failed to reestablish stream", zap.Error(err))
+		return err
+	}
+	s.ClientStream = newStream
+	return s.SendMsg(s.lastSent)
+}
+
+type clientStreamBuilder interface {
+	Build(context.Context, *grpc.StreamDesc, *grpc.ClientConn, string, grpc.Streamer, ...grpc.CallOption) (grpc.ClientStream, error)
+}
+
+type generalServerCSBuilder struct {
+	logger *zap.Logger
+	client *Client
+	opts   *options
+}
+
+func newGeneralServerCSBuilder(client *Client, opts *options) clientStreamBuilder {
+	return &generalServerCSBuilder{
+		logger: client.lg,
+		client: client,
+		opts:   opts,
+	}
+}
+
+func (b *generalServerCSBuilder) Build(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	ctx = withVersion(ctx)
+	streamerCall := func(ctx context.Context) (grpc.ClientStream, error) {
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+	newStream, err := streamerCall(ctx)
+	if err != nil {
+		b.logger.Error("streamer failed to create ClientStream", zap.Error(err))
+		return nil, err // TODO(mwitkow): Maybe dial and transport errors should be retriable?
+	}
+	return &serverStreamingRetryingStream{
+		client:       b.client,
+		ClientStream: newStream,
+		callOpts:     b.opts,
+		ctx:          ctx,
+		streamerCall: streamerCall,
+	}, nil
 }
 
 // type serverStreamingRetryingStream is the implementation of grpc.ClientStream that acts as a
