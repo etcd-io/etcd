@@ -216,7 +216,7 @@ func TestDataDriven(t *testing.T) {
 					fmt.Fprintf(&buf, cc.Describe(l))
 					idx := cc.CommittedIndex(l)
 					// Interchanging the majorities shouldn't make a difference. If it does, print.
-					if aIdx := JointConfig([2]MajorityConfig{c, cj}).CommittedIndex(l); aIdx != idx {
+					if aIdx := JointConfig([2]MajorityConfig{cj, c}).CommittedIndex(l); aIdx != idx {
 						fmt.Fprintf(&buf, "%s <-- via symmetry\n", aIdx)
 					}
 					fmt.Fprintf(&buf, "%s\n", idx)
