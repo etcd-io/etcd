@@ -27,7 +27,7 @@ github.com/dustin/go-humanize
 github.com/etcd-io/gofail/runtime
 # github.com/fatih/color v1.7.0
 ## explicit
-# github.com/gogo/protobuf v1.2.1
+# github.com/gogo/protobuf v1.3.1
 ## explicit
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto

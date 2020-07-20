@@ -12,7 +12,7 @@ require (
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 	github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/gogo/protobuf v1.2.1
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
 	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v1.0.0
