@@ -23,8 +23,6 @@ import (
 	etcd "go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
-
-	"google.golang.org/grpc/naming"
 )
 
 func TestGRPCResolver(t *testing.T) {
@@ -43,7 +41,7 @@ func TestGRPCResolver(t *testing.T) {
 	}
 	defer w.Close()
 
-	addOp := naming.Update{Op: naming.Add, Addr: "127.0.0.1", Metadata: "metadata"}
+	addOp := Update{Op: Add, Addr: "127.0.0.1", Metadata: "metadata"}
 	err = r.Update(context.TODO(), "foo", addOp)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
@@ -54,8 +52,8 @@ func TestGRPCResolver(t *testing.T) {
 		t.Fatal("failed to get udpate", err)
 	}
 
-	wu := &naming.Update{
-		Op:       naming.Add,
+	wu := &Update{
+		Op:       Add,
 		Addr:     "127.0.0.1",
 		Metadata: "metadata",
 	}
@@ -64,7 +62,7 @@ func TestGRPCResolver(t *testing.T) {
 		t.Fatalf("up = %#v, want %#v", us[0], wu)
 	}
 
-	delOp := naming.Update{Op: naming.Delete, Addr: "127.0.0.1"}
+	delOp := Update{Op: Delete, Addr: "127.0.0.1"}
 	err = r.Update(context.TODO(), "foo", delOp)
 	if err != nil {
 		t.Fatalf("failed to udpate %v", err)
@@ -75,8 +73,8 @@ func TestGRPCResolver(t *testing.T) {
 		t.Fatalf("failed to get udpate %v", err)
 	}
 
-	wu = &naming.Update{
-		Op:       naming.Delete,
+	wu = &Update{
+		Op:       Delete,
 		Addr:     "127.0.0.1",
 		Metadata: "metadata",
 	}
@@ -96,7 +94,7 @@ func TestGRPCResolverMulti(t *testing.T) {
 	defer clus.Terminate(t)
 	c := clus.RandClient()
 
-	v, verr := json.Marshal(naming.Update{Addr: "127.0.0.1", Metadata: "md"})
+	v, verr := json.Marshal(Update{Addr: "127.0.0.1", Metadata: "md"})
 	if verr != nil {
 		t.Fatal(verr)
 	}
@@ -132,7 +130,7 @@ func TestGRPCResolverMulti(t *testing.T) {
 	if nerr != nil {
 		t.Fatal(nerr)
 	}
-	if len(updates) != 2 || (updates[0].Op != naming.Delete && updates[1].Op != naming.Delete) {
+	if len(updates) != 2 || (updates[0].Op != Delete && updates[1].Op != Delete) {
 		t.Fatalf("expected two updates, got %+v", updates)
 	}
 }

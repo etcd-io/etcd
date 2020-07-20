@@ -16,8 +16,6 @@
  *
  */
 
-//go:generate ./regenerate.sh
-
 // Package health provides a service that exposes server's health and it must be
 // imported to enable support for client-side health checks.
 package health
@@ -35,6 +33,7 @@ import (
 
 // Server implements `service Health`.
 type Server struct {
+	healthgrpc.UnimplementedHealthServer
 	mu sync.RWMutex
 	// If shutdown is true, it's expected all serving status is NOT_SERVING, and
 	// will stay in NOT_SERVING.

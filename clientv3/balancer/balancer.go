@@ -138,13 +138,10 @@ type baseBalancer struct {
 	picker picker.Picker
 }
 
-// HandleResolvedAddrs implements "grpc/balancer.Balancer" interface.
+// UpdateClientConnState implements "grpc/balancer.Balancer" interface.
 // gRPC sends initial or updated resolved addresses from "Build".
-func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
-	if err != nil {
-		bb.lg.Warn("HandleResolvedAddrs called with error", zap.String("balancer-id", bb.id), zap.Error(err))
-		return
-	}
+func (bb *baseBalancer) UpdateClientConnState(state balancer.ClientConnState) error {
+	addrs := state.ResolverState.Addresses
 	bb.lg.Info("resolved",
 		zap.String("picker", bb.picker.String()),
 		zap.String("balancer-id", bb.id),
@@ -191,10 +188,20 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 			// (DO NOT) delete(bb.scToSt, sc)
 		}
 	}
+
+	return nil
 }
 
-// HandleSubConnStateChange implements "grpc/balancer.Balancer" interface.
-func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconnectivity.State) {
+// ResolverError implements "grpc/balancer.Balancer" interface.
+// It's called by gRPC when the name resolver reports an error.
+func (bb *baseBalancer) ResolverError(err error) {
+	bb.lg.Warn("ResolverError called with error", zap.String("balancer-id", bb.id), zap.Error(err))
+}
+
+// UpdateSubConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateSubConnState(sc balancer.SubConn, state balancer.SubConnState) {
+	s := state.ConnectivityState
+
 	bb.mu.Lock()
 	defer bb.mu.Unlock()
 
@@ -247,7 +254,10 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconn
 		bb.updatePicker()
 	}
 
-	bb.currentConn.UpdateBalancerState(bb.connectivityRecorder.GetCurrentState(), bb.picker)
+	bb.currentConn.UpdateState(balancer.State{
+		ConnectivityState: bb.connectivityRecorder.GetCurrentState(),
+		Picker:            bb.picker,
+	})
 }
 
 func (bb *baseBalancer) updatePicker() {

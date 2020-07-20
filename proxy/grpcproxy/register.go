@@ -24,7 +24,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second
@@ -69,7 +68,7 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 	}
 
 	gr := &naming.GRPCResolver{Client: c}
-	if err = gr.Update(c.Ctx(), prefix, gnaming.Update{Op: gnaming.Add, Addr: addr, Metadata: getMeta()}, clientv3.WithLease(ss.Lease())); err != nil {
+	if err = gr.Update(c.Ctx(), prefix, naming.Update{Op: naming.Add, Addr: addr, Metadata: getMeta()}, clientv3.WithLease(ss.Lease())); err != nil {
 		return nil, err
 	}
 

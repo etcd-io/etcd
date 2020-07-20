@@ -85,7 +85,10 @@ const (
 	Backend AddressType = iota
 	// GRPCLB indicates the address is for a grpclb load balancer.
 	//
-	// Deprecated: use Attributes in Address instead.
+	// Deprecated: to select the GRPCLB load balancing policy, use a service
+	// config with a corresponding loadBalancingConfig.  To supply balancer
+	// addresses to the GRPCLB load balancing policy, set State.Attributes
+	// using balancer/grpclb/state.Set.
 	GRPCLB
 )
 
@@ -123,11 +126,6 @@ type Address struct {
 	// Deprecated: use Attributes instead.
 	Metadata interface{}
 }
-
-// BuildOption is a type alias of BuildOptions for legacy reasons.
-//
-// Deprecated: use BuildOptions instead.
-type BuildOption = BuildOptions
 
 // BuildOptions includes additional information for the builder to create
 // the resolver.
@@ -234,11 +232,6 @@ type Builder interface {
 	// Scheme is defined at https://github.com/grpc/grpc/blob/master/doc/naming.md.
 	Scheme() string
 }
-
-// ResolveNowOption is a type alias of ResolveNowOptions for legacy reasons.
-//
-// Deprecated: use ResolveNowOptions instead.
-type ResolveNowOption = ResolveNowOptions
 
 // ResolveNowOptions includes additional information for ResolveNow.
 type ResolveNowOptions struct{}

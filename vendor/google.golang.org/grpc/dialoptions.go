@@ -46,21 +46,19 @@ type dialOptions struct {
 	chainUnaryInts  []UnaryClientInterceptor
 	chainStreamInts []StreamClientInterceptor
 
-	cp          Compressor
-	dc          Decompressor
-	bs          internalbackoff.Strategy
-	block       bool
-	insecure    bool
-	timeout     time.Duration
-	scChan      <-chan ServiceConfig
-	authority   string
-	copts       transport.ConnectOptions
-	callOptions []CallOption
-	// This is used by v1 balancer dial option WithBalancer to support v1
-	// balancer, and also by WithBalancerName dial option.
-	balancerBuilder balancer.Builder
-	// This is to support grpclb.
-	resolverBuilder             resolver.Builder
+	cp              Compressor
+	dc              Decompressor
+	bs              internalbackoff.Strategy
+	block           bool
+	returnLastError bool
+	insecure        bool
+	timeout         time.Duration
+	scChan          <-chan ServiceConfig
+	authority       string
+	copts           transport.ConnectOptions
+	callOptions     []CallOption
+	// This is used by WithBalancerName dial option.
+	balancerBuilder             balancer.Builder
 	channelzParentID            int64
 	disableServiceConfig        bool
 	disableRetry                bool
@@ -73,6 +71,8 @@ type dialOptions struct {
 	// resolver.ResolveNow(). The user will have no need to configure this, but
 	// we need to be able to configure this in tests.
 	resolveNowBackoff func(int) time.Duration
+	resolvers         []resolver.Builder
+	withProxy         bool
 }
 
 // DialOption configures how we set up the connection.
@@ -199,19 +199,6 @@ func WithDecompressor(dc Decompressor) DialOption {
 	})
 }
 
-// WithBalancer returns a DialOption which sets a load balancer with the v1 API.
-// Name resolver will be ignored if this DialOption is specified.
-//
-// Deprecated: use the new balancer APIs in balancer package and
-// WithBalancerName.  Will be removed in a future 1.x release.
-func WithBalancer(b Balancer) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.balancerBuilder = &balancerWrapperBuilder{
-			b: b,
-		}
-	})
-}
-
 // WithBalancerName sets the balancer that the ClientConn will be initialized
 // with. Balancer registered with balancerName will be used. This function
 // panics if no balancer was registered by balancerName.
@@ -228,13 +215,6 @@ func WithBalancerName(balancerName string) DialOption {
 	}
 	return newFuncDialOption(func(o *dialOptions) {
 		o.balancerBuilder = builder
-	})
-}
-
-// withResolverBuilder is only for grpclb.
-func withResolverBuilder(b resolver.Builder) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.resolverBuilder = b
 	})
 }
 
@@ -306,12 +286,35 @@ func WithBlock() DialOption {
 	})
 }
 
+// WithReturnConnectionError returns a DialOption which makes the client connection
+// return a string containing both the last connection error that occurred and
+// the context.DeadlineExceeded error.
+// Implies WithBlock()
+//
+// This API is EXPERIMENTAL.
+func WithReturnConnectionError() DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.block = true
+		o.returnLastError = true
+	})
+}
+
 // WithInsecure returns a DialOption which disables transport security for this
 // ClientConn. Note that transport security is required unless WithInsecure is
 // set.
 func WithInsecure() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.insecure = true
+	})
+}
+
+// WithNoProxy returns a DialOption which disables the use of proxies for this
+// ClientConn. This is ignored if WithDialer or WithContextDialer are used.
+//
+// This API is EXPERIMENTAL.
+func WithNoProxy() DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.withProxy = false
 	})
 }
 
@@ -365,7 +368,6 @@ func WithContextDialer(f func(context.Context, string) (net.Conn, error)) DialOp
 }
 
 func init() {
-	internal.WithResolverBuilder = withResolverBuilder
 	internal.WithHealthCheckFunc = withHealthCheckFunc
 }
 
@@ -457,7 +459,7 @@ func WithStreamInterceptor(f StreamClientInterceptor) DialOption {
 }
 
 // WithChainStreamInterceptor returns a DialOption that specifies the chained
-// interceptor for unary RPCs. The first interceptor will be the outer most,
+// interceptor for streaming RPCs. The first interceptor will be the outer most,
 // while the last interceptor will be the inner most wrapper around the real call.
 // All interceptors added by this method will be chained, and the interceptor
 // defined by WithStreamInterceptor will always be prepended to the chain.
@@ -566,6 +568,7 @@ func defaultDialOptions() dialOptions {
 			ReadBufferSize:  defaultReadBufSize,
 		},
 		resolveNowBackoff: internalbackoff.DefaultExponential.Backoff,
+		withProxy:         true,
 	}
 }
 
@@ -587,5 +590,17 @@ func withMinConnectDeadline(f func() time.Duration) DialOption {
 func withResolveNowBackoff(f func(int) time.Duration) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.resolveNowBackoff = f
+	})
+}
+
+// WithResolvers allows a list of resolver implementations to be registered
+// locally with the ClientConn without needing to be globally registered via
+// resolver.Register.  They will be matched against the scheme used for the
+// current Dial only, and will take precedence over the global registry.
+//
+// This API is EXPERIMENTAL.
+func WithResolvers(rs ...resolver.Builder) DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.resolvers = append(o.resolvers, rs...)
 	})
 }
