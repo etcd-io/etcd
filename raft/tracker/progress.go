@@ -148,9 +148,7 @@ func (pr *Progress) MaybeUpdate(n uint64) bool {
 		updated = true
 		pr.ProbeAcked()
 	}
-	if pr.Next < n+1 {
-		pr.Next = n + 1
-	}
+	pr.Next = max(pr.Next, n+1)
 	return updated
 }
 
@@ -189,9 +187,7 @@ func (pr *Progress) MaybeDecrTo(rejected, last uint64) bool {
 		return false
 	}
 
-	if pr.Next = min(rejected, last+1); pr.Next < 1 {
-		pr.Next = 1
-	}
+	pr.Next = max(min(rejected, last+1), 1)
 	pr.ProbeSent = false
 	return true
 }
