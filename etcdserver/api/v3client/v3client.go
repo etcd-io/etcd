@@ -49,7 +49,8 @@ func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	clc := adapter.ClusterServerToClusterClient(v3rpc.NewClusterServer(s))
 	c.Cluster = clientv3.NewClusterFromClusterClient(clc, c)
 
-	// TODO: implement clientv3.Auth interface?
+	a := adapter.AuthServerToAuthClient(v3rpc.NewAuthServer(s))
+	c.Auth = clientv3.NewAuthFromAuthClient(a, c)
 
 	return c
 }
