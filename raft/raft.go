@@ -566,7 +566,7 @@ func (r *raft) advance(rd Ready) {
 		oldApplied := r.raftLog.applied
 		r.raftLog.appliedTo(newApplied)
 
-		if r.prs.Config.AutoLeave && oldApplied < r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
+		if r.prs.Config.AutoLeave && oldApplied <= r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 			// If the current (and most recent, at least for this leader's term)
 			// configuration should be auto-left, initiate that now. We use a
 			// nil Data which unmarshals into an empty ConfChangeV2 and has the

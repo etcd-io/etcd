@@ -374,6 +374,138 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 	}
 }
 
+// TestRawNodeJointAutoLeave tests the configuration change auto leave even leader
+// lost leadership.
+func TestRawNodeJointAutoLeave(t *testing.T) {
+	testCc := pb.ConfChangeV2{Changes: []pb.ConfChangeSingle{
+		{Type: pb.ConfChangeAddLearnerNode, NodeID: 2},
+	},
+		Transition: pb.ConfChangeTransitionJointImplicit,
+	}
+	expCs := pb.ConfState{
+		Voters: []uint64{1}, VotersOutgoing: []uint64{1}, Learners: []uint64{2},
+		AutoLeave: true,
+	}
+	exp2Cs := pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}}
+
+	t.Run("", func(t *testing.T) {
+		s := NewMemoryStorage()
+		rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rawNode.Campaign()
+		proposed := false
+		var (
+			lastIndex uint64
+			ccdata    []byte
+		)
+		// Propose the ConfChange, wait until it applies, save the resulting
+		// ConfState.
+		var cs *pb.ConfState
+		for cs == nil {
+			rd := rawNode.Ready()
+			s.Append(rd.Entries)
+			for _, ent := range rd.CommittedEntries {
+				var cc pb.ConfChangeI
+				if ent.Type == pb.EntryConfChangeV2 {
+					var ccc pb.ConfChangeV2
+					if err = ccc.Unmarshal(ent.Data); err != nil {
+						t.Fatal(err)
+					}
+					cc = &ccc
+				}
+				if cc != nil {
+					// Force it step down.
+					rawNode.Step(pb.Message{Type: pb.MsgHeartbeatResp, From: 1, Term: rawNode.raft.Term + 1})
+					cs = rawNode.ApplyConfChange(cc)
+				}
+			}
+			rawNode.Advance(rd)
+			// Once we are the leader, propose a command and a ConfChange.
+			if !proposed && rd.SoftState.Lead == rawNode.raft.id {
+				if err = rawNode.Propose([]byte("somedata")); err != nil {
+					t.Fatal(err)
+				}
+				ccdata, err = testCc.Marshal()
+				if err != nil {
+					t.Fatal(err)
+				}
+				rawNode.ProposeConfChange(testCc)
+				proposed = true
+			}
+		}
+
+		// Check that the last index is exactly the conf change we put in,
+		// down to the bits. Note that this comes from the Storage, which
+		// will not reflect any unstable entries that we'll only be presented
+		// with in the next Ready.
+		lastIndex, err = s.LastIndex()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		entries, err := s.Entries(lastIndex-1, lastIndex+1, noLimit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 2 {
+			t.Fatalf("len(entries) = %d, want %d", len(entries), 2)
+		}
+		if !bytes.Equal(entries[0].Data, []byte("somedata")) {
+			t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, []byte("somedata"))
+		}
+		if entries[1].Type != pb.EntryConfChangeV2 {
+			t.Fatalf("type = %v, want %v", entries[1].Type, pb.EntryConfChangeV2)
+		}
+		if !bytes.Equal(entries[1].Data, ccdata) {
+			t.Errorf("data = %v, want %v", entries[1].Data, ccdata)
+		}
+
+		if !reflect.DeepEqual(&expCs, cs) {
+			t.Fatalf("exp:\n%+v\nact:\n%+v", expCs, cs)
+		}
+
+		if 0 != rawNode.raft.pendingConfIndex {
+			t.Fatalf("pendingConfIndex: expected %d, got %d", 0, rawNode.raft.pendingConfIndex)
+		}
+
+		// Move the RawNode along. It should not leave joint because it's follower.
+		rd := rawNode.readyWithoutAccept()
+		// Check that the right ConfChange comes out.
+		if len(rd.Entries) != 0 {
+			t.Fatalf("expected zero entry, got %+v", rd)
+		}
+
+		// Make it leader again. It should leave joint automatically after moving apply index.
+		rawNode.Campaign()
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+		rawNode.Advance(rd)
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+
+		// Check that the right ConfChange comes out.
+		if len(rd.Entries) != 1 || rd.Entries[0].Type != pb.EntryConfChangeV2 {
+			t.Fatalf("expected exactly one more entry, got %+v", rd)
+		}
+		var cc pb.ConfChangeV2
+		if err := cc.Unmarshal(rd.Entries[0].Data); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(cc, pb.ConfChangeV2{Context: nil}) {
+			t.Fatalf("expected zero ConfChangeV2, got %+v", cc)
+		}
+		// Lie and pretend the ConfChange applied. It won't do so because now
+		// we require the joint quorum and we're only running one node.
+		cs = rawNode.ApplyConfChange(cc)
+		if exp := exp2Cs; !reflect.DeepEqual(&exp, cs) {
+			t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
+		}
+	})
+}
+
 // TestRawNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
 // not affect the later propose to add new node.
 func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
