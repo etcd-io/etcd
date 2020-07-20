@@ -14,6 +14,8 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 **NOTE:** When [migrating from v2 with no v3 data](https://github.com/etcd-io/etcd/issues/9480), etcd server v3.2+ panics when etcd restores from existing snapshots but no v3 `ETCD_DATA_DIR/member/snap/db` file. This happens when the server had migrated from v2 with no previous v3 data. This also prevents accidental v3 data loss (e.g. `db` file might have been moved). etcd requires that post v3 migration can only happen with v3 data. Do not upgrade to newer v3 versions until v3.0 server contains v3 data.
 
+**NOTE:** If your cluster enables auth, rolling upgrade from 3.4 or older version isn't supported because 3.5 [changes a format of WAL entries related to auth](https://github.com/etcd-io/etcd/pull/11943).
+
 Highlighted breaking changes in 3.5.
 
 #### Deprecated `etcd_debugging_mvcc_db_total_size_in_bytes` Prometheus metrics

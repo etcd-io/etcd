@@ -16,6 +16,7 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"reflect"
@@ -95,6 +96,11 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b.Close()
 }
 
+func encodePassword(s string) string {
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(s), bcrypt.MinCost)
+	return base64.StdEncoding.EncodeToString([]byte(hashedPassword))
+}
+
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
@@ -114,7 +120,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
-	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar", Options: &authpb.UserAddOptions{NoPassword: false}}
+	ua := &pb.AuthUserAddRequest{Name: "foo", HashedPassword: encodePassword("bar"), Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +135,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
-	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root", Options: &authpb.UserAddOptions{NoPassword: false}})
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", HashedPassword: encodePassword("root"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		return err
 	}
@@ -239,7 +245,7 @@ func TestUserChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "baz"})
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", HashedPassword: encodePassword("baz")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +257,7 @@ func TestUserChangePassword(t *testing.T) {
 	}
 
 	// change a non-existing user
-	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", Password: "bar"})
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", HashedPassword: encodePassword("bar")})
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
@@ -396,7 +402,7 @@ func TestListUsers(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "user1", Password: "pwd1", Options: &authpb.UserAddOptions{NoPassword: false}}
+	ua := &pb.AuthUserAddRequest{Name: "user1", HashedPassword: encodePassword("pwd1"), Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
@@ -770,7 +776,7 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 	// create lots of users
 	for i := 0; i < 50; i++ {
 		u := fmt.Sprintf("user-%d", i)
-		ua := &pb.AuthUserAddRequest{Name: u, Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}}
+		ua := &pb.AuthUserAddRequest{Name: u, HashedPassword: encodePassword("123"), Options: &authpb.UserAddOptions{NoPassword: false}}
 		if _, err := as.UserAdd(ua); err != nil {
 			t.Fatal(err)
 		}
@@ -815,7 +821,7 @@ func TestRolesOrder(t *testing.T) {
 	}
 
 	username := "user"
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, Password: "pass", Options: &authpb.UserAddOptions{NoPassword: false}})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, HashedPassword: encodePassword("pass"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -900,5 +906,47 @@ func TestUserNoPasswordAdd(t *testing.T) {
 	_, err = as.Authenticate(ctx, username, "")
 	if err != ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
+	}
+}
+
+func TestUserAddWithOldLog(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "bar", Password: "baz", Options: &authpb.UserAddOptions{NoPassword: false}}
+	_, err := as.UserAdd(ua)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUserChangePasswordWithOldLog(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ctx1 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err := as.Authenticate(ctx1, "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "baz"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx2 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err = as.Authenticate(ctx2, "foo", "baz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change a non-existing user
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", HashedPassword: encodePassword("bar")})
+	if err == nil {
+		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+	if err != ErrUserNotFound {
+		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }

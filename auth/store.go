@@ -17,6 +17,7 @@ package auth
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"sort"
@@ -186,6 +187,9 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
+
+	// BcryptCost gets strength of hashing bcrypted auth password
+	BcryptCost() int
 }
 
 type TokenProvider interface {
@@ -372,25 +376,17 @@ func (as *authStore) Recover(be backend.Backend) {
 	as.enabledMu.Unlock()
 }
 
+func (as *authStore) selectPassword(password string, hashedPassword string) ([]byte, error) {
+	if password != "" && hashedPassword == "" {
+		// This path is for processing log entries created by etcd whose version is older than 3.5
+		return bcrypt.GenerateFromPassword([]byte(password), as.bcryptCost)
+	}
+	return base64.StdEncoding.DecodeString(hashedPassword)
+}
+
 func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	if len(r.Name) == 0 {
 		return nil, ErrUserEmpty
-	}
-
-	var hashed []byte
-	var err error
-
-	noPassword := r.Options != nil && r.Options.NoPassword
-	if !noPassword {
-		hashed, err = bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
-		if err != nil {
-			as.lg.Error(
-				"failed to bcrypt hash password",
-				zap.String("user-name", r.Name),
-				zap.Error(err),
-			)
-			return nil, err
-		}
 	}
 
 	tx := as.be.BatchTx()
@@ -409,9 +405,19 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		}
 	}
 
+	var password []byte
+	var err error
+
+	if !options.NoPassword {
+		password, err = as.selectPassword(r.Password, r.HashedPassword)
+		if err != nil {
+			return nil, ErrNoPasswordUser
+		}
+	}
+
 	newUser := &authpb.User{
 		Name:     []byte(r.Name),
-		Password: hashed,
+		Password: password,
 		Options:  options,
 	}
 
@@ -456,18 +462,6 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 }
 
 func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	// TODO(mitake): measure the cost of bcrypt.GenerateFromPassword()
-	// If the cost is too high, we should move the encryption to outside of the raft
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
-	if err != nil {
-		as.lg.Error(
-			"failed to bcrypt hash password",
-			zap.String("user-name", r.Name),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -477,10 +471,20 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 		return nil, ErrUserNotFound
 	}
 
+	var password []byte
+	var err error
+
+	if !user.Options.NoPassword {
+		password, err = as.selectPassword(r.Password, r.HashedPassword)
+		if err != nil {
+			return nil, ErrNoPasswordUser
+		}
+	}
+
 	updatedUser := &authpb.User{
 		Name:     []byte(r.Name),
 		Roles:    user.Roles,
-		Password: hashed,
+		Password: password,
 		Options:  user.Options,
 	}
 
