@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"errors"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
@@ -57,7 +58,7 @@ func TestReadRecord(t *testing.T) {
 		if !reflect.DeepEqual(rec, tt.wr) {
 			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
 		}
-		if !reflect.DeepEqual(e, tt.we) {
+		if !errors.Is(e, tt.we) {
 			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
 		}
 		rec = &walpb.Record{}
