@@ -4186,6 +4186,41 @@ func testConfChangeCheckBeforeCampaign(t *testing.T, v2 bool) {
 	if n2.state != StateFollower {
 		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
 	}
+
+	// Transfer leadership to peer 2.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateLeader {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	// It's still follower because committed conf change is not applied.
+	if n2.state != StateFollower {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	// Abort transfer leader
+	for i := 0; i < n1.electionTimeout; i++ {
+		n1.tick()
+	}
+
+	// Advance apply
+	nextEnts(n2, nt.storage[2])
+
+	// Transfer leadership to peer 2 again.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateFollower {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateLeader {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateLeader)
+	}
+
+	nextEnts(n1, nt.storage[1])
+	// Trigger campaign in node 2
+	for i := 0; i < n1.randomizedElectionTimeout; i++ {
+		n1.tick()
+	}
+	if n1.state != StateCandidate {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateCandidate)
+	}
 }
 
 // Tests if unapplied ConfChange is checked before campaign.

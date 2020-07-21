@@ -1354,7 +1354,7 @@ func stepFollower(r *raft, m pb.Message) error {
 			// Leadership transfers never use pre-vote even if r.preVote is true; we
 			// know we are not recovering from a partition so there is no need for the
 			// extra round trip.
-			r.campaign(campaignTransfer)
+			r.hup(campaignTransfer)
 		} else {
 			r.logger.Infof("%x received MsgTimeoutNow from %x but is not promotable", r.id, m.From)
 		}
