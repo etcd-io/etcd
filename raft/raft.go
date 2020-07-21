@@ -1675,7 +1675,7 @@ func (r *raft) reduceUncommittedSize(ents []pb.Entry) {
 func numOfPendingConf(ents []pb.Entry) int {
 	n := 0
 	for i := range ents {
-		if ents[i].Type == pb.EntryConfChange {
+		if ents[i].Type == pb.EntryConfChange || ents[i].Type == pb.EntryConfChangeV2 {
 			n++
 		}
 	}
