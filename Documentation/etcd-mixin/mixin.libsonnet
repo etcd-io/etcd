@@ -1,6 +1,12 @@
 {
   _config+:: {
     etcd_selector: 'job=~".*etcd.*"',
+    // etcd_instance_labels are the label names that are uniquely
+    // identifying an instance and need to be aggreated away for alerts
+    // that are about an etcd cluster as a whole. For example, if etcd
+    // instances are deployed on K8s, you will likely want to change
+    // this to 'instance, pod'.
+    etcd_instance_labels: 'instance',
   },
 
   prometheusAlerts+:: {
@@ -11,11 +17,11 @@
           {
             alert: 'etcdMembersDown',
             expr: |||
-              max by (job) (
-                sum by (job) (up{%(etcd_selector)s} == bool 0)
+              max without (endpoint) (
+                sum without (%(etcd_instance_labels)s) (up{%(etcd_selector)s} == bool 0)
               or
-                count by (job,endpoint) (
-                  sum by (job,endpoint,To) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
+                count without (To) (
+                  sum without (%(etcd_instance_labels)s) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
                 )
               )
               > 0
@@ -31,7 +37,7 @@
           {
             alert: 'etcdInsufficientMembers',
             expr: |||
-              sum(up{%(etcd_selector)s} == bool 1) by (job) < ((count(up{%(etcd_selector)s}) by (job) + 1) / 2)
+              sum(up{%(etcd_selector)s} == bool 1) without (%(etcd_instance_labels)s) < ((count(up{%(etcd_selector)s}) without (%(etcd_instance_labels)s) + 1) / 2)
             ||| % $._config,
             'for': '3m',
             labels: {
@@ -57,7 +63,7 @@
           {
             alert: 'etcdHighNumberOfLeaderChanges',
             expr: |||
-              increase((max by (job) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 4
+              increase((max without (%(etcd_instance_labels)s) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 4
             ||| % $._config,
             'for': '5m',
             labels: {
@@ -70,9 +76,9 @@
           {
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
+              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) without (grpc_type, grpc_code)
                 /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
+              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) without (grpc_type, grpc_code)
                 > 1
             ||| % $._config,
             'for': '10m',
@@ -86,9 +92,9 @@
           {
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) BY (job, instance, grpc_service, grpc_method)
+              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) without (grpc_type, grpc_code)
                 /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) BY (job, instance, grpc_service, grpc_method)
+              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) without (grpc_type, grpc_code)
                 > 5
             ||| % $._config,
             'for': '5m',
@@ -102,7 +108,7 @@
           {
             alert: 'etcdGRPCRequestsSlow',
             expr: |||
-              histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_type="unary"}[5m])) by (job, instance, grpc_service, grpc_method, le))
+              histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_type="unary"}[5m])) without(grpc_type))
               > 0.15
             ||| % $._config,
             'for': '10m',
@@ -171,8 +177,8 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              BY (method) > 0.01
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) without (code) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              without (code) > 0.01
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -185,8 +191,8 @@
           {
             alert: 'etcdHighNumberOfFailedHTTPRequests',
             expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) BY (method) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              BY (method) > 0.05
+              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) without (code) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
+              without (code) > 0.05
             ||| % $._config,
             'for': '10m',
             labels: {
