@@ -4141,6 +4141,98 @@ func TestPreVoteMigrationWithFreeStuckPreCandidate(t *testing.T) {
 	}
 }
 
+func testConfChangeCheckBeforeCampaign(t *testing.T, v2 bool) {
+	nt := newNetwork(nil, nil, nil)
+	n1 := nt.peers[1].(*raft)
+	n2 := nt.peers[2].(*raft)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if n1.state != StateLeader {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+
+	// Begin to remove the third node.
+	cc := pb.ConfChange{
+		Type:   pb.ConfChangeRemoveNode,
+		NodeID: 2,
+	}
+	var ccData []byte
+	var err error
+	var ty pb.EntryType
+	if v2 {
+		ccv2 := cc.AsV2()
+		ccData, err = ccv2.Marshal()
+		ty = pb.EntryConfChangeV2
+	} else {
+		ccData, err = cc.Marshal()
+		ty = pb.EntryConfChange
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	nt.send(pb.Message{
+		From: 1,
+		To:   1,
+		Type: pb.MsgProp,
+		Entries: []pb.Entry{
+			{Type: ty, Data: ccData},
+		},
+	})
+
+	// Trigger campaign in node 2
+	for i := 0; i < n2.randomizedElectionTimeout; i++ {
+		n2.tick()
+	}
+	// It's still follower because committed conf change is not applied.
+	if n2.state != StateFollower {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+
+	// Transfer leadership to peer 2.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateLeader {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	// It's still follower because committed conf change is not applied.
+	if n2.state != StateFollower {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	// Abort transfer leader
+	for i := 0; i < n1.electionTimeout; i++ {
+		n1.tick()
+	}
+
+	// Advance apply
+	nextEnts(n2, nt.storage[2])
+
+	// Transfer leadership to peer 2 again.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateFollower {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateLeader {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateLeader)
+	}
+
+	nextEnts(n1, nt.storage[1])
+	// Trigger campaign in node 2
+	for i := 0; i < n1.randomizedElectionTimeout; i++ {
+		n1.tick()
+	}
+	if n1.state != StateCandidate {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateCandidate)
+	}
+}
+
+// Tests if unapplied ConfChange is checked before campaign.
+func TestConfChangeCheckBeforeCampaign(t *testing.T) {
+	testConfChangeCheckBeforeCampaign(t, false)
+}
+
+// Tests if unapplied ConfChangeV2 is checked before campaign.
+func TestConfChangeV2CheckBeforeCampaign(t *testing.T) {
+	testConfChangeCheckBeforeCampaign(t, true)
+}
+
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
