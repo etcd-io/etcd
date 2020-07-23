@@ -1,6 +1,12 @@
 {
   _config+:: {
     etcd_selector: 'job=~".*etcd.*"',
+    // etcd_instance_labels are the label names that are uniquely
+    // identifying an instance and need to be aggreated away for alerts
+    // that are about an etcd cluster as a whole. For example, if etcd
+    // instances are deployed on K8s, you will likely want to change
+    // this to 'instance, pod'.
+    etcd_instance_labels: 'instance',
   },
 
   prometheusAlerts+:: {
@@ -12,10 +18,10 @@
             alert: 'etcdMembersDown',
             expr: |||
               max without (endpoint) (
-                sum without (instance) (up{%(etcd_selector)s} == bool 0)
+                sum without (%(etcd_instance_labels)s) (up{%(etcd_selector)s} == bool 0)
               or
-                count without (instance, To) (
-                  sum without (instance) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
+                count without (To) (
+                  sum without (%(etcd_instance_labels)s) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
                 )
               )
               > 0
@@ -31,7 +37,7 @@
           {
             alert: 'etcdInsufficientMembers',
             expr: |||
-              sum(up{%(etcd_selector)s} == bool 1) without (instance) < ((count(up{%(etcd_selector)s}) without (instance) + 1) / 2)
+              sum(up{%(etcd_selector)s} == bool 1) without (%(etcd_instance_labels)s) < ((count(up{%(etcd_selector)s}) without (%(etcd_instance_labels)s) + 1) / 2)
             ||| % $._config,
             'for': '3m',
             labels: {
@@ -57,7 +63,7 @@
           {
             alert: 'etcdHighNumberOfLeaderChanges',
             expr: |||
-              increase((max without (instance) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 4
+              increase((max without (%(etcd_instance_labels)s) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 4
             ||| % $._config,
             'for': '5m',
             labels: {
