@@ -183,6 +183,7 @@ func main() {
 
 	locker := concurrency.NewLocker(session, "/lock")
 	locker.Lock()
+	defer locker.Unlock()
 	version := session.Lease()
 	fmt.Printf("acquired lock, version: %d\n", version)
 
