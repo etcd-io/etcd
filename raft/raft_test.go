@@ -2751,6 +2751,13 @@ func TestRestore(t *testing.T) {
 	if ok := sm.restore(s); ok {
 		t.Fatal("restore succeed, want fail")
 	}
+	// It should not campaign before actually applying data.
+	for i := 0; i < sm.randomizedElectionTimeout; i++ {
+		sm.tick()
+	}
+	if sm.state != StateFollower {
+		t.Errorf("state = %d, want %d", sm.state, StateFollower)
+	}
 }
 
 // TestRestoreWithLearner restores a snapshot which contains learners.
@@ -2865,10 +2872,14 @@ func TestLearnerReceiveSnapshot(t *testing.T) {
 		},
 	}
 
-	n1 := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
+	store := NewMemoryStorage()
+	n1 := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, store)
 	n2 := newTestLearnerRaft(2, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
 
 	n1.restore(s)
+	ready := newReady(n1, &SoftState{}, pb.HardState{})
+	store.ApplySnapshot(ready.Snapshot)
+	n1.advance(ready)
 
 	// Force set n1 appplied index.
 	n1.raftLog.appliedTo(n1.raftLog.committed)
@@ -3495,10 +3506,31 @@ func TestLeaderTransferAfterSnapshot(t *testing.T) {
 		t.Fatalf("node 1 has match %x for node 3, want %x", lead.prs.Progress[3].Match, 1)
 	}
 
+	filtered := pb.Message{}
+	// Snapshot needs to be applied before sending MsgAppResp
+	nt.msgHook = func(m pb.Message) bool {
+		if m.Type != pb.MsgAppResp || m.From != 3 || m.Reject {
+			return true
+		}
+		filtered = m
+		return false
+	}
 	// Transfer leadership to 3 when node 3 is lack of snapshot.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
-	// Send pb.MsgHeartbeatResp to leader to trigger a snapshot for node 3.
-	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgHeartbeatResp})
+	if lead.state != StateLeader {
+		t.Fatalf("node 1 should still be leader as snapshot is not applied, got %x", lead.state)
+	}
+	if reflect.DeepEqual(filtered, pb.Message{}) {
+		t.Fatalf("Follower should report snapshot progress automatically.")
+	}
+
+	// Apply snapshot and resume progress
+	follower := nt.peers[3].(*raft)
+	ready := newReady(follower, &SoftState{}, pb.HardState{})
+	nt.storage[3].ApplySnapshot(ready.Snapshot)
+	follower.advance(ready)
+	nt.msgHook = nil
+	nt.send(filtered)
 
 	checkLeaderTransferState(t, lead, StateFollower, 3)
 }

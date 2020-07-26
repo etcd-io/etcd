@@ -773,7 +773,7 @@ func (r *raft) hup(t CampaignType) {
 	}
 
 	if !r.promotable() {
-		r.logger.Warningf("%x is unpromotable and can not campaign; ignoring MsgHup", r.id)
+		r.logger.Warningf("%x is unpromotable and can not campaign", r.id)
 		return
 	}
 	ents, err := r.raftLog.slice(r.raftLog.applied+1, r.raftLog.committed+1, noLimit)
@@ -1349,15 +1349,11 @@ func stepFollower(r *raft, m pb.Message) error {
 		m.To = r.lead
 		r.send(m)
 	case pb.MsgTimeoutNow:
-		if r.promotable() {
-			r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
-			// Leadership transfers never use pre-vote even if r.preVote is true; we
-			// know we are not recovering from a partition so there is no need for the
-			// extra round trip.
-			r.hup(campaignTransfer)
-		} else {
-			r.logger.Infof("%x received MsgTimeoutNow from %x but is not promotable", r.id, m.From)
-		}
+		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
+		// Leadership transfers never use pre-vote even if r.preVote is true; we
+		// know we are not recovering from a partition so there is no need for the
+		// extra round trip.
+		r.hup(campaignTransfer)
 	case pb.MsgReadIndex:
 		if r.lead == None {
 			r.logger.Infof("%x no leader at term %d; dropping index reading msg", r.id, r.Term)
@@ -1494,7 +1490,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 // which is true when its own id is in progress list.
 func (r *raft) promotable() bool {
 	pr := r.prs.Progress[r.id]
-	return pr != nil && !pr.IsLearner
+	return pr != nil && !pr.IsLearner && !r.raftLog.hasPendingSnapshot()
 }
 
 func (r *raft) applyConfChange(cc pb.ConfChangeV2) pb.ConfState {

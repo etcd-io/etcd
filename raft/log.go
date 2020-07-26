@@ -167,6 +167,11 @@ func (l *raftLog) hasNextEnts() bool {
 	return l.committed+1 > off
 }
 
+// hasPendingSnapshot returns if there is pending snapshot waiting for applying.
+func (l *raftLog) hasPendingSnapshot() bool {
+	return l.unstable.snapshot != nil && !IsEmptySnap(*l.unstable.snapshot)
+}
+
 func (l *raftLog) snapshot() (pb.Snapshot, error) {
 	if l.unstable.snapshot != nil {
 		return *l.unstable.snapshot, nil
