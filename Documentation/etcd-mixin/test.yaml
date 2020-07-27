@@ -17,16 +17,16 @@ tests:
         alertname: etcdInsufficientMembers
       - eval_time: 5m
         alertname: etcdInsufficientMembers
-      - eval_time: 5m
+      - eval_time: 12m
         alertname: etcdMembersDown
-      - eval_time: 7m
+      - eval_time: 14m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": members are down (1).'
+              message: 'etcd cluster "etcd": members are down (3).'
       - eval_time: 7m
         alertname: etcdInsufficientMembers
       - eval_time: 11m
@@ -49,33 +49,31 @@ tests:
   - interval: 1m
     input_series:
       - series: 'up{job="etcd",instance="10.10.10.0"}'
-        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
       - series: 'up{job="etcd",instance="10.10.10.1"}'
-        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0'
       - series: 'up{job="etcd",instance="10.10.10.2"}'
-        values: '1 1 1 1 0 0 0 0'
+        values: '1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
     alert_rule_test:
-      - eval_time: 10m
+      - eval_time: 14m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": members are down (2).'
+              message: 'etcd cluster "etcd": members are down (3).'
 
   - interval: 1m
     input_series:
       - series: 'up{job="etcd",instance="10.10.10.0"}'
-        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
       - series: 'up{job="etcd",instance="10.10.10.1"}'
-        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
       - series: 'etcd_network_peer_sent_failures_total{To="member-1",job="etcd",endpoint="test"}'
-        values: '0 0 1 2 3 4 5 6 7 8 9 10'
+        values: '0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18'
     alert_rule_test:
-      - eval_time: 4m
-        alertname: etcdMembersDown
-      - eval_time: 6m
+      - eval_time: 13m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
