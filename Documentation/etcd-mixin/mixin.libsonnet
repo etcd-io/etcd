@@ -92,9 +92,9 @@
           {
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) without (grpc_type, grpc_code)
+              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[1m])) without (grpc_type, grpc_code)
                 /
-              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) without (grpc_type, grpc_code)
+              sum(rate(grpc_server_handled_total{%(etcd_selector)s}[1m])) without (grpc_type, grpc_code)
                 > 5
             ||| % $._config,
             'for': '5m',
