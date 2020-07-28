@@ -445,7 +445,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Flusher: w.(http.Flusher),
 		Closer:  c,
 		localID: h.tr.ID,
-		peerID:  h.id,
+		peerID:  from,
 	}
 	p.attachOutgoingConn(conn)
 	<-c.closeNotify()
