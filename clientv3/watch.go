@@ -177,6 +177,8 @@ type watchGrpcStream struct {
 	resumec chan struct{}
 	// closeErr is the error that closed the watch stream
 	closeErr error
+
+	lg *zap.Logger
 }
 
 // watchStreamRequest is a union of the supported watch request operation types
@@ -274,6 +276,7 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
 		errc:       make(chan error, 1),
 		closingc:   make(chan *watcherStream),
 		resumec:    make(chan struct{}),
+		lg:         w.lg,
 	}
 	go wgs.run()
 	return wgs
@@ -617,9 +620,9 @@ func (w *watchGrpcStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				lg.Info("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
+				w.lg.Debug("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
 				if err := wc.Send(req); err != nil {
-					lg.Warning("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
+					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
 				}
 			}
 
@@ -651,9 +654,9 @@ func (w *watchGrpcStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				lg.Info("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
+				w.lg.Debug("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
 				if err := wc.Send(req); err != nil {
-					lg.Warning("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
+					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
 				}
 			}
 			w.closeSubstream(ws)
