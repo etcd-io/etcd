@@ -47,7 +47,7 @@ func (ms *MockServer) ResolverAddress() resolver.Address {
 	}
 }
 
-// MockServers provides a cluster of mocket out gprc servers of the etcdserver interface.
+// MockServers provides a cluster of mocket out grpc servers of the etcdserver interface.
 type MockServers struct {
 	mu      sync.RWMutex
 	Servers []*MockServer

@@ -131,7 +131,7 @@ func testV3CurlWatch(cx ctlCtx) {
 	}
 	// marshaling the grpc to json gives:
 	// "{"RequestUnion":{"CreateRequest":{"key":"Zm9v","start_revision":1}}}"
-	// but the gprc-gateway expects a different format..
+	// but the grpc-gateway expects a different format..
 	wstr := `{"create_request" : ` + string(wreq) + "}"
 	p := cx.apiPrefix
 
