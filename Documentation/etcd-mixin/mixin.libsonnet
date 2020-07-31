@@ -7,6 +7,9 @@
     // instances are deployed on K8s, you will likely want to change
     // this to 'instance, pod'.
     etcd_instance_labels: 'instance',
+    // scrape_interval_seconds is the global scrape interval which can be
+    // used to dynamically adjust rate windows as a function of the interval.
+    scrape_interval_seconds: 30,
   },
 
   prometheusAlerts+:: {
@@ -21,12 +24,12 @@
                 sum without (%(etcd_instance_labels)s) (up{%(etcd_selector)s} == bool 0)
               or
                 count without (To) (
-                  sum without (%(etcd_instance_labels)s) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[1m])) > 0.01
+                  sum without (%(etcd_instance_labels)s) (rate(etcd_network_peer_sent_failures_total{%(etcd_selector)s}[%(network_failure_range)ss])) > 0.01
                 )
               )
               > 0
-            ||| % $._config,
-            'for': '3m',
+            ||| % {etcd_instance_labels: $._config.etcd_instance_labels, etcd_selector: $._config.etcd_selector, network_failure_range: $._config.scrape_interval_seconds*4},
+            'for': '10m',
             labels: {
               severity: 'critical',
             },
