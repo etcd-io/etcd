@@ -337,7 +337,13 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 
 		err = c.getToken(ctx)
 		if err != nil {
+			// TODO: Consider retrying transient errors like:
+			// "error":"rpc error: code = Unavailable desc = etcdserver: leader changed"
+
+			// Ignore rpctypes.ErrAuthNotEnabled error.
 			if toErr(ctx, err) != rpctypes.ErrAuthNotEnabled {
+				// This logic originates from 62d7bae496 and is not clear why we cannot just return err
+				// without looking into parent's context.
 				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
 					err = context.DeadlineExceeded
 				}
