@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // Package expect implements a small expect-style interface
+// TODO(ptab): Consider migration to https://github.com/google/goexpect.
 package expect
 
 import (
