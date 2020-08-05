@@ -31,3 +31,7 @@ As the security issue moves from triage, to identified fix, to release planning 
 ## Public Disclosure Timing
 
 A public disclosure date is negotiated by the etcd Product Security Committee and the bug reporter. We prefer to fully disclose the bug as soon as possible once user mitigation is available. It is reasonable to delay disclosure when the bug or the fix is not yet fully understood, the solution is not well-tested, or for vendor coordination. The timeframe for disclosure is from immediate (especially if it's already publicly known) to a few weeks. As a basic default, we expect report date to disclosure date to be on the order of 7 days. The etcd Product Security Committee holds the final say when setting a disclosure date.
+
+## Security Audit
+
+A third party security audit was performed by Trail of Bits, find the full report [here](SECURITY_AUDIT.pdf).
