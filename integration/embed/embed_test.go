@@ -14,13 +14,15 @@
 
 // +build !cluster_proxy
 
-// TODO: fix race conditions with setupLogging
+// Keep the test in a separate package from other tests such that
+// .setupLogging method does not race with other (previously running) servers (grpclog is global).
 
-package integration
+package embed_test
 
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/c/v3/pkg/transport"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -30,6 +32,15 @@ import (
 
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/embed"
+)
+
+var (
+	testTLSInfo = transport.TLSInfo{
+		KeyFile:        "../fixtures/server.key.insecure",
+		CertFile:       "../fixtures/server.crt",
+		TrustedCAFile:  "../fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
 )
 
 func TestEmbedEtcd(t *testing.T) {
