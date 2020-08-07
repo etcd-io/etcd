@@ -111,10 +111,11 @@ func authSetupRoot(t *testing.T, auth clientv3.Auth) {
 	}
 }
 
+// Client can connect to etcd even if they supply credentials and the server is in AuthDisable mode.
 func TestGetTokenWithoutAuth(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 10})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
@@ -130,7 +131,7 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	// "Username" and "Password" must be used
 	cfg := clientv3.Config{
 		Endpoints:   authapi.Endpoints(),
-		DialTimeout: 1 * time.Second, // make sure all connection time of connect all endpoint must be more DialTimeout
+		DialTimeout: 5 * time.Second,
 		Username:    "root",
 		Password:    "123",
 	}
@@ -142,13 +143,10 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 
 	switch err {
 	case nil:
-		t.Log("passes as expected, but may be connection time less than DialTimeout")
+		t.Log("passes as expected")
 	case context.DeadlineExceeded:
 		t.Errorf("not expected result:%v with endpoint:%s", err, authapi.Endpoints())
-	case rpctypes.ErrAuthNotEnabled:
-		t.Logf("passes as expected:%v", err)
 	default:
 		t.Errorf("other errors:%v", err)
 	}
-
 }
