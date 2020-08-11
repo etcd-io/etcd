@@ -7,7 +7,7 @@ require (
 	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
 	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/creack/pty v1.1.7
+	github.com/creack/pty v1.1.11
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 	github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
