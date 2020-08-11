@@ -55,7 +55,7 @@ func CheckLeakedGoroutine() bool {
 		stackCount[normalized]++
 	}
 
-	fmt.Fprintf(os.Stderr, "Too many goroutines running after all test(s).\n")
+	fmt.Fprintf(os.Stderr, "Unexpected goroutines running after all test(s).\n")
 	for stack, count := range stackCount {
 		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
 	}
@@ -63,6 +63,7 @@ func CheckLeakedGoroutine() bool {
 }
 
 // CheckAfterTest returns an error if AfterTest would fail with an error.
+// Waits for go-routines shutdown for 'd'.
 func CheckAfterTest(d time.Duration) error {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 	if testing.Short() {
