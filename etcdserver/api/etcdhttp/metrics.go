@@ -17,6 +17,7 @@ package etcdhttp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,7 +39,14 @@ const (
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkHealth(lg, srv) }))
+	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkV2Health(lg, srv) }))
+}
+
+// HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
+// and its corresponding timeout.
+func HandleMetricsHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+	mux.Handle(PathMetrics, promhttp.Handler())
+	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkV3Health(lg, srv) }))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
@@ -56,6 +64,13 @@ func NewHealthHandler(lg *zap.Logger, hfunc func() Health) http.HandlerFunc {
 			return
 		}
 		h := hfunc()
+		defer func() {
+			if h.Health == "true" {
+				healthSuccess.Inc()
+			} else {
+				healthFailed.Inc()
+			}
+		}()
 		d, _ := json.Marshal(h)
 		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
@@ -97,17 +112,9 @@ type Health struct {
 
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
 
-func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
+func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) Health {
+	h := Health{}
 	h.Health = "true"
-
-	defer func() {
-		if h.Health == "true" {
-			healthSuccess.Inc()
-		} else {
-			healthFailed.Inc()
-		}
-	}()
-
 	as := srv.Alarms()
 	if len(as) > 0 {
 		h.Health = "false"
@@ -122,25 +129,48 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 			}
 			lg.Warn("serving /health false due to an alarm", zap.String("alarm", v.String()))
 		}
-		return
+		return h
 	}
 
 	if uint64(srv.Leader()) == raft.None {
 		h.Health = "false"
 		h.Reason = "RAFT NO LEADER"
 		lg.Warn("serving /health false; no leader")
+		return h
+	}
+	return h
+}
+
+func checkV2Health(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
+	if h = checkHealth(lg, srv); h.Health != "true" {
 		return
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
 	cancel()
 	if err != nil {
 		h.Health = "false"
-		h.Reason = "QGET ERROR"
+		h.Reason = fmt.Sprintf("QGET ERROR:%s", err)
 		lg.Warn("serving /health false; QGET fails", zap.Error(err))
+		return
 	}
+	lg.Info("serving /health true")
+	return
+}
 
+func checkV3Health(lg *zap.Logger, srv *etcdserver.EtcdServer) (h Health) {
+	if h = checkHealth(lg, srv); h.Health != "true" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
+	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1})
+	cancel()
+	if err != nil {
+		h.Health = "false"
+		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
+		lg.Warn("serving /health false; Range fails", zap.Error(err))
+		return
+	}
 	lg.Info("serving /health true")
 	return
 }
