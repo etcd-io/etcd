@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/v3/clientv3/concurrency"
-	"go.etcd.io/etcd/v3/contrib/recipes"
+	recipe "go.etcd.io/etcd/v3/contrib/recipes"
 )
 
 func TestDoubleBarrier(t *testing.T) {
