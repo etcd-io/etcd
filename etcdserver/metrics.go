@@ -123,6 +123,19 @@ var (
 		Help:      "Server or member ID in hexadecimal format. 1 for 'server_id' label with current ID.",
 	},
 		[]string{"server_id"})
+
+	fdUsed = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "os",
+		Subsystem: "fd",
+		Name:      "used",
+		Help:      "The number of used file descriptors.",
+	})
+	fdLimit = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "os",
+		Subsystem: "fd",
+		Name:      "limit",
+		Help:      "The file descriptor limit.",
+	})
 )
 
 func init() {
@@ -142,6 +155,8 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
+	prometheus.MustRegister(fdUsed)
+	prometheus.MustRegister(fdLimit)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
@@ -152,7 +167,12 @@ func init() {
 }
 
 func monitorFileDescriptor(done <-chan struct{}) {
-	ticker := time.NewTicker(5 * time.Second)
+	// This ticker will check File Descriptor Requirements ,and count all fds in used.
+	// And recorded some logs when in used >= limit/5*4. Just recorded message.
+	// If fds was more than 10K,It's low performance due to FDUsage() works.
+	// So need to increase it.
+	// See https://github.com/etcd-io/etcd/issues/11969 for more detail.
+	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
 		used, err := runtime.FDUsage()
@@ -160,11 +180,13 @@ func monitorFileDescriptor(done <-chan struct{}) {
 			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
 			return
 		}
+		fdUsed.Set(float64(used))
 		limit, err := runtime.FDLimit()
 		if err != nil {
 			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
 			return
 		}
+		fdLimit.Set(float64(limit))
 		if used >= limit/5*4 {
 			plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
 		}
