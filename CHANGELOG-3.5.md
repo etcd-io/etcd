@@ -133,6 +133,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 - Log [expensive request info in UnaryInterceptor](https://github.com/etcd-io/etcd/pull/12086).
 - [Fix invalid Go type in etcdserverpb](https://github.com/etcd-io/etcd/pull/12000).
+- [Improve healthcheck by using v3 range request and its corresponding timeout](https://github.com/etcd-io/etcd/pull/12195).
 
 ### Package `embed`
 
