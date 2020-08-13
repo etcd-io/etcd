@@ -17,10 +17,11 @@ package membership
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/go-semver/semver"
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/coreos/go-semver/semver"
 
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/v3/pkg/mock/mockstore"

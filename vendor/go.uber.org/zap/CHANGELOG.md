@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.15.0 (23 Apr 2020)
+
+Bugfixes:
+* [#804][]: Fix handling of `Time` values out of `UnixNano` range.
+* [#812][]: Fix `IncreaseLevel` being reset after a call to `With`.  
+
+Enhancements:
+* [#806][]: Add `WithCaller` option to supersede the `AddCaller` option. This
+  allows disabling annotation of log entries with caller information if
+  previously enabled with `AddCaller`.
+* [#813][]: Deprecate `NewSampler` constructor in favor of 
+  `NewSamplerWithOptions` which supports a `SamplerHook` option. This option
+   adds support for monitoring sampling decisions through a hook.
+
+Thanks to @danielbprice for their contributions to this release.
+
 ## 1.14.1 (14 Mar 2020)
 
 Bugfixes:
@@ -379,3 +395,7 @@ upgrade to the upcoming stable release.
 [#791]: https://github.com/uber-go/zap/pull/791
 [#795]: https://github.com/uber-go/zap/pull/795
 [#799]: https://github.com/uber-go/zap/pull/799
+[#804]: https://github.com/uber-go/zap/pull/804
+[#812]: https://github.com/uber-go/zap/pull/812
+[#806]: https://github.com/uber-go/zap/pull/806
+[#813]: https://github.com/uber-go/zap/pull/813

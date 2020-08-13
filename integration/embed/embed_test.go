@@ -22,7 +22,6 @@ package embed_test
 import (
 	"context"
 	"fmt"
-	"go.etcd.io/etcd/c/v3/pkg/transport"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,6 +31,7 @@ import (
 
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/pkg/transport"
 )
 
 var (

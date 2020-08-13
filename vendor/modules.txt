@@ -140,7 +140,7 @@ go.etcd.io/bbolt
 go.uber.org/atomic
 # go.uber.org/multierr v1.5.0
 go.uber.org/multierr
-# go.uber.org/zap v1.14.1
+# go.uber.org/zap v1.15.0
 ## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer

@@ -146,6 +146,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
   - Use `embed.Config.LogLevel` instead.
 - Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11147) to allow creating a custom zap logger.
+- Replace [global `*zap.Logger` with etcd server logger object](https://github.com/etcd-io/etcd/pull/12212).
 
 ### Package `clientv3`
 
@@ -211,6 +212,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
+- Upgrade [`go.uber.org/zap`](https://github.com/uber-go/zap/releases) from [**`v1.14.1`**](https://github.com/uber-go/zap/releases/tag/v1.14.1) to [**`v1.15.0`**](https://github.com/uber-go/zap/releases/tag/v1.15.0).
 
 ### Release
 
