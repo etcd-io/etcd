@@ -31,6 +31,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const minWatchProgressInterval = 100 * time.Millisecond
+
 type watchServer struct {
 	lg *zap.Logger
 
@@ -60,6 +62,16 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 	}
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
+	}
+	if s.Cfg.WatchProgressNotifyInterval > 0 {
+		if s.Cfg.WatchProgressNotifyInterval < minWatchProgressInterval {
+			srv.lg.Warn(
+				"adjusting watch progress notify interval to minimum period",
+				zap.Duration("min-watch-progress-notify-interval", minWatchProgressInterval),
+			)
+			s.Cfg.WatchProgressNotifyInterval = minWatchProgressInterval
+		}
+		SetProgressReportInterval(s.Cfg.WatchProgressNotifyInterval)
 	}
 	return srv
 }

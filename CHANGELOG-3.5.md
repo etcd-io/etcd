@@ -136,6 +136,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Log [expensive request info in UnaryInterceptor](https://github.com/etcd-io/etcd/pull/12086).
 - [Fix invalid Go type in etcdserverpb](https://github.com/etcd-io/etcd/pull/12000).
 - [Improve healthcheck by using v3 range request and its corresponding timeout](https://github.com/etcd-io/etcd/pull/12195).
+- Add [`etcd --experimental-watch-progress-notify-interval`](https://github.com/etcd-io/etcd/pull/12216) flag to make watch progress notify interval configurable.
 
 ### Package `runtime`
 
