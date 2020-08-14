@@ -210,6 +210,8 @@ Experimental feature:
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
+  --experimental-watch-progress-notify-interval '10m'
+    Duration of periodical watch progress notification.
 
 Unsafe feature:
   --force-new-cluster 'false'
