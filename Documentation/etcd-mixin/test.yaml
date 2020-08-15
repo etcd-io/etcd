@@ -26,7 +26,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": members are down (3).'
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: 'etcd cluster members are down.'
       - eval_time: 7m
         alertname: etcdInsufficientMembers
       - eval_time: 11m
@@ -36,7 +37,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": insufficient members (1).'
+              description: 'etcd cluster "etcd": insufficient members (1).'
+              summary: 'etcd cluster has insufficient number of members.'
       - eval_time: 15m
         alertname: etcdInsufficientMembers
         exp_alerts:
@@ -44,7 +46,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": insufficient members (0).'
+              description: 'etcd cluster "etcd": insufficient members (0).'
+              summary: 'etcd cluster has insufficient number of members.'
 
   - interval: 1m
     input_series:
@@ -62,7 +65,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": members are down (3).'
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: 'etcd cluster members are down.'
 
   - interval: 1m
     input_series:
@@ -80,7 +84,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              message: 'etcd cluster "etcd": members are down (1).'
+              description: 'etcd cluster "etcd": members are down (1).'
+              summary: 'etcd cluster members are down.'
   - interval: 1m
     input_series:
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
@@ -97,7 +102,8 @@ tests:
               job: etcd
               severity: warning
             exp_annotations:
-              message: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              description: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              summary: 'etcd cluster has high number of leader changes.'
   - interval: 1m
     input_series:
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
