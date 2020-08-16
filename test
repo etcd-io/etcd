@@ -179,8 +179,7 @@ function integration_pass {
 			INTEGTESTPKG=("${REPO_PATH}/integration"
 						  "${REPO_PATH}/client/integration"
 						  "${REPO_PATH}/clientv3/integration"
-						  "${REPO_PATH}/contrib/raftexample"
-						  "${REPO_PATH}/store")
+						  "${REPO_PATH}/contrib/raftexample")
 		else
 			INTEGTESTPKG=("${TEST[@]}")
 		fi
