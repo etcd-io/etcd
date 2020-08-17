@@ -156,6 +156,9 @@ func (rc *perRPCCredential) GetRequestMetadata(ctx context.Context, s ...string)
 	rc.authTokenMu.RLock()
 	authToken := rc.authToken
 	rc.authTokenMu.RUnlock()
+	if authToken == "" {
+		return nil, nil
+	}
 	return map[string]string{rpctypes.TokenFieldNameGRPC: authToken}, nil
 }
 
