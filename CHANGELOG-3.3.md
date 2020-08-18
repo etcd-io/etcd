@@ -18,6 +18,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) an
 - Fix [`int64` convert panic in raft logger](https://github.com/etcd-io/etcd/pull/12106).
   - Fix [kubernetes/kubernetes#91937](https://github.com/kubernetes/kubernetes/issues/91937).
 
+### Package `runtime`
+
+- Optimize [`runtime.FDUsage` by removing unnecessary sorting](https://github.com/etcd-io/etcd/pull/12214).
+
+### Metrics, Monitoring
+
+- Add [`os_fd_used` and `os_fd_limit` to monitor current OS file descriptors](https://github.com/etcd-io/etcd/pull/12214).
+
 ### Go
 
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
