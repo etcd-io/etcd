@@ -151,6 +151,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Package `clientv3`
 
+- Remove [excessive watch cancel logging messages](https://github.com/etcd-io/etcd/pull/12187).
+  - See [kubernetes/kubernetes#93450](https://github.com/kubernetes/kubernetes/issues/93450).
 - Add [`TryLock`](https://github.com/etcd-io/etcd/pull/11104) method to `clientv3/concurrency/Mutex`. A non-blocking method on `Mutex` which does not wait to get lock on the Mutex, returns immediately if Mutex is locked by another session.
 - Fix [client balancer failover against multiple endpoints](https://github.com/etcd-io/etcd/pull/11184).
   - Fix [`"kube-apiserver: failover on multi-member etcd cluster fails certificate check on DNS mismatch"`](https://github.com/kubernetes/kubernetes/issues/83028).
@@ -221,8 +223,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Go
 
-- Require [*Go 1.14+*](https://github.com/etcd-io/etcd/pull/11110).
-- Compile with [*Go 1.14*](https://golang.org/doc/devel/release.html#go1.14)
+- Require [*Go 1.15+*](https://github.com/etcd-io/etcd/pull/11110).
+- Compile with [*Go 1.15*](https://golang.org/doc/devel/release.html#go1.15)
 
 ### Project Governance
 
