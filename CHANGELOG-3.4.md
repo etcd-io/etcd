@@ -6,6 +6,23 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
 
+<hr>
+
+
+## [v3.4.12](https://github.com/etcd-io/etcd/releases/tag/v3.4.12) (2020-08-19)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.11...v3.4.12) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+### etcd server
+
+- Fix [server panic in slow writes warnings](https://github.com/etcd-io/etcd/issues/12197).
+  - Fixed via [PR#12238](https://github.com/etcd-io/etcd/pull/12238).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
 
 <hr>
 
