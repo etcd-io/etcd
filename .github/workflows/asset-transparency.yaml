@@ -1,0 +1,18 @@
+name: Publish Release Assets to Asset Transparency Log
+
+on:
+  release:
+    types: [published, created, edited, released]
+
+jobs:
+  github_release_asset_transparency_log_publish_job:
+    runs-on: ubuntu-latest
+    name: Publish GitHub release asset digests to https://beta-asset.transparencylog.net
+    steps:
+    - name: Gather URLs from GitHub release and publish
+      id: asset-transparency
+      uses: transparencylog/github-releases-asset-transparency-verify-action@v11
+    - name: List verified and published URLs
+      run: echo "Verified URLs ${{ steps.asset-transparency.outputs.verified }}"
+    - name: List failed URLs
+      run: echo "Failed URLs ${{ steps.asset-transparency.outputs.failed }}"
