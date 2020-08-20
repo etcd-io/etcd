@@ -20,6 +20,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -45,7 +47,11 @@ func TouchDirAll(dir string) error {
 	if Exist(dir) {
 		err := CheckDirPermission(dir, PrivateDirMode)
 		if err != nil {
-			return err
+			lg, _ := zap.NewProduction()
+			if lg == nil {
+				lg = zap.NewExample()
+			}
+			lg.Warn("check file permission", zap.Error(err))
 		}
 	} else {
 		err := os.MkdirAll(dir, PrivateDirMode)
@@ -124,7 +130,7 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	}
 	dirMode := dirInfo.Mode().Perm()
 	if dirMode != perm {
-		err = fmt.Errorf("directory %q,%q exist without desired file permission %q.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
+		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
 		return err
 	}
 	return nil
