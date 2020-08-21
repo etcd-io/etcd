@@ -33,13 +33,12 @@ func FDUsage() (uint64, error) {
 }
 
 // countFiles reads the directory named by dirname and returns the count.
-// This is same as stdlib "io/ioutil.ReadDir" but without sorting.
 func countFiles(dirname string) (uint64, error) {
 	f, err := os.Open(dirname)
 	if err != nil {
 		return 0, err
 	}
-	list, err := f.Readdir(-1)
+	list, err := f.Readdirnames(-1)
 	f.Close()
 	if err != nil {
 		return 0, err
