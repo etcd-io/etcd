@@ -734,7 +734,7 @@ func (s *EtcdServer) start() {
 	s.applyWait = wait.NewTimeList()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
-	s.stopping = make(chan struct{})
+	s.stopping = make(chan struct{}, 1)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
