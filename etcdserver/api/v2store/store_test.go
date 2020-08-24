@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//+build !v2v3
+
 package v2store_test
 
 import (
@@ -19,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 type StoreCloser interface {

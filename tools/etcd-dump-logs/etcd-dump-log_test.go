@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/v3/auth/authpb"
-	"go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/c/v3/auth/authpb"
+	"go.etcd.io/etcd/c/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/wal"

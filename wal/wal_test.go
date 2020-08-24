@@ -27,7 +27,7 @@ import (
 	"regexp"
 	"testing"
 
-	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/wal/walpb"

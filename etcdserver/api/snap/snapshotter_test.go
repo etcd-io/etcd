@@ -16,6 +16,7 @@ package snap
 
 import (
 	"fmt"
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/wal/walpb"
 	"go.uber.org/zap"

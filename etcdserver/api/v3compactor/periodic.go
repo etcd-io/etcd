@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/c/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/mvcc"
 
 	"github.com/jonboulle/clockwork"

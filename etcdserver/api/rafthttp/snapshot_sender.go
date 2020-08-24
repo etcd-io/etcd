@@ -22,10 +22,10 @@ import (
 	"net/http"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/pkg/types"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/v3/pkg/httputil"
 	pioutil "go.etcd.io/etcd/v3/pkg/ioutil"
-	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/dustin/go-humanize"

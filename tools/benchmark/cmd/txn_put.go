@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	v3 "go.etcd.io/etcd/v3/clientv3"
+	v3 "go.etcd.io/etcd/c/v3/clientv3"
 	"go.etcd.io/etcd/v3/pkg/report"
 
 	"github.com/spf13/cobra"

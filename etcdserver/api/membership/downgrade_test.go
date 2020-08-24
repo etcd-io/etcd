@@ -17,16 +17,15 @@ package membership
 import (
 	"bytes"
 	"fmt"
+	"github.com/coreos/go-semver/semver"
+	"go.etcd.io/etcd/c/v3/version"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
-
-	"github.com/coreos/go-semver/semver"
-	"go.etcd.io/etcd/v3/version"
-	"go.uber.org/zap"
 )
 
 func TestMustDetectDowngrade(t *testing.T) {

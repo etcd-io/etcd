@@ -17,7 +17,7 @@ package grpcproxy
 import (
 	"context"
 
-	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/c/v3/clientv3"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
 )
 

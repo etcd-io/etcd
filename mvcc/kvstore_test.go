@@ -29,11 +29,11 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/c/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 	"go.etcd.io/etcd/v3/pkg/schedule"
-	"go.etcd.io/etcd/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"

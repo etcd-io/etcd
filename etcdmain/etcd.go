@@ -26,15 +26,15 @@ import (
 	"strings"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
+	"go.etcd.io/etcd/c/v3/pkg/transport"
+	"go.etcd.io/etcd/c/v3/pkg/types"
 	"go.etcd.io/etcd/v3/embed"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2discovery"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
 	pkgioutil "go.etcd.io/etcd/v3/pkg/ioutil"
 	"go.etcd.io/etcd/v3/pkg/osutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
-	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/proxy/httpproxy"
 
 	"go.uber.org/zap"

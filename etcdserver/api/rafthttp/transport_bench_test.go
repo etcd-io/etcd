@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/pkg/types"
 	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 

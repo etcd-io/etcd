@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"

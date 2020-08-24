@@ -23,10 +23,10 @@ import (
 	"regexp"
 	"time"
 
+	"go.etcd.io/etcd/c/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/c/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/idutil"
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/raft/raftpb"

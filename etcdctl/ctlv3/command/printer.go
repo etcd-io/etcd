@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	v3 "go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	v3 "go.etcd.io/etcd/c/v3/clientv3"
+	pb "go.etcd.io/etcd/c/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/etcdctl/ctlv3/command/snapshot"
 
 	"github.com/dustin/go-humanize"
 )

@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/concurrency"
+	"go.etcd.io/etcd/c/v3/clientv3"
+	"go.etcd.io/etcd/c/v3/clientv3/concurrency"
 	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
 )
 

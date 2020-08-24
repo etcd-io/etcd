@@ -18,9 +18,9 @@ package v3rpc
 import (
 	"context"
 
+	"go.etcd.io/etcd/c/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/c/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/etcdserver"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/adt"
 )
 
