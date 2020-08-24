@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logutil
+package raft_test
 
 import (
 	"bytes"
@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/c/v3/pkg/logutil"
+	lograft "go.etcd.io/etcd/v3/pkg/logutil/raft"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -40,11 +43,11 @@ func TestNewRaftLogger(t *testing.T) {
 			Thereafter: 100,
 		},
 		Encoding:         "json",
-		EncoderConfig:    DefaultZapLoggerConfig.EncoderConfig,
+		EncoderConfig:    logutil.DefaultZapLoggerConfig.EncoderConfig,
 		OutputPaths:      []string{logPath},
 		ErrorOutputPaths: []string{logPath},
 	}
-	gl, err := NewRaftLogger(lcfg)
+	gl, err := lograft.NewRaftLogger(lcfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +69,7 @@ func TestNewRaftLogger(t *testing.T) {
 	if !bytes.Contains(data, []byte("etcd-logutil-2")) {
 		t.Fatalf("can't find data in log %q", string(data))
 	}
-	if !bytes.Contains(data, []byte("logutil/zap_raft_test.go:")) {
+	if !bytes.Contains(data, []byte("raft/zap_raft_test.go:")) {
 		t.Fatalf("unexpected caller; %q", string(data))
 	}
 }
@@ -80,7 +83,7 @@ func TestNewRaftLoggerFromZapCore(t *testing.T) {
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)
 
-	lg := NewRaftLoggerFromZapCore(cr, syncer)
+	lg := lograft.NewRaftLoggerFromZapCore(cr, syncer)
 	lg.Info("TestNewRaftLoggerFromZapCore")
 	txt := buf.String()
 	if !strings.Contains(txt, "TestNewRaftLoggerFromZapCore") {
