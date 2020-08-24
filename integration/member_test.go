@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/v3/client"
-	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/c/v3/client"
+	"go.etcd.io/etcd/c/v3/pkg/testutil"
 )
 
 func TestPauseMember(t *testing.T) {

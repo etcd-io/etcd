@@ -19,8 +19,8 @@ package integration
 import (
 	"sync"
 
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/namespace"
+	"go.etcd.io/etcd/c/v3/clientv3"
+	"go.etcd.io/etcd/c/v3/clientv3/namespace"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
 
