@@ -9,6 +9,15 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
+## v3.3.25 (2020 TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+
+### Security
+
+- A [log warning](https://github.com/etcd-io/etcd/pull/12242) is added when etcd use any existing directory that has a permission different than 700 on Linux and 777 on Windows.
+
+
 ## [v3.3.24](https://github.com/etcd-io/etcd/releases/tag/v3.3.24) (2020-08-18)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
