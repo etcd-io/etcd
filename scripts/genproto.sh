@@ -10,13 +10,13 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
 	exit 255
 fi
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.7.1" ]]; then
-	echo "could not find protoc 3.7.1, is it installed + in PATH?"
-	exit 255
-fi
+#if [[ $(protoc --version | cut -f2 -d' ') != "3.7.1" ]]; then
+#	echo "could not find protoc 3.7.1, is it installed + in PATH?"
+#	exit 255
+#fi
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb ./etcdserver/api/membership/membershippb"
+DIRS="./wal/walpb ./c/etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./c/mvcc/mvccpb ./lease/leasepb ./c/auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb ./c/etcdserver/api/membership/membershippb"
 
 # disable go mod - this is for the go get/install invocations
 export GO111MODULE=off
@@ -51,23 +51,28 @@ ln -s "${PWD}" "${ETCD_ROOT}"
 
 # Ensure we have the right version of protoc-gen-gogo by building it every time.
 # TODO(jonboulle): vendor this instead of `go get`ting it.
+echo "Downloading github.com/gogo/protobuf/..."
 go get -u github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
+echo "Downloading golang.org/x/tools/cmd/goimports"
 go get -u golang.org/x/tools/cmd/goimports
 pushd "${GOGOPROTO_ROOT}"
 	git reset --hard "${GOGO_PROTO_SHA}"
 	make install
 popd
 
-# generate gateway code
+echo Generating gateway code
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 pushd "${GRPC_GATEWAY_ROOT}"
 	git reset --hard "${GRPC_GATEWAY_SHA}"
 	go install ./protoc-gen-grpc-gateway
 popd
+echo Generated gateway code
+
 
 for dir in ${DIRS}; do
 	pushd "${dir}"
+		echo "Generating grpc files in: ${dir}"
 		protoc --gofast_out=plugins=grpc,import_prefix=go.etcd.io/:. -I=".:${GOGOPROTO_PATH}:${ETCD_IO_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/go\.etcd\.io\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
@@ -83,6 +88,8 @@ for dir in ${DIRS}; do
 		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E "s/go.etcd.io\/etcd\//go.etcd.io\/etcd\/v3\//" ./*.pb.go
+		# shellcheck disable=SC1117
+		sed -i.bak -E "s/go.etcd.io\/etcd\/v3\/c\//go.etcd.io\/etcd\/c\/v3\//" ./*.pb.go
 		rm -f ./*.bak
 		gofmt -s -w ./*.pb.go
 		goimports -w ./*.pb.go
@@ -91,8 +98,8 @@ done
 
 # remove old swagger files so it's obvious whether the files fail to generate
 rm -rf Documentation/dev-guide/apispec/swagger/*json
-for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionpb/v3election; do
-	protobase="etcdserver/${pb}"
+for protobase in c/etcdserver/etcdserverpb/rpc etcdserver/api/v3lock/v3lockpb/v3lock etcdserver/api/v3election/v3electionpb/v3election; do
+	echo "Generating from '${protobase}'"
 	protoc -I. \
 	    -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
 	    -I"${GOGOPROTO_PATH}" \
@@ -116,12 +123,14 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/v3/${pkgpath}\"|" ${gwfile}
 	# shellcheck disable=SC1117
 	sed -i.bak -E "s/go.etcd.io\etcd\//go.etcd.io\/etcd\/v3/" ${gwfile}
+	# shellcheck disable=SC1117
+	sed -i.bak -E "s/go.etcd.io\/etcd\/v3\/c\//go.etcd.io\/etcd\/c\/v3\//" ${gwfile}
 	mkdir -p  "${pkgpath}"/gw/
 	go fmt ${gwfile}
 	mv ${gwfile} "${pkgpath}/gw/"
-	rm -f ./etcdserver/${pb}*.bak
-	swaggerName=$(basename ${pb})
-	mv	Documentation/dev-guide/apispec/swagger/etcdserver/${pb}.swagger.json \
+	rm -f ./${protobase}*.bak
+	swaggerName=$(basename ${protobase})
+	mv	Documentation/dev-guide/apispec/swagger/${protobase}.swagger.json \
 		Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/
@@ -151,13 +160,13 @@ if [ "$1" != "--skip-protodoc" ]; then
 		echo "protodoc is updated"
 	popd
 
-	protodoc --directories="etcdserver/etcdserverpb=service_message,mvcc/mvccpb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
+	protodoc --directories="c/etcdserver/etcdserverpb=service_message,c/mvcc/mvccpb=service_message,lease/leasepb=service_message,c/auth/authpb=service_message" \
 		--title="etcd API Reference" \
 		--output="Documentation/dev-guide/api_reference_v3.md" \
-		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto" \
+		--message-only-from-this-file="c/etcdserver/etcdserverpb/rpc.proto" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."
 
-	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,mvcc/mvccpb=service_message" \
+	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,c/mvcc/mvccpb=service_message" \
 		--title="etcd concurrency API Reference" \
 		--output="Documentation/dev-guide/api_concurrency_reference_v3.md" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."
