@@ -230,13 +230,14 @@ func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *se
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
+// In this patched etcd, we set maximum cluster version to be 1 minor version higher to support downgrade.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(lg, cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))
 	maxV = &semver.Version{
 		Major: maxV.Major,
-		Minor: maxV.Minor,
+		Minor: maxV.Minor + 1,
 	}
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }

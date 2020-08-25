@@ -2559,9 +2559,13 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		// update cluster version only if the decided version is greater than
-		// the current cluster version
-		if v != nil && s.cluster.Version().LessThan(*v) {
+		// Cluster version is updated in two conditions:
+		// 1. When the decided version is greater than the current cluster version. This could happen at the beginning
+		//    when some of the members are not up yet, cluster version were set to MinClusterVersion, then when all
+		//    the members are up, the decided version is higher
+		// 2. When the decided version is 1 minor version lower than the current cluster version.This could happen
+		//    during downgrade, when one member has a lower version (1 minor version lower)
+		if v != nil && membership.IsVersionChangable(s.cluster.Version(), v) {
 			s.goAttach(func() { s.updateClusterVersion(v.String()) })
 		}
 	}
