@@ -192,6 +192,9 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 	}
 	for i := 0; i < len(t.steps); i++ {
 		step := t.steps[i]
+		if step.isSubTraceStart || step.isSubTraceEnd {
+			continue
+		}
 		stepDuration := step.time.Sub(lastStepTime)
 		if stepDuration > threshold {
 			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
