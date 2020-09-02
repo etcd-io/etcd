@@ -174,6 +174,20 @@
             },
           },
           {
+            alert: 'etcdHighFsyncDurations',
+            expr: |||
+              histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{%(etcd_selector)s}[5m]))
+              > 1
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              message: 'etcd cluster "{{ $labels.job }}": 99th percentile fync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.',
+            },
+          },
+          {
             alert: 'etcdHighCommitDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket{%(etcd_selector)s}[5m]))
