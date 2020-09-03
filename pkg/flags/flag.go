@@ -81,8 +81,7 @@ func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 			continue
 		}
 		if alreadySet[kv[0]] {
-			// TODO: exit with error in v3.4
-			plog.Warningf("recognized environment variable %s, but unused: shadowed by corresponding flag", kv[0])
+			plog.Infof("recognized environment variable %s overriden by commandline", kv[0])
 			continue
 		}
 		if strings.HasPrefix(env, prefix+"_") {
