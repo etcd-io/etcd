@@ -82,11 +82,10 @@ func verifyEnv(lg *zap.Logger, prefix string, usedEnvKey, alreadySet map[string]
 		}
 		if alreadySet[kv[0]] {
 			if lg != nil {
-				lg.Fatal(
-					"conflicting environment variable is shadowed by corresponding command-line flag (either unset environment variable or disable flag))",
-					zap.String("environment-variable", kv[0]),
-				)
+				// TODO: exit with error in v3.4
+				lg.Warningf("recognized environment variable %s, but unused: shadowed by corresponding flag", zap.String("environment-variable", kv[0]))
 			}
+			continue
 		}
 		if strings.HasPrefix(env, prefix+"_") {
 			if lg != nil {
