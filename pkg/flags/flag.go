@@ -82,8 +82,7 @@ func verifyEnv(lg *zap.Logger, prefix string, usedEnvKey, alreadySet map[string]
 		}
 		if alreadySet[kv[0]] {
 			if lg != nil {
-				// TODO: exit with error in v3.4
-				lg.Warningf("recognized environment variable %s, but unused: shadowed by corresponding flag", zap.String("environment-variable", kv[0]))
+				lg.Info("recognized environment variable %s overriden by commandline", zap.String("environment-variable", kv[0]))
 			}
 			continue
 		}
