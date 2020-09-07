@@ -437,7 +437,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 			return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		})
 		if hasNonEmptyCN {
-			return nil, fmt.Errorf("cert has non empty Common Name (%s)", cn)
+			return nil, fmt.Errorf("cert has non empty Common Name (%s): %s", cn, info.CertFile)
 		}
 	}
 
