@@ -40,7 +40,6 @@ func TestCtlV3AuthMemberRemove(t *testing.T) {
 	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
 }
 func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
-func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
 func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
@@ -65,15 +64,9 @@ func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
 func TestCtlV3AuthEndpointHealth(t *testing.T) {
 	testCtl(t, authTestEndpointHealth, withQuorum())
 }
-func TestCtlV3AuthSnapshot(t *testing.T)    { testCtl(t, authTestSnapshot) }
-func TestCtlV3AuthSnapshotJWT(t *testing.T) { testCtl(t, authTestSnapshot, withCfg(configJWT)) }
-func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsername, withCfg(configClientTLSCertAuth))
-}
-func TestCtlV3AuthJWTExpire(t *testing.T) { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
-func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(configClientTLSCertAuth))
-}
+func TestCtlV3AuthSnapshot(t *testing.T)            { testCtl(t, authTestSnapshot) }
+func TestCtlV3AuthSnapshotJWT(t *testing.T)         { testCtl(t, authTestSnapshot, withCfg(configJWT)) }
+func TestCtlV3AuthJWTExpire(t *testing.T)           { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
 func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
 
 func authEnableTest(cx ctlCtx) {

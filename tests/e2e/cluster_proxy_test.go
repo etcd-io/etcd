@@ -204,7 +204,8 @@ func (v2p *proxyV2Proc) Start() error {
 	if err := v2p.start(); err != nil {
 		return err
 	}
-	return v2p.waitReady("httpproxy: endpoints found")
+	// "caller":"httpproxy/director.go:65","msg":"endpoints found","endpoints":["http://localhost:20000"]}
+	return v2p.waitReady("endpoints found")
 }
 
 func (v2p *proxyV2Proc) Restart() error {
@@ -245,13 +246,13 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 	for i := 0; i < len(cfg.tlsArgs); i++ {
 		switch cfg.tlsArgs[i] {
 		case "--cert-file":
-			tlsArgs = append(tlsArgs, "--cert", cfg.tlsArgs[i+1], "--cert-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--cert-file", cfg.tlsArgs[i+1])
 			i++
 		case "--key-file":
-			tlsArgs = append(tlsArgs, "--key", cfg.tlsArgs[i+1], "--key-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--key-file", cfg.tlsArgs[i+1])
 			i++
 		case "--trusted-ca-file":
-			tlsArgs = append(tlsArgs, "--cacert", cfg.tlsArgs[i+1], "--trusted-ca-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--trusted-ca-file", cfg.tlsArgs[i+1])
 			i++
 		case "--auto-tls":
 			tlsArgs = append(tlsArgs, "--auto-tls", "--insecure-skip-tls-verify")
@@ -261,6 +262,14 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		default:
 			tlsArgs = append(tlsArgs, cfg.tlsArgs[i])
 		}
+
+		// Configure certificates for connection proxy ---> server.
+		// This certificate must NOT have CN set.
+		tlsArgs = append(tlsArgs,
+			"--cert", "../../integration/fixtures/client-nocn.crt",
+			"--key", "../../integration/fixtures/client-nocn.key.insecure",
+			"--cacert", "../../integration/fixtures/ca.crt",
+			"--client-crl-file", "../../integration/fixtures/revoke.crl")
 	}
 	return &proxyV3Proc{
 		proxyProc{
