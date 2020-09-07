@@ -83,7 +83,19 @@ func NewMaintenance(c *Client) Maintenance {
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to dial endpoint %s with maintenance client: %v", endpoint, err)
 			}
-			cancel := func() { conn.Close() }
+
+			//get token with established connection
+			dctx := c.ctx
+			cancel := func() {}
+			if c.cfg.DialTimeout > 0 {
+				dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
+			}
+			err = c.getToken(dctx)
+			cancel()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to getToken from endpoint %s with maintenance client: %v", endpoint, err)
+			}
+			cancel = func() { conn.Close() }
 			return RetryMaintenanceClient(c, conn), cancel, nil
 		},
 		remote: RetryMaintenanceClient(c, c.conn),
