@@ -27,6 +27,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const throughProxy = true
+
 var (
 	pmu     sync.Mutex
 	proxies map[*clientv3.Client]grpcClientProxy = make(map[*clientv3.Client]grpcClientProxy)

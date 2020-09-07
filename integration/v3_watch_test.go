@@ -1241,8 +1241,16 @@ func TestV3WatchCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if minWatches != "1" {
-		t.Fatalf("expected one watch, got %s", minWatches)
+	var expected string
+	if throughProxy {
+		// grpc proxy has additional 2 watches open
+		expected = "3"
+	} else {
+		expected = "1"
+	}
+
+	if minWatches != expected {
+		t.Fatalf("expected %s watch, got %s", expected, minWatches)
 	}
 }
 
@@ -1270,7 +1278,15 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if minWatches != "0" {
-		t.Fatalf("expected zero watches, got %s", minWatches)
+	var expected string
+	if throughProxy {
+		// grpc proxy has additional 2 watches open
+		expected = "2"
+	} else {
+		expected = "0"
+	}
+
+	if minWatches != expected {
+		t.Fatalf("expected %s watch, got %s", expected, minWatches)
 	}
 }
