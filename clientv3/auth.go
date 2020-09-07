@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/auth/authpb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -55,6 +56,9 @@ const (
 type UserAddOptions authpb.UserAddOptions
 
 type Auth interface {
+	// Authenticate login and get token
+	Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error)
+
 	// AuthEnable enables auth of an etcd cluster.
 	AuthEnable(ctx context.Context) (*AuthEnableResponse, error)
 
@@ -115,6 +119,19 @@ func NewAuth(c *Client) Auth {
 		api.callOpts = c.callOpts
 	}
 	return api
+}
+
+func NewAuthFromAuthClient(remote pb.AuthClient, c *Client) Auth {
+	api := &authClient{remote: remote}
+	if c != nil {
+		api.callOpts = c.callOpts
+	}
+	return api
+}
+
+func (auth *authClient) Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
+	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password}, auth.callOpts...)
+	return (*AuthenticateResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *authClient) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
@@ -208,35 +225,4 @@ func StrToPermissionType(s string) (PermissionType, error) {
 		return PermissionType(val), nil
 	}
 	return PermissionType(-1), fmt.Errorf("invalid permission type: %s", s)
-}
-
-type authenticator struct {
-	conn     *grpc.ClientConn // conn in-use
-	remote   pb.AuthClient
-	callOpts []grpc.CallOption
-}
-
-func (auth *authenticator) authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
-	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password}, auth.callOpts...)
-	return (*AuthenticateResponse)(resp), toErr(ctx, err)
-}
-
-func (auth *authenticator) close() {
-	auth.conn.Close()
-}
-
-func newAuthenticator(ctx context.Context, target string, opts []grpc.DialOption, c *Client) (*authenticator, error) {
-	conn, err := grpc.DialContext(ctx, target, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	api := &authenticator{
-		conn:   conn,
-		remote: pb.NewAuthClient(conn),
-	}
-	if c != nil {
-		api.callOpts = c.callOpts
-	}
-	return api, nil
 }
