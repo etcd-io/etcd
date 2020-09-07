@@ -324,7 +324,6 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 		cfg.MaxCallRecvMsgSize = grpcMaxCallRecvMsgSize
 	}
 
-	lg.Info("grpcProxyCA for connections to etcd-server")
 	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey, true)
 	if tls == nil && grpcProxyInsecureSkipTLSVerify {
 		tls = &transport.TLSInfo{}

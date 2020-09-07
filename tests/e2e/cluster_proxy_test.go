@@ -204,6 +204,7 @@ func (v2p *proxyV2Proc) Start() error {
 	if err := v2p.start(); err != nil {
 		return err
 	}
+	// The full line we are expecting in the logs:
 	// "caller":"httpproxy/director.go:65","msg":"endpoints found","endpoints":["http://localhost:20000"]}
 	return v2p.waitReady("endpoints found")
 }
