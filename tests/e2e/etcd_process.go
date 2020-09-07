@@ -70,7 +70,7 @@ type etcdServerProcessConfig struct {
 
 func newEtcdServerProcess(cfg *etcdServerProcessConfig) (*etcdServerProcess, error) {
 	if !fileutil.Exist(cfg.execPath) {
-		return nil, fmt.Errorf("could not find etcd binary")
+		return nil, fmt.Errorf("could not find etcd binary: %s", cfg.execPath)
 	}
 	if !cfg.keepDataDir {
 		if err := os.RemoveAll(cfg.dataDirPath); err != nil {
@@ -117,7 +117,7 @@ func (ep *etcdServerProcess) Stop() (err error) {
 	ep.donec = make(chan struct{})
 	if ep.cfg.purl.Scheme == "unix" || ep.cfg.purl.Scheme == "unixs" {
 		err = os.Remove(ep.cfg.purl.Host + ep.cfg.purl.Path)
-		if err != nil {
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}

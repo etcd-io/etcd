@@ -15,15 +15,52 @@
 package main
 
 import (
+	"log"
 	"os"
 	"strings"
 	"testing"
 )
 
-func TestMain(t *testing.T) {
+func SplitTestArgs(args []string) (testArgs, appArgs []string) {
+	for i, arg := range os.Args {
+		switch {
+		case strings.HasPrefix(arg, "-test."):
+			testArgs = append(testArgs, arg)
+		case i == 0:
+			appArgs = append(appArgs, arg)
+			testArgs = append(testArgs, arg)
+		default:
+			appArgs = append(appArgs, arg)
+		}
+	}
+	return
+}
+
+// Empty test to avoid no-tests warning.
+func TestEmpty(t *testing.T) {}
+
+/**
+ * The purpose of this "test" is to run etcdctl with code-coverage
+ * collection turned on. The technique is documented here:
+ *
+ * https://www.cyphar.com/blog/post/20170412-golang-integration-coverage
+ */
+func TestMain(m *testing.M) {
 	// don't launch etcdctl when invoked via go test
 	if strings.HasSuffix(os.Args[0], "etcdctl.test") {
 		return
 	}
-	main()
+
+	testArgs, appArgs := SplitTestArgs(os.Args)
+
+	os.Args = appArgs
+
+	err := mainWithError()
+	if err != nil {
+		log.Fatalf("etcdctl failed with: %v", err)
+	}
+
+	// This will generate coverage files:
+	os.Args = testArgs
+	m.Run()
 }

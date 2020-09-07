@@ -49,13 +49,13 @@ var (
 	dirEmpty  = dirType("empty")
 )
 
-func startEtcdOrProxyV2() {
+func startEtcdOrProxyV2(args []string) {
 	grpc.EnableTracing = false
 
 	cfg := newConfig()
 	defaultInitialCluster := cfg.ec.InitialCluster
 
-	err := cfg.parse(os.Args[1:])
+	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
 	if lg == nil {
 		var zapError error
@@ -66,6 +66,7 @@ func startEtcdOrProxyV2() {
 			os.Exit(1)
 		}
 	}
+	lg.Info("Running: ", zap.Strings("args", args))
 	if err != nil {
 		lg.Warn("failed to verify flags", zap.Error(err))
 		switch err {

@@ -95,6 +95,19 @@ func init() {
 	)
 }
 
+func StartWithError() error {
+	rootCmd.SetUsageFunc(usageFunc)
+	// Make help just show the usage
+	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
+	return rootCmd.Execute()
+}
+
+func Start() {
+	if err := StartWithError(); err != nil {
+		command.ExitWithError(command.ExitError, err)
+	}
+}
+
 func init() {
 	cobra.EnablePrefixMatching = true
 }

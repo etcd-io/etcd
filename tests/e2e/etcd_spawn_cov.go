@@ -18,73 +18,44 @@ package e2e
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
 	"go.etcd.io/etcd/v3/pkg/expect"
 	"go.etcd.io/etcd/v3/pkg/fileutil"
-	"go.etcd.io/etcd/v3/pkg/flags"
 )
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	if args[0] == binPath {
-		return spawnEtcd(args)
-	}
-	if args[0] == ctlBinPath || args[0] == ctlBinPath+"3" {
-		// avoid test flag conflicts in coverage enabled etcdctl by putting flags in ETCDCTL_ARGS
-		env := []string{
-			// was \xff, but that's used for testing boundary conditions; 0xe7cd should be safe
-			"ETCDCTL_ARGS=" + strings.Join(args, "\xe7\xcd"),
-		}
-		if args[0] == ctlBinPath+"3" {
-			env = append(env, "ETCDCTL_API=3")
-		}
-
-		covArgs, err := getCovArgs()
-		if err != nil {
-			return nil, err
-		}
-		// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
-		// they must be included in ctl_cov_env.
-		env = append(env, os.Environ()...)
-		ep, err := expect.NewExpectWithEnv(binDir+"/etcdctl_test", covArgs, env)
-		if err != nil {
-			return nil, err
-		}
-		ep.StopSignal = syscall.SIGTERM
-		return ep, nil
+	cmd := args[0]
+	env := make([]string, 0)
+	switch cmd {
+	case binPath:
+		cmd = "../../bin/etcd_test"
+	case ctlBinPath:
+		cmd = "../../bin/etcdctl_test"
+	case ctlBinPath + "3":
+		cmd = "../../bin/etcdctl_test"
+		env = append(env, "ETCDCTL_API=3")
 	}
 
-	return expect.NewExpect(args[0], args[1:]...)
-}
-
-func spawnEtcd(args []string) (*expect.ExpectProcess, error) {
 	covArgs, err := getCovArgs()
 	if err != nil {
 		return nil, err
 	}
-
-	var env []string
-	if args[1] == "grpc-proxy" {
-		// avoid test flag conflicts in coverage enabled etcd by putting flags in ETCDCOV_ARGS
-		env = append(os.Environ(), "ETCDCOV_ARGS="+strings.Join(args, "\xe7\xcd"))
-	} else {
-		env = args2env(args[1:])
-	}
-
-	ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, env)
+	// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
+	// they must be included in ctl_cov_env.
+	env = append(env, os.Environ()...)
+	all_args := append(args[1:], covArgs...)
+	log.Printf("Executing %v %v", cmd, all_args)
+	ep, err := expect.NewExpectWithEnv(cmd, all_args, env)
 	if err != nil {
 		return nil, err
 	}
-	// ep sends SIGTERM to etcd_test process on ep.close()
-	// allowing the process to exit gracefully in order to generate a coverage report.
-	// note: go runtime ignores SIGINT but not SIGTERM
-	// if e2e test is run as a background process.
 	ep.StopSignal = syscall.SIGTERM
 	return ep, nil
 }
@@ -104,30 +75,4 @@ func getCovArgs() ([]string, error) {
 		"-test.outputdir=" + coverPath,
 	}
 	return covArgs, nil
-}
-
-func args2env(args []string) []string {
-	var covEnvs []string
-	for i := range args {
-		if !strings.HasPrefix(args[i], "--") {
-			continue
-		}
-		flag := strings.Split(args[i], "--")[1]
-		val := "true"
-		// split the flag that has "="
-		// e.g --auto-tls=true" => flag=auto-tls and val=true
-		if strings.Contains(args[i], "=") {
-			split := strings.Split(flag, "=")
-			flag = split[0]
-			val = split[1]
-		}
-
-		if i+1 < len(args) {
-			if !strings.HasPrefix(args[i+1], "--") {
-				val = args[i+1]
-			}
-		}
-		covEnvs = append(covEnvs, flags.FlagToEnv("ETCD", flag)+"="+val)
-	}
-	return covEnvs
 }

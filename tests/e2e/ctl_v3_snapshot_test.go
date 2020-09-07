@@ -155,7 +155,6 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 // syncs up with other members and serve correct data.
 func TestIssue6361(t *testing.T) {
 	defer testutil.AfterTest(t)
-	mustEtcdctl(t)
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
