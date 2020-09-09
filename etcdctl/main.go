@@ -39,11 +39,11 @@ func mainWithError() error {
 	os.Unsetenv(apiEnv)
 
 	if len(apiv) == 0 || apiv == "3" {
-		return ctlv3.StartWithError()
+		return ctlv3.Start()
 	}
 
 	if apiv == "2" {
-		return ctlv2.StartWithError()
+		return ctlv2.Start()
 	}
 
 	fmt.Fprintf(os.Stderr, "unsupported API version: %s\n", apiv)
@@ -56,12 +56,12 @@ func main() {
 	// unset apiEnv to avoid side-effect for future env and flag parsing.
 	os.Unsetenv(apiEnv)
 	if len(apiv) == 0 || apiv == "3" {
-		ctlv3.Start()
+		ctlv3.MustStart()
 		return
 	}
 
 	if apiv == "2" {
-		ctlv2.Start()
+		ctlv2.MustStart()
 		return
 	}
 

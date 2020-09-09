@@ -26,7 +26,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func StartWithError() error {
+func Start() error {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
@@ -75,8 +75,8 @@ func StartWithError() error {
 	return app.Run(os.Args)
 }
 
-func Start() {
-	err := StartWithError()
+func MustStart() {
+	err := Start()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
