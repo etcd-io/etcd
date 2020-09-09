@@ -26,7 +26,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func Start() {
+func Start() error {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
@@ -72,8 +72,11 @@ func Start() {
 		command.NewRoleCommands(),
 		command.NewAuthCommands(),
 	}
+	return app.Run(os.Args)
+}
 
-	err := runCtlV2(app)
+func MustStart() {
+	err := Start()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

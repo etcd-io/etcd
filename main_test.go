@@ -15,25 +15,54 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"testing"
+
+	"go.etcd.io/etcd/v3/etcdmain"
 )
 
-func TestMain(t *testing.T) {
+func SplitTestArgs(args []string) (testArgs, appArgs []string) {
+	for i, arg := range os.Args {
+		switch {
+		case strings.HasPrefix(arg, "-test."):
+			testArgs = append(testArgs, arg)
+		case i == 0:
+			appArgs = append(appArgs, arg)
+			testArgs = append(testArgs, arg)
+		default:
+			appArgs = append(appArgs, arg)
+		}
+	}
+	return
+}
+
+func TestEmpty(t *testing.T) {}
+
+/**
+ * The purpose of this "test" is to run etcd server with code-coverage
+ * collection turned on. The technique is documented here:
+ *
+ * https://www.cyphar.com/blog/post/20170412-golang-integration-coverage
+ */
+func TestMain(m *testing.M) {
 	// don't launch etcd server when invoked via go test
-	// Note: module name has /v3 now
-	if strings.HasSuffix(os.Args[0], "v3.test") {
-		t.Skip("skip launching etcd server when invoked via go test")
+	if strings.HasSuffix(os.Args[0], ".test") {
+		log.Printf("skip launching etcd server when invoked via go test")
+		return
 	}
-	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-test.") {
-		t.Skip("skip launching etcd server when invoked via go test")
-	}
+
+	testArgs, appArgs := SplitTestArgs(os.Args)
 
 	notifier := make(chan os.Signal, 1)
 	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
-	go main()
+	go etcdmain.Main(appArgs)
 	<-notifier
+
+	// This will generate coverage files:
+	os.Args = testArgs
+	m.Run()
 }

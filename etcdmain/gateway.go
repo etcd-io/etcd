@@ -99,6 +99,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	// We use os.Args to show all the arguments (not only passed-through Cobra).
+	lg.Info("Running: ", zap.Strings("args", os.Args))
+
 	srvs := discoverEndpoints(lg, gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery, gatewayDNSClusterServiceName)
 	if len(srvs.Endpoints) == 0 {
 		// no endpoints discovered, fall back to provided endpoints

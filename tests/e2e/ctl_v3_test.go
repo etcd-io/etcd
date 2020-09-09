@@ -205,7 +205,6 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	}
 	ret.applyOpts(opts)
 
-	mustEtcdctl(t)
 	if !ret.quorum {
 		ret.cfg = *configStandalone(ret.cfg)
 	}

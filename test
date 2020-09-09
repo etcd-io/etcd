@@ -304,6 +304,9 @@ function cov_pass {
 	# strip out generated files (using GNU-style sed)
 	sed --in-place '/generated.go/d' "$COVERDIR"/cover.out || true
 
+	echo -e "\nTo generate coverage report use:"
+	echo -e "  go tool cover --html=$COVERDIR/cover.out\n"
+
 	# held failures to generate the full coverage file, now fail
 	if [ -n "$failed" ]; then
 		for f in $failed; do
@@ -665,6 +668,7 @@ function build_cov_pass {
 	out="bin"
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
 	go test -mod=mod -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcd_test"
+
 	go test -mod=mod -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
 
