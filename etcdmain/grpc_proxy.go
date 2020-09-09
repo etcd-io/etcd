@@ -181,7 +181,11 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 	grpclog.SetLoggerV2(gl)
 
-	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey)
+	// The proxy itself (ListenCert) can have not-empty CN.
+	// The empty CN is required for grpcProxyCert.
+	// Please see https://github.com/etcd-io/etcd/issues/11970#issuecomment-687875315  for more context.
+	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey, false)
+
 	if tlsinfo == nil && grpcProxyListenAutoTLS {
 		host := []string{"https://" + grpcProxyListenAddr}
 		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
@@ -320,7 +324,7 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 		cfg.MaxCallRecvMsgSize = grpcMaxCallRecvMsgSize
 	}
 
-	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey)
+	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey, true)
 	if tls == nil && grpcProxyInsecureSkipTLSVerify {
 		tls = &transport.TLSInfo{}
 	}
@@ -339,11 +343,11 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	return &cfg, nil
 }
 
-func newTLS(ca, cert, key string) *transport.TLSInfo {
+func newTLS(ca, cert, key string, requireEmptyCN bool) *transport.TLSInfo {
 	if ca == "" && cert == "" && key == "" {
 		return nil
 	}
-	return &transport.TLSInfo{TrustedCAFile: ca, CertFile: cert, KeyFile: key, EmptyCN: true}
+	return &transport.TLSInfo{TrustedCAFile: ca, CertFile: cert, KeyFile: key, EmptyCN: requireEmptyCN}
 }
 
 func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
