@@ -23,11 +23,9 @@ clean:
 	rm -f ./*.coverprofile
 	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
-	rm -rf ./bin/*.etcd
+	rm -rf ./bin/etcd*
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
-	rm -rf ./gopath
-	rm -rf ./gopath.proto
 	rm -rf ./release
 	rm -f ./snapshot/localhost:*
 	rm -f ./tools/etcd-dump-metrics/localhost:*
