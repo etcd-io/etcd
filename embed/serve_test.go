@@ -15,7 +15,9 @@
 package embed
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"testing"
 
@@ -25,14 +27,38 @@ import (
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
 func TestStartEtcdWrongToken(t *testing.T) {
 	tdir, err := ioutil.TempDir(os.TempDir(), "token-test")
+
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tdir)
+
 	cfg := NewConfig()
+
+	// Similar to function in integration/embed/embed_test.go for setting up Config.
+	urls := newEmbedURLs(2)
+	curls := []url.URL{urls[0]}
+	purls := []url.URL{urls[1]}
+	cfg.LCUrls, cfg.ACUrls = curls, curls
+	cfg.LPUrls, cfg.APUrls = purls, purls
+	cfg.InitialCluster = ""
+	for i := range purls {
+		cfg.InitialCluster += ",default=" + purls[i].String()
+	}
+	cfg.InitialCluster = cfg.InitialCluster[1:]
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
+
 	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}
+}
+
+func newEmbedURLs(n int) (urls []url.URL) {
+	scheme := "unix"
+	for i := 0; i < n; i++ {
+		u, _ := url.Parse(fmt.Sprintf("%s://localhost:%d%06d", scheme, os.Getpid(), i))
+		urls = append(urls, *u)
+	}
+	return urls
 }
