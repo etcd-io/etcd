@@ -582,6 +582,30 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	}
 }
 
+func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
+	progressInterval := 200 * time.Millisecond
+	clus := integration.NewClusterV3(t,
+		&integration.ClusterConfig{
+			Size:                        3,
+			WatchProgressNotifyInterval: progressInterval,
+		})
+	defer clus.Terminate(t)
+
+	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
+	rch := clus.RandClient().Watch(context.Background(), "foo", opts...)
+
+	timeout := 1 * time.Second // we expect to receive watch progress notify in 2 * progressInterval,
+	// but for CPU-starved situation it may take longer. So we use 1 second here for timeout.
+	select {
+	case resp := <-rch: // waiting for a watch progress notify response
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected resp.IsProgressNotify() == true")
+		}
+	case <-time.After(timeout):
+		t.Fatalf("timed out waiting for watch progress notify response in %v", timeout)
+	}
+}
+
 func TestWatchRequestProgress(t *testing.T) {
 	testCases := []struct {
 		name     string
