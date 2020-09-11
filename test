@@ -393,6 +393,8 @@ function shellcheck_pass {
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
+  else
+    echo "Shellcheck not found !!! Check: https://github.com/koalaman/shellcheck#installing"
 	fi
 }
 
@@ -627,6 +629,7 @@ function fmt_pass {
 			license_header \
 			receiver_name \
 			commit_title \
+			mod_tidy \
 			; do
 		echo "'$p' started at $(date)"
 		"${p}"_pass "$@"
@@ -682,6 +685,38 @@ function build_pass {
 	echo "Checking build..."
 	GO_BUILD_FLAGS="-v" etcd_build
 	GO_BUILD_FLAGS="-v" tools_build
+}
+
+function mod_tidy_pass {
+	# Watch for upstream solution: https://github.com/golang/go/issues/27005
+	local tmpModDir
+	tmpModDir=$(mktemp -d --suffix "etcd-mod")
+  cp "./go.mod" "./go.sum" "${tmpModDir}"
+
+  go mod tidy
+
+  set +e
+  local tmpFileGoModInSync
+  diff -C 5 "${tmpModDir}/go.mod" "./go.mod"
+  tmpFileGoModInSync="$?"
+
+  local tmpFileGoSumInSync
+  diff -C 5 "${tmpModDir}/go.sum" "./go.sum"
+  tmpFileGoSumInSync="$?"
+  set -e
+
+  # Bring back initial state
+  mv "${tmpModDir}/go.mod" "./go.mod"
+  mv "${tmpModDir}/go.sum" "./go.sum"
+
+  if [ "${tmpFileGoModInSync}" -ne 0 ]; then
+		echo "./go.mod is not in sync with 'go mod tidy'"
+		exit 255
+	fi
+	if [ "${tmpFileGoSumInSync}" -ne 0 ]; then
+		echo "./go.sum is not in sync with 'go mod tidy'"
+		exit 255
+	fi
 }
 
 for pass in $PASSES; do
