@@ -68,7 +68,7 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 		dialTimeout: 7 * time.Second,
 	}
 
-	mirrorepc, err := newEtcdProcessCluster(&mirrorctx.cfg)
+	mirrorepc, err := newEtcdProcessCluster(cx.t, &mirrorctx.cfg)
 	if err != nil {
 		cx.t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

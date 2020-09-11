@@ -31,6 +31,7 @@ import (
 
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/pkg/transport"
 )
 
@@ -44,6 +45,8 @@ var (
 )
 
 func TestEmbedEtcd(t *testing.T) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
 	tests := []struct {
 		cfg embed.Config
 
@@ -128,6 +131,8 @@ func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop
 // testEmbedEtcdGracefulStop ensures embedded server stops
 // cutting existing transports.
 func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
 	cfg := embed.NewConfig()
 	if secure {
 		cfg.ClientTLSInfo = testTLSInfo

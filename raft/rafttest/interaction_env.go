@@ -28,7 +28,7 @@ type InteractionOpts struct {
 	OnConfig func(*raft.Config)
 }
 
-// A Node is a member of a raft group tested via an InteractionEnv.
+// Node is a member of a raft group tested via an InteractionEnv.
 type Node struct {
 	*raft.RawNode
 	Storage

@@ -38,7 +38,7 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 	cfg = configStandalone(*cfg)
 
 	cfg.enableV2 = true
-	epc, err := newEtcdProcessCluster(cfg)
+	epc, err := newEtcdProcessCluster(t, cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

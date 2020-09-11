@@ -158,7 +158,7 @@ func TestIssue6361(t *testing.T) {
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
-	epc, err := newEtcdProcessCluster(&etcdProcessClusterConfig{
+	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
 		clusterSize:  1,
 		initialToken: "new",
 		keepDataDir:  true,
