@@ -82,11 +82,16 @@ func (r *RecorderBuffered) Chan() <-chan Action {
 
 // RecorderStream writes all Actions to an unbuffered channel
 type recorderStream struct {
-	ch chan Action
+	ch          chan Action
+	waitTimeout time.Duration
 }
 
 func NewRecorderStream() Recorder {
-	return &recorderStream{ch: make(chan Action)}
+	return NewRecorderStreamWithWaitTimout(time.Duration(5 * time.Second))
+}
+
+func NewRecorderStreamWithWaitTimout(waitTimeout time.Duration) Recorder {
+	return &recorderStream{ch: make(chan Action), waitTimeout: waitTimeout}
 }
 
 func (r *recorderStream) Record(a Action) {
@@ -110,7 +115,7 @@ func (r *recorderStream) Chan() <-chan Action {
 
 func (r *recorderStream) Wait(n int) ([]Action, error) {
 	acts := make([]Action, n)
-	timeoutC := time.After(5 * time.Second)
+	timeoutC := time.After(r.waitTimeout)
 	for i := 0; i < n; i++ {
 		select {
 		case acts[i] = <-r.ch:
