@@ -1,5 +1,14 @@
 [
 	{
+		"project": "github.com/antonmedv/expr",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/beorn7/perks/quantile",
 		"licenses": [
 			{
