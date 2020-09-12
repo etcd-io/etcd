@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.etcd.io/etcd/qos/qospb"
+	"go.etcd.io/etcd/v3/qos/qospb"
 	"go.uber.org/zap"
 )
 

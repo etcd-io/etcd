@@ -17,8 +17,8 @@ package v3rpc
 import (
 	"context"
 
-	"go.etcd.io/etcd/etcdserver"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/etcdserver"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 type QoSServer struct {
@@ -53,7 +53,6 @@ func (as *QoSServer) QoSRuleAdd(ctx context.Context, r *pb.QoSRuleAddRequest) (*
 	return resp, nil
 }
 
-
 func (as *QoSServer) QoSRuleGet(ctx context.Context, r *pb.QoSRuleGetRequest) (*pb.QoSRuleGetResponse, error) {
 	resp, err := as.qos.QoSRuleGet(ctx, r)
 	if err != nil {
@@ -62,7 +61,6 @@ func (as *QoSServer) QoSRuleGet(ctx context.Context, r *pb.QoSRuleGetRequest) (*
 	return resp, nil
 }
 
-
 func (as *QoSServer) QoSRuleUpdate(ctx context.Context, r *pb.QoSRuleUpdateRequest) (*pb.QoSRuleUpdateResponse, error) {
 	resp, err := as.qos.QoSRuleUpdate(ctx, r)
 	if err != nil {
@@ -70,7 +68,6 @@ func (as *QoSServer) QoSRuleUpdate(ctx context.Context, r *pb.QoSRuleUpdateReque
 	}
 	return resp, nil
 }
-
 
 func (as *QoSServer) QoSRuleDelete(ctx context.Context, r *pb.QoSRuleDeleteRequest) (*pb.QoSRuleDeleteResponse, error) {
 	resp, err := as.qos.QoSRuleDelete(ctx, r)
