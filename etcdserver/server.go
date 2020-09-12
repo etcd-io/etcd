@@ -60,6 +60,7 @@ import (
 	"go.etcd.io/etcd/v3/pkg/traceutil"
 	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/pkg/wait"
+	"go.etcd.io/etcd/v3/qos"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/version"
@@ -246,6 +247,7 @@ type EtcdServer struct {
 	bemu       sync.Mutex
 	be         backend.Backend
 	authStore  auth.AuthStore
+	qosStore   qos.QoSStore
 	alarmStore *v3alarm.AlarmStore
 
 	stats  *stats.ServerStats
@@ -556,6 +558,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	srv.authStore = auth.NewAuthStore(srv.getLogger(), srv.be, srv.consistIndex, tp, int(cfg.BcryptCost))
+	srv.qosStore = qos.NewQoSStore(srv.getLogger(), srv.be, srv.consistIndex)
 
 	newSrv := srv // since srv == nil in defer if srv is returned as nil
 	defer func() {
@@ -2355,6 +2358,8 @@ func (s *EtcdServer) Backend() backend.Backend {
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
+
+func (s *EtcdServer) QoSStore() qos.QoSStore { return s.qosStore }
 
 func (s *EtcdServer) restoreAlarms() error {
 	s.applyV3 = s.newApplierV3()

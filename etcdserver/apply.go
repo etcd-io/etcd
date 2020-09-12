@@ -94,6 +94,14 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
+
+	QoSEnable(*pb.QoSEnableRequest) (*pb.QoSEnableResponse, error)
+	QoSDisable(*pb.QoSDisableRequest) (*pb.QoSDisableResponse, error)
+	QoSRuleAdd(*pb.QoSRuleAddRequest) (*pb.QoSRuleAddResponse, error)
+	QoSRuleGet(*pb.QoSRuleGetRequest) (*pb.QoSRuleGetResponse, error)
+	QoSRuleDelete(*pb.QoSRuleDeleteRequest) (*pb.QoSRuleDeleteResponse, error)
+	QoSRuleUpdate(*pb.QoSRuleUpdateRequest) (*pb.QoSRuleUpdateResponse, error)
+	QoSRuleList(*pb.QoSRuleListRequest) (*pb.QoSRuleListResponse, error)
 }
 
 type checkReqFunc func(mvcc.ReadView, *pb.RequestOp) error
@@ -198,6 +206,20 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
 	case r.DowngradeInfoSet != nil:
 		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
+	case r.QosEnable != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSEnable(r.QosEnable)
+	case r.QosDisable != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSDisable(r.QosDisable)
+	case r.QosRuleAdd != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSRuleAdd(r.QosRuleAdd)
+	case r.QosRuleGet != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSRuleGet(r.QosRuleGet)
+	case r.QosRuleList != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSRuleList(r.QosRuleList)
+	case r.QosRuleUpdate != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSRuleUpdate(r.QosRuleUpdate)
+	case r.QosRuleDelete != nil:
+		ar.resp, ar.err = a.s.applyV3.QoSRuleDelete(r.QosRuleDelete)
 	default:
 		panic("not implemented")
 	}
@@ -1094,4 +1116,60 @@ func newHeader(s *EtcdServer) *pb.ResponseHeader {
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
 	}
+}
+
+func (a *applierV3backend) QoSEnable(r *pb.QoSEnableRequest) (*pb.QoSEnableResponse, error) {
+	err := a.s.QoSStore().QoSEnable(r)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.QoSEnableResponse{Header: newHeader(a.s)}, nil
+}
+
+func (a *applierV3backend) QoSDisable(r *pb.QoSDisableRequest) (*pb.QoSDisableResponse, error) {
+	err := a.s.QoSStore().QoSDisable(r)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.QoSDisableResponse{Header: newHeader(a.s)}, nil
+}
+
+func (a *applierV3backend) QoSRuleAdd(r *pb.QoSRuleAddRequest) (*pb.QoSRuleAddResponse, error) {
+	resp, err := a.s.QoSStore().QoSRuleAdd(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) QoSRuleUpdate(r *pb.QoSRuleUpdateRequest) (*pb.QoSRuleUpdateResponse, error) {
+	resp, err := a.s.QoSStore().QoSRuleUpdate(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) QoSRuleDelete(r *pb.QoSRuleDeleteRequest) (*pb.QoSRuleDeleteResponse, error) {
+	resp, err := a.s.QoSStore().QoSRuleDelete(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) QoSRuleGet(r *pb.QoSRuleGetRequest) (*pb.QoSRuleGetResponse, error) {
+	resp, err := a.s.QoSStore().QoSRuleGet(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) QoSRuleList(r *pb.QoSRuleListRequest) (*pb.QoSRuleListResponse, error) {
+	resp, err := a.s.QoSStore().QoSRuleList(r)
+	if resp != nil {
+		resp.Header = newHeader(a.s)
+	}
+	return resp, err
 }
