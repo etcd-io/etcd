@@ -3,6 +3,7 @@ module go.etcd.io/etcd/v3
 go 1.14
 
 require (
+	github.com/antonmedv/expr v1.8.9
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
 	github.com/coreos/go-semver v0.2.0
@@ -26,7 +27,6 @@ require (
 	github.com/json-iterator/go v1.1.7
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
-	github.com/mattn/go-runewidth v0.0.2 // indirect
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
 	github.com/prometheus/client_golang v1.0.0

@@ -224,3 +224,8 @@ func Poll(fds []PollFd, timeout int) (n int, err error) {
 	}
 	return poll(&fds[0], len(fds), timeout)
 }
+
+func InotifyInit() (fd int, err error) {
+        return InotifyInit1(0)
+}
+
