@@ -385,6 +385,67 @@ service Auth {
   }
 }
 
+
+service QoS {
+
+  // QoSEnable enables qos.
+  rpc QoSEnable(QoSEnableRequest) returns (QoSEnableResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/enable"
+        body: "*"
+    };
+  }
+
+  // QoSDisable disables qos.
+  rpc QoSDisable(QoSDisableRequest) returns (QoSDisableResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/disable"
+        body: "*"
+    };
+  }
+
+  // QoSRuleAdd adds a qos rule into the cluster.
+  rpc QoSRuleAdd (QoSRuleAddRequest) returns (QoSRuleAddResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/rule/add"
+        body: "*"
+    };
+  }
+
+  // QoSRuleGet get a qos rule into the cluster.
+  rpc QoSRuleGet (QoSRuleGetRequest) returns (QoSRuleGetResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/rule/get"
+        body: "*"
+    };
+  }
+
+  // QoSRuleDelete deletes a qos rule from the cluster.
+  rpc QoSRuleDelete(QoSRuleDeleteRequest) returns (QoSRuleDeleteResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/rule/delete"
+        body: "*"
+    };
+  }
+
+  // QoSRuleUpdate updates a qos rule into the cluster.
+  rpc QoSRuleUpdate(QoSRuleUpdateRequest) returns (QoSRuleUpdateResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/rule/update"
+        body: "*"
+    };
+  }
+
+  // QoSRuleList lists all qos rule from the cluster.
+  rpc QoSRuleList(QoSRuleListRequest) returns (QoSRuleListResponse) {
+    option (google.api.http) = {
+        post: "/v3/qos/rule/list"
+        body: "*"
+    };
+  }
+
+}
+
 message ResponseHeader {
   // cluster_id is the ID of the cluster which sent the response.
   uint64 cluster_id = 1;
@@ -1194,4 +1255,59 @@ message AuthRoleGrantPermissionResponse {
 
 message AuthRoleRevokePermissionResponse {
   ResponseHeader header = 1;
+}
+
+message QoSEnableRequest {
+}
+
+message QoSDisableRequest {
+}
+
+message QoSEnableResponse {
+  ResponseHeader header = 1;
+}
+
+message QoSDisableResponse {
+  ResponseHeader header = 1;
+}
+
+message QoSRuleAddRequest {
+  qospb.QoSRule qos_rule = 1;
+}
+
+message QoSRuleAddResponse {
+  ResponseHeader header = 1;
+}
+
+message QoSRuleDeleteRequest {
+  string rule_name = 1;
+}
+
+message QoSRuleDeleteResponse {
+  ResponseHeader header = 1;
+}
+
+message QoSRuleGetRequest {
+  string rule_name = 1;
+}
+
+message QoSRuleGetResponse {
+  ResponseHeader header = 1;
+  qospb.QoSRule qos_rule = 2;
+}
+
+message QoSRuleUpdateRequest {
+  qospb.QoSRule qos_rule = 1;
+}
+
+message QoSRuleUpdateResponse {
+  ResponseHeader header = 1;
+}
+
+message QoSRuleListRequest {
+}
+
+message QoSRuleListResponse {
+  ResponseHeader header = 1;
+  repeated qospb.QoSRule qos_rules = 2;
 }

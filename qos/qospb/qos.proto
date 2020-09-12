@@ -1,0 +1,27 @@
+syntax = "proto3";
+package qospb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_enum_prefix_all) = false;
+
+
+message Subject {
+  string name = 1;
+  string prefix = 2;
+}
+
+message QoSRule {
+  string rule_name = 1;
+  string rule_type = 2;
+  Subject subject = 3;
+  uint64 qps = 4;
+  uint64 threshold = 5;
+  string condition = 6;
+  uint64 priority = 7;
+  string ratelimiter = 8;
+}
