@@ -304,3 +304,42 @@ func (rac *retryAuthClient) RoleRevokePermission(ctx context.Context, in *pb.Aut
 func (rac *retryAuthClient) Authenticate(ctx context.Context, in *pb.AuthenticateRequest, opts ...grpc.CallOption) (resp *pb.AuthenticateResponse, err error) {
 	return rac.ac.Authenticate(ctx, in, opts...)
 }
+
+type retryQoSClient struct {
+	qos pb.QoSClient
+}
+
+// RetryQoSClient implements a QoSClient.
+func RetryQoSClient(c *Client) pb.QoSClient {
+	return &retryQoSClient{
+		qos: pb.NewQoSClient(c.conn),
+	}
+}
+
+func (rqs *retryQoSClient) QoSEnable(ctx context.Context, in *pb.QoSEnableRequest, opts ...grpc.CallOption) (resp *pb.QoSEnableResponse, err error) {
+	return rqs.qos.QoSEnable(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSDisable(ctx context.Context, in *pb.QoSDisableRequest, opts ...grpc.CallOption) (resp *pb.QoSDisableResponse, err error) {
+	return rqs.qos.QoSDisable(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSRuleAdd(ctx context.Context, in *pb.QoSRuleAddRequest, opts ...grpc.CallOption) (resp *pb.QoSRuleAddResponse, err error) {
+	return rqs.qos.QoSRuleAdd(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSRuleGet(ctx context.Context, in *pb.QoSRuleGetRequest, opts ...grpc.CallOption) (resp *pb.QoSRuleGetResponse, err error) {
+	return rqs.qos.QoSRuleGet(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSRuleUpdate(ctx context.Context, in *pb.QoSRuleUpdateRequest, opts ...grpc.CallOption) (resp *pb.QoSRuleUpdateResponse, err error) {
+	return rqs.qos.QoSRuleUpdate(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSRuleDelete(ctx context.Context, in *pb.QoSRuleDeleteRequest, opts ...grpc.CallOption) (resp *pb.QoSRuleDeleteResponse, err error) {
+	return rqs.qos.QoSRuleDelete(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rqs *retryQoSClient) QoSRuleList(ctx context.Context, in *pb.QoSRuleListRequest, opts ...grpc.CallOption) (resp *pb.QoSRuleListResponse, err error) {
+	return rqs.qos.QoSRuleList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}

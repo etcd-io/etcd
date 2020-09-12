@@ -76,6 +76,7 @@ type Client struct {
 	Watcher
 	Auth
 	Maintenance
+	QoS
 
 	conn *grpc.ClientConn
 
@@ -495,6 +496,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
+	client.QoS = NewQoS(client)
 
 	if cfg.RejectOldCluster {
 		if err := client.checkVersion(); err != nil {
