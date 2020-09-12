@@ -69,6 +69,14 @@ type printer interface {
 	UserDelete(user string, r v3.AuthUserDeleteResponse)
 
 	AuthStatus(r v3.AuthStatusResponse)
+
+	QoSEnable(r v3.QoSEnableResponse)
+	QoSDisable(r v3.QoSDisableResponse)
+	QoSRuleAdd(r v3.QoSRuleAddResponse)
+	QoSRuleUpdate(r v3.QoSRuleUpdateResponse)
+	QoSRuleGet(r v3.QoSRuleGetResponse)
+	QoSRuleDelete(r v3.QoSRuleDeleteResponse)
+	QoSRuleList(r v3.QoSRuleListResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {

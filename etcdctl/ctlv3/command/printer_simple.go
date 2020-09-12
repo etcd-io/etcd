@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/v3/clientv3/snapshot"
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/qos/qospb"
 )
 
 type simplePrinter struct {
@@ -289,4 +290,47 @@ func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
 func (s *simplePrinter) AuthStatus(r v3.AuthStatusResponse) {
 	fmt.Println("Authentication Status:", r.Enabled)
 	fmt.Println("AuthRevision:", r.AuthRevision)
+}
+
+func (s *simplePrinter) QoSEnable(r v3.QoSEnableResponse) {
+	fmt.Println("qos enabled")
+}
+
+func (s *simplePrinter) QoSDisable(r v3.QoSDisableResponse) {
+	fmt.Println("qos disabled")
+}
+
+func (s *simplePrinter) QoSRuleAdd(r v3.QoSRuleAddResponse) {
+	fmt.Println("qos rule added")
+}
+
+func (s *simplePrinter) QoSRuleGet(r v3.QoSRuleGetResponse) {
+	s.printQoSRule(r.QosRule)
+}
+
+func (s *simplePrinter) printQoSRule(r *qospb.QoSRule) {
+	fmt.Printf("name:%s\n", r.RuleName)
+	fmt.Printf("subject name:%s\n", r.Subject.Name)
+	fmt.Printf("subject prefix:%s\n", r.Subject.Prefix)
+	fmt.Printf("rule type:%s\n", r.RuleType)
+	fmt.Printf("qps:%d\n", r.Qps)
+	fmt.Printf("ratelimiter:%s\n", r.Ratelimiter)
+	fmt.Printf("priority:%d\n", r.Priority)
+	fmt.Printf("threshold:%d\n", r.Threshold)
+	fmt.Printf("condition:%s\n", r.Condition)
+	fmt.Println("---------------------------")
+}
+
+func (s *simplePrinter) QoSRuleUpdate(r v3.QoSRuleUpdateResponse) {
+	fmt.Println("qos rule updated")
+}
+
+func (s *simplePrinter) QoSRuleDelete(r v3.QoSRuleDeleteResponse) {
+	fmt.Println("qos rule deleted")
+}
+
+func (s *simplePrinter) QoSRuleList(r v3.QoSRuleListResponse) {
+	for _, rule := range r.QosRules {
+		s.printQoSRule(rule)
+	}
 }
