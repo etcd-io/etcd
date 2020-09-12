@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"
 	"go.etcd.io/etcd/v3/pkg/traceutil"
+	"go.etcd.io/etcd/v3/qos"
 	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/gogo/protobuf/proto"
@@ -114,7 +115,12 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
 	ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
-
+	object := &qos.RequestContext{GRPCMethod: "Range", Key: string(r.Key)}
+	if !s.qosStore.GetToken(object) {
+		s.lg.Warn("failed to Range due to rate limit", zap.String("key", string(r.Key)))
+		return nil, qos.ErrQoSRateExceeded
+	}
+	defer s.qosStore.PutToken(object)
 	var resp *pb.RangeResponse
 	var err error
 	defer func(start time.Time) {
