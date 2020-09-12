@@ -90,6 +90,23 @@ type Authenticator interface {
 	RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 }
 
+type QoS interface {
+	// QoSEnable enables qos.
+	QoSEnable(context.Context, *pb.QoSEnableRequest) (*pb.QoSEnableResponse, error)
+	// QoSDisable disables qos.
+	QoSDisable(context.Context, *pb.QoSDisableRequest) (*pb.QoSDisableResponse, error)
+	// QoSRuleAdd adds a qos rule into the cluster.
+	QoSRuleAdd(context.Context, *pb.QoSRuleAddRequest) (*pb.QoSRuleAddResponse, error)
+	// QoSRuleGet get a qos rule into the cluster.
+	QoSRuleGet(context.Context, *pb.QoSRuleGetRequest) (*pb.QoSRuleGetResponse, error)
+	// QoSRuleDelete deletes a qos rule from the cluster.
+	QoSRuleDelete(context.Context, *pb.QoSRuleDeleteRequest) (*pb.QoSRuleDeleteResponse, error)
+	// QoSRuleUpdate updates a qos rule into the cluster.
+	QoSRuleUpdate(context.Context, *pb.QoSRuleUpdateRequest) (*pb.QoSRuleUpdateResponse, error)
+	// QoSRuleList lists all qos rule from the cluster.
+	QoSRuleList(context.Context, *pb.QoSRuleListRequest) (*pb.QoSRuleListResponse, error)
+}
+
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	trace := traceutil.New("range",
 		s.getLogger(),
@@ -916,4 +933,60 @@ func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse
 	}
 	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
 	return &resp, nil
+}
+
+func (s *EtcdServer) QoSEnable(ctx context.Context, r *pb.QoSEnableRequest) (*pb.QoSEnableResponse, error) {
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{QosEnable: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSEnableResponse), nil
+}
+
+func (s *EtcdServer) QoSDisable(ctx context.Context, r *pb.QoSDisableRequest) (*pb.QoSDisableResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosDisable: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSDisableResponse), nil
+}
+
+func (s *EtcdServer) QoSRuleAdd(ctx context.Context, r *pb.QoSRuleAddRequest) (*pb.QoSRuleAddResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosRuleAdd: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSRuleAddResponse), nil
+}
+
+func (s *EtcdServer) QoSRuleGet(ctx context.Context, r *pb.QoSRuleGetRequest) (*pb.QoSRuleGetResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosRuleGet: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSRuleGetResponse), nil
+}
+
+func (s *EtcdServer) QoSRuleDelete(ctx context.Context, r *pb.QoSRuleDeleteRequest) (*pb.QoSRuleDeleteResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosRuleDelete: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSRuleDeleteResponse), nil
+}
+
+func (s *EtcdServer) QoSRuleUpdate(ctx context.Context, r *pb.QoSRuleUpdateRequest) (*pb.QoSRuleUpdateResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosRuleUpdate: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSRuleUpdateResponse), nil
+}
+
+func (s *EtcdServer) QoSRuleList(ctx context.Context, r *pb.QoSRuleListRequest) (*pb.QoSRuleListResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{QosRuleList: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.QoSRuleListResponse), nil
 }
