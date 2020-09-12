@@ -64,6 +64,15 @@ message InternalRaftRequest {
   membershippb.ClusterVersionSetRequest cluster_version_set = 1300;
   membershippb.ClusterMemberAttrSetRequest cluster_member_attr_set = 1301;
   membershippb.DowngradeInfoSetRequest  downgrade_info_set = 1302;
+
+  QoSEnableRequest qos_enable = 1400;
+  QoSDisableRequest qos_disable = 1401;
+  QoSRuleAddRequest qos_rule_add = 1402;
+  QoSRuleUpdateRequest qos_rule_update = 1403;
+  QoSRuleDeleteRequest qos_rule_delete = 1404;
+  QoSRuleGetRequest qos_rule_get = 1405;
+  QoSRuleListRequest qos_rule_list = 1406;
+
 }
 
 message EmptyResponse {

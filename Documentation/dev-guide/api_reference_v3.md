@@ -79,6 +79,20 @@ This is a generated documentation. Please read the proto files for more.
 
 
 
+##### service `QoS` (etcdserver/etcdserverpb/rpc.proto)
+
+| Method | Request Type | Response Type | Description |
+| ------ | ------------ | ------------- | ----------- |
+| QoSEnable | QoSEnableRequest | QoSEnableResponse | QoSEnable enables qos. |
+| QoSDisable | QoSDisableRequest | QoSDisableResponse | QoSDisable disables qos. |
+| QoSRuleAdd  | QoSRuleAddRequest | QoSRuleAddResponse | QoSRuleAdd adds a qos rule into the cluster. |
+| QoSRuleGet  | QoSRuleGetRequest | QoSRuleGetResponse | QoSRuleGet get a qos rule into the cluster. |
+| QoSRuleDelete | QoSRuleDeleteRequest | QoSRuleDeleteResponse | QoSRuleDelete deletes a qos rule from the cluster. |
+| QoSRuleUpdate | QoSRuleUpdateRequest | QoSRuleUpdateResponse | QoSRuleUpdate updates a qos rule into the cluster. |
+| QoSRuleList | QoSRuleListRequest | QoSRuleListResponse | QoSRuleList lists all qos rule from the cluster. |
+
+
+
 ##### service `Watch` (etcdserver/etcdserverpb/rpc.proto)
 
 | Method | Request Type | Response Type | Description |
@@ -774,6 +788,114 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | prev_kv | if prev_kv is set in the request, the previous key-value pair will be returned. | mvccpb.KeyValue |
+
+
+
+##### message `QoSDisableRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Empty field.
+
+
+
+##### message `QoSDisableResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
+##### message `QoSEnableRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Empty field.
+
+
+
+##### message `QoSEnableResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
+##### message `QoSRuleAddRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| qos_rule |  | qospb.QoSRule |
+
+
+
+##### message `QoSRuleAddResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
+##### message `QoSRuleDeleteRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| rule_name |  | string |
+
+
+
+##### message `QoSRuleDeleteResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+
+
+
+##### message `QoSRuleGetRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| rule_name |  | string |
+
+
+
+##### message `QoSRuleGetResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| qos_rule |  | qospb.QoSRule |
+
+
+
+##### message `QoSRuleListRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+Empty field.
+
+
+
+##### message `QoSRuleListResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| qos_rules |  | (slice of) qospb.QoSRule |
+
+
+
+##### message `QoSRuleUpdateRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| qos_rule |  | qospb.QoSRule |
+
+
+
+##### message `QoSRuleUpdateResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
 
 
 

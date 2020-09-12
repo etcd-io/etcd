@@ -111,6 +111,20 @@
 		AuthRoleDeleteResponse
 		AuthRoleGrantPermissionResponse
 		AuthRoleRevokePermissionResponse
+		QoSEnableRequest
+		QoSDisableRequest
+		QoSEnableResponse
+		QoSDisableResponse
+		QoSRuleAddRequest
+		QoSRuleAddResponse
+		QoSRuleDeleteRequest
+		QoSRuleDeleteResponse
+		QoSRuleGetRequest
+		QoSRuleGetResponse
+		QoSRuleUpdateRequest
+		QoSRuleUpdateResponse
+		QoSRuleListRequest
+		QoSRuleListResponse
 */
 package etcdserverpb
 

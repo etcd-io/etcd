@@ -4,6 +4,8 @@ package etcdserverpb;
 import "gogoproto/gogo.proto";
 import "etcd/mvcc/mvccpb/kv.proto";
 import "etcd/auth/authpb/auth.proto";
+import "etcd/qos/qospb/qos.proto";
+
 
 // for grpc-gateway
 import "google/api/annotations.proto";

@@ -1416,6 +1416,237 @@
         }
       }
     },
+    "/v3/qos/disable": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSDisable disables qos.",
+        "operationId": "QoS_QoSDisable",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSDisableRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSDisableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/enable": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSEnable enables qos.",
+        "operationId": "QoS_QoSEnable",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSEnableRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSEnableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/rule/add": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSRuleAdd adds a qos rule into the cluster.",
+        "operationId": "QoS_QoSRuleAdd",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleAddResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/rule/delete": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSRuleDelete deletes a qos rule from the cluster.",
+        "operationId": "QoS_QoSRuleDelete",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleDeleteRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleDeleteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/rule/get": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSRuleGet get a qos rule into the cluster.",
+        "operationId": "QoS_QoSRuleGet",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleGetRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/rule/list": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSRuleList lists all qos rule from the cluster.",
+        "operationId": "QoS_QoSRuleList",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleListRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/qos/rule/update": {
+      "post": {
+        "tags": [
+          "QoS"
+        ],
+        "summary": "QoSRuleUpdate updates a qos rule into the cluster.",
+        "operationId": "QoS_QoSRuleUpdate",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbQoSRuleUpdateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
     "/v3/watch": {
       "post": {
         "tags": [
@@ -1567,8 +1798,7 @@
       "type": "object",
       "properties": {
         "no_password": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1779,8 +2009,7 @@
           "title": "authRevision is the current revision of auth store"
         },
         "enabled": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
@@ -1962,8 +2191,7 @@
       "properties": {
         "physical": {
           "description": "physical is set so the RPC will wait until the compaction is physically\napplied to the local database such that compacted entries are totally\nremoved from the backend database.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "revision": {
           "description": "revision is the key-value store revision for the compaction operation.",
@@ -2049,8 +2277,7 @@
         },
         "prev_kv": {
           "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delete response.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "range_end": {
           "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all the keys\nwith the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument.",
@@ -2266,8 +2493,7 @@
         },
         "keys": {
           "description": "keys is true to query all the keys attached to this lease.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -2319,8 +2545,7 @@
         },
         "isLearner": {
           "description": "isLearner indicates if the member is raft learner.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "name": {
           "description": "name is the human-readable name of the member. If the member is not started, the name will be an empty string.",
@@ -2340,8 +2565,7 @@
       "properties": {
         "isLearner": {
           "description": "isLearner indicates if the added member is raft learner.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "peerURLs": {
           "description": "peerURLs is the list of URLs the added member will use to communicate with the cluster.",
@@ -2375,8 +2599,7 @@
       "type": "object",
       "properties": {
         "linearizable": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -2500,13 +2723,11 @@
       "properties": {
         "ignore_lease": {
           "description": "If ignore_lease is set, etcd updates the key using its current lease.\nReturns an error if the key does not exist.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "ignore_value": {
           "description": "If ignore_value is set, etcd updates the key using its current value.\nReturns an error if the key does not exist.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "key": {
           "description": "key is the key, in bytes, to put into the key-value store.",
@@ -2520,8 +2741,7 @@
         },
         "prev_kv": {
           "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "value": {
           "description": "value is the value, in bytes, to associate with the key in the key-value store.",
@@ -2542,13 +2762,118 @@
         }
       }
     },
+    "etcdserverpbQoSDisableRequest": {
+      "type": "object"
+    },
+    "etcdserverpbQoSDisableResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbQoSEnableRequest": {
+      "type": "object"
+    },
+    "etcdserverpbQoSEnableResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleAddRequest": {
+      "type": "object",
+      "properties": {
+        "qos_rule": {
+          "$ref": "#/definitions/qospbQoSRule"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleAddResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleDeleteRequest": {
+      "type": "object",
+      "properties": {
+        "rule_name": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleGetRequest": {
+      "type": "object",
+      "properties": {
+        "rule_name": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleGetResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "qos_rule": {
+          "$ref": "#/definitions/qospbQoSRule"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleListRequest": {
+      "type": "object"
+    },
+    "etcdserverpbQoSRuleListResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "qos_rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/qospbQoSRule"
+          }
+        }
+      }
+    },
+    "etcdserverpbQoSRuleUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "qos_rule": {
+          "$ref": "#/definitions/qospbQoSRule"
+        }
+      }
+    },
+    "etcdserverpbQoSRuleUpdateResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
     "etcdserverpbRangeRequest": {
       "type": "object",
       "properties": {
         "count_only": {
           "description": "count_only when set returns only the count of the keys in the range.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "key": {
           "description": "key is the first key for the range. If range_end is not given, the request only looks up key.",
@@ -2557,8 +2882,7 @@
         },
         "keys_only": {
           "description": "keys_only when set returns only the keys and not the values.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "limit": {
           "description": "limit is a limit on the number of keys returned for the request. When limit is set to 0,\nit is treated as no limit.",
@@ -2597,8 +2921,7 @@
         },
         "serializable": {
           "description": "serializable sets the range request to use serializable member-local reads.\nRange requests are linearizable by default; linearizable requests have higher\nlatency and lower throughput than serializable requests but reflect the current\nconsensus of the cluster. For better performance, in exchange for possible stale reads,\na serializable range request is served locally without needing to reach consensus\nwith other nodes in the cluster.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "sort_order": {
           "description": "sort_order is the order for returned sorted results.",
@@ -2630,8 +2953,7 @@
         },
         "more": {
           "description": "more indicates if there are more keys to return in the requested range.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -2744,8 +3066,7 @@
         },
         "isLearner": {
           "description": "isLearner indicates if the member is raft learner.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "leader": {
           "description": "leader is the member ID which the responding member believes is the current leader.",
@@ -2815,8 +3136,7 @@
         },
         "succeeded": {
           "description": "succeeded is set to true if the compare evaluated to true or false otherwise.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -2842,8 +3162,7 @@
         },
         "fragment": {
           "description": "fragment enables splitting large revisions into multiple watch responses.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "key": {
           "description": "key is the key to register for watching.",
@@ -2852,13 +3171,11 @@
         },
         "prev_kv": {
           "description": "If prev_kv is set, created watcher gets the previous KV before the event happens.\nIf the previous KV is already compacted, nothing will be returned.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "progress_notify": {
           "description": "progress_notify is set so that the etcd server will periodically send a WatchResponse with\nno events to the new watcher if there are no recent events. It is useful when clients\nwish to recover a disconnected watcher starting from a recent known revision.\nThe etcd server may decide how often it will send notifications based on current load.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "range_end": {
           "description": "range_end is the end of the range [key, range_end) to watch. If range_end is not given,\nonly the key argument is watched. If range_end is equal to '\\0', all keys greater than\nor equal to the key argument are watched.\nIf the range_end is one bit larger than the given key,\nthen all keys with the prefix (the given key) will be watched.",
@@ -2904,8 +3221,7 @@
         },
         "canceled": {
           "description": "canceled is set to true if the response is for a cancel watch request.\nNo further events will be sent to the canceled watcher.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "compact_revision": {
           "description": "compact_revision is set to the minimum index if a watcher tries to watch\nat a compacted index.\n\nThis happens when creating a watcher at a compacted revision or the watcher cannot\ncatch up with the progress of the key-value store.\n\nThe client should treat the watcher as canceled and should not try to create any\nwatcher with the same start_revision again.",
@@ -2914,8 +3230,7 @@
         },
         "created": {
           "description": "created is set to true if the response is for a create watch request.\nThe client should record the watch_id and expect to receive events for\nthe created watcher from the same stream.\nAll events sent to the created watcher will attach with the same watch_id.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "events": {
           "type": "array",
@@ -2925,8 +3240,7 @@
         },
         "fragment": {
           "description": "framgment is true if large watch response was split over multiple responses.",
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
@@ -2999,6 +3313,49 @@
         "value": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "qospbQoSRule": {
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "qps": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "ratelimiter": {
+          "type": "string"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "rule_type": {
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/definitions/qospbSubject"
+        },
+        "threshold": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "qospbSubject": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
         }
       }
     },
