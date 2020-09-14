@@ -243,7 +243,7 @@ func newConfig() *config {
 	fs.UintVar(&cfg.ec.AuthTokenTTL, "auth-token-ttl", cfg.ec.AuthTokenTTL, "The lifetime in seconds of the auth token.")
 
 	// gateway
-	fs.BoolVar(&cfg.ec.EnableGRPCGateway, "enable-grpc-gateway", true, "Enable GRPC gateway.")
+	fs.BoolVar(&cfg.ec.EnableGRPCGateway, "enable-grpc-gateway", cfg.ec.EnableGRPCGateway, "Enable GRPC gateway.")
 
 	// experimental
 	fs.BoolVar(&cfg.ec.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ec.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
