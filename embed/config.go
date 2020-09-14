@@ -323,7 +323,8 @@ type Config struct {
 	loggerCore        zapcore.Core
 	loggerWriteSyncer zapcore.WriteSyncer
 
-	// EnableGRPCGateway is false to disable grpc gateway.
+	// EnableGRPCGateway enables grpc gateway.
+	// The gateway translates a RESTful HTTP API into gRPC.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
 
 	// UnsafeNoFsync disables all uses of fsync.
@@ -406,11 +407,12 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:   new(sync.RWMutex),
-		logger:     nil,
-		Logger:     "zap",
-		LogOutputs: []string{DefaultLogOutput},
-		LogLevel:   logutil.DefaultLogLevel,
+		loggerMu:          new(sync.RWMutex),
+		logger:            nil,
+		Logger:            "zap",
+		LogOutputs:        []string{DefaultLogOutput},
+		LogLevel:          logutil.DefaultLogLevel,
+		EnableGRPCGateway: true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
