@@ -9,9 +9,22 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
-## v3.4.13 (2020 TBD)
+## v3.4.14 (2020 TBD)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.11...v3.4.13) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.13...v3.4.14) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
+
+### etcd server
+
+- [Fix server panic](https://github.com/etcd-io/etcd/pull/12288) when force-new-cluster flag is enabled in a cluster which had learner node.
+
+
+
+<hr>
+
+
+## [v3.4.13](https://github.com/etcd-io/etcd/releases/tag/v3.4.13) (2020-8-24)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.12...v3.4.13) and [v3.4 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_4.md) for any breaking changes.
 
 ### Security
 
