@@ -675,10 +675,11 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
-// the entries. The given snapshot/entries can contain two kinds of
+// the entries. The given snapshot/entries can contain three kinds of
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.
+// - ConfChangeAddLearnerNode, in which the contained ID will be added into the set.
 func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
@@ -693,6 +694,8 @@ func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64
 		var cc raftpb.ConfChange
 		pbutil.MustUnmarshal(&cc, e.Data)
 		switch cc.Type {
+		case raftpb.ConfChangeAddLearnerNode:
+			ids[cc.NodeID] = true
 		case raftpb.ConfChangeAddNode:
 			ids[cc.NodeID] = true
 		case raftpb.ConfChangeRemoveNode:
