@@ -105,6 +105,16 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		ctx = withVersion(ctx)
+		// getToken automatically
+		// TODO(cfc4n): keep this code block, remove codes about getToken in client.go after pr #12165 merged.
+		if c.authTokenBundle != nil {
+			// equal to c.Username != "" && c.Password != ""
+			err := c.getToken(ctx)
+			if err != nil && rpctypes.Error(err) != rpctypes.ErrAuthNotEnabled {
+				logger.Error("clientv3/retry_interceptor: getToken failed", zap.Error(err))
+				return nil, err
+			}
+		}
 		grpcOpts, retryOpts := filterCallOptions(opts)
 		callOpts := reuseOrNewWithCallOptions(intOpts, retryOpts)
 		// short circuit for simplicity, and avoiding allocations.
