@@ -498,10 +498,12 @@ func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string, v3 bool)
 }
 
 func setupEtcdctlTest(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
+	skipInShortMode(t)
+
 	if !quorum {
 		cfg = configStandalone(*cfg)
 	}
-	epc, err := newEtcdProcessCluster(cfg)
+	epc, err := newEtcdProcessCluster(t, cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

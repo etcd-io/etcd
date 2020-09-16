@@ -34,6 +34,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSample(t *testing.T) {
+	SkipTestIfShortMode(t, "Counting leaked routines is disabled in --short tests")
 	defer AfterTest(t)
 	ranSample = true
 	for range make([]struct{}, 100) {

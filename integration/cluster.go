@@ -193,6 +193,8 @@ func (c *cluster) fillClusterForMembers() error {
 }
 
 func newCluster(t testing.TB, cfg *ClusterConfig) *cluster {
+	testutil.SkipTestIfShortMode(t, "Cannot start etcd cluster in --short tests")
+
 	c := &cluster{cfg: cfg}
 	ms := make([]*member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
@@ -209,6 +211,7 @@ func newCluster(t testing.TB, cfg *ClusterConfig) *cluster {
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t testing.TB, size int) *cluster {
+	t.Helper()
 	return newCluster(t, &ClusterConfig{Size: size})
 }
 
@@ -1245,6 +1248,10 @@ type ClusterV3 struct {
 // NewClusterV3 returns a launched cluster with a grpc client connection
 // for each cluster member.
 func NewClusterV3(t testing.TB, cfg *ClusterConfig) *ClusterV3 {
+	if t != nil {
+		t.Helper()
+	}
+
 	cfg.UseGRPC = true
 	if os.Getenv("CLIENT_DEBUG") != "" {
 		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))

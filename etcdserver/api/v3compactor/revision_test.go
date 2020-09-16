@@ -28,8 +28,8 @@ import (
 
 func TestRevision(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
 	tb := newRevision(zap.NewExample(), fc, 10, rg, compactable)
 
 	tb.Run()

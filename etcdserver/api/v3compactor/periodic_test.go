@@ -31,8 +31,9 @@ func TestPeriodicHourly(t *testing.T) {
 	retentionDuration := time.Duration(retentionHours) * time.Hour
 
 	fc := clockwork.NewFakeClock()
-	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	// TODO: Do not depand or real time (Recorder.Wait) in unit tests.
+	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
 	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
@@ -82,8 +83,8 @@ func TestPeriodicMinutes(t *testing.T) {
 	retentionDuration := time.Duration(retentionMinutes) * time.Minute
 
 	fc := clockwork.NewFakeClock()
-	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
 	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
@@ -130,8 +131,8 @@ func TestPeriodicMinutes(t *testing.T) {
 func TestPeriodicPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	retentionDuration := time.Hour
-	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
 	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
 
 	tb.Run()

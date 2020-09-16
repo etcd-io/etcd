@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"testing"
 	"time"
 
 	"go.etcd.io/etcd/v3/pkg/expect"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
@@ -108,4 +110,8 @@ func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 
 func toTLS(s string) string {
 	return strings.Replace(s, "http://", "https://", 1)
+}
+
+func skipInShortMode(t testing.TB) {
+	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
 }

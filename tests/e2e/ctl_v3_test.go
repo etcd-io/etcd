@@ -30,6 +30,8 @@ import (
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
 func TestClusterVersion(t *testing.T) {
+	skipInShortMode(t)
+
 	tests := []struct {
 		name         string
 		rollingStart bool
@@ -57,7 +59,7 @@ func TestClusterVersion(t *testing.T) {
 			cfg.baseScheme = "unix" // to avoid port conflict
 			cfg.rollingStart = tt.rollingStart
 
-			epc, err := newEtcdProcessCluster(&cfg)
+			epc, err := newEtcdProcessCluster(t, &cfg)
 			if err != nil {
 				t.Fatalf("could not start etcd process cluster (%v)", err)
 			}
@@ -216,7 +218,7 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		ret.cfg.initialCorruptCheck = ret.initialCorruptCheck
 	}
 
-	epc, err := newEtcdProcessCluster(&ret.cfg)
+	epc, err := newEtcdProcessCluster(t, &ret.cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

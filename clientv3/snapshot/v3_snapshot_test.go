@@ -33,6 +33,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// TODO(ptabor): This is integration test. Skip it in --short and move to integration tests directory.
+
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
 // from a snapshot file.
 func TestSnapshotV3RestoreSingle(t *testing.T) {

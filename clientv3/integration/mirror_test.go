@@ -73,8 +73,8 @@ func TestMirrorSync(t *testing.T) {
 }
 
 func TestMirrorSyncBase(t *testing.T) {
-	cluster := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 1})
-	defer cluster.Terminate(nil)
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)
 	ctx := context.TODO()

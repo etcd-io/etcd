@@ -27,6 +27,8 @@ import (
 const exampleConfigFile = "../../etcd.conf.yml.sample"
 
 func TestEtcdExampleConfig(t *testing.T) {
+	skipInShortMode(t)
+
 	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile})
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +42,8 @@ func TestEtcdExampleConfig(t *testing.T) {
 }
 
 func TestEtcdMultiPeer(t *testing.T) {
+	skipInShortMode(t)
+
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=http://127.0.0.1:%d", i, etcdProcessBasePort+i)
@@ -87,6 +91,8 @@ func TestEtcdMultiPeer(t *testing.T) {
 
 // TestEtcdUnixPeers checks that etcd will boot with unix socket peers.
 func TestEtcdUnixPeers(t *testing.T) {
+	skipInShortMode(t)
+
 	d, err := ioutil.TempDir("", "e1.etcd")
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +122,8 @@ func TestEtcdUnixPeers(t *testing.T) {
 
 // TestEtcdPeerCNAuth checks that the inter peer auth based on CN of cert is working correctly.
 func TestEtcdPeerCNAuth(t *testing.T) {
+	skipInShortMode(t)
+
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, etcdProcessBasePort+i)
@@ -193,6 +201,8 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 
 // TestEtcdPeerNameAuth checks that the inter peer auth based on cert name validation is working correctly.
 func TestEtcdPeerNameAuth(t *testing.T) {
+	skipInShortMode(t)
+
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, etcdProcessBasePort+i)
@@ -269,6 +279,8 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 }
 
 func TestGrpcproxyAndCommonName(t *testing.T) {
+	skipInShortMode(t)
+
 	argsWithNonEmptyCN := []string{
 		binDir + "/etcd",
 		"grpc-proxy",
