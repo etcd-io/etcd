@@ -21,10 +21,22 @@ import (
 	"go.etcd.io/etcd/v3/pkg/traceutil"
 )
 
+type SortOrder int
+
+const (
+	SortNone SortOrder = iota
+	SortAscend
+	SortDescend
+)
+
 type RangeOptions struct {
-	Limit int64
-	Rev   int64
-	Count bool
+	Limit             int64
+	Rev               int64
+	Count             bool
+	MinModRevision    int64
+	MaxModRevision    int64
+	SortByModRevision bool
+	SortOrder         SortOrder
 }
 
 type RangeResult struct {

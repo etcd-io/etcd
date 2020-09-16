@@ -15,6 +15,8 @@
 package mvcc
 
 import (
+	"sort"
+
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc/backend"
 	"go.etcd.io/etcd/v3/mvcc/mvccpb"
@@ -126,12 +128,25 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 	if ro.Count {
-		total := tr.s.kvindex.CountRevisions(key, end, rev, int(ro.Limit))
+		total := tr.s.kvindex.CountRevisions(key, end, rev, rangeLimit(ro))
 		tr.trace.Step("count revisions from in-memory index tree")
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
-	revpairs := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit))
+
+	revpairs := tr.s.kvindex.Revisions(key, end, rev, rangeLimit(ro))
 	tr.trace.Step("range keys from in-memory index tree")
+	count := len(revpairs)
+	if ro.SortByModRevision {
+		sorter := revisions(revpairs)
+		switch ro.SortOrder {
+		case SortDescend:
+			sort.Sort(sort.Reverse(sorter))
+		case SortAscend:
+			sort.Sort(sorter)
+		}
+	}
+	revpairs = pruneRevisions(revpairs, rangeOpToPrunableFuncs(ro))
+
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 	}
@@ -161,7 +176,7 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		}
 	}
 	tr.trace.Step("range keys from bolt db")
-	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
+	return &RangeResult{KVs: kvs, Count: count, Rev: curRev}, nil
 }
 
 func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
@@ -287,3 +302,47 @@ func (tw *storeTxnWrite) delete(key []byte) {
 }
 
 func (tw *storeTxnWrite) Changes() []mvccpb.KeyValue { return tw.changes }
+
+func pruneRevisions(revisions []revision, prunableFuncs []func(revision) bool) (ret []revision) {
+	if len(prunableFuncs) == 0 {
+		return revisions
+	}
+
+	j := 0
+	for i := range revisions {
+		revisions[j] = revisions[i]
+		prunable := false
+		for _, f := range prunableFuncs {
+			if f(revisions[i]) {
+				prunable = true
+				break
+			}
+		}
+		if !prunable {
+			j++
+		}
+	}
+	return revisions[:j]
+}
+
+func rangeOpToPrunableFuncs(op RangeOptions) (funcs []func(revision) bool) {
+	if op.MinModRevision != 0 {
+		funcs = append(funcs, func(r revision) bool {
+			return r.main < op.MinModRevision
+		})
+	}
+	if op.MaxModRevision != 0 {
+		funcs = append(funcs, func(r revision) bool {
+			return r.main > op.MaxModRevision
+		})
+	}
+	return
+}
+
+func rangeLimit(op RangeOptions) int {
+	// if range by modRevision sort, should fetch all revisions from underlying transaction
+	if op.SortByModRevision {
+		return 0
+	}
+	return int(op.Limit)
+}

@@ -299,8 +299,8 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	}
 
 	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE ||
-		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
+	if (r.SortOrder != pb.RangeRequest_NONE && r.SortTarget != pb.RangeRequest_MOD) ||
+		//r.MinModRevision != 0 || r.MaxModRevision != 0 ||
 		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
 		// fetch everything; sort and truncate afterwards
 		limit = 0
@@ -311,9 +311,13 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	}
 
 	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Limit:             limit,
+		Rev:               r.Revision,
+		Count:             r.CountOnly,
+		MaxModRevision:    r.MaxModRevision,
+		MinModRevision:    r.MinModRevision,
+		SortByModRevision: r.SortTarget == pb.RangeRequest_MOD,
+		SortOrder:         mvcc.SortOrder(r.SortOrder),
 	}
 
 	rr, err := txn.Range(r.Key, mkGteRange(r.RangeEnd), ro)
@@ -321,14 +325,6 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		return nil, err
 	}
 
-	if r.MaxModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }
-		pruneKVs(rr, f)
-	}
-	if r.MinModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision < r.MinModRevision }
-		pruneKVs(rr, f)
-	}
 	if r.MaxCreateRevision != 0 {
 		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision > r.MaxCreateRevision }
 		pruneKVs(rr, f)
@@ -354,16 +350,16 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 			sorter = &kvSortByVersion{&kvSort{rr.KVs}}
 		case r.SortTarget == pb.RangeRequest_CREATE:
 			sorter = &kvSortByCreate{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_MOD:
-			sorter = &kvSortByMod{&kvSort{rr.KVs}}
 		case r.SortTarget == pb.RangeRequest_VALUE:
 			sorter = &kvSortByValue{&kvSort{rr.KVs}}
 		}
-		switch {
-		case sortOrder == pb.RangeRequest_ASCEND:
-			sort.Sort(sorter)
-		case sortOrder == pb.RangeRequest_DESCEND:
-			sort.Sort(sort.Reverse(sorter))
+		if sorter != nil {
+			switch {
+			case sortOrder == pb.RangeRequest_ASCEND:
+				sort.Sort(sorter)
+			case sortOrder == pb.RangeRequest_DESCEND:
+				sort.Sort(sort.Reverse(sorter))
+			}
 		}
 	}
 
