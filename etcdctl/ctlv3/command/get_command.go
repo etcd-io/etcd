@@ -32,6 +32,8 @@ var (
 	getRev         int64
 	getKeysOnly    bool
 	getCountOnly   bool
+	lastRev        bool
+	firstRev       bool
 	printValueOnly bool
 )
 
@@ -44,7 +46,7 @@ func NewGetCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&getConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
-	cmd.Flags().StringVar(&getSortOrder, "order", "", "Order of results; ASCEND or DESCEND (ASCEND by default)")
+	cmd.Flags().StringVar(&getSortOrder, "order", "", "Order of results; ASCEND or DESCEND (NONE by default)")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "Sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "Maximum number of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "Get keys with matching prefix")
@@ -52,6 +54,8 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
 	cmd.Flags().BoolVar(&getCountOnly, "count-only", false, "Get only the count")
+	cmd.Flags().BoolVar(&lastRev, "last-rev", false, "Get only result with last rev")
+	cmd.Flags().BoolVar(&firstRev, "first-rev", false, "Get only result with first rev")
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
 	return cmd
 }
@@ -94,6 +98,13 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	if getKeysOnly && getCountOnly {
 		ExitWithError(ExitBadArgs, fmt.Errorf("`--keys-only` and `--count-only` cannot be set at the same time, choose one"))
 	}
+	if firstRev && lastRev {
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--first-rev` and `--last-rev` cannot be set at the same time, choose one"))
+	}
+
+	if (firstRev && getLimit != 0) || (lastRev && getLimit != 0) {
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--first-rev` or `--last-rev` and `--limit` cannot be set at the same time, choose one"))
+	}
 
 	opts := []clientv3.OpOption{}
 	switch getConsistency {
@@ -112,44 +123,56 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
 
-	opts = append(opts, clientv3.WithLimit(getLimit))
+	if getLimit > 0 {
+		opts = append(opts, clientv3.WithLimit(getLimit))
+	}
+
 	if getRev > 0 {
 		opts = append(opts, clientv3.WithRev(getRev))
 	}
 
-	sortByOrder := clientv3.SortNone
-	sortOrder := strings.ToUpper(getSortOrder)
-	switch {
-	case sortOrder == "ASCEND":
-		sortByOrder = clientv3.SortAscend
-	case sortOrder == "DESCEND":
-		sortByOrder = clientv3.SortDescend
-	case sortOrder == "":
-		// nothing
-	default:
-		ExitWithError(ExitBadFeature, fmt.Errorf("bad sort order %v", getSortOrder))
+	if lastRev {
+		opts = append(opts, clientv3.WithLastRev()...)
 	}
 
-	sortByTarget := clientv3.SortByKey
-	sortTarget := strings.ToUpper(getSortTarget)
-	switch {
-	case sortTarget == "CREATE":
-		sortByTarget = clientv3.SortByCreateRevision
-	case sortTarget == "KEY":
-		sortByTarget = clientv3.SortByKey
-	case sortTarget == "MODIFY":
-		sortByTarget = clientv3.SortByModRevision
-	case sortTarget == "VALUE":
-		sortByTarget = clientv3.SortByValue
-	case sortTarget == "VERSION":
-		sortByTarget = clientv3.SortByVersion
-	case sortTarget == "":
-		// nothing
-	default:
-		ExitWithError(ExitBadFeature, fmt.Errorf("bad sort target %v", getSortTarget))
+	if firstRev {
+		opts = append(opts, clientv3.WithFirstRev()...)
 	}
 
-	opts = append(opts, clientv3.WithSort(sortByTarget, sortByOrder))
+	if getSortTarget != "" && getSortOrder != "" {
+		sortByOrder := clientv3.SortNone
+		sortOrder := strings.ToUpper(getSortOrder)
+		switch {
+		case sortOrder == "ASCEND":
+			sortByOrder = clientv3.SortAscend
+		case sortOrder == "DESCEND":
+			sortByOrder = clientv3.SortDescend
+		case sortOrder == "":
+			// nothing
+		default:
+			ExitWithError(ExitBadFeature, fmt.Errorf("bad sort order %v", getSortOrder))
+		}
+
+		sortByTarget := clientv3.SortByKey
+		sortTarget := strings.ToUpper(getSortTarget)
+		switch {
+		case sortTarget == "CREATE":
+			sortByTarget = clientv3.SortByCreateRevision
+		case sortTarget == "KEY":
+			sortByTarget = clientv3.SortByKey
+		case sortTarget == "MODIFY":
+			sortByTarget = clientv3.SortByModRevision
+		case sortTarget == "VALUE":
+			sortByTarget = clientv3.SortByValue
+		case sortTarget == "VERSION":
+			sortByTarget = clientv3.SortByVersion
+		case sortTarget == "":
+			// nothing
+		default:
+			ExitWithError(ExitBadFeature, fmt.Errorf("bad sort target %v", getSortTarget))
+		}
+		opts = append(opts, clientv3.WithSort(sortByTarget, sortByOrder))
+	}
 
 	if getPrefix {
 		if len(key) == 0 {
