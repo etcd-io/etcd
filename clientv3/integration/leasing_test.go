@@ -619,16 +619,29 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
-	defer closeLKV()
+	client := clus.Client(0)
 
+	lkv, closeLKV, err := leasing.NewKV(client, "pfx/")
+	testutil.AssertNil(t, err)
+
+	defer func() {
+		// In '--tags cluster_proxy' mode the client need to be closed before
+		// closeLKV(). This interrupts all outstanding watches. Closing by closeLKV()
+		// is not sufficient as (unfortunately) context close does not interrupts Watches.
+		// See ./clientv3/watch.go:
+		// >> Currently, client contexts are overwritten with "valCtx" that never closes. <<
+		clus.TakeClient(0) // avoid double Close() of the client.
+		client.Close()
+		closeLKV()
+	}()
+
+	// TODO: Randomization in tests is a bad practice (except explicitly exploratory).
 	keyCount := rand.Intn(10) + 1
 	var ops []clientv3.Op
 	presps := make([]*clientv3.PutResponse, keyCount)
 	for i := range presps {
 		k := fmt.Sprintf("k-%d", i)
-		presp, err := clus.Client(0).Put(context.TODO(), k, k+k)
+		presp, err := client.Put(context.TODO(), k, k+k)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -639,6 +652,8 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		}
 		ops = append(ops, clientv3.OpGet(k))
 	}
+
+	// TODO: Randomization in unit tests is a bad practice (except explicitly exploratory).
 	ops = ops[:rand.Intn(len(ops))]
 
 	// served through cache
@@ -648,7 +663,6 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	cmps, useThen := randCmps("k-", presps)
 
 	if useThen {
-
 		thenOps = ops
 		elseOps = []clientv3.Op{clientv3.OpPut("k", "1")}
 	} else {

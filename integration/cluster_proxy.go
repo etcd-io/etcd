@@ -27,6 +27,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const throughProxy = true
+
 var (
 	pmu     sync.Mutex
 	proxies map[*clientv3.Client]grpcClientProxy = make(map[*clientv3.Client]grpcClientProxy)
@@ -45,6 +47,8 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	pmu.Lock()
 	defer pmu.Unlock()
 
+	lg := zap.NewExample()
+
 	if v, ok := proxies[c]; ok {
 		return v.grpc
 	}
@@ -55,10 +59,10 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	c.Lease = namespace.NewLease(c.Lease, proxyNamespace)
 	// test coalescing/caching proxy
 	kvp, kvpch := grpcproxy.NewKvProxy(c)
-	wp, wpch := grpcproxy.NewWatchProxy(c)
+	wp, wpch := grpcproxy.NewWatchProxy(lg, c)
 	lp, lpch := grpcproxy.NewLeaseProxy(c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
-	clp, _ := grpcproxy.NewClusterProxy(zap.NewExample(), c, "", "") // without registering proxy URLs
+	clp, _ := grpcproxy.NewClusterProxy(lg, c, "", "") // without registering proxy URLs
 	authp := grpcproxy.NewAuthProxy(c)
 	lockp := grpcproxy.NewLockProxy(c)
 	electp := grpcproxy.NewElectionProxy(c)
