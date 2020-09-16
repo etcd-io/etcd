@@ -138,6 +138,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd --experimental-watch-progress-notify-interval`](https://github.com/etcd-io/etcd/pull/12216) flag to make watch progress notify interval configurable.
 - Fix [server panic in slow writes warnings](https://github.com/etcd-io/etcd/issues/12197).
   - Fixed via [PR#12238](https://github.com/etcd-io/etcd/pull/12238).
+- [Fix server panic](https://github.com/etcd-io/etcd/pull/12288) when force-new-cluster flag is enabled in a cluster which had learner node.
+
 
 ### Package `runtime`
 
