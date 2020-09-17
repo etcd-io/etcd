@@ -41,7 +41,7 @@ if err != nil {
 // use the response
 ```
 
-For full compatibility, it is recommended to vendor builds using etcd's vendored packages, using tools like `golang/dep`, as in [vendor directories](https://golang.org/cmd/go/#hdr-Vendor_Directories).
+For full compatibility, it is recommended to install released versions of clients using go modules.
 
 ## Error Handling
 

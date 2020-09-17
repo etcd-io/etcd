@@ -22,7 +22,7 @@ $ cd etcd
 $ ./build
 ```
 
-To build a vendored `etcd` from the `master` branch via `go get`:
+To build a modularized `etcd` from the `master` branch via `go get`:
 
 ```sh
 # GOPATH should be set
