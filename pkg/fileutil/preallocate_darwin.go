@@ -19,7 +19,8 @@ package fileutil
 import (
 	"os"
 	"syscall"
-	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 func preallocExtend(f *os.File, sizeInBytes int64) error {
@@ -32,18 +33,18 @@ func preallocExtend(f *os.File, sizeInBytes int64) error {
 func preallocFixed(f *os.File, sizeInBytes int64) error {
 	// allocate all requested space or no space at all
 	// TODO: allocate contiguous space on disk with F_ALLOCATECONTIG flag
-	fstore := &syscall.Fstore_t{
-		Flags:   syscall.F_ALLOCATEALL,
-		Posmode: syscall.F_PEOFPOSMODE,
-		Length:  sizeInBytes}
-	p := unsafe.Pointer(fstore)
-	_, _, errno := syscall.Syscall(syscall.SYS_FCNTL, f.Fd(), uintptr(syscall.F_PREALLOCATE), uintptr(p))
-	if errno == 0 || errno == syscall.ENOTSUP {
+	fstore := &unix.Fstore_t{
+		Flags:   unix.F_ALLOCATEALL,
+		Posmode: unix.F_PEOFPOSMODE,
+		Length:  sizeInBytes,
+	}
+	err := unix.FcntlFstore(f.Fd(), unix.F_PREALLOCATE, fstore)
+	if err == nil || err == unix.ENOTSUP {
 		return nil
 	}
 
 	// wrong argument to fallocate syscall
-	if errno == syscall.EINVAL {
+	if err == unix.EINVAL {
 		// filesystem "st_blocks" are allocated in the units of
 		// "Allocation Block Size" (run "diskutil info /" command)
 		var stat syscall.Stat_t
@@ -61,5 +62,5 @@ func preallocFixed(f *os.File, sizeInBytes int64) error {
 			return nil
 		}
 	}
-	return errno
+	return err
 }
