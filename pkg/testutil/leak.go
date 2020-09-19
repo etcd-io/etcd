@@ -124,6 +124,7 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by os/signal.init") ||
 			strings.Contains(stack, "runtime/panic.go") ||
 			strings.Contains(stack, "created by testing.RunTests") ||
+			strings.Contains(stack, "created by testing.runTests") ||
 			strings.Contains(stack, "testing.Main(") ||
 			strings.Contains(stack, "runtime.goexit") ||
 			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/testutil.interestingGoroutines") ||
