@@ -272,7 +272,8 @@ func (wps *watchProxyStream) recvLoop() error {
 			wps.delete(uv.CancelRequest.WatchId)
 			wps.lg.Debug("cancel watcher", zap.Int64("watcherId", uv.CancelRequest.WatchId))
 		default:
-			panic("not implemented")
+			// Panic or Fatalf would allow to network clients to crash the serve remotely.
+			wps.lg.Error("not supported request type by gRPC proxy", zap.Stringer("request", req))
 		}
 	}
 }

@@ -1242,7 +1242,7 @@ func TestV3WatchCancellation(t *testing.T) {
 	}
 
 	var expected string
-	if throughProxy {
+	if ThroughProxy {
 		// grpc proxy has additional 2 watches open
 		expected = "3"
 	} else {
@@ -1279,7 +1279,7 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 	}
 
 	var expected string
-	if throughProxy {
+	if ThroughProxy {
 		// grpc proxy has additional 2 watches open
 		expected = "2"
 	} else {

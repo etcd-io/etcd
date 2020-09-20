@@ -609,6 +609,9 @@ func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
 }
 
 func TestWatchRequestProgress(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skipf("grpc-proxy does not support WatchProgress yet")
+	}
 	testCases := []struct {
 		name     string
 		watchers []string

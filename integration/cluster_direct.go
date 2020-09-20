@@ -23,7 +23,7 @@ import (
 	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
-const throughProxy = false
+const ThroughProxy = false
 
 func toGRPC(c *clientv3.Client) grpcAPI {
 	return grpcAPI{
