@@ -141,7 +141,7 @@ func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnR
 		}
 		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), proto.Size(txnResponse))
 	}
-	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only range ", resp, err)
+	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only txn ", resp, err)
 }
 
 func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
