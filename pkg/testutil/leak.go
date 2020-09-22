@@ -131,6 +131,7 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/logutil.(*MergeLogger).outputLoop") ||
 			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
 			strings.Contains(stack, "created by runtime.gc") ||
+			strings.Contains(stack, "created by text/template/parse.lex") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") {
 			continue
 		}
