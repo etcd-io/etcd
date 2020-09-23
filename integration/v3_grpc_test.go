@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/v3/etcdserver"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -1927,6 +1928,246 @@ func TestV3LargeRequests(t *testing.T) {
 			}
 		}
 
+		clus.Terminate(t)
+	}
+}
+
+// TestV3SimpleRateLimiter tests the simple rate limiter and rate limiter enforcements
+// The test is in place to check that the rate limiter indeed rate limits at the user specified
+// number.
+// Scenario 1: Sends 5 PUT requests, Rate limiter will limit 4 PUT requests per seconds, 1 will
+// be rejected
+// Scenario 2: Sends 5 PUT requests, Rate limiter will limit 5 PUT requests per seconds, 0 will
+// be rejected
+func TestV3SimpleRateLimiter(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	// Prepare different test scenarios
+	tests := []struct {
+		maxRequestLimit   float64
+		requestTypeFilter string
+		errorCount        int
+		normalCount       int
+		expectError       error
+	}{
+		// 4 rps will be allowed, 5th request will fail
+		{
+			4,
+			"put",
+			1,
+			4,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+		// 5 rps will be allowed, none should fail
+		{
+			5,
+			"put",
+			0,
+			5,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+	}
+
+	for _, test := range tests {
+		clus := NewClusterV3(t,
+			&ClusterConfig{
+				Size:                     1,
+				RequestsPerSecondLimit:   test.maxRequestLimit,
+				RateLimiterRequestFilter: test.requestTypeFilter,
+			})
+		kvcli := toGRPC(clus.Client(0)).KV
+		// One second ticker, ticker renews every second
+		ticker := time.NewTicker(1 * time.Second)
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+		select {
+		case <-ticker.C:
+			normalCount := 0
+			errorCount := 0
+			for i := 0; i < (test.errorCount + test.normalCount); i++ {
+				_, err := kvcli.Put(context.TODO(), reqput)
+
+				// If no error, carry on
+				if err == nil {
+					normalCount++
+				} else if eqErrGRPC(err, test.expectError) {
+					// check for expected error type
+					errorCount++
+				} else {
+					t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+				}
+			}
+
+			if !(normalCount == test.normalCount && errorCount == test.errorCount) {
+				t.Errorf("expected error count %d, got %d\nexpected normal count %d, got %d", test.errorCount, errorCount, test.normalCount, normalCount)
+			}
+		}
+		ticker.Stop()
+		clus.Terminate(t)
+	}
+}
+
+// TestV3CustomRateLimiter tests the custom rate limiter and rate limiter enforcements with a rule
+// The rule is disabled at the zeroth second from init, rule is enabled at the third second from init
+// The ticker is set to refresh every two seconds, so by the time second request is sent, the rules
+// would've been enabled and the requests are now subjected to the rate limiter
+func TestV3CustomRateLimiter(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	// Static name for the rule and init the rule
+	const maxRequestLimit = 4.0
+	const requestFilterType = "put"
+	const ruleName = "testrule"
+	const ruleRefreshRate = 3000 //in ms
+	const requestGapRate = 2     // in seconds
+
+	rule := NewTestRule(ruleRefreshRate)
+
+	// Define a custom rule
+	customRules := map[string]etcdserver.RateLimiterRule{
+		ruleName: rule,
+	}
+
+	// Define test scenarios
+	tests := []struct {
+		CustomRules map[string]etcdserver.RateLimiterRule
+		errorCount  int
+		normalCount int
+		expectError error
+	}{
+		// 5 rps will be allowed, none should fail
+		{
+			customRules,
+			0,
+			5,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+		// 4 rps will be allowed, 5th request will fail
+		{
+			customRules,
+			1,
+			4,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+	}
+
+	// Create the cluster and a ticker
+	clus := NewClusterV3(t,
+		&ClusterConfig{
+			Size:                     1,
+			RequestsPerSecondLimit:   maxRequestLimit,
+			EnableRateLimiter:        ruleName,
+			CustomRuleMap:            customRules,
+			RateLimiterRequestFilter: requestFilterType,
+		})
+	ticker := time.NewTicker(requestGapRate * time.Second)
+
+	// The tests here checks two scenarios, both sending out 5 requests, the first pass
+	// when the rule is not yet enabled, will let all 5 requests through
+	// the second pass where the rules are enabled will fail to send the last request, since
+	// 4 is the limit.
+	// Essentially, both have a limit of 5, in the first pass it is not enforced because rules
+	// aren't enabled, while the second pass has rules enabled
+	for _, test := range tests {
+		kvcli := toGRPC(clus.Client(0)).KV
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+		select {
+		case <-ticker.C:
+			normalCount := 0
+			errorCount := 0
+			for i := 0; i < (test.errorCount + test.normalCount); i++ {
+				_, err := kvcli.Put(context.TODO(), reqput)
+
+				// If no error, carry on
+				if err == nil {
+					normalCount++
+				} else if eqErrGRPC(err, test.expectError) {
+					// check for expected error type
+					errorCount++
+				} else {
+					t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+				}
+			}
+
+			if !(normalCount == test.normalCount && errorCount == test.errorCount) {
+				t.Errorf("expected error count %d, got %d\nexpected normal count %d, got %d", test.errorCount, errorCount, test.normalCount, normalCount)
+			}
+		}
+	}
+
+	ticker.Stop()
+	clus.Terminate(t)
+}
+
+// TestV3DisabledRateLimiter to test that etcd is still able to process request when the rate limiter
+// is disabled, passing any negative number/zero will disable the rate limiter, by default rate limiter
+// is disabled
+func TestV3DisabledRateLimiter(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	// The only thing important here is maxRequestLimit value, if that is zero or less,
+	// none of the other parameter for rate limiter will be honoured, and instead a disabled
+	// rate limiter will be used, making it taking the most basic code path.
+	// Scenario 1: maxRequestLimit: 4, which means RL will be enabled
+	// Scenario 2: maxRequestLimit: 0, which means RL will be disabled
+	tests := []struct {
+		maxRequestLimit   float64
+		requestTypeFilter string
+		errorCount        int
+		normalCount       int
+		expectError       error
+	}{
+		// 4 rps will be allowed, 5th request will fail
+		{
+			4,
+			"put",
+			1,
+			4,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+		// rate limiter is disabled, and all requests will pass through.
+		{
+			0,
+			"put",
+			0,
+			5,
+			rpctypes.ErrGRPCRequestRequestLimitExceeded,
+		},
+	}
+
+	for _, test := range tests {
+		clus := NewClusterV3(t,
+			&ClusterConfig{
+				Size:                     1,
+				RequestsPerSecondLimit:   test.maxRequestLimit,
+				RateLimiterRequestFilter: test.requestTypeFilter,
+			})
+		kvcli := toGRPC(clus.Client(0)).KV
+		// One second ticker, ticker renews every second
+		ticker := time.NewTicker(1 * time.Second)
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+		select {
+		case <-ticker.C:
+			normalCount := 0
+			errorCount := 0
+			for i := 0; i < (test.errorCount + test.normalCount); i++ {
+				_, err := kvcli.Put(context.TODO(), reqput)
+
+				// If no error, carry on
+				if err == nil {
+					normalCount++
+				} else if eqErrGRPC(err, test.expectError) {
+					// check for expected error type
+					errorCount++
+				} else {
+					t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+				}
+			}
+
+			if !(normalCount == test.normalCount && errorCount == test.errorCount) {
+				t.Errorf("expected error count %d, got %d\nexpected normal count %d, got %d", test.errorCount, errorCount, test.normalCount, normalCount)
+			}
+		}
+		ticker.Stop()
 		clus.Terminate(t)
 	}
 }

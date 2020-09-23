@@ -40,11 +40,12 @@ var toGRPCErrorMap = map[error]error{
 	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
 	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
-	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
-	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
-	etcdserver.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
-	etcdserver.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
-	etcdserver.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
+	mvcc.ErrCompacted:                  rpctypes.ErrGRPCCompacted,
+	mvcc.ErrFutureRev:                  rpctypes.ErrGRPCFutureRev,
+	etcdserver.ErrRequestTooLarge:      rpctypes.ErrGRPCRequestTooLarge,
+	etcdserver.ErrNoSpace:              rpctypes.ErrGRPCNoSpace,
+	etcdserver.ErrTooManyRequests:      rpctypes.ErrTooManyRequests,
+	etcdserver.ErrRequestLimitExceeded: rpctypes.ErrRequestLimitExceeded,
 
 	etcdserver.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
 	etcdserver.ErrNotLeader:                  rpctypes.ErrGRPCNotLeader,

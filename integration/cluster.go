@@ -141,6 +141,11 @@ type ClusterConfig struct {
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
 
+	EnableRateLimiter        string
+	RequestsPerSecondLimit   float64
+	RateLimiterRequestFilter string
+	CustomRuleMap            map[string]etcdserver.RateLimiterRule
+
 	// SkipCreatingClient to skip creating clients for each member.
 	SkipCreatingClient bool
 
@@ -302,6 +307,10 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
+			enableRateLimiter:           c.cfg.EnableRateLimiter,
+			requestsPerSecondLimit:      c.cfg.RequestsPerSecondLimit,
+			rateLimiterRequestFilter:    c.cfg.RateLimiterRequestFilter,
+			customRuleMap:               c.cfg.CustomRuleMap,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -592,6 +601,10 @@ type memberConfig struct {
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
 	WatchProgressNotifyInterval time.Duration
+	requestsPerSecondLimit      float64
+	rateLimiterRequestFilter    string
+	enableRateLimiter           string
+	customRuleMap               map[string]etcdserver.RateLimiterRule
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -679,6 +692,13 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 			Timeout: mcfg.grpcKeepAliveTimeout,
 		}))
 	}
+
+	// Experimental Rate Limiter
+	m.RequestsPerSecondLimit = mcfg.requestsPerSecondLimit
+	m.RateLimiterRequestFilter = mcfg.rateLimiterRequestFilter
+	m.EnableRateLimiter = mcfg.enableRateLimiter
+	m.CustomRuleMap = mcfg.customRuleMap
+
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP

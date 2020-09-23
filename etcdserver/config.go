@@ -116,6 +116,11 @@ type ServerConfig struct {
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 
+	EnableRateLimiter        string
+	RequestsPerSecondLimit   float64
+	RateLimiterRequestFilter string
+	CustomRuleMap            map[string]RateLimiterRule
+
 	// MaxRequestBytes is the maximum request size to send over raft.
 	MaxRequestBytes uint
 

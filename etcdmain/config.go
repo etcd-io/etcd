@@ -252,6 +252,10 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.ExperimentalEnableLeaseCheckpoint, "experimental-enable-lease-checkpoint", false, "Enable to persist lease remaining TTL to prevent indefinite auto-renewal of long lived leases.")
 	fs.IntVar(&cfg.ec.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ec.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
 	fs.DurationVar(&cfg.ec.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ec.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
+	// Experimental Rate Limiter
+	fs.StringVar(&cfg.ec.EnableRateLimiter, "experimental-rate-limiter-rules", cfg.ec.EnableRateLimiter, "Enables the rate limiter with custom ruleset options (if any are passed).")
+	fs.Float64Var(&cfg.ec.RequestsPerSecondLimit, "experimental-rate-limiter-requests-per-second", cfg.ec.RequestsPerSecondLimit, "Sets the limit for requests/second served by the server.")
+	fs.StringVar(&cfg.ec.RateLimiterRequestFilter, "experimental-rate-limiter-request-filter", cfg.ec.RateLimiterRequestFilter, "Sets the type of the requests to be filtered.")
 
 	// unsafe
 	fs.BoolVar(&cfg.ec.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")

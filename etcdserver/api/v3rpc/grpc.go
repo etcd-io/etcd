@@ -42,12 +42,16 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOptio
 		bundle := credentials.NewBundle(credentials.Config{TLSConfig: tls})
 		opts = append(opts, grpc.Creds(bundle.TransportCredentials()))
 	}
+	// Prepare a rate limiter, or disable the rate limiter
+	var rateLimiter = etcdserver.NewRateLimiter(s, "gRPC-rate-limiter")
 	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+		newUnaryRateLimiter(rateLimiter),
 		newLogUnaryInterceptor(s),
 		newUnaryInterceptor(s),
 		grpc_prometheus.UnaryServerInterceptor,
 	)))
 	opts = append(opts, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+		newStreamRateLimiter(rateLimiter),
 		newStreamInterceptor(s),
 		grpc_prometheus.StreamServerInterceptor,
 	)))

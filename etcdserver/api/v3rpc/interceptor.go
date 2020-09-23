@@ -71,6 +71,18 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	}
 }
 
+// newUnaryRateLimiter intercepts the request to see if any rate limiter enforcements are violated.
+func newUnaryRateLimiter(limiter etcdserver.RateLimiter) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// If we're rate limiting, we should return an error
+		// else, we should allow the request to pass through
+		if !limiter.Limit(info.FullMethod) {
+			return handler(ctx, req)
+		}
+		return nil, rpctypes.ErrGRPCRequestRequestLimitExceeded
+	}
+}
+
 func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		startTime := time.Now()
@@ -204,6 +216,18 @@ func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time
 		zap.Int("response size", respSize),
 		zap.String("request content", reqContent),
 	)
+}
+
+// newStreamRateLimiter intercepts the request to see if any rate limiter enforcements are violated.
+func newStreamRateLimiter(limiter etcdserver.RateLimiter) grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// If we're rate limiting, we should return an error
+		// else, we should allow the request to pass through
+		if !limiter.Limit(info.FullMethod) {
+			return handler(srv, ss)
+		}
+		return rpctypes.ErrGRPCRequestRequestLimitExceeded
+	}
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {

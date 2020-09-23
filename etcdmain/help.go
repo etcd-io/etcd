@@ -212,6 +212,12 @@ Experimental feature:
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
+  --experimental-rate-limiter-rules
+    Enable rate limiter, pass custom rule names as value to the flag to enable rules.
+  --experimental-rate-limiter-requests-per-second
+    Sets the limit for requests/second served by the server.
+  --experimental-rate-limiter-request-filter
+    Sets the type of the requests to be filtered.
 
 Unsafe feature:
   --force-new-cluster 'false'

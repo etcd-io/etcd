@@ -44,8 +44,9 @@ var (
 	ErrGRPCLearnerNotReady        = status.New(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader").Err()
 	ErrGRPCTooManyLearners        = status.New(codes.FailedPrecondition, "etcdserver: too many learner members in cluster").Err()
 
-	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
-	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
+	ErrGRPCRequestTooLarge             = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
+	ErrGRPCRequestTooManyRequests      = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
+	ErrGRPCRequestRequestLimitExceeded = status.New(codes.ResourceExhausted, "etcdserver: request per second limit exceeded").Err()
 
 	ErrGRPCRootUserNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not exist").Err()
 	ErrGRPCRootRoleNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not have root role").Err()
@@ -107,8 +108,9 @@ var (
 		ErrorDesc(ErrGRPCLearnerNotReady):        ErrGRPCLearnerNotReady,
 		ErrorDesc(ErrGRPCTooManyLearners):        ErrGRPCTooManyLearners,
 
-		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
-		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
+		ErrorDesc(ErrGRPCRequestTooLarge):             ErrGRPCRequestTooLarge,
+		ErrorDesc(ErrGRPCRequestTooManyRequests):      ErrGRPCRequestTooManyRequests,
+		ErrorDesc(ErrGRPCRequestRequestLimitExceeded): ErrGRPCRequestRequestLimitExceeded,
 
 		ErrorDesc(ErrGRPCRootUserNotExist):     ErrGRPCRootUserNotExist,
 		ErrorDesc(ErrGRPCRootRoleNotExist):     ErrGRPCRootRoleNotExist,
@@ -172,8 +174,9 @@ var (
 	ErrMemberLearnerNotReady  = Error(ErrGRPCLearnerNotReady)
 	ErrTooManyLearners        = Error(ErrGRPCTooManyLearners)
 
-	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
-	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
+	ErrRequestTooLarge      = Error(ErrGRPCRequestTooLarge)
+	ErrTooManyRequests      = Error(ErrGRPCRequestTooManyRequests)
+	ErrRequestLimitExceeded = Error(ErrGRPCRequestRequestLimitExceeded)
 
 	ErrRootUserNotExist     = Error(ErrGRPCRootUserNotExist)
 	ErrRootRoleNotExist     = Error(ErrGRPCRootRoleNotExist)

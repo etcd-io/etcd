@@ -44,6 +44,7 @@ var (
 	ErrInvalidDowngradeTargetVersion = errors.New("etcdserver: invalid downgrade target version")
 	ErrDowngradeInProcess            = errors.New("etcdserver: cluster has a downgrade job in progress")
 	ErrNoInflightDowngrade           = errors.New("etcdserver: no inflight downgrade job")
+	ErrRequestLimitExceeded          = errors.New("etcdserver: request per second limit exceeded")
 )
 
 type DiscoveryError struct {

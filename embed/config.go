@@ -17,6 +17,7 @@ package embed
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -56,6 +57,11 @@ const (
 	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
 	DefaultGRPCKeepAliveInterval = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout  = 20 * time.Second
+
+	// Experimental Rate Limiter Defaults
+	DefaultRequestsPerSecondLimit   = -math.MaxFloat64
+	DefaultEnableRateLimiter        = ""
+	DefaultRateLimiterRequestFilter = ""
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -222,6 +228,13 @@ type Config struct {
 	// before closing a non-responsive connection. 0 to disable.
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
+	// EnableRateLimiter Experimental Rate Limiter rule flag
+	EnableRateLimiter string `json:"experimental-rate-limiter-rules"`
+	// RequestsPerSecondLimit Experimental Rate Limiter Value
+	RequestsPerSecondLimit float64 `json:"experimental-rate-limiter-requests-per-second"`
+	// RateLimiterRequestFilter Experimental Rate Limiter request filter
+	RateLimiterRequestFilter string `json:"experimental-rate-limiter-request-filter"`
+
 	// PreVote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
@@ -381,6 +394,11 @@ func NewConfig() *Config {
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
 		GRPCKeepAliveTimeout:  DefaultGRPCKeepAliveTimeout,
+
+		// Experimental Rate Limiter
+		RequestsPerSecondLimit:   DefaultRequestsPerSecondLimit,
+		EnableRateLimiter:        DefaultEnableRateLimiter,
+		RateLimiterRequestFilter: DefaultRateLimiterRequestFilter,
 
 		TickMs:                     100,
 		ElectionMs:                 1000,

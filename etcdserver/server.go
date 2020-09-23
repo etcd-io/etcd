@@ -277,6 +277,9 @@ type EtcdServer struct {
 	leadTimeMu      sync.RWMutex
 	leadElectedTime time.Time
 
+	// rate limiter go routine is used to compute the ruleset
+	RulesetRoutine chan bool
+
 	*AccessController
 }
 
@@ -739,6 +742,7 @@ func (s *EtcdServer) start() {
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
 	s.leaderChanged = make(chan struct{})
+	s.RulesetRoutine = make(chan bool, 2)
 	if s.ClusterVersion() != nil {
 		lg.Info(
 			"starting etcd server",
@@ -971,6 +975,9 @@ func (s *EtcdServer) run() {
 		}
 		if s.compactor != nil {
 			s.compactor.Stop()
+		}
+		if s.RulesetRoutine != nil {
+			close(s.RulesetRoutine)
 		}
 		close(s.done)
 	}()
