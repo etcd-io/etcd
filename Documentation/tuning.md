@@ -75,10 +75,14 @@ These errors may be resolved by prioritizing etcd's peer traffic over its client
 
 ```
 tc qdisc add dev eth0 root handle 1: prio bands 3
+# Prioritize peer traffic
 tc filter add dev eth0 parent 1: protocol ip prio 1 u32 match ip sport 2380 0xffff flowid 1:1
 tc filter add dev eth0 parent 1: protocol ip prio 1 u32 match ip dport 2380 0xffff flowid 1:1
-tc filter add dev eth0 parent 1: protocol ip prio 2 u32 match ip sport 2379 0xffff flowid 1:1
-tc filter add dev eth0 parent 1: protocol ip prio 2 u32 match ip dport 2379 0xffff flowid 1:1
+# Optional: Set client traffic at next highest priority.
+tc filter add dev eth0 parent 1: protocol ip prio 2 u32 match ip sport 2379 0xffff flowid 1:2
+tc filter add dev eth0 parent 1: protocol ip prio 2 u32 match ip dport 2379 0xffff flowid 1:2
+# Set all other traffic at a lower priority
+tc filter add dev eth0 parent 1: protocol ip prio 3 flowid 1:3
 ```
 
 [ping]: https://en.wikipedia.org/wiki/Ping_(networking_utility)
