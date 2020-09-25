@@ -30,9 +30,10 @@ func TestLeaseQueue(t *testing.T) {
 
 	// insert in reverse order of expiration time
 	for i := 50; i >= 1; i-- {
-		exp := time.Now().Add(time.Hour).UnixNano()
+		now := time.Now()
+		exp := now.Add(time.Hour)
 		if i == 1 {
-			exp = time.Now().UnixNano()
+			exp = now
 		}
 		le.leaseMap[LeaseID(i)] = &Lease{ID: LeaseID(i)}
 		le.leaseExpiredNotifier.RegisterOrUpdate(&LeaseWithTime{id: LeaseID(i), time: exp})
