@@ -233,6 +233,32 @@
               summary: 'etcd instance HTTP requests are slow.',
             },
           },
+         {
+            alert: 'etcdBackendQuotaLowSpace',
+            expr: |||
+              (etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100 > 95
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              message: 'etcd cluster "{{ $labels.job }}": database size exceeds the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.',
+            },
+         },
+         {
+            alert: 'etcdExcessiveDatabaseGrowth',
+            expr: |||
+              increase(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              message: 'etcd cluster "{{ $labels.job }}": Observed surge in etcd writes leading to 50% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.',
+            },
+         },
         ],
       },
     ],
