@@ -17,6 +17,7 @@
 package integration
 
 import (
+	"context"
 	"sync"
 
 	"go.etcd.io/etcd/v3/clientv3"
@@ -37,15 +38,22 @@ var (
 const proxyNamespace = "proxy-namespace"
 
 type grpcClientProxy struct {
-	grpc    grpcAPI
-	wdonec  <-chan struct{}
-	kvdonec <-chan struct{}
-	lpdonec <-chan struct{}
+	ctx       context.Context
+	ctxCancel func()
+	grpc      grpcAPI
+	wdonec    <-chan struct{}
+	kvdonec   <-chan struct{}
+	lpdonec   <-chan struct{}
 }
 
 func toGRPC(c *clientv3.Client) grpcAPI {
 	pmu.Lock()
 	defer pmu.Unlock()
+
+	// dedicated context bound to 'grpc-proxy' lifetype
+	// (so in practice lifetime of the client connection to the proxy).
+	// TODO: Refactor to a separate clientv3.Client instance instead of the context alone.
+	ctx, ctxCancel := context.WithCancel(context.WithValue(context.TODO(), "_name", "grpcProxyContext"))
 
 	lg := zap.NewExample()
 
@@ -59,8 +67,8 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	c.Lease = namespace.NewLease(c.Lease, proxyNamespace)
 	// test coalescing/caching proxy
 	kvp, kvpch := grpcproxy.NewKvProxy(c)
-	wp, wpch := grpcproxy.NewWatchProxy(lg, c)
-	lp, lpch := grpcproxy.NewLeaseProxy(c)
+	wp, wpch := grpcproxy.NewWatchProxy(ctx, lg, c)
+	lp, lpch := grpcproxy.NewLeaseProxy(ctx, c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
 	clp, _ := grpcproxy.NewClusterProxy(lg, c, "", "") // without registering proxy URLs
 	authp := grpcproxy.NewAuthProxy(c)
@@ -77,20 +85,21 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 		adapter.LockServerToLockClient(lockp),
 		adapter.ElectionServerToElectionClient(electp),
 	}
-	proxies[c] = grpcClientProxy{grpc: grpc, wdonec: wpch, kvdonec: kvpch, lpdonec: lpch}
+	proxies[c] = grpcClientProxy{ctx: ctx, ctxCancel: ctxCancel, grpc: grpc, wdonec: wpch, kvdonec: kvpch, lpdonec: lpch}
 	return grpc
 }
 
 type proxyCloser struct {
 	clientv3.Watcher
-	wdonec  <-chan struct{}
-	kvdonec <-chan struct{}
-	lclose  func()
-	lpdonec <-chan struct{}
+	proxyCtxCancel func()
+	wdonec         <-chan struct{}
+	kvdonec        <-chan struct{}
+	lclose         func()
+	lpdonec        <-chan struct{}
 }
 
 func (pc *proxyCloser) Close() error {
-	// client ctx is canceled before calling close, so kv and lp will close out
+	pc.proxyCtxCancel()
 	<-pc.kvdonec
 	err := pc.Watcher.Close()
 	<-pc.wdonec
@@ -110,11 +119,12 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 	lc := c.Lease
 	c.Lease = clientv3.NewLeaseFromLeaseClient(rpc.Lease, c, cfg.DialTimeout)
 	c.Watcher = &proxyCloser{
-		Watcher: clientv3.NewWatchFromWatchClient(rpc.Watch, c),
-		wdonec:  proxies[c].wdonec,
-		kvdonec: proxies[c].kvdonec,
-		lclose:  func() { lc.Close() },
-		lpdonec: proxies[c].lpdonec,
+		Watcher:        clientv3.NewWatchFromWatchClient(rpc.Watch, c),
+		wdonec:         proxies[c].wdonec,
+		kvdonec:        proxies[c].kvdonec,
+		lclose:         func() { lc.Close() },
+		lpdonec:        proxies[c].lpdonec,
+		proxyCtxCancel: proxies[c].ctxCancel,
 	}
 	pmu.Unlock()
 	return c, nil

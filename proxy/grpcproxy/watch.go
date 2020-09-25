@@ -48,12 +48,12 @@ type watchProxy struct {
 	lg *zap.Logger
 }
 
-func NewWatchProxy(lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
-	cctx, cancel := context.WithCancel(c.Ctx())
+func NewWatchProxy(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
+	cctx, cancel := context.WithCancel(ctx)
 	wp := &watchProxy{
 		cw:     c.Watcher,
 		ctx:    cctx,
-		leader: newLeader(c.Ctx(), c.Watcher),
+		leader: newLeader(cctx, c.Watcher),
 
 		kv: c.KV, // for permission checking
 		lg: lg,
