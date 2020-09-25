@@ -228,6 +228,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Require [*Go 1.15+*](https://github.com/etcd-io/etcd/pull/11110).
 - Compile with [*Go 1.15*](https://golang.org/doc/devel/release.html#go1.15)
+- etcd uses go [modules](https://github.com/etcd-io/etcd/pull/12279) (instead of vendor dir) to track dependencies.
 
 ### Project Governance
 
