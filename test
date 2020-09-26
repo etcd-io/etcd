@@ -547,6 +547,10 @@ function mod_tidy_pass {
   tmpModDir=$(mktemp -d --suffix "etcd-mod")
   cp "./go.mod" "./go.sum" "${tmpModDir}"
 
+  # Guarantees keeping go.sum minimal
+  # If this is causing too much problems, we should
+  # stop controlling go.sum at all.
+  rm go.sum
   go mod tidy
 
   set +e
