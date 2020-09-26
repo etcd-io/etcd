@@ -98,6 +98,7 @@ function run_for_modules {
   if [ -z "${USERMOD}" ]; then
     run_for_module "api" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
+    run_for_module "tests" "$@" "${pkg}" || return "$?"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
