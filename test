@@ -137,11 +137,12 @@ function generic_checker {
 }
 
 function functional_pass {
-  ./functional/build
+  run ./tests/functional/build
 
   # Clean up any data and logs from previous runs
   rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
+  # TODO: These ports should be dynamically allocated instead of hard-coded.
   for a in 1 2 3; do
     ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
     pid="$!"
@@ -149,22 +150,25 @@ function functional_pass {
   done
 
   for a in 1 2 3; do
-    echo "Waiting for 'etcd-agent' on ${a}9027..."
+    log_callout "Waiting for 'etcd-agent' on ${a}9027..."
     while ! nc -z localhost ${a}9027; do
       sleep 1
     done
   done
 
-  echo "functional test START!"
-  run ./bin/etcd-tester --config ./functional.yaml && log_success "'etcd-tester' succeeded"
-  ETCD_TESTER_EXIT_CODE=$?
-  echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
+  log_callout "functional test START!"
+  run ./bin/etcd-tester --config ./tests/functional/functional.yaml && log_success "'etcd-tester' succeeded"
+  local etcd_tester_exit_code=$?
+
+  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
+    log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
+  fi
 
   # shellcheck disable=SC2206
   agent_pids=($agent_pids)
   kill -s TERM "${agent_pids[@]}" || true
 
-  if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
+  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
     log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
     tail -1000 /tmp/etcd-functional-1/etcd.log
 
@@ -174,8 +178,8 @@ function functional_pass {
     log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
     tail -1000 /tmp/etcd-functional-3/etcd.log
 
-    log_error "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
-    return ${ETCD_TESTER_EXIT_CODE}
+    log_error "--- FAIL: exit code" ${etcd_tester_exit_code}
+    return ${etcd_tester_exit_code}
   fi
   log_success "functional test PASS!"
 }

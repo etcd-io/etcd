@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source ./scripts/test_lib.sh
+
 # set some environment variables
 ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd/v3"
@@ -16,9 +18,9 @@ GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 toggle_failpoints() {
 	mode="$1"
 	if command -v gofail >/dev/null 2>&1; then
-		gofail "$mode" etcdserver/ mvcc/backend/
+		run gofail "$mode" etcdserver/ mvcc/backend/
 	elif [[ "$mode" != "disable" ]]; then
-		echo "FAILPOINTS set but gofail not found"
+		log_error "FAILPOINTS set but gofail not found"
 		exit 1
 	fi
 }
@@ -36,37 +38,56 @@ etcd_build() {
 
 	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
-		-installsuffix cgo \
-		-ldflags "$GO_LDFLAGS" \
-		-o "${out}/etcd" ${REPO_PATH} || return
+	CGO_ENABLED=0 run go build $GO_BUILD_FLAGS \
+		-installsuffix=cgo \
+		"-ldflags='${GO_LDFLAGS}'" \
+		-o="${out}/etcd" . || return
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
-		-installsuffix cgo \
-		-ldflags "$GO_LDFLAGS" \
-		-o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
+	CGO_ENABLED=0 run go build $GO_BUILD_FLAGS \
+		-installsuffix=cgo \
+		"-ldflags='${GO_LDFLAGS}'" \
+		-o="${out}/etcdctl" ./etcdctl || return
 }
 
 tools_build() {
 	out="bin"
 	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
 	tools_path="tools/benchmark
-	tools/etcd-dump-db
-	tools/etcd-dump-logs
-	tools/local-tester/bridge
-	functional/cmd/etcd-agent
-	functional/cmd/etcd-proxy
-	functional/cmd/etcd-runner
-	functional/cmd/etcd-tester"
+		tools/etcd-dump-db
+		tools/etcd-dump-logs
+		tools/local-tester/bridge"
 	for tool in ${tools_path}
 	do
 		echo "Building" "'${tool}'"...
 		# shellcheck disable=SC2086
-		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
-		  -installsuffix cgo \
-		  -ldflags "${GO_LDFLAGS}" \
-		  -o "${out}/${tool}" "${REPO_PATH}/${tool}" || return
+		CGO_ENABLED=0 run go build ${GO_BUILD_FLAGS} \
+		  -installsuffix=cgo \
+		  "-ldflags='${GO_LDFLAGS}'" \
+		  -o="${out}/${tool}" "./${tool}" || return
 	done
+	tests_build "${@}"
+}
+
+tests_build() {
+	out="bin"
+	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+	tools_path="
+		functional/cmd/etcd-agent
+		functional/cmd/etcd-proxy
+		functional/cmd/etcd-runner
+		functional/cmd/etcd-tester"
+	(
+		cd tests || exit 2
+		for tool in ${tools_path}; do
+			echo "Building" "'${tool}'"...
+
+			# shellcheck disable=SC2086
+			CGO_ENABLED=0 run go build ${GO_BUILD_FLAGS} \
+			  -installsuffix=cgo \
+			  "-ldflags='${GO_LDFLAGS}'" \
+			  -o="../${out}/${tool}" "./${tool}" || return
+    		done
+	)
 }
 
 toggle_failpoints_default

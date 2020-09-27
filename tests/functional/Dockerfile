@@ -13,7 +13,7 @@ RUN dnf check-update || true \
 ENV GOROOT /usr/local/go
 ENV GOPATH /go
 ENV PATH ${GOPATH}/bin:${GOROOT}/bin:${PATH}
-ENV GO_VERSION REPLACE_ME_GO_VERSION
+ENV GO_VERSION 1.14.3
 ENV GO_DOWNLOAD_URL https://storage.googleapis.com/golang
 RUN rm -rf ${GOROOT} \
   && curl -s ${GO_DOWNLOAD_URL}/go${GO_VERSION}.linux-amd64.tar.gz | tar -v -C /usr/local/ -xz \
@@ -22,7 +22,7 @@ RUN rm -rf ${GOROOT} \
 
 RUN mkdir -p ${GOPATH}/src/go.etcd.io/etcd
 ADD . ${GOPATH}/src/go.etcd.io/etcd
-ADD ./functional.yaml /functional.yaml
+ADD ./tests/functional/functional.yaml /functional.yaml
 
 RUN go get -v go.etcd.io/gofail \
   && pushd ${GOPATH}/src/go.etcd.io/etcd \
@@ -32,7 +32,7 @@ RUN go get -v go.etcd.io/gofail \
   && cp ./bin/etcdctl /bin/etcdctl \
   && GO_BUILD_FLAGS="-v" FAILPOINTS=1 ./build \
   && cp ./bin/etcd /bin/etcd-failpoints \
-  && ./functional/build \
+  && ./tests/functional/build \
   && cp ./bin/etcd-agent /bin/etcd-agent \
   && cp ./bin/etcd-proxy /bin/etcd-proxy \
   && cp ./bin/etcd-runner /bin/etcd-runner \

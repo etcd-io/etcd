@@ -4,7 +4,7 @@
 
 See [`rpcpb.Case`](https://godoc.org/github.com/coreos/etcd/functional/rpcpb#Case) for all failure cases.
 
-See [functional.yaml](https://github.com/etcd-io/etcd/blob/master/functional.yaml) for an example configuration.
+See [functional.yaml](https://github.com/etcd-io/etcd/blob/master/tests/functional/functional.yaml) for an example configuration.
 
 ### Run locally
 

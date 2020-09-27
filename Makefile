@@ -491,7 +491,7 @@ docker-dns-srv-test-certs-wildcard-run:
 build-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	./functional/build
+	./tests/functional/build
 	./bin/etcd-agent -help || true && \
 	  ./bin/etcd-proxy -help || true && \
 	  ./bin/etcd-runner --help || true && \
@@ -500,13 +500,13 @@ build-functional:
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./functional/Dockerfile
+	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/functional/Dockerfile
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
-	  --file ./functional/Dockerfile \
+	  --file ./tests/functional/Dockerfile \
 	  .
-	@mv ./functional/Dockerfile.bak ./functional/Dockerfile
+	@mv ./tests/functional/Dockerfile.bak ./tests/functional/Dockerfile
 
 	docker run \
 	  --rm \
