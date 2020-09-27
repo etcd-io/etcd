@@ -17,6 +17,7 @@ package v3rpc
 
 import (
 	"context"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
@@ -32,10 +33,12 @@ type kvServer struct {
 	// Txn.Success can have at most 128 operations,
 	// and Txn.Failure can have at most 128 operations.
 	maxTxnOps uint
+
+	lg *zap.Logger
 }
 
 func NewKVServer(s *etcdserver.EtcdServer) pb.KVServer {
-	return &kvServer{hdr: newHeader(s), kv: s, maxTxnOps: s.Cfg.MaxTxnOps}
+	return &kvServer{hdr: newHeader(s), kv: s, maxTxnOps: s.Cfg.MaxTxnOps, lg: s.Cfg.Logger}
 }
 
 func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -50,6 +53,50 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 
 	s.hdr.fill(resp.Header)
 	return resp, nil
+}
+
+func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+	if err := checkRangeStreamRequest(r); err != nil {
+		return err
+	}
+
+	respC := make(chan *pb.RangeStreamResponse)
+	errC := make(chan error)
+
+	defer func() {
+		close(respC)
+		close(errC)
+	}()
+
+	go func() {
+		err := s.kv.RangeStream(rss.Context(), r, respC)
+		if err != nil {
+			errC <- togRPCError(err)
+		}
+	}()
+
+	for {
+		select {
+		case resp := <-respC:
+			s.hdr.fill(resp.Header)
+			serr := rss.Send(resp)
+			if serr != nil {
+				if isClientCtxErr(rss.Context().Err(), serr) {
+					s.lg.Debug("failed to send range stream response to gRPC stream", zap.Error(serr))
+				} else {
+					s.lg.Warn("failed to send range stream response to gRPC stream", zap.Error(serr))
+					streamFailures.WithLabelValues("send", "rangeStream").Inc()
+				}
+				return nil
+			}
+		case err := <-errC:
+			return err
+		case <-rss.Context().Done():
+			break
+		}
+	}
+
+	return nil
 }
 
 func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -112,6 +159,13 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
+	if len(r.Key) == 0 {
+		return rpctypes.ErrGRPCEmptyKey
+	}
+	return nil
+}
+
+func checkRangeStreamRequest(r *pb.RangeStreamRequest) error {
 	if len(r.Key) == 0 {
 		return rpctypes.ErrGRPCEmptyKey
 	}
