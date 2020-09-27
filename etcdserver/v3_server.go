@@ -47,7 +47,7 @@ const (
 
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse) error
+	RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) error
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
@@ -131,7 +131,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	return resp, err
 }
 
-func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse) error {
+func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) error {
 	trace := traceutil.New("rangeStream",
 		s.getLogger(),
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
@@ -164,7 +164,7 @@ func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeStreamRequest, 
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 
-	get := func() { resp, err = s.applyV3Base.RangeStream(ctx, nil, r, rspC) }
+	get := func() { resp, err = s.applyV3Base.RangeStream(ctx, nil, r, rspC, errC) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		err = serr
 		return err

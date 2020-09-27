@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const RangeStreamBatch int = 1000
+const RangeStreamBatch int = 2
 
 type storeTxnRead struct {
 	s  *store
@@ -179,8 +179,6 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 }
 
 func (tr *storeTxnRead) rangeStreamKeys(key, end []byte, curRev int64, ro RangeOptions, streamC chan *RangeResult) error {
-	defer close(streamC)
-
 	rev := ro.Rev
 	if rev > curRev {
 		streamC <- &RangeResult{KVs: nil, Count: -1, Rev: curRev, Err: ErrFutureRev}
@@ -197,6 +195,7 @@ func (tr *storeTxnRead) rangeStreamKeys(key, end []byte, curRev int64, ro RangeO
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		streamC <- &RangeResult{KVs: nil, Count: 0, Rev: curRev}
+		streamC <- nil
 		return nil
 	}
 
@@ -248,7 +247,7 @@ func (tr *storeTxnRead) rangeStreamKeys(key, end []byte, curRev int64, ro RangeO
 
 	tr.trace.Step("range keys from bolt db")
 	streamC <- &RangeResult{KVs: kvs, Count: kvsLen, Rev: curRev}
-
+	streamC <- nil
 	return nil
 }
 

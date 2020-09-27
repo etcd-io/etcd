@@ -17,6 +17,7 @@ package v3rpc
 
 import (
 	"context"
+	"fmt"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/v3/etcdserver"
@@ -69,17 +70,31 @@ func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamSe
 	}()
 
 	go func() {
-		err := s.kv.RangeStream(rss.Context(), r, respC)
+		err := s.kv.RangeStream(rss.Context(), r, respC, errC)
 		if err != nil {
-			errC <- togRPCError(err)
+			s.lg.Error("EtcdServer RangeStream error", zap.Error(togRPCError(err)))
 		}
 	}()
 
+	var count int
+Loop:
 	for {
 		select {
 		case resp := <-respC:
+			if resp == nil {
+				fmt.Printf("RangeStream server get resp := <-respC, and resp==nil, break\n")
+				break Loop
+			}
+			if resp.Kvs == nil || len(resp.Kvs) == 0 {
+				fmt.Printf("RangeStream server get resp := <-respC, and len(resp.Kvs) == 0, break\n")
+				break Loop
+			}
+
 			s.hdr.fill(resp.Header)
 			serr := rss.Send(resp)
+			count++
+			fmt.Printf("rss.Send end, count: [%d], resp:[%v] \n", count, resp)
+			fmt.Printf("serr:[%v] \n", serr)
 			if serr != nil {
 				if isClientCtxErr(rss.Context().Err(), serr) {
 					s.lg.Debug("failed to send range stream response to gRPC stream", zap.Error(serr))
@@ -90,12 +105,15 @@ func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamSe
 				return nil
 			}
 		case err := <-errC:
+			fmt.Printf("err := <-errC \n")
 			return err
 		case <-rss.Context().Done():
-			break
+			fmt.Printf("<-rss.Context().Done() \n")
+			return rss.Context().Err()
 		}
 	}
 
+	fmt.Printf("RangeStream server finish!!!\n")
 	return nil
 }
 

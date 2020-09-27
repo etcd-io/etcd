@@ -64,7 +64,7 @@ type applierV3 interface {
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse) (*pb.RangeStreamResponse, error)
+	RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error)
 	DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
@@ -386,7 +386,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	return resp, nil
 }
 
-func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse) (*pb.RangeStreamResponse, error) {
+func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error) {
 	trace := traceutil.Get(ctx)
 
 	lg := a.s.getLogger()
@@ -394,6 +394,9 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 	resp := &pb.RangeStreamResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	streamC := make(chan *mvcc.RangeResult)
+	defer func() {
+		close(streamC)
+	}()
 	var err error
 
 	if txn == nil {
@@ -413,20 +416,30 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 			lg.Error("RangeStream error", zap.Error(err))
 		}
 	}()
-
+Loop:
 	for {
 		select {
 		case rr := <-streamC:
 			if rr == nil {
-				break
+				select {
+				case rspC <- nil:
+					fmt.Printf("rr == nil, rspC <- nil\n")
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				fmt.Printf("streamC return nil, break\n")
+				break Loop
 			}
 
 			if rr.KVs == nil {
 				if rr.Err != nil {
-					err = rr.Err
-					return nil, err
+					select {
+					case errC <- rr.Err:
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+					return nil, rr.Err
 				}
-				break
 			}
 
 			subResp := &pb.RangeStreamResponse{}
@@ -451,11 +464,11 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 			select {
 			case rspC <- subResp:
 			case <-ctx.Done():
-				break
+				return nil, ctx.Err()
 			}
 
 		case <-ctx.Done():
-			break
+			return nil, ctx.Err()
 		}
 	}
 
