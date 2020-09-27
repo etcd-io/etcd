@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"fmt"
 	v3rpc "go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"io"
 	"time"
@@ -171,6 +172,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 		var resp *pb.RangeStreamResponse
 		rangeStreamClient, err = kv.openRangeStreamClient(ctx, op.toRangeStreamRequest(), kv.callOpts...)
 		resp, err = kv.serveRangeStream(ctx, rangeStreamClient)
+		fmt.Printf("kv.serveRangeStream return: [%v] \n", resp)
 		if err == nil {
 			return OpResponse{getStream: (*GetStreamResponse)(resp)}, nil
 		}
@@ -275,6 +277,11 @@ func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient
 		resp, err := rsc.Recv()
 		if err != nil {
 			if err == io.EOF {
+				select {
+				case rspC <- nil:
+				case <-ctx.Done():
+					return
+				}
 				break
 			}
 
@@ -290,6 +297,5 @@ func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient
 			return
 		}
 	}
-
 	return
 }

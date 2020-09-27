@@ -76,7 +76,6 @@ func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamSe
 		}
 	}()
 
-	var count int
 Loop:
 	for {
 		select {
@@ -92,9 +91,6 @@ Loop:
 
 			s.hdr.fill(resp.Header)
 			serr := rss.Send(resp)
-			count++
-			fmt.Printf("rss.Send end, count: [%d], resp:[%v] \n", count, resp)
-			fmt.Printf("serr:[%v] \n", serr)
 			if serr != nil {
 				if isClientCtxErr(rss.Context().Err(), serr) {
 					s.lg.Debug("failed to send range stream response to gRPC stream", zap.Error(serr))
