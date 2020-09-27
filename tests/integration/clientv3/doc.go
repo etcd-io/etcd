@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package integration implements tests built upon embedded etcd, and focuses on
+// Package clientv3test implements tests built upon embedded etcd, and focuses on
 // correctness of etcd client.
-package integration
+package clientv3test

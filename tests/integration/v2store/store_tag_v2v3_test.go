@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 
 	"google.golang.org/grpc/grpclog"
 )

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2v3_test
+package v2store_test
 
 import (
 	"strings"

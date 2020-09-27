@@ -108,7 +108,7 @@ func TestGRPCResolverMulti(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := namingv3.GRPCResolver{c}
+	r := namingv3.GRPCResolver{Client: c}
 
 	w, err := r.Resolve("foo")
 	if err != nil {
