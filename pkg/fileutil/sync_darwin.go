@@ -18,7 +18,8 @@ package fileutil
 
 import (
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // Fsync on HFS/OSX flushes the data on to the physical drive but the drive
@@ -26,11 +27,8 @@ import (
 // written in out-of-order sequence. Using F_FULLFSYNC ensures that the
 // physical drive's buffer will also get flushed to the media.
 func Fsync(f *os.File) error {
-	_, _, errno := syscall.Syscall(syscall.SYS_FCNTL, f.Fd(), uintptr(syscall.F_FULLFSYNC), uintptr(0))
-	if errno == 0 {
-		return nil
-	}
-	return errno
+	_, err := unix.FcntlInt(f.Fd(), unix.F_FULLFSYNC, 0)
+	return err
 }
 
 // Fdatasync on darwin platform invokes fcntl(F_FULLFSYNC) for actual persistence

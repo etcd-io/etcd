@@ -300,7 +300,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	leaseGranted.Inc()
 
 	if le.isPrimary() {
-		item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 		le.scheduleCheckpointIfNeeded(l)
 	}
@@ -413,7 +413,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 
 	le.mu.Lock()
 	l.refresh(0)
-	item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+	item := &LeaseWithTime{id: l.ID, time: l.expiry}
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	le.mu.Unlock()
 
@@ -452,7 +452,7 @@ func (le *lessor) Promote(extend time.Duration) {
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
 		l.refresh(extend)
-		item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	}
 
@@ -490,7 +490,7 @@ func (le *lessor) Promote(extend time.Duration) {
 		delay := time.Duration(rateDelay)
 		nextWindow = baseWindow + delay
 		l.refresh(delay + extend)
-		item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 		le.scheduleCheckpointIfNeeded(l)
 	}
@@ -677,14 +677,14 @@ func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
 		return nil, false, true
 	}
 	now := time.Now()
-	if now.UnixNano() < item.time /* expiration time */ {
+	if now.Before(item.time) /* item.time: expiration time */ {
 		// Candidate expirations are caught up, reinsert this item
 		// and no need to revoke (nothing is expiry)
 		return l, false, false
 	}
 
 	// recheck if revoke is complete after retry interval
-	item.time = now.Add(le.expiredLeaseRetryInterval).UnixNano()
+	item.time = now.Add(le.expiredLeaseRetryInterval)
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	return l, true, false
 }
@@ -733,7 +733,7 @@ func (le *lessor) scheduleCheckpointIfNeeded(lease *Lease) {
 		}
 		heap.Push(&le.leaseCheckpointHeap, &LeaseWithTime{
 			id:   lease.ID,
-			time: time.Now().Add(le.checkpointInterval).UnixNano(),
+			time: time.Now().Add(le.checkpointInterval),
 		})
 	}
 }
@@ -747,7 +747,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 	cps := []*pb.LeaseCheckpoint{}
 	for le.leaseCheckpointHeap.Len() > 0 && len(cps) < checkpointLimit {
 		lt := le.leaseCheckpointHeap[0]
-		if lt.time /* next checkpoint time */ > now.UnixNano() {
+		if lt.time.After(now) /* lt.time: next checkpoint time */ {
 			return cps
 		}
 		heap.Pop(&le.leaseCheckpointHeap)

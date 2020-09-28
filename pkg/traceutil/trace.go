@@ -157,6 +157,13 @@ func (t *Trace) LogIfLong(threshold time.Duration) {
 	}
 }
 
+// LogAllStepsIfLong dumps all logs if the duration is longer than threshold
+func (t *Trace) LogAllStepsIfLong(threshold time.Duration) {
+	if time.Since(t.startTime) > threshold {
+		t.LogWithStepThreshold(0)
+	}
+}
+
 // LogWithStepThreshold only dumps step whose duration is longer than step threshold
 func (t *Trace) LogWithStepThreshold(threshold time.Duration) {
 	msg, fs := t.logInfo(threshold)
@@ -192,6 +199,9 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 	}
 	for i := 0; i < len(t.steps); i++ {
 		step := t.steps[i]
+		if step.isSubTraceStart || step.isSubTraceEnd {
+			continue
+		}
 		stepDuration := step.time.Sub(lastStepTime)
 		if stepDuration > threshold {
 			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
