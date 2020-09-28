@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const RangeStreamBatch int = 2
+const RangeStreamBatch int = 1000
 
 type storeTxnRead struct {
 	s  *store
