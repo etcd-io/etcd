@@ -17,7 +17,6 @@ package v3rpc
 
 import (
 	"context"
-	"fmt"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/v3/etcdserver"
@@ -81,15 +80,14 @@ Loop:
 		select {
 		case resp := <-respC:
 			if resp == nil {
-				fmt.Printf("RangeStream server get resp := <-respC, and resp==nil, break\n")
 				break Loop
 			}
 			if resp.Kvs == nil || len(resp.Kvs) == 0 {
-				fmt.Printf("RangeStream server get resp := <-respC, and len(resp.Kvs) == 0, break\n")
 				break Loop
 			}
 
 			s.hdr.fill(resp.Header)
+
 			serr := rss.Send(resp)
 			if serr != nil {
 				if isClientCtxErr(rss.Context().Err(), serr) {
@@ -101,15 +99,12 @@ Loop:
 				return nil
 			}
 		case err := <-errC:
-			fmt.Printf("err := <-errC \n")
 			return err
 		case <-rss.Context().Done():
-			fmt.Printf("<-rss.Context().Done() \n")
 			return rss.Context().Err()
 		}
 	}
 
-	fmt.Printf("RangeStream server finish!!!\n")
 	return nil
 }
 

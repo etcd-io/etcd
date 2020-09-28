@@ -239,7 +239,7 @@ func (kv *kv) serveRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient)
 	rspC := make(chan *pb.RangeStreamResponse)
 	errC := make(chan error)
 
-	var mainRSP *pb.RangeStreamResponse
+	mainRSP := &pb.RangeStreamResponse{}
 
 	defer func() {
 		close(rspC)
@@ -255,9 +255,7 @@ Loop:
 			if subRsp == nil {
 				break Loop
 			}
-			if mainRSP == nil {
-				mainRSP = subRsp
-			}
+
 			mainRSP.Kvs = append(mainRSP.Kvs, subRsp.Kvs...)
 			mainRSP.TotalCount = subRsp.TotalCount
 		case err := <-errC:
@@ -289,6 +287,7 @@ func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient
 			}
 			return
 		}
+
 		select {
 		case rspC <- resp:
 		case <-ctx.Done():

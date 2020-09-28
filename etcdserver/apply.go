@@ -416,6 +416,7 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 			lg.Error("RangeStream error", zap.Error(err))
 		}
 	}()
+
 Loop:
 	for {
 		select {
@@ -423,22 +424,18 @@ Loop:
 			if rr == nil {
 				select {
 				case rspC <- nil:
-					fmt.Printf("rr == nil, rspC <- nil\n")
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				}
-				fmt.Printf("streamC return nil, break\n")
 				break Loop
 			}
 
-			if rr.KVs == nil {
-				if rr.Err != nil {
-					select {
-					case errC <- rr.Err:
-					case <-ctx.Done():
-						return nil, ctx.Err()
-					}
+			if rr.Err != nil {
+				select {
+				case errC <- rr.Err:
 					return nil, rr.Err
+				case <-ctx.Done():
+					return nil, ctx.Err()
 				}
 			}
 
@@ -460,6 +457,8 @@ Loop:
 			}
 			// resp TotalSize just use monitor long time range stream
 			resp.TotalSize += int64(proto.Size(subResp))
+			// resp Header.Revision just use monitor long time range stream
+			resp.Header.Revision = subResp.Header.Revision
 
 			select {
 			case rspC <- subResp:
