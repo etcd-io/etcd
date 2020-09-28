@@ -17,6 +17,7 @@ package clientv3
 import (
 	"context"
 	v3rpc "go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.uber.org/zap"
 	"io"
 	"time"
 
@@ -103,10 +104,11 @@ func (resp *TxnResponse) OpResponse() OpResponse {
 type kv struct {
 	remote   pb.KVClient
 	callOpts []grpc.CallOption
+	lg       *zap.Logger
 }
 
 func NewKV(c *Client) KV {
-	api := &kv{remote: RetryKVClient(c)}
+	api := &kv{remote: RetryKVClient(c), lg: c.lg}
 	if c != nil {
 		api.callOpts = c.callOpts
 	}
@@ -114,7 +116,7 @@ func NewKV(c *Client) KV {
 }
 
 func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
-	api := &kv{remote: remote}
+	api := &kv{remote: remote, lg: c.lg}
 	if c != nil {
 		api.callOpts = c.callOpts
 	}
@@ -241,11 +243,6 @@ func (kv *kv) serveRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient)
 
 	mainRSP := &pb.RangeStreamResponse{}
 
-	defer func() {
-		close(rspC)
-		close(errC)
-	}()
-
 	go kv.handleRangeStream(ctx, rsc, rspC, errC)
 
 Loop:
@@ -269,6 +266,20 @@ Loop:
 }
 
 func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient, rspC chan *pb.RangeStreamResponse, errC chan error) {
+	defer func() {
+		if err := recover(); err != nil {
+			switch e := err.(type) {
+			case error:
+				kv.lg.Error("kv handleRangeStream() panic error", zap.Error(e))
+			}
+		}
+	}()
+
+	defer func() {
+		close(rspC)
+		close(errC)
+	}()
+
 	for {
 		resp, err := rsc.Recv()
 		if err != nil {

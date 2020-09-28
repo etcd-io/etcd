@@ -56,17 +56,22 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 }
 
 func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+	defer func() {
+		if err := recover(); err != nil {
+			switch e := err.(type) {
+			case error:
+				s.lg.Error(
+					"kvServer RangeStream() panic error", zap.Error(e))
+			}
+		}
+	}()
+
 	if err := checkRangeStreamRequest(r); err != nil {
 		return err
 	}
 
 	respC := make(chan *pb.RangeStreamResponse)
 	errC := make(chan error)
-
-	defer func() {
-		close(respC)
-		close(errC)
-	}()
 
 	go func() {
 		err := s.kv.RangeStream(rss.Context(), r, respC, errC)

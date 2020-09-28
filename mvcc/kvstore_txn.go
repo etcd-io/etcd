@@ -179,6 +179,18 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 }
 
 func (tr *storeTxnRead) rangeStreamKeys(key, end []byte, curRev int64, ro RangeOptions, streamC chan *RangeResult) error {
+	defer func() {
+		if err := recover(); err != nil {
+			switch e := err.(type) {
+			case error:
+				tr.s.lg.Error(
+					"storeTxnRead rangeStreamKeys() panic error", zap.Error(e))
+			}
+		}
+	}()
+
+	defer close(streamC)
+
 	rev := ro.Rev
 	if rev > curRev {
 		streamC <- &RangeResult{KVs: nil, Count: -1, Rev: curRev, Err: ErrFutureRev}

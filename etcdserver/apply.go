@@ -387,6 +387,19 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 }
 
 func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			switch e := err.(type) {
+			case error:
+				a.s.getLogger().Error(
+					"applierV3backend RangeStream() panic error", zap.Error(e))
+			}
+		}
+	}()
+
+	defer close(rspC)
+	defer close(errC)
+
 	trace := traceutil.Get(ctx)
 
 	lg := a.s.getLogger()
@@ -394,9 +407,7 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 	resp := &pb.RangeStreamResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	streamC := make(chan *mvcc.RangeResult)
-	defer func() {
-		close(streamC)
-	}()
+
 	var err error
 
 	if txn == nil {
@@ -413,7 +424,7 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 	go func() {
 		err = txn.RangeStream(r.Key, mkGteRange(r.RangeEnd), ro, streamC)
 		if err != nil {
-			lg.Error("RangeStream error", zap.Error(err))
+			lg.Error("storeTxnRead RangeStream error", zap.Error(err))
 		}
 	}()
 
