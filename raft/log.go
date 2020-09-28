@@ -327,11 +327,6 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 			panic(err) // TODO(bdarnell)
 		}
 
-		// check if ents has reached the size limitation
-		if uint64(len(storedEnts)) < min(hi, l.unstable.offset)-lo {
-			return storedEnts, nil
-		}
-
 		ents = storedEnts
 	}
 	if hi > l.unstable.offset {
