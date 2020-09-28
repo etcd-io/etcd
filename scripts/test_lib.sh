@@ -51,10 +51,6 @@ function pkgs_in_module {
   go list -mod=mod "${1:-./...}";
 }
 
-function filter_out_integration_style_tests {
-  grep -Ev '/(tests/e2e|integration|functional)(/|$)'
-}
-
 ####    Running actions against multiple modules ####
 
 # run [command...] - runs given command, printing it first and
