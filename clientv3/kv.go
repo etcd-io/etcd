@@ -242,6 +242,7 @@ func (kv *kv) serveRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient)
 	errC := make(chan error)
 
 	mainRSP := &pb.RangeStreamResponse{}
+	mainRSP.Header = &pb.ResponseHeader{}
 
 	go kv.handleRangeStream(ctx, rsc, rspC, errC)
 
@@ -255,6 +256,7 @@ Loop:
 
 			mainRSP.Kvs = append(mainRSP.Kvs, subRsp.Kvs...)
 			mainRSP.TotalCount = subRsp.TotalCount
+			mainRSP.Header = subRsp.Header
 		case err := <-errC:
 			return nil, err
 		case <-ctx.Done():
