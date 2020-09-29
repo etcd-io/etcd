@@ -1250,6 +1250,7 @@ type ClusterV3 struct {
 func NewClusterV3(t testing.TB, cfg *ClusterConfig) *ClusterV3 {
 	if t != nil {
 		t.Helper()
+		testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 	}
 
 	cfg.UseGRPC = true

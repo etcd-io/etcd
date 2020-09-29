@@ -33,8 +33,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// TODO(ptabor): This is integration test. Skip it in --short and move to integration tests directory.
-
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
 // from a snapshot file.
 func TestSnapshotV3RestoreSingle(t *testing.T) {
@@ -194,6 +192,8 @@ type kv struct {
 
 // creates a snapshot file and returns the file path.
 func createSnapshotFile(t *testing.T, kvs []kv) string {
+	testutil.SkipTestIfShortMode(t,
+		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
 	clusterN := 1
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
