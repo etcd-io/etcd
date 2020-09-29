@@ -38,15 +38,15 @@ import (
 	"go.etcd.io/etcd/v3/mvcc/backend"
 	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/idutil"
-	"go.etcd.io/etcd/v3/pkg/mock/mockstorage"
-	"go.etcd.io/etcd/v3/pkg/mock/mockstore"
-	"go.etcd.io/etcd/v3/pkg/mock/mockwait"
 	"go.etcd.io/etcd/v3/pkg/pbutil"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/pkg/wait"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/server/mock/mockstorage"
+	"go.etcd.io/etcd/v3/server/mock/mockstore"
+	"go.etcd.io/etcd/v3/server/mock/mockwait"
 	"go.uber.org/zap"
 )
 
