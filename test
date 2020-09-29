@@ -49,7 +49,7 @@ if [ -z "$GOARCH" ]; then
 fi
 
 # determine the number of CPUs to use for Go tests
-CPU=${CPU:-"1,2,4"}
+CPU=${CPU:-"4"}
 
 # determine whether target supports race detection
 if [ -z "${RACE}" ] ; then
@@ -64,7 +64,7 @@ fi
 
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
 COMMON_TEST_FLAGS=("-cpu=${CPU}" "${RACE}")
-log_callout "Running with ${COMMON_TEST_FLAGS}"
+log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
 
 RUN_ARG=()
 if [ -n "${TESTCASE}" ]; then

@@ -20,12 +20,12 @@ env:
     - TARGET=linux-amd64-integration-2-cpu
     - TARGET=linux-amd64-integration-4-cpu
     - TARGET=linux-amd64-functional
-    - TARGET=linux-amd64-unit
+    - TARGET=linux-amd64-unit-4-cpu-race
     - TARGET=all-build
     - TARGET=linux-amd64-grpcproxy
     - TARGET=linux-amd64-coverage
-    - TARGET=linux-amd64-fmt-unit-go-tip
-    - TARGET=linux-386-unit
+    - TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
+    - TARGET=linux-386-unit-1-cpu
 
 matrix:
   fast_finish: true
@@ -35,9 +35,9 @@ matrix:
     - go: 1.14.3
       env: TARGET=linux-amd64-coverage
     - go: tip
-      env: TARGET=linux-amd64-fmt-unit-go-tip
+      env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
     - go: 1.14.3
-      env: TARGET=linux-386-unit
+      env: TARGET=linux-386-unit-1-cpu
   exclude:
     - go: tip
       env: TARGET=linux-amd64-fmt
@@ -50,7 +50,7 @@ matrix:
     - go: tip
       env: TARGET=linux-amd64-functional
     - go: tip
-      env: TARGET=linux-amd64-unit
+      env: TARGET=linux-amd64-unit-4-cpu-race
     - go: tip
       env: TARGET=all-build
     - go: tip
@@ -58,9 +58,9 @@ matrix:
     - go: tip
       env: TARGET=linux-amd64-coverage
     - go: 1.14.3
-      env: TARGET=linux-amd64-fmt-unit-go-tip
+      env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
     - go: tip
-      env: TARGET=linux-386-unit
+      env: TARGET=linux-386-unit-1-cpu
 
 before_install:
   - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
@@ -100,10 +100,10 @@ script:
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GO_BUILD_FLAGS='-v -mod=readonly' ./build && GOARCH=amd64 PASSES='functional' ./test"
         ;;
-      linux-amd64-unit)
+      linux-amd64-unit-4-cpu-race)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 PASSES='unit' ./test -p=2"
+          /bin/bash -c "GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./test -p=2"
         ;;
       all-build)
         docker run --rm \
@@ -124,12 +124,12 @@ script:
       linux-amd64-coverage)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="VERBOSE='1'" make docker-test-coverage
         ;;
-      linux-amd64-fmt-unit-go-tip)
-        GOARCH=amd64 PASSES='fmt unit' ./test -p=2
+      linux-amd64-fmt-unit-go-tip-2-cpu)
+        GOARCH=amd64 PASSES='fmt unit' 'CPU=2' ./test -p=2
         ;;
-      linux-386-unit)
+      linux-386-unit-1-cpu)
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=386 PASSES='unit' ./test -p=2"
+          /bin/bash -c "GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test -p=4"
         ;;
     esac
