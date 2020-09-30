@@ -1152,7 +1152,6 @@ func stepLeader(r *raft, m pb.Message) error {
 					// move to replicating state, that would only happen with
 					// the next round of appends (but there may not be a next
 					// round for a while, exposing an inconsistent RaftStatus).
-					pr.BecomeProbe()
 					pr.BecomeReplicate()
 				case pr.State == tracker.StateReplicate:
 					pr.Inflights.FreeLE(m.Index)
