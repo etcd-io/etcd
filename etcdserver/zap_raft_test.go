@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logutil
+package etcdserver
 
 import (
 	"bytes"
 	"fmt"
+	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 func TestNewRaftLogger(t *testing.T) {
@@ -40,7 +40,7 @@ func TestNewRaftLogger(t *testing.T) {
 			Thereafter: 100,
 		},
 		Encoding:         "json",
-		EncoderConfig:    DefaultZapLoggerConfig.EncoderConfig,
+		EncoderConfig:    logutil.DefaultZapLoggerConfig.EncoderConfig,
 		OutputPaths:      []string{logPath},
 		ErrorOutputPaths: []string{logPath},
 	}
@@ -66,7 +66,7 @@ func TestNewRaftLogger(t *testing.T) {
 	if !bytes.Contains(data, []byte("etcd-logutil-2")) {
 		t.Fatalf("can't find data in log %q", string(data))
 	}
-	if !bytes.Contains(data, []byte("logutil/zap_raft_test.go:")) {
+	if !bytes.Contains(data, []byte("zap_raft_test.go:")) {
 		t.Fatalf("unexpected caller; %q", string(data))
 	}
 }
