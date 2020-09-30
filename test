@@ -29,7 +29,8 @@
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build_cov cov" ./test
+# $ COVERDIR=coverage PASSES="build build_cov cov" ./test
+# $ go tool cover -html ./coverage/cover.out
 set -e
 
 # The test script is not supposed to make any changes to the files
@@ -43,16 +44,12 @@ source ./scripts/test_lib.sh
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
 
-# Invoke ./tests/cover.test.bash for HTML output
-COVER="--cover=${COVER:-true}"
-
 if [ -z "$GOARCH" ]; then
   GOARCH=$(go env GOARCH);
 fi
 
 # determine the number of CPUs to use for Go tests
-CPU=${CPU:-"1,2,4"}
-echo "Running with CPU:" "${CPU}"
+CPU=${CPU:-"4"}
 
 # determine whether target supports race detection
 if [ -z "${RACE}" ] ; then
@@ -66,7 +63,8 @@ else
 fi
 
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
-COMMON_TEST_FLAGS=("-cpu=${CPU}" "${RACE}" "${COVER}")
+COMMON_TEST_FLAGS=("-cpu=${CPU}" "${RACE}")
+log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
 
 RUN_ARG=()
 if [ -n "${TESTCASE}" ]; then
