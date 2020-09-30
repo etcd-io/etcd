@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/proxy/tcpproxy"
+	"go.etcd.io/etcd/v3/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -33,7 +33,7 @@ var (
 	gatewayDNSCluster            string
 	gatewayDNSClusterServiceName string
 	gatewayInsecureDiscovery     bool
-	getewayRetryDelay            time.Duration
+	gatewayRetryDelay            time.Duration
 	gatewayCA                    string
 )
 
@@ -71,11 +71,11 @@ func newGatewayStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&gatewayDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
 	cmd.Flags().StringVar(&gatewayDNSClusterServiceName, "discovery-srv-name", "", "service name to query when using DNS discovery")
 	cmd.Flags().BoolVar(&gatewayInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
-	cmd.Flags().StringVar(&gatewayCA, "trusted-ca-file", "", "path to the client server TLS CA file.")
+	cmd.Flags().StringVar(&gatewayCA, "trusted-ca-file", "", "path to the client server TLS CA file for verifying the discovered endpoints when discovery-srv is provided.")
 
 	cmd.Flags().StringSliceVar(&gatewayEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 
-	cmd.Flags().DurationVar(&getewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
+	cmd.Flags().DurationVar(&gatewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
 
 	return &cmd
 }
@@ -99,6 +99,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	// We use os.Args to show all the arguments (not only passed-through Cobra).
+	lg.Info("Running: ", zap.Strings("args", os.Args))
+
 	srvs := discoverEndpoints(lg, gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery, gatewayDNSClusterServiceName)
 	if len(srvs.Endpoints) == 0 {
 		// no endpoints discovered, fall back to provided endpoints
@@ -119,6 +122,41 @@ func startGateway(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	lhost, lport, err := net.SplitHostPort(gatewayListenAddr)
+	if err != nil {
+		fmt.Println("failed to validate listen address:", gatewayListenAddr)
+		os.Exit(1)
+	}
+
+	laddrs, err := net.LookupHost(lhost)
+	if err != nil {
+		fmt.Println("failed to resolve listen host:", lhost)
+		os.Exit(1)
+	}
+	laddrsMap := make(map[string]bool)
+	for _, addr := range laddrs {
+		laddrsMap[addr] = true
+	}
+
+	for _, srv := range srvs.SRVs {
+		var eaddrs []string
+		eaddrs, err = net.LookupHost(srv.Target)
+		if err != nil {
+			fmt.Println("failed to resolve endpoint host:", srv.Target)
+			os.Exit(1)
+		}
+		if fmt.Sprintf("%d", srv.Port) != lport {
+			continue
+		}
+
+		for _, ea := range eaddrs {
+			if laddrsMap[ea] {
+				fmt.Printf("SRV or endpoint (%s:%d->%s:%d) should not resolve to the gateway listen addr (%s)\n", srv.Target, srv.Port, ea, srv.Port, gatewayListenAddr)
+				os.Exit(1)
+			}
+		}
+	}
+
 	if len(srvs.Endpoints) == 0 {
 		fmt.Println("no endpoints found")
 		os.Exit(1)
@@ -135,7 +173,7 @@ func startGateway(cmd *cobra.Command, args []string) {
 		Logger:          lg,
 		Listener:        l,
 		Endpoints:       srvs.SRVs,
-		MonitorInterval: getewayRetryDelay,
+		MonitorInterval: gatewayRetryDelay,
 	}
 
 	// At this point, etcd gateway listener is initialized

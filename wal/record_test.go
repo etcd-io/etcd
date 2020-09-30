@@ -16,13 +16,14 @@ package wal
 
 import (
 	"bytes"
+	"errors"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/wal/walpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 )
 
 var (
@@ -57,7 +58,7 @@ func TestReadRecord(t *testing.T) {
 		if !reflect.DeepEqual(rec, tt.wr) {
 			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
 		}
-		if !reflect.DeepEqual(e, tt.we) {
+		if !errors.Is(e, tt.we) {
 			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
 		}
 		rec = &walpb.Record{}

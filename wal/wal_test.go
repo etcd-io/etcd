@@ -27,10 +27,10 @@ import (
 	"regexp"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/pbutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal/walpb"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/pbutil"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -239,7 +239,7 @@ func TestVerify(t *testing.T) {
 
 	// make 5 separate files
 	for i := 0; i < 5; i++ {
-		es := []raftpb.Entry{{Index: uint64(i), Data: []byte("waldata" + string(i+1))}}
+		es := []raftpb.Entry{{Index: uint64(i), Data: []byte(fmt.Sprintf("waldata%d", i+1))}}
 		if err = w.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
@@ -645,6 +645,35 @@ func TestOpenForRead(t *testing.T) {
 	}
 }
 
+func TestOpenWithMaxIndex(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	// create WAL
+	w, err := Create(zap.NewExample(), p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	es := []raftpb.Entry{{Index: uint64(math.MaxInt64)}}
+	if err = w.Save(raftpb.HardState{}, es); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = w.ReadAll()
+	if err == nil || err != ErrSliceOutOfRange {
+		t.Fatalf("err = %v, want ErrSliceOutOfRange", err)
+	}
+}
+
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
@@ -948,5 +977,135 @@ func TestRenameFail(t *testing.T) {
 	w2, werr := w.renameWAL(tp)
 	if w2 != nil || werr == nil { // os.Rename should fail from 'no such file or directory'
 		t.Fatalf("expected error, got %v", werr)
+	}
+}
+
+// TestReadAllFail ensure ReadAll error if used without opening the WAL
+func TestReadAllFail(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	// create initial WAL
+	f, err := Create(zap.NewExample(), dir, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	// try to read without opening the WAL
+	_, _, _, err = f.ReadAll()
+	if err == nil || err != ErrDecoderNotFound {
+		t.Fatalf("err = %v, want ErrDecoderNotFound", err)
+	}
+}
+
+// TestValidSnapshotEntries ensures ValidSnapshotEntries returns all valid wal snapshot entries, accounting
+// for hardstate
+func TestValidSnapshotEntries(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	snap0 := walpb.Snapshot{Index: 0, Term: 0}
+	snap1 := walpb.Snapshot{Index: 1, Term: 1}
+	state1 := raftpb.HardState{Commit: 1, Term: 1}
+	snap2 := walpb.Snapshot{Index: 2, Term: 1}
+	snap3 := walpb.Snapshot{Index: 3, Term: 2}
+	state2 := raftpb.HardState{Commit: 3, Term: 2}
+	snap4 := walpb.Snapshot{Index: 4, Term: 2} // will be orphaned since the last committed entry will be snap3
+	func() {
+		w, err := Create(zap.NewExample(), p, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer w.Close()
+
+		// snap0 is implicitly created at index 0, term 0
+		if err = w.SaveSnapshot(snap1); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Save(state1, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap2); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap3); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Save(state2, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap4); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	walSnaps, err := ValidSnapshotEntries(zap.NewExample(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []walpb.Snapshot{snap0, snap1, snap2, snap3}
+	if !reflect.DeepEqual(walSnaps, expected) {
+		t.Errorf("expected walSnaps %+v, got %+v", expected, walSnaps)
+	}
+}
+
+// TestValidSnapshotEntriesAfterPurgeWal ensure that there are many wal files, and after cleaning the first wal file,
+// it can work well.
+func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
+	oldSegmentSizeBytes := SegmentSizeBytes
+	SegmentSizeBytes = 64
+	defer func() {
+		SegmentSizeBytes = oldSegmentSizeBytes
+	}()
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	snap0 := walpb.Snapshot{Index: 0, Term: 0}
+	snap1 := walpb.Snapshot{Index: 1, Term: 1}
+	state1 := raftpb.HardState{Commit: 1, Term: 1}
+	snap2 := walpb.Snapshot{Index: 2, Term: 1}
+	snap3 := walpb.Snapshot{Index: 3, Term: 2}
+	state2 := raftpb.HardState{Commit: 3, Term: 2}
+	func() {
+		w, err := Create(zap.NewExample(), p, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer w.Close()
+
+		// snap0 is implicitly created at index 0, term 0
+		if err = w.SaveSnapshot(snap1); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Save(state1, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap2); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveSnapshot(snap3); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 128; i++ {
+			if err = w.Save(state2, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+	}()
+	files, _, err := selectWALFiles(nil, p, snap0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Remove(p + "/" + files[0])
+	_, err = ValidSnapshotEntries(zap.NewExample(), p)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

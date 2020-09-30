@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3/mirror"
-	"go.etcd.io/etcd/integration"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/clientv3/mirror"
+	"go.etcd.io/etcd/v3/integration"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func TestMirrorSync(t *testing.T) {
@@ -73,8 +73,8 @@ func TestMirrorSync(t *testing.T) {
 }
 
 func TestMirrorSyncBase(t *testing.T) {
-	cluster := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 1})
-	defer cluster.Terminate(nil)
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)
 	ctx := context.TODO()

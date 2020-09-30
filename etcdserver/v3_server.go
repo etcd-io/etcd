@@ -17,20 +17,24 @@ package etcdserver
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
+	"strconv"
 	"time"
 
-	"go.etcd.io/etcd/auth"
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/lease/leasehttp"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/pkg/traceutil"
-	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/v3/auth"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/lease/leasehttp"
+	"go.etcd.io/etcd/v3/mvcc"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
+	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -146,8 +150,14 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if isTxnReadonly(r) {
+		trace := traceutil.New("transaction",
+			s.getLogger(),
+			traceutil.Field{Key: "read_only", Value: true},
+		)
+		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 		if !isTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
+			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
 				return nil, err
 			}
@@ -160,15 +170,17 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 
 		defer func(start time.Time) {
 			warnOfExpensiveReadOnlyTxnRequest(s.getLogger(), start, r, resp, err)
+			trace.LogIfLong(traceThreshold)
 		}(time.Now())
 
-		get := func() { resp, err = s.applyV3Base.Txn(r) }
+		get := func() { resp, _, err = s.applyV3Base.Txn(ctx, r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
 		return resp, err
 	}
 
+	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
@@ -433,9 +445,10 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			return nil, err
 		}
 
+		// internalReq doesn't need to have Password because the above s.AuthStore().CheckPassword() already did it.
+		// In addition, it will let a WAL entry not record password as a plain text.
 		internalReq := &pb.InternalAuthenticateRequest{
 			Name:        r.Name,
-			Password:    r.Password,
 			SimpleToken: st,
 		}
 
@@ -454,6 +467,15 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	if r.Options == nil || !r.Options.NoPassword {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(r.Password), s.authStore.BcryptCost())
+		if err != nil {
+			return nil, err
+		}
+		r.HashedPassword = base64.StdEncoding.EncodeToString(hashedPassword)
+		r.Password = ""
+	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
@@ -470,6 +492,15 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	if r.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(r.Password), s.authStore.BcryptCost())
+		if err != nil {
+			return nil, err
+		}
+		r.HashedPassword = base64.StdEncoding.EncodeToString(hashedPassword)
+		r.Password = ""
+	}
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
 	if err != nil {
 		return nil, err
@@ -617,13 +648,16 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		ID: s.reqIDGen.Next(),
 	}
 
-	authInfo, err := s.AuthInfoFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if authInfo != nil {
-		r.Header.Username = authInfo.Username
-		r.Header.AuthRevision = authInfo.Revision
+	// check authinfo if it is not InternalAuthenticateRequest
+	if r.Authenticate == nil {
+		authInfo, err := s.AuthInfoFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if authInfo != nil {
+			r.Header.Username = authInfo.Username
+			r.Header.AuthRevision = authInfo.Revision
+		}
 	}
 
 	data, err := r.Marshal()
@@ -685,6 +719,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 			return
 		}
 
+		// as a single loop is can unlock multiple reads, it is not very useful
+		// to propagate the trace from Txn or Range.
+		trace := traceutil.New("linearizableReadLoop", s.getLogger())
 		nextnr := newNotifier()
 
 		s.readMu.Lock()
@@ -745,17 +782,31 @@ func (s *EtcdServer) linearizableReadLoop() {
 		if !done {
 			continue
 		}
+		trace.Step("read index received")
 
-		if ai := s.getAppliedIndex(); ai < rs.Index {
+		index := rs.Index
+		trace.AddField(traceutil.Field{Key: "readStateIndex", Value: index})
+
+		ai := s.getAppliedIndex()
+		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: strconv.FormatUint(ai, 10)})
+
+		if ai < index {
 			select {
-			case <-s.applyWait.Wait(rs.Index):
+			case <-s.applyWait.Wait(index):
 			case <-s.stopping:
 				return
 			}
 		}
 		// unblock all l-reads requested at indices before rs.Index
 		nr.notify(nil)
+		trace.Step("applied index is now lower than readState.Index")
+
+		trace.LogAllStepsIfLong(traceThreshold)
 	}
+}
+
+func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
+	return s.linearizableReadNotify(ctx)
 }
 
 func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
@@ -790,5 +841,96 @@ func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 	}
 	authInfo = s.AuthStore().AuthInfoFromTLS(ctx)
 	return authInfo, nil
+}
 
+func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	switch r.Action {
+	case pb.DowngradeRequest_VALIDATE:
+		return s.downgradeValidate(ctx, r.Version)
+	case pb.DowngradeRequest_ENABLE:
+		return s.downgradeEnable(ctx, r)
+	case pb.DowngradeRequest_CANCEL:
+		return s.downgradeCancel(ctx)
+	default:
+		return nil, ErrUnknownMethod
+	}
+}
+
+func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.DowngradeResponse, error) {
+	resp := &pb.DowngradeResponse{}
+
+	targetVersion, err := convertToClusterVersion(v)
+	if err != nil {
+		return nil, err
+	}
+
+	// gets leaders commit index and wait for local store to finish applying that index
+	// to avoid using stale downgrade information
+	err = s.linearizableReadNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cv := s.ClusterVersion()
+	if cv == nil {
+		return nil, ErrClusterVersionUnavailable
+	}
+	resp.Version = cv.String()
+
+	allowedTargetVersion := membership.AllowedDowngradeVersion(cv)
+	if !targetVersion.Equal(*allowedTargetVersion) {
+		return nil, ErrInvalidDowngradeTargetVersion
+	}
+
+	downgradeInfo := s.cluster.DowngradeInfo()
+	if downgradeInfo.Enabled {
+		// Todo: return the downgrade status along with the error msg
+		return nil, ErrDowngradeInProcess
+	}
+	return resp, nil
+}
+
+func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	// validate downgrade capability before starting downgrade
+	v := r.Version
+	lg := s.getLogger()
+	if resp, err := s.downgradeValidate(ctx, v); err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return resp, err
+	}
+	targetVersion, err := convertToClusterVersion(v)
+	if err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return nil, err
+	}
+
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: true, Ver: targetVersion.String()}
+	_, err = s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	if err != nil {
+		lg.Warn("reject downgrade request", zap.Error(err))
+		return nil, err
+	}
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
+}
+
+func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
+	// gets leaders commit index and wait for local store to finish applying that index
+	// to avoid using stale downgrade information
+	if err := s.linearizableReadNotify(ctx); err != nil {
+		return nil, err
+	}
+
+	downgradeInfo := s.cluster.DowngradeInfo()
+	if !downgradeInfo.Enabled {
+		return nil, ErrNoInflightDowngrade
+	}
+
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: false}
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	if err != nil {
+		return nil, err
+	}
+	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	return &resp, nil
 }

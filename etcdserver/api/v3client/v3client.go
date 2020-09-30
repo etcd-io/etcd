@@ -18,10 +18,10 @@ import (
 	"context"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/proxy/grpcproxy/adapter"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
 )
 
 // New creates a clientv3 client that wraps an in-process EtcdServer. Instead
@@ -29,6 +29,10 @@ import (
 // to the etcd server through its api/v3rpc function interfaces.
 func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	c := clientv3.NewCtxClient(context.Background())
+	lg := s.Logger()
+	if lg != nil {
+		c.WithLogger(lg)
+	}
 
 	kvc := adapter.KvServerToKvClient(v3rpc.NewQuotaKVServer(s))
 	c.KV = clientv3.NewKVFromKVClient(kvc, c)
@@ -45,7 +49,8 @@ func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	clc := adapter.ClusterServerToClusterClient(v3rpc.NewClusterServer(s))
 	c.Cluster = clientv3.NewClusterFromClusterClient(clc, c)
 
-	// TODO: implement clientv3.Auth interface?
+	a := adapter.AuthServerToAuthClient(v3rpc.NewAuthServer(s))
+	c.Auth = clientv3.NewAuthFromAuthClient(a, c)
 
 	return c
 }

@@ -31,7 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/pkg/tlsutil"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/pkg/tlsutil"
 
 	"go.uber.org/zap"
 )
@@ -114,10 +115,17 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
-	if err = os.MkdirAll(dirpath, 0700); err != nil {
+	info.Logger = lg
+	err = fileutil.TouchDirAll(dirpath)
+	if err != nil {
+		if info.Logger != nil {
+			info.Logger.Warn(
+				"cannot create cert directory",
+				zap.Error(err),
+			)
+		}
 		return
 	}
-	info.Logger = lg
 
 	certPath := filepath.Join(dirpath, "cert.pem")
 	keyPath := filepath.Join(dirpath, "key.pem")
@@ -429,7 +437,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 			return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		})
 		if hasNonEmptyCN {
-			return nil, fmt.Errorf("cert has non empty Common Name (%s)", cn)
+			return nil, fmt.Errorf("cert has non empty Common Name (%s): %s", cn, info.CertFile)
 		}
 	}
 

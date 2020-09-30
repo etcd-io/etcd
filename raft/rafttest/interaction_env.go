@@ -19,8 +19,8 @@ import (
 	"math"
 	"strings"
 
-	"go.etcd.io/etcd/raft"
-	pb "go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 // InteractionOpts groups the options for an InteractionEnv.
@@ -28,7 +28,7 @@ type InteractionOpts struct {
 	OnConfig func(*raft.Config)
 }
 
-// A Node is a member of a raft group tested via an InteractionEnv.
+// Node is a member of a raft group tested via an InteractionEnv.
 type Node struct {
 	*raft.RawNode
 	Storage

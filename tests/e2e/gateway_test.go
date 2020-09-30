@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/expect"
+	"go.etcd.io/etcd/v3/pkg/expect"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 )
 
 func TestGateway(t *testing.T) {
-	ec, err := newEtcdProcessCluster(&configNoTLS)
+	ec, err := newEtcdProcessCluster(t, &configNoTLS)
 	if err != nil {
 		t.Fatal(err)
 	}

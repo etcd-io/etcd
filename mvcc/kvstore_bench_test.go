@@ -15,26 +15,19 @@
 package mvcc
 
 import (
-	"sync/atomic"
 	"testing"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
 
-type fakeConsistentIndex uint64
-
-func (i *fakeConsistentIndex) ConsistentIndex() uint64 {
-	return atomic.LoadUint64((*uint64)(i))
-}
-
 func BenchmarkStorePut(b *testing.B) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -52,9 +45,8 @@ func BenchmarkStoreRangeKey1(b *testing.B)   { benchmarkStoreRange(b, 1) }
 func BenchmarkStoreRangeKey100(b *testing.B) { benchmarkStoreRange(b, 100) }
 
 func benchmarkStoreRange(b *testing.B, n int) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// 64 byte key/val
@@ -80,9 +72,8 @@ func benchmarkStoreRange(b *testing.B, n int) {
 }
 
 func BenchmarkConsistentIndex(b *testing.B) {
-	fci := fakeConsistentIndex(10)
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &fci, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	tx := s.b.BatchTx()
@@ -99,9 +90,8 @@ func BenchmarkConsistentIndex(b *testing.B) {
 
 // BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -118,9 +108,8 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -139,9 +128,8 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 
 // benchmarkStoreRestore benchmarks the restore operation
 func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
-	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	// use closure to capture 's' to pick up the reassignment
 	defer func() { cleanup(s, be, tmpPath) }()
 
@@ -161,7 +149,7 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

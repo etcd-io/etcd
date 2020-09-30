@@ -17,7 +17,8 @@ package api
 import (
 	"sync"
 
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/version"
 	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
@@ -62,7 +63,7 @@ func UpdateCapability(lg *zap.Logger, v *semver.Version) {
 		return
 	}
 	enableMapMu.Lock()
-	if curVersion != nil && !curVersion.LessThan(*v) {
+	if curVersion != nil && !membership.IsValidVersionChange(v, curVersion) {
 		enableMapMu.Unlock()
 		return
 	}

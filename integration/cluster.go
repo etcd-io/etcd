@@ -33,25 +33,25 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client"
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/embed"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/v2http"
-	"go.etcd.io/etcd/etcdserver/api/v3client"
-	"go.etcd.io/etcd/etcdserver/api/v3election"
-	epb "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
-	"go.etcd.io/etcd/etcdserver/api/v3lock"
-	lockpb "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/tlsutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/client"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2http"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3election"
+	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3lock"
+	lockpb "go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/tlsutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
@@ -152,6 +152,8 @@ type ClusterConfig struct {
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
+
+	WatchProgressNotifyInterval time.Duration
 }
 
 type cluster struct {
@@ -191,6 +193,8 @@ func (c *cluster) fillClusterForMembers() error {
 }
 
 func newCluster(t testing.TB, cfg *ClusterConfig) *cluster {
+	testutil.SkipTestIfShortMode(t, "Cannot start etcd cluster in --short tests")
+
 	c := &cluster{cfg: cfg}
 	ms := make([]*member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
@@ -207,6 +211,7 @@ func newCluster(t testing.TB, cfg *ClusterConfig) *cluster {
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t testing.TB, size int) *cluster {
+	t.Helper()
 	return newCluster(t, &ClusterConfig{Size: size})
 }
 
@@ -279,23 +284,24 @@ func (c *cluster) HTTPMembers() []client.Member {
 func (c *cluster) mustNewMember(t testing.TB) *member {
 	m := mustNewMember(t,
 		memberConfig{
-			name:                     c.name(rand.Int()),
-			authToken:                c.cfg.AuthToken,
-			peerTLS:                  c.cfg.PeerTLS,
-			clientTLS:                c.cfg.ClientTLS,
-			quotaBackendBytes:        c.cfg.QuotaBackendBytes,
-			maxTxnOps:                c.cfg.MaxTxnOps,
-			maxRequestBytes:          c.cfg.MaxRequestBytes,
-			snapshotCount:            c.cfg.SnapshotCount,
-			snapshotCatchUpEntries:   c.cfg.SnapshotCatchUpEntries,
-			grpcKeepAliveMinTime:     c.cfg.GRPCKeepAliveMinTime,
-			grpcKeepAliveInterval:    c.cfg.GRPCKeepAliveInterval,
-			grpcKeepAliveTimeout:     c.cfg.GRPCKeepAliveTimeout,
-			clientMaxCallSendMsgSize: c.cfg.ClientMaxCallSendMsgSize,
-			clientMaxCallRecvMsgSize: c.cfg.ClientMaxCallRecvMsgSize,
-			useIP:                    c.cfg.UseIP,
-			enableLeaseCheckpoint:    c.cfg.EnableLeaseCheckpoint,
-			leaseCheckpointInterval:  c.cfg.LeaseCheckpointInterval,
+			name:                        c.name(rand.Int()),
+			authToken:                   c.cfg.AuthToken,
+			peerTLS:                     c.cfg.PeerTLS,
+			clientTLS:                   c.cfg.ClientTLS,
+			quotaBackendBytes:           c.cfg.QuotaBackendBytes,
+			maxTxnOps:                   c.cfg.MaxTxnOps,
+			maxRequestBytes:             c.cfg.MaxRequestBytes,
+			snapshotCount:               c.cfg.SnapshotCount,
+			snapshotCatchUpEntries:      c.cfg.SnapshotCatchUpEntries,
+			grpcKeepAliveMinTime:        c.cfg.GRPCKeepAliveMinTime,
+			grpcKeepAliveInterval:       c.cfg.GRPCKeepAliveInterval,
+			grpcKeepAliveTimeout:        c.cfg.GRPCKeepAliveTimeout,
+			clientMaxCallSendMsgSize:    c.cfg.ClientMaxCallSendMsgSize,
+			clientMaxCallRecvMsgSize:    c.cfg.ClientMaxCallRecvMsgSize,
+			useIP:                       c.cfg.UseIP,
+			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
+			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
+			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -568,23 +574,24 @@ type member struct {
 func (m *member) GRPCAddr() string { return m.grpcAddr }
 
 type memberConfig struct {
-	name                     string
-	peerTLS                  *transport.TLSInfo
-	clientTLS                *transport.TLSInfo
-	authToken                string
-	quotaBackendBytes        int64
-	maxTxnOps                uint
-	maxRequestBytes          uint
-	snapshotCount            uint64
-	snapshotCatchUpEntries   uint64
-	grpcKeepAliveMinTime     time.Duration
-	grpcKeepAliveInterval    time.Duration
-	grpcKeepAliveTimeout     time.Duration
-	clientMaxCallSendMsgSize int
-	clientMaxCallRecvMsgSize int
-	useIP                    bool
-	enableLeaseCheckpoint    bool
-	leaseCheckpointInterval  time.Duration
+	name                        string
+	peerTLS                     *transport.TLSInfo
+	clientTLS                   *transport.TLSInfo
+	authToken                   string
+	quotaBackendBytes           int64
+	maxTxnOps                   uint
+	maxRequestBytes             uint
+	snapshotCount               uint64
+	snapshotCatchUpEntries      uint64
+	grpcKeepAliveMinTime        time.Duration
+	grpcKeepAliveInterval       time.Duration
+	grpcKeepAliveTimeout        time.Duration
+	clientMaxCallSendMsgSize    int
+	clientMaxCallRecvMsgSize    int
+	useIP                       bool
+	enableLeaseCheckpoint       bool
+	leaseCheckpointInterval     time.Duration
+	WatchProgressNotifyInterval time.Duration
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -677,6 +684,8 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.useIP = mcfg.useIP
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
+
+	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
 
@@ -1143,7 +1152,7 @@ func (m *member) Terminate(t testing.TB) {
 }
 
 // Metric gets the metric value for a member
-func (m *member) Metric(metricName string) (string, error) {
+func (m *member) Metric(metricName string, expectLabels ...string) (string, error) {
 	cfgtls := transport.TLSInfo{}
 	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
 	if err != nil {
@@ -1161,9 +1170,20 @@ func (m *member) Metric(metricName string) (string, error) {
 	}
 	lines := strings.Split(string(b), "\n")
 	for _, l := range lines {
-		if strings.HasPrefix(l, metricName) {
-			return strings.Split(l, " ")[1], nil
+		if !strings.HasPrefix(l, metricName) {
+			continue
 		}
+		ok := true
+		for _, lv := range expectLabels {
+			if !strings.Contains(l, lv) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		return strings.Split(l, " ")[1], nil
 	}
 	return "", nil
 }
@@ -1228,6 +1248,11 @@ type ClusterV3 struct {
 // NewClusterV3 returns a launched cluster with a grpc client connection
 // for each cluster member.
 func NewClusterV3(t testing.TB, cfg *ClusterConfig) *ClusterV3 {
+	if t != nil {
+		t.Helper()
+		testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
+	}
+
 	cfg.UseGRPC = true
 	if os.Getenv("CLIENT_DEBUG") != "" {
 		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))

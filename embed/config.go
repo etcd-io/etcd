@@ -26,15 +26,15 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3compactor"
-	"go.etcd.io/etcd/pkg/flags"
-	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/pkg/netutil"
-	"go.etcd.io/etcd/pkg/srv"
-	"go.etcd.io/etcd/pkg/tlsutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/v3/pkg/flags"
+	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.etcd.io/etcd/v3/pkg/netutil"
+	"go.etcd.io/etcd/v3/pkg/srv"
+	"go.etcd.io/etcd/v3/pkg/tlsutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -274,12 +274,16 @@ type Config struct {
 	AuthToken  string `json:"auth-token"`
 	BcryptCost uint   `json:"bcrypt-cost"`
 
+	//The AuthTokenTTL in seconds of the simple token
+	AuthTokenTTL uint `json:"auth-token-ttl"`
+
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
-	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
-	ExperimentalCompactionBatchLimit  int  `json:"experimental-compaction-batch-limit"`
+	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
+	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
+	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -319,8 +323,13 @@ type Config struct {
 	loggerCore        zapcore.Core
 	loggerWriteSyncer zapcore.WriteSyncer
 
-	// EnableGRPCGateway is false to disable grpc gateway.
+	// EnableGRPCGateway enables grpc gateway.
+	// The gateway translates a RESTful HTTP API into gRPC.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
+
+	// UnsafeNoFsync disables all uses of fsync.
+	// Setting this is unsafe and will cause data loss.
+	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -392,16 +401,18 @@ func NewConfig() *Config {
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
 
-		AuthToken:  "simple",
-		BcryptCost: uint(bcrypt.DefaultCost),
+		AuthToken:    "simple",
+		BcryptCost:   uint(bcrypt.DefaultCost),
+		AuthTokenTTL: 300,
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:   new(sync.RWMutex),
-		logger:     nil,
-		Logger:     "zap",
-		LogOutputs: []string{DefaultLogOutput},
-		LogLevel:   logutil.DefaultLogLevel,
+		loggerMu:          new(sync.RWMutex),
+		logger:            nil,
+		Logger:            "zap",
+		LogOutputs:        []string{DefaultLogOutput},
+		LogLevel:          logutil.DefaultLogLevel,
+		EnableGRPCGateway: true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

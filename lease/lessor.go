@@ -24,9 +24,10 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/lease/leasepb"
-	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/lease/leasepb"
+	"go.etcd.io/etcd/v3/mvcc/backend"
 	"go.uber.org/zap"
 )
 
@@ -181,6 +182,7 @@ type lessor struct {
 	checkpointInterval time.Duration
 	// the interval to check if the expired lease is revoked
 	expiredLeaseRetryInterval time.Duration
+	ci                        cindex.ConsistentIndexer
 }
 
 type LessorConfig struct {
@@ -189,11 +191,11 @@ type LessorConfig struct {
 	ExpiredLeasesRetryInterval time.Duration
 }
 
-func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) Lessor {
-	return newLessor(lg, b, cfg)
+func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) Lessor {
+	return newLessor(lg, b, cfg, ci)
 }
 
-func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) *lessor {
+func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) *lessor {
 	checkpointInterval := cfg.CheckpointInterval
 	expiredLeaseRetryInterval := cfg.ExpiredLeasesRetryInterval
 	if checkpointInterval == 0 {
@@ -216,6 +218,7 @@ func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) *lessor {
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),
 		lg:       lg,
+		ci:       ci,
 	}
 	l.initAndRecover()
 
@@ -291,14 +294,14 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	le.leaseMap[id] = l
-	item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
-	le.leaseExpiredNotifier.RegisterOrUpdate(item)
-	l.persistTo(le.b)
+	l.persistTo(le.b, le.ci)
 
 	leaseTotalTTLs.Observe(float64(l.ttl))
 	leaseGranted.Inc()
 
 	if le.isPrimary() {
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
+		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 		le.scheduleCheckpointIfNeeded(l)
 	}
 
@@ -338,6 +341,10 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
 	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
+	// if len(keys) > 0, txn.End() will call ci.UnsafeSave function.
+	if le.ci != nil && len(keys) == 0 {
+		le.ci.UnsafeSave(le.b.BatchTx())
+	}
 
 	txn.End()
 
@@ -406,7 +413,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 
 	le.mu.Lock()
 	l.refresh(0)
-	item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+	item := &LeaseWithTime{id: l.ID, time: l.expiry}
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	le.mu.Unlock()
 
@@ -445,7 +452,7 @@ func (le *lessor) Promote(extend time.Duration) {
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
 		l.refresh(extend)
-		item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	}
 
@@ -483,7 +490,7 @@ func (le *lessor) Promote(extend time.Duration) {
 		delay := time.Duration(rateDelay)
 		nextWindow = baseWindow + delay
 		l.refresh(delay + extend)
-		item := &LeaseWithTime{id: l.ID, time: l.expiry.UnixNano()}
+		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 		le.scheduleCheckpointIfNeeded(l)
 	}
@@ -505,6 +512,7 @@ func (le *lessor) Demote() {
 	}
 
 	le.clearScheduledLeasesCheckpoints()
+	le.clearLeaseExpiredNotifier()
 
 	if le.demotec != nil {
 		close(le.demotec)
@@ -648,6 +656,10 @@ func (le *lessor) clearScheduledLeasesCheckpoints() {
 	le.leaseCheckpointHeap = make(LeaseQueue, 0)
 }
 
+func (le *lessor) clearLeaseExpiredNotifier() {
+	le.leaseExpiredNotifier = newLeaseExpiredNotifier()
+}
+
 // expireExists returns true if expiry items exist.
 // It pops only when expiry item exists.
 // "next" is true, to indicate that it may exist in next attempt.
@@ -665,14 +677,14 @@ func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
 		return nil, false, true
 	}
 	now := time.Now()
-	if now.UnixNano() < item.time /* expiration time */ {
+	if now.Before(item.time) /* item.time: expiration time */ {
 		// Candidate expirations are caught up, reinsert this item
 		// and no need to revoke (nothing is expiry)
 		return l, false, false
 	}
 
 	// recheck if revoke is complete after retry interval
-	item.time = now.Add(le.expiredLeaseRetryInterval).UnixNano()
+	item.time = now.Add(le.expiredLeaseRetryInterval)
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	return l, true, false
 }
@@ -721,7 +733,7 @@ func (le *lessor) scheduleCheckpointIfNeeded(lease *Lease) {
 		}
 		heap.Push(&le.leaseCheckpointHeap, &LeaseWithTime{
 			id:   lease.ID,
-			time: time.Now().Add(le.checkpointInterval).UnixNano(),
+			time: time.Now().Add(le.checkpointInterval),
 		})
 	}
 }
@@ -735,7 +747,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 	cps := []*pb.LeaseCheckpoint{}
 	for le.leaseCheckpointHeap.Len() > 0 && len(cps) < checkpointLimit {
 		lt := le.leaseCheckpointHeap[0]
-		if lt.time /* next checkpoint time */ > now.UnixNano() {
+		if lt.time.After(now) /* lt.time: next checkpoint time */ {
 			return cps
 		}
 		heap.Pop(&le.leaseCheckpointHeap)
@@ -816,7 +828,7 @@ func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
 
-func (l *Lease) persistTo(b backend.Backend) {
+func (l *Lease) persistTo(b backend.Backend, ci cindex.ConsistentIndexer) {
 	key := int64ToBytes(int64(l.ID))
 
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
@@ -827,6 +839,9 @@ func (l *Lease) persistTo(b backend.Backend) {
 
 	b.BatchTx().Lock()
 	b.BatchTx().UnsafePut(leaseBucketName, key, val)
+	if ci != nil {
+		ci.UnsafeSave(b.BatchTx())
+	}
 	b.BatchTx().Unlock()
 }
 

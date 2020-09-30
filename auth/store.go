@@ -17,17 +17,20 @@ package auth
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"go.etcd.io/etcd/auth/authpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/v3/auth/authpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc/backend"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -56,6 +59,7 @@ var (
 	ErrRoleNotFound         = errors.New("auth: role not found")
 	ErrRoleEmpty            = errors.New("auth: role name is empty")
 	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrNoPasswordUser       = errors.New("auth: authentication failed, password was given for no password user")
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
@@ -183,6 +187,9 @@ type AuthStore interface {
 
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
+
+	// BcryptCost gets strength of hashing bcrypted auth password
+	BcryptCost() int
 }
 
 type TokenProvider interface {
@@ -208,6 +215,7 @@ type authStore struct {
 
 	tokenProvider TokenProvider
 	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
+	ci            cindex.ConsistentIndexer
 }
 
 func (as *authStore) AuthEnable() error {
@@ -258,6 +266,7 @@ func (as *authStore) AuthDisable() {
 	tx.Lock()
 	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -316,24 +325,34 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		return 0, ErrAuthNotEnabled
 	}
 
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	var user *authpb.User
+	// CompareHashAndPassword is very expensive, so we use closures
+	// to avoid putting it in the critical section of the tx lock.
+	revision, err := func() (uint64, error) {
+		tx := as.be.BatchTx()
+		tx.Lock()
+		defer tx.Unlock()
 
-	user := getUser(as.lg, tx, username)
-	if user == nil {
-		return 0, ErrAuthFailed
-	}
+		user = getUser(as.lg, tx, username)
+		if user == nil {
+			return 0, ErrAuthFailed
+		}
 
-	if user.Options != nil && user.Options.NoPassword {
-		return 0, ErrAuthFailed
+		if user.Options != nil && user.Options.NoPassword {
+			return 0, ErrNoPasswordUser
+		}
+
+		return getRevision(tx), nil
+	}()
+	if err != nil {
+		return 0, err
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
 		as.lg.Info("invalid password", zap.String("user-name", username))
 		return 0, ErrAuthFailed
 	}
-	return getRevision(tx), nil
+	return revision, nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
@@ -357,25 +376,17 @@ func (as *authStore) Recover(be backend.Backend) {
 	as.enabledMu.Unlock()
 }
 
+func (as *authStore) selectPassword(password string, hashedPassword string) ([]byte, error) {
+	if password != "" && hashedPassword == "" {
+		// This path is for processing log entries created by etcd whose version is older than 3.5
+		return bcrypt.GenerateFromPassword([]byte(password), as.bcryptCost)
+	}
+	return base64.StdEncoding.DecodeString(hashedPassword)
+}
+
 func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	if len(r.Name) == 0 {
 		return nil, ErrUserEmpty
-	}
-
-	var hashed []byte
-	var err error
-
-	noPassword := r.Options != nil && r.Options.NoPassword
-	if !noPassword {
-		hashed, err = bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
-		if err != nil {
-			as.lg.Error(
-				"failed to bcrypt hash password",
-				zap.String("user-name", r.Name),
-				zap.Error(err),
-			)
-			return nil, err
-		}
 	}
 
 	tx := as.be.BatchTx()
@@ -394,15 +405,26 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		}
 	}
 
+	var password []byte
+	var err error
+
+	if !options.NoPassword {
+		password, err = as.selectPassword(r.Password, r.HashedPassword)
+		if err != nil {
+			return nil, ErrNoPasswordUser
+		}
+	}
+
 	newUser := &authpb.User{
 		Name:     []byte(r.Name),
-		Password: hashed,
+		Password: password,
 		Options:  options,
 	}
 
 	putUser(as.lg, tx, newUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info("added a user", zap.String("user-name", r.Name))
 	return &pb.AuthUserAddResponse{}, nil
@@ -426,6 +448,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	delUser(tx, r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -439,18 +462,6 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 }
 
 func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	// TODO(mitake): measure the cost of bcrypt.GenerateFromPassword()
-	// If the cost is too high, we should move the encryption to outside of the raft
-	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), as.bcryptCost)
-	if err != nil {
-		as.lg.Error(
-			"failed to bcrypt hash password",
-			zap.String("user-name", r.Name),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -460,16 +471,27 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 		return nil, ErrUserNotFound
 	}
 
+	var password []byte
+	var err error
+
+	if !user.Options.NoPassword {
+		password, err = as.selectPassword(r.Password, r.HashedPassword)
+		if err != nil {
+			return nil, ErrNoPasswordUser
+		}
+	}
+
 	updatedUser := &authpb.User{
 		Name:     []byte(r.Name),
 		Roles:    user.Roles,
-		Password: hashed,
+		Password: password,
 		Options:  user.Options,
 	}
 
 	putUser(as.lg, tx, updatedUser)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -518,6 +540,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	as.invalidateCachedPerm(r.User)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted a role to a user",
@@ -596,6 +619,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	as.invalidateCachedPerm(r.Name)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a role from a user",
@@ -666,6 +690,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a permission on range",
@@ -717,6 +742,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info("deleted a role", zap.String("role-name", r.Role))
 	return &pb.AuthRoleDeleteResponse{}, nil
@@ -743,6 +769,7 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	putRole(as.lg, tx, newRole)
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info("created a role", zap.String("role-name", r.Name))
 	return &pb.AuthRoleAddResponse{}, nil
@@ -802,6 +829,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
+	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted/updated a permission to a user",
@@ -821,8 +849,13 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if revision == 0 {
 		return ErrUserEmpty
 	}
-
-	if revision < as.Revision() {
+	rev := as.Revision()
+	if revision < rev {
+		as.lg.Warn("request auth revision is less than current node auth revision",
+			zap.Uint64("current node auth revision", rev),
+			zap.Uint64("request auth revision", revision),
+			zap.ByteString("request key", key),
+			zap.Error(ErrAuthOldRevision))
 		return ErrAuthOldRevision
 	}
 
@@ -864,7 +897,7 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	if !as.IsAuthEnabled() {
 		return nil
 	}
-	if authInfo == nil {
+	if authInfo == nil || authInfo.Username == "" {
 		return ErrUserEmpty
 	}
 
@@ -988,7 +1021,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -1023,6 +1056,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
+		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1036,6 +1070,8 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 	if as.Revision() == 0 {
 		as.commitRevision(tx)
 	}
+
+	as.setupMetricsReporter()
 
 	tx.Unlock()
 	be.ForceCommit()
@@ -1182,7 +1218,8 @@ func decomposeOpts(lg *zap.Logger, optstr string) (string, map[string]string, er
 func NewTokenProvider(
 	lg *zap.Logger,
 	tokenOpts string,
-	indexWaiter func(uint64) <-chan struct{}) (TokenProvider, error) {
+	indexWaiter func(uint64) <-chan struct{},
+	TokenTTL time.Duration) (TokenProvider, error) {
 	tokenType, typeSpecificOpts, err := decomposeOpts(lg, tokenOpts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
@@ -1193,7 +1230,7 @@ func NewTokenProvider(
 		if lg != nil {
 			lg.Warn("simple token is not cryptographically signed")
 		}
-		return newTokenProviderSimple(lg, indexWaiter), nil
+		return newTokenProviderSimple(lg, indexWaiter, TokenTTL), nil
 
 	case tokenTypeJWT:
 		return newTokenProviderJWT(lg, typeSpecificOpts)
@@ -1278,4 +1315,20 @@ func (as *authStore) HasRole(user, role string) bool {
 
 func (as *authStore) BcryptCost() int {
 	return as.bcryptCost
+}
+
+func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
+	if as.ci != nil {
+		as.ci.UnsafeSave(tx)
+	} else {
+		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
+	}
+}
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
 }

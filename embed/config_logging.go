@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/v3/pkg/logutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -98,6 +98,7 @@ func (cfg *Config) setupLogging() error {
 					if err != nil {
 						return err
 					}
+					zap.ReplaceGlobals(c.logger)
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
 					c.loggerConfig = &copied
@@ -145,6 +146,7 @@ func (cfg *Config) setupLogging() error {
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
+					zap.ReplaceGlobals(c.logger)
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
 					c.loggerConfig = nil

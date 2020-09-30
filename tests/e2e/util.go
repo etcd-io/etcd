@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/expect"
+	"go.etcd.io/etcd/v3/pkg/expect"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
@@ -64,7 +66,7 @@ func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
 			l, lerr := proc.ExpectFunc(lineFunc)
 			if lerr != nil {
 				proc.Close()
-				return nil, fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
+				return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
 			}
 			lines = append(lines, l)
 			if strings.Contains(l, txt) {
@@ -73,8 +75,9 @@ func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
 		}
 	}
 	perr := proc.Close()
-	if len(xs) == 0 && proc.LineCount() != noOutputLineCount { // expect no output
-		return nil, fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
+	l := proc.LineCount()
+	if len(xs) == 0 && l != noOutputLineCount { // expect no output
+		return nil, fmt.Errorf("unexpected output from %v (got lines %q, line count %d) %v. Try EXPECT_DEBUG=TRUE", args, lines, l, l != noOutputLineCount)
 	}
 	return lines, perr
 }
@@ -107,4 +110,8 @@ func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 
 func toTLS(s string) string {
 	return strings.Replace(s, "http://", "https://", 1)
+}
+
+func skipInShortMode(t testing.TB) {
+	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
 }

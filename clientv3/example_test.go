@@ -16,25 +16,12 @@ package clientv3_test
 
 import (
 	"context"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/pkg/transport"
 	"log"
-	"os"
-	"time"
-
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/pkg/transport"
-
-	"google.golang.org/grpc/grpclog"
 )
 
-var (
-	dialTimeout    = 5 * time.Second
-	requestTimeout = 10 * time.Second
-	endpoints      = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
-)
-
-func Example() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
-
+func ExampleConfig_insecure() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -48,6 +35,10 @@ func Example() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Without the line below the test is not being executed
+
+	// Output:
 }
 
 func ExampleConfig_withTLS() {
@@ -74,4 +65,6 @@ func ExampleConfig_withTLS() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Without the line below the test is not being executed
+	// Output:
 }

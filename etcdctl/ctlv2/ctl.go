@@ -20,13 +20,13 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/etcdctl/ctlv2/command"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdctl/ctlv2/command"
+	"go.etcd.io/etcd/v3/version"
 
 	"github.com/urfave/cli"
 )
 
-func Start() {
+func Start() error {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
@@ -72,8 +72,11 @@ func Start() {
 		command.NewRoleCommands(),
 		command.NewAuthCommands(),
 	}
+	return app.Run(os.Args)
+}
 
-	err := runCtlV2(app)
+func MustStart() {
+	err := Start()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

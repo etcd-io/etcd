@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc"
 
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
@@ -136,13 +136,14 @@ func (pc *Periodic) Run() {
 				zap.Int64("revision", rev),
 				zap.Duration("compact-period", pc.period),
 			)
+			startTime := pc.clock.Now()
 			_, err := pc.c.Compact(pc.ctx, &pb.CompactionRequest{Revision: rev})
 			if err == nil || err == mvcc.ErrCompacted {
 				pc.lg.Info(
 					"completed auto periodic compaction",
 					zap.Int64("revision", rev),
 					zap.Duration("compact-period", pc.period),
-					zap.Duration("took", time.Since(lastSuccess)),
+					zap.Duration("took", pc.clock.Now().Sub(startTime)),
 				)
 				lastSuccess = pc.clock.Now()
 			} else {

@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 type SnapshotStatus int
@@ -168,7 +168,9 @@ type Node interface {
 	Advance()
 	// ApplyConfChange applies a config change (previously passed to
 	// ProposeConfChange) to the node. This must be called whenever a config
-	// change is observed in Ready.CommittedEntries.
+	// change is observed in Ready.CommittedEntries, except when the app decides
+	// to reject the configuration change (i.e. treats it as a noop instead), in
+	// which case it must not be called.
 	//
 	// Returns an opaque non-nil ConfState protobuf which must be recorded in
 	// snapshots.
@@ -365,10 +367,12 @@ func (n *node) run() {
 			// very sound and likely has bugs.
 			if _, okAfter := r.prs.Progress[r.id]; okBefore && !okAfter {
 				var found bool
+			outer:
 				for _, sl := range [][]uint64{cs.Voters, cs.VotersOutgoing} {
 					for _, id := range sl {
 						if id == r.id {
 							found = true
+							break outer
 						}
 					}
 				}
@@ -405,7 +409,7 @@ func (n *node) Tick() {
 	case n.tickc <- struct{}{}:
 	case <-n.done:
 	default:
-		n.rn.raft.logger.Warningf("%x (leader %v) A tick missed to fire. Node blocks too long!", n.rn.raft.id, n.rn.raft.id == n.rn.raft.lead)
+		n.rn.raft.logger.Warningf("%x A tick missed to fire. Node blocks too long!", n.rn.raft.id)
 	}
 }
 

@@ -15,12 +15,13 @@
 package v2store_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 type StoreCloser interface {
@@ -844,7 +845,7 @@ func TestStoreWatchSlowConsumer(t *testing.T) {
 	s.Watch("/foo", true, true, 0) // stream must be true
 	// Fill watch channel with 100 events
 	for i := 1; i <= 100; i++ {
-		s.Set("/foo", false, string(i), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // ok
+		s.Set("/foo", false, fmt.Sprint(i), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // ok
 	}
 	// testutil.AssertEqual(t, s.WatcherHub.count, int64(1))
 	s.Set("/foo", false, "101", v2store.TTLOptionSet{ExpireTime: v2store.Permanent}) // ok

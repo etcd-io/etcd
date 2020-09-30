@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/version"
 )
 
 func TestV3MetricsSecure(t *testing.T) {
@@ -49,7 +49,7 @@ func metricsTest(cx ctlCtx) {
 		{"/metrics", fmt.Sprintf("etcd_mvcc_delete_total 3")},
 		{"/metrics", fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
 		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version))},
-		{"/health", `{"health":"true"}`},
+		{"/health", `{"health":"true","reason":""}`},
 	} {
 		i++
 		if err := ctlV3Put(cx, fmt.Sprintf("%d", i), "v", ""); err != nil {

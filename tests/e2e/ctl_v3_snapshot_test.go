@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3/snapshot"
-	"go.etcd.io/etcd/pkg/expect"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/clientv3/snapshot"
+	"go.etcd.io/etcd/v3/pkg/expect"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
@@ -155,11 +155,10 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 // syncs up with other members and serve correct data.
 func TestIssue6361(t *testing.T) {
 	defer testutil.AfterTest(t)
-	mustEtcdctl(t)
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
-	epc, err := newEtcdProcessCluster(&etcdProcessClusterConfig{
+	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
 		clusterSize:  1,
 		initialToken: "new",
 		keepDataDir:  true,

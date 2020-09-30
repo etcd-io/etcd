@@ -146,14 +146,14 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodCl
 
 	tr := &http.Transport{TLSClientConfig: tlsConfig}
 	cli := &http.Client{Transport: tr}
-	chClientErr := make(chan error)
+	chClientErr := make(chan error, 1)
 	go func() {
 		_, err := cli.Get("https://" + ln.Addr().String())
 		chClientErr <- err
 	}()
 
-	chAcceptErr := make(chan error)
-	chAcceptConn := make(chan net.Conn)
+	chAcceptErr := make(chan error, 1)
+	chAcceptConn := make(chan net.Conn, 1)
 	go func() {
 		conn, err := ln.Accept()
 		if err != nil {

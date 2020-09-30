@@ -60,12 +60,15 @@ type Trace struct {
 	startTime    time.Time
 	steps        []step
 	stepDisabled bool
+	isEmpty      bool
 }
 
 type step struct {
-	time   time.Time
-	msg    string
-	fields []Field
+	time            time.Time
+	msg             string
+	fields          []Field
+	isSubTraceStart bool
+	isSubTraceEnd   bool
 }
 
 func New(op string, lg *zap.Logger, fields ...Field) *Trace {
@@ -74,7 +77,7 @@ func New(op string, lg *zap.Logger, fields ...Field) *Trace {
 
 // TODO returns a non-nil, empty Trace
 func TODO() *Trace {
-	return &Trace{}
+	return &Trace{isEmpty: true}
 }
 
 func Get(ctx context.Context) *Trace {
@@ -93,13 +96,25 @@ func (t *Trace) SetStartTime(time time.Time) {
 }
 
 func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) {
-	newStep := step{time, msg, fields}
+	newStep := step{time: time, msg: msg, fields: fields}
 	if at < len(t.steps) {
 		t.steps = append(t.steps[:at+1], t.steps[at:]...)
 		t.steps[at] = newStep
 	} else {
 		t.steps = append(t.steps, newStep)
 	}
+}
+
+// StartSubTrace adds step to trace as a start sign of sublevel trace
+// All steps in the subtrace will log out the input fields of this function
+func (t *Trace) StartSubTrace(fields ...Field) {
+	t.steps = append(t.steps, step{fields: fields, isSubTraceStart: true})
+}
+
+// StopSubTrace adds step to trace as a end sign of sublevel trace
+// All steps in the subtrace will log out the input fields of this function
+func (t *Trace) StopSubTrace(fields ...Field) {
+	t.steps = append(t.steps, step{fields: fields, isSubTraceEnd: true})
 }
 
 // Step adds step to trace
@@ -109,20 +124,24 @@ func (t *Trace) Step(msg string, fields ...Field) {
 	}
 }
 
-// DisableStep sets the flag to prevent the trace from adding steps
-func (t *Trace) DisableStep() {
-	t.stepDisabled = true
-}
-
-// EnableStep re-enable the trace to add steps
-func (t *Trace) EnableStep() {
-	t.stepDisabled = false
+// StepWithFunction will measure the input function as a single step
+func (t *Trace) StepWithFunction(f func(), msg string, fields ...Field) {
+	t.disableStep()
+	f()
+	t.enableStep()
+	t.Step(msg, fields...)
 }
 
 func (t *Trace) AddField(fields ...Field) {
 	for _, f := range fields {
-		t.fields = append(t.fields, f)
+		if !t.updateFieldIfExist(f) {
+			t.fields = append(t.fields, f)
+		}
 	}
+}
+
+func (t *Trace) IsEmpty() bool {
+	return t.isEmpty
 }
 
 // Log dumps all steps in the Trace
@@ -135,6 +154,13 @@ func (t *Trace) LogIfLong(threshold time.Duration) {
 	if time.Since(t.startTime) > threshold {
 		stepThreshold := threshold / time.Duration(len(t.steps)+1)
 		t.LogWithStepThreshold(stepThreshold)
+	}
+}
+
+// LogAllStepsIfLong dumps all logs if the duration is longer than threshold
+func (t *Trace) LogAllStepsIfLong(threshold time.Duration) {
+	if time.Since(t.startTime) > threshold {
+		t.LogWithStepThreshold(0)
 	}
 }
 
@@ -154,7 +180,28 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 
 	var steps []string
 	lastStepTime := t.startTime
-	for _, step := range t.steps {
+	for i := 0; i < len(t.steps); i++ {
+		step := t.steps[i]
+		// add subtrace common fields which defined at the beginning to each sub-steps
+		if step.isSubTraceStart {
+			for j := i + 1; j < len(t.steps) && !t.steps[j].isSubTraceEnd; j++ {
+				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
+			}
+			continue
+		}
+		// add subtrace common fields which defined at the end to each sub-steps
+		if step.isSubTraceEnd {
+			for j := i - 1; j >= 0 && !t.steps[j].isSubTraceStart; j-- {
+				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
+			}
+			continue
+		}
+	}
+	for i := 0; i < len(t.steps); i++ {
+		step := t.steps[i]
+		if step.isSubTraceStart || step.isSubTraceEnd {
+			continue
+		}
 		stepDuration := step.time.Sub(lastStepTime)
 		if stepDuration > threshold {
 			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
@@ -167,6 +214,27 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 		zap.Duration("duration", totalDuration),
 		zap.Time("start", t.startTime),
 		zap.Time("end", endTime),
-		zap.Strings("steps", steps)}
+		zap.Strings("steps", steps),
+		zap.Int("step_count", len(steps))}
 	return msg, fs
+}
+
+func (t *Trace) updateFieldIfExist(f Field) bool {
+	for i, v := range t.fields {
+		if v.Key == f.Key {
+			t.fields[i].Value = f.Value
+			return true
+		}
+	}
+	return false
+}
+
+// disableStep sets the flag to prevent the trace from adding steps
+func (t *Trace) disableStep() {
+	t.stepDisabled = true
+}
+
+// enableStep re-enable the trace to add steps
+func (t *Trace) enableStep() {
+	t.stepDisabled = false
 }

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 type raftLog struct {
@@ -165,6 +165,11 @@ func (l *raftLog) nextEnts() (ents []pb.Entry) {
 func (l *raftLog) hasNextEnts() bool {
 	off := max(l.applied+1, l.firstIndex())
 	return l.committed+1 > off
+}
+
+// hasPendingSnapshot returns if there is pending snapshot waiting for applying.
+func (l *raftLog) hasPendingSnapshot() bool {
+	return l.unstable.snapshot != nil && !IsEmptySnap(*l.unstable.snapshot)
 }
 
 func (l *raftLog) snapshot() (pb.Snapshot, error) {
@@ -354,7 +359,7 @@ func (l *raftLog) mustCheckOutOfBounds(lo, hi uint64) error {
 	}
 
 	length := l.lastIndex() + 1 - fi
-	if lo < fi || hi > fi+length {
+	if hi > fi+length {
 		l.logger.Panicf("slice[%d,%d) out of bound [%d,%d]", lo, hi, fi, l.lastIndex())
 	}
 	return nil

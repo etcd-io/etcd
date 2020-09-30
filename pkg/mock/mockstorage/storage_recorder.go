@@ -15,9 +15,9 @@
 package mockstorage
 
 import (
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 type storageRecorder struct {
@@ -42,6 +42,18 @@ func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
 	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "SaveSnap"})
 	}
+	return nil
+}
+
+func (p *storageRecorder) Release(st raftpb.Snapshot) error {
+	if !raft.IsEmptySnap(st) {
+		p.Record(testutil.Action{Name: "Release"})
+	}
+	return nil
+}
+
+func (p *storageRecorder) Sync() error {
+	p.Record(testutil.Action{Name: "Sync"})
 	return nil
 }
 

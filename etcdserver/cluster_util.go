@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -198,20 +198,31 @@ func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *se
 	return cv
 }
 
+// allowedVersionRange decides the available version range of the cluster that local server can join in;
+// if the downgrade enabled status is true, the version window is [oneMinorHigher, oneMinorHigher]
+// if the downgrade is not enabled, the version window is [MinClusterVersion, localVersion]
+func allowedVersionRange(downgradeEnabled bool) (minV *semver.Version, maxV *semver.Version) {
+	minV = semver.Must(semver.NewVersion(version.MinClusterVersion))
+	maxV = semver.Must(semver.NewVersion(version.Version))
+	maxV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
+
+	if downgradeEnabled {
+		// Todo: handle the case that downgrading from higher major version(e.g. downgrade from v4.0 to v3.x)
+		maxV.Minor = maxV.Minor + 1
+		minV = &semver.Version{Major: maxV.Major, Minor: maxV.Minor}
+	}
+	return minV, maxV
+}
+
 // isCompatibleWithCluster return true if the local member has a compatible version with
 // the current running cluster.
 // The version is considered as compatible when at least one of the other members in the cluster has a
-// cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
+// cluster version in the range of [MinV, MaxV] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(lg, cl, local, rt)
-	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
-	maxV := semver.Must(semver.NewVersion(version.Version))
-	maxV = &semver.Version{
-		Major: maxV.Major,
-		Minor: maxV.Minor,
-	}
+	minV, maxV := allowedVersionRange(getDowngradeEnabledFromRemotePeers(lg, cl, local, rt))
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }
 
@@ -354,4 +365,23 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		return nil, err
 	}
 	return membs, nil
+}
+
+// getDowngradeEnabledFromRemotePeers will get the downgrade enabled status of the cluster.
+func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+	return false
+}
+
+func convertToClusterVersion(v string) (*semver.Version, error) {
+	ver, err := semver.NewVersion(v)
+	if err != nil {
+		// allow input version format Major.Minor
+		ver, err = semver.NewVersion(v + ".0")
+		if err != nil {
+			return nil, ErrWrongDowngradeVersionFormat
+		}
+	}
+	// cluster version only keeps major.minor, remove patch version
+	ver = &semver.Version{Major: ver.Major, Minor: ver.Minor}
+	return ver, nil
 }

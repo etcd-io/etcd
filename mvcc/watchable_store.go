@@ -18,10 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
+
 	"go.uber.org/zap"
 )
 
@@ -29,9 +31,8 @@ import (
 var (
 	// chanBufLen is the length of the buffered chan
 	// for sending out watched events.
-	// TODO: find a good buf value. 1024 is just a random one that
-	// seems to be reasonable.
-	chanBufLen = 1024
+	// See https://github.com/etcd-io/etcd/issues/11906 for more detail.
+	chanBufLen = 128
 
 	// maxWatchersPerSync is the number of watchers to sync in a single batch
 	maxWatchersPerSync = 512
@@ -69,16 +70,16 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, ig, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, ci, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *watchableStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ig, cfg),
+		store:    NewStore(lg, b, le, ci, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -151,10 +152,13 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		s.mu.Lock()
 		if s.unsynced.delete(wa) {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			break
 		} else if s.synced.delete(wa) {
+			watcherGauge.Dec()
 			break
 		} else if wa.compacted {
+			watcherGauge.Dec()
 			break
 		} else if wa.ch == nil {
 			// already canceled (e.g., cancel/close race)
@@ -175,6 +179,7 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		}
 		if victimBatch != nil {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			delete(victimBatch, wa)
 			break
 		}
@@ -184,7 +189,6 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		time.Sleep(time.Millisecond)
 	}
 
-	watcherGauge.Dec()
 	wa.ch = nil
 	s.mu.Unlock()
 }
@@ -353,9 +357,9 @@ func (s *watchableStore) syncWatchers() int {
 	tx := s.store.b.ReadTx()
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
+	tx.RUnlock()
 	var evs []mvccpb.Event
 	evs = kvsToEvents(s.store.lg, wg, revs, vs)
-	tx.RUnlock()
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)

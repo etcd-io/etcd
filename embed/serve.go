@@ -23,20 +23,20 @@ import (
 	"net/http"
 	"strings"
 
-	"go.etcd.io/etcd/clientv3/credentials"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3client"
-	"go.etcd.io/etcd/etcdserver/api/v3election"
-	"go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
-	v3electiongw "go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb/gw"
-	"go.etcd.io/etcd/etcdserver/api/v3lock"
-	"go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
-	v3lockgw "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb/gw"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	etcdservergw "go.etcd.io/etcd/etcdserver/etcdserverpb/gw"
-	"go.etcd.io/etcd/pkg/debugutil"
-	"go.etcd.io/etcd/pkg/httputil"
-	"go.etcd.io/etcd/pkg/transport"
+	"go.etcd.io/etcd/v3/clientv3/credentials"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3election"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
+	v3electiongw "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb/gw"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3lock"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
+	v3lockgw "go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb/gw"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	etcdservergw "go.etcd.io/etcd/v3/etcdserver/etcdserverpb/gw"
+	"go.etcd.io/etcd/v3/pkg/debugutil"
+	"go.etcd.io/etcd/v3/pkg/httputil"
+	"go.etcd.io/etcd/v3/pkg/transport"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
@@ -314,9 +314,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 				"rejecting HTTP request to prevent DNS rebinding attacks",
 				zap.String("host", host),
 			)
-			// TODO: use Go's "http.StatusMisdirectedRequest" (421)
-			// https://github.com/golang/go/commit/4b8a7eafef039af1834ef9bfa879257c4a72b7b5
-			http.Error(rw, errCVE20185702(host), 421)
+			http.Error(rw, errCVE20185702(host), http.StatusMisdirectedRequest)
 			return
 		}
 	} else if ac.s.Cfg.ClientCertAuthEnabled && ac.s.Cfg.EnableGRPCGateway &&
@@ -326,7 +324,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 				continue
 			}
 			if len(chains[0].Subject.CommonName) != 0 {
-				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", 400)
+				http.Error(rw, "CommonName of client sending a request against gateway will be ignored and not used as expected", http.StatusBadRequest)
 				return
 			}
 		}

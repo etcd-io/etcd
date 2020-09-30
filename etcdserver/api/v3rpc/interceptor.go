@@ -19,13 +19,13 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft"
 
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	maxNoLeaderCnt = 3
+	maxNoLeaderCnt          = 3
+	warnUnaryRequestLatency = 300 * time.Millisecond
 )
 
 type streamsMap struct {
@@ -53,6 +54,12 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
+			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			if len(vs) > 0 {
+				ver = vs[0]
+			}
+			clientRequests.WithLabelValues("unary", ver).Inc()
+
 			if ks := md[rpctypes.MetadataRequireLeaderKey]; len(ks) > 0 && ks[0] == rpctypes.MetadataHasLeader {
 				if s.Leader() == types.ID(raft.None) {
 					return nil, rpctypes.ErrGRPCNoLeader
@@ -69,7 +76,7 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
-		if lg != nil && lg.Core().Enabled(zap.DebugLevel) { // only acquire stats if debug level is enabled
+		if lg != nil { // acquire stats if debug level is enabled or request is expensive
 			defer logUnaryRequestStats(ctx, lg, info, startTime, req, resp)
 		}
 		return resp, err
@@ -78,6 +85,16 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 
 func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryServerInfo, startTime time.Time, req interface{}, resp interface{}) {
 	duration := time.Since(startTime)
+	var enabledDebugLevel, expensiveRequest bool
+	if lg.Core().Enabled(zap.DebugLevel) {
+		enabledDebugLevel = true
+	}
+	if duration > warnUnaryRequestLatency {
+		expensiveRequest = true
+	}
+	if !enabledDebugLevel && !expensiveRequest {
+		return
+	}
 	remote := "No remote client info."
 	peerInfo, ok := peer.FromContext(ctx)
 	if ok {
@@ -152,12 +169,31 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryS
 		respSize = -1
 	}
 
-	logGenericRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+	if enabledDebugLevel {
+		logGenericRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+	} else if expensiveRequest {
+		logExpensiveRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+	}
 }
 
 func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
 	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
 	lg.Debug("request stats",
+		zap.Time("start time", startTime),
+		zap.Duration("time spent", duration),
+		zap.String("remote", remote),
+		zap.String("response type", responseType),
+		zap.Int64("request count", reqCount),
+		zap.Int("request size", reqSize),
+		zap.Int64("response count", respCount),
+		zap.Int("response size", respSize),
+		zap.String("request content", reqContent),
+	)
+}
+
+func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
+	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
+	lg.Warn("request stats",
 		zap.Time("start time", startTime),
 		zap.Duration("time spent", duration),
 		zap.String("remote", remote),
@@ -184,6 +220,12 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 
 		md, ok := metadata.FromIncomingContext(ss.Context())
 		if ok {
+			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			if len(vs) > 0 {
+				ver = vs[0]
+			}
+			clientRequests.WithLabelValues("stream", ver).Inc()
+
 			if ks := md[rpctypes.MetadataRequireLeaderKey]; len(ks) > 0 && ks[0] == rpctypes.MetadataHasLeader {
 				if s.Leader() == types.ID(raft.None) {
 					return rpctypes.ErrGRPCNoLeader
@@ -202,7 +244,6 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 					smap.mu.Unlock()
 					cancel()
 				}()
-
 			}
 		}
 

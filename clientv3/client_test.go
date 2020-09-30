@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/pkg/testutil"
 
 	"google.golang.org/grpc"
 )
@@ -100,14 +100,14 @@ func TestDialTimeout(t *testing.T) {
 
 	for i, cfg := range testCfgs {
 		donec := make(chan error, 1)
-		go func() {
+		go func(cfg Config) {
 			// without timeout, dial continues forever on ipv4 black hole
 			c, err := New(cfg)
 			if c != nil || err == nil {
 				t.Errorf("#%d: new client should fail", i)
 			}
 			donec <- err
-		}()
+		}(cfg)
 
 		time.Sleep(10 * time.Millisecond)
 
@@ -164,5 +164,18 @@ func TestCloseCtxClient(t *testing.T) {
 	// Close returns ctx.toErr, a nil error means an open Done channel
 	if err == nil {
 		t.Errorf("failed to Close the client. %v", err)
+	}
+}
+
+func TestWithLogger(t *testing.T) {
+	ctx := context.Background()
+	c := NewCtxClient(ctx)
+	if c.lg == nil {
+		t.Errorf("unexpected nil in *zap.Logger")
+	}
+
+	c.WithLogger(nil)
+	if c.lg != nil {
+		t.Errorf("WithLogger should modify *zap.Logger")
 	}
 }

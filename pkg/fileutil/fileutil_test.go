@@ -105,6 +105,31 @@ func TestExist(t *testing.T) {
 	}
 }
 
+func TestDirEmpty(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "empty_dir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if !DirEmpty(dir) {
+		t.Fatalf("expected DirEmpty true, got %v", DirEmpty(dir))
+	}
+
+	file, err := ioutil.TempFile(dir, "new_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	if DirEmpty(dir) {
+		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(dir))
+	}
+	if DirEmpty(file.Name()) {
+		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(file.Name()))
+	}
+}
+
 func TestZeroToEnd(t *testing.T) {
 	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
 	if err != nil {
@@ -146,5 +171,23 @@ func TestZeroToEnd(t *testing.T) {
 		if b[i] != 0 {
 			t.Errorf("expected b[%d] = 0, got %d", i, b[i])
 		}
+	}
+}
+
+func TestDirPermission(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	tmpdir2 := filepath.Join(tmpdir, "testpermission")
+	// create a new dir with 0700
+	if err = CreateDirAll(tmpdir2); err != nil {
+		t.Fatal(err)
+	}
+	// check dir permission with mode different than created dir
+	if err = CheckDirPermission(tmpdir2, 0600); err == nil {
+		t.Errorf("expected error, got nil")
 	}
 }

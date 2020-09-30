@@ -29,12 +29,12 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/schedule"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/schedule"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"
 )
@@ -718,7 +718,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		numOfWrites          = 100
 		maxNumOfPutsPerWrite = 10
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
-		mu                   sync.Mutex // mu protectes committedKVs
+		mu                   sync.Mutex // mu protects committedKVs
 	)
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
@@ -779,7 +779,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		}()
 	}
 
-	// wait until go routines finish or timeout
+	// wait until goroutines finish or timeout
 	doneC := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -936,9 +936,14 @@ type fakeIndex struct {
 	indexCompactRespc     chan map[revision]struct{}
 }
 
-func (i *fakeIndex) Revisions(key, end []byte, atRev int64) []revision {
+func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) []revision {
 	_, rev := i.Range(key, end, atRev)
 	return rev
+}
+
+func (i *fakeIndex) CountRevisions(key, end []byte, atRev int64, limit int) int {
+	_, rev := i.Range(key, end, atRev)
+	return len(rev)
 }
 
 func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created revision, ver int64, err error) {

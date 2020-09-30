@@ -21,11 +21,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 )
 
 func TestLongestConnected(t *testing.T) {
@@ -90,3 +90,23 @@ func (s *nopTransporterWithActiveTime) Stop()                               {}
 func (s *nopTransporterWithActiveTime) Pause()                              {}
 func (s *nopTransporterWithActiveTime) Resume()                             {}
 func (s *nopTransporterWithActiveTime) reset(am map[types.ID]time.Time)     { s.activeMap = am }
+
+func TestPanicAlternativeStringer(t *testing.T) {
+	p := panicAlternativeStringer{alternative: func() string { return "alternative" }}
+
+	p.stringer = testStringerFunc(func() string { panic("here") })
+	if s := p.String(); s != "alternative" {
+		t.Fatalf("expected 'alternative', got %q", s)
+	}
+
+	p.stringer = testStringerFunc(func() string { return "test" })
+	if s := p.String(); s != "test" {
+		t.Fatalf("expected 'test', got %q", s)
+	}
+}
+
+type testStringerFunc func() string
+
+func (s testStringerFunc) String() string {
+	return s()
+}

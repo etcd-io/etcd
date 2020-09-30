@@ -21,9 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,13 +48,13 @@ type leaseProxy struct {
 	wg sync.WaitGroup
 }
 
-func NewLeaseProxy(c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {
-	cctx, cancel := context.WithCancel(c.Ctx())
+func NewLeaseProxy(ctx context.Context, c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {
+	cctx, cancel := context.WithCancel(ctx)
 	lp := &leaseProxy{
 		leaseClient: pb.NewLeaseClient(c.ActiveConnection()),
 		lessor:      c.Lease,
 		ctx:         cctx,
-		leader:      newLeader(c.Ctx(), c.Watcher),
+		leader:      newLeader(cctx, c.Watcher),
 	}
 	ch := make(chan struct{})
 	go func() {

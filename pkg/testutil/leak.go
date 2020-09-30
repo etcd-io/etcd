@@ -21,7 +21,7 @@ CheckLeakedGoroutine verifies tests do not leave any leaky
 goroutines. It returns true when there are goroutines still
 running(leaking) after all tests.
 
-	import "go.etcd.io/etcd/pkg/testutil"
+	import "go.etcd.io/etcd/v3/pkg/testutil"
 
 	func TestMain(m *testing.M) {
 		v := m.Run()
@@ -55,7 +55,7 @@ func CheckLeakedGoroutine() bool {
 		stackCount[normalized]++
 	}
 
-	fmt.Fprintf(os.Stderr, "Too many goroutines running after all test(s).\n")
+	fmt.Fprintf(os.Stderr, "Unexpected goroutines running after all test(s).\n")
 	for stack, count := range stackCount {
 		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
 	}
@@ -63,6 +63,7 @@ func CheckLeakedGoroutine() bool {
 }
 
 // CheckAfterTest returns an error if AfterTest would fail with an error.
+// Waits for go-routines shutdown for 'd'.
 func CheckAfterTest(d time.Duration) error {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 	if testing.Short() {
@@ -123,12 +124,14 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by os/signal.init") ||
 			strings.Contains(stack, "runtime/panic.go") ||
 			strings.Contains(stack, "created by testing.RunTests") ||
+			strings.Contains(stack, "created by testing.runTests") ||
 			strings.Contains(stack, "testing.Main(") ||
 			strings.Contains(stack, "runtime.goexit") ||
-			strings.Contains(stack, "go.etcd.io/etcd/pkg/testutil.interestingGoroutines") ||
-			strings.Contains(stack, "go.etcd.io/etcd/pkg/logutil.(*MergeLogger).outputLoop") ||
+			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/testutil.interestingGoroutines") ||
+			strings.Contains(stack, "go.etcd.io/etcd/v3/pkg/logutil.(*MergeLogger).outputLoop") ||
 			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
 			strings.Contains(stack, "created by runtime.gc") ||
+			strings.Contains(stack, "created by text/template/parse.lex") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") {
 			continue
 		}

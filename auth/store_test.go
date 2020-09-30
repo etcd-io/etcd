@@ -16,6 +16,7 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"reflect"
@@ -24,10 +25,10 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/auth/authpb"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/v3/auth/authpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc/backend"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -48,11 +49,11 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +64,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
-	as = NewAuthStore(zap.NewExample(), b2, tp, bcrypt.MinCost)
+	as = NewAuthStore(zap.NewExample(), b2, nil, tp, bcrypt.MinCost)
 	new := as.Revision()
 	as.Close()
 	b2.Close()
@@ -78,14 +79,14 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
 	for _, invalidCost := range invalidCosts {
-		as := NewAuthStore(zap.NewExample(), b, tp, invalidCost)
+		as := NewAuthStore(zap.NewExample(), b, nil, tp, invalidCost)
 		if as.BcryptCost() != bcrypt.DefaultCost {
 			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
 		}
@@ -95,14 +96,19 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b.Close()
 }
 
+func encodePassword(s string) string {
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(s), bcrypt.MinCost)
+	return base64.StdEncoding.EncodeToString([]byte(hashedPassword))
+}
+
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +120,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
-	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar", Options: &authpb.UserAddOptions{NoPassword: false}}
+	ua := &pb.AuthUserAddRequest{Name: "foo", HashedPassword: encodePassword("bar"), Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +135,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
-	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root", Options: &authpb.UserAddOptions{NoPassword: false}})
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", HashedPassword: encodePassword("root"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		return err
 	}
@@ -239,7 +245,7 @@ func TestUserChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "baz"})
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", HashedPassword: encodePassword("baz")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +257,7 @@ func TestUserChangePassword(t *testing.T) {
 	}
 
 	// change a non-existing user
-	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", Password: "bar"})
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", HashedPassword: encodePassword("bar")})
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
@@ -396,7 +402,7 @@ func TestListUsers(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "user1", Password: "pwd1", Options: &authpb.UserAddOptions{NoPassword: false}}
+	ua := &pb.AuthUserAddRequest{Name: "user1", HashedPassword: encodePassword("pwd1"), Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add a non-existing user
 	if err != nil {
 		t.Fatal(err)
@@ -650,11 +656,11 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	donec := make(chan struct{})
@@ -680,6 +686,12 @@ func TestIsAdminPermitted(t *testing.T) {
 	err = as.IsAdminPermitted(&AuthInfo{Username: "rooti", Revision: 1})
 	if err != ErrUserNotFound {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	// empty user
+	err = as.IsAdminPermitted(&AuthInfo{Username: "", Revision: 1})
+	if err != ErrUserEmpty {
+		t.Errorf("expected %v, got %v", ErrUserEmpty, err)
 	}
 
 	// non-admin user
@@ -716,11 +728,11 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as2 := NewAuthStore(zap.NewExample(), as.be, tp, bcrypt.MinCost)
+	as2 := NewAuthStore(zap.NewExample(), as.be, nil, tp, bcrypt.MinCost)
 	defer func(a *authStore) {
 		a.Close()
 	}(as2)
@@ -749,13 +761,13 @@ func contains(array []string, str string) bool {
 
 func TestHammerSimpleAuthenticate(t *testing.T) {
 	// set TTL values low to try to trigger races
-	oldTTL, oldTTLRes := simpleTokenTTL, simpleTokenTTLResolution
+	oldTTL, oldTTLRes := simpleTokenTTLDefault, simpleTokenTTLResolution
 	defer func() {
-		simpleTokenTTL = oldTTL
+		simpleTokenTTLDefault = oldTTL
 		simpleTokenTTLResolution = oldTTLRes
 	}()
-	simpleTokenTTL = 10 * time.Millisecond
-	simpleTokenTTLResolution = simpleTokenTTL
+	simpleTokenTTLDefault = 10 * time.Millisecond
+	simpleTokenTTLResolution = simpleTokenTTLDefault
 	users := make(map[string]struct{})
 
 	as, tearDown := setupAuthStore(t)
@@ -764,7 +776,7 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 	// create lots of users
 	for i := 0; i < 50; i++ {
 		u := fmt.Sprintf("user-%d", i)
-		ua := &pb.AuthUserAddRequest{Name: u, Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}}
+		ua := &pb.AuthUserAddRequest{Name: u, HashedPassword: encodePassword("123"), Options: &authpb.UserAddOptions{NoPassword: false}}
 		if _, err := as.UserAdd(ua); err != nil {
 			t.Fatal(err)
 		}
@@ -798,18 +810,18 @@ func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	username := "user"
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, Password: "pass", Options: &authpb.UserAddOptions{NoPassword: false}})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: username, HashedPassword: encodePassword("pass"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -853,11 +865,11 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	tp, err := NewTokenProvider(zap.NewExample(), opts, dummyIndexWaiter)
+	tp, err := NewTokenProvider(zap.NewExample(), opts, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	if err = enableAuthAndCreateRoot(as); err != nil {
@@ -894,5 +906,47 @@ func TestUserNoPasswordAdd(t *testing.T) {
 	_, err = as.Authenticate(ctx, username, "")
 	if err != ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
+	}
+}
+
+func TestUserAddWithOldLog(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "bar", Password: "baz", Options: &authpb.UserAddOptions{NoPassword: false}}
+	_, err := as.UserAdd(ua)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUserChangePasswordWithOldLog(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ctx1 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err := as.Authenticate(ctx1, "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "baz"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx2 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	_, err = as.Authenticate(ctx2, "foo", "baz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change a non-existing user
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", HashedPassword: encodePassword("bar")})
+	if err == nil {
+		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+	if err != ErrUserNotFound {
+		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }

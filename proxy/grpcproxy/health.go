@@ -16,17 +16,30 @@ package grpcproxy
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.uber.org/zap"
 )
 
 // HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
-	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(func() etcdhttp.Health { return checkHealth(c) }))
+func HandleHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(lg, func() etcdhttp.Health { return checkHealth(c) }))
+}
+
+// HandleProxyHealth registers health handler on '/proxy/health'.
+func HandleProxyHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	mux.Handle(etcdhttp.PathProxyHealth, etcdhttp.NewHealthHandler(lg, func() etcdhttp.Health { return checkProxyHealth(c) }))
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {
@@ -36,6 +49,25 @@ func checkHealth(c *clientv3.Client) etcdhttp.Health {
 	cancel()
 	if err == nil || err == rpctypes.ErrPermissionDenied {
 		h.Health = "true"
+	} else {
+		h.Reason = fmt.Sprintf("GET ERROR:%s", err)
 	}
+	return h
+}
+
+func checkProxyHealth(c *clientv3.Client) etcdhttp.Health {
+	h := checkHealth(c)
+	if h.Health != "true" {
+		return h
+	}
+	ctx, cancel := context.WithTimeout(c.Ctx(), time.Second*3)
+	ch := c.Watch(ctx, "a", clientv3.WithCreatedNotify())
+	select {
+	case <-ch:
+	case <-ctx.Done():
+		h.Health = "false"
+		h.Reason = "WATCH TIMEOUT"
+	}
+	cancel()
 	return h
 }

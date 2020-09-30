@@ -22,14 +22,16 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/snap/snappb"
-	pioutil "go.etcd.io/etcd/pkg/ioutil"
-	"go.etcd.io/etcd/pkg/pbutil"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap/snappb"
+	pioutil "go.etcd.io/etcd/v3/pkg/ioutil"
+	"go.etcd.io/etcd/v3/pkg/pbutil"
+	"go.etcd.io/etcd/v3/raft"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -102,21 +104,37 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	return nil
 }
 
+// Load returns the newest snapshot.
 func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
+	return s.loadMatching(func(*raftpb.Snapshot) bool { return true })
+}
+
+// LoadNewestAvailable loads the newest snapshot available that is in walSnaps.
+func (s *Snapshotter) LoadNewestAvailable(walSnaps []walpb.Snapshot) (*raftpb.Snapshot, error) {
+	return s.loadMatching(func(snapshot *raftpb.Snapshot) bool {
+		m := snapshot.Metadata
+		for i := len(walSnaps) - 1; i >= 0; i-- {
+			if m.Term == walSnaps[i].Term && m.Index == walSnaps[i].Index {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// loadMatching returns the newest snapshot where matchFn returns true.
+func (s *Snapshotter) loadMatching(matchFn func(*raftpb.Snapshot) bool) (*raftpb.Snapshot, error) {
 	names, err := s.snapNames()
 	if err != nil {
 		return nil, err
 	}
 	var snap *raftpb.Snapshot
 	for _, name := range names {
-		if snap, err = loadSnap(s.lg, s.dir, name); err == nil {
-			break
+		if snap, err = loadSnap(s.lg, s.dir, name); err == nil && matchFn(snap) {
+			return snap, nil
 		}
 	}
-	if err != nil {
-		return nil, ErrNoSnapshot
-	}
-	return snap, nil
+	return nil, ErrNoSnapshot
 }
 
 func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
@@ -206,10 +224,11 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = s.cleanupSnapdir(names); err != nil {
+	filenames, err := s.cleanupSnapdir(names)
+	if err != nil {
 		return nil, err
 	}
-	snaps := checkSuffix(s.lg, names)
+	snaps := checkSuffix(s.lg, filenames)
 	if len(snaps) == 0 {
 		return nil, ErrNoSnapshot
 	}
@@ -237,12 +256,44 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 
 // cleanupSnapdir removes any files that should not be in the snapshot directory:
 // - db.tmp prefixed files that can be orphaned by defragmentation
-func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
+func (s *Snapshotter) cleanupSnapdir(filenames []string) (names []string, err error) {
+	names = make([]string, 0, len(filenames))
 	for _, filename := range filenames {
 		if strings.HasPrefix(filename, "db.tmp") {
 			s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
 			if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
-				return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
+				return names, fmt.Errorf("failed to remove orphaned .snap.db file %s: %v", filename, rmErr)
+			}
+		} else {
+			names = append(names, filename)
+		}
+	}
+	return names, nil
+}
+
+func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
+	dir, err := os.Open(s.dir)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	filenames, err := dir.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, filename := range filenames {
+		if strings.HasSuffix(filename, ".snap.db") {
+			hexIndex := strings.TrimSuffix(filepath.Base(filename), ".snap.db")
+			index, err := strconv.ParseUint(hexIndex, 16, 64)
+			if err != nil {
+				s.lg.Error("failed to parse index from filename", zap.String("path", filename), zap.String("error", err.Error()))
+				continue
+			}
+			if index < snap.Metadata.Index {
+				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
+				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
+					s.lg.Error("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.String("error", rmErr.Error()))
+				}
 			}
 		}
 	}

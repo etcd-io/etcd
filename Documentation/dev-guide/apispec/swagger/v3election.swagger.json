@@ -14,12 +14,18 @@
     "/v3/election/campaign": {
       "post": {
         "summary": "Campaign waits to acquire leadership in an election, returning a LeaderKey\nrepresenting the leadership if successful. The LeaderKey can then be used\nto issue new values on the election, transactionally guard API requests on\nleadership still being held, and resign from the election.",
-        "operationId": "Campaign",
+        "operationId": "Election_Campaign",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbCampaignResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +47,18 @@
     "/v3/election/leader": {
       "post": {
         "summary": "Leader returns the current election proclamation, if any.",
-        "operationId": "Leader",
+        "operationId": "Election_Leader",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbLeaderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -68,7 +80,7 @@
     "/v3/election/observe": {
       "post": {
         "summary": "Observe streams election proclamations in-order as made by the election's\nelected leaders.",
-        "operationId": "Observe",
+        "operationId": "Election_Observe",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
@@ -83,6 +95,12 @@
                 }
               },
               "title": "Stream result of v3electionpbLeaderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -104,12 +122,18 @@
     "/v3/election/proclaim": {
       "post": {
         "summary": "Proclaim updates the leader's posted value with a new value.",
-        "operationId": "Proclaim",
+        "operationId": "Election_Proclaim",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbProclaimResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -131,12 +155,18 @@
     "/v3/election/resign": {
       "post": {
         "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
-        "operationId": "Resign",
+        "operationId": "Election_Resign",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/v3electionpbResignResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -226,6 +256,27 @@
         "value": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

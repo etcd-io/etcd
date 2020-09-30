@@ -21,15 +21,17 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/auth"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/auth"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/v3/mvcc"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 
 	"go.uber.org/zap"
 )
+
+const minWatchProgressInterval = 100 * time.Millisecond
 
 type watchServer struct {
 	lg *zap.Logger
@@ -60,6 +62,16 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 	}
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
+	}
+	if s.Cfg.WatchProgressNotifyInterval > 0 {
+		if s.Cfg.WatchProgressNotifyInterval < minWatchProgressInterval {
+			srv.lg.Warn(
+				"adjusting watch progress notify interval to minimum period",
+				zap.Duration("min-watch-progress-notify-interval", minWatchProgressInterval),
+			)
+			s.Cfg.WatchProgressNotifyInterval = minWatchProgressInterval
+		}
+		SetProgressReportInterval(s.Cfg.WatchProgressNotifyInterval)
 	}
 	return srv
 }
@@ -255,9 +267,10 @@ func (sws *serverWatchStream) recvLoop() error {
 
 				select {
 				case sws.ctrlStream <- wr:
+					continue
 				case <-sws.closec:
+					return nil
 				}
-				return nil
 			}
 
 			filters := FiltersFromRequest(creq)

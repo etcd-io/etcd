@@ -120,6 +120,8 @@ type BackendConfig struct {
 	MmapSize uint64
 	// Logger logs backend-side operations.
 	Logger *zap.Logger
+	// UnsafeNoFsync disables all uses of fsync.
+	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -151,6 +153,8 @@ func newBackend(bcfg BackendConfig) *backend {
 	}
 	bopts.InitialMmapSize = bcfg.mmapSize()
 	bopts.FreelistType = bcfg.BackendFreelistType
+	bopts.NoSync = bcfg.UnsafeNoFsync
+	bopts.NoGrowSync = bcfg.UnsafeNoFsync
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
@@ -166,11 +170,14 @@ func newBackend(bcfg BackendConfig) *backend {
 		batchLimit:    bcfg.BatchLimit,
 
 		readTx: &readTx{
-			buf: txReadBuffer{
-				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
+			baseReadTx: baseReadTx{
+				buf: txReadBuffer{
+					txBuffer: txBuffer{make(map[string]*bucketBuffer)},
+				},
+				buckets: make(map[string]*bolt.Bucket),
+				txWg:    new(sync.WaitGroup),
+				txMu:    new(sync.RWMutex),
 			},
-			buckets: make(map[string]*bolt.Bucket),
-			txWg:    new(sync.WaitGroup),
 		},
 
 		stopc: make(chan struct{}),
@@ -202,11 +209,13 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	b.readTx.txWg.Add(1)
 	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
 	return &concurrentReadTx{
-		buf:     b.readTx.buf.unsafeCopy(),
-		tx:      b.readTx.tx,
-		txMu:    &b.readTx.txMu,
-		buckets: b.readTx.buckets,
-		txWg:    b.readTx.txWg,
+		baseReadTx: baseReadTx{
+			buf:     b.readTx.buf.unsafeCopy(),
+			txMu:    b.readTx.txMu,
+			tx:      b.readTx.tx,
+			buckets: b.readTx.buckets,
+			txWg:    b.readTx.txWg,
+		},
 	}
 }
 

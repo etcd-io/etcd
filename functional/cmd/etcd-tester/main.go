@@ -18,8 +18,8 @@ package main
 import (
 	"flag"
 
-	"go.etcd.io/etcd/functional/tester"
-
+	_ "github.com/etcd-io/gofail/runtime"
+	"go.etcd.io/etcd/v3/functional/tester"
 	"go.uber.org/zap"
 )
 

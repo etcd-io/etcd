@@ -2,7 +2,7 @@
 
 # set some environment variables
 ORG_PATH="go.etcd.io"
-REPO_PATH="${ORG_PATH}/etcd"
+REPO_PATH="${ORG_PATH}/etcd/v3"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
 if [[ -n "$FAILPOINTS" ]]; then
@@ -21,23 +21,6 @@ toggle_failpoints() {
 		echo "FAILPOINTS set but gofail not found"
 		exit 1
 	fi
-}
-
-etcd_setup_gopath() {
-	echo "Setting GOPATH from vendor directory at 'gopath'"
-	d=$(dirname "$0")
-	CDIR=$(cd "$d" || return && pwd)
-	cd "$CDIR" || return
-	etcdGOPATH="${CDIR}/gopath"
-	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
-	if [[ -n "$GOPATH" ]]; then
-		GOPATH=":$GOPATH"
-	fi
-	rm -rf "${etcdGOPATH:?}/"
-	mkdir -p "${etcdGOPATH}/vendor" "${etcdGOPATH}/etcd_src/src/go.etcd.io"
-	export GOPATH=${etcdGOPATH}/vendor:${etcdGOPATH}/etcd_src${GOPATH}
-	ln -s "${CDIR}/vendor" "${etcdGOPATH}/vendor/src"
-	ln -s "${CDIR}" "${etcdGOPATH}/etcd_src/src/go.etcd.io/etcd"
 }
 
 toggle_failpoints_default() {
@@ -87,10 +70,6 @@ tools_build() {
 }
 
 toggle_failpoints_default
-
-if [[ "${ETCD_SETUP_GOPATH}" == "1" ]]; then
-	etcd_setup_gopath
-fi
 
 # only build when called directly, not sourced
 if echo "$0" | grep "build$" >/dev/null; then

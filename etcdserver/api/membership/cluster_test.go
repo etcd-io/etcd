@@ -21,11 +21,13 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/pkg/mock/mockstore"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
+	"github.com/coreos/go-semver/semver"
+
+	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/v3/pkg/mock/mockstore"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"go.uber.org/zap"
 )
@@ -855,5 +857,164 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
+	}
+}
+
+func TestIsReadyToPromoteMember(t *testing.T) {
+	tests := []struct {
+		members   []*Member
+		promoteID uint64
+		want      bool
+	}{
+		{
+			// 1/1 members ready, should succeed (quorum = 1, new quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 0/1 members ready, should fail (quorum = 1)
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMemberAsLearner(2, nil, "2", nil),
+			},
+			2,
+			false,
+		},
+		{
+			// 2/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/2 members ready, should succeed (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 1/3 members ready, should fail (quorum = 2)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			false,
+		},
+		{
+			// 2/3 members ready, should succeed (quorum = 2, new quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			4,
+			true,
+		},
+		{
+			// 2/4 members ready, should succeed (quorum = 3)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+				newTestMember(4, nil, "", nil),
+				newTestMemberAsLearner(5, nil, "5", nil),
+			},
+			5,
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
+			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestIsVersionChangable(t *testing.T) {
+	v0 := semver.Must(semver.NewVersion("2.4.0"))
+	v1 := semver.Must(semver.NewVersion("3.4.0"))
+	v2 := semver.Must(semver.NewVersion("3.5.0"))
+	v3 := semver.Must(semver.NewVersion("3.5.1"))
+	v4 := semver.Must(semver.NewVersion("3.6.0"))
+
+	tests := []struct {
+		name           string
+		currentVersion *semver.Version
+		localVersion   *semver.Version
+		expectedResult bool
+	}{
+		{
+			name:           "When local version is one minor lower than cluster version",
+			currentVersion: v2,
+			localVersion:   v1,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one minor and one patch lower than cluster version",
+			currentVersion: v3,
+			localVersion:   v1,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one minor higher than cluster version",
+			currentVersion: v1,
+			localVersion:   v2,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is two minor higher than cluster version",
+			currentVersion: v1,
+			localVersion:   v4,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one major higher than cluster version",
+			currentVersion: v0,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is equal to cluster version",
+			currentVersion: v1,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is one patch higher than cluster version",
+			currentVersion: v2,
+			localVersion:   v3,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is two minor lower than cluster version",
+			currentVersion: v4,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if ret := IsValidVersionChange(tt.currentVersion, tt.localVersion); ret != tt.expectedResult {
+				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
+			}
+		})
 	}
 }

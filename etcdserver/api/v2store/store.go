@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/v3/pkg/types"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -311,7 +311,9 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	eNode := e.Node
 
 	// if test succeed, write the value
-	n.Write(value, s.CurrentIndex)
+	if err := n.Write(value, s.CurrentIndex); err != nil {
+		return nil, err
+	}
 	n.UpdateTTL(expireOpts.ExpireTime)
 
 	// copy the value for safety
@@ -532,7 +534,9 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
-	n.Write(newValue, nextIndex)
+	if err := n.Write(newValue, nextIndex); err != nil {
+		return nil, fmt.Errorf("nodePath %v : %v", nodePath, err)
+	}
 
 	if n.IsDir() {
 		eNode.Dir = true
@@ -606,7 +610,9 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 			}
 			e.PrevNode = n.Repr(false, false, s.clock)
 
-			n.Remove(false, false, nil)
+			if err := n.Remove(false, false, nil); err != nil {
+				return nil, err
+			}
 		} else {
 			return nil, v2error.NewError(v2error.EcodeNodeExist, nodePath, currIndex)
 		}
@@ -626,7 +632,9 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	}
 
 	// we are sure d is a directory and does not have the children with name n.Name
-	d.Add(n)
+	if err := d.Add(n); err != nil {
+		return nil, err
+	}
 
 	// node with TTL
 	if !n.IsPermanent() {
@@ -747,7 +755,7 @@ func (s *store) SaveNoCopy() ([]byte, error) {
 }
 
 func (s *store) Clone() Store {
-	s.worldLock.Lock()
+	s.worldLock.RLock()
 
 	clonedStore := newStore()
 	clonedStore.CurrentIndex = s.CurrentIndex
@@ -756,14 +764,14 @@ func (s *store) Clone() Store {
 	clonedStore.Stats = s.Stats.clone()
 	clonedStore.CurrentVersion = s.CurrentVersion
 
-	s.worldLock.Unlock()
+	s.worldLock.RUnlock()
 	return clonedStore
 }
 
 // Recovery recovers the store system from a static state
 // It needs to recover the parent field of the nodes.
 // It needs to delete the expired nodes since the saved time and also
-// needs to create monitoring go routines.
+// needs to create monitoring goroutines.
 func (s *store) Recovery(state []byte) error {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()

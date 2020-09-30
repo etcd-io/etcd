@@ -24,11 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	pioutil "go.etcd.io/etcd/pkg/ioutil"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/v3/etcdserver/api/snap"
+	pioutil "go.etcd.io/etcd/v3/pkg/ioutil"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/version"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -42,6 +42,9 @@ const (
 	// throughput bottleneck as well as small enough
 	// for not causing a read timeout.
 	connReadLimitByte = 64 * 1024
+
+	// snapshotLimitByte limits the snapshot size to 1TB
+	snapshotLimitByte = 1 * 1024 * 1024 * 1024 * 1024
 )
 
 var (
@@ -215,7 +218,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dec := &messageDecoder{r: r.Body}
 	// let snapshots be very large since they can exceed 512MB for large installations
-	m, err := dec.decodeLimit(uint64(1 << 63))
+	m, err := dec.decodeLimit(snapshotLimitByte)
 	from := types.ID(m.From).String()
 	if err != nil {
 		msg := fmt.Sprintf("failed to decode raft message (%v)", err)
@@ -261,6 +264,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// save incoming database snapshot.
+
 	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
 	if err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
@@ -278,6 +282,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	receivedBytes.WithLabelValues(from).Add(float64(n))
 
+	downloadTook := time.Since(start)
 	h.lg.Info(
 		"received and saved database snapshot",
 		zap.String("local-member-id", h.localID.String()),
@@ -285,6 +290,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
 		zap.Int64("incoming-snapshot-size-bytes", n),
 		zap.String("incoming-snapshot-size", humanize.Bytes(uint64(n))),
+		zap.String("download-took", downloadTook.String()),
 	)
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
@@ -439,7 +445,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Flusher: w.(http.Flusher),
 		Closer:  c,
 		localID: h.tr.ID,
-		peerID:  h.id,
+		peerID:  from,
 	}
 	p.attachOutgoingConn(conn)
 	<-c.closeNotify()

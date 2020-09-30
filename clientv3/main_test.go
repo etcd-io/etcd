@@ -16,14 +16,20 @@ package clientv3_test
 
 import (
 	"fmt"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/integration"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"google.golang.org/grpc/grpclog"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
+)
 
-	"go.etcd.io/etcd/integration"
-	"go.etcd.io/etcd/pkg/testutil"
+var (
+	dialTimeout    = 5 * time.Second
+	requestTimeout = 10 * time.Second
+	endpoints      = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 )
 
 // TestMain sets up an etcd cluster if running the examples.
@@ -32,8 +38,7 @@ func TestMain(m *testing.M) {
 	for _, arg := range os.Args {
 		if strings.HasPrefix(arg, "-test.run=") {
 			exp := strings.Split(arg, "=")[1]
-			match, err := regexp.MatchString(exp, "Example")
-			useCluster = (err == nil && match) || strings.Contains(exp, "Example")
+			useCluster = strings.Contains(exp, "Example")
 			hasRunArg = true
 			break
 		}
@@ -46,6 +51,11 @@ func TestMain(m *testing.M) {
 
 	var v int
 	if useCluster {
+		// Redirecting outputs to Stderr, such that they not interleave with examples outputs.
+		// Setting it once and before running any of the test such that it not data-races
+		// between HTTP servers running in different tests.
+		clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+
 		cfg := integration.ClusterConfig{Size: 3}
 		clus := integration.NewClusterV3(nil, &cfg)
 		endpoints = make([]string, 3)
@@ -61,7 +71,6 @@ func TestMain(m *testing.M) {
 	} else {
 		v = m.Run()
 	}
-
 	if v == 0 && testutil.CheckLeakedGoroutine() {
 		os.Exit(1)
 	}

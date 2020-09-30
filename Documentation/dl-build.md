@@ -22,14 +22,14 @@ $ cd etcd
 $ ./build
 ```
 
-To build a vendored `etcd` from the `master` branch via `go get`:
+To build a modularized `etcd` from the `master` branch via `go get`:
 
 ```sh
 # GOPATH should be set
 $ echo $GOPATH
 /Users/example/go
-$ go get -v go.etcd.io/etcd
-$ go get -v go.etcd.io/etcd/etcdctl
+$ go get -v go.etcd.io/etcd/v3
+$ go get -v go.etcd.io/etcd/v3/etcdctl
 ```
 
 ## Test the installation

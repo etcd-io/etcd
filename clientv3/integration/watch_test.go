@@ -20,15 +20,17 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/integration"
-	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/testutil"
+	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/integration"
+	mvccpb "go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/version"
 
 	"google.golang.org/grpc/metadata"
 )
@@ -582,7 +584,34 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	}
 }
 
+func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
+	progressInterval := 200 * time.Millisecond
+	clus := integration.NewClusterV3(t,
+		&integration.ClusterConfig{
+			Size:                        3,
+			WatchProgressNotifyInterval: progressInterval,
+		})
+	defer clus.Terminate(t)
+
+	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
+	rch := clus.RandClient().Watch(context.Background(), "foo", opts...)
+
+	timeout := 1 * time.Second // we expect to receive watch progress notify in 2 * progressInterval,
+	// but for CPU-starved situation it may take longer. So we use 1 second here for timeout.
+	select {
+	case resp := <-rch: // waiting for a watch progress notify response
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected resp.IsProgressNotify() == true")
+		}
+	case <-time.After(timeout):
+		t.Fatalf("timed out waiting for watch progress notify response in %v", timeout)
+	}
+}
+
 func TestWatchRequestProgress(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skipf("grpc-proxy does not support WatchProgress yet")
+	}
 	testCases := []struct {
 		name     string
 		watchers []string
@@ -838,6 +867,22 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 	if _, ok := <-chNoLeader; !ok {
 		t.Fatalf("expected response, got closed channel")
+	}
+
+	cnt, err := clus.Members[0].Metric(
+		"etcd_server_client_requests_total",
+		`type="stream"`,
+		fmt.Sprintf(`client_api_version="%v"`, version.APIVersion),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cv, err := strconv.ParseInt(cnt, 10, 32)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cv < 2 { // >2 when retried
+		t.Fatalf("expected at least 2, got %q", cnt)
 	}
 }
 

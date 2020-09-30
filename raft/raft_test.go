@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	pb "go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/raft/tracker"
 )
 
 // nextEnts returns the appliable entries and updates the applied index
@@ -186,6 +186,10 @@ func TestUncommittedEntryLimit(t *testing.T) {
 	testEntry := pb.Entry{Data: []byte("testdata")}
 	maxEntrySize := maxEntries * PayloadSize(testEntry)
 
+	if n := PayloadSize(pb.Entry{Data: nil}); n != 0 {
+		t.Fatal("entry with no Data must have zero payload size")
+	}
+
 	cfg := newTestConfig(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 	cfg.MaxUncommittedEntriesSize = uint64(maxEntrySize)
 	cfg.MaxInflightMsgs = 2 * 1024 // avoid interference
@@ -244,10 +248,19 @@ func TestUncommittedEntryLimit(t *testing.T) {
 		t.Fatalf("proposal not dropped: %v", err)
 	}
 
+	// But we can always append an entry with no Data. This is used both for the
+	// leader's first empty entry and for auto-transitioning out of joint config
+	// states.
+	if err := r.Step(
+		pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}},
+	); err != nil {
+		t.Fatal(err)
+	}
+
 	// Read messages and reduce the uncommitted size as if we had committed
 	// these entries.
 	ms = r.readMessages()
-	if e := 1 * numFollowers; len(ms) != e {
+	if e := 2 * numFollowers; len(ms) != e {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
 	r.reduceUncommittedSize(propEnts)
@@ -2738,6 +2751,13 @@ func TestRestore(t *testing.T) {
 	if ok := sm.restore(s); ok {
 		t.Fatal("restore succeed, want fail")
 	}
+	// It should not campaign before actually applying data.
+	for i := 0; i < sm.randomizedElectionTimeout; i++ {
+		sm.tick()
+	}
+	if sm.state != StateFollower {
+		t.Errorf("state = %d, want %d", sm.state, StateFollower)
+	}
 }
 
 // TestRestoreWithLearner restores a snapshot which contains learners.
@@ -2852,10 +2872,14 @@ func TestLearnerReceiveSnapshot(t *testing.T) {
 		},
 	}
 
-	n1 := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
+	store := NewMemoryStorage()
+	n1 := newTestLearnerRaft(1, []uint64{1}, []uint64{2}, 10, 1, store)
 	n2 := newTestLearnerRaft(2, []uint64{1}, []uint64{2}, 10, 1, NewMemoryStorage())
 
 	n1.restore(s)
+	ready := newReady(n1, &SoftState{}, pb.HardState{})
+	store.ApplySnapshot(ready.Snapshot)
+	n1.advance(ready)
 
 	// Force set n1 appplied index.
 	n1.raftLog.appliedTo(n1.raftLog.committed)
@@ -3482,10 +3506,31 @@ func TestLeaderTransferAfterSnapshot(t *testing.T) {
 		t.Fatalf("node 1 has match %x for node 3, want %x", lead.prs.Progress[3].Match, 1)
 	}
 
+	filtered := pb.Message{}
+	// Snapshot needs to be applied before sending MsgAppResp
+	nt.msgHook = func(m pb.Message) bool {
+		if m.Type != pb.MsgAppResp || m.From != 3 || m.Reject {
+			return true
+		}
+		filtered = m
+		return false
+	}
 	// Transfer leadership to 3 when node 3 is lack of snapshot.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
-	// Send pb.MsgHeartbeatResp to leader to trigger a snapshot for node 3.
-	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgHeartbeatResp})
+	if lead.state != StateLeader {
+		t.Fatalf("node 1 should still be leader as snapshot is not applied, got %x", lead.state)
+	}
+	if reflect.DeepEqual(filtered, pb.Message{}) {
+		t.Fatalf("Follower should report snapshot progress automatically.")
+	}
+
+	// Apply snapshot and resume progress
+	follower := nt.peers[3].(*raft)
+	ready := newReady(follower, &SoftState{}, pb.HardState{})
+	nt.storage[3].ApplySnapshot(ready.Snapshot)
+	follower.advance(ready)
+	nt.msgHook = nil
+	nt.send(filtered)
 
 	checkLeaderTransferState(t, lead, StateFollower, 3)
 }
@@ -4126,6 +4171,98 @@ func TestPreVoteMigrationWithFreeStuckPreCandidate(t *testing.T) {
 	if n3.Term != n1.Term {
 		t.Errorf("term = %d, want %d", n3.Term, n1.Term)
 	}
+}
+
+func testConfChangeCheckBeforeCampaign(t *testing.T, v2 bool) {
+	nt := newNetwork(nil, nil, nil)
+	n1 := nt.peers[1].(*raft)
+	n2 := nt.peers[2].(*raft)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if n1.state != StateLeader {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+
+	// Begin to remove the third node.
+	cc := pb.ConfChange{
+		Type:   pb.ConfChangeRemoveNode,
+		NodeID: 2,
+	}
+	var ccData []byte
+	var err error
+	var ty pb.EntryType
+	if v2 {
+		ccv2 := cc.AsV2()
+		ccData, err = ccv2.Marshal()
+		ty = pb.EntryConfChangeV2
+	} else {
+		ccData, err = cc.Marshal()
+		ty = pb.EntryConfChange
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	nt.send(pb.Message{
+		From: 1,
+		To:   1,
+		Type: pb.MsgProp,
+		Entries: []pb.Entry{
+			{Type: ty, Data: ccData},
+		},
+	})
+
+	// Trigger campaign in node 2
+	for i := 0; i < n2.randomizedElectionTimeout; i++ {
+		n2.tick()
+	}
+	// It's still follower because committed conf change is not applied.
+	if n2.state != StateFollower {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+
+	// Transfer leadership to peer 2.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateLeader {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateLeader)
+	}
+	// It's still follower because committed conf change is not applied.
+	if n2.state != StateFollower {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateFollower)
+	}
+	// Abort transfer leader
+	for i := 0; i < n1.electionTimeout; i++ {
+		n1.tick()
+	}
+
+	// Advance apply
+	nextEnts(n2, nt.storage[2])
+
+	// Transfer leadership to peer 2 again.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+	if n1.state != StateFollower {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateFollower)
+	}
+	if n2.state != StateLeader {
+		t.Errorf("node 2 state: %s, want %s", n2.state, StateLeader)
+	}
+
+	nextEnts(n1, nt.storage[1])
+	// Trigger campaign in node 2
+	for i := 0; i < n1.randomizedElectionTimeout; i++ {
+		n1.tick()
+	}
+	if n1.state != StateCandidate {
+		t.Errorf("node 1 state: %s, want %s", n1.state, StateCandidate)
+	}
+}
+
+// Tests if unapplied ConfChange is checked before campaign.
+func TestConfChangeCheckBeforeCampaign(t *testing.T) {
+	testConfChangeCheckBeforeCampaign(t, false)
+}
+
+// Tests if unapplied ConfChangeV2 is checked before campaign.
+func TestConfChangeV2CheckBeforeCampaign(t *testing.T) {
+	testConfChangeCheckBeforeCampaign(t, true)
 }
 
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {

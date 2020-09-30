@@ -26,18 +26,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.etcd.io/etcd/clientv3/balancer"
-	"go.etcd.io/etcd/clientv3/balancer/picker"
-	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
-	"go.etcd.io/etcd/clientv3/credentials"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/logutil"
+	"go.etcd.io/etcd/v3/clientv3/balancer"
+	"go.etcd.io/etcd/v3/clientv3/balancer/picker"
+	"go.etcd.io/etcd/v3/clientv3/balancer/resolver/endpoint"
+	"go.etcd.io/etcd/v3/clientv3/credentials"
+	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/v3/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -113,7 +112,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	return &Client{ctx: cctx, cancel: cancel}
+	return &Client{ctx: cctx, cancel: cancel, lg: zap.NewNop()}
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
@@ -124,6 +123,12 @@ func NewFromURL(url string) (*Client, error) {
 // NewFromURLs creates a new etcdv3 client from URLs.
 func NewFromURLs(urls []string) (*Client, error) {
 	return New(Config{Endpoints: urls})
+}
+
+// WithLogger sets a logger
+func (c *Client) WithLogger(lg *zap.Logger) *Client {
+	c.lg = lg
+	return c
 }
 
 // Close shuts down the client's etcd connections.
@@ -269,41 +274,19 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
 
-	eps := c.Endpoints()
-	for _, ep := range eps {
-		var auth *authenticator
-		// use dial options without dopts to avoid reusing the client balancer
-		var dOpts []grpc.DialOption
-		_, host, _ := endpoint.ParseEndpoint(ep)
-		target := c.resolverGroup.Target(host)
-		creds := c.dialWithBalancerCreds(ep)
-		dOpts, err = c.dialSetupOpts(creds, c.cfg.DialOptions...)
-		if err != nil {
-			err = fmt.Errorf("failed to configure auth dialer: %v", err)
-			continue
-		}
-		dOpts = append(dOpts, grpc.WithBalancerName(roundRobinBalancerName))
-		auth, err = newAuthenticator(ctx, target, dOpts, c)
-		if err != nil {
-			continue
-		}
-		defer auth.close()
-
-		var resp *AuthenticateResponse
-		resp, err = auth.authenticate(ctx, c.Username, c.Password)
-		if err != nil {
-			// return err without retrying other endpoints
-			if err == rpctypes.ErrAuthNotEnabled {
-				return err
-			}
-			continue
-		}
-
-		c.authTokenBundle.UpdateAuthToken(resp.Token)
+	if c.Username == "" || c.Password == "" {
 		return nil
 	}
 
-	return err
+	resp, err := c.Auth.Authenticate(ctx, c.Username, c.Password)
+	if err != nil {
+		if err == rpctypes.ErrAuthNotEnabled {
+			return nil
+		}
+		return err
+	}
+	c.authTokenBundle.UpdateAuthToken(resp.Token)
+	return nil
 }
 
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
@@ -324,25 +307,7 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 
 	if c.Username != "" && c.Password != "" {
 		c.authTokenBundle = credentials.NewBundle(credentials.Config{})
-
-		ctx, cancel := c.ctx, func() {}
-		if c.cfg.DialTimeout > 0 {
-			ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
-		}
-
-		err = c.getToken(ctx)
-		if err != nil {
-			if toErr(ctx, err) != rpctypes.ErrAuthNotEnabled {
-				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
-					err = context.DeadlineExceeded
-				}
-				cancel()
-				return nil, err
-			}
-		} else {
-			opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
-		}
-		cancel()
+		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
 
 	opts = append(opts, c.cfg.DialOptions...)
@@ -391,13 +356,6 @@ func (c *Client) dialWithBalancerCreds(ep string) grpccredentials.TransportCrede
 		creds = c.processCreds(scheme)
 	}
 	return creds
-}
-
-// WithRequireLeader requires client requests to only succeed
-// when the cluster has a leader.
-func WithRequireLeader(ctx context.Context) context.Context {
-	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	return metadata.NewOutgoingContext(ctx, md)
 }
 
 func newClient(cfg *Config) (*Client, error) {
@@ -468,7 +426,8 @@ func newClient(cfg *Config) (*Client, error) {
 	client.resolverGroup.SetEndpoints(cfg.Endpoints)
 
 	if len(cfg.Endpoints) < 1 {
-		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
+		client.cancel()
+		return nil, fmt.Errorf("at least one Endpoint is required in client config")
 	}
 	dialEndpoint := cfg.Endpoints[0]
 
@@ -490,6 +449,19 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
+
+	//get token with established connection
+	ctx, cancel = client.ctx, func() {}
+	if client.cfg.DialTimeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, client.cfg.DialTimeout)
+	}
+	err = client.getToken(ctx)
+	if err != nil {
+		client.Close()
+		cancel()
+		return nil, err
+	}
+	cancel()
 
 	if cfg.RejectOldCluster {
 		if err := client.checkVersion(); err != nil {

@@ -26,16 +26,16 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/embed"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/etcdhttp"
-	"go.etcd.io/etcd/etcdserver/api/v2discovery"
-	"go.etcd.io/etcd/pkg/fileutil"
-	pkgioutil "go.etcd.io/etcd/pkg/ioutil"
-	"go.etcd.io/etcd/pkg/osutil"
-	"go.etcd.io/etcd/pkg/transport"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/proxy/httpproxy"
+	"go.etcd.io/etcd/v3/embed"
+	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
+	"go.etcd.io/etcd/v3/etcdserver/api/v2discovery"
+	"go.etcd.io/etcd/v3/pkg/fileutil"
+	pkgioutil "go.etcd.io/etcd/v3/pkg/ioutil"
+	"go.etcd.io/etcd/v3/pkg/osutil"
+	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/v3/proxy/httpproxy"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -49,14 +49,24 @@ var (
 	dirEmpty  = dirType("empty")
 )
 
-func startEtcdOrProxyV2() {
+func startEtcdOrProxyV2(args []string) {
 	grpc.EnableTracing = false
 
 	cfg := newConfig()
 	defaultInitialCluster := cfg.ec.InitialCluster
 
-	err := cfg.parse(os.Args[1:])
+	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
+	if lg == nil {
+		var zapError error
+		// use this logger
+		lg, zapError = zap.NewProduction()
+		if zapError != nil {
+			fmt.Printf("error creating zap logger %v", zapError)
+			os.Exit(1)
+		}
+	}
+	lg.Info("Running: ", zap.Strings("args", args))
 	if err != nil {
 		lg.Warn("failed to verify flags", zap.Error(err))
 		switch err {
@@ -260,7 +270,7 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	err = os.MkdirAll(cfg.ec.Dir, fileutil.PrivateDirMode)
+	err = fileutil.TouchDirAll(cfg.ec.Dir)
 	if err != nil {
 		return err
 	}

@@ -85,22 +85,22 @@ func newStats() *Stats {
 
 func (s *Stats) clone() *Stats {
 	return &Stats{
-		GetSuccess:              s.GetSuccess,
-		GetFail:                 s.GetFail,
-		SetSuccess:              s.SetSuccess,
-		SetFail:                 s.SetFail,
-		DeleteSuccess:           s.DeleteSuccess,
-		DeleteFail:              s.DeleteFail,
-		UpdateSuccess:           s.UpdateSuccess,
-		UpdateFail:              s.UpdateFail,
-		CreateSuccess:           s.CreateSuccess,
-		CreateFail:              s.CreateFail,
-		CompareAndSwapSuccess:   s.CompareAndSwapSuccess,
-		CompareAndSwapFail:      s.CompareAndSwapFail,
-		CompareAndDeleteSuccess: s.CompareAndDeleteSuccess,
-		CompareAndDeleteFail:    s.CompareAndDeleteFail,
-		ExpireCount:             s.ExpireCount,
-		Watchers:                s.Watchers,
+		GetSuccess:              atomic.LoadUint64(&s.GetSuccess),
+		GetFail:                 atomic.LoadUint64(&s.GetFail),
+		SetSuccess:              atomic.LoadUint64(&s.SetSuccess),
+		SetFail:                 atomic.LoadUint64(&s.SetFail),
+		DeleteSuccess:           atomic.LoadUint64(&s.DeleteSuccess),
+		DeleteFail:              atomic.LoadUint64(&s.DeleteFail),
+		UpdateSuccess:           atomic.LoadUint64(&s.UpdateSuccess),
+		UpdateFail:              atomic.LoadUint64(&s.UpdateFail),
+		CreateSuccess:           atomic.LoadUint64(&s.CreateSuccess),
+		CreateFail:              atomic.LoadUint64(&s.CreateFail),
+		CompareAndSwapSuccess:   atomic.LoadUint64(&s.CompareAndSwapSuccess),
+		CompareAndSwapFail:      atomic.LoadUint64(&s.CompareAndSwapFail),
+		CompareAndDeleteSuccess: atomic.LoadUint64(&s.CompareAndDeleteSuccess),
+		CompareAndDeleteFail:    atomic.LoadUint64(&s.CompareAndDeleteFail),
+		ExpireCount:             atomic.LoadUint64(&s.ExpireCount),
+		Watchers:                atomic.LoadUint64(&s.Watchers),
 	}
 }
 
