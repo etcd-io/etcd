@@ -180,7 +180,7 @@ func (s *EtcdServer) checkHashKV() error {
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_CORRUPT,
 		}
-		s.goAttach(func() {
+		s.GoAttach(func() {
 			s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		})
 	}
