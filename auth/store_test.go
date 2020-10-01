@@ -64,10 +64,10 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
+	defer b2.Close()
 	as = NewAuthStore(zap.NewExample(), b2, nil, tp, bcrypt.MinCost)
+	defer as.Close()
 	new := as.Revision()
-	as.Close()
-	b2.Close()
 
 	if old != new {
 		t.Fatalf("expected revision %d, got %d", old, new)
@@ -77,6 +77,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 // TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
+	defer b.Close()
 	defer os.Remove(tPath)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
@@ -87,13 +88,11 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
 	for _, invalidCost := range invalidCosts {
 		as := NewAuthStore(zap.NewExample(), b, nil, tp, invalidCost)
+		defer as.Close()
 		if as.BcryptCost() != bcrypt.DefaultCost {
 			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
 		}
-		as.Close()
 	}
-
-	b.Close()
 }
 
 func encodePassword(s string) string {
@@ -175,6 +174,7 @@ func TestUserAdd(t *testing.T) {
 
 func TestRecover(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
+	defer as.Close()
 	defer tearDown(t)
 
 	as.enabled = false
@@ -654,6 +654,7 @@ func TestIsAuthEnabled(t *testing.T) {
 // TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
+	defer b.Close()
 	defer os.Remove(tPath)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
@@ -709,7 +710,8 @@ func TestIsAdminPermitted(t *testing.T) {
 }
 
 func TestRecoverFromSnapshot(t *testing.T) {
-	as, _ := setupAuthStore(t)
+	as, teardown := setupAuthStore(t)
+	defer teardown(t)
 
 	ua := &pb.AuthUserAddRequest{Name: "foo", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add an existing user
@@ -733,9 +735,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	as2 := NewAuthStore(zap.NewExample(), as.be, nil, tp, bcrypt.MinCost)
-	defer func(a *authStore) {
-		a.Close()
-	}(as2)
+	defer as2.Close()
 
 	if !as2.IsAuthEnabled() {
 		t.Fatal("recovering authStore from existing backend failed")
@@ -808,13 +808,16 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 // TestRolesOrder tests authpb.User.Roles is sorted
 func TestRolesOrder(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
+	defer b.Close()
 	defer os.Remove(tPath)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
+	defer tp.disable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	defer as.Close()
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -863,6 +866,7 @@ func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
 // testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
 func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	b, tPath := backend.NewDefaultTmpBackend()
+	defer b.Close()
 	defer os.Remove(tPath)
 
 	tp, err := NewTokenProvider(zap.NewExample(), opts, dummyIndexWaiter, simpleTokenTTLDefault)
