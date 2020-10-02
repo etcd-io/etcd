@@ -333,8 +333,15 @@ func (s *store) Restore(b backend.Backend) error {
 
 	s.b = b
 	s.kvindex = newTreeIndex(s.lg)
-	s.currentRev = 1
-	s.compactMainRev = -1
+
+	{
+		// During restore the metrics might report 'special' values
+		s.revMu.Lock()
+		s.currentRev = 1
+		s.compactMainRev = -1
+		s.revMu.Unlock()
+	}
+
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
 	s.ci.SetBatchTx(b.BatchTx())
@@ -358,6 +365,7 @@ func (s *store) restore() error {
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
+		s.revMu.Lock()
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
 		s.lg.Info(
@@ -366,6 +374,7 @@ func (s *store) restore() error {
 			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
+		s.revMu.Unlock()
 	}
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
@@ -394,14 +403,20 @@ func (s *store) restore() error {
 		revToBytes(newMin, min)
 	}
 	close(rkvc)
-	s.currentRev = <-revc
 
-	// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
-	// the correct revision should be set to compaction revision in the case, not the largest revision
-	// we have seen.
-	if s.currentRev < s.compactMainRev {
-		s.currentRev = s.compactMainRev
+	{
+		s.revMu.Lock()
+		s.currentRev = <-revc
+
+		// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
+		// the correct revision should be set to compaction revision in the case, not the largest revision
+		// we have seen.
+		if s.currentRev < s.compactMainRev {
+			s.currentRev = s.compactMainRev
+		}
+		s.revMu.Unlock()
 	}
+
 	if scheduledCompact <= s.compactMainRev {
 		scheduledCompact = 0
 	}
