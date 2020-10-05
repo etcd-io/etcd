@@ -130,18 +130,23 @@ func interestingGoroutines() (gs []string) {
 	return gs
 }
 
-// MustTestMainWithLeakDetection expands standard m.Run with leaked
-// goroutines detection.
-func MustTestMainWithLeakDetection(m *testing.M) {
-	v := m.Run()
-
+func MustCheckLeakedGoroutine() {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 
 	// Let the other goroutines finalize.
 	runtime.Gosched()
 
-	if v == 0 && CheckLeakedGoroutine() {
+	if CheckLeakedGoroutine() {
 		os.Exit(1)
+	}
+}
+
+// MustTestMainWithLeakDetection expands standard m.Run with leaked
+// goroutines detection.
+func MustTestMainWithLeakDetection(m *testing.M) {
+	v := m.Run()
+	if v == 0 {
+		MustCheckLeakedGoroutine()
 	}
 	os.Exit(v)
 }

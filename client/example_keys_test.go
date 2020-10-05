@@ -1,0 +1,1 @@
+../tests/integration/client/examples/example_keys_test.go
