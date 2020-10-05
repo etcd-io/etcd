@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strings"
 
+	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/v3/clientv3/credentials"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
@@ -33,7 +34,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
 	v3lockgw "go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
-	etcdservergw "go.etcd.io/etcd/v3/etcdserver/etcdserverpb/gw"
 	"go.etcd.io/etcd/v3/pkg/debugutil"
 	"go.etcd.io/etcd/v3/pkg/httputil"
 	"go.etcd.io/etcd/v3/pkg/transport"

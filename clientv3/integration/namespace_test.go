@@ -19,10 +19,10 @@ import (
 	"reflect"
 	"testing"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/namespace"
 	"go.etcd.io/etcd/v3/integration"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 

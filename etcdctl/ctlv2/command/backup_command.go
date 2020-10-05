@@ -23,9 +23,9 @@ import (
 	"regexp"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/idutil"
 	"go.etcd.io/etcd/v3/pkg/pbutil"

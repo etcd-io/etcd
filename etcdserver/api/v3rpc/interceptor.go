@@ -19,13 +19,13 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/raft"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

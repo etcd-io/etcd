@@ -28,8 +28,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc"
