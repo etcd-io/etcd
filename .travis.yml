@@ -125,7 +125,7 @@ script:
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="VERBOSE='1'" make docker-test-coverage
         ;;
       linux-amd64-fmt-unit-go-tip-2-cpu)
-        GOARCH=amd64 PASSES='fmt unit' 'CPU=2' ./test -p=2
+        GOARCH=amd64 PASSES='fmt unit' CPU='2' RACE='false' ./test -p=2
         ;;
       linux-386-unit-1-cpu)
         docker run --rm \

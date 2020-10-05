@@ -5,16 +5,11 @@
 package integration
 
 import (
-	"os"
 	"testing"
 
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 func TestMain(m *testing.M) {
-	v := m.Run()
-	if v == 0 && testutil.CheckLeakedGoroutine() {
-		os.Exit(1)
-	}
-	os.Exit(v)
+	testutil.MustTestMainWithLeakDetection(m)
 }

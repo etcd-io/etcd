@@ -72,7 +72,7 @@ function run {
   log_callout "% ${repro}"
   "${@}"
   local error_code=$?
-  if [ ${error_code} != 0 ]; then
+  if [ ${error_code} -ne 0 ]; then
     log_error -e "FAIL: (code:${error_code}):\n  % ${repro}"
     return ${error_code}
   fi

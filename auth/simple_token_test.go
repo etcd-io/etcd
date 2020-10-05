@@ -50,6 +50,7 @@ func TestSimpleTokenDisabled(t *testing.T) {
 func TestSimpleTokenAssign(t *testing.T) {
 	tp := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter, simpleTokenTTLDefault)
 	tp.enable()
+	defer tp.disable()
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	token, err := tp.assign(ctx, "user1", 0)
 	if err != nil {

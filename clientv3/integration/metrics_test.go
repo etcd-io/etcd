@@ -43,20 +43,26 @@ func TestV3ClientMetrics(t *testing.T) {
 		ln   net.Listener
 	)
 
-	// listen for all Prometheus metrics
+	srv := &http.Server{Handler: promhttp.Handler()}
+	srv.SetKeepAlivesEnabled(false)
+
+	ln, err := transport.NewUnixListener(addr)
+	if err != nil {
+		t.Errorf("Error: %v occurred while listening on addr: %v", err, addr)
+	}
+
 	donec := make(chan struct{})
+	defer func() {
+		ln.Close()
+		<-donec
+	}()
+
+	// listen for all Prometheus metrics
+
 	go func() {
 		var err error
 
 		defer close(donec)
-
-		srv := &http.Server{Handler: promhttp.Handler()}
-		srv.SetKeepAlivesEnabled(false)
-
-		ln, err = transport.NewUnixListener(addr)
-		if err != nil {
-			t.Errorf("Error: %v occurred while listening on addr: %v", err, addr)
-		}
 
 		err = srv.Serve(ln)
 		if err != nil && !transport.IsClosedConnError(err) {
@@ -88,7 +94,7 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	pBefore := sumCountersForMetricAndLabels(t, url, "grpc_client_started_total", "Put", "unary")
 
-	_, err := cli.Put(context.Background(), "foo", "bar")
+	_, err = cli.Put(context.Background(), "foo", "bar")
 	if err != nil {
 		t.Errorf("Error putting value in key store")
 	}
@@ -109,9 +115,6 @@ func TestV3ClientMetrics(t *testing.T) {
 	if wBefore+1 != wAfter {
 		t.Errorf("grpc_client_msg_received_total expected %d, got %d", 1, wAfter-wBefore)
 	}
-
-	ln.Close()
-	<-donec
 }
 
 func sumCountersForMetricAndLabels(t *testing.T, url string, metricName string, matchingLabelValues ...string) int {

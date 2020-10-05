@@ -24,11 +24,7 @@ running(leaking) after all tests.
 	import "go.etcd.io/etcd/v3/pkg/testutil"
 
 	func TestMain(m *testing.M) {
-		v := m.Run()
-		if v == 0 && testutil.CheckLeakedGoroutine() {
-			os.Exit(1)
-		}
-		os.Exit(v)
+		testutil.MustTestMainWithLeakDetection(m)
 	}
 
 	func TestSample(t *testing.T) {
@@ -38,10 +34,6 @@ running(leaking) after all tests.
 
 */
 func CheckLeakedGoroutine() bool {
-	if testing.Short() {
-		// not counting goroutines for leakage in -short mode
-		return false
-	}
 	gs := interestingGoroutines()
 	if len(gs) == 0 {
 		return false
@@ -66,9 +58,6 @@ func CheckLeakedGoroutine() bool {
 // Waits for go-routines shutdown for 'd'.
 func CheckAfterTest(d time.Duration) error {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
-	if testing.Short() {
-		return nil
-	}
 	var bad string
 	badSubstring := map[string]string{
 		").writeLoop(": "a Transport",
@@ -139,4 +128,20 @@ func interestingGoroutines() (gs []string) {
 	}
 	sort.Strings(gs)
 	return gs
+}
+
+// MustTestMainWithLeakDetection expands standard m.Run with leaked
+// goroutines detection.
+func MustTestMainWithLeakDetection(m *testing.M) {
+	v := m.Run()
+
+	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
+
+	// Let the other goroutines finalize.
+	runtime.Gosched()
+
+	if v == 0 && CheckLeakedGoroutine() {
+		os.Exit(1)
+	}
+	os.Exit(v)
 }

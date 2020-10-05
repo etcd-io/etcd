@@ -429,9 +429,11 @@ func (c *cluster) waitMembersMatch(t testing.TB, membs []client.Member) {
 	}
 }
 
+// WaitLeader returns index of the member in c.Members that is leader (or -1).
 func (c *cluster) WaitLeader(t testing.TB) int { return c.waitLeader(t, c.Members) }
 
-// waitLeader waits until given members agree on the same leader.
+// waitLeader waits until given members agree on the same leader,
+// and returns its 'index' in the 'membs' list (or -1).
 func (c *cluster) waitLeader(t testing.TB, membs []*member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64

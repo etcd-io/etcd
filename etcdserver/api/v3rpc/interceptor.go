@@ -264,13 +264,13 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 		streams: make(map[grpc.ServerStream]struct{}),
 	}
 
-	go func() {
+	s.GoAttach(func() {
 		election := time.Duration(s.Cfg.TickMs) * time.Duration(s.Cfg.ElectionTicks) * time.Millisecond
 		noLeaderCnt := 0
 
 		for {
 			select {
-			case <-s.StopNotify():
+			case <-s.StoppingNotify():
 				return
 			case <-time.After(election):
 				if s.Leader() == types.ID(raft.None) {
@@ -295,7 +295,7 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 				}
 			}
 		}
-	}()
+	})
 
 	return smap
 }
